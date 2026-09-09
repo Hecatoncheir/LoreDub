@@ -2,6 +2,12 @@
 
 All notable changes to LoreDub are documented in this file.
 
+## [0.2.1] - 2026-09-10
+
+- Fixed local Windows builds after the executable rename by migrating stale CMake target caches.
+- Fixed intermittent UTF-8 decoding failures while the Windows process list changes during initialization.
+- Aligned the refresh and start buttons vertically with the game process selector.
+
 ## [0.2.0] - 2026-09-10
 
 - Completed the project-wide LoreDub rename across the app, native bridge, and build outputs.
