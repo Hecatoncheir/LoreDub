@@ -14,13 +14,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
       - name: Cache bundled inference runtime
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/AppData/Local/LoreDubBuildCache
           key: loredub-runtime-whisper-1.8.2-python-3.11.9-torch-2.7.1-v1
@@ -34,7 +34,7 @@ jobs:
         shell: pwsh
         run: ./scripts/build_setup.ps1 -ReleaseTag $env:GITHUB_REF_NAME
       - name: Upload setup artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: LoreDub-${{ github.ref_name }}-windows-x64-setup
           path: dist/*.exe
