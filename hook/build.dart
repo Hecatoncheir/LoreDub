@@ -19,7 +19,7 @@ Future<void> main(List<String> arguments) async {
       ],
       includes: const ['native'],
       language: Language.cpp,
-      std: 'c++17',
+      std: 'c++20',
       flags: windows ? const ['/EHsc'] : const [],
       libraries: windows
           ? const [
