@@ -12,6 +12,7 @@ class AppSettings {
     this.cpuThreads = 4,
     this.showOverlay = true,
     this.ocrRegionTop = 0.55,
+    this.modelProxyUrl = '',
   });
 
   final CaptureMode captureMode;
@@ -21,6 +22,7 @@ class AppSettings {
   final int cpuThreads;
   final bool showOverlay;
   final double ocrRegionTop;
+  final String modelProxyUrl;
 
   AppSettings copyWith({
     CaptureMode? captureMode,
@@ -30,6 +32,7 @@ class AppSettings {
     int? cpuThreads,
     bool? showOverlay,
     double? ocrRegionTop,
+    String? modelProxyUrl,
   }) => AppSettings(
     captureMode: captureMode ?? this.captureMode,
     targetLanguage: targetLanguage ?? this.targetLanguage,
@@ -38,5 +41,6 @@ class AppSettings {
     cpuThreads: cpuThreads ?? this.cpuThreads,
     showOverlay: showOverlay ?? this.showOverlay,
     ocrRegionTop: ocrRegionTop ?? this.ocrRegionTop,
+    modelProxyUrl: modelProxyUrl ?? this.modelProxyUrl,
   );
 }

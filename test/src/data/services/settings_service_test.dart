@@ -13,6 +13,7 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'captureMode': 'ocr',
       'ocrRegionTop': 0.65,
+      'modelProxyUrl': 'http://127.0.0.1:7890',
     });
     final service = SettingsService();
 
@@ -20,9 +21,16 @@ void main() {
 
     expect(loaded.captureMode, CaptureMode.ocr);
     expect(loaded.ocrRegionTop, 0.65);
+    expect(loaded.modelProxyUrl, 'http://127.0.0.1:7890');
 
-    await service.save(loaded.copyWith(ocrRegionTop: 0.4));
+    await service.save(
+      loaded.copyWith(
+        ocrRegionTop: 0.4,
+        modelProxyUrl: 'http://proxy.example:8080',
+      ),
+    );
     final saved = await service.load();
     expect(saved.ocrRegionTop, 0.4);
+    expect(saved.modelProxyUrl, 'http://proxy.example:8080');
   });
 }

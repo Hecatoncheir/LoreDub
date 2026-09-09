@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
+import 'package:lore_dub/src/domain/model_proxy.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -61,6 +62,32 @@ void main() {
       final directory = await service.modelDirectory(model);
       expect(File('${directory.path}/model.bin').existsSync(), isFalse);
       expect(File('${directory.path}/model.bin.part').existsSync(), isFalse);
+    });
+  });
+
+  group('model proxy', () {
+    test('accepts host and authenticated HTTP proxy URLs', () {
+      final local = parseModelProxyUrl('127.0.0.1:7890');
+      final authenticated = parseModelProxyUrl(
+        'http://user:secret@proxy.example:8080',
+      );
+
+      expect(modelProxyDirective(local!), 'PROXY 127.0.0.1:7890');
+      expect(
+        modelProxyDirective(authenticated!),
+        'PROXY proxy.example:8080',
+      );
+    });
+
+    test('rejects unsupported proxy URLs', () {
+      expect(
+        () => parseModelProxyUrl('socks5://127.0.0.1:1080'),
+        throwsFormatException,
+      );
+      expect(
+        () => parseModelProxyUrl('http://proxy.example:70000'),
+        throwsFormatException,
+      );
     });
   });
 }

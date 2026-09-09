@@ -99,6 +99,7 @@ class DashboardViewModel extends ChangeNotifier {
     try {
       await _modelRepository.install(
         state.model,
+        proxyUrl: settings.modelProxyUrl,
         onProgress: (progress) {
           models[index] = models[index].copyWith(progress: progress);
           notifyListeners();

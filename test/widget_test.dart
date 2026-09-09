@@ -53,4 +53,26 @@ void main() {
       lessThanOrEqualTo(1),
     );
   });
+
+  testWidgets('saves a model download proxy from settings', (tester) async {
+    await pumpLoreDub(tester, const Size(1280, 900));
+    await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
+
+    final proxyField = find.widgetWithText(TextFormField, 'HTTP proxy');
+    await tester.ensureVisible(proxyField);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      proxyField,
+      'http://127.0.0.1:7890',
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Сохранить'));
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getString('modelProxyUrl'),
+      'http://127.0.0.1:7890',
+    );
+  });
 }

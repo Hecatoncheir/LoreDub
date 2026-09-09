@@ -5,20 +5,21 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/model_package.dart';
+import '../../domain/model_proxy.dart';
 
 typedef DownloadProgress = void Function(double value);
 typedef ModelRootProvider = Future<Directory> Function();
 
 class ModelStorageService {
-  ModelStorageService({http.Client? client, ModelRootProvider? rootProvider})
-    : _client = client ?? http.Client(),
-      _rootProvider = rootProvider ?? _defaultRoot;
+  ModelStorageService({this._client, ModelRootProvider? rootProvider})
+    : _rootProvider = rootProvider ?? _defaultRoot;
 
-  final http.Client _client;
+  final http.Client? _client;
   final ModelRootProvider _rootProvider;
 
   static Future<Directory> _defaultRoot() async {
@@ -46,6 +47,20 @@ class ModelStorageService {
   Future<void> install(
     ModelPackage model, {
     required DownloadProgress onProgress,
+    String proxyUrl = '',
+  }) async {
+    final client = _client ?? _createDownloadClient(proxyUrl);
+    try {
+      await _install(model, client: client, onProgress: onProgress);
+    } finally {
+      if (_client == null) client.close();
+    }
+  }
+
+  Future<void> _install(
+    ModelPackage model, {
+    required http.Client client,
+    required DownloadProgress onProgress,
   }) async {
     final directory = await modelDirectory(model);
     await directory.create(recursive: true);
@@ -62,7 +77,7 @@ class ModelStorageService {
         continue;
       }
       if (await partial.exists()) await partial.delete();
-      final response = await _client.send(http.Request('GET', artifact.url));
+      final response = await client.send(http.Request('GET', artifact.url));
       if (response.statusCode != HttpStatus.ok) {
         throw HttpException(
           'Сервер вернул ${response.statusCode} для ${artifact.url}',
@@ -94,6 +109,28 @@ class ModelStorageService {
       completed += artifact.byteSize ?? artifactBytes;
     }
     onProgress(1);
+  }
+
+  static http.Client _createDownloadClient(String proxyUrl) {
+    final proxy = parseModelProxyUrl(proxyUrl);
+    if (proxy == null) return http.Client();
+    final client = HttpClient()..findProxy = (_) => modelProxyDirective(proxy);
+    if (proxy.userInfo.isNotEmpty) {
+      final separator = proxy.userInfo.indexOf(':');
+      final username = Uri.decodeComponent(
+        separator < 0 ? proxy.userInfo : proxy.userInfo.substring(0, separator),
+      );
+      final password = separator < 0
+          ? ''
+          : Uri.decodeComponent(proxy.userInfo.substring(separator + 1));
+      final credentials = HttpClientBasicCredentials(username, password);
+      client.authenticateProxy = (host, port, _, realm) async {
+        if (host != proxy.host || port != proxy.port) return false;
+        client.addProxyCredentials(host, port, realm ?? '', credentials);
+        return true;
+      };
+    }
+    return IOClient(client);
   }
 
   Future<bool> _verify(File file, ModelArtifact artifact) async {

@@ -2,6 +2,10 @@
 
 All notable changes to LoreDub are documented in this file.
 
+## [Unreleased]
+
+- Added an optional HTTP proxy setting for model downloads, including proxy authentication.
+
 ## [0.2.1] - 2026-09-10
 
 - Fixed local Windows builds after the executable rename by migrating stale CMake target caches.

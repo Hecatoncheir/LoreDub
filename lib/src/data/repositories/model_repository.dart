@@ -22,7 +22,12 @@ class ModelRepository {
   Future<void> install(
     ModelPackage model, {
     required DownloadProgress onProgress,
-  }) => _storage.install(model, onProgress: onProgress);
+    String proxyUrl = '',
+  }) => _storage.install(
+    model,
+    onProgress: onProgress,
+    proxyUrl: proxyUrl,
+  );
 
   Future<String> directoryFor(ModelPackage model) async =>
       (await _storage.modelDirectory(model)).path;

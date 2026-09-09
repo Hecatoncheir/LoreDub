@@ -19,6 +19,7 @@ class SettingsService {
       cpuThreads: preferences.getInt('cpuThreads') ?? 4,
       showOverlay: preferences.getBool('showOverlay') ?? true,
       ocrRegionTop: preferences.getDouble('ocrRegionTop') ?? 0.55,
+      modelProxyUrl: preferences.getString('modelProxyUrl') ?? '',
     );
   }
 
@@ -32,6 +33,7 @@ class SettingsService {
       preferences.setInt('cpuThreads', settings.cpuThreads),
       preferences.setBool('showOverlay', settings.showOverlay),
       preferences.setDouble('ocrRegionTop', settings.ocrRegionTop),
+      preferences.setString('modelProxyUrl', settings.modelProxyUrl),
     ]);
   }
 }

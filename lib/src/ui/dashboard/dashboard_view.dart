@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/game_process.dart';
 import '../../domain/model_package.dart';
+import '../../domain/model_proxy.dart';
 import '../../domain/pipeline_state.dart';
 import '../theme.dart';
 import 'dashboard_view_model.dart';
@@ -649,10 +650,52 @@ class _ModelCard extends StatelessWidget {
   }
 }
 
-class _SettingsPanel extends StatelessWidget {
+class _SettingsPanel extends StatefulWidget {
   const _SettingsPanel({super.key, required this.viewModel});
 
   final DashboardViewModel viewModel;
+
+  @override
+  State<_SettingsPanel> createState() => _SettingsPanelState();
+}
+
+class _SettingsPanelState extends State<_SettingsPanel> {
+  final _proxyFormKey = GlobalKey<FormState>();
+  late final TextEditingController _proxyController;
+
+  DashboardViewModel get viewModel => widget.viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _proxyController = TextEditingController(
+      text: viewModel.settings.modelProxyUrl,
+    );
+  }
+
+  @override
+  void dispose() {
+    _proxyController.dispose();
+    super.dispose();
+  }
+
+  String? _validateProxy(String? value) {
+    try {
+      parseModelProxyUrl(value ?? '');
+      return null;
+    } on FormatException catch (error) {
+      return error.message;
+    }
+  }
+
+  void _saveProxy() {
+    if (!(_proxyFormKey.currentState?.validate() ?? false)) return;
+    viewModel.updateSettings(
+      viewModel.settings.copyWith(
+        modelProxyUrl: _proxyController.text.trim(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -753,6 +796,60 @@ class _SettingsPanel extends StatelessWidget {
                       viewModel.updateSettings(settings.copyWith(cpuThreads: value));
                     }
                   },
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SettingCard(
+          title: 'Загрузка моделей',
+          subtitle: 'Необязательный HTTP proxy применяется только при скачивании моделей.',
+          child: Form(
+            key: _proxyFormKey,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final field = TextFormField(
+                  controller: _proxyController,
+                  keyboardType: TextInputType.url,
+                  textInputAction: TextInputAction.done,
+                  decoration: const InputDecoration(
+                    labelText: 'HTTP proxy',
+                    hintText: 'http://127.0.0.1:7890',
+                    helperText:
+                        'Можно указать http://user:password@host:port. '
+                        'Значение хранится локально.',
+                    helperMaxLines: 2,
+                    prefixIcon: Icon(Icons.lan_outlined),
+                  ),
+                  validator: _validateProxy,
+                  onFieldSubmitted: (_) => _saveProxy(),
+                );
+                final save = OutlinedButton.icon(
+                  onPressed: _saveProxy,
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('Сохранить'),
+                );
+                if (constraints.maxWidth < 620) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      field,
+                      const SizedBox(height: 12),
+                      Align(alignment: Alignment.centerRight, child: save),
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: field),
+                    const SizedBox(width: 16),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: save,
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ],

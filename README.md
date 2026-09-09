@@ -122,6 +122,11 @@ Marian weights have pinned SHA-256 values. Smaller Marian metadata files are
 size-checked. The Silero host does not currently publish a digest or stable
 content length, so Dart validates that download by successful completion.
 
+An optional HTTP proxy for model downloads can be configured in **Settings →
+Model downloads**. Both `host:port` and
+`http://user:password@host:port` formats are accepted. The setting affects only
+model downloads; recognition, translation, and speech synthesis remain local.
+
 ## GitLab CI
 
 `verify` runs formatting, analysis, unit/widget tests, and the portable native
