@@ -1,6 +1,6 @@
-# GameLingo
+# LoreDub
 
-GameLingo is a Windows-first, fully local game voice-over companion. It captures
+LoreDub is a Windows-first, fully local game voice-over companion. It captures
 only the selected game's process tree, turns speech into English, translates it
 to Russian, and speaks the result over the current default audio output while
 keeping the original game session quiet.
@@ -51,7 +51,7 @@ the lightweight GDI capture path. Only Russian output is packaged at the moment.
   play sound before refreshing the process list.
 
 The app changes only the selected process session's volume and restores it when
-the pipeline stops or the app closes. TTS comes from the GameLingo process, so
+the pipeline stops or the app closes. TTS comes from the LoreDub process, so
 it cannot feed back into the selected game's capture.
 
 ## Development on Windows
