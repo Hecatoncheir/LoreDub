@@ -1,0 +1,26 @@
+// Copyright (c) 2026 GameLingo contributors.
+// SPDX-License-Identifier: MIT
+
+import 'package:code_assets/code_assets.dart';
+import 'package:hooks/hooks.dart';
+import 'package:native_toolchain_c/native_toolchain_c.dart';
+
+Future<void> main(List<String> arguments) async {
+  await build(arguments, (input, output) async {
+    if (!input.config.buildCodeAssets) return;
+    final windows = input.config.code.targetOS == OS.windows;
+    final builder = CBuilder.library(
+      name: 'game_lingo_native',
+      assetName: 'src/native/game_lingo_native.g.dart',
+      sources: const [
+        'native/game_lingo_native.cpp',
+        'native/process_loopback_capture.cpp',
+      ],
+      includes: const ['native'],
+      language: Language.cpp,
+      std: 'c++17',
+      libraries: windows ? const ['ole32', 'runtimeobject', 'winmm'] : const [],
+    );
+    await builder.run(input: input, output: output);
+  });
+}

@@ -1,0 +1,180 @@
+// Copyright (c) 2026 GameLingo contributors.
+// SPDX-License-Identifier: MIT
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:ffi';
+import 'dart:io';
+import 'dart:isolate';
+
+import 'package:ffi/ffi.dart';
+
+import '../../domain/game_process.dart';
+import '../../native/game_lingo_native.g.dart';
+import 'local_inference_service.dart';
+
+class NativeEngineException implements Exception {
+  const NativeEngineException(this.code, this.message);
+
+  final int code;
+  final String message;
+
+  @override
+  String toString() => 'NativeEngineException($code): $message';
+}
+
+class NativeEngineService {
+  final _events = StreamController<Map<String, Object?>>.broadcast();
+  final _inference = LocalInferenceService();
+  Timer? _pollTimer;
+  Future<void> _processing = Future.value();
+  Map<String, Object?>? _activeConfig;
+
+  Stream<Map<String, Object?>> get events => _events.stream;
+  bool get processLoopbackSupported => gl_is_process_loopback_supported() == 1;
+
+  Future<List<GameProcess>> listProcesses() async {
+    final json = _readNativeString(gl_list_processes_json);
+    final values = jsonDecode(json) as List<Object?>;
+    final processes = values
+        .map((value) => GameProcess.fromJson(value! as Map<String, Object?>))
+        .toList();
+    processes.sort((left, right) => left.name.compareTo(right.name));
+    return processes;
+  }
+
+  Future<void> start(Map<String, Object?> config) async {
+    final models = config['models']! as Map<String, String>;
+    await _inference.start(
+      translationModel: models['bergamot-en-ru']!,
+      ttsModel: models['silero-ru-v5.3']!,
+      threads: config['cpuThreads']! as int,
+    );
+    final work = await LocalInferenceService.createWorkDirectory();
+    final capture = Directory('${work.path}${Platform.pathSeparator}capture');
+    await capture.create(recursive: true);
+    _activeConfig = {...config, 'captureDirectory': capture.path};
+    final pointer = jsonEncode(_activeConfig).toNativeUtf8();
+    try {
+      _throwIfError(gl_start(pointer.cast()));
+    } catch (_) {
+      await _inference.stop();
+      rethrow;
+    } finally {
+      malloc.free(pointer);
+    }
+    _pollTimer ??= Timer.periodic(
+      const Duration(milliseconds: 80),
+      (_) => _pollEvents(),
+    );
+  }
+
+  Future<void> stop() async {
+    _throwIfError(gl_stop());
+    _pollEvents();
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    await _inference.stop();
+    _activeConfig = null;
+  }
+
+  Future<void> setProcessVolume(int processId, double volume) async {
+    _throwIfError(gl_set_process_volume(processId, volume));
+  }
+
+  void _pollEvents() {
+    for (var index = 0; index < 16; index++) {
+      final json = _readNativeString(gl_poll_event_json, emptyAllowed: true);
+      if (json.isEmpty) break;
+      final event = jsonDecode(json) as Map<String, Object?>;
+      if (event['type'] == 'audioSegment') {
+        final wavePath = event['path']! as String;
+        _processing = _processing.then((_) => _processSegment(wavePath));
+      } else {
+        _events.add(event);
+      }
+    }
+  }
+
+  Future<void> _processSegment(String wavePath) async {
+    final started = Stopwatch()..start();
+    try {
+      final config = _activeConfig;
+      if (config == null) return;
+      final models = config['models']! as Map<String, String>;
+      final result = await _inference.processSegment(
+        wavePath: wavePath,
+        whisperModel: models['whisper-base']!,
+        threads: config['cpuThreads']! as int,
+      );
+      if (result == null) return;
+      _events.add({
+        'type': 'transcript',
+        'original': '',
+        'english': result.english,
+        'translated': result.translated,
+        'latencyMs': started.elapsedMilliseconds,
+      });
+      await Isolate.run(() => _playWave(result.wavePath));
+      await _deleteIfPresent(result.wavePath);
+    } catch (error) {
+      _events.add({'type': 'error', 'message': '$error'});
+    } finally {
+      await _deleteIfPresent(wavePath);
+    }
+  }
+
+  static void _playWave(String wavePath) {
+    final pointer = wavePath.toNativeUtf8();
+    try {
+      final code = gl_play_wave(pointer.cast());
+      if (code < 0) {
+        throw NativeEngineException(
+          code,
+          gl_error_message(code).cast<Utf8>().toDartString(),
+        );
+      }
+    } finally {
+      malloc.free(pointer);
+    }
+  }
+
+  static Future<void> _deleteIfPresent(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) await file.delete();
+    } on FileSystemException {
+      // Temporary audio cleanup is best effort.
+    }
+  }
+
+  String _readNativeString(
+    int Function(Pointer<Char>, int) reader, {
+    bool emptyAllowed = false,
+  }) {
+    final required = reader(nullptr, 0);
+    if (required < 0) _throwIfError(required);
+    if (required == 0 && emptyAllowed) return '';
+    final buffer = calloc<Char>(required + 1);
+    try {
+      final written = reader(buffer, required + 1);
+      if (written < 0) _throwIfError(written);
+      return buffer.cast<Utf8>().toDartString(length: written);
+    } finally {
+      calloc.free(buffer);
+    }
+  }
+
+  void _throwIfError(int code) {
+    if (code >= 0) return;
+    final message = gl_error_message(code).cast<Utf8>().toDartString();
+    throw NativeEngineException(code, message);
+  }
+
+  void dispose() {
+    _pollTimer?.cancel();
+    gl_stop();
+    unawaited(_inference.stop());
+    _events.close();
+  }
+}
