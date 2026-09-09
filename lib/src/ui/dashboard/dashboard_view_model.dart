@@ -31,12 +31,19 @@ class DashboardViewModel extends ChangeNotifier {
   bool initializing = true;
   String? error;
 
-  bool get allModelsInstalled => models.isNotEmpty && models.every((state) => state.installed);
+  bool get requiredModelsInstalled =>
+      models.isNotEmpty &&
+      models.every((state) {
+        if (settings.captureMode == CaptureMode.ocr && state.model.id == 'whisper-base') {
+          return true;
+        }
+        return state.installed;
+      });
   bool get canStart =>
       !initializing &&
       status == PipelineStatus.idle &&
       selectedProcess != null &&
-      allModelsInstalled;
+      requiredModelsInstalled;
   bool get running => status == PipelineStatus.starting || status == PipelineStatus.listening;
 
   Future<void> initialize() async {

@@ -90,6 +90,9 @@ class NativeEngineService {
       if (event['type'] == 'audioSegment') {
         final wavePath = event['path']! as String;
         _processing = _processing.then((_) => _processSegment(wavePath));
+      } else if (event['type'] == 'ocrText') {
+        final recognizedText = event['text']! as String;
+        _processing = _processing.then((_) => _processOcrText(recognizedText));
       } else {
         _events.add(event);
       }
@@ -108,20 +111,43 @@ class NativeEngineService {
         threads: config['cpuThreads']! as int,
       );
       if (result == null) return;
-      _events.add({
-        'type': 'transcript',
-        'original': '',
-        'english': result.english,
-        'translated': result.translated,
-        'latencyMs': started.elapsedMilliseconds,
-      });
-      await Isolate.run(() => _playWave(result.wavePath));
-      await _deleteIfPresent(result.wavePath);
+      await _publishResult(result, started.elapsedMilliseconds, original: '');
     } catch (error) {
       _events.add({'type': 'error', 'message': '$error'});
     } finally {
       await _deleteIfPresent(wavePath);
     }
+  }
+
+  Future<void> _processOcrText(String recognizedText) async {
+    final started = Stopwatch()..start();
+    try {
+      if (_activeConfig == null) return;
+      final result = await _inference.processText(recognizedText);
+      await _publishResult(
+        result,
+        started.elapsedMilliseconds,
+        original: recognizedText,
+      );
+    } catch (error) {
+      _events.add({'type': 'error', 'message': '$error'});
+    }
+  }
+
+  Future<void> _publishResult(
+    InferenceResult result,
+    int latencyMs, {
+    required String original,
+  }) async {
+    _events.add({
+      'type': 'transcript',
+      'original': original,
+      'english': result.english,
+      'translated': result.translated,
+      'latencyMs': latencyMs,
+    });
+    await Isolate.run(() => _playWave(result.wavePath));
+    await _deleteIfPresent(result.wavePath);
   }
 
   static void _playWave(String wavePath) {

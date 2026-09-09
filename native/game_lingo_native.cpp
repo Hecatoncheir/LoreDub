@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "game_lingo_native.h"
+#include "ocr_capture.h"
 #include "process_loopback_capture.h"
 
 #include <algorithm>
@@ -31,6 +32,7 @@ std::mutex event_mutex;
 std::deque<std::string> events;
 bool running = false;
 std::unique_ptr<ProcessLoopbackCapture> loopback_capture;
+std::unique_ptr<OcrCapture> ocr_capture;
 
 void PushEvent(std::string event) {
   std::lock_guard<std::mutex> lock(event_mutex);
@@ -134,6 +136,18 @@ std::string JsonString(const std::string& json, const std::string& key) {
     }
   }
   return value;
+}
+
+double JsonDouble(const std::string& json, const std::string& key,
+                  double fallback) {
+  const std::string marker = "\"" + key + "\":";
+  const auto start = json.find(marker);
+  if (start == std::string::npos) return fallback;
+  try {
+    return std::stod(json.substr(start + marker.size()));
+  } catch (...) {
+    return fallback;
+  }
 }
 
 std::wstring ProcessPath(DWORD process_id) {
@@ -297,24 +311,44 @@ int32_t gl_start(const char* config_json) {
   const std::string config(config_json);
   const uint32_t process_id = JsonUnsigned(config, "processId");
   const std::string capture_directory = JsonString(config, "captureDirectory");
-  if (process_id == 0 || capture_directory.empty()) {
+  const std::string capture_mode = JsonString(config, "captureMode");
+  if (process_id == 0 ||
+      (capture_mode != "ocr" && capture_directory.empty())) {
     running = false;
     return -5;
   }
-  loopback_capture = std::make_unique<ProcessLoopbackCapture>();
-  if (!loopback_capture->Start(
-          process_id, Wide(capture_directory),
-          [](const std::string& filename) {
-            PushEvent("{\"type\":\"audioSegment\",\"path\":\"" +
-                      EscapeJson(filename) + "\"}");
-          },
-          [](const std::string& message) {
-            PushEvent("{\"type\":\"error\",\"message\":\"" +
-                      EscapeJson(message) + "\"}");
-          })) {
-    loopback_capture.reset();
-    running = false;
-    return -6;
+  if (capture_mode == "ocr") {
+    ocr_capture = std::make_unique<OcrCapture>();
+    if (!ocr_capture->Start(
+            process_id, JsonDouble(config, "ocrRegionTop", 0.55),
+            [](const std::string& recognized_text) {
+              PushEvent("{\"type\":\"ocrText\",\"text\":\"" +
+                        EscapeJson(recognized_text) + "\"}");
+            },
+            [](const std::string& message) {
+              PushEvent("{\"type\":\"error\",\"message\":\"" +
+                        EscapeJson(message) + "\"}");
+            })) {
+      ocr_capture.reset();
+      running = false;
+      return -7;
+    }
+  } else {
+    loopback_capture = std::make_unique<ProcessLoopbackCapture>();
+    if (!loopback_capture->Start(
+            process_id, Wide(capture_directory),
+            [](const std::string& filename) {
+              PushEvent("{\"type\":\"audioSegment\",\"path\":\"" +
+                        EscapeJson(filename) + "\"}");
+            },
+            [](const std::string& message) {
+              PushEvent("{\"type\":\"error\",\"message\":\"" +
+                        EscapeJson(message) + "\"}");
+            })) {
+      loopback_capture.reset();
+      running = false;
+      return -6;
+    }
   }
   PushEvent("{\"type\":\"state\",\"state\":\"listening\"}");
   return 0;
@@ -329,6 +363,10 @@ int32_t gl_stop(void) {
   if (loopback_capture) {
     loopback_capture->Stop();
     loopback_capture.reset();
+  }
+  if (ocr_capture) {
+    ocr_capture->Stop();
+    ocr_capture.reset();
   }
   running = false;
   PushEvent("{\"type\":\"state\",\"state\":\"idle\"}");
@@ -352,6 +390,7 @@ const char* gl_error_message(int32_t error_code) {
     case -4: return "Pipeline configuration is empty";
     case -5: return "Pipeline process or capture directory is invalid";
     case -6: return "Cannot start the Windows process loopback worker";
+    case -7: return "Cannot start the Windows OCR worker";
     case -10: return "Cannot create Windows audio device enumerator";
     case -11: return "Cannot open the default render endpoint";
     case -12: return "Cannot activate the audio session manager";

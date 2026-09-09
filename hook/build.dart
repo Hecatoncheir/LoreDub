@@ -15,12 +15,23 @@ Future<void> main(List<String> arguments) async {
       sources: const [
         'native/game_lingo_native.cpp',
         'native/process_loopback_capture.cpp',
+        'native/ocr_capture.cpp',
       ],
       includes: const ['native'],
       language: Language.cpp,
       std: 'c++17',
       flags: windows ? const ['/EHsc'] : const [],
-      libraries: windows ? const ['ole32', 'runtimeobject', 'winmm', 'mmdevapi'] : const [],
+      libraries: windows
+          ? const [
+              'ole32',
+              'runtimeobject',
+              'winmm',
+              'mmdevapi',
+              'user32',
+              'gdi32',
+              'windowsapp',
+            ]
+          : const [],
     );
     await builder.run(input: input, output: output);
   });

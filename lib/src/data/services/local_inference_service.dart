@@ -135,14 +135,21 @@ class LocalInferenceService {
     await outputFile.delete();
     if (english.isEmpty || RegExp(r'^\[.*\]$').hasMatch(english)) return null;
 
+    return processText(english);
+  }
+
+  Future<InferenceResult> processText(String english) async {
+    final normalized = english.trim();
+    if (normalized.isEmpty) throw ArgumentError.value(english, 'english', 'Текст пуст');
+
     final id = ++_requestId;
     final completer = Completer<Map<String, Object?>>();
     _pending[id] = completer;
-    _worker!.stdin.writeln(jsonEncode({'id': id, 'text': english}));
+    _worker!.stdin.writeln(jsonEncode({'id': id, 'text': normalized}));
     final response = await completer.future.timeout(const Duration(minutes: 2));
     if (response['error'] case final String error) throw StateError('Marian/Silero: $error');
     return InferenceResult(
-      english: english,
+      english: normalized,
       translated: response['translated']! as String,
       wavePath: response['wave']! as String,
     );

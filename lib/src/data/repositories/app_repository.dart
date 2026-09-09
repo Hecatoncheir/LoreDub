@@ -31,6 +31,7 @@ class AppRepository {
         'targetLanguage': settings.targetLanguage,
         'ttsSpeed': settings.ttsSpeed,
         'cpuThreads': settings.cpuThreads,
+        'ocrRegionTop': settings.ocrRegionTop,
         'models': modelDirectories,
       });
       await _nativeEngine.setProcessVolume(process.pid, settings.originalVolume);

@@ -277,7 +277,7 @@ class _LivePanel extends StatelessWidget {
             ),
           ),
         ),
-        if (!viewModel.allModelsInstalled)
+        if (!viewModel.requiredModelsInstalled)
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Card(
@@ -441,8 +441,7 @@ class _SettingsPanel extends StatelessWidget {
               ButtonSegment(
                 value: CaptureMode.ocr,
                 icon: Icon(Icons.subtitles_rounded),
-                label: Text('OCR (скоро)'),
-                enabled: false,
+                label: Text('Субтитры + OCR'),
               ),
             ],
             selected: {settings.captureMode},
@@ -452,6 +451,25 @@ class _SettingsPanel extends StatelessWidget {
                       viewModel.updateSettings(settings.copyWith(captureMode: selection.first)),
           ),
         ),
+        if (settings.captureMode == CaptureMode.ocr) ...[
+          const SizedBox(height: 12),
+          _SettingCard(
+            title: 'Область субтитров',
+            subtitle: 'Нижние ${((1 - settings.ocrRegionTop) * 100).round()}% активного окна игры',
+            child: Slider(
+              value: settings.ocrRegionTop,
+              min: 0.25,
+              max: 0.8,
+              divisions: 11,
+              label: '${((1 - settings.ocrRegionTop) * 100).round()}%',
+              onChanged: viewModel.running
+                  ? null
+                  : (value) => viewModel.updateSettings(
+                      settings.copyWith(ocrRegionTop: value),
+                    ),
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         _SettingCard(
           title: 'Оригинальный звук',

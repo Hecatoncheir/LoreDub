@@ -11,6 +11,7 @@ class AppSettings {
     this.ttsSpeed = 1.12,
     this.cpuThreads = 4,
     this.showOverlay = true,
+    this.ocrRegionTop = 0.55,
   });
 
   final CaptureMode captureMode;
@@ -19,6 +20,7 @@ class AppSettings {
   final double ttsSpeed;
   final int cpuThreads;
   final bool showOverlay;
+  final double ocrRegionTop;
 
   AppSettings copyWith({
     CaptureMode? captureMode,
@@ -27,6 +29,7 @@ class AppSettings {
     double? ttsSpeed,
     int? cpuThreads,
     bool? showOverlay,
+    double? ocrRegionTop,
   }) => AppSettings(
     captureMode: captureMode ?? this.captureMode,
     targetLanguage: targetLanguage ?? this.targetLanguage,
@@ -34,5 +37,6 @@ class AppSettings {
     ttsSpeed: ttsSpeed ?? this.ttsSpeed,
     cpuThreads: cpuThreads ?? this.cpuThreads,
     showOverlay: showOverlay ?? this.showOverlay,
+    ocrRegionTop: ocrRegionTop ?? this.ocrRegionTop,
   );
 }

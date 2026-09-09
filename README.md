@@ -14,6 +14,10 @@ Game process (WASAPI process loopback, 16 kHz mono)
   -> default Windows output
 ```
 
+Alternatively, OCR mode captures a configurable lower portion of the selected
+game window, recognizes stable English subtitle text with Windows OCR, and
+sends it directly to Marian and Silero without running Whisper.
+
 Everything runs on the user's CPU. Audio and text do not leave the machine.
 Models are downloaded by the Dart application on demand and kept in the Windows
 application-support directory.
@@ -30,8 +34,12 @@ loaded. Subsequent phrases are processed sequentially so a small CPU is not
 overloaded. Expected delay depends heavily on CPU and phrase length; `base` is
 chosen as the quality/speed compromise.
 
-The **Subtitles + OCR** mode is visible as the next planned input adapter but is
-disabled in this release. Only Russian output is packaged at the moment.
+The **Subtitles + OCR** mode works with visible windowed or borderless games.
+Choose how much of the lower game window to scan in Settings. English OCR must
+be installed in Windows; the app reports a direct error when that language pack
+is missing. Scanning runs only while the selected game is the foreground window,
+which prevents other windows from being mistaken for subtitles. Exclusive-fullscreen or minimized windows cannot be read through
+the lightweight GDI capture path. Only Russian output is packaged at the moment.
 
 ## Requirements
 
