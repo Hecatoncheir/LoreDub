@@ -19,7 +19,8 @@ Future<void> main(List<String> arguments) async {
       includes: const ['native'],
       language: Language.cpp,
       std: 'c++17',
-      libraries: windows ? const ['ole32', 'runtimeobject', 'winmm'] : const [],
+      flags: windows ? const ['/EHsc'] : const [],
+      libraries: windows ? const ['ole32', 'runtimeobject', 'winmm', 'mmdevapi'] : const [],
     );
     await builder.run(input: input, output: output);
   });
