@@ -1,0 +1,59 @@
+name: Windows release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Cache bundled inference runtime
+        uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/LoreDubBuildCache
+          key: loredub-runtime-whisper-1.8.2-python-3.11.9-torch-2.7.1-v1
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+      - name: Validate version and prepare release notes
+        shell: pwsh
+        run: dart run tool/prepare_release.dart --tag $env:GITHUB_REF_NAME --output dist/release-notes.md
+      - name: Build Windows setup
+        shell: pwsh
+        run: ./scripts/build_setup.ps1 -ReleaseTag $env:GITHUB_REF_NAME
+      - name: Upload setup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LoreDub-${{ github.ref_name }}-windows-x64-setup
+          path: dist/*.exe
+          if-no-files-found: error
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $version = $tag.TrimStart("v")
+          $assets = @(Get-ChildItem "dist/*.exe")
+          if ($assets.Count -ne 1) {
+            throw "Expected exactly one setup executable, found $($assets.Count)."
+          }
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release edit $tag --repo $env:GITHUB_REPOSITORY --title "LoreDub $version" --notes-file dist/release-notes.md
+            gh release upload $tag $assets[0].FullName --repo $env:GITHUB_REPOSITORY --clobber
+          } else {
+            gh release create $tag $assets[0].FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "LoreDub $version" --notes-file dist/release-notes.md
+          }

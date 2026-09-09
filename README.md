@@ -71,7 +71,7 @@ The last command downloads and caches the pinned runtimes, builds the Flutter
 app, and creates:
 
 ```text
-dist/GameLingo-<version>-windows-x64-setup.exe
+dist/LoreDub-<version>-windows-x64-setup.exe
 ```
 
 For a development run without an installer, build Flutter first and place the
@@ -99,6 +99,33 @@ build. `windows-setup` requires a GitLab shell runner tagged `windows` with
 Flutter, Visual Studio, and Inno Setup 6. It caches runtimes under
 `%LOCALAPPDATA%` and publishes the setup executable for tags and the default
 branch.
+
+## GitHub releases
+
+Every tag named `v<major>.<minor>.<patch>` starts the Windows release workflow.
+The tag version must match the version in `pubspec.yaml` (without its `+build`
+suffix), and `CHANGELOG.md` must contain a non-empty section with the same
+version. For example:
+
+```markdown
+## [0.2.0] - 2026-09-10
+
+- Added ...
+- Fixed ...
+```
+
+To publish that version, commit both files, tag that commit, and push:
+
+```bash
+git add pubspec.yaml CHANGELOG.md
+git commit -m "chore: prepare 0.2.0 release"
+git tag v0.2.0
+git push origin main v0.2.0
+```
+
+GitHub Actions validates the three versions, builds the Windows installer, and
+publishes `LoreDub-0.2.0-windows-x64-setup.exe` with the matching changelog
+section at the [LoreDub releases page](https://github.com/Hecatoncheir/LoreDub/releases).
 
 ## Source layout
 

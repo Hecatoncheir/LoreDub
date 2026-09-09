@@ -1,10 +1,27 @@
-# Copyright (c) 2026 GameLingo contributors.
+# Copyright (c) 2026 LoreDub contributors.
 # SPDX-License-Identifier: MIT
+
+param(
+  [string]$ReleaseTag = ""
+)
 
 $ErrorActionPreference = "Stop"
 $CommitSuffix = if ($env:CI_COMMIT_SHORT_SHA) { $env:CI_COMMIT_SHORT_SHA } else { "local" }
-$PackageVersion = if ($env:CI_COMMIT_TAG) { $env:CI_COMMIT_TAG.TrimStart("v") } else { "0.1.0-$CommitSuffix" }
-$BuildVersion = if ($env:CI_COMMIT_TAG) { $env:CI_COMMIT_TAG.TrimStart("v") } else { "0.1.0" }
+$EffectiveTag = if ($ReleaseTag) {
+  $ReleaseTag
+} elseif ($env:CI_COMMIT_TAG) {
+  $env:CI_COMMIT_TAG
+} elseif ($env:GITHUB_REF_TYPE -eq "tag") {
+  $env:GITHUB_REF_NAME
+} else {
+  ""
+}
+$PubspecVersion = (Select-String -Path "pubspec.yaml" -Pattern '^version:\s*([^+\s]+)').Matches.Groups[1].Value
+if (-not $PubspecVersion) {
+  throw "Could not read the application version from pubspec.yaml."
+}
+$PackageVersion = if ($EffectiveTag) { $EffectiveTag.TrimStart("v") } else { "$PubspecVersion-$CommitSuffix" }
+$BuildVersion = $PubspecVersion
 
 flutter config --enable-windows-desktop
 flutter pub get

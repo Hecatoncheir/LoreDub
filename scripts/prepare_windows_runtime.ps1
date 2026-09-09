@@ -7,7 +7,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$RuntimeCache = Join-Path $env:LOCALAPPDATA "GameLingoBuildCache"
+$RuntimeCache = Join-Path $env:LOCALAPPDATA "LoreDubBuildCache"
 New-Item -ItemType Directory -Force -Path $RuntimeCache, $Destination | Out-Null
 
 function Get-Download {
