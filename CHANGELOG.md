@@ -2,7 +2,7 @@
 
 All notable changes to LoreDub are documented in this file.
 
-## [Unreleased]
+## [0.2.0] - 2026-09-10
 
 - Completed the project-wide LoreDub rename across the app, native bridge, and build outputs.
 - Added the LoreDub icon to the Windows executable, installer, application shell, and README.
