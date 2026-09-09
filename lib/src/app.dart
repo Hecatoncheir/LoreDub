@@ -1,4 +1,4 @@
-// Copyright (c) 2026 GameLingo contributors.
+// Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter/material.dart';
@@ -12,14 +12,14 @@ import 'ui/dashboard/dashboard_view.dart';
 import 'ui/dashboard/dashboard_view_model.dart';
 import 'ui/theme.dart';
 
-class GameLingoBootstrap extends StatefulWidget {
-  const GameLingoBootstrap({super.key});
+class LoreDubBootstrap extends StatefulWidget {
+  const LoreDubBootstrap({super.key});
 
   @override
-  State<GameLingoBootstrap> createState() => _GameLingoBootstrapState();
+  State<LoreDubBootstrap> createState() => _LoreDubBootstrapState();
 }
 
-class _GameLingoBootstrapState extends State<GameLingoBootstrap> {
+class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
   late final DashboardViewModel viewModel;
 
   @override
@@ -39,9 +39,9 @@ class _GameLingoBootstrapState extends State<GameLingoBootstrap> {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'GameLingo',
+    title: 'LoreDub',
     debugShowCheckedModeBanner: false,
-    theme: buildGameLingoTheme(),
+    theme: buildLoreDubTheme(),
     home: DashboardView(viewModel: viewModel),
   );
 }

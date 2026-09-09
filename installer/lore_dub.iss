@@ -21,7 +21,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 SetupIconFile=..\windows\runner\resources\app_icon.ico
-UninstallDisplayIcon={app}\game_lingo.exe
+UninstallDisplayIcon={app}\lore_dub.exe
 LicenseFile=..\LICENSE
 CloseApplications=yes
 RestartApplications=no
@@ -30,11 +30,11 @@ RestartApplications=no
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\LoreDub"; Filename: "{app}\game_lingo.exe"
-Name: "{autodesktop}\LoreDub"; Filename: "{app}\game_lingo.exe"; Tasks: desktopicon
+Name: "{group}\LoreDub"; Filename: "{app}\lore_dub.exe"
+Name: "{autodesktop}\LoreDub"; Filename: "{app}\lore_dub.exe"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Создать ярлык на рабочем столе"; GroupDescription: "Ярлыки:"
 
 [Run]
-Filename: "{app}\game_lingo.exe"; Description: "Запустить LoreDub"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\lore_dub.exe"; Description: "Запустить LoreDub"; Flags: nowait postinstall skipifsilent

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 GameLingo contributors.
+// Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter/material.dart';
@@ -7,6 +7,7 @@ import '../../domain/app_settings.dart';
 import '../../domain/game_process.dart';
 import '../../domain/model_package.dart';
 import '../../domain/pipeline_state.dart';
+import '../theme.dart';
 import 'dashboard_view_model.dart';
 
 class DashboardView extends StatelessWidget {
@@ -18,40 +19,52 @@ class DashboardView extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: viewModel,
     builder: (context, _) => Scaffold(
-      body: Row(
-        children: [
-          _Navigation(viewModel: viewModel),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: SafeArea(
-              child: Column(
-                children: [
-                  _Header(viewModel: viewModel),
-                  if (viewModel.error case final error?) _ErrorBanner(message: error),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      child: switch (viewModel.section) {
-                        DashboardSection.live => _LivePanel(
-                          key: const ValueKey('live'),
-                          viewModel: viewModel,
-                        ),
-                        DashboardSection.models => _ModelsPanel(
-                          key: const ValueKey('models'),
-                          viewModel: viewModel,
-                        ),
-                        DashboardSection.settings => _SettingsPanel(
-                          key: const ValueKey('settings'),
-                          viewModel: viewModel,
-                        ),
-                      },
-                    ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 900;
+          final content = SafeArea(
+            child: Column(
+              children: [
+                _Header(viewModel: viewModel),
+                if (viewModel.error case final error?) _ErrorBanner(message: error),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: switch (viewModel.section) {
+                      DashboardSection.live => _LivePanel(
+                        key: const ValueKey('live'),
+                        viewModel: viewModel,
+                      ),
+                      DashboardSection.models => _ModelsPanel(
+                        key: const ValueKey('models'),
+                        viewModel: viewModel,
+                      ),
+                      DashboardSection.settings => _SettingsPanel(
+                        key: const ValueKey('settings'),
+                        viewModel: viewModel,
+                      ),
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+          if (compact) {
+            return Column(
+              children: [
+                Expanded(child: content),
+                _BottomNavigation(viewModel: viewModel),
+              ],
+            );
+          }
+          return Row(
+            children: [
+              _Navigation(viewModel: viewModel),
+              const VerticalDivider(width: 1),
+              Expanded(child: content),
+            ],
+          );
+        },
       ),
     ),
   );
@@ -64,23 +77,43 @@ class _Navigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 220,
-    color: const Color(0xFF0F172A),
-    padding: const EdgeInsets.all(16),
+    width: 236,
+    color: LoreDubPalette.panel,
+    padding: const EdgeInsets.all(14),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(12, 10, 12, 28),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 26),
           child: Row(
             children: [
-              Icon(Icons.graphic_eq_rounded, color: Color(0xFF38BDF8)),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'GameLingo',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+              Image.asset(
+                'assets/branding/loredub-icon.png',
+                width: 48,
+                height: 48,
+                semanticLabel: 'LoreDub',
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LoreDub',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'VOICE UNIT 01',
+                      style: TextStyle(
+                        color: LoreDubPalette.mutedInk,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -108,8 +141,13 @@ class _Navigation extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.all(12),
           child: Text(
-            'Windows • local-first',
-            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+            'WINDOWS  ·  LOCAL PROCESSING',
+            style: TextStyle(
+              color: LoreDubPalette.mutedInk,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.7,
+            ),
           ),
         ),
       ],
@@ -138,8 +176,8 @@ class _NavigationItem extends StatelessWidget {
       button: true,
       label: label,
       child: Material(
-        color: selected ? const Color(0xFF1E293B) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        color: selected ? LoreDubPalette.graphite : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
@@ -148,15 +186,45 @@ class _NavigationItem extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: 12),
-                Icon(icon, size: 21, color: selected ? Colors.white : null),
+                Icon(
+                  icon,
+                  size: 21,
+                  color: selected ? LoreDubPalette.orange : LoreDubPalette.ink,
+                ),
                 const SizedBox(width: 12),
-                Text(label),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? Colors.white : LoreDubPalette.ink,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
     ),
+  );
+}
+
+class _BottomNavigation extends StatelessWidget {
+  const _BottomNavigation({required this.viewModel});
+
+  final DashboardViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) => NavigationBar(
+    height: 68,
+    backgroundColor: LoreDubPalette.panel,
+    indicatorColor: LoreDubPalette.orange,
+    selectedIndex: viewModel.section.index,
+    onDestinationSelected: (index) => viewModel.selectSection(DashboardSection.values[index]),
+    destinations: const [
+      NavigationDestination(icon: Icon(Icons.hearing_rounded), label: 'Эфир'),
+      NavigationDestination(icon: Icon(Icons.memory_rounded), label: 'Модели'),
+      NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Настройки'),
+    ],
   );
 }
 
@@ -171,15 +239,32 @@ class _Header extends StatelessWidget {
     child: Row(
       children: [
         Expanded(
-          child: Text(
-            switch (viewModel.section) {
-              DashboardSection.live => 'Перевод игры',
-              DashboardSection.models => 'Локальные модели',
-              DashboardSection.settings => 'Настройки потока',
-            },
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                switch (viewModel.section) {
+                  DashboardSection.live => '01  /  LIVE VOICE',
+                  DashboardSection.models => '02  /  MODEL BANK',
+                  DashboardSection.settings => '03  /  SIGNAL SETUP',
+                },
+                style: const TextStyle(
+                  color: LoreDubPalette.mutedInk,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.4,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                switch (viewModel.section) {
+                  DashboardSection.live => 'Перевод игры',
+                  DashboardSection.models => 'Локальные модели',
+                  DashboardSection.settings => 'Настройки потока',
+                },
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ],
           ),
         ),
         _StatusChip(status: viewModel.status),
@@ -196,17 +281,17 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (status) {
-      PipelineStatus.idle => ('Остановлено', const Color(0xFF94A3B8)),
-      PipelineStatus.starting => ('Запуск…', const Color(0xFFFBBF24)),
-      PipelineStatus.listening => ('Слушаю', const Color(0xFF4ADE80)),
-      PipelineStatus.stopping => ('Остановка…', const Color(0xFFFBBF24)),
-      PipelineStatus.error => ('Ошибка', const Color(0xFFF87171)),
+      PipelineStatus.idle => ('Остановлено', LoreDubPalette.mutedInk),
+      PipelineStatus.starting => ('Запуск…', LoreDubPalette.warning),
+      PipelineStatus.listening => ('Слушаю', LoreDubPalette.success),
+      PipelineStatus.stopping => ('Остановка…', LoreDubPalette.warning),
+      PipelineStatus.error => ('Ошибка', LoreDubPalette.error),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(99),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Row(
@@ -236,42 +321,16 @@ class _LivePanel extends StatelessWidget {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: DropdownButtonFormField<GameProcess>(
-                    initialValue: viewModel.selectedProcess,
-                    decoration: const InputDecoration(
-                      labelText: 'Процесс игры',
-                      helperText: 'Захватывается только звук выбранного процесса',
-                    ),
-                    items: viewModel.processes
-                        .map(
-                          (process) => DropdownMenuItem(
-                            value: process,
-                            child: Text('${process.name}  •  PID ${process.pid}'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: viewModel.running ? null : viewModel.selectProcess,
+                const _ModuleLabel(number: '01', label: 'GAME INPUT'),
+                const SizedBox(height: 14),
+                LayoutBuilder(
+                  builder: (context, constraints) => _SourceControls(
+                    viewModel: viewModel,
+                    compact: constraints.maxWidth < 720,
                   ),
-                ),
-                const SizedBox(width: 12),
-                IconButton.filledTonal(
-                  tooltip: 'Обновить список процессов',
-                  onPressed: viewModel.running ? null : viewModel.refreshProcesses,
-                  icon: const Icon(Icons.refresh_rounded),
-                ),
-                const SizedBox(width: 16),
-                FilledButton.icon(
-                  onPressed: viewModel.running || viewModel.canStart
-                      ? viewModel.togglePipeline
-                      : null,
-                  icon: Icon(
-                    viewModel.running ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                  ),
-                  label: Text(viewModel.running ? 'Остановить' : 'Начать перевод'),
                 ),
               ],
             ),
@@ -282,7 +341,10 @@ class _LivePanel extends StatelessWidget {
             padding: const EdgeInsets.only(top: 12),
             child: Card(
               child: ListTile(
-                leading: const Icon(Icons.download_rounded, color: Color(0xFFFBBF24)),
+                leading: const Icon(
+                  Icons.download_rounded,
+                  color: LoreDubPalette.warning,
+                ),
                 title: const Text('Для первого запуска нужны модели'),
                 subtitle: const Text('Они скачиваются отдельно и не входят в setup.'),
                 trailing: TextButton(
@@ -295,36 +357,160 @@ class _LivePanel extends StatelessWidget {
         const SizedBox(height: 16),
         Expanded(
           child: Card(
-            child: viewModel.transcript.isEmpty
-                ? const _EmptyTranscript()
-                : ListView.separated(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: viewModel.transcript.length,
-                    separatorBuilder: (_, _) => const Divider(height: 28),
-                    itemBuilder: (context, index) {
-                      final entry = viewModel.transcript[index];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.original.isEmpty ? entry.english : entry.original,
-                            style: const TextStyle(color: Color(0xFF94A3B8)),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(entry.translated, style: const TextStyle(fontSize: 18)),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${entry.latency.inMilliseconds} мс',
-                            style: Theme.of(context).textTheme.labelSmall,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 14, 20, 12),
+                  child: _ModuleLabel(number: '02', label: 'LIVE TRANSCRIPT'),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: viewModel.transcript.isEmpty
+                      ? const _EmptyTranscript()
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(20),
+                          itemCount: viewModel.transcript.length,
+                          separatorBuilder: (_, _) => const Divider(height: 28),
+                          itemBuilder: (context, index) {
+                            final entry = viewModel.transcript[index];
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  entry.original.isEmpty ? entry.english : entry.original,
+                                  style: const TextStyle(
+                                    color: LoreDubPalette.mutedInk,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  entry.translated,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${entry.latency.inMilliseconds} мс',
+                                  style: Theme.of(context).textTheme.labelSmall,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     ),
+  );
+}
+
+class _SourceControls extends StatelessWidget {
+  const _SourceControls({required this.viewModel, required this.compact});
+
+  final DashboardViewModel viewModel;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final selector = DropdownButtonFormField<GameProcess>(
+      initialValue: viewModel.selectedProcess,
+      decoration: const InputDecoration(
+        labelText: 'Процесс игры',
+        helperText: 'Захватывается только звук выбранного процесса',
+      ),
+      items: viewModel.processes
+          .map(
+            (process) => DropdownMenuItem(
+              value: process,
+              child: Text('${process.name}  ·  PID ${process.pid}'),
+            ),
+          )
+          .toList(),
+      onChanged: viewModel.running ? null : viewModel.selectProcess,
+    );
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton.outlined(
+          tooltip: 'Обновить список процессов',
+          onPressed: viewModel.running ? null : viewModel.refreshProcesses,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+        const SizedBox(width: 12),
+        FilledButton.icon(
+          onPressed: viewModel.running || viewModel.canStart ? viewModel.togglePipeline : null,
+          icon: Icon(
+            viewModel.running ? Icons.stop_rounded : Icons.play_arrow_rounded,
+          ),
+          label: Text(viewModel.running ? 'Остановить' : 'Начать перевод'),
+        ),
+      ],
+    );
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          selector,
+          const SizedBox(height: 12),
+          Align(alignment: Alignment.centerRight, child: actions),
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(child: selector),
+        const SizedBox(width: 16),
+        actions,
+      ],
+    );
+  }
+}
+
+class _ModuleLabel extends StatelessWidget {
+  const _ModuleLabel({required this.number, required this.label});
+
+  final String number;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 28,
+        height: 22,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: LoreDubPalette.orange,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: LoreDubPalette.ink),
+        ),
+        child: Text(
+          number,
+          style: const TextStyle(
+            color: LoreDubPalette.ink,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+      const SizedBox(width: 9),
+      Text(
+        label,
+        style: const TextStyle(
+          color: LoreDubPalette.ink,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.1,
+        ),
+      ),
+    ],
   );
 }
 
@@ -336,13 +522,17 @@ class _EmptyTranscript extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.subtitles_outlined, size: 42, color: Color(0xFF64748B)),
+        Icon(
+          Icons.subtitles_outlined,
+          size: 42,
+          color: LoreDubPalette.mutedInk,
+        ),
         SizedBox(height: 14),
         Text('Здесь появятся распознанные и переведённые реплики'),
         SizedBox(height: 6),
         Text(
           'Whisper → English → Marian → Russian → Silero',
-          style: TextStyle(color: Color(0xFF94A3B8)),
+          style: TextStyle(color: LoreDubPalette.mutedInk),
         ),
       ],
     ),
@@ -373,49 +563,78 @@ class _ModelCard extends StatelessWidget {
   final VoidCallback onInstall;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          Icon(
-            state.installed ? Icons.check_circle_rounded : Icons.memory_rounded,
-            color: state.installed ? const Color(0xFF4ADE80) : const Color(0xFF94A3B8),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  state.model.title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
+  Widget build(BuildContext context) {
+    final details = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          state.installed ? Icons.check_circle_rounded : Icons.memory_rounded,
+          color: state.installed ? LoreDubPalette.success : LoreDubPalette.mutedInk,
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                state.model.title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                state.model.description,
+                style: const TextStyle(color: LoreDubPalette.mutedInk),
+              ),
+              if (state.progress case final progress?) ...[
+                const SizedBox(height: 12),
+                LinearProgressIndicator(value: progress),
                 const SizedBox(height: 5),
-                Text(state.model.description, style: const TextStyle(color: Color(0xFFCBD5E1))),
-                if (state.progress case final progress?) ...[
-                  const SizedBox(height: 12),
-                  LinearProgressIndicator(value: progress),
-                  const SizedBox(height: 5),
-                  Text('${(progress * 100).round()}%'),
-                ],
-                if (state.error case final error?) ...[
-                  const SizedBox(height: 8),
-                  Text(error, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                ],
+                Text('${(progress * 100).round()}%'),
               ],
-            ),
+              if (state.error case final error?) ...[
+                const SizedBox(height: 8),
+                Text(
+                  error,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(width: 20),
-          OutlinedButton.icon(
-            onPressed: state.installed || state.downloading ? null : onInstall,
-            icon: Icon(state.installed ? Icons.check_rounded : Icons.download_rounded),
-            label: Text(state.installed ? 'Установлена' : 'Скачать'),
-          ),
-        ],
+        ),
+      ],
+    );
+    final action = OutlinedButton.icon(
+      onPressed: state.installed || state.downloading ? null : onInstall,
+      icon: Icon(state.installed ? Icons.check_rounded : Icons.download_rounded),
+      label: Text(state.installed ? 'Установлена' : 'Скачать'),
+    );
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 600) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  details,
+                  const SizedBox(height: 16),
+                  Align(alignment: Alignment.centerRight, child: action),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: details),
+                const SizedBox(width: 20),
+                action,
+              ],
+            );
+          },
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _SettingsPanel extends StatelessWidget {
@@ -546,7 +765,10 @@ class _SettingCard extends StatelessWidget {
           Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
           if (subtitle case final value?) ...[
             const SizedBox(height: 5),
-            Text(value, style: const TextStyle(color: Color(0xFF94A3B8))),
+            Text(
+              value,
+              style: const TextStyle(color: LoreDubPalette.mutedInk),
+            ),
           ],
           const SizedBox(height: 16),
           child,

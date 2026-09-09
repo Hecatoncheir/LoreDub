@@ -1,4 +1,4 @@
-# Copyright (c) 2026 GameLingo contributors.
+# Copyright (c) 2026 LoreDub contributors.
 # SPDX-License-Identifier: MIT
 
 stages:
@@ -35,7 +35,7 @@ windows-setup:
   script:
     - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_setup.ps1
   artifacts:
-    name: "game-lingo-$CI_COMMIT_REF_SLUG-windows-x64"
+    name: "lore-dub-$CI_COMMIT_REF_SLUG-windows-x64"
     expire_in: 14 days
     paths:
       - dist/*.exe

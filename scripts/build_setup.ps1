@@ -44,4 +44,4 @@ if (-not $Iscc) {
 }
 
 New-Item -ItemType Directory -Force -Path dist | Out-Null
-& $Iscc "/DAppVersion=$PackageVersion" "installer\game_lingo.iss"
+& $Iscc "/DAppVersion=$PackageVersion" "installer\lore_dub.iss"

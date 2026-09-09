@@ -1,4 +1,4 @@
-// Copyright (c) 2026 GameLingo contributors.
+// Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
 import 'dart:async';
@@ -10,7 +10,7 @@ import 'dart:isolate';
 import 'package:ffi/ffi.dart';
 
 import '../../domain/game_process.dart';
-import '../../native/game_lingo_native.g.dart';
+import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
 
 class NativeEngineException implements Exception {
@@ -31,10 +31,10 @@ class NativeEngineService {
   Map<String, Object?>? _activeConfig;
 
   Stream<Map<String, Object?>> get events => _events.stream;
-  bool get processLoopbackSupported => gl_is_process_loopback_supported() == 1;
+  bool get processLoopbackSupported => ld_is_process_loopback_supported() == 1;
 
   Future<List<GameProcess>> listProcesses() async {
-    final json = _readNativeString(gl_list_processes_json);
+    final json = _readNativeString(ld_list_processes_json);
     final values = jsonDecode(json) as List<Object?>;
     final processes = values
         .map((value) => GameProcess.fromJson(value! as Map<String, Object?>))
@@ -56,7 +56,7 @@ class NativeEngineService {
     _activeConfig = {...config, 'captureDirectory': capture.path};
     final pointer = jsonEncode(_activeConfig).toNativeUtf8();
     try {
-      _throwIfError(gl_start(pointer.cast()));
+      _throwIfError(ld_start(pointer.cast()));
     } catch (_) {
       await _inference.stop();
       rethrow;
@@ -70,7 +70,7 @@ class NativeEngineService {
   }
 
   Future<void> stop() async {
-    _throwIfError(gl_stop());
+    _throwIfError(ld_stop());
     _pollEvents();
     _pollTimer?.cancel();
     _pollTimer = null;
@@ -79,12 +79,12 @@ class NativeEngineService {
   }
 
   Future<void> setProcessVolume(int processId, double volume) async {
-    _throwIfError(gl_set_process_volume(processId, volume));
+    _throwIfError(ld_set_process_volume(processId, volume));
   }
 
   void _pollEvents() {
     for (var index = 0; index < 16; index++) {
-      final json = _readNativeString(gl_poll_event_json, emptyAllowed: true);
+      final json = _readNativeString(ld_poll_event_json, emptyAllowed: true);
       if (json.isEmpty) break;
       final event = jsonDecode(json) as Map<String, Object?>;
       if (event['type'] == 'audioSegment') {
@@ -153,11 +153,11 @@ class NativeEngineService {
   static void _playWave(String wavePath) {
     final pointer = wavePath.toNativeUtf8();
     try {
-      final code = gl_play_wave(pointer.cast());
+      final code = ld_play_wave(pointer.cast());
       if (code < 0) {
         throw NativeEngineException(
           code,
-          gl_error_message(code).cast<Utf8>().toDartString(),
+          ld_error_message(code).cast<Utf8>().toDartString(),
         );
       }
     } finally {
@@ -193,13 +193,13 @@ class NativeEngineService {
 
   void _throwIfError(int code) {
     if (code >= 0) return;
-    final message = gl_error_message(code).cast<Utf8>().toDartString();
+    final message = ld_error_message(code).cast<Utf8>().toDartString();
     throw NativeEngineException(code, message);
   }
 
   void dispose() {
     _pollTimer?.cancel();
-    gl_stop();
+    ld_stop();
     unawaited(_inference.stop());
     _events.close();
   }

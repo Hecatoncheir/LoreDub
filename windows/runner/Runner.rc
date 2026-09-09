@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "dev.gamelingo" "\0"
-            VALUE "FileDescription", "game_lingo" "\0"
+            VALUE "CompanyName", "LoreDub contributors" "\0"
+            VALUE "FileDescription", "LoreDub" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "game_lingo" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 dev.gamelingo. All rights reserved." "\0"
-            VALUE "OriginalFilename", "game_lingo.exe" "\0"
-            VALUE "ProductName", "game_lingo" "\0"
+            VALUE "InternalName", "lore_dub" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 LoreDub contributors." "\0"
+            VALUE "OriginalFilename", "lore_dub.exe" "\0"
+            VALUE "ProductName", "LoreDub" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

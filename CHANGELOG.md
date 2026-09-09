@@ -2,6 +2,13 @@
 
 All notable changes to LoreDub are documented in this file.
 
+## [Unreleased]
+
+- Completed the project-wide LoreDub rename across the app, native bridge, and build outputs.
+- Added the LoreDub icon to the Windows executable, installer, application shell, and README.
+- Redesigned the dashboard around a tactile industrial audio-module visual system.
+- Added responsive desktop navigation and compact-window widget coverage.
+
 ## [0.1.0] - 2026-09-09
 
 - Added Windows process-specific audio capture with quiet original audio.

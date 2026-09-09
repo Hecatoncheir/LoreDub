@@ -1,9 +1,9 @@
-// Copyright (c) 2026 GameLingo contributors.
+// Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:game_lingo/src/data/services/settings_service.dart';
-import 'package:game_lingo/src/domain/app_settings.dart';
+import 'package:lore_dub/src/data/services/settings_service.dart';
+import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

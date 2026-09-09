@@ -1,4 +1,4 @@
-// Copyright (c) 2026 GameLingo contributors.
+// Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
 import '../../domain/app_settings.dart';

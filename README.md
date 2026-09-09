@@ -1,4 +1,15 @@
-# LoreDub
+<p align="center">
+  <img src="assets/branding/loredub-icon.png" width="180" alt="LoreDub application icon">
+</p>
+
+<h1 align="center">LoreDub</h1>
+
+<p align="center">
+  <a href="https://github.com/Hecatoncheir/LoreDub/actions/workflows/windows.yml"><img src="https://github.com/Hecatoncheir/LoreDub/actions/workflows/windows.yml/badge.svg" alt="Windows build"></a>
+  <a href="https://github.com/Hecatoncheir/LoreDub/actions/workflows/release.yml"><img src="https://github.com/Hecatoncheir/LoreDub/actions/workflows/release.yml/badge.svg" alt="Windows release"></a>
+  <a href="https://github.com/Hecatoncheir/LoreDub/releases/latest"><img src="https://img.shields.io/github/v/release/Hecatoncheir/LoreDub" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Hecatoncheir/LoreDub" alt="MIT license"></a>
+</p>
 
 LoreDub is a Windows-first, fully local game voice-over companion. It captures
 only the selected game's process tree, turns speech into English, translates it
@@ -21,6 +32,14 @@ sends it directly to Marian and Silero without running Whisper.
 Everything runs on the user's CPU. Audio and text do not leave the machine.
 Models are downloaded by the Dart application on demand and kept in the Windows
 application-support directory.
+
+## Interface
+
+The LoreDub interface uses the same industrial language as its icon: warm
+off-white equipment panels, graphite signal areas, restrained typography, and
+a single orange accent for active controls. The layout adapts from a persistent
+desktop sidebar to compact bottom navigation. The complete rationale and UI
+tokens are documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 
 ## Windows release status
 
@@ -75,7 +94,7 @@ dist/LoreDub-<version>-windows-x64-setup.exe
 ```
 
 For a development run without an installer, build Flutter first and place the
-runtime beside `game_lingo.exe`:
+runtime beside `lore_dub.exe`:
 
 ```powershell
 flutter build windows --debug
@@ -131,6 +150,7 @@ section at the [LoreDub releases page](https://github.com/Hecatoncheir/LoreDub/r
 
 ```text
 assets/runtime/              persistent Marian/Silero worker
+assets/branding/             LoreDub icon and brand assets
 lib/src/data/services/       orchestration, native bridge, model storage
 lib/src/ui/                  Windows dashboard and model manager
 native/                      process-loopback capture, VAD, volume, playback

@@ -1,7 +1,7 @@
-// Copyright (c) 2026 GameLingo contributors.
+// Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-#include "game_lingo_native.h"
+#include "lore_dub_native.h"
 #include "ocr_capture.h"
 #include "process_loopback_capture.h"
 
@@ -253,9 +253,9 @@ int32_t VisitSessions(uint32_t process_id, float volume, bool restore) {
 
 }  // namespace
 
-int32_t gl_abi_version(void) { return 1; }
+int32_t ld_abi_version(void) { return 1; }
 
-int32_t gl_is_process_loopback_supported(void) {
+int32_t ld_is_process_loopback_supported(void) {
 #if defined(_WIN32)
   return 1;
 #else
@@ -263,7 +263,7 @@ int32_t gl_is_process_loopback_supported(void) {
 #endif
 }
 
-int32_t gl_list_processes_json(char* output, int32_t capacity) {
+int32_t ld_list_processes_json(char* output, int32_t capacity) {
 #if defined(_WIN32)
   return WriteString(ListProcesses(), output, capacity);
 #else
@@ -271,7 +271,7 @@ int32_t gl_list_processes_json(char* output, int32_t capacity) {
 #endif
 }
 
-int32_t gl_set_process_volume(uint32_t process_id, float volume) {
+int32_t ld_set_process_volume(uint32_t process_id, float volume) {
 #if defined(_WIN32)
   return VisitSessions(process_id, std::clamp(volume, 0.0f, 1.0f), false);
 #else
@@ -281,7 +281,7 @@ int32_t gl_set_process_volume(uint32_t process_id, float volume) {
 #endif
 }
 
-int32_t gl_restore_process_volumes(void) {
+int32_t ld_restore_process_volumes(void) {
 #if defined(_WIN32)
   return VisitSessions(0, 1.0f, true);
 #else
@@ -289,7 +289,7 @@ int32_t gl_restore_process_volumes(void) {
 #endif
 }
 
-int32_t gl_play_wave(const char* utf8_path) {
+int32_t ld_play_wave(const char* utf8_path) {
 #if defined(_WIN32)
   if (utf8_path == nullptr || utf8_path[0] == '\0') return -20;
   return PlaySoundW(Wide(utf8_path).c_str(), nullptr,
@@ -302,7 +302,7 @@ int32_t gl_play_wave(const char* utf8_path) {
 #endif
 }
 
-int32_t gl_start(const char* config_json) {
+int32_t ld_start(const char* config_json) {
   if (running) return -3;
   if (config_json == nullptr || config_json[0] == '\0') return -4;
   running = true;
@@ -359,7 +359,7 @@ int32_t gl_start(const char* config_json) {
 #endif
 }
 
-int32_t gl_stop(void) {
+int32_t ld_stop(void) {
   if (loopback_capture) {
     loopback_capture->Stop();
     loopback_capture.reset();
@@ -370,11 +370,11 @@ int32_t gl_stop(void) {
   }
   running = false;
   PushEvent("{\"type\":\"state\",\"state\":\"idle\"}");
-  gl_restore_process_volumes();
+  ld_restore_process_volumes();
   return 0;
 }
 
-int32_t gl_poll_event_json(char* output, int32_t capacity) {
+int32_t ld_poll_event_json(char* output, int32_t capacity) {
   std::lock_guard<std::mutex> lock(event_mutex);
   if (events.empty()) return 0;
   const int32_t result = WriteString(events.front(), output, capacity);
@@ -382,7 +382,7 @@ int32_t gl_poll_event_json(char* output, int32_t capacity) {
   return result;
 }
 
-const char* gl_error_message(int32_t error_code) {
+const char* ld_error_message(int32_t error_code) {
   switch (error_code) {
     case 0: return "Success";
     case -2: return "Feature is unsupported on this platform";

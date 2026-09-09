@@ -1,12 +1,12 @@
-// Copyright (c) 2026 GameLingo contributors.
+// Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:game_lingo/src/data/services/model_storage_service.dart';
-import 'package:game_lingo/src/domain/model_package.dart';
+import 'package:lore_dub/src/data/services/model_storage_service.dart';
+import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -16,7 +16,7 @@ void main() {
 
     setUp(() async {
       temporaryDirectory = await Directory.systemTemp.createTemp(
-        'game_lingo_models_test_',
+        'lore_dub_models_test_',
       );
     });
 

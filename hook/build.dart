@@ -1,4 +1,4 @@
-// Copyright (c) 2026 GameLingo contributors.
+// Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
 import 'package:code_assets/code_assets.dart';
@@ -10,10 +10,10 @@ Future<void> main(List<String> arguments) async {
     if (!input.config.buildCodeAssets) return;
     final windows = input.config.code.targetOS == OS.windows;
     final builder = CBuilder.library(
-      name: 'game_lingo_native',
-      assetName: 'src/native/game_lingo_native.g.dart',
+      name: 'lore_dub_native',
+      assetName: 'src/native/lore_dub_native.g.dart',
       sources: const [
-        'native/game_lingo_native.cpp',
+        'native/lore_dub_native.cpp',
         'native/process_loopback_capture.cpp',
         'native/ocr_capture.cpp',
       ],
