@@ -422,7 +422,6 @@ class _SourceControls extends StatelessWidget {
       initialValue: viewModel.selectedProcess,
       decoration: const InputDecoration(
         labelText: 'Процесс игры',
-        helperText: 'Захватывается только звук выбранного процесса',
       ),
       items: viewModel.processes
           .map(
@@ -433,6 +432,10 @@ class _SourceControls extends StatelessWidget {
           )
           .toList(),
       onChanged: viewModel.running ? null : viewModel.selectProcess,
+    );
+    final helper = Text(
+      'Захватывается только звук выбранного процесса',
+      style: Theme.of(context).textTheme.bodySmall,
     );
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
@@ -457,17 +460,26 @@ class _SourceControls extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           selector,
+          const SizedBox(height: 8),
+          helper,
           const SizedBox(height: 12),
           Align(alignment: Alignment.centerRight, child: actions),
         ],
       );
     }
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: selector),
-        const SizedBox(width: 16),
-        actions,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: selector),
+            const SizedBox(width: 16),
+            actions,
+          ],
+        ),
+        const SizedBox(height: 8),
+        helper,
       ],
     );
   }

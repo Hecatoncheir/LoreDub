@@ -36,4 +36,21 @@ void main() {
     expect(find.text('Модели'), findsOneWidget);
     expect(find.text('Настройки'), findsOneWidget);
   });
+
+  testWidgets('aligns source actions with the process selector', (tester) async {
+    await pumpLoreDub(tester, const Size(1280, 720));
+
+    final selector = find.ancestor(
+      of: find.text('Процесс игры'),
+      matching: find.byType(InputDecorator),
+    );
+    final refresh = find.byTooltip('Обновить список процессов');
+
+    expect(selector, findsOneWidget);
+    expect(refresh, findsOneWidget);
+    expect(
+      (tester.getCenter(selector).dy - tester.getCenter(refresh).dy).abs(),
+      lessThanOrEqualTo(1),
+    );
+  });
 }
