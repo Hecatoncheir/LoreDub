@@ -13,6 +13,8 @@ import '../../domain/game_process.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
 
+typedef NativeStringReader = int Function(Pointer<Char> output, int capacity);
+
 class NativeEngineException implements Exception {
   const NativeEngineException(this.code, this.message);
 
@@ -175,20 +177,14 @@ class NativeEngineService {
   }
 
   String _readNativeString(
-    int Function(Pointer<Char>, int) reader, {
+    NativeStringReader reader, {
     bool emptyAllowed = false,
   }) {
-    final required = reader(nullptr, 0);
-    if (required < 0) _throwIfError(required);
-    if (required == 0 && emptyAllowed) return '';
-    final buffer = calloc<Char>(required + 1);
-    try {
-      final written = reader(buffer, required + 1);
-      if (written < 0) _throwIfError(written);
-      return buffer.cast<Utf8>().toDartString(length: written);
-    } finally {
-      calloc.free(buffer);
-    }
+    return readNativeUtf8String(
+      reader,
+      emptyAllowed: emptyAllowed,
+      throwIfError: _throwIfError,
+    );
   }
 
   void _throwIfError(int code) {
@@ -203,4 +199,37 @@ class NativeEngineService {
     unawaited(_inference.stop());
     _events.close();
   }
+}
+
+String readNativeUtf8String(
+  NativeStringReader reader, {
+  bool emptyAllowed = false,
+  required void Function(int code) throwIfError,
+}) {
+  var required = reader(nullptr, 0);
+  if (required < 0) throwIfError(required);
+  if (required == 0 && emptyAllowed) return '';
+
+  // A native value can grow between the size query and the copy (for example,
+  // when a Windows process starts while the process list is being built).
+  // Retry with the newly reported size instead of decoding an untouched or
+  // undersized buffer.
+  for (var attempt = 0; attempt < 8; attempt++) {
+    final capacity = required + 1;
+    final buffer = calloc<Char>(capacity);
+    try {
+      final written = reader(buffer, capacity);
+      if (written < 0) throwIfError(written);
+      if (written < capacity) {
+        return buffer.cast<Utf8>().toDartString(length: written);
+      }
+      required = written;
+    } finally {
+      calloc.free(buffer);
+    }
+  }
+
+  throw const FormatException(
+    'Native UTF-8 value kept changing while it was being read',
+  );
 }
