@@ -103,6 +103,17 @@ powershell -ExecutionPolicy Bypass -File scripts/prepare_windows_runtime.ps1 `
 flutter run -d windows
 ```
 
+After updating an existing checkout across an executable rename, older Flutter
+or CMake versions may retain the previous target in their local build cache.
+The project repairs that value automatically. If configuration still reports
+`No target` for an old application name, regenerate the local artifacts once:
+
+```powershell
+flutter clean
+flutter pub get
+flutter run -d windows
+```
+
 ## Model integrity
 
 Downloads are streamed to temporary files and moved atomically only after size
