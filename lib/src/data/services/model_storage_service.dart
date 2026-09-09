@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:socks5_proxy/socks_client.dart';
 
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
@@ -28,8 +29,26 @@ class ModelStorageService {
   }
 
   Future<Directory> modelDirectory(ModelPackage model) async {
-    final root = await _rootProvider();
+    final root = await rootDirectory();
     return Directory(path.join(root.path, model.id));
+  }
+
+  Future<Directory> rootDirectory() async {
+    final root = await _rootProvider();
+    await root.create(recursive: true);
+    return root;
+  }
+
+  Future<void> openRootDirectory() async {
+    final root = await rootDirectory();
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Открытие каталога поддерживается только в Windows');
+    }
+    await Process.start(
+      'explorer.exe',
+      [root.path],
+      mode: ProcessStartMode.detached,
+    );
   }
 
   Future<bool> isInstalled(ModelPackage model) async {
@@ -49,7 +68,7 @@ class ModelStorageService {
     required DownloadProgress onProgress,
     String proxyUrl = '',
   }) async {
-    final client = _client ?? _createDownloadClient(proxyUrl);
+    final client = _client ?? await _createDownloadClient(proxyUrl);
     try {
       await _install(model, client: client, onProgress: onProgress);
     } finally {
@@ -111,19 +130,30 @@ class ModelStorageService {
     onProgress(1);
   }
 
-  static http.Client _createDownloadClient(String proxyUrl) {
+  static Future<http.Client> _createDownloadClient(String proxyUrl) async {
     final proxy = parseModelProxyUrl(proxyUrl);
     if (proxy == null) return http.Client();
+    if (proxy.scheme.toLowerCase() == 'socks5') {
+      final addresses = await InternetAddress.lookup(proxy.host);
+      if (addresses.isEmpty) {
+        throw StateError('Не удалось определить адрес SOCKS5 proxy');
+      }
+      final credentials = _proxyCredentials(proxy);
+      final client = HttpClient();
+      SocksTCPClient.assignToHttpClient(client, [
+        ProxySettings(
+          addresses.first,
+          proxy.port,
+          username: credentials.$1,
+          password: credentials.$2,
+        ),
+      ]);
+      return IOClient(client);
+    }
     final client = HttpClient()..findProxy = (_) => modelProxyDirective(proxy);
     if (proxy.userInfo.isNotEmpty) {
-      final separator = proxy.userInfo.indexOf(':');
-      final username = Uri.decodeComponent(
-        separator < 0 ? proxy.userInfo : proxy.userInfo.substring(0, separator),
-      );
-      final password = separator < 0
-          ? ''
-          : Uri.decodeComponent(proxy.userInfo.substring(separator + 1));
-      final credentials = HttpClientBasicCredentials(username, password);
+      final values = _proxyCredentials(proxy);
+      final credentials = HttpClientBasicCredentials(values.$1!, values.$2!);
       client.authenticateProxy = (host, port, _, realm) async {
         if (host != proxy.host || port != proxy.port) return false;
         client.addProxyCredentials(host, port, realm ?? '', credentials);
@@ -131,6 +161,18 @@ class ModelStorageService {
       };
     }
     return IOClient(client);
+  }
+
+  static (String?, String?) _proxyCredentials(Uri proxy) {
+    if (proxy.userInfo.isEmpty) return (null, null);
+    final separator = proxy.userInfo.indexOf(':');
+    final username = Uri.decodeComponent(
+      separator < 0 ? proxy.userInfo : proxy.userInfo.substring(0, separator),
+    );
+    final password = separator < 0
+        ? ''
+        : Uri.decodeComponent(proxy.userInfo.substring(separator + 1));
+    return (username, password);
   }
 
   Future<bool> _verify(File file, ModelArtifact artifact) async {

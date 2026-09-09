@@ -4,7 +4,10 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
-- Added an optional HTTP proxy setting for model downloads, including proxy authentication.
+- Added optional HTTP and SOCKS5 proxy settings for model downloads, including authentication.
+- Added a searchable process picker and full default-output capture that excludes LoreDub playback.
+- Added configurable bundled/PATH Python runtime selection.
+- Added the model storage path and an Explorer shortcut to Settings.
 
 ## [0.2.1] - 2026-09-10
 

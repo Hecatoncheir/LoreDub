@@ -312,7 +312,9 @@ int32_t ld_start(const char* config_json) {
   const uint32_t process_id = JsonUnsigned(config, "processId");
   const std::string capture_directory = JsonString(config, "captureDirectory");
   const std::string capture_mode = JsonString(config, "captureMode");
-  if (process_id == 0 ||
+  const std::string audio_source = JsonString(config, "audioSource");
+  const bool needs_process = capture_mode == "ocr" || audio_source != "system";
+  if ((needs_process && process_id == 0) ||
       (capture_mode != "ocr" && capture_directory.empty())) {
     running = false;
     return -5;
@@ -335,8 +337,11 @@ int32_t ld_start(const char* config_json) {
     }
   } else {
     loopback_capture = std::make_unique<ProcessLoopbackCapture>();
+    const bool capture_system = audio_source == "system";
+    const uint32_t capture_process_id =
+        capture_system ? GetCurrentProcessId() : process_id;
     if (!loopback_capture->Start(
-            process_id, Wide(capture_directory),
+            capture_process_id, capture_system, Wide(capture_directory),
             [](const std::string& filename) {
               PushEvent("{\"type\":\"audioSegment\",\"path\":\"" +
                         EscapeJson(filename) + "\"}");

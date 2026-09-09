@@ -7,13 +7,13 @@ Uri? parseModelProxyUrl(String value) {
   final normalized = trimmed.contains('://') ? trimmed : 'http://$trimmed';
   final uri = Uri.tryParse(normalized);
   if (uri == null ||
-      uri.scheme.toLowerCase() != 'http' ||
+      !const {'http', 'socks5'}.contains(uri.scheme.toLowerCase()) ||
       uri.host.isEmpty ||
       uri.hasQuery ||
       uri.fragment.isNotEmpty ||
       (uri.path.isNotEmpty && uri.path != '/')) {
     throw const FormatException(
-      'Укажите HTTP proxy в формате http://host:port',
+      'Укажите proxy в формате http://host:port или socks5://host:port',
     );
   }
   try {

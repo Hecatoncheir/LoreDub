@@ -25,7 +25,9 @@ Game process (WASAPI process loopback, 16 kHz mono)
   -> default Windows output
 ```
 
-Alternatively, OCR mode captures a configurable lower portion of the selected
+Audio capture can target a selected process tree or the complete default output.
+Complete-output mode excludes the LoreDub process tree so synthesized speech
+does not feed back into recognition. Alternatively, OCR mode captures a configurable lower portion of the selected
 game window, recognizes stable English subtitle text with Windows OCR, and
 sends it directly to Marian and Silero without running Whisper.
 
@@ -122,10 +124,15 @@ Marian weights have pinned SHA-256 values. Smaller Marian metadata files are
 size-checked. The Silero host does not currently publish a digest or stable
 content length, so Dart validates that download by successful completion.
 
-An optional HTTP proxy for model downloads can be configured in **Settings →
-Model downloads**. Both `host:port` and
-`http://user:password@host:port` formats are accepted. The setting affects only
-model downloads; recognition, translation, and speech synthesis remain local.
+An optional HTTP or SOCKS5 proxy for model downloads can be configured in
+**Settings → Model downloads**. Both `host:port` and authenticated
+`http://user:password@host:port` / `socks5://user:password@host:port` formats
+are accepted. The setting affects only model downloads; recognition,
+translation, and speech synthesis remain local. Settings also shows the model
+storage directory and can open it in Explorer.
+
+The setup-bundled `runtime/python/python.exe` is selected by default. A custom
+absolute path or `python.exe` resolved from `PATH` can be selected in Settings.
 
 ## GitLab CI
 

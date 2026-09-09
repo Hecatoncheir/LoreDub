@@ -121,11 +121,13 @@ bool WriteWave(const std::wstring& filename, std::vector<int16_t> samples) {
 ProcessLoopbackCapture::ProcessLoopbackCapture() = default;
 ProcessLoopbackCapture::~ProcessLoopbackCapture() { Stop(); }
 
-bool ProcessLoopbackCapture::Start(uint32_t process_id, std::wstring output_directory,
+bool ProcessLoopbackCapture::Start(uint32_t process_id, bool exclude_process_tree,
+                                   std::wstring output_directory,
                                    SegmentCallback on_segment, ErrorCallback on_error) {
   if (thread_.joinable()) return false;
   stopping_ = false;
   thread_ = std::thread(&ProcessLoopbackCapture::CaptureThread, this, process_id,
+                        exclude_process_tree,
                         std::move(output_directory), std::move(on_segment), std::move(on_error));
   return true;
 }
@@ -135,10 +137,12 @@ void ProcessLoopbackCapture::Stop() {
   if (thread_.joinable()) thread_.join();
 }
 
-void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, std::wstring output_directory,
+void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_process_tree,
+                                           std::wstring output_directory,
                                            SegmentCallback on_segment, ErrorCallback on_error) {
 #if !defined(_WIN32)
   (void)process_id;
+  (void)exclude_process_tree;
   (void)output_directory;
   (void)on_segment;
   on_error("Process loopback is only available on Windows");
@@ -165,7 +169,9 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, std::wstring out
   AUDIOCLIENT_ACTIVATION_PARAMS parameters{};
   parameters.ActivationType = AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK;
   parameters.ProcessLoopbackParams.TargetProcessId = process_id;
-  parameters.ProcessLoopbackParams.ProcessLoopbackMode = PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
+  parameters.ProcessLoopbackParams.ProcessLoopbackMode = exclude_process_tree
+      ? PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE
+      : PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
   PROPVARIANT variant{};
   variant.vt = VT_BLOB;
   variant.blob.cbSize = sizeof(parameters);

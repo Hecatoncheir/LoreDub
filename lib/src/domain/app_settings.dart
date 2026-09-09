@@ -3,6 +3,8 @@
 
 enum CaptureMode { audio, ocr }
 
+enum AudioCaptureSource { process, system }
+
 class AppSettings {
   const AppSettings({
     this.captureMode = CaptureMode.audio,
@@ -13,6 +15,8 @@ class AppSettings {
     this.showOverlay = true,
     this.ocrRegionTop = 0.55,
     this.modelProxyUrl = '',
+    this.audioCaptureSource = AudioCaptureSource.process,
+    this.pythonExecutable = '',
   });
 
   final CaptureMode captureMode;
@@ -23,6 +27,8 @@ class AppSettings {
   final bool showOverlay;
   final double ocrRegionTop;
   final String modelProxyUrl;
+  final AudioCaptureSource audioCaptureSource;
+  final String pythonExecutable;
 
   AppSettings copyWith({
     CaptureMode? captureMode,
@@ -33,6 +39,8 @@ class AppSettings {
     bool? showOverlay,
     double? ocrRegionTop,
     String? modelProxyUrl,
+    AudioCaptureSource? audioCaptureSource,
+    String? pythonExecutable,
   }) => AppSettings(
     captureMode: captureMode ?? this.captureMode,
     targetLanguage: targetLanguage ?? this.targetLanguage,
@@ -42,5 +50,7 @@ class AppSettings {
     showOverlay: showOverlay ?? this.showOverlay,
     ocrRegionTop: ocrRegionTop ?? this.ocrRegionTop,
     modelProxyUrl: modelProxyUrl ?? this.modelProxyUrl,
+    audioCaptureSource: audioCaptureSource ?? this.audioCaptureSource,
+    pythonExecutable: pythonExecutable ?? this.pythonExecutable,
   );
 }

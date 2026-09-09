@@ -20,21 +20,30 @@ class AppRepository {
   Future<List<GameProcess>> listProcesses() => _nativeEngine.listProcesses();
 
   Future<void> start({
-    required GameProcess process,
+    required GameProcess? process,
     required AppSettings settings,
     required Map<String, String> modelDirectories,
   }) async {
     try {
       await _nativeEngine.start({
-        'processId': process.pid,
+        'processId': process?.pid ?? 0,
         'captureMode': settings.captureMode.name,
+        'audioSource': settings.audioCaptureSource.name,
         'targetLanguage': settings.targetLanguage,
         'ttsSpeed': settings.ttsSpeed,
         'cpuThreads': settings.cpuThreads,
         'ocrRegionTop': settings.ocrRegionTop,
+        'pythonExecutable': settings.pythonExecutable,
         'models': modelDirectories,
       });
-      await _nativeEngine.setProcessVolume(process.pid, settings.originalVolume);
+      if (process != null &&
+          (settings.captureMode == CaptureMode.ocr ||
+              settings.audioCaptureSource == AudioCaptureSource.process)) {
+        await _nativeEngine.setProcessVolume(
+          process.pid,
+          settings.originalVolume,
+        );
+      }
     } catch (_) {
       await _nativeEngine.stop();
       rethrow;

@@ -77,11 +77,15 @@ void main() {
         modelProxyDirective(authenticated!),
         'PROXY proxy.example:8080',
       );
+      expect(
+        parseModelProxyUrl('socks5://user:secret@127.0.0.1:1080')?.scheme,
+        'socks5',
+      );
     });
 
     test('rejects unsupported proxy URLs', () {
       expect(
-        () => parseModelProxyUrl('socks5://127.0.0.1:1080'),
+        () => parseModelProxyUrl('ftp://127.0.0.1:21'),
         throwsFormatException,
       );
       expect(

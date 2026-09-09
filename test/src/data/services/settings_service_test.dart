@@ -14,6 +14,8 @@ void main() {
       'captureMode': 'ocr',
       'ocrRegionTop': 0.65,
       'modelProxyUrl': 'http://127.0.0.1:7890',
+      'audioCaptureSource': 'system',
+      'pythonExecutable': r'C:\Python311\python.exe',
     });
     final service = SettingsService();
 
@@ -22,15 +24,21 @@ void main() {
     expect(loaded.captureMode, CaptureMode.ocr);
     expect(loaded.ocrRegionTop, 0.65);
     expect(loaded.modelProxyUrl, 'http://127.0.0.1:7890');
+    expect(loaded.audioCaptureSource, AudioCaptureSource.system);
+    expect(loaded.pythonExecutable, r'C:\Python311\python.exe');
 
     await service.save(
       loaded.copyWith(
         ocrRegionTop: 0.4,
         modelProxyUrl: 'http://proxy.example:8080',
+        audioCaptureSource: AudioCaptureSource.process,
+        pythonExecutable: 'python.exe',
       ),
     );
     final saved = await service.load();
     expect(saved.ocrRegionTop, 0.4);
     expect(saved.modelProxyUrl, 'http://proxy.example:8080');
+    expect(saved.audioCaptureSource, AudioCaptureSource.process);
+    expect(saved.pythonExecutable, 'python.exe');
   });
 }

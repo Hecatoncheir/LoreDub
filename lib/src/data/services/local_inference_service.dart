@@ -9,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+import '../../domain/runtime_paths.dart';
+
 class InferenceResult {
   const InferenceResult({required this.english, required this.translated, required this.wavePath});
 
@@ -36,16 +38,11 @@ class LocalInferenceService {
     required String translationModel,
     required String ttsModel,
     required int threads,
+    required String pythonExecutable,
   }) async {
     _workerReady = Completer<void>();
     if (!Platform.isWindows) throw UnsupportedError('Локальный pipeline доступен только в Windows');
-    final executableDirectory = File(Platform.resolvedExecutable).parent;
-    final python = path.join(executableDirectory.path, 'runtime', 'python', 'python.exe');
-    if (!File(python).existsSync()) {
-      throw StateError(
-        'Не найден runtime/python/python.exe. Установите приложение из setup-сборки.',
-      );
-    }
+    final python = await resolvePythonExecutable(pythonExecutable);
     final work = await createWorkDirectory();
     final workerFile = File(path.join(work.path, 'inference_worker.py'));
     final workerBytes = await rootBundle.load('assets/runtime/inference_worker.py');

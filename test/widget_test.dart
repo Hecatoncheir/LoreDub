@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/app.dart';
+import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -54,12 +55,40 @@ void main() {
     );
   });
 
+  testWidgets('filters processes and switches to the full system stream', (
+    tester,
+  ) async {
+    await pumpLoreDub(tester, const Size(1280, 720));
+
+    final pickerFinder = find.byType(DropdownMenu<GameProcess>);
+    var picker = tester.widget<DropdownMenu<GameProcess>>(pickerFinder);
+    expect(picker.enableFilter, isTrue);
+    expect(picker.requestFocusOnTap, isTrue);
+    expect(picker.enabled, isTrue);
+
+    await tester.tap(find.text('Весь звук'));
+    await tester.pumpAndSettle();
+
+    picker = tester.widget<DropdownMenu<GameProcess>>(pickerFinder);
+    expect(picker.enabled, isFalse);
+    expect(
+      find.text('Захватывается весь дефолтный поток, кроме звука LoreDub'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('saves a model download proxy from settings', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 900));
     await tester.tap(find.text('Настройки'));
     await tester.pumpAndSettle();
 
-    final proxyField = find.widgetWithText(TextFormField, 'HTTP proxy');
+    await tester.drag(find.byType(ListView), const Offset(0, -900));
+    await tester.pumpAndSettle();
+
+    final proxyField = find.widgetWithText(
+      TextFormField,
+      'HTTP / SOCKS5 proxy',
+    );
     await tester.ensureVisible(proxyField);
     await tester.pumpAndSettle();
     await tester.enterText(

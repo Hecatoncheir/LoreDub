@@ -31,4 +31,7 @@ class ModelRepository {
 
   Future<String> directoryFor(ModelPackage model) async =>
       (await _storage.modelDirectory(model)).path;
+
+  Future<String> rootDirectory() async => (await _storage.rootDirectory()).path;
+  Future<void> openRootDirectory() => _storage.openRootDirectory();
 }

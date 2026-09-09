@@ -30,6 +30,7 @@ class DashboardViewModel extends ChangeNotifier {
   PipelineStatus status = PipelineStatus.idle;
   bool initializing = true;
   String? error;
+  String modelDirectoryPath = '';
 
   bool get requiredModelsInstalled =>
       models.isNotEmpty &&
@@ -42,8 +43,11 @@ class DashboardViewModel extends ChangeNotifier {
   bool get canStart =>
       !initializing &&
       status == PipelineStatus.idle &&
-      selectedProcess != null &&
+      (!_requiresProcess || selectedProcess != null) &&
       requiredModelsInstalled;
+  bool get _requiresProcess =>
+      settings.captureMode == CaptureMode.ocr ||
+      settings.audioCaptureSource == AudioCaptureSource.process;
   bool get running => status == PipelineStatus.starting || status == PipelineStatus.listening;
 
   Future<void> initialize() async {
@@ -53,10 +57,12 @@ class DashboardViewModel extends ChangeNotifier {
         _appRepository.loadSettings(),
         _appRepository.listProcesses(),
         _modelRepository.loadStates(),
+        _modelRepository.rootDirectory(),
       ]);
       settings = values[0] as AppSettings;
       processes = values[1] as List<GameProcess>;
       models = values[2] as List<ModelInstallState>;
+      modelDirectoryPath = values[3] as String;
     } catch (exception) {
       error = 'Не удалось инициализировать приложение: $exception';
     } finally {
@@ -144,12 +150,22 @@ class DashboardViewModel extends ChangeNotifier {
         );
       }
       await _appRepository.start(
-        process: selectedProcess!,
+        process: _requiresProcess ? selectedProcess : null,
         settings: settings,
         modelDirectories: directories,
       );
     } catch (exception) {
       status = PipelineStatus.error;
+      error = '$exception';
+      notifyListeners();
+    }
+  }
+
+  Future<void> openModelDirectory() async {
+    error = null;
+    try {
+      await _modelRepository.openRootDirectory();
+    } catch (exception) {
       error = '$exception';
       notifyListeners();
     }

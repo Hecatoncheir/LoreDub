@@ -21,12 +21,14 @@ class ProcessLoopbackCapture {
   ProcessLoopbackCapture(const ProcessLoopbackCapture&) = delete;
   ProcessLoopbackCapture& operator=(const ProcessLoopbackCapture&) = delete;
 
-  bool Start(uint32_t process_id, std::wstring output_directory,
+  bool Start(uint32_t process_id, bool exclude_process_tree,
+             std::wstring output_directory,
              SegmentCallback on_segment, ErrorCallback on_error);
   void Stop();
 
  private:
-  void CaptureThread(uint32_t process_id, std::wstring output_directory,
+  void CaptureThread(uint32_t process_id, bool exclude_process_tree,
+                     std::wstring output_directory,
                      SegmentCallback on_segment, ErrorCallback on_error);
 
   std::atomic<bool> stopping_{false};

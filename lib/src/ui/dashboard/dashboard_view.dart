@@ -7,6 +7,7 @@ import '../../domain/app_settings.dart';
 import '../../domain/game_process.dart';
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
+import '../../domain/runtime_paths.dart';
 import '../../domain/pipeline_state.dart';
 import '../theme.dart';
 import 'dashboard_view_model.dart';
@@ -330,7 +331,7 @@ class _LivePanel extends StatelessWidget {
                 LayoutBuilder(
                   builder: (context, constraints) => _SourceControls(
                     viewModel: viewModel,
-                    compact: constraints.maxWidth < 720,
+                    compact: constraints.maxWidth < 900,
                   ),
                 ),
               ],
@@ -419,25 +420,59 @@ class _SourceControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selector = DropdownButtonFormField<GameProcess>(
-      initialValue: viewModel.selectedProcess,
-      decoration: const InputDecoration(
-        labelText: 'Процесс игры',
-      ),
-      items: viewModel.processes
+    final requiresProcess =
+        viewModel.settings.captureMode == CaptureMode.ocr ||
+        viewModel.settings.audioCaptureSource == AudioCaptureSource.process;
+    final selector = DropdownMenu<GameProcess>(
+      key: ValueKey(viewModel.selectedProcess?.pid),
+      initialSelection: viewModel.selectedProcess,
+      expandedInsets: EdgeInsets.zero,
+      enabled: !viewModel.running && requiresProcess,
+      enableFilter: true,
+      enableSearch: true,
+      requestFocusOnTap: true,
+      label: const Text('Процесс игры'),
+      hintText: 'Введите название процесса',
+      dropdownMenuEntries: viewModel.processes
           .map(
-            (process) => DropdownMenuItem(
+            (process) => DropdownMenuEntry(
               value: process,
-              child: Text('${process.name}  ·  PID ${process.pid}'),
+              label: '${process.name}  ·  PID ${process.pid}',
             ),
           )
           .toList(),
-      onChanged: viewModel.running ? null : viewModel.selectProcess,
+      onSelected: viewModel.running || !requiresProcess ? null : viewModel.selectProcess,
     );
     final helper = Text(
-      'Захватывается только звук выбранного процесса',
+      requiresProcess
+          ? 'Захватывается только звук выбранного процесса'
+          : 'Захватывается весь дефолтный поток, кроме звука LoreDub',
       style: Theme.of(context).textTheme.bodySmall,
     );
+    final sourceSwitch = viewModel.settings.captureMode == CaptureMode.audio
+        ? SegmentedButton<AudioCaptureSource>(
+            segments: const [
+              ButtonSegment(
+                value: AudioCaptureSource.process,
+                icon: Icon(Icons.sports_esports_outlined),
+                label: Text('Процесс'),
+              ),
+              ButtonSegment(
+                value: AudioCaptureSource.system,
+                icon: Icon(Icons.speaker_group_outlined),
+                label: Text('Весь звук'),
+              ),
+            ],
+            selected: {viewModel.settings.audioCaptureSource},
+            onSelectionChanged: viewModel.running
+                ? null
+                : (selection) => viewModel.updateSettings(
+                    viewModel.settings.copyWith(
+                      audioCaptureSource: selection.first,
+                    ),
+                  ),
+          )
+        : null;
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -460,6 +495,10 @@ class _SourceControls extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (sourceSwitch != null) ...[
+            sourceSwitch,
+            const SizedBox(height: 12),
+          ],
           selector,
           const SizedBox(height: 8),
           helper,
@@ -474,6 +513,10 @@ class _SourceControls extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (sourceSwitch != null) ...[
+              sourceSwitch,
+              const SizedBox(width: 16),
+            ],
             Expanded(child: selector),
             const SizedBox(width: 16),
             actions,
@@ -531,23 +574,33 @@ class _EmptyTranscript extends StatelessWidget {
   const _EmptyTranscript();
 
   @override
-  Widget build(BuildContext context) => const Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.subtitles_outlined,
-          size: 42,
-          color: LoreDubPalette.mutedInk,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: constraints.maxHeight > 24 ? constraints.maxHeight - 24 : 0,
         ),
-        SizedBox(height: 14),
-        Text('Здесь появятся распознанные и переведённые реплики'),
-        SizedBox(height: 6),
-        Text(
-          'Whisper → English → Marian → Russian → Silero',
-          style: TextStyle(color: LoreDubPalette.mutedInk),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.subtitles_outlined,
+                size: 42,
+                color: LoreDubPalette.mutedInk,
+              ),
+              SizedBox(height: 14),
+              Text('Здесь появятся распознанные и переведённые реплики'),
+              SizedBox(height: 6),
+              Text(
+                'Whisper → English → Marian → Russian → Silero',
+                style: TextStyle(color: LoreDubPalette.mutedInk),
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     ),
   );
 }
@@ -661,7 +714,9 @@ class _SettingsPanel extends StatefulWidget {
 
 class _SettingsPanelState extends State<_SettingsPanel> {
   final _proxyFormKey = GlobalKey<FormState>();
+  final _pythonFormKey = GlobalKey<FormState>();
   late final TextEditingController _proxyController;
+  late final TextEditingController _pythonController;
 
   DashboardViewModel get viewModel => widget.viewModel;
 
@@ -671,11 +726,17 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     _proxyController = TextEditingController(
       text: viewModel.settings.modelProxyUrl,
     );
+    _pythonController = TextEditingController(
+      text: viewModel.settings.pythonExecutable.isEmpty
+          ? bundledPythonExecutablePath()
+          : viewModel.settings.pythonExecutable,
+    );
   }
 
   @override
   void dispose() {
     _proxyController.dispose();
+    _pythonController.dispose();
     super.dispose();
   }
 
@@ -693,6 +754,15 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     viewModel.updateSettings(
       viewModel.settings.copyWith(
         modelProxyUrl: _proxyController.text.trim(),
+      ),
+    );
+  }
+
+  void _savePython() {
+    if (!(_pythonFormKey.currentState?.validate() ?? false)) return;
+    viewModel.updateSettings(
+      viewModel.settings.copyWith(
+        pythonExecutable: _pythonController.text.trim(),
       ),
     );
   }
@@ -800,8 +870,66 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ),
         const SizedBox(height: 12),
         _SettingCard(
+          title: 'Python runtime',
+          subtitle:
+              'Marian и Silero запускаются выбранным python.exe. '
+              'Setup включает готовый runtime.',
+          child: Form(
+            key: _pythonFormKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _pythonController,
+                  keyboardType: TextInputType.url,
+                  textInputAction: TextInputAction.done,
+                  decoration: const InputDecoration(
+                    labelText: 'Путь или команда Python',
+                    helperText: 'Можно указать полный путь или python.exe из PATH.',
+                    prefixIcon: Icon(Icons.terminal_rounded),
+                  ),
+                  validator: (value) => (value ?? '').trim().isEmpty ? 'Укажите python.exe' : null,
+                  onFieldSubmitted: (_) => _savePython(),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () {
+                        _pythonController.text = 'python.exe';
+                        _savePython();
+                      },
+                      icon: const Icon(Icons.manage_search_rounded),
+                      label: const Text('Использовать PATH'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        _pythonController.text = bundledPythonExecutablePath();
+                        _savePython();
+                      },
+                      icon: const Icon(Icons.settings_backup_restore_rounded),
+                      label: const Text('Встроенный'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _savePython,
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text('Сохранить'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SettingCard(
           title: 'Загрузка моделей',
-          subtitle: 'Необязательный HTTP proxy применяется только при скачивании моделей.',
+          subtitle:
+              'Необязательный HTTP или SOCKS5 proxy применяется только '
+              'при скачивании моделей.',
           child: Form(
             key: _proxyFormKey,
             child: LayoutBuilder(
@@ -811,10 +939,10 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   keyboardType: TextInputType.url,
                   textInputAction: TextInputAction.done,
                   decoration: const InputDecoration(
-                    labelText: 'HTTP proxy',
+                    labelText: 'HTTP / SOCKS5 proxy',
                     hintText: 'http://127.0.0.1:7890',
                     helperText:
-                        'Можно указать http://user:password@host:port. '
+                        'Формат: http://… или socks5://user:password@host:port. '
                         'Значение хранится локально.',
                     helperMaxLines: 2,
                     prefixIcon: Icon(Icons.lan_outlined),
@@ -850,6 +978,41 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                 );
               },
             ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SettingCard(
+          title: 'Каталог моделей',
+          subtitle: 'Whisper, Marian и Silero хранятся локально.',
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final path = SelectableText(
+                viewModel.modelDirectoryPath,
+                style: Theme.of(context).textTheme.bodyMedium,
+              );
+              final open = OutlinedButton.icon(
+                onPressed: viewModel.openModelDirectory,
+                icon: const Icon(Icons.folder_open_rounded),
+                label: const Text('Открыть в Explorer'),
+              );
+              if (constraints.maxWidth < 620) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    path,
+                    const SizedBox(height: 12),
+                    Align(alignment: Alignment.centerRight, child: open),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: path),
+                  const SizedBox(width: 16),
+                  open,
+                ],
+              );
+            },
           ),
         ),
       ],

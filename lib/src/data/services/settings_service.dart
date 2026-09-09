@@ -4,6 +4,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/app_settings.dart';
+import '../../domain/runtime_paths.dart';
 
 class SettingsService {
   Future<AppSettings> load() async {
@@ -20,6 +21,11 @@ class SettingsService {
       showOverlay: preferences.getBool('showOverlay') ?? true,
       ocrRegionTop: preferences.getDouble('ocrRegionTop') ?? 0.55,
       modelProxyUrl: preferences.getString('modelProxyUrl') ?? '',
+      audioCaptureSource: AudioCaptureSource.values.firstWhere(
+        (source) => source.name == preferences.getString('audioCaptureSource'),
+        orElse: () => AudioCaptureSource.process,
+      ),
+      pythonExecutable: preferences.getString('pythonExecutable') ?? bundledPythonExecutablePath(),
     );
   }
 
@@ -34,6 +40,11 @@ class SettingsService {
       preferences.setBool('showOverlay', settings.showOverlay),
       preferences.setDouble('ocrRegionTop', settings.ocrRegionTop),
       preferences.setString('modelProxyUrl', settings.modelProxyUrl),
+      preferences.setString(
+        'audioCaptureSource',
+        settings.audioCaptureSource.name,
+      ),
+      preferences.setString('pythonExecutable', settings.pythonExecutable),
     ]);
   }
 }
