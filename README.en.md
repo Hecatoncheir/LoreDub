@@ -97,10 +97,25 @@ not worth a stray click. They land in
 Speech stays on the processor deliberately: Silero utterances are short, and
 moving them to the card costs more than the work itself.
 
-Measured on an RTX 3080 Ti (15 s of audio, `ggml-base`, 12 threads): 2.9–4.0 s
-on the CPU against 1.7–1.8 s on CUDA. The first run after switching to CUDA took
-23 s while the driver built its kernel cache — a one-off cost; later runs are
-steady.
+Measured on an RTX 3080 Ti with a 5.6 s English line and `ggml-base`.
+Recognition:
+
+| Whisper | Time |
+| --- | --- |
+| CPU, 4 threads | ~2320 ms |
+| CPU, 12 threads | ~1275 ms |
+| CPU, 24 threads | ~1110 ms |
+| CUDA | ~745 ms |
+
+Translation and speech add ~470 ms on the processor and barely move with the
+thread count (461 ms at 12 threads against 476 ms at 4), so once recognition
+is on the card the **CPU threads** setting stops mattering much.
+
+End to end, from the close of a phrase to its dubbed audio, a real run lands
+near 1.2 s on CUDA against 2.7 s on the CPU at four threads. The first phrase
+of a session costs extra while the language is detected, and the first run
+after switching to CUDA took 23 s while the driver built its kernel cache — a
+one-off.
 
 AMD and Intel cards are left with Vulkan, but no official Windows build of
 `whisper.cpp` with Vulkan exists, so `scripts/prepare_windows_runtime.ps1`
