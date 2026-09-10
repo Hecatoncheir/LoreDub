@@ -192,6 +192,8 @@ class DashboardViewModel extends ChangeNotifier {
       }
       startupProgress = null;
       startupStage = '';
+      // The detection belonged to the session that just ended.
+      detectedLanguage = null;
       notifyListeners();
       return;
     }

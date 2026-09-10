@@ -169,6 +169,23 @@ void main() {
     await pumpDashboard(tester, viewModel, const Size(1280, 720));
 
     expect(find.text('Определён: Японский'), findsOneWidget);
+    expect(find.text('Определять язык'), findsNothing, reason: 'the answer takes its place');
+  });
+
+  testWidgets('goes back to the plain toggle label once stopped', (tester) async {
+    final viewModel = buildViewModel()
+      ..initializing = false
+      ..status = PipelineStatus.listening
+      ..detectedLanguage = 'ja';
+    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    expect(find.text('Определён: Японский'), findsOneWidget);
+
+    await viewModel.togglePipeline();
+    await tester.pumpAndSettle();
+
+    expect(viewModel.detectedLanguage, isNull);
+    expect(find.text('Определять язык'), findsOneWidget);
+    expect(find.text('Определён: Японский'), findsNothing);
   });
 
   testWidgets('stays quiet about the language while detection is off', (tester) async {

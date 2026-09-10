@@ -645,15 +645,20 @@ class _LanguageControls extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Flexible(
+            // Once whisper has decided, its answer takes the label's place:
+            // the switch itself already says that detection is on.
             child: Text(
-              'Определять язык',
+              detected == null
+                  ? 'Определять язык'
+                  : 'Определён: ${describeSpokenLanguage(detected)}',
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: detected == null ? null : FontWeight.w600,
+              ),
             ),
           ),
         ],
       ),
-      note: detected == null ? null : 'Определён: ${describeSpokenLanguage(detected)}',
     );
   }
 }
@@ -662,47 +667,24 @@ class _LanguageControls extends StatelessWidget {
 /// identically — same field width, same gap, same trailing width — to line up
 /// exactly one under the other.
 class _LanguageRow extends StatelessWidget {
-  const _LanguageRow({required this.field, required this.action, this.note});
+  const _LanguageRow({required this.field, required this.action});
 
   static const double fieldWidth = 210;
-  static const double actionWidth = 200;
+
+  /// Wide enough for the detected language to replace the toggle's label
+  /// without being cut short.
+  static const double actionWidth = 240;
 
   final Widget field;
   final Widget action;
 
-  /// Rendered under the action's label, and outside the row: inside either
-  /// of them it would add height and drop the action below its field.
-  final String? note;
-
-  /// Material switch plus the gap before its label, so the note starts under
-  /// the label rather than under the switch.
-  static const double _switchLead = 58;
-
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(width: fieldWidth, child: field),
-          const SizedBox(width: 12),
-          SizedBox(width: actionWidth, child: action),
-        ],
-      ),
-      if (note case final text?)
-        Padding(
-          padding: const EdgeInsets.only(top: 4, left: fieldWidth + 12 + _switchLead),
-          child: SizedBox(
-            width: actionWidth - _switchLead,
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-        ),
+      SizedBox(width: fieldWidth, child: field),
+      const SizedBox(width: 12),
+      SizedBox(width: actionWidth, child: action),
     ],
   );
 }
