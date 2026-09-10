@@ -96,7 +96,9 @@ of the same name compiled against different backends.
 and flattened to the probe file, while CUDA torch is installed by pip into its
 own directory and put on the worker's import path via `--extra-packages`.
 It shares the download loop with the model store through
-`artifact_downloader.dart`.
+`artifact_downloader.dart`, which streams to a `.part` file and resumes it
+with a range request rather than refetching; a 200 to a ranged request, a 416,
+or a part that fails verification all fall back to starting over.
 
 `ModelStorageService` downloads the three model packages listed in
 `model_catalog.dart` to `<app support>/models/<id>/`, streaming to a temp file

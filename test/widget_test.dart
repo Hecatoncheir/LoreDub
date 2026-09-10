@@ -13,12 +13,14 @@ import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
+import 'package:lore_dub/src/data/services/runtime_catalog.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus, TranscriptEntry;
+import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view_model.dart';
 import 'package:lore_dub/src/ui/theme.dart';
@@ -471,4 +473,112 @@ void main() {
       findsWidgets,
     );
   });
+
+  group('removing a GPU runtime', () {
+    /// Records what the interface asked for instead of touching the disk.
+    /// Real file futures never complete inside a widget test's fake async
+    /// zone, and what is under test here is the question, not the delete —
+    /// the delete itself is covered in the runtime store's own tests.
+    late _RecordingRuntimeRepository runtimes;
+
+    Future<void> stageInstalledRuntime(WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+      runtimes = _RecordingRuntimeRepository();
+      final viewModel = DashboardViewModel(
+        AppRepository(NativeEngineService(), SettingsService()),
+        ModelRepository(ModelStorageService()),
+        runtimes,
+      );
+      addTearDown(viewModel.dispose);
+      viewModel
+        ..initializing = false
+        ..section = DashboardSection.settings
+        ..availability = const ComputeAvailability(
+          installedRuntimes: {whisperCudaRuntimeId},
+        )
+        ..runtimes = [
+          RuntimeInstallState(
+            package: runtimePackageById(whisperCudaRuntimeId)!,
+            installed: true,
+          ),
+        ];
+
+      await pumpDashboard(tester, viewModel, const Size(1280, 1000));
+      await tester.scrollUntilVisible(
+        find.textContaining('Удалить · '),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('asks before giving hundreds of megabytes back', (tester) async {
+      await stageInstalledRuntime(tester);
+
+      await tester.tap(find.textContaining('Удалить · '));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Точно удалить?'), findsOneWidget);
+      expect(find.text('Удалить полностью'), findsOneWidget);
+      expect(find.text('Оставить'), findsOneWidget);
+      expect(runtimes.removed, isEmpty, reason: 'asking must not act');
+    });
+
+    testWidgets('names the size that is about to be freed', (tester) async {
+      await stageInstalledRuntime(tester);
+
+      await tester.tap(find.textContaining('Удалить · '));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('436 MB'), findsWidgets);
+    });
+
+    testWidgets('keeps the runtime when the question is declined', (tester) async {
+      await stageInstalledRuntime(tester);
+
+      await tester.tap(find.textContaining('Удалить · '));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Оставить'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Точно удалить?'), findsNothing);
+      expect(runtimes.removed, isEmpty);
+      expect(find.textContaining('Удалить · '), findsOneWidget);
+    });
+
+    testWidgets('removes it once the question is answered', (tester) async {
+      await stageInstalledRuntime(tester);
+
+      await tester.tap(find.textContaining('Удалить · '));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Удалить полностью'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Точно удалить?'), findsNothing);
+      expect(runtimes.removed, [whisperCudaRuntimeId]);
+      expect(
+        find.textContaining('Удалить · '),
+        findsNothing,
+        reason: 'the offer goes away with the runtime',
+      );
+    });
+  });
+}
+
+/// A runtime store that answers from memory, so the interface can be driven
+/// without a disk or a network.
+class _RecordingRuntimeRepository extends RuntimeRepository {
+  _RecordingRuntimeRepository() : super(RuntimeStorageService());
+
+  final removed = <String>[];
+
+  @override
+  Future<void> remove(RuntimePackage package) async => removed.add(package.id);
+
+  @override
+  Future<Set<String>> installedIds() async =>
+      removed.contains(whisperCudaRuntimeId) ? const {} : const {whisperCudaRuntimeId};
+
+  @override
+  Future<String> rootDirectory() async => r'C:\runtime';
 }

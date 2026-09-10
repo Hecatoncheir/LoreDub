@@ -543,6 +543,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get computeRuntimeRemove => 'Удалить';
 
   @override
+  String get computeRuntimeRemoveTitle => 'Точно удалить?';
+
+  @override
+  String computeRuntimeRemoveMessage(String size) {
+    return 'Пакет $size будет удалён с диска, и стадия вернётся на процессор. Скачать его заново можно в любой момент.';
+  }
+
+  @override
+  String get computeRuntimeRemoveConfirm => 'Удалить полностью';
+
+  @override
+  String get computeRuntimeRemoveCancel => 'Оставить';
+
+  @override
   String get computeRuntimeInstalling => 'Установка…';
 
   @override

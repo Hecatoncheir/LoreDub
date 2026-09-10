@@ -540,6 +540,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get computeRuntimeRemove => 'Remove';
 
   @override
+  String get computeRuntimeRemoveTitle => 'Remove it?';
+
+  @override
+  String computeRuntimeRemoveMessage(String size) {
+    return 'The $size package will be deleted from disk and the stage will go back to the processor. It can be downloaded again at any time.';
+  }
+
+  @override
+  String get computeRuntimeRemoveConfirm => 'Remove completely';
+
+  @override
+  String get computeRuntimeRemoveCancel => 'Keep';
+
+  @override
   String get computeRuntimeInstalling => 'Installing…';
 
   @override

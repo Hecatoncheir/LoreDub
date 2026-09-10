@@ -379,6 +379,17 @@
   },
   "computeRuntimeDownload": "Скачать",
   "computeRuntimeRemove": "Удалить",
+  "computeRuntimeRemoveTitle": "Точно удалить?",
+  "computeRuntimeRemoveMessage": "Пакет {size} будет удалён с диска, и стадия вернётся на процессор. Скачать его заново можно в любой момент.",
+  "@computeRuntimeRemoveMessage": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "computeRuntimeRemoveConfirm": "Удалить полностью",
+  "computeRuntimeRemoveCancel": "Оставить",
   "computeRuntimeInstalling": "Установка…",
   "computeSpeechCpuOnly": "Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.",
   "failureRuntimeIncomplete": "В скачанном пакете нет {detail}",

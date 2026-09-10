@@ -1551,16 +1551,7 @@ class _ComputeStageRow extends StatelessWidget {
                   onTap: () => viewModel.selectStageBackend(stage, backend),
                 ),
               if (missing != null) _RuntimeDownloadButton(viewModel: viewModel, state: missing),
-              if (installed != null)
-                TextButton.icon(
-                  onPressed: viewModel.running ? null : () => viewModel.removeRuntime(installed),
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                  label: Text(
-                    '${l10n.computeRuntimeRemove} · '
-                    '${formatPackageSize(installed.package.approximateBytes)}',
-                  ),
-                  style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
-                ),
+              if (installed != null) _RuntimeRemoveButton(viewModel: viewModel, state: installed),
             ],
           ),
         ),
@@ -1619,6 +1610,57 @@ class _BackendChip extends StatelessWidget {
       ),
     );
     return tooltip == null ? chip : Tooltip(message: tooltip!, child: chip);
+  }
+}
+
+/// Gives a downloaded runtime back, once the user has confirmed it.
+///
+/// Hundreds of megabytes are not worth losing to a stray click, and this row
+/// sits where the download button used to be — so the question is asked.
+class _RuntimeRemoveButton extends StatelessWidget {
+  const _RuntimeRemoveButton({required this.viewModel, required this.state});
+
+  final DashboardViewModel viewModel;
+  final RuntimeInstallState state;
+
+  Future<void> _confirm(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final size = formatPackageSize(state.package.approximateBytes);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.computeRuntimeRemoveTitle),
+        content: Text(l10n.computeRuntimeRemoveMessage(size)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.computeRuntimeRemoveCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: Text(l10n.computeRuntimeRemoveConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) await viewModel.removeRuntime(state);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return TextButton.icon(
+      onPressed: viewModel.running ? null : () => _confirm(context),
+      icon: const Icon(Icons.delete_outline_rounded, size: 18),
+      label: Text(
+        '${l10n.computeRuntimeRemove} · '
+        '${formatPackageSize(state.package.approximateBytes)}',
+      ),
+      style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+    );
   }
 }
 

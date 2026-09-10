@@ -1017,6 +1017,30 @@ abstract class AppLocalizations {
   /// **'Удалить'**
   String get computeRuntimeRemove;
 
+  /// No description provided for @computeRuntimeRemoveTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Точно удалить?'**
+  String get computeRuntimeRemoveTitle;
+
+  /// No description provided for @computeRuntimeRemoveMessage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакет {size} будет удалён с диска, и стадия вернётся на процессор. Скачать его заново можно в любой момент.'**
+  String computeRuntimeRemoveMessage(String size);
+
+  /// No description provided for @computeRuntimeRemoveConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить полностью'**
+  String get computeRuntimeRemoveConfirm;
+
+  /// No description provided for @computeRuntimeRemoveCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оставить'**
+  String get computeRuntimeRemoveCancel;
+
   /// No description provided for @computeRuntimeInstalling.
   ///
   /// In ru, this message translates to:

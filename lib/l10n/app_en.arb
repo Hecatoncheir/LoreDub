@@ -379,6 +379,17 @@
   },
   "computeRuntimeDownload": "Download",
   "computeRuntimeRemove": "Remove",
+  "computeRuntimeRemoveTitle": "Remove it?",
+  "computeRuntimeRemoveMessage": "The {size} package will be deleted from disk and the stage will go back to the processor. It can be downloaded again at any time.",
+  "@computeRuntimeRemoveMessage": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "computeRuntimeRemoveConfirm": "Remove completely",
+  "computeRuntimeRemoveCancel": "Keep",
   "computeRuntimeInstalling": "Installing…",
   "computeSpeechCpuOnly": "Silero runs on the processor: moving it to the card costs more than the work itself.",
   "failureRuntimeIncomplete": "The downloaded package has no {detail}",

@@ -51,6 +51,12 @@ All notable changes to LoreDub are documented in this file.
   assigns CUDA, Vulkan or the CPU to recognition, translation and speech; each stage can then
   be moved by hand, and a backend the machine cannot run is shown disabled with the reason.
   The heavy GPU runtimes stay out of the installer and are downloaded on demand.
+- Downloads now resume. A `.part` left behind when the application closed is continued with
+  a range request instead of being fetched again, which matters most for the 436 MB GPU
+  runtime; a server that refuses the range, or a part that fails verification, still starts
+  over.
+- Removing a downloaded GPU runtime now asks for confirmation before giving the disk space
+  back, since the button sits where the download button used to be.
 - Added error messages in the interface language. Services now raise an error code instead
   of a Russian sentence, so a failure raised while the app was in one language is rewritten
   the moment the other one is picked.

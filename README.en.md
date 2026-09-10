@@ -64,7 +64,10 @@ but disabled, with a tooltip saying why.
 
 The heavy GPU runtimes are **not in the installer**. They are fetched on demand
 by the same machinery as the models, with progress, SHA-256 verification and
-proxy support, so nobody who leaves the GPU off pays for them. They land in
+proxy support, so nobody who leaves the GPU off pays for them. A download
+interrupted by closing the application resumes with a range request instead of
+starting over, and removing a runtime asks first — hundreds of megabytes are
+not worth a stray click. They land in
 `<app support>/runtime/<id>/` and a button in the same section gives them back.
 
 Speech stays on the processor deliberately: Silero utterances are short, and

@@ -19,6 +19,10 @@ typedef DownloadProgress = void Function(double value);
 /// runtime stores. Both stream to a `.part` file and rename only once size
 /// and hash agree, so an interrupted download can never be mistaken for a
 /// finished one.
+///
+/// A `.part` left behind by a closed application is resumed with a range
+/// request rather than thrown away: these are hundreds of megabytes, and
+/// starting over is a poor answer to a lost connection.
 Future<void> downloadArtifacts(
   List<ModelArtifact> artifacts, {
   required Directory directory,
@@ -35,16 +39,12 @@ Future<void> downloadArtifacts(
       completed += artifact.byteSize ?? 0;
       continue;
     }
-    if (await partial.exists()) await partial.delete();
-    final response = await client.send(http.Request('GET', artifact.url));
-    if (response.statusCode != HttpStatus.ok) {
-      throw LoreDubFailure(
-        FailureCode.downloadRejected,
-        detail: '${response.statusCode} — ${artifact.url}',
-      );
-    }
-    final sink = partial.openWrite();
-    var artifactBytes = 0;
+    final resumed = await _openStream(client, artifact, partial);
+    final response = resumed.response;
+    final sink = partial.openWrite(
+      mode: resumed.offset > 0 ? FileMode.writeOnlyAppend : FileMode.writeOnly,
+    );
+    var artifactBytes = resumed.offset;
     try {
       await for (final chunk in response.stream) {
         sink.add(chunk);
@@ -53,7 +53,7 @@ Future<void> downloadArtifacts(
         if (knownTotal > 0) {
           onProgress(((completed + artifactBytes) / knownTotal).clamp(0, 1));
         } else if (responseTotal != null && responseTotal > 0) {
-          onProgress((artifactBytes / responseTotal).clamp(0, 1));
+          onProgress(((artifactBytes) / (responseTotal + resumed.offset)).clamp(0, 1));
         } else {
           onProgress(0);
         }
@@ -62,6 +62,8 @@ Future<void> downloadArtifacts(
       await sink.close();
     }
     if (!await verifyArtifact(partial, artifact)) {
+      // A part that fails here is not worth resuming: the bytes on disk are
+      // wrong, and every later attempt would inherit them.
       await partial.delete();
       throw LoreDubFailure(FailureCode.verificationFailed, detail: artifact.fileName);
     }
@@ -69,6 +71,65 @@ Future<void> downloadArtifacts(
     completed += artifact.byteSize ?? artifactBytes;
   }
   onProgress(1);
+}
+
+/// What a download is starting from: the live response, and how many bytes
+/// of the file are already on disk and must not be fetched again.
+class _ResumedDownload {
+  const _ResumedDownload(this.response, this.offset);
+
+  final http.StreamedResponse response;
+  final int offset;
+}
+
+Future<_ResumedDownload> _openStream(
+  http.Client client,
+  ModelArtifact artifact,
+  File partial,
+) async {
+  var offset = await _resumeOffset(partial, artifact);
+  var response = await _send(client, artifact.url, offset);
+
+  // The server no longer recognizes the range: the file changed, or what is
+  // on disk is longer than it. Either way the part is worthless.
+  if (response.statusCode == HttpStatus.requestedRangeNotSatisfiable && offset > 0) {
+    await partial.delete();
+    offset = 0;
+    response = await _send(client, artifact.url, 0);
+  }
+
+  if (response.statusCode == HttpStatus.partialContent) {
+    return _ResumedDownload(response, offset);
+  }
+  if (response.statusCode != HttpStatus.ok) {
+    throw LoreDubFailure(
+      FailureCode.downloadRejected,
+      detail: '${response.statusCode} — ${artifact.url}',
+    );
+  }
+  // A plain 200 to a range request means the server ignored it and is
+  // sending the whole file, so whatever was on disk is overwritten.
+  return _ResumedDownload(response, 0);
+}
+
+Future<http.StreamedResponse> _send(http.Client client, Uri url, int offset) {
+  final request = http.Request('GET', url);
+  if (offset > 0) request.headers[HttpHeaders.rangeHeader] = 'bytes=$offset-';
+  return client.send(request);
+}
+
+/// How much of [partial] can be kept. Zero means starting over.
+Future<int> _resumeOffset(File partial, ModelArtifact artifact) async {
+  if (!await partial.exists()) return 0;
+  final length = await partial.length();
+  if (length <= 0) return 0;
+  // A part at or beyond the full size is not a resume point: it is either
+  // finished or wrong, and neither can be settled by asking for more bytes.
+  if (artifact.byteSize case final expected? when length >= expected) {
+    await partial.delete();
+    return 0;
+  }
+  return length;
 }
 
 Future<bool> verifyArtifact(File file, ModelArtifact artifact) async {
