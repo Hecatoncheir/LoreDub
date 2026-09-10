@@ -472,7 +472,7 @@ class _LivePanel extends StatelessWidget {
                 LayoutBuilder(
                   builder: (context, constraints) => _SourceControls(
                     viewModel: viewModel,
-                    compact: constraints.maxWidth < 900,
+                    compact: constraints.maxWidth < _wideSourceRowWidth,
                   ),
                 ),
               ],
@@ -560,6 +560,21 @@ class _LivePanel extends StatelessWidget {
   );
 }
 
+/// The narrowest card that still fits the source switch, the process picker
+/// and the language block side by side.
+///
+/// Measured rather than derived: the switch is as wide as its translated
+/// labels make it, so arithmetic over the fixed parts guessed low. What the
+/// row actually needs came to about 920 plus
+/// [_minimumProcessPickerWidth] for the picker. Below this the picker was
+/// squeezed to a stub and broke its label mid-word, so the stacked
+/// arrangement takes over and hands it the full width. The widget test walks
+/// a range of window sizes to keep this honest.
+const _wideSourceRowWidth = 920 + _minimumProcessPickerWidth;
+
+/// Enough for a process name beside the refresh button.
+const _minimumProcessPickerWidth = 320.0;
+
 class _SourceControls extends StatelessWidget {
   const _SourceControls({required this.viewModel, required this.compact});
 
@@ -580,8 +595,16 @@ class _SourceControls extends StatelessWidget {
       enableFilter: true,
       enableSearch: true,
       requestFocusOnTap: true,
-      label: Text(l10n.processLabel),
+      // A narrow field must not break the label mid-word: it is cut short
+      // instead, which still reads as the beginning of the right words.
+      label: Text(
+        l10n.processLabel,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
+      ),
       hintText: l10n.processHint,
+      inputDecorationTheme: Theme.of(context).inputDecorationTheme.copyWith(hintMaxLines: 1),
       dropdownMenuEntries: viewModel.processes
           .map(
             (process) => DropdownMenuEntry(

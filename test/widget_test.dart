@@ -96,6 +96,25 @@ void main() {
     expect(find.text('Настройки'), findsOneWidget);
   });
 
+  testWidgets('keeps the process picker usable at every window width', (tester) async {
+    // The wide row puts the picker between a fixed switch and a fixed
+    // language block; too narrow a window used to squeeze it to a stub and
+    // break its label across three lines mid-word.
+    for (final width in [960.0, 1100.0, 1280.0, 1500.0, 1920.0]) {
+      await pumpLoreDub(tester, Size(width, 800));
+
+      final label = find.text('Процесс игры');
+      expect(label, findsOneWidget, reason: 'at $width');
+      expect(
+        tester.getSize(find.byType(DropdownMenu<GameProcess>)).width,
+        greaterThanOrEqualTo(320),
+        reason: 'the picker is squeezed at $width',
+      );
+      // One line: a wrapped label is taller than a single row of text.
+      expect(tester.getSize(label).height, lessThan(30), reason: 'wrapped at $width');
+    }
+  });
+
   testWidgets('aligns source actions with the process selector', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 720));
 
