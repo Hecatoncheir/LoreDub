@@ -272,22 +272,25 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
-        _StatusChip(status: viewModel.status),
+        _StatusChip(status: viewModel.status, stage: viewModel.startupStage),
       ],
     ),
   );
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
+  const _StatusChip({required this.status, this.stage = ''});
 
   final PipelineStatus status;
+
+  /// What the startup is doing right now, shown instead of a bare "Запуск…".
+  final String stage;
 
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (status) {
       PipelineStatus.idle => ('Остановлено', LoreDubPalette.mutedInk),
-      PipelineStatus.starting => ('Запуск…', LoreDubPalette.warning),
+      PipelineStatus.starting => (stage.isEmpty ? 'Запуск…' : stage, LoreDubPalette.warning),
       PipelineStatus.listening => ('Слушаю', LoreDubPalette.success),
       PipelineStatus.stopping => ('Остановка…', LoreDubPalette.warning),
       PipelineStatus.error => ('Ошибка', LoreDubPalette.error),
@@ -485,13 +488,7 @@ class _SourceControls extends StatelessWidget {
           icon: const Icon(Icons.refresh_rounded),
         ),
         const SizedBox(width: 12),
-        FilledButton.icon(
-          onPressed: viewModel.running || viewModel.canStart ? viewModel.togglePipeline : null,
-          icon: Icon(
-            viewModel.running ? Icons.stop_rounded : Icons.play_arrow_rounded,
-          ),
-          label: Text(viewModel.running ? 'Остановить' : 'Начать перевод'),
-        ),
+        _StartButton(viewModel: viewModel),
       ],
     );
     final language = _LanguageControls(viewModel: viewModel);
@@ -542,6 +539,45 @@ class _SourceControls extends StatelessWidget {
   }
 }
 
+/// Loading Marian and Silero takes long enough that a plain label would look
+/// like a freeze, so the button carries the progress of the startup itself.
+class _StartButton extends StatelessWidget {
+  const _StartButton({required this.viewModel});
+
+  final DashboardViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final starting = viewModel.status == PipelineStatus.starting;
+    final progress = viewModel.startupProgress;
+    final percent = progress == null ? '' : ' ${(progress * 100).round()}%';
+    return Tooltip(
+      message: starting && viewModel.startupStage.isNotEmpty ? viewModel.startupStage : '',
+      child: FilledButton.icon(
+        onPressed: viewModel.running || viewModel.canStart ? viewModel.togglePipeline : null,
+        icon: starting
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 2.4,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              )
+            : Icon(viewModel.running ? Icons.stop_rounded : Icons.play_arrow_rounded),
+        label: Text(
+          starting
+              ? 'Запуск$percent'
+              : viewModel.running
+              ? 'Остановить'
+              : 'Начать перевод',
+        ),
+      ),
+    );
+  }
+}
+
 /// Language of the original speech. Naming it skips whisper's detection pass,
 /// which is a noticeable share of the delay before a phrase is voiced.
 class _LanguageControls extends StatelessWidget {
@@ -563,6 +599,15 @@ class _LanguageControls extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Определять язык', style: Theme.of(context).textTheme.bodyMedium),
+            if (settings.detectSourceLanguage && viewModel.detectedLanguage != null) ...[
+              const SizedBox(width: 6),
+              Text(
+                '— ${describeSpokenLanguage(viewModel.detectedLanguage!)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
             const SizedBox(width: 6),
             Switch(
               value: settings.detectSourceLanguage,

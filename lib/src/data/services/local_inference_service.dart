@@ -85,6 +85,35 @@ class LocalInferenceService {
   String? _spokenLanguage;
   var _requestId = 0;
 
+  /// Reports how far the worker is through its startup, which takes long
+  /// enough that the application must not look frozen while it happens.
+  void Function(double value, String stage)? onStartupProgress;
+
+  /// The language the pipeline is recognizing, once it is known.
+  String? get spokenLanguage => _spokenLanguage;
+
+  /// Removes audio a previous run left behind. The worker can finish writing a
+  /// phrase just as the pipeline is stopped, and then nobody is waiting for
+  /// that file any more; a crash leaves captured segments in the same way.
+  static Future<void> removeStaleAudio([Directory? workDirectory]) async {
+    final work = workDirectory ?? await createWorkDirectory();
+    final directories = [work, Directory(path.join(work.path, 'capture'))];
+    for (final directory in directories) {
+      if (!await directory.exists()) continue;
+      await for (final entry in directory.list(followLinks: false)) {
+        if (entry is! File) continue;
+        final name = path.basename(entry.path);
+        if (!name.endsWith('.wav')) continue;
+        if (!name.startsWith('speech-') && !name.startsWith('segment-')) continue;
+        try {
+          await entry.delete();
+        } on FileSystemException {
+          // Best effort: a file still held by playback is removed next time.
+        }
+      }
+    }
+  }
+
   static Future<Directory> createWorkDirectory() async {
     final support = await getApplicationSupportDirectory();
     final directory = Directory(path.join(support.path, 'work'));
@@ -115,6 +144,7 @@ class LocalInferenceService {
     final workerFile = File(path.join(work.path, 'inference_worker.py'));
     final workerBytes = await rootBundle.load('assets/runtime/inference_worker.py');
     await workerFile.writeAsBytes(workerBytes.buffer.asUint8List(), flush: true);
+    onStartupProgress?.call(0.05, 'Запуск Python');
     _worker = await Process.start(
       python,
       [
@@ -159,6 +189,13 @@ class LocalInferenceService {
       final message = jsonDecode(line) as Map<String, Object?>;
       if (message['type'] == 'ready') {
         if (!(_workerReady?.isCompleted ?? true)) _workerReady!.complete();
+        return;
+      }
+      if (message['type'] == 'progress') {
+        onStartupProgress?.call(
+          (message['value']! as num).toDouble(),
+          message['stage'] as String? ?? '',
+        );
         return;
       }
       final id = message['id'] as int?;

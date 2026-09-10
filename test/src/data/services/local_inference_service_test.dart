@@ -2,11 +2,41 @@
 // SPDX-License-Identifier: MIT
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/local_inference_service.dart';
+import 'package:path/path.dart' as path;
 
 void main() {
+  test('clears audio a stopped or crashed run left behind', () async {
+    final work = await Directory.systemTemp.createTemp('lore-dub-work');
+    addTearDown(() async {
+      if (await work.exists()) await work.delete(recursive: true);
+    });
+    final capture = Directory(path.join(work.path, 'capture'));
+    await capture.create(recursive: true);
+    Future<File> write(Directory directory, String name) =>
+        File(path.join(directory.path, name)).writeAsString('audio');
+    await write(work, 'speech-48.wav');
+    await write(capture, 'segment-9000-3.wav');
+    await write(work, 'inference_worker.py');
+    await write(work, 'notes.wav.txt');
+
+    await LocalInferenceService.removeStaleAudio(work);
+
+    expect(File(path.join(work.path, 'speech-48.wav')).existsSync(), isFalse);
+    expect(File(path.join(capture.path, 'segment-9000-3.wav')).existsSync(), isFalse);
+    expect(File(path.join(work.path, 'inference_worker.py')).existsSync(), isTrue);
+    expect(File(path.join(work.path, 'notes.wav.txt')).existsSync(), isTrue);
+  });
+
+  test('survives a work directory that does not exist yet', () async {
+    final missing = Directory(path.join(Directory.systemTemp.path, 'lore-dub-absent-work'));
+
+    await expectLater(LocalInferenceService.removeStaleAudio(missing), completes);
+  });
+
   test('reads a translated reply written as UTF-8', () async {
     final reply = jsonEncode({'id': 1, 'translated': 'Ворота запечатаны.'});
     final Stream<List<int>> source = Stream.value(utf8.encode('$reply\n'));

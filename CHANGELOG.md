@@ -29,6 +29,12 @@ All notable changes to LoreDub are documented in this file.
 - Added a source-language selector next to the start button, with a toggle for automatic
   detection. Naming the language in advance skips whisper's detection pass and rules out a
   wrong guess made on the first phrase.
+- Added startup progress on the start button: the worker now reports each stage it is
+  loading, so the first start no longer looks frozen for ten seconds.
+- Added the detected language beside the toggle, so automatic detection is no longer
+  a silent decision.
+- Fixed synthesized audio being left in the work directory when the pipeline was stopped
+  while a phrase was still being voiced.
 
 ## [0.2.1] - 2026-09-10
 

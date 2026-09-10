@@ -146,6 +146,20 @@ ThemeData buildLoreDubTheme() {
         ),
       ),
     ),
+    switchTheme: SwitchThemeData(
+      // A switch stays disabled while the pipeline runs, and the default
+      // disabled styling washes the on state out until it reads as off.
+      trackColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled) && states.contains(WidgetState.selected)
+            ? LoreDubPalette.orange.withValues(alpha: 0.45)
+            : null,
+      ),
+      thumbColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled) && states.contains(WidgetState.selected)
+            ? LoreDubPalette.raised
+            : null,
+      ),
+    ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: LoreDubPalette.orange,
       linearTrackColor: LoreDubPalette.outline,

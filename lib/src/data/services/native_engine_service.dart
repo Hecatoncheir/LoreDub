@@ -27,6 +27,11 @@ class NativeEngineException implements Exception {
 }
 
 class NativeEngineService {
+  NativeEngineService() {
+    _inference.onStartupProgress = (value, stage) =>
+        _events.add({'type': 'startup', 'value': value, 'stage': stage});
+  }
+
   final _events = StreamController<Map<String, Object?>>.broadcast();
   final _inference = LocalInferenceService();
   Timer? _pollTimer;
@@ -37,6 +42,7 @@ class NativeEngineService {
   /// would put every later phrase further behind the game.
   Future<void> _playback = Future.value();
   Map<String, Object?>? _activeConfig;
+  String? _reportedLanguage;
 
   Stream<Map<String, Object?>> get events => _events.stream;
   bool get processLoopbackSupported => ld_is_process_loopback_supported() == 1;
@@ -52,6 +58,8 @@ class NativeEngineService {
   }
 
   Future<void> start(Map<String, Object?> config) async {
+    _reportedLanguage = null;
+    await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
     await _inference.start(
       translationModel: models['bergamot-en-ru']!,
@@ -62,6 +70,7 @@ class NativeEngineService {
       requiresWhisper: config['captureMode'] != 'ocr',
       sourceLanguage: config['sourceLanguage']! as String,
     );
+    _events.add({'type': 'startup', 'value': 0.98, 'stage': 'Запуск захвата'});
     final work = await LocalInferenceService.createWorkDirectory();
     final capture = Directory('${work.path}${Platform.pathSeparator}capture');
     await capture.create(recursive: true);
@@ -137,6 +146,7 @@ class NativeEngineService {
         whisperModel: models['whisper-base']!,
         threads: config['cpuThreads']! as int,
       );
+      _publishSpokenLanguage();
       if (result == null) return;
       await _publishResult(result, started.elapsedMilliseconds, original: '');
     } catch (error) {
@@ -159,6 +169,15 @@ class NativeEngineService {
     } catch (error) {
       _reportFailure(error);
     }
+  }
+
+  /// Announces the language whisper settled on, once, so the interface can
+  /// show what auto-detection actually decided.
+  void _publishSpokenLanguage() {
+    final detected = _inference.spokenLanguage;
+    if (detected == null || detected == _reportedLanguage) return;
+    _reportedLanguage = detected;
+    _events.add({'type': 'language', 'code': detected});
   }
 
   /// Work already in flight fails when the user stops the pipeline. That is

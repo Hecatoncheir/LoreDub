@@ -34,4 +34,11 @@ void main() {
     expect(spokenLanguageTitle('ja'), 'Японский');
     expect(spokenLanguageTitle('klingon'), 'Английский');
   });
+
+  test('shows a detected language the list does not name as its code', () {
+    expect(describeSpokenLanguage('ja'), 'Японский');
+    // whisper knows far more languages than the picker offers; naming such a
+    // detection "Английский" would be a lie.
+    expect(describeSpokenLanguage('hu'), 'HU');
+  });
 }

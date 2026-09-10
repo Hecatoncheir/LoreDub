@@ -30,6 +30,13 @@ class DashboardViewModel extends ChangeNotifier {
   PipelineStatus status = PipelineStatus.idle;
   bool initializing = true;
   bool searchingPython = false;
+
+  /// How far the pipeline is through starting, and what it is doing.
+  double? startupProgress;
+  String startupStage = '';
+
+  /// The language auto-detection settled on, once whisper has reported it.
+  String? detectedLanguage;
   String? error;
   String modelDirectoryPath = '';
 
@@ -161,11 +168,16 @@ class DashboardViewModel extends ChangeNotifier {
         status = PipelineStatus.error;
         error = '$exception';
       }
+      startupProgress = null;
+      startupStage = '';
       notifyListeners();
       return;
     }
     if (!canStart) return;
     status = PipelineStatus.starting;
+    startupProgress = null;
+    startupStage = '';
+    detectedLanguage = null;
     notifyListeners();
     try {
       final directories = <String, String>{};
@@ -204,6 +216,10 @@ class DashboardViewModel extends ChangeNotifier {
           'starting' => PipelineStatus.starting,
           _ => PipelineStatus.idle,
         };
+        if (status != PipelineStatus.starting) {
+          startupProgress = null;
+          startupStage = '';
+        }
       case 'transcript':
         transcript = [
           TranscriptEntry(
@@ -216,6 +232,11 @@ class DashboardViewModel extends ChangeNotifier {
           ),
           ...transcript.take(49),
         ];
+      case 'startup':
+        startupProgress = (event['value'] as num?)?.toDouble();
+        startupStage = event['stage'] as String? ?? '';
+      case 'language':
+        detectedLanguage = event['code'] as String?;
       case 'error':
         // A phrase failing does not stop the capture, so the pipeline keeps
         // its state and the controls stay usable. Marking the session as

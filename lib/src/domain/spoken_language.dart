@@ -42,6 +42,15 @@ const fallbackSpokenLanguage = 'en';
 bool isSupportedSpokenLanguage(String code) =>
     spokenLanguages.any((language) => language.code == code);
 
+/// whisper knows far more languages than the list offers, so a detected code
+/// with no entry is shown as the code itself rather than as a wrong name.
+String describeSpokenLanguage(String code) => spokenLanguages
+    .firstWhere(
+      (language) => language.code == code,
+      orElse: () => SpokenLanguage(code, code.toUpperCase()),
+    )
+    .title;
+
 String spokenLanguageTitle(String code) => spokenLanguages
     .firstWhere(
       (language) => language.code == code,
