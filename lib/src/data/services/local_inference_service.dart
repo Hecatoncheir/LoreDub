@@ -19,6 +19,21 @@ class InferenceResult {
   final String wavePath;
 }
 
+/// Picks the language code out of whisper.cpp's detection line.
+///
+/// Detecting the language costs a full extra encoder pass, roughly doubling
+/// recognition time, so it is done once and reused. A shaky guess is refused
+/// to avoid locking the whole session onto the wrong language.
+String? parseDetectedLanguage(String output, {double minimumProbability = 0.5}) {
+  final match = RegExp(
+    r'auto-detected language:\s*([a-z]{2,3})\s*\(\s*p\s*=\s*([0-9.]+)\s*\)',
+  ).firstMatch(output);
+  if (match == null) return null;
+  final probability = double.tryParse(match.group(2)!);
+  if (probability == null || probability < minimumProbability) return null;
+  return match.group(1);
+}
+
 /// Reads a worker stream as UTF-8 lines. Malformed bytes are replaced instead
 /// of tearing the stream down: the worker is forced into UTF-8, but a stray
 /// byte from an unexpected interpreter must not silently swallow every reply.
@@ -64,6 +79,9 @@ class LocalInferenceService {
   final _diagnostics = WorkerDiagnostics();
   Completer<void>? _workerReady;
   String? _whisperExecutable;
+
+  /// Detected once per session and reused; null means detection is still due.
+  String? _spokenLanguage;
   var _requestId = 0;
 
   static Future<Directory> createWorkDirectory() async {
@@ -83,6 +101,7 @@ class LocalInferenceService {
   }) async {
     _workerReady = Completer<void>();
     _diagnostics.clear();
+    _spokenLanguage = null;
     if (!Platform.isWindows) throw UnsupportedError('Локальный pipeline доступен только в Windows');
     // Both binaries are validated before the caller ducks the game, so a
     // broken installation cannot look like a silently working pipeline.
@@ -159,23 +178,28 @@ class LocalInferenceService {
       throw StateError('Не найдена модель Whisper: $model. Установите её на вкладке «Модели».');
     }
     final prefix = path.withoutExtension(wavePath);
+    final detecting = _spokenLanguage == null;
     final recognition = await Process.run(whisper, [
       '-m',
       model,
       '-f',
       wavePath,
       '-l',
-      'auto',
+      _spokenLanguage ?? 'auto',
       '-tr',
       '-otxt',
       '-of',
       prefix,
       '-t',
       '$threads',
-      '-np',
+      // The detection line is only printed while whisper is allowed to print.
+      if (!detecting) '-np',
     ]);
     if (recognition.exitCode != 0) {
       throw StateError('whisper.cpp: ${recognition.stderr}');
+    }
+    if (detecting) {
+      _spokenLanguage = parseDetectedLanguage('${recognition.stderr}${recognition.stdout}');
     }
     final outputFile = File('$prefix.txt');
     if (!await outputFile.exists()) return null;

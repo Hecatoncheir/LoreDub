@@ -20,6 +20,12 @@ All notable changes to LoreDub are documented in this file.
   first interpreter that actually provides torch and transformers.
 - Fixed stopping the pipeline reporting an error for the phrase that was still being
   processed at that moment.
+- Fixed the dubbing falling further behind the game the longer it ran. Playback no longer
+  blocks recognition, the language whisper.cpp detects is reused instead of being detected
+  again for every phrase, and the default thread count now follows the CPU. On a 12-core
+  machine a phrase is voiced after about 1.5 s instead of 4.7 s, and no phrase is dropped.
+- Fixed a failed phrase leaving the session stuck: the pipeline kept running but could
+  neither be started nor stopped.
 
 ## [0.2.1] - 2026-09-10
 

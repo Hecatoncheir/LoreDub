@@ -17,7 +17,7 @@ class SettingsService {
       targetLanguage: preferences.getString('targetLanguage') ?? 'ru',
       originalVolume: preferences.getDouble('originalVolume') ?? 0.18,
       ttsSpeed: preferences.getDouble('ttsSpeed') ?? 1.12,
-      cpuThreads: preferences.getInt('cpuThreads') ?? 4,
+      cpuThreads: preferences.getInt('cpuThreads') ?? defaultCpuThreads(),
       showOverlay: preferences.getBool('showOverlay') ?? true,
       ocrRegionTop: preferences.getDouble('ocrRegionTop') ?? 0.55,
       modelProxyUrl: preferences.getString('modelProxyUrl') ?? '',

@@ -217,7 +217,9 @@ class DashboardViewModel extends ChangeNotifier {
           ...transcript.take(49),
         ];
       case 'error':
-        status = PipelineStatus.error;
+        // A phrase failing does not stop the capture, so the pipeline keeps
+        // its state and the controls stay usable. Marking the session as
+        // failed here used to leave it stuck: neither startable nor stoppable.
         error = event['message'] as String? ?? 'Неизвестная ошибка';
     }
     notifyListeners();

@@ -5,6 +5,18 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
+/// Threads to hand to whisper.cpp and torch by default.
+///
+/// Recognition dominates the delay before a phrase is voiced and scales well
+/// with threads, so a fixed small number wastes a modern CPU. Half of the
+/// logical processors keeps the game responsive while roughly halving the
+/// wait compared to four threads.
+int defaultCpuThreads([int? logicalProcessors]) {
+  final available = logicalProcessors ?? Platform.numberOfProcessors;
+  if (available <= 4) return 2;
+  return (available ~/ 2).clamp(4, 12);
+}
+
 const runtimeSetupHint =
     'Установите LoreDub через setup или подготовьте runtime рядом с приложением '
     'командой scripts/prepare_windows_runtime.ps1.';

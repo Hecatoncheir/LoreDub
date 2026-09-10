@@ -12,6 +12,7 @@ import 'package:ffi/ffi.dart';
 import '../../domain/game_process.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
+import 'phrase_queue.dart';
 
 typedef NativeStringReader = int Function(Pointer<Char> output, int capacity);
 
@@ -29,7 +30,12 @@ class NativeEngineService {
   final _events = StreamController<Map<String, Object?>>.broadcast();
   final _inference = LocalInferenceService();
   Timer? _pollTimer;
-  Future<void> _processing = Future.value();
+  late final _phrases = PhraseQueue(process: _processPhrase);
+
+  /// Playback runs beside recognition instead of inside it. Voicing a reply
+  /// takes as long as the reply itself, and holding the pipeline for that
+  /// would put every later phrase further behind the game.
+  Future<void> _playback = Future.value();
   Map<String, Object?>? _activeConfig;
 
   Stream<Map<String, Object?>> get events => _events.stream;
@@ -82,6 +88,10 @@ class NativeEngineService {
     _pollEvents();
     _pollTimer?.cancel();
     _pollTimer = null;
+    for (final phrase in _phrases.clear()) {
+      final wavePath = phrase.wavePath;
+      if (wavePath != null) unawaited(_deleteIfPresent(wavePath));
+    }
     await _inference.stop();
   }
 
@@ -96,14 +106,23 @@ class NativeEngineService {
       final event = jsonDecode(json) as Map<String, Object?>;
       if (event['type'] == 'audioSegment') {
         final wavePath = event['path']! as String;
-        _processing = _processing.then((_) => _processSegment(wavePath));
+        if (_activeConfig == null) {
+          unawaited(_deleteIfPresent(wavePath));
+          continue;
+        }
+        _phrases.add(PendingPhrase.audio(wavePath));
       } else if (event['type'] == 'ocrText') {
-        final recognizedText = event['text']! as String;
-        _processing = _processing.then((_) => _processOcrText(recognizedText));
+        if (_activeConfig == null) continue;
+        _phrases.add(PendingPhrase.text(event['text']! as String));
       } else {
         _events.add(event);
       }
     }
+  }
+
+  Future<void> _processPhrase(PendingPhrase phrase) {
+    final wavePath = phrase.wavePath;
+    return wavePath != null ? _processSegment(wavePath) : _processOcrText(phrase.text!);
   }
 
   Future<void> _processSegment(String wavePath) async {
@@ -160,9 +179,29 @@ class NativeEngineService {
       'translated': result.translated,
       'latencyMs': latencyMs,
     });
-    await Isolate.run(() => _playWave(result.wavePath));
-    await _deleteIfPresent(result.wavePath);
+    _enqueuePlayback(result.wavePath);
   }
+
+  /// Utterances are voiced one after another so they never overlap, but the
+  /// next phrase is recognized while the previous one is still being spoken.
+  void _enqueuePlayback(String wavePath) {
+    _playback = _playback.then((_) => _playQueued(wavePath));
+  }
+
+  Future<void> _playQueued(String wavePath) async {
+    try {
+      if (_activeConfig != null) await _playInIsolate(wavePath);
+    } catch (error) {
+      _reportFailure(error);
+    } finally {
+      await _deleteIfPresent(wavePath);
+    }
+  }
+
+  /// Static so the isolate closure captures nothing but the path. Reaching it
+  /// from an instance closure would drag the whole service — and its futures,
+  /// which cannot cross an isolate boundary — into the message.
+  static Future<void> _playInIsolate(String wavePath) => Isolate.run(() => _playWave(wavePath));
 
   static void _playWave(String wavePath) {
     final pointer = wavePath.toNativeUtf8();

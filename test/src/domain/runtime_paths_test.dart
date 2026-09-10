@@ -23,6 +23,15 @@ void main() {
     return file;
   }
 
+  test('scales the default thread count with the CPU', () {
+    expect(defaultCpuThreads(2), 2);
+    expect(defaultCpuThreads(4), 2);
+    expect(defaultCpuThreads(8), 4);
+    expect(defaultCpuThreads(12), 6);
+    expect(defaultCpuThreads(24), 12);
+    expect(defaultCpuThreads(64), 12, reason: 'more threads stop paying off');
+  });
+
   test('composes the bundled runtime paths', () async {
     final runtime = await createRuntime();
 

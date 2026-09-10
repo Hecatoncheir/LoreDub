@@ -43,6 +43,22 @@ void main() {
     expect(await decodeWorkerLines(source).toList(), ['{"type": "ready"}', '{"id": 7}']);
   });
 
+  test('reuses the language whisper detected confidently', () {
+    const output = 'whisper_full_with_state: auto-detected language: en (p = 0.995430)';
+
+    expect(parseDetectedLanguage(output), 'en');
+  });
+
+  test('stays on auto-detection when the guess is shaky', () {
+    const output = 'whisper_full_with_state: auto-detected language: cy (p = 0.180000)';
+
+    expect(parseDetectedLanguage(output), isNull);
+  });
+
+  test('stays on auto-detection when whisper printed no guess', () {
+    expect(parseDetectedLanguage('whisper_print_timings: total time = 1176.00 ms'), isNull);
+  });
+
   test('explains a worker crash with the reason it printed', () {
     final diagnostics = WorkerDiagnostics()
       ..add('Python was not found; run without arguments to install from the Microsoft Store');

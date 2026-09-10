@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../domain/app_settings.dart';
@@ -854,17 +856,16 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         const SizedBox(height: 12),
         _SettingCard(
           title: 'Производительность',
-          subtitle: 'Whisper base работает на CPU, чтобы не мешать игре.',
+          subtitle:
+              'Распознавание занимает большую часть задержки и хорошо '
+              'ускоряется потоками. Доступно ядер: ${Platform.numberOfProcessors}, '
+              'рекомендуется ${defaultCpuThreads()}.',
           child: DropdownButtonFormField<int>(
             initialValue: settings.cpuThreads,
             decoration: const InputDecoration(labelText: 'Потоки CPU'),
-            items: const [
-              2,
-              3,
-              4,
-              6,
-              8,
-            ].map((value) => DropdownMenuItem(value: value, child: Text('$value'))).toList(),
+            items: _threadOptions(settings.cpuThreads)
+                .map((value) => DropdownMenuItem(value: value, child: Text('$value')))
+                .toList(),
             onChanged: viewModel.running
                 ? null
                 : (value) {
@@ -1029,6 +1030,16 @@ class _SettingsPanelState extends State<_SettingsPanel> {
       ],
     );
   }
+}
+
+/// Thread counts worth offering on this machine, always including whatever is
+/// currently selected so a setting carried over from another CPU still shows.
+List<int> _threadOptions(int selected) {
+  final options =
+      <int>{2, 3, 4, 6, 8, 12, 16}.where((value) => value <= Platform.numberOfProcessors).toSet()
+        ..add(selected)
+        ..add(defaultCpuThreads());
+  return options.toList()..sort();
 }
 
 class _SettingCard extends StatelessWidget {
