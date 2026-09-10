@@ -690,7 +690,9 @@ class _TranscriptBubble extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: double.infinity,
+          // Sized by its text, with enough width left for the tail to stay
+          // under the bubble even for a two-word reply.
+          constraints: const BoxConstraints(minWidth: 80),
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 15),
           decoration: BoxDecoration(
             color: LoreDubPalette.graphite,
