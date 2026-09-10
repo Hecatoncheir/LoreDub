@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/app.dart';
@@ -447,5 +448,27 @@ void main() {
 
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getString('computeDevice'), 'cpu');
+  });
+
+  testWidgets('marks the live section with the audio capture drawing', (tester) async {
+    // Material Icons has no audio_capture, so it is an SVG rather than a font
+    // glyph; a missing asset would otherwise only show as a blank square.
+    await pumpLoreDub(tester, const Size(1280, 900));
+
+    final sidebar = find.byType(SvgPicture);
+    expect(sidebar, findsOneWidget);
+    expect(
+      find.descendant(of: find.widgetWithText(InkWell, 'Эфир'), matching: sidebar),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('carries the same drawing into the compact navigation', (tester) async {
+    await pumpLoreDub(tester, const Size(760, 720));
+
+    expect(
+      find.descendant(of: find.byType(NavigationBar), matching: find.byType(SvgPicture)),
+      findsWidgets,
+    );
   });
 }

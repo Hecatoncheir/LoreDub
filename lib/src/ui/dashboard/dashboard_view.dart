@@ -16,6 +16,7 @@ import '../../domain/pipeline_state.dart';
 import '../../domain/runtime_package.dart';
 import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
+import '../app_icons.dart';
 import '../compute_names.dart';
 import '../failure_messages.dart';
 import '../language_names.dart';
@@ -137,19 +138,19 @@ class _Navigation extends StatelessWidget {
           ),
         ),
         _NavigationItem(
-          icon: Icons.hearing_rounded,
+          icon: (color) => LoreDubIcons.audioCapture(color: color, size: 21),
           label: AppLocalizations.of(context).navLive,
           selected: viewModel.section == DashboardSection.live,
           onTap: () => viewModel.selectSection(DashboardSection.live),
         ),
         _NavigationItem(
-          icon: Icons.memory_rounded,
+          icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
           label: AppLocalizations.of(context).navModels,
           selected: viewModel.section == DashboardSection.models,
           onTap: () => viewModel.selectSection(DashboardSection.models),
         ),
         _NavigationItem(
-          icon: Icons.tune_rounded,
+          icon: (color) => Icon(Icons.tune_rounded, size: 21, color: color),
           label: AppLocalizations.of(context).navSettings,
           selected: viewModel.section == DashboardSection.settings,
           onTap: () => viewModel.selectSection(DashboardSection.settings),
@@ -183,7 +184,9 @@ class _NavigationItem extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  /// Built rather than passed ready-made: the colour depends on [selected],
+  /// and not every mark here comes from the icon font.
+  final Widget Function(Color color) icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -206,11 +209,7 @@ class _NavigationItem extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: 12),
-                Icon(
-                  icon,
-                  size: 21,
-                  color: selected ? LoreDubPalette.orange : LoreDubPalette.ink,
-                ),
+                icon(selected ? LoreDubPalette.orange : LoreDubPalette.ink),
                 const SizedBox(width: 12),
                 Text(
                   label,
@@ -234,27 +233,33 @@ class _BottomNavigation extends StatelessWidget {
   final DashboardViewModel viewModel;
 
   @override
-  Widget build(BuildContext context) => NavigationBar(
-    height: 68,
-    backgroundColor: LoreDubPalette.panel,
-    indicatorColor: LoreDubPalette.orange,
-    selectedIndex: viewModel.section.index,
-    onDestinationSelected: (index) => viewModel.selectSection(DashboardSection.values[index]),
-    destinations: [
-      NavigationDestination(
-        icon: const Icon(Icons.hearing_rounded),
-        label: AppLocalizations.of(context).navLive,
-      ),
-      NavigationDestination(
-        icon: const Icon(Icons.memory_rounded),
-        label: AppLocalizations.of(context).navModels,
-      ),
-      NavigationDestination(
-        icon: const Icon(Icons.tune_rounded),
-        label: AppLocalizations.of(context).navSettings,
-      ),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return NavigationBar(
+      height: 68,
+      backgroundColor: LoreDubPalette.panel,
+      indicatorColor: LoreDubPalette.orange,
+      selectedIndex: viewModel.section.index,
+      onDestinationSelected: (index) => viewModel.selectSection(DashboardSection.values[index]),
+      destinations: [
+        NavigationDestination(
+          // The bar tints its font icons itself, which leaves the drawing
+          // untouched, so it is handed the same two colours by hand.
+          icon: LoreDubIcons.audioCapture(color: scheme.onSurfaceVariant),
+          selectedIcon: LoreDubIcons.audioCapture(color: scheme.onSecondaryContainer),
+          label: AppLocalizations.of(context).navLive,
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.memory_rounded),
+          label: AppLocalizations.of(context).navModels,
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.tune_rounded),
+          label: AppLocalizations.of(context).navSettings,
+        ),
+      ],
+    );
+  }
 }
 
 class _Header extends StatelessWidget {

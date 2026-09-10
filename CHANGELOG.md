@@ -44,6 +44,9 @@ All notable changes to LoreDub are documented in this file.
 - Added an English interface alongside Russian. Every label moved into `lib/l10n/*.arb`,
   and Settings carries the switch; Russian stays the default and the source of the
   wording. `README.md` is now Russian, with `README.en.md` beside it.
+- Replaced the Live section icon with the Material Symbols `audio_capture` mark. It has no
+  glyph in the Material Icons font Flutter bundles, so it ships as the upstream SVG and is
+  tinted at draw time like any other icon.
 - Added a compute device section to Settings. "Automatic" probes the graphics adapters and
   assigns CUDA, Vulkan or the CPU to recognition, translation and speech; each stage can then
   be moved by hand, and a backend the machine cannot run is shown disabled with the reason.
