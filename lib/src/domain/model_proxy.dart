@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'failure.dart';
+
 Uri? parseModelProxyUrl(String value) {
   final trimmed = value.trim();
   if (trimmed.isEmpty) return null;
@@ -12,16 +14,16 @@ Uri? parseModelProxyUrl(String value) {
       uri.hasQuery ||
       uri.fragment.isNotEmpty ||
       (uri.path.isNotEmpty && uri.path != '/')) {
-    throw const FormatException(
-      'Укажите proxy в формате http://host:port или socks5://host:port',
-    );
+    throw const LoreDubFailure(FailureCode.proxyFormat);
   }
   try {
     if (uri.port < 1 || uri.port > 65535) {
-      throw const FormatException('Порт proxy должен быть от 1 до 65535');
+      throw const LoreDubFailure(FailureCode.proxyPort);
     }
   } on FormatException {
-    throw const FormatException('Укажите корректный порт proxy');
+    // Uri.port itself throws when the authority holds something that is not
+    // a number at all.
+    throw const LoreDubFailure(FailureCode.proxyPort);
   }
   return uri;
 }

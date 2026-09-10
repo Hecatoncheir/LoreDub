@@ -102,9 +102,6 @@ the lightweight GDI capture path.
 - **Voice choice within a language.** Each Silero package ships several
   speakers and LoreDub uses the first one the catalogue names, falling back to
   whatever the model actually provides.
-- **Diagnostics in the interface language.** Pipeline error messages are still
-  Russian only: they are raised in the service layer, which should carry an
-  error code rather than a sentence.
 
 ## Requirements
 

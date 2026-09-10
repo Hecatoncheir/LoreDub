@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/local_inference_service.dart';
+import 'package:lore_dub/src/domain/failure.dart';
 import 'package:path/path.dart' as path;
 
 void main() {
@@ -93,10 +94,11 @@ void main() {
     final diagnostics = WorkerDiagnostics()
       ..add('Python was not found; run without arguments to install from the Microsoft Store');
 
-    final message = diagnostics.describeExit(9009);
+    final failure = diagnostics.describeExit(9009);
 
-    expect(message, contains('9009'));
-    expect(message, contains('Microsoft Store'));
+    expect(failure.code, FailureCode.workerExited);
+    expect(failure.detail, startsWith('9009'));
+    expect(failure.detail, contains('Microsoft Store'));
   });
 
   test('keeps only the last stderr lines and drops blank ones', () {
@@ -107,21 +109,19 @@ void main() {
       ..add('second')
       ..add('third');
 
-    final message = diagnostics.describeExit(1);
+    final detail = diagnostics.describeExit(1).detail!;
 
-    expect(message, isNot(contains('first')));
-    expect(message, contains('second'));
-    expect(message, contains('third'));
+    expect(detail, isNot(contains('first')));
+    expect(detail, contains('second'));
+    expect(detail, contains('third'));
   });
 
-  test('points at the interpreter when the worker dies silently', () {
+  test('reports a silent death by its own code', () {
     final diagnostics = WorkerDiagnostics();
 
     expect(diagnostics.isEmpty, isTrue);
-    expect(
-      diagnostics.describeExit(1),
-      allOf(contains('torch'), contains('transformers')),
-    );
+    expect(diagnostics.describeExit(1).code, FailureCode.workerExitedSilently);
+    expect(diagnostics.describeExit(1).detail, '1');
   });
 
   test('forgets the previous run when the pipeline restarts', () {
@@ -129,6 +129,6 @@ void main() {
       ..add('stale failure')
       ..clear();
 
-    expect(diagnostics.describeExit(1), isNot(contains('stale failure')));
+    expect(diagnostics.describeExit(1).code, FailureCode.workerExitedSilently);
   });
 }

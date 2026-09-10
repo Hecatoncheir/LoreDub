@@ -758,6 +758,198 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Украинская'**
   String get voiceSpeech_uk;
+
+  /// No description provided for @failureWhisperMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не найден whisper-cli.exe: {detail}. Установите LoreDub через setup или подготовьте runtime командой scripts/prepare_windows_runtime.ps1.'**
+  String failureWhisperMissing(String detail);
+
+  /// No description provided for @failureWhisperModelMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не найдена модель Whisper: {detail}. Установите её на вкладке «Модели».'**
+  String failureWhisperModelMissing(String detail);
+
+  /// No description provided for @failureWhisperFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'whisper.cpp: {detail}'**
+  String failureWhisperFailed(String detail);
+
+  /// No description provided for @failurePythonMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не найден Python: {detail}. Установите LoreDub через setup или подготовьте runtime командой scripts/prepare_windows_runtime.ps1.'**
+  String failurePythonMissing(String detail);
+
+  /// No description provided for @failurePythonStoreAlias.
+  ///
+  /// In ru, this message translates to:
+  /// **'В PATH найден только ярлык Microsoft Store вместо Python. Он не запускает интерпретатор. Выберите встроенный runtime или укажите полный путь к python.exe с установленными torch и transformers.'**
+  String get failurePythonStoreAlias;
+
+  /// No description provided for @failurePythonSearchEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Python не найден в PATH и в стандартных каталогах установки. Укажите путь к python.exe вручную или используйте встроенный runtime.'**
+  String get failurePythonSearchEmpty;
+
+  /// No description provided for @failurePythonSearchNoDependencies.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не найден Python с torch и transformers. Проверено: {detail}.'**
+  String failurePythonSearchNoDependencies(String detail);
+
+  /// No description provided for @failurePythonSearchFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось найти Python: {detail}'**
+  String failurePythonSearchFailed(String detail);
+
+  /// No description provided for @pythonCandidateWithoutDependencies.
+  ///
+  /// In ru, this message translates to:
+  /// **'{path} (Python {version}, нет torch/transformers)'**
+  String pythonCandidateWithoutDependencies(String path, String version);
+
+  /// No description provided for @pythonCandidateUnusable.
+  ///
+  /// In ru, this message translates to:
+  /// **'{path} (не запускается)'**
+  String pythonCandidateUnusable(String path);
+
+  /// No description provided for @failureWorkerExited.
+  ///
+  /// In ru, this message translates to:
+  /// **'Marian/Silero worker завершился с кодом {code}: {detail}'**
+  String failureWorkerExited(int code, String detail);
+
+  /// No description provided for @failureWorkerExitedSilently.
+  ///
+  /// In ru, this message translates to:
+  /// **'Marian/Silero worker завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch и transformers.'**
+  String failureWorkerExitedSilently(int code);
+
+  /// No description provided for @failureWorkerTimeout.
+  ///
+  /// In ru, this message translates to:
+  /// **'Marian/Silero не ответил за 2 минуты. Последний вывод: {detail}'**
+  String failureWorkerTimeout(String detail);
+
+  /// No description provided for @failureWorkerTimeoutSilent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Marian/Silero не ответил за 2 минуты. Вывода процесса нет.'**
+  String get failureWorkerTimeoutSilent;
+
+  /// No description provided for @failureWorkerNotRunning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Marian/Silero worker не запущен'**
+  String get failureWorkerNotRunning;
+
+  /// No description provided for @failureWorkerFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Marian/Silero: {detail}'**
+  String failureWorkerFailed(String detail);
+
+  /// No description provided for @failurePipelineStopped.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перевод остановлен'**
+  String get failurePipelineStopped;
+
+  /// No description provided for @failureWindowsOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Локальный pipeline доступен только в Windows'**
+  String get failureWindowsOnly;
+
+  /// No description provided for @failureExplorerUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открытие каталога поддерживается только в Windows'**
+  String get failureExplorerUnsupported;
+
+  /// No description provided for @failureDownloadRejected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер вернул {detail}'**
+  String failureDownloadRejected(String detail);
+
+  /// No description provided for @failureVerificationFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка {detail} не пройдена'**
+  String failureVerificationFailed(String detail);
+
+  /// No description provided for @failureSocksLookupFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось определить адрес SOCKS5 proxy'**
+  String get failureSocksLookupFailed;
+
+  /// No description provided for @failureProxyFormat.
+  ///
+  /// In ru, this message translates to:
+  /// **'Укажите proxy в формате http://host:port или socks5://host:port'**
+  String get failureProxyFormat;
+
+  /// No description provided for @failureProxyPort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт proxy должен быть от 1 до 65535'**
+  String get failureProxyPort;
+
+  /// No description provided for @failureInitializationFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось инициализировать приложение: {detail}'**
+  String failureInitializationFailed(String detail);
+
+  /// No description provided for @failureUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неизвестная ошибка'**
+  String get failureUnknown;
+
+  /// No description provided for @stagePython.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запуск Python'**
+  String get stagePython;
+
+  /// No description provided for @stageTorch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка PyTorch'**
+  String get stageTorch;
+
+  /// No description provided for @stageTransformers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка Transformers'**
+  String get stageTransformers;
+
+  /// No description provided for @stageTranslator.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка переводчика'**
+  String get stageTranslator;
+
+  /// No description provided for @stageSpeech.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка синтеза речи'**
+  String get stageSpeech;
+
+  /// No description provided for @stageCapture.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запуск захвата'**
+  String get stageCapture;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

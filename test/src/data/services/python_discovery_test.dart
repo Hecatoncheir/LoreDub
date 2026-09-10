@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/python_discovery.dart';
+import 'package:lore_dub/src/domain/failure.dart';
 import 'package:path/path.dart' as path;
 
 void main() {
@@ -119,7 +120,8 @@ void main() {
     final result = await discovery.find();
 
     expect(result.executable, complete);
-    expect(result.rejected.single, allOf(contains('3.14.0'), contains('torch')));
+    expect(result.rejected.single.path, bare);
+    expect(result.rejected.single.version, '3.14.0');
   });
 
   test('searches the standard Windows installation directories', () async {
@@ -172,7 +174,9 @@ void main() {
     final result = await discovery.find();
 
     expect(result.executable, isNull);
-    expect(result.describeFailure(), allOf(contains('torch'), contains(bare)));
+    expect(result.failure.code, FailureCode.pythonSearchNoDependencies);
+    expect(result.rejected.single.path, bare);
+    expect(result.rejected.single.version, '3.14.0');
   });
 
   test('says nothing was found when no interpreter exists at all', () async {
@@ -187,6 +191,7 @@ void main() {
     final result = await discovery.find();
 
     expect(result.executable, isNull);
-    expect(result.describeFailure(), contains('стандартных каталогах'));
+    expect(result.failure.code, FailureCode.pythonSearchEmpty);
+    expect(result.rejected, isEmpty);
   });
 }

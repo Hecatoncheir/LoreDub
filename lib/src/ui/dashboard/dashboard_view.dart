@@ -14,6 +14,7 @@ import '../../domain/runtime_paths.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
+import '../failure_messages.dart';
 import '../language_names.dart';
 import '../model_names.dart';
 import '../theme.dart';
@@ -35,7 +36,10 @@ class DashboardView extends StatelessWidget {
             child: Column(
               children: [
                 _Header(viewModel: viewModel),
-                if (viewModel.error case final error?) _ErrorBanner(message: error),
+                if (viewModel.error case final error?)
+                  _ErrorBanner(
+                    message: describeFailure(AppLocalizations.of(context), error),
+                  ),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 180),
@@ -310,7 +314,7 @@ class _StatusChip extends StatelessWidget {
     final (label, color) = switch (status) {
       PipelineStatus.idle => (l10n.statusIdle, LoreDubPalette.mutedInk),
       PipelineStatus.starting => (
-        stage.isEmpty ? l10n.statusStarting : stage,
+        stage.isEmpty ? l10n.statusStarting : describeStartupStage(l10n, stage),
         LoreDubPalette.warning,
       ),
       PipelineStatus.listening => (l10n.statusListening, LoreDubPalette.success),
@@ -596,7 +600,9 @@ class _StartButton extends StatelessWidget {
     final starting = viewModel.status == PipelineStatus.starting;
     final progress = viewModel.startupProgress;
     return Tooltip(
-      message: starting && viewModel.startupStage.isNotEmpty ? viewModel.startupStage : '',
+      message: starting && viewModel.startupStage.isNotEmpty
+          ? describeStartupStage(l10n, viewModel.startupStage)
+          : '',
       child: FilledButton.icon(
         onPressed: viewModel.running || viewModel.canStart ? viewModel.togglePipeline : null,
         icon: starting
@@ -1042,7 +1048,7 @@ class _ModelCard extends StatelessWidget {
               if (state.error case final error?) ...[
                 const SizedBox(height: 8),
                 Text(
-                  error,
+                  describeFailure(l10n, error),
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ],

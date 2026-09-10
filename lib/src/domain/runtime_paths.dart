@@ -5,6 +5,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
+import 'failure.dart';
+
 /// Threads to hand to whisper.cpp and torch by default.
 ///
 /// Recognition dominates the delay before a phrase is voiced and scales well
@@ -16,10 +18,6 @@ int defaultCpuThreads([int? logicalProcessors]) {
   if (available <= 4) return 2;
   return (available ~/ 2).clamp(4, 12);
 }
-
-const runtimeSetupHint =
-    'Установите LoreDub через setup или подготовьте runtime рядом с приложением '
-    'командой scripts/prepare_windows_runtime.ps1.';
 
 String bundledRuntimeDirectory() =>
     path.join(File(Platform.resolvedExecutable).parent.path, 'runtime');
@@ -36,7 +34,7 @@ String whisperExecutablePath({String? runtimeDirectory}) =>
 Future<String> resolveWhisperExecutable({String? runtimeDirectory}) async {
   final candidate = whisperExecutablePath(runtimeDirectory: runtimeDirectory);
   if (await File(candidate).exists()) return candidate;
-  throw StateError('Не найден whisper-cli.exe: $candidate. $runtimeSetupHint');
+  throw LoreDubFailure(FailureCode.whisperMissing, detail: candidate);
 }
 
 /// Windows ships `%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe` as an app
@@ -74,12 +72,6 @@ Future<String> resolvePythonExecutable(String configured) async {
     }
   }
 
-  if (skippedStoreAlias) {
-    throw StateError(
-      'В PATH найден только ярлык Microsoft Store вместо Python. Он не '
-      'запускает интерпретатор. Выберите встроенный runtime или укажите полный '
-      'путь к python.exe с установленными torch и transformers.',
-    );
-  }
-  throw StateError('Не найден Python: $candidate. $runtimeSetupHint');
+  if (skippedStoreAlias) throw const LoreDubFailure(FailureCode.pythonStoreAlias);
+  throw LoreDubFailure(FailureCode.pythonMissing, detail: candidate);
 }

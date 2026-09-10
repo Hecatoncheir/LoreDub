@@ -373,4 +373,134 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get voiceSpeech_uk => 'Украинская';
+
+  @override
+  String failureWhisperMissing(String detail) {
+    return 'Не найден whisper-cli.exe: $detail. Установите LoreDub через setup или подготовьте runtime командой scripts/prepare_windows_runtime.ps1.';
+  }
+
+  @override
+  String failureWhisperModelMissing(String detail) {
+    return 'Не найдена модель Whisper: $detail. Установите её на вкладке «Модели».';
+  }
+
+  @override
+  String failureWhisperFailed(String detail) {
+    return 'whisper.cpp: $detail';
+  }
+
+  @override
+  String failurePythonMissing(String detail) {
+    return 'Не найден Python: $detail. Установите LoreDub через setup или подготовьте runtime командой scripts/prepare_windows_runtime.ps1.';
+  }
+
+  @override
+  String get failurePythonStoreAlias =>
+      'В PATH найден только ярлык Microsoft Store вместо Python. Он не запускает интерпретатор. Выберите встроенный runtime или укажите полный путь к python.exe с установленными torch и transformers.';
+
+  @override
+  String get failurePythonSearchEmpty =>
+      'Python не найден в PATH и в стандартных каталогах установки. Укажите путь к python.exe вручную или используйте встроенный runtime.';
+
+  @override
+  String failurePythonSearchNoDependencies(String detail) {
+    return 'Не найден Python с torch и transformers. Проверено: $detail.';
+  }
+
+  @override
+  String failurePythonSearchFailed(String detail) {
+    return 'Не удалось найти Python: $detail';
+  }
+
+  @override
+  String pythonCandidateWithoutDependencies(String path, String version) {
+    return '$path (Python $version, нет torch/transformers)';
+  }
+
+  @override
+  String pythonCandidateUnusable(String path) {
+    return '$path (не запускается)';
+  }
+
+  @override
+  String failureWorkerExited(int code, String detail) {
+    return 'Marian/Silero worker завершился с кодом $code: $detail';
+  }
+
+  @override
+  String failureWorkerExitedSilently(int code) {
+    return 'Marian/Silero worker завершился с кодом $code без вывода. Проверьте выбранный python.exe: в нём должны быть torch и transformers.';
+  }
+
+  @override
+  String failureWorkerTimeout(String detail) {
+    return 'Marian/Silero не ответил за 2 минуты. Последний вывод: $detail';
+  }
+
+  @override
+  String get failureWorkerTimeoutSilent =>
+      'Marian/Silero не ответил за 2 минуты. Вывода процесса нет.';
+
+  @override
+  String get failureWorkerNotRunning => 'Marian/Silero worker не запущен';
+
+  @override
+  String failureWorkerFailed(String detail) {
+    return 'Marian/Silero: $detail';
+  }
+
+  @override
+  String get failurePipelineStopped => 'Перевод остановлен';
+
+  @override
+  String get failureWindowsOnly => 'Локальный pipeline доступен только в Windows';
+
+  @override
+  String get failureExplorerUnsupported => 'Открытие каталога поддерживается только в Windows';
+
+  @override
+  String failureDownloadRejected(String detail) {
+    return 'Сервер вернул $detail';
+  }
+
+  @override
+  String failureVerificationFailed(String detail) {
+    return 'Проверка $detail не пройдена';
+  }
+
+  @override
+  String get failureSocksLookupFailed => 'Не удалось определить адрес SOCKS5 proxy';
+
+  @override
+  String get failureProxyFormat =>
+      'Укажите proxy в формате http://host:port или socks5://host:port';
+
+  @override
+  String get failureProxyPort => 'Порт proxy должен быть от 1 до 65535';
+
+  @override
+  String failureInitializationFailed(String detail) {
+    return 'Не удалось инициализировать приложение: $detail';
+  }
+
+  @override
+  String get failureUnknown => 'Неизвестная ошибка';
+
+  @override
+  String get stagePython => 'Запуск Python';
+
+  @override
+  String get stageTorch => 'Загрузка PyTorch';
+
+  @override
+  String get stageTransformers => 'Загрузка Transformers';
+
+  @override
+  String get stageTranslator => 'Загрузка переводчика';
+
+  @override
+  String get stageSpeech => 'Загрузка синтеза речи';
+
+  @override
+  String get stageCapture => 'Запуск захвата';
 }

@@ -44,6 +44,9 @@ All notable changes to LoreDub are documented in this file.
 - Added an English interface alongside Russian. Every label moved into `lib/l10n/*.arb`,
   and Settings carries the switch; Russian stays the default and the source of the
   wording. `README.md` is now Russian, with `README.en.md` beside it.
+- Added error messages in the interface language. Services now raise an error code instead
+  of a Russian sentence, so a failure raised while the app was in one language is rewritten
+  the moment the other one is picked.
 
 ## [0.2.1] - 2026-09-10
 

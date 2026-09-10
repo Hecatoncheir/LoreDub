@@ -35,8 +35,8 @@ class AppSettings {
   final double ttsSpeed;
   final int cpuThreads;
 
-  /// TODO: реализовать в будущем отображение переведённых субтитров поверх
-  /// игры. Пока значение только сохраняется и ни на что не влияет.
+  /// TODO: draw the translated lines over the game. Persisted, but nothing
+  /// reads it yet.
   final bool showOverlay;
   final double ocrRegionTop;
   final String modelProxyUrl;

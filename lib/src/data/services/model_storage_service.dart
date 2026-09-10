@@ -12,6 +12,7 @@ import 'package:socks5_proxy/socks_client.dart';
 
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
+import '../../domain/failure.dart';
 
 typedef DownloadProgress = void Function(double value);
 typedef ModelRootProvider = Future<Directory> Function();
@@ -42,7 +43,7 @@ class ModelStorageService {
   Future<void> openRootDirectory() async {
     final root = await rootDirectory();
     if (!Platform.isWindows) {
-      throw UnsupportedError('Открытие каталога поддерживается только в Windows');
+      throw const LoreDubFailure(FailureCode.explorerUnsupported);
     }
     await Process.start(
       'explorer.exe',
@@ -98,8 +99,9 @@ class ModelStorageService {
       if (await partial.exists()) await partial.delete();
       final response = await client.send(http.Request('GET', artifact.url));
       if (response.statusCode != HttpStatus.ok) {
-        throw HttpException(
-          'Сервер вернул ${response.statusCode} для ${artifact.url}',
+        throw LoreDubFailure(
+          FailureCode.downloadRejected,
+          detail: '${response.statusCode} — ${artifact.url}',
         );
       }
       final sink = partial.openWrite();
@@ -122,7 +124,7 @@ class ModelStorageService {
       }
       if (!await _verify(partial, artifact)) {
         await partial.delete();
-        throw StateError('Проверка ${artifact.fileName} не пройдена');
+        throw LoreDubFailure(FailureCode.verificationFailed, detail: artifact.fileName);
       }
       await partial.rename(destination.path);
       completed += artifact.byteSize ?? artifactBytes;
@@ -136,7 +138,7 @@ class ModelStorageService {
     if (proxy.scheme.toLowerCase() == 'socks5') {
       final addresses = await InternetAddress.lookup(proxy.host);
       if (addresses.isEmpty) {
-        throw StateError('Не удалось определить адрес SOCKS5 proxy');
+        throw const LoreDubFailure(FailureCode.socksLookupFailed);
       }
       final credentials = _proxyCredentials(proxy);
       final client = HttpClient();

@@ -63,7 +63,9 @@ class ModelInstallState {
   final ModelPackage model;
   final bool installed;
   final double? progress;
-  final String? error;
+
+  /// Why the download failed, as raised; written out by the interface.
+  final Object? error;
 
   bool get downloading => progress != null;
 
@@ -71,7 +73,7 @@ class ModelInstallState {
     bool? installed,
     double? progress,
     bool clearProgress = false,
-    String? error,
+    Object? error,
     bool clearError = false,
   }) => ModelInstallState(
     model: model,

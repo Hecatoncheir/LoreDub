@@ -4,6 +4,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/runtime_paths.dart';
 import 'package:path/path.dart' as path;
 
@@ -61,14 +62,9 @@ void main() {
     await expectLater(
       resolveWhisperExecutable(runtimeDirectory: runtime.path),
       throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          allOf(
-            contains('whisper-cli.exe'),
-            contains('prepare_windows_runtime.ps1'),
-          ),
-        ),
+        isA<LoreDubFailure>()
+            .having((error) => error.code, 'code', FailureCode.whisperMissing)
+            .having((error) => error.detail, 'detail', contains('whisper-cli.exe')),
       ),
     );
   });
@@ -104,10 +100,10 @@ void main() {
     await expectLater(
       resolvePythonExecutable(alias.path),
       throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          allOf(contains('Microsoft Store'), contains('torch')),
+        isA<LoreDubFailure>().having(
+          (error) => error.code,
+          'code',
+          FailureCode.pythonStoreAlias,
         ),
       ),
     );
@@ -120,11 +116,9 @@ void main() {
     await expectLater(
       resolvePythonExecutable(missing),
       throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          allOf(contains('Не найден Python'), contains('prepare_windows_runtime.ps1')),
-        ),
+        isA<LoreDubFailure>()
+            .having((error) => error.code, 'code', FailureCode.pythonMissing)
+            .having((error) => error.detail, 'detail', missing),
       ),
     );
   });

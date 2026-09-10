@@ -210,5 +210,148 @@
   "voiceSpeech_de": "German",
   "voiceSpeech_es": "Spanish",
   "voiceSpeech_fr": "French",
-  "voiceSpeech_uk": "Ukrainian"
+  "voiceSpeech_uk": "Ukrainian",
+  "failureWhisperMissing": "whisper-cli.exe is missing: {detail}. Install LoreDub from the setup, or prepare the runtime with scripts/prepare_windows_runtime.ps1.",
+  "@failureWhisperMissing": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWhisperModelMissing": "The Whisper model is missing: {detail}. Install it on the Models screen.",
+  "@failureWhisperModelMissing": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWhisperFailed": "whisper.cpp: {detail}",
+  "@failureWhisperFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failurePythonMissing": "No Python at {detail}. Install LoreDub from the setup, or prepare the runtime with scripts/prepare_windows_runtime.ps1.",
+  "@failurePythonMissing": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failurePythonStoreAlias": "PATH holds only the Microsoft Store alias instead of Python. It never starts an interpreter. Choose the bundled runtime, or name a python.exe that has torch and transformers.",
+  "failurePythonSearchEmpty": "No Python in PATH or in the standard installation directories. Name a python.exe yourself, or use the bundled runtime.",
+  "failurePythonSearchNoDependencies": "No Python with torch and transformers. Inspected: {detail}.",
+  "@failurePythonSearchNoDependencies": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failurePythonSearchFailed": "The search for Python failed: {detail}",
+  "@failurePythonSearchFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "pythonCandidateWithoutDependencies": "{path} (Python {version}, no torch/transformers)",
+  "@pythonCandidateWithoutDependencies": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "pythonCandidateUnusable": "{path} (does not start)",
+  "@pythonCandidateUnusable": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWorkerExited": "The Marian/Silero worker exited with code {code}: {detail}",
+  "@failureWorkerExited": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWorkerExitedSilently": "The Marian/Silero worker exited with code {code} without a word. Check the python.exe you picked: it needs torch and transformers.",
+  "@failureWorkerExitedSilently": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "failureWorkerTimeout": "Marian/Silero did not answer within 2 minutes. Last output: {detail}",
+  "@failureWorkerTimeout": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWorkerTimeoutSilent": "Marian/Silero did not answer within 2 minutes, and printed nothing.",
+  "failureWorkerNotRunning": "The Marian/Silero worker is not running",
+  "failureWorkerFailed": "Marian/Silero: {detail}",
+  "@failureWorkerFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failurePipelineStopped": "Dubbing was stopped",
+  "failureWindowsOnly": "The local pipeline runs on Windows only",
+  "failureExplorerUnsupported": "Opening a folder is supported on Windows only",
+  "failureDownloadRejected": "The server answered {detail}",
+  "@failureDownloadRejected": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureVerificationFailed": "{detail} failed verification",
+  "@failureVerificationFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureSocksLookupFailed": "The SOCKS5 proxy address could not be resolved",
+  "failureProxyFormat": "Use the form http://host:port or socks5://host:port",
+  "failureProxyPort": "The proxy port has to be between 1 and 65535",
+  "failureInitializationFailed": "The application could not start: {detail}",
+  "@failureInitializationFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureUnknown": "Unknown error",
+  "stagePython": "Starting Python",
+  "stageTorch": "Loading PyTorch",
+  "stageTransformers": "Loading Transformers",
+  "stageTranslator": "Loading the translator",
+  "stageSpeech": "Loading speech synthesis",
+  "stageCapture": "Starting capture"
 }

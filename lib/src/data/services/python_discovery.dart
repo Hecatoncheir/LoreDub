@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
+import '../../domain/failure.dart';
 import '../../domain/runtime_paths.dart';
 
 /// What a candidate interpreter turned out to be. [version] is empty when the
@@ -23,22 +24,29 @@ class PythonProbeResult {
 
 typedef PythonProbe = Future<PythonProbeResult> Function(String executable);
 
+/// An interpreter that was found and turned down, and why.
+class RejectedPython {
+  const RejectedPython(this.path, {this.version});
+
+  final String path;
+
+  /// Null when the executable would not start at all.
+  final String? version;
+}
+
 class PythonDiscoveryResult {
   const PythonDiscoveryResult({required this.executable, required this.rejected});
 
   /// The first interpreter that can run the worker, or null when none can.
   final String? executable;
 
-  /// Everything that was found but turned down, with the reason.
-  final List<String> rejected;
+  /// Everything that was found but turned down. Kept as data: the interface
+  /// writes the reasons out in its own language.
+  final List<RejectedPython> rejected;
 
-  String describeFailure() {
-    if (rejected.isEmpty) {
-      return 'Python не найден в PATH и в стандартных каталогах установки. '
-          'Укажите путь к python.exe вручную или используйте встроенный runtime.';
-    }
-    return 'Не найден Python с torch и transformers. Проверено: ${rejected.join('; ')}.';
-  }
+  LoreDubFailure get failure => rejected.isEmpty
+      ? const LoreDubFailure(FailureCode.pythonSearchEmpty)
+      : const LoreDubFailure(FailureCode.pythonSearchNoDependencies);
 }
 
 /// Looks for an interpreter that can actually run the Marian/Silero worker.
@@ -65,16 +73,14 @@ class PythonDiscovery {
   final String _bundledExecutable;
 
   Future<PythonDiscoveryResult> find() async {
-    final rejected = <String>[];
+    final rejected = <RejectedPython>[];
     for (final candidate in await _candidates()) {
       final result = await _probe(candidate);
       if (result.hasDependencies) {
         return PythonDiscoveryResult(executable: candidate, rejected: rejected);
       }
       rejected.add(
-        result.runs
-            ? '$candidate (Python ${result.version}, нет torch/transformers)'
-            : '$candidate (не запускается)',
+        RejectedPython(candidate, version: result.runs ? result.version : null),
       );
     }
     return PythonDiscoveryResult(executable: null, rejected: rejected);

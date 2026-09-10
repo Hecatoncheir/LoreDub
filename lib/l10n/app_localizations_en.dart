@@ -371,4 +371,133 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceSpeech_uk => 'Ukrainian';
+
+  @override
+  String failureWhisperMissing(String detail) {
+    return 'whisper-cli.exe is missing: $detail. Install LoreDub from the setup, or prepare the runtime with scripts/prepare_windows_runtime.ps1.';
+  }
+
+  @override
+  String failureWhisperModelMissing(String detail) {
+    return 'The Whisper model is missing: $detail. Install it on the Models screen.';
+  }
+
+  @override
+  String failureWhisperFailed(String detail) {
+    return 'whisper.cpp: $detail';
+  }
+
+  @override
+  String failurePythonMissing(String detail) {
+    return 'No Python at $detail. Install LoreDub from the setup, or prepare the runtime with scripts/prepare_windows_runtime.ps1.';
+  }
+
+  @override
+  String get failurePythonStoreAlias =>
+      'PATH holds only the Microsoft Store alias instead of Python. It never starts an interpreter. Choose the bundled runtime, or name a python.exe that has torch and transformers.';
+
+  @override
+  String get failurePythonSearchEmpty =>
+      'No Python in PATH or in the standard installation directories. Name a python.exe yourself, or use the bundled runtime.';
+
+  @override
+  String failurePythonSearchNoDependencies(String detail) {
+    return 'No Python with torch and transformers. Inspected: $detail.';
+  }
+
+  @override
+  String failurePythonSearchFailed(String detail) {
+    return 'The search for Python failed: $detail';
+  }
+
+  @override
+  String pythonCandidateWithoutDependencies(String path, String version) {
+    return '$path (Python $version, no torch/transformers)';
+  }
+
+  @override
+  String pythonCandidateUnusable(String path) {
+    return '$path (does not start)';
+  }
+
+  @override
+  String failureWorkerExited(int code, String detail) {
+    return 'The Marian/Silero worker exited with code $code: $detail';
+  }
+
+  @override
+  String failureWorkerExitedSilently(int code) {
+    return 'The Marian/Silero worker exited with code $code without a word. Check the python.exe you picked: it needs torch and transformers.';
+  }
+
+  @override
+  String failureWorkerTimeout(String detail) {
+    return 'Marian/Silero did not answer within 2 minutes. Last output: $detail';
+  }
+
+  @override
+  String get failureWorkerTimeoutSilent =>
+      'Marian/Silero did not answer within 2 minutes, and printed nothing.';
+
+  @override
+  String get failureWorkerNotRunning => 'The Marian/Silero worker is not running';
+
+  @override
+  String failureWorkerFailed(String detail) {
+    return 'Marian/Silero: $detail';
+  }
+
+  @override
+  String get failurePipelineStopped => 'Dubbing was stopped';
+
+  @override
+  String get failureWindowsOnly => 'The local pipeline runs on Windows only';
+
+  @override
+  String get failureExplorerUnsupported => 'Opening a folder is supported on Windows only';
+
+  @override
+  String failureDownloadRejected(String detail) {
+    return 'The server answered $detail';
+  }
+
+  @override
+  String failureVerificationFailed(String detail) {
+    return '$detail failed verification';
+  }
+
+  @override
+  String get failureSocksLookupFailed => 'The SOCKS5 proxy address could not be resolved';
+
+  @override
+  String get failureProxyFormat => 'Use the form http://host:port or socks5://host:port';
+
+  @override
+  String get failureProxyPort => 'The proxy port has to be between 1 and 65535';
+
+  @override
+  String failureInitializationFailed(String detail) {
+    return 'The application could not start: $detail';
+  }
+
+  @override
+  String get failureUnknown => 'Unknown error';
+
+  @override
+  String get stagePython => 'Starting Python';
+
+  @override
+  String get stageTorch => 'Loading PyTorch';
+
+  @override
+  String get stageTransformers => 'Loading Transformers';
+
+  @override
+  String get stageTranslator => 'Loading the translator';
+
+  @override
+  String get stageSpeech => 'Loading speech synthesis';
+
+  @override
+  String get stageCapture => 'Starting capture';
 }

@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
+import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/model_proxy.dart';
 import 'package:http/http.dart' as http;
@@ -56,7 +57,13 @@ void main() {
 
       await expectLater(
         service.install(model, onProgress: (_) {}),
-        throwsA(isA<StateError>()),
+        throwsA(
+          isA<LoreDubFailure>().having(
+            (error) => error.code,
+            'code',
+            FailureCode.verificationFailed,
+          ),
+        ),
       );
 
       final directory = await service.modelDirectory(model);
@@ -86,11 +93,15 @@ void main() {
     test('rejects unsupported proxy URLs', () {
       expect(
         () => parseModelProxyUrl('ftp://127.0.0.1:21'),
-        throwsFormatException,
+        throwsA(
+          isA<LoreDubFailure>().having((error) => error.code, 'code', FailureCode.proxyFormat),
+        ),
       );
       expect(
         () => parseModelProxyUrl('http://proxy.example:70000'),
-        throwsFormatException,
+        throwsA(
+          isA<LoreDubFailure>().having((error) => error.code, 'code', FailureCode.proxyPort),
+        ),
       );
     });
   });

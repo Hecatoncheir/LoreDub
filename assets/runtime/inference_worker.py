@@ -38,7 +38,9 @@ def report_progress(value, stage):
     """Announces the step that is about to run, with its share of the startup.
 
     The shares come from measuring a warm start: importing torch and
-    transformers takes far longer than loading the models themselves.
+    transformers takes far longer than loading the models themselves. The
+    stage is a code, not a sentence: the application writes it out in
+    whichever language its interface is set to.
     """
     reply({"type": "progress", "value": value, "stage": stage})
 
@@ -108,19 +110,19 @@ def main():
 
     speed = min(2.0, max(0.5, args.speed))
 
-    report_progress(0.10, "Загрузка PyTorch")
+    report_progress(0.10, "torch")
     import torch
 
-    report_progress(0.35, "Загрузка Transformers")
+    report_progress(0.35, "transformers")
     from transformers import MarianMTModel, MarianTokenizer
 
-    report_progress(0.80, "Загрузка переводчика")
+    report_progress(0.80, "translator")
     torch.set_num_threads(max(1, args.threads))
     tokenizer = MarianTokenizer.from_pretrained(args.translation_model, local_files_only=True)
     translator = MarianMTModel.from_pretrained(args.translation_model, local_files_only=True)
     translator.eval()
 
-    report_progress(0.90, "Загрузка синтеза речи")
+    report_progress(0.90, "speech")
     tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
     tts.to(torch.device("cpu"))
     # Every Silero language ships its own voices. Falling back keeps an
@@ -140,7 +142,7 @@ def main():
             request = json.loads(line)
             request_id = request["id"]
         except (ValueError, KeyError) as error:
-            reply({"type": "error", "message": f"Некорректный запрос: {error}"})
+            reply({"type": "error", "message": f"malformed request: {error}"})
             continue
         try:
             text = request["text"].strip()

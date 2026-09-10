@@ -210,5 +210,148 @@
   "voiceSpeech_de": "Немецкая",
   "voiceSpeech_es": "Испанская",
   "voiceSpeech_fr": "Французская",
-  "voiceSpeech_uk": "Украинская"
+  "voiceSpeech_uk": "Украинская",
+  "failureWhisperMissing": "Не найден whisper-cli.exe: {detail}. Установите LoreDub через setup или подготовьте runtime командой scripts/prepare_windows_runtime.ps1.",
+  "@failureWhisperMissing": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWhisperModelMissing": "Не найдена модель Whisper: {detail}. Установите её на вкладке «Модели».",
+  "@failureWhisperModelMissing": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWhisperFailed": "whisper.cpp: {detail}",
+  "@failureWhisperFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failurePythonMissing": "Не найден Python: {detail}. Установите LoreDub через setup или подготовьте runtime командой scripts/prepare_windows_runtime.ps1.",
+  "@failurePythonMissing": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failurePythonStoreAlias": "В PATH найден только ярлык Microsoft Store вместо Python. Он не запускает интерпретатор. Выберите встроенный runtime или укажите полный путь к python.exe с установленными torch и transformers.",
+  "failurePythonSearchEmpty": "Python не найден в PATH и в стандартных каталогах установки. Укажите путь к python.exe вручную или используйте встроенный runtime.",
+  "failurePythonSearchNoDependencies": "Не найден Python с torch и transformers. Проверено: {detail}.",
+  "@failurePythonSearchNoDependencies": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failurePythonSearchFailed": "Не удалось найти Python: {detail}",
+  "@failurePythonSearchFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "pythonCandidateWithoutDependencies": "{path} (Python {version}, нет torch/transformers)",
+  "@pythonCandidateWithoutDependencies": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "pythonCandidateUnusable": "{path} (не запускается)",
+  "@pythonCandidateUnusable": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWorkerExited": "Marian/Silero worker завершился с кодом {code}: {detail}",
+  "@failureWorkerExited": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWorkerExitedSilently": "Marian/Silero worker завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch и transformers.",
+  "@failureWorkerExitedSilently": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "failureWorkerTimeout": "Marian/Silero не ответил за 2 минуты. Последний вывод: {detail}",
+  "@failureWorkerTimeout": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWorkerTimeoutSilent": "Marian/Silero не ответил за 2 минуты. Вывода процесса нет.",
+  "failureWorkerNotRunning": "Marian/Silero worker не запущен",
+  "failureWorkerFailed": "Marian/Silero: {detail}",
+  "@failureWorkerFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failurePipelineStopped": "Перевод остановлен",
+  "failureWindowsOnly": "Локальный pipeline доступен только в Windows",
+  "failureExplorerUnsupported": "Открытие каталога поддерживается только в Windows",
+  "failureDownloadRejected": "Сервер вернул {detail}",
+  "@failureDownloadRejected": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureVerificationFailed": "Проверка {detail} не пройдена",
+  "@failureVerificationFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureSocksLookupFailed": "Не удалось определить адрес SOCKS5 proxy",
+  "failureProxyFormat": "Укажите proxy в формате http://host:port или socks5://host:port",
+  "failureProxyPort": "Порт proxy должен быть от 1 до 65535",
+  "failureInitializationFailed": "Не удалось инициализировать приложение: {detail}",
+  "@failureInitializationFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureUnknown": "Неизвестная ошибка",
+  "stagePython": "Запуск Python",
+  "stageTorch": "Загрузка PyTorch",
+  "stageTransformers": "Загрузка Transformers",
+  "stageTranslator": "Загрузка переводчика",
+  "stageSpeech": "Загрузка синтеза речи",
+  "stageCapture": "Запуск захвата"
 }

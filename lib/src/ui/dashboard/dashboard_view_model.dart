@@ -10,6 +10,8 @@ import '../../data/repositories/app_repository.dart';
 import '../../data/repositories/model_repository.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/game_process.dart';
+import '../../data/services/python_discovery.dart';
+import '../../domain/failure.dart';
 import '../../domain/model_package.dart';
 import '../../domain/pipeline_state.dart';
 
@@ -38,7 +40,13 @@ class DashboardViewModel extends ChangeNotifier {
 
   /// The language auto-detection settled on, once whisper has reported it.
   String? detectedLanguage;
-  String? error;
+
+  /// Interpreters the last search turned down, kept so the reason can be
+  /// written out in the interface language.
+  List<RejectedPython> pythonSearchRejected = const [];
+
+  /// What went wrong, as raised. The interface writes it out.
+  Object? error;
   String modelDirectoryPath = '';
 
   /// Whisper is language-independent and OCR mode does without it entirely.
@@ -94,7 +102,7 @@ class DashboardViewModel extends ChangeNotifier {
       models = values[2] as List<ModelInstallState>;
       modelDirectoryPath = values[3] as String;
     } catch (exception) {
-      error = 'Не удалось инициализировать приложение: $exception';
+      error = LoreDubFailure(FailureCode.initializationFailed, detail: '$exception');
     } finally {
       initializing = false;
       notifyListeners();
@@ -131,18 +139,20 @@ class DashboardViewModel extends ChangeNotifier {
   Future<String?> findPythonExecutable() async {
     searchingPython = true;
     error = null;
+    pythonSearchRejected = const [];
     notifyListeners();
     try {
       final result = await _appRepository.findPythonExecutable();
       final executable = result.executable;
       if (executable == null) {
-        error = result.describeFailure();
+        error = result.failure;
+        pythonSearchRejected = result.rejected;
         return null;
       }
       await updateSettings(settings.copyWith(pythonExecutable: executable));
       return executable;
     } catch (exception) {
-      error = 'Не удалось найти Python: $exception';
+      error = LoreDubFailure(FailureCode.pythonSearchFailed, detail: '$exception');
       return null;
     } finally {
       searchingPython = false;
@@ -170,10 +180,7 @@ class DashboardViewModel extends ChangeNotifier {
         clearProgress: true,
       );
     } catch (exception) {
-      models[index] = models[index].copyWith(
-        clearProgress: true,
-        error: '$exception',
-      );
+      models[index] = models[index].copyWith(clearProgress: true, error: exception);
     }
     notifyListeners();
   }
@@ -188,7 +195,7 @@ class DashboardViewModel extends ChangeNotifier {
         status = PipelineStatus.idle;
       } catch (exception) {
         status = PipelineStatus.error;
-        error = '$exception';
+        error = exception;
       }
       startupProgress = null;
       startupStage = '';
@@ -219,7 +226,7 @@ class DashboardViewModel extends ChangeNotifier {
       );
     } catch (exception) {
       status = PipelineStatus.error;
-      error = '$exception';
+      error = exception;
       notifyListeners();
     }
   }
@@ -246,7 +253,7 @@ class DashboardViewModel extends ChangeNotifier {
     try {
       await _modelRepository.openRootDirectory();
     } catch (exception) {
-      error = '$exception';
+      error = exception;
       notifyListeners();
     }
   }
@@ -284,7 +291,7 @@ class DashboardViewModel extends ChangeNotifier {
         // A phrase failing does not stop the capture, so the pipeline keeps
         // its state and the controls stay usable. Marking the session as
         // failed here used to leave it stuck: neither startable nor stoppable.
-        error = event['message'] as String? ?? 'Неизвестная ошибка';
+        error = event['failure'];
     }
     notifyListeners();
   }

@@ -71,7 +71,7 @@ class NativeEngineService {
       requiresWhisper: config['captureMode'] != 'ocr',
       sourceLanguage: config['sourceLanguage']! as String,
     );
-    _events.add({'type': 'startup', 'value': 0.98, 'stage': 'Запуск захвата'});
+    _events.add({'type': 'startup', 'value': 0.98, 'stage': 'capture'});
     final work = await LocalInferenceService.createWorkDirectory();
     final capture = Directory('${work.path}${Platform.pathSeparator}capture');
     await capture.create(recursive: true);
@@ -185,7 +185,7 @@ class NativeEngineService {
   /// the expected outcome of stopping, not something to alarm them with.
   void _reportFailure(Object error) {
     if (_activeConfig == null) return;
-    _events.add({'type': 'error', 'message': '$error'});
+    _events.add({'type': 'error', 'failure': error});
   }
 
   Future<void> _publishResult(
