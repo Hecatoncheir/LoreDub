@@ -14,6 +14,19 @@ import torch
 from transformers import MarianMTModel, MarianTokenizer
 
 
+def use_utf8_streams():
+    """Pipes default to the Windows ANSI code page, which mangles Cyrillic.
+
+    The Dart side reads this process as UTF-8, so a translated phrase would be
+    dropped on decoding while the ASCII handshake still succeeded.
+    """
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def reply(value):
     sys.stdout.write(json.dumps(value, ensure_ascii=False) + "\n")
     sys.stdout.flush()
@@ -71,6 +84,7 @@ def change_speed(samples, speed, sample_rate):
 
 
 def main():
+    use_utf8_streams()
     parser = argparse.ArgumentParser()
     parser.add_argument("--translation-model", required=True)
     parser.add_argument("--tts-model", required=True)
@@ -92,8 +106,17 @@ def main():
     reply({"type": "ready"})
 
     for raw_line in sys.stdin:
-        request = json.loads(raw_line)
-        request_id = request["id"]
+        # A malformed line must not take the worker down with it: the pipeline
+        # would then look alive while every later phrase is lost.
+        line = raw_line.strip().lstrip("\ufeff")
+        if not line:
+            continue
+        try:
+            request = json.loads(line)
+            request_id = request["id"]
+        except (ValueError, KeyError) as error:
+            reply({"type": "error", "message": f"Некорректный запрос: {error}"})
+            continue
         try:
             text = request["text"].strip()
             inputs = tokenizer([text], return_tensors="pt", padding=True)

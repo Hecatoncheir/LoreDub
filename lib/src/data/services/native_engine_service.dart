@@ -53,6 +53,7 @@ class NativeEngineService {
       threads: config['cpuThreads']! as int,
       speed: config['ttsSpeed']! as double,
       pythonExecutable: config['pythonExecutable']! as String,
+      requiresWhisper: config['captureMode'] != 'ocr',
     );
     final work = await LocalInferenceService.createWorkDirectory();
     final capture = Directory('${work.path}${Platform.pathSeparator}capture');
