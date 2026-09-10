@@ -147,18 +147,21 @@ ThemeData buildLoreDubTheme() {
       ),
     ),
     switchTheme: SwitchThemeData(
-      // A switch stays disabled while the pipeline runs, and the default
-      // disabled styling washes the on state out until it reads as off.
-      trackColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.disabled) && states.contains(WidgetState.selected)
+      // The on state is spelled out for every interaction: a switch stays
+      // disabled while the pipeline runs, where the default styling washes it
+      // out until it reads as off, and hovering it would otherwise tint the
+      // thumb with primaryContainer until it vanishes into the orange track.
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (!states.contains(WidgetState.selected)) return null;
+        return states.contains(WidgetState.disabled)
             ? LoreDubPalette.orange.withValues(alpha: 0.45)
-            : null,
-      ),
-      thumbColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.disabled) && states.contains(WidgetState.selected)
-            ? LoreDubPalette.raised
-            : null,
-      ),
+            : LoreDubPalette.orange;
+      }),
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (!states.contains(WidgetState.selected)) return null;
+        return states.contains(WidgetState.disabled) ? LoreDubPalette.raised : LoreDubPalette.ink;
+      }),
+      overlayColor: WidgetStatePropertyAll(LoreDubPalette.orange.withValues(alpha: 0.12)),
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: LoreDubPalette.orange,
