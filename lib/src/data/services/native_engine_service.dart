@@ -75,12 +75,14 @@ class NativeEngineService {
   }
 
   Future<void> stop() async {
+    // Cleared first: segments captured moments ago are still travelling
+    // through the queue, and failing them is expected once the user stops.
+    _activeConfig = null;
     _throwIfError(ld_stop());
     _pollEvents();
     _pollTimer?.cancel();
     _pollTimer = null;
     await _inference.stop();
-    _activeConfig = null;
   }
 
   Future<void> setProcessVolume(int processId, double volume) async {
@@ -118,7 +120,7 @@ class NativeEngineService {
       if (result == null) return;
       await _publishResult(result, started.elapsedMilliseconds, original: '');
     } catch (error) {
-      _events.add({'type': 'error', 'message': '$error'});
+      _reportFailure(error);
     } finally {
       await _deleteIfPresent(wavePath);
     }
@@ -135,8 +137,15 @@ class NativeEngineService {
         original: recognizedText,
       );
     } catch (error) {
-      _events.add({'type': 'error', 'message': '$error'});
+      _reportFailure(error);
     }
+  }
+
+  /// Work already in flight fails when the user stops the pipeline. That is
+  /// the expected outcome of stopping, not something to alarm them with.
+  void _reportFailure(Object error) {
+    if (_activeConfig == null) return;
+    _events.add({'type': 'error', 'message': '$error'});
   }
 
   Future<void> _publishResult(

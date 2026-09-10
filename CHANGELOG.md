@@ -18,6 +18,8 @@ All notable changes to LoreDub are documented in this file.
 - Added automatic Python detection in Settings: LoreDub now scans the bundled runtime, an
   installed LoreDub runtime, `PATH` and the standard installation directories, and picks the
   first interpreter that actually provides torch and transformers.
+- Fixed stopping the pipeline reporting an error for the phrase that was still being
+  processed at that moment.
 
 ## [0.2.1] - 2026-09-10
 
