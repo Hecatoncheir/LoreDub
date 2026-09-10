@@ -47,11 +47,21 @@ powershell -ExecutionPolicy Bypass -File scripts/build_setup.ps1
 Four processes cooperate; changing the pipeline usually means touching more
 than one of them.
 
-1. **Flutter/Dart UI** — `lib/src/ui/dashboard/`. `DashboardViewModel` is a
-   plain `ChangeNotifier` holding all app state (section, settings, processes,
-   model install states, transcript, `PipelineStatus`); `DashboardView` is a
-   single large widget file. There is no DI framework: `LoreDubBootstrap`
-   (`lib/src/app.dart`) constructs services -> repositories -> view model.
+1. **Flutter/Dart UI** — `lib/src/ui/dashboard/`. State lives in four cubits
+   (`cubits/`): `ShellCubit` (section, first load, the failure banner, the
+   update check), `SettingsCubit`, `DownloadsCubit` (models, GPU runtimes,
+   what the machine can run) and `PipelineCubit` (status, transcript,
+   processes). `DashboardCubits` wires them together and runs `initialize()`;
+   errors from any of them go to the shell through `FailureSink`. Anything
+   derived from settings *and* packages together is `ModelSelection`
+   (`domain/model_selection.dart`), so neither cubit owns it. `DashboardView`
+   is a single large widget file whose parts subscribe through the four
+   `_ShellBuilder`/`_SettingsBuilder`/`_DownloadsBuilder`/`_PipelineBuilder`
+   wrappers — pass their `watch`/`onlyWhatIsInstalled` filters when a widget
+   reads only a field or two, or a download tick will redraw the screen.
+   `test/src/ui/dashboard/rebuild_scope_test.dart` counts that and fails if
+   it does. There is no DI framework: `LoreDubBootstrap` (`lib/src/app.dart`)
+   constructs services -> repositories -> cubits.
 2. **Native C++ bridge** — `native/*.cpp`, loaded through Dart Native Assets
    (`hook/build.dart` compiles it with `CBuilder`; there is no `.dll` to ship
    manually). The C ABI in `native/lore_dub_native.h` is intentionally tiny:

@@ -30,26 +30,79 @@ import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus, TranscriptEntry;
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
-import 'package:lore_dub/src/ui/dashboard/dashboard_view_model.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  DashboardViewModel buildViewModel() {
+  DashboardCubits buildCubits({RuntimeRepository? runtimes}) {
     SharedPreferences.setMockInitialValues({});
-    final viewModel = DashboardViewModel(
+    final cubits = DashboardCubits(
       AppRepository(NativeEngineService(), SettingsService()),
       ModelRepository(ModelStorageService()),
-      RuntimeRepository(RuntimeStorageService()),
+      runtimes ?? RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(UpdateService(client: _offline), NotificationService(plugin: _silent)),
     );
-    addTearDown(viewModel.dispose);
-    return viewModel;
+    addTearDown(cubits.dispose);
+    return cubits;
   }
 
-  /// Drives the dashboard from a view model the test owns, so pipeline states
-  /// can be shown without starting anything.
-  Future<void> pumpDashboard(WidgetTester tester, DashboardViewModel viewModel, Size size) async {
+  /// Puts a state on the screen without running the load that would produce
+  /// it. The first load never finishes inside a widget test — it reads the
+  /// disk — so what the widgets read is seeded instead.
+  DashboardCubits stage(
+    DashboardCubits cubits, {
+    DashboardSection section = DashboardSection.live,
+    UpdateState updates = const UpdateState(),
+    AppSettings? settings,
+    List<ModelInstallState>? models,
+    List<RuntimeInstallState>? runtimes,
+    ComputeAvailability? availability,
+    PipelineStatus status = PipelineStatus.idle,
+    List<TranscriptEntry> transcript = const [],
+    String? detectedLanguage,
+    double? startupProgress,
+    String startupStage = '',
+  }) {
+    cubits.shell.seed(ShellState(section: section, initializing: false, updates: updates));
+    if (settings != null) cubits.settings.seed(SettingsState(settings: settings));
+    if (models != null || runtimes != null || availability != null) {
+      cubits.downloads.seed(
+        DownloadsState(
+          models: models ?? const [],
+          runtimes: runtimes ?? const [],
+          availability: availability ?? const ComputeAvailability(),
+        ),
+      );
+    }
+    cubits.pipeline.seed(
+      LivePipelineState(
+        status: status,
+        transcript: transcript,
+        detectedLanguage: detectedLanguage,
+        startupProgress: startupProgress,
+        startupStage: startupStage,
+      ),
+    );
+    return cubits;
+  }
+
+  /// Every package in the catalogue, installed unless a language is named.
+  List<ModelInstallState> catalogue({bool installed = true, String? missingLanguage}) => [
+    for (final model in modelCatalog)
+      ModelInstallState(
+        model: model,
+        installed: installed && model.language != missingLanguage,
+      ),
+  ];
+
+  /// Drives the dashboard from cubits the test owns, so pipeline states can
+  /// be shown without starting anything.
+  Future<void> pumpDashboard(WidgetTester tester, DashboardCubits cubits, Size size) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -60,7 +113,7 @@ void main() {
         locale: const Locale(defaultInterfaceLanguage),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: DashboardView(viewModel: viewModel),
+        home: DashboardView(cubits: cubits),
       ),
     );
     await tester.pump();
@@ -177,12 +230,13 @@ void main() {
   });
 
   testWidgets('shows how far the startup got and what it is loading', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..status = PipelineStatus.starting
-      ..startupProgress = 0.35
-      ..startupStage = 'Загрузка Transformers';
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    final cubits = stage(
+      buildCubits(),
+      status: PipelineStatus.starting,
+      startupProgress: 0.35,
+      startupStage: 'Загрузка Transformers',
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     expect(find.text('Запуск 35%'), findsOneWidget);
     expect(find.text('Загрузка Transformers'), findsOneWidget);
@@ -193,64 +247,63 @@ void main() {
   });
 
   testWidgets('drops the progress indicator once the pipeline listens', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..status = PipelineStatus.listening;
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    final cubits = stage(buildCubits(), status: PipelineStatus.listening);
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     expect(find.text('Остановить'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('names the language auto-detection settled on', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..detectedLanguage = 'ja';
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    final cubits = stage(buildCubits(), detectedLanguage: 'ja');
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     expect(find.text('Определён: Японский'), findsOneWidget);
     expect(find.text('Определять язык'), findsNothing, reason: 'the answer takes its place');
   });
 
   testWidgets('goes back to the plain toggle label once stopped', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..status = PipelineStatus.listening
-      ..detectedLanguage = 'ja';
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    final cubits = stage(
+      buildCubits(),
+      status: PipelineStatus.listening,
+      detectedLanguage: 'ja',
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
     expect(find.text('Определён: Японский'), findsOneWidget);
 
-    await viewModel.togglePipeline();
+    await cubits.pipeline.toggle(initializing: false);
     await tester.pumpAndSettle();
 
-    expect(viewModel.detectedLanguage, isNull);
+    expect(cubits.pipeline.state.detectedLanguage, isNull);
     expect(find.text('Определять язык'), findsOneWidget);
     expect(find.text('Определён: Японский'), findsNothing);
   });
 
   testWidgets('stays quiet about the language while detection is off', (tester) async {
-    final viewModel = buildViewModel()..initializing = false;
-    viewModel
-      ..settings = viewModel.settings.copyWith(detectSourceLanguage: false)
-      ..detectedLanguage = 'ja';
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    final cubits = stage(
+      buildCubits(),
+      settings: const AppSettings(detectSourceLanguage: false),
+      detectedLanguage: 'ja',
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     // The list already states the language; repeating it would be noise.
     expect(find.text('Определён: Японский'), findsNothing);
   });
 
   testWidgets('shows a phrase as a bubble with its time beside the tail', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..transcript = [
-        const TranscriptEntry(
+    final cubits = stage(
+      buildCubits(),
+      transcript: const [
+        TranscriptEntry(
           original: 'The gate is sealed.',
           english: 'The gate is sealed.',
           translated: 'Ворота закрыты.',
           latency: Duration(milliseconds: 1325),
         ),
-      ];
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+      ],
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     expect(find.text('The gate is sealed.'), findsOneWidget);
     expect(find.text('Ворота закрыты.'), findsOneWidget);
@@ -259,22 +312,23 @@ void main() {
   });
 
   testWidgets('clears the transcript on request', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..transcript = [
-        const TranscriptEntry(
+    final cubits = stage(
+      buildCubits(),
+      transcript: const [
+        TranscriptEntry(
           original: 'The gate is sealed.',
           english: 'The gate is sealed.',
           translated: 'Ворота закрыты.',
           latency: Duration(milliseconds: 1325),
         ),
-      ];
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+      ],
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
     await tester.pumpAndSettle();
 
-    expect(viewModel.transcript, isEmpty);
+    expect(cubits.pipeline.state.transcript, isEmpty);
     expect(find.text('Ворота закрыты.'), findsNothing);
     expect(
       find.text('Здесь появятся распознанные и переведённые реплики'),
@@ -284,8 +338,8 @@ void main() {
   });
 
   testWidgets('offers nothing to clear while the transcript is empty', (tester) async {
-    final viewModel = buildViewModel()..initializing = false;
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    final cubits = stage(buildCubits());
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     final button = tester.widget<TextButton>(find.widgetWithText(TextButton, 'Очистить'));
 
@@ -293,52 +347,49 @@ void main() {
   });
 
   testWidgets('keeps the session running when the transcript is cleared', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..status = PipelineStatus.listening
-      ..transcript = [
-        const TranscriptEntry(
+    final cubits = stage(
+      buildCubits(),
+      status: PipelineStatus.listening,
+      transcript: const [
+        TranscriptEntry(
           original: '',
           english: 'The gate is sealed.',
           translated: 'Ворота закрыты.',
           latency: Duration(milliseconds: 900),
         ),
-      ];
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+      ],
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
     await tester.pumpAndSettle();
 
-    expect(viewModel.transcript, isEmpty);
-    expect(viewModel.status, PipelineStatus.listening);
+    expect(cubits.pipeline.state.transcript, isEmpty);
+    expect(cubits.pipeline.state.status, PipelineStatus.listening);
     expect(find.text('Остановить'), findsOneWidget);
   });
 
   testWidgets('falls back to the recognized English when there is no original', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..transcript = [
-        const TranscriptEntry(
+    final cubits = stage(
+      buildCubits(),
+      transcript: const [
+        TranscriptEntry(
           original: '',
           english: 'Take cover.',
           translated: 'В укрытие.',
           latency: Duration(milliseconds: 900),
         ),
-      ];
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+      ],
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     expect(find.text('Take cover.'), findsOneWidget);
     expect(find.text('900 мс'), findsOneWidget);
   });
 
   testWidgets('picks the dubbing language beside the start button', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..models = [
-        for (final model in modelCatalog)
-          ModelInstallState(model: model, installed: model.language != 'de'),
-      ];
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    final cubits = stage(buildCubits(), models: catalogue(missingLanguage: 'de'));
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     final picker = find.byKey(const ValueKey('targetLanguage'));
     expect(picker, findsOneWidget);
@@ -349,22 +400,17 @@ void main() {
     await tester.pumpAndSettle();
 
     // The choice is the models choice: the French pair is now the one used.
-    expect(viewModel.settings.targetLanguage, 'fr');
+    expect(cubits.settings.settings.targetLanguage, 'fr');
     expect((await SettingsService().load()).targetLanguage, 'fr');
-    expect(viewModel.requiredModelsInstalled, isTrue);
+    expect(cubits.selection.requiredModelsInstalled, isTrue);
   });
 
   testWidgets('marks a language whose models are missing', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..models = [
-        for (final model in modelCatalog)
-          ModelInstallState(model: model, installed: model.language != 'de'),
-      ];
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    final cubits = stage(buildCubits(), models: catalogue(missingLanguage: 'de'));
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
-    expect(viewModel.isLanguageReady('ru'), isTrue);
-    expect(viewModel.isLanguageReady('de'), isFalse);
+    expect(cubits.selection.isLanguageReady('ru'), isTrue);
+    expect(cubits.selection.isLanguageReady('de'), isFalse);
 
     await tester.tap(find.byKey(const ValueKey('targetLanguage')));
     await tester.pumpAndSettle();
@@ -374,13 +420,12 @@ void main() {
   testWidgets('splits the models screen into recognition, translation and voices', (
     tester,
   ) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..section = DashboardSection.models
-      ..models = [
-        for (final model in modelCatalog) ModelInstallState(model: model),
-      ];
-    await pumpDashboard(tester, viewModel, const Size(1280, 900));
+    final cubits = stage(
+      buildCubits(),
+      section: DashboardSection.models,
+      models: catalogue(installed: false),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 900));
 
     expect(find.text('РАСПОЗНАВАНИЕ РЕЧИ'), findsOneWidget);
     expect(find.text('МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА'), findsOneWidget);
@@ -389,51 +434,55 @@ void main() {
     // The voices sit below the fold of a lazy list.
     await tester.scrollUntilVisible(find.text('МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'), 400);
     expect(find.text('МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'), findsOneWidget);
-    expect(viewModel.recognitionModels.length, greaterThan(1), reason: 'the model is a choice');
-    expect(viewModel.translationModels.length, greaterThan(1));
-    expect(viewModel.speechModels.length, greaterThan(1));
+    final selection = cubits.selection;
+    expect(selection.recognitionModels.length, greaterThan(1), reason: 'the model is a choice');
+    expect(selection.translationModels.length, greaterThan(1));
+    expect(selection.speechModels.length, greaterThan(1));
   });
 
   testWidgets('picks the language by tapping its card in either section', (tester) async {
-    final viewModel = buildViewModel()
-      ..initializing = false
-      ..section = DashboardSection.models
-      ..models = [for (final model in modelCatalog) ModelInstallState(model: model)];
-    await pumpDashboard(tester, viewModel, const Size(1280, 900));
+    final cubits = stage(
+      buildCubits(),
+      section: DashboardSection.models,
+      models: catalogue(installed: false),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 900));
 
     await tester.scrollUntilVisible(find.text('Английский → немецкий'), 400);
     await tester.ensureVisible(find.text('Английский → немецкий'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Английский → немецкий'));
     await tester.pumpAndSettle();
-    expect(viewModel.settings.targetLanguage, 'de');
+    expect(cubits.settings.settings.targetLanguage, 'de');
 
     await tester.scrollUntilVisible(find.text('Русский голос — Silero v5.3'), 400);
     await tester.ensureVisible(find.text('Русский голос — Silero v5.3'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Русский голос — Silero v5.3'));
     await tester.pumpAndSettle();
-    expect(viewModel.settings.targetLanguage, 'ru');
+    expect(cubits.settings.settings.targetLanguage, 'ru');
   });
 
   testWidgets('needs only the pair of the chosen language', (tester) async {
-    final viewModel = buildViewModel()..initializing = false;
-    viewModel.models = [
-      for (final model in modelCatalog)
-        ModelInstallState(
-          model: model,
-          installed: model.language == null || model.language == 'ru',
-        ),
-    ];
-    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+    final cubits = stage(
+      buildCubits(),
+      models: [
+        for (final model in modelCatalog)
+          ModelInstallState(
+            model: model,
+            installed: model.language == null || model.language == 'ru',
+          ),
+      ],
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
 
-    expect(viewModel.settings.targetLanguage, 'ru');
-    expect(viewModel.requiredModelsInstalled, isTrue);
+    expect(cubits.settings.settings.targetLanguage, 'ru');
+    expect(cubits.selection.requiredModelsInstalled, isTrue);
 
-    await viewModel.selectTargetLanguage('de');
+    await cubits.settings.selectTargetLanguage('de');
 
     expect(
-      viewModel.requiredModelsInstalled,
+      cubits.selection.requiredModelsInstalled,
       isFalse,
       reason: 'the German pair has not been downloaded',
     );
@@ -572,27 +621,19 @@ void main() {
     Future<void> stageInstalledRuntime(WidgetTester tester) async {
       SharedPreferences.setMockInitialValues({});
       runtimes = _RecordingRuntimeRepository();
-      final viewModel = DashboardViewModel(
-        AppRepository(NativeEngineService(), SettingsService()),
-        ModelRepository(ModelStorageService()),
-        runtimes,
-        UpdateRepository(UpdateService(client: _offline), NotificationService(plugin: _silent)),
-      );
-      addTearDown(viewModel.dispose);
-      viewModel
-        ..initializing = false
-        ..section = DashboardSection.settings
-        ..availability = const ComputeAvailability(
-          installedRuntimes: {whisperCudaRuntimeId},
-        )
-        ..runtimes = [
+      final cubits = stage(
+        buildCubits(runtimes: runtimes),
+        section: DashboardSection.settings,
+        availability: const ComputeAvailability(installedRuntimes: {whisperCudaRuntimeId}),
+        runtimes: [
           RuntimeInstallState(
             package: runtimePackageById(whisperCudaRuntimeId)!,
             installed: true,
           ),
-        ];
+        ],
+      );
 
-      await pumpDashboard(tester, viewModel, const Size(1280, 1000));
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
       await tester.scrollUntilVisible(
         find.textContaining('Удалить · '),
         300,
@@ -654,25 +695,23 @@ void main() {
   });
 
   group('the version button', () {
-    DashboardViewModel withUpdates(UpdateState updates) => buildViewModel()
-      ..initializing = false
-      ..updates = updates;
+    DashboardCubits withUpdates(UpdateState updates) => stage(buildCubits(), updates: updates);
 
     testWidgets('shows the version this build carries', (tester) async {
-      final viewModel = withUpdates(
+      final cubits = withUpdates(
         const UpdateState(status: UpdateStatus.current, currentVersion: '0.2.1'),
       );
-      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
 
       expect(find.text('Версия 0.2.1'), findsOneWidget);
       expect(find.byIcon(Icons.arrow_outward_rounded), findsNothing);
     });
 
     testWidgets('lines the version icon up with the status caption', (tester) async {
-      final viewModel = withUpdates(
+      final cubits = withUpdates(
         const UpdateState(status: UpdateStatus.current, currentVersion: '0.2.1'),
       );
-      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
 
       final icon = tester.getTopLeft(find.byIcon(Icons.verified_outlined));
       final status = tester.getTopLeft(find.text('WINDOWS · LOCAL PROCESSING'));
@@ -686,10 +725,10 @@ void main() {
     });
 
     testWidgets('spins while the check is running', (tester) async {
-      final viewModel = withUpdates(
+      final cubits = withUpdates(
         const UpdateState(status: UpdateStatus.checking, currentVersion: '0.2.1'),
       );
-      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       final button = tester.widget<TextButton>(
@@ -699,7 +738,7 @@ void main() {
     });
 
     testWidgets('offers the release page once a newer version exists', (tester) async {
-      final viewModel = withUpdates(
+      final cubits = withUpdates(
         UpdateState(
           status: UpdateStatus.available,
           currentVersion: '0.2.1',
@@ -709,57 +748,58 @@ void main() {
           ),
         ),
       );
-      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
 
       expect(find.byIcon(Icons.arrow_outward_rounded), findsOneWidget);
       expect(find.byTooltip('Открыть страницу версии 0.3.0'), findsOneWidget);
     });
 
     testWidgets('says the check failed rather than claiming to be current', (tester) async {
-      final viewModel = withUpdates(
+      final cubits = withUpdates(
         const UpdateState(status: UpdateStatus.failed, currentVersion: '0.2.1'),
       );
-      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
 
       expect(find.byTooltip('Не удалось проверить обновления'), findsOneWidget);
       expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
     });
 
     testWidgets('checks again when the version is tapped', (tester) async {
-      final viewModel = withUpdates(
+      final cubits = withUpdates(
         const UpdateState(status: UpdateStatus.current, currentVersion: '0.2.1'),
       );
-      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
 
       await tester.tap(find.text('Версия 0.2.1'));
       await tester.pump();
 
       // The offline client the harness uses answers 503, so the check ends
       // in failure — what matters is that it ran.
-      expect(viewModel.updates.status, isNot(UpdateStatus.current));
+      expect(cubits.shell.state.updates.status, isNot(UpdateStatus.current));
     });
   });
 
   group('stopping a download from the interface', () {
-    Future<DashboardViewModel> pumpDownloading(
+    Future<DashboardCubits> pumpDownloading(
       WidgetTester tester, {
       required bool paused,
     }) async {
       final whisper = modelCatalog.firstWhere((model) => model.kind == ModelKind.recognition);
-      final viewModel = buildViewModel()
-        ..initializing = false
-        ..section = DashboardSection.models
-        ..models = [
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.models,
+        models: [
           for (final model in modelCatalog)
             ModelInstallState(
               model: model,
               progress: model.id == whisper.id ? 0.42 : null,
               paused: model.id == whisper.id && paused,
             ),
-        ];
-      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+        ],
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
       await tester.pumpAndSettle();
-      return viewModel;
+      return cubits;
     }
 
     testWidgets('offers pause and cancel while a download runs', (tester) async {
@@ -779,15 +819,15 @@ void main() {
     });
 
     testWidgets('stopping what is not running changes nothing', (tester) async {
-      final viewModel = await pumpDownloading(tester, paused: false);
+      final cubits = await pumpDownloading(tester, paused: false);
 
       // The staged state has no attempt in flight, so there is no control to
       // signal. Asking anyway must be harmless rather than throwing.
-      viewModel
+      cubits.downloads
         ..pauseDownload(whisperModelId)
         ..cancelDownload(whisperModelId);
 
-      expect(viewModel.isStopping(whisperModelId), isFalse);
+      expect(cubits.downloads.state.isStopping(whisperModelId), isFalse);
     });
 
     testWidgets('a paused download is resumed by its own button', (tester) async {
@@ -809,36 +849,35 @@ void main() {
   });
 
   group('choosing a recognition model', () {
-    Future<DashboardViewModel> pumpModels(
+    Future<DashboardCubits> pumpModels(
       WidgetTester tester, {
       AppSettings settings = const AppSettings(),
     }) async {
-      final viewModel = buildViewModel()
-        ..initializing = false
-        ..section = DashboardSection.models
-        ..settings = settings
-        ..models = [
-          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
-        ];
-      await pumpDashboard(tester, viewModel, const Size(1280, 1000));
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.models,
+        settings: settings,
+        models: catalogue(),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
       await tester.pumpAndSettle();
-      return viewModel;
+      return cubits;
     }
 
     testWidgets('lists every whisper build and marks the default', (tester) async {
-      final viewModel = await pumpModels(tester);
+      final cubits = await pumpModels(tester);
 
       expect(find.text('Whisper base'), findsOneWidget);
       expect(find.text('Whisper small'), findsOneWidget);
       expect(
-        viewModel.selectedRecognition?.model.id,
+        cubits.selection.recognition?.model.id,
         whisperModelId,
         reason: 'an unset choice falls back to the smallest',
       );
     });
 
     testWidgets('remembers the model tapped in the list', (tester) async {
-      final viewModel = await pumpModels(tester);
+      final cubits = await pumpModels(tester);
 
       await tester.scrollUntilVisible(find.text('Whisper small'), 300);
       await tester.ensureVisible(find.text('Whisper small'));
@@ -846,35 +885,35 @@ void main() {
       await tester.tap(find.text('Whisper small'));
       await tester.pumpAndSettle();
 
-      expect(viewModel.selectedRecognition?.model.id, 'whisper-small');
+      expect(cubits.selection.recognition?.model.id, 'whisper-small');
       expect((await SettingsService().load()).whisperModel, 'whisper-small');
     });
 
     testWidgets('falls back when the stored choice names a model that is gone', (tester) async {
-      final viewModel = await pumpModels(
+      final cubits = await pumpModels(
         tester,
         settings: const AppSettings(whisperModel: 'whisper-from-an-older-build'),
       );
 
-      expect(viewModel.selectedRecognition?.model.id, whisperModelId);
+      expect(cubits.selection.recognition?.model.id, whisperModelId);
     });
 
     testWidgets('asks turbo to transcribe rather than translate', (tester) async {
-      final viewModel = await pumpModels(
+      final cubits = await pumpModels(
         tester,
         settings: const AppSettings(whisperModel: 'whisper-large-v3-turbo-q5'),
       );
 
-      expect(viewModel.recognitionTranslatesSpeech, isFalse);
+      expect(cubits.selection.recognitionTranslatesSpeech, isFalse);
       // Auto-detection is on by default, so nothing is claimed about the
       // original yet and no warning is due.
-      expect(viewModel.recognitionNeedsEnglish, isFalse);
+      expect(cubits.selection.recognitionNeedsEnglish, isFalse);
     });
 
     testWidgets('warns when a transcribe-only model meets a named foreign original', (
       tester,
     ) async {
-      final viewModel = await pumpModels(
+      final cubits = await pumpModels(
         tester,
         settings: const AppSettings(
           whisperModel: 'whisper-large-v3-turbo-q5',
@@ -883,12 +922,12 @@ void main() {
         ),
       );
 
-      expect(viewModel.recognitionNeedsEnglish, isTrue);
+      expect(cubits.selection.recognitionNeedsEnglish, isTrue);
       expect(find.textContaining('не переводит речь'), findsWidgets);
     });
 
     testWidgets('says nothing when that model is pointed at English', (tester) async {
-      final viewModel = await pumpModels(
+      final cubits = await pumpModels(
         tester,
         settings: const AppSettings(
           whisperModel: 'whisper-large-v3-turbo-q5',
@@ -897,7 +936,7 @@ void main() {
         ),
       );
 
-      expect(viewModel.recognitionNeedsEnglish, isFalse);
+      expect(cubits.selection.recognitionNeedsEnglish, isFalse);
     });
   });
 
@@ -905,25 +944,24 @@ void main() {
     /// A dashboard with every model in place, sitting on the settings screen.
     /// The bootstrap's own load never finishes inside a widget test, so the
     /// state the card reads is put there directly.
-    Future<DashboardViewModel> pumpSettings(
+    Future<DashboardCubits> pumpSettings(
       WidgetTester tester, {
       AppSettings settings = const AppSettings(),
     }) async {
-      final viewModel = buildViewModel()
-        ..initializing = false
-        ..section = DashboardSection.settings
-        ..settings = settings
-        ..models = [
-          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
-        ];
-      await pumpDashboard(tester, viewModel, const Size(1280, 1000));
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.settings,
+        settings: settings,
+        models: catalogue(),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
       await tester.scrollUntilVisible(
         find.text('Голос озвучки'),
         300,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      return viewModel;
+      return cubits;
     }
 
     testWidgets('offers automatic and a hand-picked voice', (tester) async {
@@ -968,23 +1006,23 @@ void main() {
     });
 
     testWidgets('says why the voice cannot follow a subtitle stream', (tester) async {
-      final viewModel = await pumpSettings(
+      final cubits = await pumpSettings(
         tester,
         settings: const AppSettings(captureMode: CaptureMode.ocr),
       );
 
-      expect(viewModel.canFollowSpeaker, isFalse);
+      expect(cubits.selection.canFollowSpeaker, isFalse);
       expect(find.textContaining('субтитров'), findsOneWidget);
     });
 
     testWidgets('says why a one-gender language cannot follow either', (tester) async {
       // Every Spanish voice is a man's.
-      final viewModel = await pumpSettings(
+      final cubits = await pumpSettings(
         tester,
         settings: const AppSettings(targetLanguage: 'es'),
       );
 
-      expect(viewModel.canFollowSpeaker, isFalse);
+      expect(cubits.selection.canFollowSpeaker, isFalse);
       expect(find.textContaining('одного пола'), findsOneWidget);
     });
   });

@@ -3,7 +3,9 @@
 
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/services/model_catalog.dart';
 import '../../domain/app_release.dart';
@@ -23,75 +25,160 @@ import '../failure_messages.dart';
 import '../language_names.dart';
 import '../model_names.dart';
 import '../theme.dart';
-import 'dashboard_view_model.dart';
+import 'cubits/dashboard_cubits.dart';
+import 'cubits/downloads_cubit.dart';
+import 'cubits/pipeline_cubit.dart';
+import 'cubits/settings_cubit.dart';
+import 'cubits/shell_cubit.dart';
 
-class DashboardView extends StatelessWidget {
-  const DashboardView({super.key, required this.viewModel});
+/// Rebuilds only when the shell changes, which is the section, the banner
+/// and the version. Every other part of the screen listens for itself.
+class _ShellBuilder extends StatelessWidget {
+  const _ShellBuilder({required this.cubits, required this.builder});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
+  final Widget Function(BuildContext context, ShellState shell) builder;
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: viewModel,
-    builder: (context, _) => Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 900;
-          final content = SafeArea(
-            child: Column(
-              children: [
-                _Header(viewModel: viewModel),
-                if (viewModel.error case final error?)
-                  _ErrorBanner(
+  Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
+    bloc: cubits.shell,
+    builder: builder,
+  );
+}
+
+/// Rebuilds with the running session: its state, what it heard, and the
+/// process list.
+class _PipelineBuilder extends StatelessWidget {
+  const _PipelineBuilder({required this.cubits, required this.builder, this.watch});
+
+  final DashboardCubits cubits;
+  final Widget Function(BuildContext context, LivePipelineState pipeline) builder;
+
+  /// The part of the session this widget draws, as a value that can be
+  /// compared. Everything outside the transcript reads only a field or two,
+  /// and a recognized phrase must not redraw the settings screen.
+  final Object? Function(LivePipelineState pipeline)? watch;
+
+  @override
+  Widget build(BuildContext context) => BlocBuilder<PipelineCubit, LivePipelineState>(
+    bloc: cubits.pipeline,
+    buildWhen: watch == null ? null : (previous, current) => watch!(previous) != watch!(current),
+    builder: builder,
+  );
+}
+
+/// Rebuilds when the configuration changes.
+class _SettingsBuilder extends StatelessWidget {
+  const _SettingsBuilder({required this.cubits, required this.builder});
+
+  final DashboardCubits cubits;
+  final Widget Function(BuildContext context, SettingsState settings) builder;
+
+  @override
+  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+    bloc: cubits.settings,
+    builder: builder,
+  );
+}
+
+/// Rebuilds as packages arrive. Kept off the live screen on purpose: a
+/// download ticking must not redraw the transcript.
+class _DownloadsBuilder extends StatelessWidget {
+  const _DownloadsBuilder({
+    required this.cubits,
+    required this.builder,
+    this.onlyWhatIsInstalled = false,
+  });
+
+  final DashboardCubits cubits;
+  final Widget Function(BuildContext context, DownloadsState downloads) builder;
+
+  /// Set by the parts that care whether a package is there, not how far its
+  /// download has got: it holds them still through the hundred ticks of one.
+  final bool onlyWhatIsInstalled;
+
+  @override
+  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
+    bloc: cubits.downloads,
+    buildWhen: onlyWhatIsInstalled
+        ? (previous, current) => !setEquals(previous.installedModelIds, current.installedModelIds)
+        : null,
+    builder: builder,
+  );
+}
+
+class DashboardView extends StatelessWidget {
+  const DashboardView({super.key, required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 900;
+        final content = SafeArea(
+          child: Column(
+            children: [
+              _Header(cubits: cubits),
+              _ShellBuilder(
+                cubits: cubits,
+                builder: (context, shell) => switch (shell.error) {
+                  final error? => _ErrorBanner(
                     message: describeFailure(AppLocalizations.of(context), error),
                   ),
-                Expanded(
-                  child: AnimatedSwitcher(
+                  _ => const SizedBox.shrink(),
+                },
+              ),
+              Expanded(
+                child: _ShellBuilder(
+                  cubits: cubits,
+                  builder: (context, shell) => AnimatedSwitcher(
                     duration: const Duration(milliseconds: 180),
-                    child: switch (viewModel.section) {
+                    child: switch (shell.section) {
                       DashboardSection.live => _LivePanel(
                         key: const ValueKey('live'),
-                        viewModel: viewModel,
+                        cubits: cubits,
                       ),
                       DashboardSection.models => _ModelsPanel(
                         key: const ValueKey('models'),
-                        viewModel: viewModel,
+                        cubits: cubits,
                       ),
                       DashboardSection.settings => _SettingsPanel(
                         key: const ValueKey('settings'),
-                        viewModel: viewModel,
+                        cubits: cubits,
                       ),
                     },
                   ),
                 ),
-              ],
-            ),
-          );
-          if (compact) {
-            return Column(
-              children: [
-                Expanded(child: content),
-                _BottomNavigation(viewModel: viewModel),
-              ],
-            );
-          }
-          return Row(
+              ),
+            ],
+          ),
+        );
+        if (compact) {
+          return Column(
             children: [
-              _Navigation(viewModel: viewModel),
-              const VerticalDivider(width: 1),
               Expanded(child: content),
+              _BottomNavigation(cubits: cubits),
             ],
           );
-        },
-      ),
+        }
+        return Row(
+          children: [
+            _Navigation(cubits: cubits),
+            const VerticalDivider(width: 1),
+            Expanded(child: content),
+          ],
+        );
+      },
     ),
   );
 }
 
 class _Navigation extends StatelessWidget {
-  const _Navigation({required this.viewModel});
+  const _Navigation({required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -138,26 +225,34 @@ class _Navigation extends StatelessWidget {
             ],
           ),
         ),
-        _NavigationItem(
-          icon: (color) => LoreDubIcons.audioCapture(color: color, size: 21),
-          label: AppLocalizations.of(context).navLive,
-          selected: viewModel.section == DashboardSection.live,
-          onTap: () => viewModel.selectSection(DashboardSection.live),
-        ),
-        _NavigationItem(
-          icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
-          label: AppLocalizations.of(context).navModels,
-          selected: viewModel.section == DashboardSection.models,
-          onTap: () => viewModel.selectSection(DashboardSection.models),
-        ),
-        _NavigationItem(
-          icon: (color) => Icon(Icons.tune_rounded, size: 21, color: color),
-          label: AppLocalizations.of(context).navSettings,
-          selected: viewModel.section == DashboardSection.settings,
-          onTap: () => viewModel.selectSection(DashboardSection.settings),
+        _ShellBuilder(
+          cubits: cubits,
+          builder: (context, shell) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _NavigationItem(
+                icon: (color) => LoreDubIcons.audioCapture(color: color, size: 21),
+                label: AppLocalizations.of(context).navLive,
+                selected: shell.section == DashboardSection.live,
+                onTap: () => cubits.shell.selectSection(DashboardSection.live),
+              ),
+              _NavigationItem(
+                icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
+                label: AppLocalizations.of(context).navModels,
+                selected: shell.section == DashboardSection.models,
+                onTap: () => cubits.shell.selectSection(DashboardSection.models),
+              ),
+              _NavigationItem(
+                icon: (color) => Icon(Icons.tune_rounded, size: 21, color: color),
+                label: AppLocalizations.of(context).navSettings,
+                selected: shell.section == DashboardSection.settings,
+                onTap: () => cubits.shell.selectSection(DashboardSection.settings),
+              ),
+            ],
+          ),
         ),
         const Spacer(),
-        _VersionButton(viewModel: viewModel),
+        _VersionButton(cubits: cubits),
         const Padding(
           // Starts where the version's icon does, so the foot of the panel
           // reads down one left edge.
@@ -194,11 +289,11 @@ const _footerIconSize = 14.0;
 /// nothing else, so the row does not resize. A published newer version adds
 /// an arrow that opens its page.
 class _VersionButton extends StatelessWidget {
-  const _VersionButton({required this.viewModel});
+  const _VersionButton({required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
-  String _tooltip(AppLocalizations l10n) => switch (viewModel.updates.status) {
+  String _tooltip(AppLocalizations l10n, UpdateState updates) => switch (updates.status) {
     UpdateStatus.checking => l10n.updateChecking,
     UpdateStatus.current => l10n.updateUpToDate,
     UpdateStatus.failed => l10n.updateFailed,
@@ -206,9 +301,13 @@ class _VersionButton extends StatelessWidget {
   };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _ShellBuilder(
+    cubits: cubits,
+    builder: (context, shell) => _build(context, shell.updates),
+  );
+
+  Widget _build(BuildContext context, UpdateState updates) {
     final l10n = AppLocalizations.of(context);
-    final updates = viewModel.updates;
     final version = updates.currentVersion;
     return Padding(
       padding: const EdgeInsets.fromLTRB(_footerOuterInset, 0, 8, 8),
@@ -216,9 +315,9 @@ class _VersionButton extends StatelessWidget {
         children: [
           Expanded(
             child: Tooltip(
-              message: _tooltip(l10n),
+              message: _tooltip(l10n, updates),
               child: TextButton(
-                onPressed: updates.checking ? null : () => viewModel.checkForUpdates(),
+                onPressed: updates.checking ? null : () => cubits.shell.checkForUpdates(),
                 style: TextButton.styleFrom(
                   foregroundColor: LoreDubPalette.mutedInk,
                   alignment: Alignment.centerLeft,
@@ -263,7 +362,7 @@ class _VersionButton extends StatelessWidget {
             Tooltip(
               message: l10n.updateOpenRelease(release.version),
               child: IconButton(
-                onPressed: viewModel.openReleasePage,
+                onPressed: cubits.shell.openReleasePage,
                 icon: const Icon(Icons.arrow_outward_rounded, size: 18),
                 color: LoreDubPalette.orange,
                 visualDensity: VisualDensity.compact,
@@ -329,19 +428,24 @@ class _NavigationItem extends StatelessWidget {
 }
 
 class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation({required this.viewModel});
+  const _BottomNavigation({required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _ShellBuilder(
+    cubits: cubits,
+    builder: (context, shell) => _build(context, shell.section),
+  );
+
+  Widget _build(BuildContext context, DashboardSection section) {
     final scheme = Theme.of(context).colorScheme;
     return NavigationBar(
       height: 68,
       backgroundColor: LoreDubPalette.panel,
       indicatorColor: LoreDubPalette.orange,
-      selectedIndex: viewModel.section.index,
-      onDestinationSelected: (index) => viewModel.selectSection(DashboardSection.values[index]),
+      selectedIndex: section.index,
+      onDestinationSelected: (index) => cubits.shell.selectSection(DashboardSection.values[index]),
       destinations: [
         NavigationDestination(
           // The bar tints its font icons itself, which leaves the drawing
@@ -364,9 +468,9 @@ class _BottomNavigation extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.viewModel});
+  const _Header({required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -374,36 +478,44 @@ class _Header extends StatelessWidget {
     child: Row(
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                switch (viewModel.section) {
-                  DashboardSection.live => '01  /  LIVE VOICE',
-                  DashboardSection.models => '02  /  MODEL BANK',
-                  DashboardSection.settings => '03  /  SIGNAL SETUP',
-                },
-                style: const TextStyle(
-                  fontFamily: LoreDubFonts.mono,
-                  color: LoreDubPalette.mutedInk,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.4,
+          child: _ShellBuilder(
+            cubits: cubits,
+            builder: (context, shell) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  switch (shell.section) {
+                    DashboardSection.live => '01  /  LIVE VOICE',
+                    DashboardSection.models => '02  /  MODEL BANK',
+                    DashboardSection.settings => '03  /  SIGNAL SETUP',
+                  },
+                  style: const TextStyle(
+                    fontFamily: LoreDubFonts.mono,
+                    color: LoreDubPalette.mutedInk,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.4,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                switch (viewModel.section) {
-                  DashboardSection.live => AppLocalizations.of(context).titleLive,
-                  DashboardSection.models => AppLocalizations.of(context).titleModels,
-                  DashboardSection.settings => AppLocalizations.of(context).titleSettings,
-                },
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-            ],
+                const SizedBox(height: 5),
+                Text(
+                  switch (shell.section) {
+                    DashboardSection.live => AppLocalizations.of(context).titleLive,
+                    DashboardSection.models => AppLocalizations.of(context).titleModels,
+                    DashboardSection.settings => AppLocalizations.of(context).titleSettings,
+                  },
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ],
+            ),
           ),
         ),
-        _StatusChip(status: viewModel.status, stage: viewModel.startupStage),
+        _PipelineBuilder(
+          cubits: cubits,
+          watch: (pipeline) => (pipeline.status, pipeline.startupStage),
+          builder: (context, pipeline) =>
+              _StatusChip(status: pipeline.status, stage: pipeline.startupStage),
+        ),
       ],
     ),
   );
@@ -452,9 +564,9 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _LivePanel extends StatelessWidget {
-  const _LivePanel({super.key, required this.viewModel});
+  const _LivePanel({super.key, required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -471,7 +583,7 @@ class _LivePanel extends StatelessWidget {
                 const SizedBox(height: 14),
                 LayoutBuilder(
                   builder: (context, constraints) => _SourceControls(
-                    viewModel: viewModel,
+                    cubits: cubits,
                     compact: constraints.maxWidth < _wideSourceRowWidth,
                   ),
                 ),
@@ -479,79 +591,98 @@ class _LivePanel extends StatelessWidget {
             ),
           ),
         ),
-        if (!viewModel.requiredModelsInstalled)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Card(
-              child: ListTile(
-                leading: const Icon(
-                  Icons.download_rounded,
-                  color: LoreDubPalette.warning,
-                ),
-                title: Text(AppLocalizations.of(context).modelsNeededTitle),
-                subtitle: Text(AppLocalizations.of(context).modelsNeededNote),
-                trailing: TextButton(
-                  onPressed: () => viewModel.selectSection(DashboardSection.models),
-                  child: Text(AppLocalizations.of(context).modelsNeededAction),
-                ),
-              ),
-            ),
+        // What is missing is decided by the packages and the chosen language
+        // together, so this notice watches both.
+        _DownloadsBuilder(
+          onlyWhatIsInstalled: true,
+          cubits: cubits,
+          builder: (context, _) => _SettingsBuilder(
+            cubits: cubits,
+            builder: (context, _) => cubits.selection.requiredModelsInstalled
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Card(
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.download_rounded,
+                          color: LoreDubPalette.warning,
+                        ),
+                        title: Text(AppLocalizations.of(context).modelsNeededTitle),
+                        subtitle: Text(AppLocalizations.of(context).modelsNeededNote),
+                        trailing: TextButton(
+                          onPressed: () => cubits.shell.selectSection(DashboardSection.models),
+                          child: Text(AppLocalizations.of(context).modelsNeededAction),
+                        ),
+                      ),
+                    ),
+                  ),
           ),
+        ),
         const SizedBox(height: 16),
         Expanded(
-          child: Card(
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                Padding(
-                  // Tighter than a bare label row would need: the button has
-                  // to fit without making the header taller than it was.
-                  padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-                  child: Row(
-                    children: [
-                      const _ModuleLabel(number: '02', label: 'LIVE TRANSCRIPT'),
-                      const Spacer(),
-                      Tooltip(
-                        message: AppLocalizations.of(context).transcriptClearTooltip,
-                        child: TextButton.icon(
-                          // Enabled only when there is something to clear, so
-                          // the button never claims work it will not do.
-                          onPressed: viewModel.transcript.isEmpty
-                              ? null
-                              : viewModel.clearTranscript,
-                          icon: const Icon(Icons.backspace_outlined, size: 16),
-                          label: Text(AppLocalizations.of(context).transcriptClear),
-                          style: TextButton.styleFrom(
-                            foregroundColor: LoreDubPalette.mutedInk,
-                            minimumSize: const Size(0, 28),
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                            textStyle: const TextStyle(
-                              fontFamily: LoreDubFonts.mono,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
+          child: _PipelineBuilder(
+            cubits: cubits,
+            watch: (pipeline) => pipeline.transcript,
+            builder: (context, pipeline) => Card(
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  Padding(
+                    // Tighter than a bare label row would need: the button has
+                    // to fit without making the header taller than it was.
+                    padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+                    child: Row(
+                      children: [
+                        const _ModuleLabel(number: '02', label: 'LIVE TRANSCRIPT'),
+                        const Spacer(),
+                        Tooltip(
+                          message: AppLocalizations.of(context).transcriptClearTooltip,
+                          child: TextButton.icon(
+                            // Enabled only when there is something to clear, so
+                            // the button never claims work it will not do.
+                            onPressed: pipeline.transcript.isEmpty
+                                ? null
+                                : cubits.pipeline.clearTranscript,
+                            icon: const Icon(Icons.backspace_outlined, size: 16),
+                            label: Text(AppLocalizations.of(context).transcriptClear),
+                            style: TextButton.styleFrom(
+                              foregroundColor: LoreDubPalette.mutedInk,
+                              minimumSize: const Size(0, 28),
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              textStyle: const TextStyle(
+                                fontFamily: LoreDubFonts.mono,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: viewModel.transcript.isEmpty
-                      ? _EmptyTranscript(targetLanguage: viewModel.settings.targetLanguage)
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                          itemCount: viewModel.transcript.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 14),
-                          itemBuilder: (context, index) =>
-                              _TranscriptBubble(entry: viewModel.transcript[index]),
-                        ),
-                ),
-              ],
+                  const Divider(height: 1),
+                  Expanded(
+                    child: pipeline.transcript.isEmpty
+                        ? _SettingsBuilder(
+                            cubits: cubits,
+                            builder: (context, settings) => _EmptyTranscript(
+                              targetLanguage: settings.settings.targetLanguage,
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                            itemCount: pipeline.transcript.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 14),
+                            itemBuilder: (context, index) =>
+                                _TranscriptBubble(entry: pipeline.transcript[index]),
+                          ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -576,22 +707,32 @@ const _wideSourceRowWidth = 920 + _minimumProcessPickerWidth;
 const _minimumProcessPickerWidth = 320.0;
 
 class _SourceControls extends StatelessWidget {
-  const _SourceControls({required this.viewModel, required this.compact});
+  const _SourceControls({required this.cubits, required this.compact});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
   final bool compact;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _SettingsBuilder(
+    cubits: cubits,
+    builder: (context, state) => _PipelineBuilder(
+      cubits: cubits,
+      watch: (pipeline) => (pipeline.running, pipeline.processes, pipeline.selectedProcess),
+      builder: (context, pipeline) => _build(context, state.settings, pipeline),
+    ),
+  );
+
+  Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
     final l10n = AppLocalizations.of(context);
+    final running = pipeline.running;
     final requiresProcess =
-        viewModel.settings.captureMode == CaptureMode.ocr ||
-        viewModel.settings.audioCaptureSource == AudioCaptureSource.process;
+        settings.captureMode == CaptureMode.ocr ||
+        settings.audioCaptureSource == AudioCaptureSource.process;
     final selector = DropdownMenu<GameProcess>(
-      key: ValueKey(viewModel.selectedProcess?.pid),
-      initialSelection: viewModel.selectedProcess,
+      key: ValueKey(pipeline.selectedProcess?.pid),
+      initialSelection: pipeline.selectedProcess,
       expandedInsets: EdgeInsets.zero,
-      enabled: !viewModel.running && requiresProcess,
+      enabled: !running && requiresProcess,
       enableFilter: true,
       enableSearch: true,
       requestFocusOnTap: true,
@@ -605,7 +746,7 @@ class _SourceControls extends StatelessWidget {
       ),
       hintText: l10n.processHint,
       inputDecorationTheme: Theme.of(context).inputDecorationTheme.copyWith(hintMaxLines: 1),
-      dropdownMenuEntries: viewModel.processes
+      dropdownMenuEntries: pipeline.processes
           .map(
             (process) => DropdownMenuEntry(
               value: process,
@@ -613,13 +754,13 @@ class _SourceControls extends StatelessWidget {
             ),
           )
           .toList(),
-      onSelected: viewModel.running || !requiresProcess ? null : viewModel.selectProcess,
+      onSelected: running || !requiresProcess ? null : cubits.pipeline.selectProcess,
     );
     final helper = Text(
       requiresProcess ? l10n.captureProcessNote : l10n.captureSystemNote,
       style: Theme.of(context).textTheme.bodySmall,
     );
-    final sourceSwitch = viewModel.settings.captureMode == CaptureMode.audio
+    final sourceSwitch = settings.captureMode == CaptureMode.audio
         ? SegmentedButton<AudioCaptureSource>(
             segments: [
               ButtonSegment(
@@ -633,13 +774,11 @@ class _SourceControls extends StatelessWidget {
                 label: Text(l10n.sourceProcess),
               ),
             ],
-            selected: {viewModel.settings.audioCaptureSource},
-            onSelectionChanged: viewModel.running
+            selected: {settings.audioCaptureSource},
+            onSelectionChanged: running
                 ? null
-                : (selection) => viewModel.updateSettings(
-                    viewModel.settings.copyWith(
-                      audioCaptureSource: selection.first,
-                    ),
+                : (selection) => cubits.settings.update(
+                    settings.copyWith(audioCaptureSource: selection.first),
                   ),
           )
         : null;
@@ -651,13 +790,13 @@ class _SourceControls extends StatelessWidget {
         const SizedBox(width: 12),
         IconButton.outlined(
           tooltip: l10n.refreshProcesses,
-          onPressed: viewModel.running ? null : viewModel.refreshProcesses,
+          onPressed: running ? null : cubits.pipeline.refreshProcesses,
           icon: const Icon(Icons.refresh_rounded),
         ),
       ],
     );
-    final language = _LanguageControls(viewModel: viewModel);
-    final target = _TargetLanguagePicker(viewModel: viewModel);
+    final language = _LanguageControls(cubits: cubits);
+    final target = _TargetLanguagePicker(cubits: cubits);
     if (compact) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -711,15 +850,30 @@ class _SourceControls extends StatelessWidget {
 /// the models screen offers: it selects the translator and the voice together
 /// and is remembered between runs.
 class _TargetLanguagePicker extends StatelessWidget {
-  const _TargetLanguagePicker({required this.viewModel});
+  const _TargetLanguagePicker({required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _SettingsBuilder(
+    cubits: cubits,
+    // Which languages read as ready depends on what is downloaded.
+    builder: (context, settings) => _DownloadsBuilder(
+      onlyWhatIsInstalled: true,
+      cubits: cubits,
+      builder: (context, _) => _PipelineBuilder(
+        cubits: cubits,
+        watch: (pipeline) => pipeline.running,
+        builder: (context, pipeline) =>
+            _build(context, settings.settings.targetLanguage, running: pipeline.running),
+      ),
+    ),
+  );
+
+  Widget _build(BuildContext context, String selected, {required bool running}) {
     final l10n = AppLocalizations.of(context);
     final languages = dubbingLanguages;
-    final selected = viewModel.settings.targetLanguage;
+    final selection = cubits.selection;
     return _LanguageRow(
       field: DropdownButtonFormField<String>(
         key: const ValueKey('targetLanguage'),
@@ -733,20 +887,20 @@ class _TargetLanguagePicker extends StatelessWidget {
             DropdownMenuItem(
               value: language,
               child: Text(
-                viewModel.isLanguageReady(language)
+                selection.isLanguageReady(language)
                     ? spokenLanguageName(l10n, language)
                     : l10n.languageWithoutModels(spokenLanguageName(l10n, language)),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
         ],
-        onChanged: viewModel.running
+        onChanged: running
             ? null
             : (value) {
-                if (value != null) viewModel.selectTargetLanguage(value);
+                if (value != null) cubits.settings.selectTargetLanguage(value);
               },
       ),
-      action: _StartButton(viewModel: viewModel),
+      action: _StartButton(cubits: cubits),
     );
   }
 }
@@ -754,21 +908,44 @@ class _TargetLanguagePicker extends StatelessWidget {
 /// Loading Marian and Silero takes long enough that a plain label would look
 /// like a freeze, so the button carries the progress of the startup itself.
 class _StartButton extends StatelessWidget {
-  const _StartButton({required this.viewModel});
+  const _StartButton({required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _PipelineBuilder(
+    cubits: cubits,
+    watch: (pipeline) => (pipeline.status, pipeline.startupProgress, pipeline.startupStage),
+    // Whether it can start at all depends on the first load having finished
+    // and on the packages being there.
+    builder: (context, pipeline) => _ShellBuilder(
+      cubits: cubits,
+      builder: (context, shell) => _DownloadsBuilder(
+        onlyWhatIsInstalled: true,
+        cubits: cubits,
+        builder: (context, _) => _build(context, pipeline, initializing: shell.initializing),
+      ),
+    ),
+  );
+
+  Widget _build(
+    BuildContext context,
+    LivePipelineState pipeline, {
+    required bool initializing,
+  }) {
     final l10n = AppLocalizations.of(context);
-    final starting = viewModel.status == PipelineStatus.starting;
-    final progress = viewModel.startupProgress;
+    final starting = pipeline.status == PipelineStatus.starting;
+    final progress = pipeline.startupProgress;
+    final running = pipeline.running;
+    final canStart = pipeline.canStart(cubits.selection, initializing: initializing);
     return Tooltip(
-      message: starting && viewModel.startupStage.isNotEmpty
-          ? describeStartupStage(l10n, viewModel.startupStage)
+      message: starting && pipeline.startupStage.isNotEmpty
+          ? describeStartupStage(l10n, pipeline.startupStage)
           : '',
       child: FilledButton.icon(
-        onPressed: viewModel.running || viewModel.canStart ? viewModel.togglePipeline : null,
+        onPressed: running || canStart
+            ? () => cubits.pipeline.toggle(initializing: initializing)
+            : null,
         icon: starting
             ? SizedBox(
                 width: 18,
@@ -779,13 +956,13 @@ class _StartButton extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onPrimary,
                 ),
               )
-            : Icon(viewModel.running ? Icons.stop_rounded : Icons.play_arrow_rounded),
+            : Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
         label: Text(
           starting
               ? (progress == null
                     ? l10n.startingPlain
                     : l10n.startingProgress((progress * 100).round()))
-              : viewModel.running
+              : running
               ? l10n.stopDubbing
               : l10n.startDubbing,
         ),
@@ -797,16 +974,24 @@ class _StartButton extends StatelessWidget {
 /// Language of the original speech. Naming it skips whisper's detection pass,
 /// which is a noticeable share of the delay before a phrase is voiced.
 class _LanguageControls extends StatelessWidget {
-  const _LanguageControls({required this.viewModel});
+  const _LanguageControls({required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _SettingsBuilder(
+    cubits: cubits,
+    builder: (context, state) => _PipelineBuilder(
+      cubits: cubits,
+      watch: (pipeline) => (pipeline.running, pipeline.detectedLanguage),
+      builder: (context, pipeline) => _build(context, state.settings, pipeline),
+    ),
+  );
+
+  Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
     final l10n = AppLocalizations.of(context);
-    final settings = viewModel.settings;
-    final locked = viewModel.running;
-    final detected = settings.detectSourceLanguage ? viewModel.detectedLanguage : null;
+    final locked = pipeline.running;
+    final detected = settings.detectSourceLanguage ? pipeline.detectedLanguage : null;
     return _LanguageRow(
       field: DropdownButtonFormField<String>(
         key: const ValueKey('sourceLanguage'),
@@ -825,7 +1010,7 @@ class _LanguageControls extends StatelessWidget {
             ? null
             : (value) {
                 if (value != null) {
-                  viewModel.updateSettings(settings.copyWith(sourceLanguage: value));
+                  cubits.settings.update(settings.copyWith(sourceLanguage: value));
                 }
               },
       ),
@@ -836,8 +1021,7 @@ class _LanguageControls extends StatelessWidget {
             value: settings.detectSourceLanguage,
             onChanged: locked
                 ? null
-                : (value) =>
-                      viewModel.updateSettings(settings.copyWith(detectSourceLanguage: value)),
+                : (value) => cubits.settings.update(settings.copyWith(detectSourceLanguage: value)),
           ),
           const SizedBox(width: 6),
           Flexible(
@@ -1088,77 +1272,88 @@ class _EmptyTranscript extends StatelessWidget {
 }
 
 class _ModelsPanel extends StatelessWidget {
-  const _ModelsPanel({super.key, required this.viewModel});
+  const _ModelsPanel({super.key, required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _DownloadsBuilder(
+    cubits: cubits,
+    builder: (context, downloads) => _SettingsBuilder(
+      cubits: cubits,
+      builder: (context, settings) => _PipelineBuilder(
+        cubits: cubits,
+        watch: (pipeline) => pipeline.running,
+        builder: (context, pipeline) => _build(context, downloads, running: pipeline.running),
+      ),
+    ),
+  );
+
+  Widget _build(BuildContext context, DownloadsState downloads, {required bool running}) {
     final l10n = AppLocalizations.of(context);
-    final selected = viewModel.settings.targetLanguage;
+    final selection = cubits.selection;
+    final selected = selection.settings.targetLanguage;
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
         _ModuleLabel(number: '01', label: l10n.sectionRecognition),
         const SizedBox(height: 4),
         _SectionNote(l10n.sectionRecognitionNote),
-        if (viewModel.recognitionNeedsEnglish) ...[
+        if (selection.recognitionNeedsEnglish) ...[
           const SizedBox(height: 8),
           _SectionNote(l10n.recognitionNeedsEnglish),
         ],
-        for (final state in viewModel.recognitionModels) ...[
+        for (final state in selection.recognitionModels) ...[
           const SizedBox(height: 12),
           _ModelCard(
             state: state,
-            onInstall: () => viewModel.installModel(state),
-            onPause: () => viewModel.pauseDownload(state.model.id),
-            onCancel: () => viewModel.cancelDownload(state.model.id),
-            stopping: viewModel.isStopping(state.model.id),
+            onInstall: () => cubits.downloads.installModel(state),
+            onPause: () => cubits.downloads.pauseDownload(state.model.id),
+            onCancel: () => cubits.downloads.cancelDownload(state.model.id),
+            stopping: downloads.isStopping(state.model.id),
             choosable: true,
-            selected: state.model.id == viewModel.selectedRecognition?.model.id,
-            onSelect: viewModel.running
-                ? null
-                : () => viewModel.selectRecognitionModel(state.model.id),
+            selected: state.model.id == selection.recognition?.model.id,
+            onSelect: running ? null : () => cubits.settings.selectRecognitionModel(state.model.id),
           ),
         ],
         const SizedBox(height: 26),
         _ModuleLabel(number: '02', label: l10n.sectionTranslation),
         const SizedBox(height: 4),
         _SectionNote(l10n.sectionTranslationNote),
-        for (final state in viewModel.translationModels) ...[
+        for (final state in selection.translationModels) ...[
           const SizedBox(height: 12),
           _ModelCard(
             state: state,
-            onInstall: () => viewModel.installModel(state),
-            onPause: () => viewModel.pauseDownload(state.model.id),
-            onCancel: () => viewModel.cancelDownload(state.model.id),
-            stopping: viewModel.isStopping(state.model.id),
+            onInstall: () => cubits.downloads.installModel(state),
+            onPause: () => cubits.downloads.pauseDownload(state.model.id),
+            onCancel: () => cubits.downloads.cancelDownload(state.model.id),
+            stopping: downloads.isStopping(state.model.id),
             language: state.model.language,
             choosable: true,
             selected: state.model.language == selected,
-            onSelect: viewModel.running
+            onSelect: running
                 ? null
-                : () => viewModel.selectTargetLanguage(state.model.language!),
+                : () => cubits.settings.selectTargetLanguage(state.model.language!),
           ),
         ],
         const SizedBox(height: 26),
         _ModuleLabel(number: '03', label: l10n.sectionSpeech),
         const SizedBox(height: 4),
         _SectionNote(l10n.sectionSpeechNote),
-        for (final state in viewModel.speechModels) ...[
+        for (final state in selection.speechModels) ...[
           const SizedBox(height: 12),
           _ModelCard(
             state: state,
-            onInstall: () => viewModel.installModel(state),
-            onPause: () => viewModel.pauseDownload(state.model.id),
-            onCancel: () => viewModel.cancelDownload(state.model.id),
-            stopping: viewModel.isStopping(state.model.id),
+            onInstall: () => cubits.downloads.installModel(state),
+            onPause: () => cubits.downloads.pauseDownload(state.model.id),
+            onCancel: () => cubits.downloads.cancelDownload(state.model.id),
+            stopping: downloads.isStopping(state.model.id),
             language: state.model.language,
             choosable: true,
             selected: state.model.language == selected,
-            onSelect: viewModel.running
+            onSelect: running
                 ? null
-                : () => viewModel.selectTargetLanguage(state.model.language!),
+                : () => cubits.settings.selectTargetLanguage(state.model.language!),
           ),
         ],
       ],
@@ -1371,9 +1566,9 @@ class _ModelCard extends StatelessWidget {
 }
 
 class _SettingsPanel extends StatefulWidget {
-  const _SettingsPanel({super.key, required this.viewModel});
+  const _SettingsPanel({super.key, required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
   State<_SettingsPanel> createState() => _SettingsPanelState();
@@ -1385,18 +1580,20 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   late final TextEditingController _proxyController;
   late final TextEditingController _pythonController;
 
-  DashboardViewModel get viewModel => widget.viewModel;
+  DashboardCubits get cubits => widget.cubits;
+
+  AppSettings get _settings => cubits.settings.settings;
 
   @override
   void initState() {
     super.initState();
     _proxyController = TextEditingController(
-      text: viewModel.settings.modelProxyUrl,
+      text: _settings.modelProxyUrl,
     );
     _pythonController = TextEditingController(
-      text: viewModel.settings.pythonExecutable.isEmpty
+      text: _settings.pythonExecutable.isEmpty
           ? bundledPythonExecutablePath()
-          : viewModel.settings.pythonExecutable,
+          : _settings.pythonExecutable,
     );
   }
 
@@ -1418,32 +1615,35 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
   void _saveProxy() {
     if (!(_proxyFormKey.currentState?.validate() ?? false)) return;
-    viewModel.updateSettings(
-      viewModel.settings.copyWith(
-        modelProxyUrl: _proxyController.text.trim(),
-      ),
-    );
+    cubits.settings.update(_settings.copyWith(modelProxyUrl: _proxyController.text.trim()));
   }
 
   Future<void> _findPython() async {
-    final executable = await viewModel.findPythonExecutable();
+    final executable = await cubits.settings.findPythonExecutable();
     if (executable == null || !mounted) return;
     _pythonController.text = executable;
   }
 
   void _savePython() {
     if (!(_pythonFormKey.currentState?.validate() ?? false)) return;
-    viewModel.updateSettings(
-      viewModel.settings.copyWith(
-        pythonExecutable: _pythonController.text.trim(),
-      ),
-    );
+    cubits.settings.update(_settings.copyWith(pythonExecutable: _pythonController.text.trim()));
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _SettingsBuilder(
+    cubits: cubits,
+    builder: (context, state) => _PipelineBuilder(
+      cubits: cubits,
+      watch: (pipeline) => pipeline.running,
+      // The compute card and the model directory listen to the downloads
+      // themselves, so a runtime arriving does not redraw the whole page.
+      builder: (context, pipeline) => _build(context, state, running: pipeline.running),
+    ),
+  );
+
+  Widget _build(BuildContext context, SettingsState state, {required bool running}) {
     final l10n = AppLocalizations.of(context);
-    final settings = viewModel.settings;
+    final settings = state.settings;
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
@@ -1460,7 +1660,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             ],
             selected: {settings.interfaceLanguage},
             onSelectionChanged: (selection) =>
-                viewModel.updateSettings(settings.copyWith(interfaceLanguage: selection.first)),
+                cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
           ),
         ),
         const SizedBox(height: 12),
@@ -1480,10 +1680,10 @@ class _SettingsPanelState extends State<_SettingsPanel> {
               ),
             ],
             selected: {settings.captureMode},
-            onSelectionChanged: viewModel.running
+            onSelectionChanged: running
                 ? null
                 : (selection) =>
-                      viewModel.updateSettings(settings.copyWith(captureMode: selection.first)),
+                      cubits.settings.update(settings.copyWith(captureMode: selection.first)),
           ),
         ),
         if (settings.captureMode == CaptureMode.ocr) ...[
@@ -1497,9 +1697,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
               max: 0.8,
               divisions: 11,
               label: '${((1 - settings.ocrRegionTop) * 100).round()}%',
-              onChanged: viewModel.running
+              onChanged: running
                   ? null
-                  : (value) => viewModel.updateSettings(
+                  : (value) => cubits.settings.update(
                       settings.copyWith(ocrRegionTop: value),
                     ),
             ),
@@ -1515,9 +1715,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             max: 0.5,
             divisions: 25,
             label: '${(settings.originalVolume * 100).round()}%',
-            onChanged: viewModel.running
+            onChanged: running
                 ? null
-                : (value) => viewModel.updateSettings(settings.copyWith(originalVolume: value)),
+                : (value) => cubits.settings.update(settings.copyWith(originalVolume: value)),
           ),
         ),
         const SizedBox(height: 12),
@@ -1530,13 +1730,13 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             max: 1.35,
             divisions: 18,
             label: l10n.speedValue(settings.ttsSpeed.toStringAsFixed(2)),
-            onChanged: viewModel.running
+            onChanged: running
                 ? null
-                : (value) => viewModel.updateSettings(settings.copyWith(ttsSpeed: value)),
+                : (value) => cubits.settings.update(settings.copyWith(ttsSpeed: value)),
           ),
         ),
         const SizedBox(height: 12),
-        _VoiceCard(viewModel: viewModel),
+        _VoiceCard(cubits: cubits),
         const SizedBox(height: 12),
         _SettingCard(
           title: l10n.settingsPerformance,
@@ -1547,17 +1747,17 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             items: _threadOptions(settings.cpuThreads)
                 .map((value) => DropdownMenuItem(value: value, child: Text('$value')))
                 .toList(),
-            onChanged: viewModel.running
+            onChanged: running
                 ? null
                 : (value) {
                     if (value != null) {
-                      viewModel.updateSettings(settings.copyWith(cpuThreads: value));
+                      cubits.settings.update(settings.copyWith(cpuThreads: value));
                     }
                   },
           ),
         ),
         const SizedBox(height: 12),
-        _ComputeDeviceCard(viewModel: viewModel),
+        _ComputeDeviceCard(cubits: cubits),
         const SizedBox(height: 12),
         _SettingCard(
           title: l10n.settingsPython,
@@ -1587,8 +1787,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   runSpacing: 8,
                   children: [
                     TextButton.icon(
-                      onPressed: viewModel.searchingPython ? null : _findPython,
-                      icon: viewModel.searchingPython
+                      onPressed: state.searchingPython ? null : _findPython,
+                      icon: state.searchingPython
                           ? const SizedBox(
                               width: 18,
                               height: 18,
@@ -1596,9 +1796,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                             )
                           : const Icon(Icons.manage_search_rounded),
                       label: Text(
-                        viewModel.searchingPython
-                            ? l10n.pythonSearching
-                            : l10n.pythonFindAutomatically,
+                        state.searchingPython ? l10n.pythonSearching : l10n.pythonFindAutomatically,
                       ),
                     ),
                     OutlinedButton.icon(
@@ -1678,12 +1876,15 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           subtitle: l10n.modelDirectoryNote,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final path = SelectableText(
-                viewModel.modelDirectoryPath,
-                style: Theme.of(context).textTheme.bodyMedium,
+              final path = _DownloadsBuilder(
+                cubits: cubits,
+                builder: (context, downloads) => SelectableText(
+                  downloads.modelDirectoryPath,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               );
               final open = OutlinedButton.icon(
-                onPressed: viewModel.openModelDirectory,
+                onPressed: cubits.downloads.openModelDirectory,
                 icon: const Icon(Icons.folder_open_rounded),
                 label: Text(l10n.openInExplorer),
               );
@@ -1729,16 +1930,31 @@ List<int> _threadOptions(int selected) {
 /// does not, the option is disabled and the reason is written out rather
 /// than left for the user to guess at.
 class _VoiceCard extends StatelessWidget {
-  const _VoiceCard({required this.viewModel});
+  const _VoiceCard({required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _SettingsBuilder(
+    cubits: cubits,
+    // Which voices exist comes from the downloaded package.
+    builder: (context, state) => _DownloadsBuilder(
+      onlyWhatIsInstalled: true,
+      cubits: cubits,
+      builder: (context, _) => _PipelineBuilder(
+        cubits: cubits,
+        watch: (pipeline) => (pipeline.running, pipeline.spokenVoice),
+        builder: (context, pipeline) => _build(context, state.settings, pipeline),
+      ),
+    ),
+  );
+
+  Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
     final l10n = AppLocalizations.of(context);
-    final settings = viewModel.settings;
-    final voices = viewModel.availableVoices;
-    final canFollow = viewModel.canFollowSpeaker;
+    final selection = cubits.selection;
+    final running = pipeline.running;
+    final voices = selection.availableVoices;
+    final canFollow = selection.canFollowSpeaker;
     final automatic = settings.automaticVoice && canFollow;
     return _SettingCard(
       title: l10n.settingsVoice,
@@ -1756,10 +1972,10 @@ class _VoiceCard extends StatelessWidget {
               ButtonSegment(value: false, label: Text(l10n.voiceFixed)),
             ],
             selected: {automatic},
-            onSelectionChanged: viewModel.running
+            onSelectionChanged: running
                 ? null
                 : (selection) =>
-                      viewModel.updateSettings(settings.copyWith(automaticVoice: selection.first)),
+                      cubits.settings.update(settings.copyWith(automaticVoice: selection.first)),
           ),
           if (!canFollow) ...[
             const SizedBox(height: 10),
@@ -1774,17 +1990,17 @@ class _VoiceCard extends StatelessWidget {
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               key: const ValueKey('voice'),
-              initialValue: viewModel.selectedVoice,
+              initialValue: selection.voice,
               decoration: InputDecoration(labelText: l10n.voiceFieldLabel),
               items: [
                 for (final voice in voices)
                   DropdownMenuItem(value: voice.id, child: Text(voiceLabel(l10n, voice))),
               ],
-              onChanged: viewModel.running
+              onChanged: running
                   ? null
                   : (value) {
                       if (value != null) {
-                        viewModel.updateSettings(settings.copyWith(voice: value));
+                        cubits.settings.update(settings.copyWith(voice: value));
                       }
                     },
             ),
@@ -1792,7 +2008,7 @@ class _VoiceCard extends StatelessWidget {
           // Which voice the automatic choice actually settled on, so it is
           // not a silent decision — the same courtesy the detected language
           // gets on the live screen.
-          if (automatic ? viewModel.spokenVoice : null case final speaking?) ...[
+          if (automatic ? pipeline.spokenVoice : null case final speaking?) ...[
             const SizedBox(height: 10),
             Text(
               l10n.voiceSpeaking(speaking),
@@ -1810,14 +2026,32 @@ class _VoiceCard extends StatelessWidget {
 /// overridden. A backend the machine cannot run is shown but disabled, so an
 /// AMD owner can see that CUDA exists and why it is not on offer.
 class _ComputeDeviceCard extends StatelessWidget {
-  const _ComputeDeviceCard({required this.viewModel});
+  const _ComputeDeviceCard({required this.cubits});
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => _DownloadsBuilder(
+    cubits: cubits,
+    builder: (context, downloads) => _SettingsBuilder(
+      cubits: cubits,
+      builder: (context, state) => _PipelineBuilder(
+        cubits: cubits,
+        watch: (pipeline) => (pipeline.running, pipeline.backendSignature),
+        builder: (context, pipeline) => _build(context, downloads, state.settings, pipeline),
+      ),
+    ),
+  );
+
+  Widget _build(
+    BuildContext context,
+    DownloadsState downloads,
+    AppSettings settings,
+    LivePipelineState pipeline,
+  ) {
     final l10n = AppLocalizations.of(context);
-    final adapter = viewModel.availability.adapters.firstOrNull;
+    final running = pipeline.running;
+    final adapter = downloads.availability.adapters.firstOrNull;
     return _SettingCard(
       title: l10n.settingsComputeDevice,
       subtitle: l10n.computeDeviceNote,
@@ -1829,10 +2063,10 @@ class _ComputeDeviceCard extends StatelessWidget {
               for (final device in ComputeDevice.values)
                 ButtonSegment(value: device, label: Text(computeDeviceName(l10n, device))),
             ],
-            selected: {viewModel.settings.computeDevice},
-            onSelectionChanged: viewModel.running
+            selected: {settings.computeDevice},
+            onSelectionChanged: running
                 ? null
-                : (selection) => viewModel.selectComputeDevice(selection.first),
+                : (selection) => cubits.settings.selectComputeDevice(selection.first),
           ),
           const SizedBox(height: 14),
           Text(
@@ -1841,7 +2075,13 @@ class _ComputeDeviceCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           for (final stage in ComputeStage.values) ...[
-            _ComputeStageRow(viewModel: viewModel, stage: stage),
+            _ComputeStageRow(
+              cubits: cubits,
+              downloads: downloads,
+              settings: settings,
+              pipeline: pipeline,
+              stage: stage,
+            ),
             if (stage != ComputeStage.values.last) const SizedBox(height: 10),
           ],
           const SizedBox(height: 12),
@@ -1856,24 +2096,36 @@ class _ComputeDeviceCard extends StatelessWidget {
 }
 
 class _ComputeStageRow extends StatelessWidget {
-  const _ComputeStageRow({required this.viewModel, required this.stage});
+  const _ComputeStageRow({
+    required this.cubits,
+    required this.downloads,
+    required this.settings,
+    required this.pipeline,
+    required this.stage,
+  });
 
-  final DashboardViewModel viewModel;
+  /// Handed the states its card already read, rather than listening again:
+  /// the whole card is redrawn together anyway.
+  final DashboardCubits cubits;
+  final DownloadsState downloads;
+  final AppSettings settings;
+  final LivePipelineState pipeline;
   final ComputeStage stage;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final selected = viewModel.backendFor(stage);
+    final running = pipeline.running;
+    final selected = pipeline.backendFor(stage, settings, downloads.availability);
     final offered = stageBackends(stage);
     // The missing runtime of whichever backend the reader is most likely to
     // want: the best one the hardware could run but has nothing installed for.
     RuntimeInstallState? missing;
     for (final backend in offered) {
-      missing ??= viewModel.missingRuntimeFor(stage, backend);
+      missing ??= downloads.missingRuntimeFor(stage, backend);
     }
     // A downloaded runtime is worth gigabytes, so it can be given back.
-    final installed = missing != null ? null : viewModel.installedRuntimeFor(stage);
+    final installed = missing != null ? null : downloads.installedRuntimeFor(stage);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -1894,12 +2146,19 @@ class _ComputeStageRow extends StatelessWidget {
                 _BackendChip(
                   label: computeBackendName(l10n, backend),
                   selected: backend == selected,
-                  enabled: !viewModel.running && viewModel.isBackendReady(stage, backend),
+                  enabled: !running && downloads.isBackendReady(stage, backend),
                   tooltip: _reasonUnavailable(l10n, backend),
-                  onTap: () => viewModel.selectStageBackend(stage, backend),
+                  onTap: () => cubits.settings.selectStageBackend(stage, backend),
                 ),
-              if (missing != null) _RuntimeDownloadButton(viewModel: viewModel, state: missing),
-              if (installed != null) _RuntimeRemoveButton(viewModel: viewModel, state: installed),
+              if (missing != null)
+                _RuntimeDownloadButton(
+                  cubits: cubits,
+                  downloads: downloads,
+                  running: running,
+                  state: missing,
+                ),
+              if (installed != null)
+                _RuntimeRemoveButton(cubits: cubits, running: running, state: installed),
             ],
           ),
         ),
@@ -1909,9 +2168,11 @@ class _ComputeStageRow extends StatelessWidget {
 
   /// Why a chip is greyed out, or null when it is not.
   String? _reasonUnavailable(AppLocalizations l10n, ComputeBackend backend) {
-    if (viewModel.isBackendReady(stage, backend)) return null;
-    if (!viewModel.availability.supportsHardware(backend)) return l10n.computeBackendNoHardware;
-    final package = viewModel.missingRuntimeFor(stage, backend);
+    if (downloads.isBackendReady(stage, backend)) return null;
+    if (!downloads.availability.supportsHardware(backend)) {
+      return l10n.computeBackendNoHardware;
+    }
+    final package = downloads.missingRuntimeFor(stage, backend);
     if (package != null) {
       return l10n.computeRuntimeMissing(formatPackageSize(package.package.approximateBytes));
     }
@@ -1966,9 +2227,14 @@ class _BackendChip extends StatelessWidget {
 /// Hundreds of megabytes are not worth losing to a stray click, and this row
 /// sits where the download button used to be — so the question is asked.
 class _RuntimeRemoveButton extends StatelessWidget {
-  const _RuntimeRemoveButton({required this.viewModel, required this.state});
+  const _RuntimeRemoveButton({
+    required this.cubits,
+    required this.running,
+    required this.state,
+  });
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
+  final bool running;
   final RuntimeInstallState state;
 
   Future<void> _confirm(BuildContext context) async {
@@ -2001,14 +2267,14 @@ class _RuntimeRemoveButton extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed ?? false) await viewModel.removeRuntime(state);
+    if (confirmed ?? false) await cubits.downloads.removeRuntime(state);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return TextButton.icon(
-      onPressed: viewModel.running ? null : () => _confirm(context),
+      onPressed: running ? null : () => _confirm(context),
       icon: const Icon(Icons.delete_outline_rounded, size: 18),
       label: Text(
         '${l10n.computeRuntimeRemove} · '
@@ -2021,9 +2287,16 @@ class _RuntimeRemoveButton extends StatelessWidget {
 
 /// Offers the download a backend is waiting on, and shows it running.
 class _RuntimeDownloadButton extends StatelessWidget {
-  const _RuntimeDownloadButton({required this.viewModel, required this.state});
+  const _RuntimeDownloadButton({
+    required this.cubits,
+    required this.downloads,
+    required this.running,
+    required this.state,
+  });
 
-  final DashboardViewModel viewModel;
+  final DashboardCubits cubits;
+  final DownloadsState downloads;
+  final bool running;
   final RuntimeInstallState state;
 
   @override
@@ -2045,18 +2318,18 @@ class _RuntimeDownloadButton extends StatelessWidget {
           const SizedBox(width: 4),
           _DownloadControls(
             paused: state.paused,
-            stopping: viewModel.isStopping(state.package.id),
+            stopping: downloads.isStopping(state.package.id),
             // pip runs to the end or not at all, so only a cancel is offered.
             pausable: state.pausable,
-            onPause: () => viewModel.pauseDownload(state.package.id),
-            onResume: () => viewModel.installRuntime(state),
-            onCancel: () => viewModel.cancelDownload(state.package.id),
+            onPause: () => cubits.downloads.pauseDownload(state.package.id),
+            onResume: () => cubits.downloads.installRuntime(state),
+            onCancel: () => cubits.downloads.cancelDownload(state.package.id),
           ),
         ],
       );
     }
     return TextButton.icon(
-      onPressed: viewModel.running ? null : () => viewModel.installRuntime(state),
+      onPressed: running ? null : () => cubits.downloads.installRuntime(state),
       icon: const Icon(Icons.download_rounded, size: 18),
       label: Text(
         '${l10n.computeRuntimeDownload} · '
