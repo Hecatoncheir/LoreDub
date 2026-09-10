@@ -51,9 +51,17 @@ first launch, install all three model cards, choose a running game process, and
 press **Start**.
 
 The first pipeline start can take one or two minutes while Marian and Silero are
-loaded. Subsequent phrases are processed sequentially so a small CPU is not
-overloaded. Expected delay depends heavily on CPU and phrase length; `base` is
-chosen as the quality/speed compromise.
+loaded. Recognition, translation and synthesis are then serialized so a small
+CPU is never asked to run two inferences at once, while playback happens beside
+them: voicing a reply takes as long as the reply itself, and waiting for it
+would put every later phrase further behind the game. No phrase is dropped.
+
+The delay depends heavily on the CPU and on **Потоки CPU** in Settings, which
+defaults to half of the logical processors. Recognition dominates it, so the
+language whisper.cpp detects is reused for the rest of the session instead of
+being detected again for every phrase, which costs a full extra encoder pass.
+On a 12-core CPU with twelve threads a phrase is voiced about 1.5 s after it
+ends; `base` is chosen as the quality/speed compromise.
 
 The **Subtitles + OCR** mode works with visible windowed or borderless games.
 Choose how much of the lower game window to scan in Settings. English OCR must
@@ -61,6 +69,22 @@ be installed in Windows; the app reports a direct error when that language pack
 is missing. Scanning runs only while the selected game is the foreground window,
 which prevents other windows from being mistaken for subtitles. Exclusive-fullscreen or minimized windows cannot be read through
 the lightweight GDI capture path. Only Russian output is packaged at the moment.
+
+## Planned
+
+- **Headroom for dense dialogue.** Nothing is dropped, so speech arriving
+  faster than the pipeline can dub it still accumulates a delay — currently
+  around one phrase per 1.5 s on a 12-core CPU. Unmeasured options, in the
+  order worth trying: raise **Потоки CPU** to 16–24 and measure what the game
+  loses; then benchmark a quantized Whisper model (`ggml-base-q5_1.bin`)
+  against `base` for both recognition speed and translation quality. Recognition
+  is the dominant cost, so that is where the remaining time is. Keeping the
+  bundled `whisper-server.exe` resident would save only the ~160 ms model load
+  and is not worth the complexity.
+- **Subtitle overlay.** `AppSettings.showOverlay` is persisted but nothing
+  reads it yet; the intent is to draw the translated lines over the game.
+- **More target languages.** `AppSettings.targetLanguage` is likewise a
+  placeholder: only the Russian Marian and Silero pair is packaged.
 
 ## Requirements
 
