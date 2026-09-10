@@ -10,7 +10,7 @@ import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
-import 'package:lore_dub/src/domain/pipeline_state.dart';
+import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus, TranscriptEntry;
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view_model.dart';
 import 'package:lore_dub/src/ui/theme.dart';
@@ -178,6 +178,42 @@ void main() {
 
     // The list already states the language; repeating it would be noise.
     expect(find.text('— Японский'), findsNothing);
+  });
+
+  testWidgets('shows a phrase as a bubble with its time beside the tail', (tester) async {
+    final viewModel = buildViewModel()
+      ..initializing = false
+      ..transcript = [
+        const TranscriptEntry(
+          original: 'The gate is sealed.',
+          english: 'The gate is sealed.',
+          translated: 'Ворота закрыты.',
+          latency: Duration(milliseconds: 1325),
+        ),
+      ];
+    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+
+    expect(find.text('The gate is sealed.'), findsOneWidget);
+    expect(find.text('Ворота закрыты.'), findsOneWidget);
+    expect(find.text('1325 мс'), findsOneWidget);
+    expect(find.byType(CustomPaint), findsWidgets, reason: 'the bubble tail is painted');
+  });
+
+  testWidgets('falls back to the recognized English when there is no original', (tester) async {
+    final viewModel = buildViewModel()
+      ..initializing = false
+      ..transcript = [
+        const TranscriptEntry(
+          original: '',
+          english: 'Take cover.',
+          translated: 'В укрытие.',
+          latency: Duration(milliseconds: 900),
+        ),
+      ];
+    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+
+    expect(find.text('Take cover.'), findsOneWidget);
+    expect(find.text('900 мс'), findsOneWidget);
   });
 
   testWidgets('saves a model download proxy from settings', (tester) async {

@@ -377,36 +377,11 @@ class _LivePanel extends StatelessWidget {
                   child: viewModel.transcript.isEmpty
                       ? const _EmptyTranscript()
                       : ListView.separated(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
                           itemCount: viewModel.transcript.length,
-                          separatorBuilder: (_, _) => const Divider(height: 28),
-                          itemBuilder: (context, index) {
-                            final entry = viewModel.transcript[index];
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  entry.original.isEmpty ? entry.english : entry.original,
-                                  style: const TextStyle(
-                                    color: LoreDubPalette.mutedInk,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  entry.translated,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  '${entry.latency.inMilliseconds} мс',
-                                  style: Theme.of(context).textTheme.labelSmall,
-                                ),
-                              ],
-                            );
-                          },
+                          separatorBuilder: (_, _) => const SizedBox(height: 14),
+                          itemBuilder: (context, index) =>
+                              _TranscriptBubble(entry: viewModel.transcript[index]),
                         ),
                 ),
               ],
@@ -694,6 +669,121 @@ class _ModuleLabel extends StatelessWidget {
         ),
       ),
     ],
+  );
+}
+
+/// One recognized phrase, shaped like the speech bubble on the application
+/// icon: the text on the dark signal surface, and the time it took beside the
+/// tail on the orange accent.
+class _TranscriptBubble extends StatelessWidget {
+  const _TranscriptBubble({required this.entry});
+
+  static const double _tailInset = 28;
+  static const Size _tailSize = Size(26, 14);
+
+  final TranscriptEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final original = entry.original.isEmpty ? entry.english : entry.original;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 15),
+          decoration: BoxDecoration(
+            color: LoreDubPalette.graphite,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (original.isNotEmpty) ...[
+                Text(
+                  original,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.62),
+                    fontSize: 13,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 7),
+              ],
+              Text(
+                entry.translated,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  height: 1.25,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Row(
+          // Top-aligned: the badge is taller than the tail, and centring the
+          // row would lift the tail off the bottom edge of the bubble.
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(width: _tailInset),
+            CustomPaint(size: _tailSize, painter: _BubbleTailPainter()),
+            const SizedBox(width: 10),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: _LatencyBadge(milliseconds: entry.latency.inMilliseconds),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _BubbleTailPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Asymmetric like the icon: the leading edge slopes away from the bubble
+    // and the trailing edge drops almost straight down.
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width * 0.82, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = LoreDubPalette.graphite);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BubbleTailPainter oldDelegate) => false;
+}
+
+class _LatencyBadge extends StatelessWidget {
+  const _LatencyBadge({required this.milliseconds});
+
+  final int milliseconds;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 22,
+    alignment: Alignment.center,
+    padding: const EdgeInsets.symmetric(horizontal: 11),
+    decoration: BoxDecoration(
+      color: LoreDubPalette.orange,
+      borderRadius: BorderRadius.circular(30),
+    ),
+    child: Text(
+      '$milliseconds мс',
+      // A fixed height with no leading keeps the label centred in the pill
+      // instead of riding on the font's baseline.
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.3,
+        height: 1,
+      ),
+    ),
   );
 }
 
