@@ -9,9 +9,11 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+import '../../domain/compute_device.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/spoken_language.dart';
 import '../../domain/failure.dart';
+import 'runtime_catalog.dart';
 
 class InferenceResult {
   const InferenceResult({required this.english, required this.translated, required this.wavePath});
@@ -93,6 +95,14 @@ class LocalInferenceService {
   /// The language the pipeline is recognizing, once it is known.
   String? get spokenLanguage => _spokenLanguage;
 
+  /// What the worker actually put the translator on, as it reported at start.
+  String? _translationDevice;
+  ComputeBackend? get translationBackend => switch (_translationDevice) {
+    'cuda' => ComputeBackend.cuda,
+    'cpu' => ComputeBackend.cpu,
+    _ => null,
+  };
+
   /// Removes audio a previous run left behind. The worker can finish writing a
   /// phrase just as the pipeline is stopped, and then nobody is waiting for
   /// that file any more; a crash leaves captured segments in the same way.
@@ -133,6 +143,11 @@ class LocalInferenceService {
     required String pythonExecutable,
     required bool requiresWhisper,
     String sourceLanguage = autoSpokenLanguage,
+    ComputeBackend recognitionBackend = ComputeBackend.cpu,
+    ComputeBackend translationBackend = ComputeBackend.cpu,
+
+    /// Where downloaded GPU runtimes live; needed by the CUDA backends.
+    String? downloadedRuntimeDirectory,
   }) async {
     _workerReady = Completer<void>();
     _diagnostics.clear();
@@ -142,7 +157,12 @@ class LocalInferenceService {
     if (!Platform.isWindows) throw const LoreDubFailure(FailureCode.windowsOnly);
     // Both binaries are validated before the caller ducks the game, so a
     // broken installation cannot look like a silently working pipeline.
-    _whisperExecutable = requiresWhisper ? await resolveWhisperExecutable() : null;
+    _whisperExecutable = requiresWhisper
+        ? await resolveWhisperExecutable(
+            backend: recognitionBackend,
+            downloadedRuntimeDirectory: downloadedRuntimeDirectory,
+          )
+        : null;
     final python = await resolvePythonExecutable(pythonExecutable);
     final work = await createWorkDirectory();
     final workerFile = File(path.join(work.path, 'inference_worker.py'));
@@ -166,6 +186,14 @@ class LocalInferenceService {
         '$threads',
         '--speed',
         speed.toStringAsFixed(3),
+        '--device',
+        translationBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
+        // CUDA torch is installed beside the models rather than over the
+        // bundled CPU build, so the worker is told where to find it.
+        if (translationBackend == ComputeBackend.cuda && downloadedRuntimeDirectory != null) ...[
+          '--extra-packages',
+          path.join(downloadedRuntimeDirectory, torchCudaRuntimeId),
+        ],
       ],
       environment: const {'PYTHONIOENCODING': 'utf-8'},
     );
@@ -194,6 +222,7 @@ class LocalInferenceService {
     try {
       final message = jsonDecode(line) as Map<String, Object?>;
       if (message['type'] == 'ready') {
+        _translationDevice = message['device'] as String?;
         if (!(_workerReady?.isCompleted ?? true)) _workerReady!.complete();
         return;
       }

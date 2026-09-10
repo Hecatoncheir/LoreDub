@@ -909,6 +909,138 @@ abstract class AppLocalizations {
   /// **'Не удалось инициализировать приложение: {detail}'**
   String failureInitializationFailed(String detail);
 
+  /// No description provided for @settingsComputeDevice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вычислительное устройство'**
+  String get settingsComputeDevice;
+
+  /// No description provided for @computeDeviceNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'«Автоматически» само определяет видеокарту. Каждую модель можно перевести на другое устройство отдельно.'**
+  String get computeDeviceNote;
+
+  /// No description provided for @computeDeviceAuto.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автоматически'**
+  String get computeDeviceAuto;
+
+  /// No description provided for @computeDeviceGpu.
+  ///
+  /// In ru, this message translates to:
+  /// **'GPU'**
+  String get computeDeviceGpu;
+
+  /// No description provided for @computeDeviceCpu.
+  ///
+  /// In ru, this message translates to:
+  /// **'CPU'**
+  String get computeDeviceCpu;
+
+  /// No description provided for @computeStageRecognition.
+  ///
+  /// In ru, this message translates to:
+  /// **'Whisper'**
+  String get computeStageRecognition;
+
+  /// No description provided for @computeStageTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перевод'**
+  String get computeStageTranslation;
+
+  /// No description provided for @computeStageSpeech.
+  ///
+  /// In ru, this message translates to:
+  /// **'Озвучка'**
+  String get computeStageSpeech;
+
+  /// No description provided for @computeBackendCuda.
+  ///
+  /// In ru, this message translates to:
+  /// **'CUDA'**
+  String get computeBackendCuda;
+
+  /// No description provided for @computeBackendVulkan.
+  ///
+  /// In ru, this message translates to:
+  /// **'Vulkan'**
+  String get computeBackendVulkan;
+
+  /// No description provided for @computeBackendCpu.
+  ///
+  /// In ru, this message translates to:
+  /// **'CPU'**
+  String get computeBackendCpu;
+
+  /// No description provided for @computeAdapterDetected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Видеокарта: {name}'**
+  String computeAdapterDetected(String name);
+
+  /// No description provided for @computeNoAdapter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подходящая видеокарта не найдена — всё считается на процессоре'**
+  String get computeNoAdapter;
+
+  /// No description provided for @computeBackendUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не поддерживается этой моделью'**
+  String get computeBackendUnsupported;
+
+  /// No description provided for @computeBackendNoHardware.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет подходящей видеокарты или драйвера'**
+  String get computeBackendNoHardware;
+
+  /// No description provided for @computeRuntimeMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужен пакет {size}'**
+  String computeRuntimeMissing(String size);
+
+  /// No description provided for @computeRuntimeDownload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачать'**
+  String get computeRuntimeDownload;
+
+  /// No description provided for @computeRuntimeRemove.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить'**
+  String get computeRuntimeRemove;
+
+  /// No description provided for @computeRuntimeInstalling.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установка…'**
+  String get computeRuntimeInstalling;
+
+  /// No description provided for @computeSpeechCpuOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.'**
+  String get computeSpeechCpuOnly;
+
+  /// No description provided for @failureRuntimeIncomplete.
+  ///
+  /// In ru, this message translates to:
+  /// **'В скачанном пакете нет {detail}'**
+  String failureRuntimeIncomplete(String detail);
+
+  /// No description provided for @failureRuntimeInstallFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось установить GPU-рантайм: {detail}'**
+  String failureRuntimeInstallFailed(String detail);
+
   /// No description provided for @failureUnknown.
   ///
   /// In ru, this message translates to:

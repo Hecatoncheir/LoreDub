@@ -49,6 +49,40 @@ The interface language — Russian or English — is switched in **Settings**
 and applies immediately, without a restart. Every label lives in
 `lib/l10n/*.arb`, with the Russian file as the source.
 
+## Compute device
+
+The default is **Automatic**: the app enumerates adapters through DXGI, checks
+for `nvcuda.dll` and `vulkan-1.dll`, and assigns a device to each stage itself.
+Any stage can then be moved by hand — an option the machine cannot run is shown
+but disabled, with a tooltip saying why.
+
+| Stage | CUDA | Vulkan | CPU |
+| --- | --- | --- | --- |
+| Whisper | yes, downloaded (436 MB) | yes, if built (see below) | always |
+| Translation (Marian) | yes, downloaded (~2.7 GB) | no: torch has no Vulkan backend | always |
+| Speech (Silero) | no | no | always |
+
+The heavy GPU runtimes are **not in the installer**. They are fetched on demand
+by the same machinery as the models, with progress, SHA-256 verification and
+proxy support, so nobody who leaves the GPU off pays for them. They land in
+`<app support>/runtime/<id>/` and a button in the same section gives them back.
+
+Speech stays on the processor deliberately: Silero utterances are short, and
+moving them to the card costs more than the work itself.
+
+Measured on an RTX 3080 Ti (15 s of audio, `ggml-base`, 12 threads): 2.9–4.0 s
+on the CPU against 1.7–1.8 s on CUDA. The first run after switching to CUDA took
+23 s while the driver built its kernel cache — a one-off cost; later runs are
+steady.
+
+AMD and Intel cards are left with Vulkan, but no official Windows build of
+`whisper.cpp` with Vulkan exists, so `scripts/prepare_windows_runtime.ps1`
+compiles one (`-DGGML_VULKAN=ON`). That needs the Vulkan SDK and CMake on the
+build machine; without them the step is skipped with a warning, and
+`-RequireVulkan` turns that skip into an error, which is what a release build
+wants. The resulting binary is small and ships in the installer, so there is
+nothing to download for it.
+
 ## Windows release status
 
 The audio mode is wired end to end. The setup contains pinned `whisper.cpp`

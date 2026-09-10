@@ -27,6 +27,11 @@ LD_API int32_t ld_is_process_loopback_supported(void);
 // partial JSON is written.
 LD_API int32_t ld_list_processes_json(char* output, int32_t capacity);
 
+// Writes a UTF-8 JSON object describing the graphics adapters and the GPU
+// driver libraries that are installed. Returns the number of bytes required,
+// excluding the trailing NUL. If capacity is too small, nothing is written.
+LD_API int32_t ld_probe_graphics_json(char* output, int32_t capacity);
+
 // Sets the volume of every render session owned by process_id. Volume is in
 // the inclusive [0, 1] range. Returns 0 on success or a negative error code.
 LD_API int32_t ld_set_process_volume(uint32_t process_id, float volume);

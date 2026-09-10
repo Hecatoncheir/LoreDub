@@ -106,9 +106,16 @@ def main():
     parser.add_argument("--speed", type=float, default=1.0)
     parser.add_argument("--speaker", default="xenia")
     parser.add_argument("--sample-rate", type=int, default=24000)
+    parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
+    parser.add_argument("--extra-packages", default="")
     args = parser.parse_args()
 
     speed = min(2.0, max(0.5, args.speed))
+
+    # CUDA torch is installed next to the models instead of over the bundled
+    # CPU build, so it has to win the import before torch is first touched.
+    if args.extra_packages and pathlib.Path(args.extra_packages).is_dir():
+        sys.path.insert(0, args.extra_packages)
 
     report_progress(0.10, "torch")
     import torch
@@ -118,9 +125,13 @@ def main():
 
     report_progress(0.80, "translator")
     torch.set_num_threads(max(1, args.threads))
+    # A CUDA build that cannot see the card is a working CPU build. Falling
+    # back beats refusing to start over a driver the user cannot fix here.
+    device = torch.device("cuda" if args.device == "cuda" and torch.cuda.is_available() else "cpu")
     tokenizer = MarianTokenizer.from_pretrained(args.translation_model, local_files_only=True)
     translator = MarianMTModel.from_pretrained(args.translation_model, local_files_only=True)
     translator.eval()
+    translator.to(device)
 
     report_progress(0.90, "speech")
     tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
@@ -130,7 +141,9 @@ def main():
     voices = list(getattr(tts, "speakers", None) or [])
     speaker = args.speaker if args.speaker in voices else (voices[0] if voices else args.speaker)
     pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
-    reply({"type": "ready"})
+    # The device is reported back rather than assumed: a CUDA build that fell
+    # back to the CPU must not leave the interface claiming the GPU is in use.
+    reply({"type": "ready", "device": device.type})
 
     for raw_line in sys.stdin:
         # A malformed line must not take the worker down with it: the pipeline
@@ -146,7 +159,7 @@ def main():
             continue
         try:
             text = request["text"].strip()
-            inputs = tokenizer([text], return_tensors="pt", padding=True)
+            inputs = tokenizer([text], return_tensors="pt", padding=True).to(device)
             with torch.inference_mode():
                 generated = translator.generate(**inputs, num_beams=1, max_new_tokens=160)
             translated = tokenizer.batch_decode(generated, skip_special_tokens=True)[0].strip()

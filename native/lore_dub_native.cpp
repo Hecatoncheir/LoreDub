@@ -24,6 +24,7 @@
 #include <tlhelp32.h>
 #include <wrl/client.h>
 #include <mmsystem.h>
+#include <dxgi.h>
 #endif
 
 namespace {
@@ -194,6 +195,44 @@ std::string ListProcesses() {
   return out.str();
 }
 
+// Whether a driver library is installed, without running its entry point.
+// Loading nvcuda.dll for real spins up the display driver, which is a lot to
+// ask for a question the interface only wants an answer to once.
+bool HasSystemLibrary(const wchar_t* name) {
+  HMODULE library = LoadLibraryExW(name, nullptr, LOAD_LIBRARY_AS_DATAFILE);
+  if (library == nullptr) return false;
+  FreeLibrary(library);
+  return true;
+}
+
+// Enumerates the real graphics adapters. Microsoft's Basic Render Driver is
+// reported like any other adapter and would make every machine look capable
+// of Vulkan, so software adapters are dropped.
+std::string ProbeGraphics() {
+  std::ostringstream out;
+  out << "{\"adapters\":[";
+  ComPtr<IDXGIFactory1> factory;
+  bool first = true;
+  if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
+    ComPtr<IDXGIAdapter1> adapter;
+    for (UINT index = 0;
+         factory->EnumAdapters1(index, adapter.ReleaseAndGetAddressOf()) != DXGI_ERROR_NOT_FOUND;
+         ++index) {
+      DXGI_ADAPTER_DESC1 description{};
+      if (FAILED(adapter->GetDesc1(&description))) continue;
+      if ((description.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0) continue;
+      if (!first) out << ',';
+      first = false;
+      out << "{\"name\":\"" << EscapeJson(Utf8(description.Description))
+          << "\",\"vendorId\":" << description.VendorId << ",\"dedicatedMemory\":"
+          << static_cast<uint64_t>(description.DedicatedVideoMemory) << '}';
+    }
+  }
+  out << "],\"cudaDriver\":" << (HasSystemLibrary(L"nvcuda.dll") ? "true" : "false")
+      << ",\"vulkanLoader\":" << (HasSystemLibrary(L"vulkan-1.dll") ? "true" : "false") << '}';
+  return out.str();
+}
+
 int32_t VisitSessions(uint32_t process_id, float volume, bool restore) {
   const HRESULT initialized = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   const bool uninitialize = SUCCEEDED(initialized);
@@ -268,6 +307,15 @@ int32_t ld_list_processes_json(char* output, int32_t capacity) {
   return WriteString(ListProcesses(), output, capacity);
 #else
   return WriteString("[]", output, capacity);
+#endif
+}
+
+int32_t ld_probe_graphics_json(char* output, int32_t capacity) {
+#if defined(_WIN32)
+  return WriteString(ProbeGraphics(), output, capacity);
+#else
+  return WriteString("{\"adapters\":[],\"cudaDriver\":false,\"vulkanLoader\":false}", output,
+                     capacity);
 #endif
 }
 

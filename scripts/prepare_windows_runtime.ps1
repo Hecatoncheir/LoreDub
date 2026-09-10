@@ -3,7 +3,14 @@
 
 param(
   [Parameter(Mandatory = $true)]
-  [string]$Destination
+  [string]$Destination,
+
+  # Build the Vulkan whisper.cpp binary, which AMD and Intel cards use. There
+  # is no official Windows build of it, so it is compiled here. Without the
+  # Vulkan SDK the step is skipped with a warning; -RequireVulkan turns that
+  # skip into an error, which is what release builds want.
+  [switch]$SkipVulkan,
+  [switch]$RequireVulkan
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,6 +47,45 @@ $WhisperDestination = Join-Path $Destination "whisper"
 New-Item -ItemType Directory -Force -Path $WhisperDestination | Out-Null
 Copy-Item (Join-Path $WhisperExtract "*.exe"), (Join-Path $WhisperExtract "*.dll") `
   $WhisperDestination -Force
+
+# The CUDA build is downloaded by the application on demand, but Vulkan has no
+# official Windows release at all, so it is built from the same tag.
+function Build-VulkanWhisper {
+  param([string]$Destination, [string]$Tag)
+
+  $VulkanSdk = $env:VULKAN_SDK
+  if (-not $VulkanSdk -or -not (Test-Path $VulkanSdk)) {
+    $message = "Vulkan SDK not found (VULKAN_SDK is unset). " +
+      "Skipping the Vulkan whisper build; AMD and Intel cards will fall back to the CPU."
+    if ($RequireVulkan) { throw $message }
+    Write-Warning $message
+    return
+  }
+
+  $Source = Join-Path $RuntimeCache "whisper.cpp-$Tag"
+  if (-not (Test-Path (Join-Path $Source "CMakeLists.txt"))) {
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $Source
+    git clone --depth 1 --branch $Tag https://github.com/ggml-org/whisper.cpp $Source
+    if ($LASTEXITCODE -ne 0) { throw "Failed to clone whisper.cpp $Tag" }
+  }
+
+  $Build = Join-Path $Source "build-vulkan"
+  $Binary = Join-Path $Build "bin\Release\whisper-cli.exe"
+  if (-not (Test-Path $Binary)) {
+    cmake -S $Source -B $Build -DGGML_VULKAN=ON -DBUILD_SHARED_LIBS=ON `
+      -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
+    if ($LASTEXITCODE -ne 0) { throw "Failed to configure the Vulkan whisper build" }
+    cmake --build $Build --config Release --target whisper-cli
+    if ($LASTEXITCODE -ne 0) { throw "Failed to build the Vulkan whisper binary" }
+  }
+
+  $Target = Join-Path $Destination "whisper-vulkan"
+  New-Item -ItemType Directory -Force -Path $Target | Out-Null
+  Copy-Item (Join-Path $Build "bin\Release\*.exe"), (Join-Path $Build "bin\Release\*.dll") `
+    $Target -Force
+}
+
+if (-not $SkipVulkan) { Build-VulkanWhisper -Destination $Destination -Tag "v1.8.2" }
 
 $PythonZip = Get-Download `
   "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip" `

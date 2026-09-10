@@ -9,6 +9,7 @@ import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
 
+import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
@@ -57,6 +58,20 @@ class NativeEngineService {
     return processes;
   }
 
+  /// What the machine's graphics adapters and GPU drivers offer.
+  ///
+  /// Only the hardware half is filled in: whether the runtime for a backend
+  /// has been downloaded is a question for the storage service.
+  Future<ComputeAvailability> probeGraphics() async {
+    final json = _readNativeString(ld_probe_graphics_json);
+    return ComputeAvailability.fromProbeJson(jsonDecode(json) as Map<String, Object?>);
+  }
+
+  static ComputeBackend _backendFrom(Object? name) => ComputeBackend.values.firstWhere(
+    (backend) => backend.name == name,
+    orElse: () => ComputeBackend.cpu,
+  );
+
   Future<void> start(Map<String, Object?> config) async {
     _reportedLanguage = null;
     await LocalInferenceService.removeStaleAudio();
@@ -70,7 +85,14 @@ class NativeEngineService {
       pythonExecutable: config['pythonExecutable']! as String,
       requiresWhisper: config['captureMode'] != 'ocr',
       sourceLanguage: config['sourceLanguage']! as String,
+      recognitionBackend: _backendFrom(config['recognitionBackend']),
+      translationBackend: _backendFrom(config['translationBackend']),
+      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
     );
+    // What the worker settled on, which is not always what it was asked for.
+    if (_inference.translationBackend case final actual?) {
+      _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
+    }
     _events.add({'type': 'startup', 'value': 0.98, 'stage': 'capture'});
     final work = await LocalInferenceService.createWorkDirectory();
     final capture = Directory('${work.path}${Platform.pathSeparator}capture');

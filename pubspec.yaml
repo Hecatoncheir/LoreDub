@@ -48,6 +48,7 @@ dependencies:
   hooks: ^2.2.0
   native_toolchain_c: ^0.19.4
   record_use: ^1.1.1
+  archive: ^4.2.0
 
 dev_dependencies:
   flutter_test:

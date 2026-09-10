@@ -11,6 +11,7 @@ Future<void> main() async {
     'ld_abi_version',
     'ld_is_process_loopback_supported',
     'ld_list_processes_json',
+    'ld_probe_graphics_json',
     'ld_set_process_volume',
     'ld_restore_process_volumes',
     'ld_play_wave',

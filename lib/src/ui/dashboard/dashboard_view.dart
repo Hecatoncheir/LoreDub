@@ -7,13 +7,16 @@ import 'package:flutter/material.dart';
 
 import '../../data/services/model_catalog.dart';
 import '../../domain/app_settings.dart';
+import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/pipeline_state.dart';
+import '../../domain/runtime_package.dart';
 import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
+import '../compute_names.dart';
 import '../failure_messages.dart';
 import '../language_names.dart';
 import '../model_names.dart';
@@ -1284,6 +1287,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           ),
         ),
         const SizedBox(height: 12),
+        _ComputeDeviceCard(viewModel: viewModel),
+        const SizedBox(height: 12),
         _SettingCard(
           title: l10n.settingsPython,
           subtitle: l10n.pythonNote,
@@ -1445,6 +1450,208 @@ List<int> _threadOptions(int selected) {
         ..add(selected)
         ..add(defaultCpuThreads());
   return options.toList()..sort();
+}
+
+/// The compute section: one preset for the whole pipeline, then a row per
+/// stage showing what that preset actually resolved to and letting it be
+/// overridden. A backend the machine cannot run is shown but disabled, so an
+/// AMD owner can see that CUDA exists and why it is not on offer.
+class _ComputeDeviceCard extends StatelessWidget {
+  const _ComputeDeviceCard({required this.viewModel});
+
+  final DashboardViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final adapter = viewModel.availability.adapters.firstOrNull;
+    return _SettingCard(
+      title: l10n.settingsComputeDevice,
+      subtitle: l10n.computeDeviceNote,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SegmentedButton<ComputeDevice>(
+            segments: [
+              for (final device in ComputeDevice.values)
+                ButtonSegment(value: device, label: Text(computeDeviceName(l10n, device))),
+            ],
+            selected: {viewModel.settings.computeDevice},
+            onSelectionChanged: viewModel.running
+                ? null
+                : (selection) => viewModel.selectComputeDevice(selection.first),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            adapter == null ? l10n.computeNoAdapter : l10n.computeAdapterDetected(adapter.name),
+            style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+          for (final stage in ComputeStage.values) ...[
+            _ComputeStageRow(viewModel: viewModel, stage: stage),
+            if (stage != ComputeStage.values.last) const SizedBox(height: 10),
+          ],
+          const SizedBox(height: 12),
+          Text(
+            l10n.computeSpeechCpuOnly,
+            style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ComputeStageRow extends StatelessWidget {
+  const _ComputeStageRow({required this.viewModel, required this.stage});
+
+  final DashboardViewModel viewModel;
+  final ComputeStage stage;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final selected = viewModel.backendFor(stage);
+    final offered = stageBackends(stage);
+    // The missing runtime of whichever backend the reader is most likely to
+    // want: the best one the hardware could run but has nothing installed for.
+    RuntimeInstallState? missing;
+    for (final backend in offered) {
+      missing ??= viewModel.missingRuntimeFor(stage, backend);
+    }
+    // A downloaded runtime is worth gigabytes, so it can be given back.
+    final installed = missing != null ? null : viewModel.installedRuntimeFor(stage);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 96,
+          child: Text(
+            computeStageName(l10n, stage),
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              for (final backend in offered)
+                _BackendChip(
+                  label: computeBackendName(l10n, backend),
+                  selected: backend == selected,
+                  enabled: !viewModel.running && viewModel.isBackendReady(stage, backend),
+                  tooltip: _reasonUnavailable(l10n, backend),
+                  onTap: () => viewModel.selectStageBackend(stage, backend),
+                ),
+              if (missing != null) _RuntimeDownloadButton(viewModel: viewModel, state: missing),
+              if (installed != null)
+                TextButton.icon(
+                  onPressed: viewModel.running ? null : () => viewModel.removeRuntime(installed),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                  label: Text(
+                    '${l10n.computeRuntimeRemove} · '
+                    '${formatPackageSize(installed.package.approximateBytes)}',
+                  ),
+                  style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Why a chip is greyed out, or null when it is not.
+  String? _reasonUnavailable(AppLocalizations l10n, ComputeBackend backend) {
+    if (viewModel.isBackendReady(stage, backend)) return null;
+    if (!viewModel.availability.supportsHardware(backend)) return l10n.computeBackendNoHardware;
+    final package = viewModel.missingRuntimeFor(stage, backend);
+    if (package != null) {
+      return l10n.computeRuntimeMissing(formatPackageSize(package.package.approximateBytes));
+    }
+    return l10n.computeBackendUnsupported;
+  }
+}
+
+class _BackendChip extends StatelessWidget {
+  const _BackendChip({
+    required this.label,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+    this.tooltip,
+  });
+
+  final String label;
+  final bool selected;
+  final bool enabled;
+  final String? tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final chip = ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: enabled ? (_) => onTap() : null,
+      showCheckmark: false,
+      // The same orange the preset above uses: both are selections, and two
+      // different selected colours in one card read as two different things.
+      selectedColor: scheme.primary,
+      disabledColor: LoreDubPalette.panel,
+      labelStyle: TextStyle(
+        fontFamily: LoreDubFonts.mono,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: selected
+            ? scheme.onPrimary
+            : enabled
+            ? LoreDubPalette.ink
+            : LoreDubPalette.mutedInk,
+      ),
+    );
+    return tooltip == null ? chip : Tooltip(message: tooltip!, child: chip);
+  }
+}
+
+/// Offers the download a backend is waiting on, and shows it running.
+class _RuntimeDownloadButton extends StatelessWidget {
+  const _RuntimeDownloadButton({required this.viewModel, required this.state});
+
+  final DashboardViewModel viewModel;
+  final RuntimeInstallState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (state.installing) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 90,
+            child: LinearProgressIndicator(value: state.progress, minHeight: 6),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${((state.progress ?? 0) * 100).round()}%',
+            style: const TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 12),
+          ),
+        ],
+      );
+    }
+    return TextButton.icon(
+      onPressed: viewModel.running ? null : () => viewModel.installRuntime(state),
+      icon: const Icon(Icons.download_rounded, size: 18),
+      label: Text(
+        '${l10n.computeRuntimeDownload} · '
+        '${formatPackageSize(state.package.approximateBytes)}',
+      ),
+    );
+  }
 }
 
 class _SettingCard extends StatelessWidget {

@@ -17,6 +17,7 @@ const recordUseMapping = {
   'ld_list_processes_json': 'ld_list_processes_json',
   'ld_play_wave': 'ld_play_wave',
   'ld_poll_event_json': 'ld_poll_event_json',
+  'ld_probe_graphics_json': 'ld_probe_graphics_json',
   'ld_restore_process_volumes': 'ld_restore_process_volumes',
   'ld_set_process_volume': 'ld_set_process_volume',
   'ld_start': 'ld_start',

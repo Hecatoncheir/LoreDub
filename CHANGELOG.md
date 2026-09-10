@@ -44,6 +44,10 @@ All notable changes to LoreDub are documented in this file.
 - Added an English interface alongside Russian. Every label moved into `lib/l10n/*.arb`,
   and Settings carries the switch; Russian stays the default and the source of the
   wording. `README.md` is now Russian, with `README.en.md` beside it.
+- Added a compute device section to Settings. "Automatic" probes the graphics adapters and
+  assigns CUDA, Vulkan or the CPU to recognition, translation and speech; each stage can then
+  be moved by hand, and a backend the machine cannot run is shown disabled with the reason.
+  The heavy GPU runtimes stay out of the installer and are downloaded on demand.
 - Added error messages in the interface language. Services now raise an error code instead
   of a Russian sentence, so a failure raised while the app was in one language is rewritten
   the moment the other one is picked.

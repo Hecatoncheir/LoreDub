@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'compute_device.dart';
 import 'spoken_language.dart';
 
 enum CaptureMode { audio, ocr }
@@ -22,6 +23,10 @@ class AppSettings {
     this.detectSourceLanguage = true,
     this.sourceLanguage = fallbackSpokenLanguage,
     this.interfaceLanguage = defaultInterfaceLanguage,
+    this.computeDevice = ComputeDevice.auto,
+    this.recognitionBackend,
+    this.translationBackend,
+    this.speechBackend,
   });
 
   final CaptureMode captureMode;
@@ -52,6 +57,46 @@ class AppSettings {
   /// Language of the interface itself, independent of what is being dubbed.
   final String interfaceLanguage;
 
+  /// What the user asked the pipeline to run on, as a whole.
+  final ComputeDevice computeDevice;
+
+  /// What a single stage was pinned to, overriding [computeDevice].
+  ///
+  /// Null means the stage follows the preset. Speech has an entry only for
+  /// symmetry: torch offers it nothing but the CPU on Windows today.
+  final ComputeBackend? recognitionBackend;
+  final ComputeBackend? translationBackend;
+  final ComputeBackend? speechBackend;
+
+  ComputeBackend? backendOverride(ComputeStage stage) => switch (stage) {
+    ComputeStage.recognition => recognitionBackend,
+    ComputeStage.translation => translationBackend,
+    ComputeStage.speech => speechBackend,
+  };
+
+  /// What a stage will actually run on, given what the machine offers.
+  ComputeBackend backendFor(ComputeStage stage, ComputeAvailability availability) =>
+      resolveComputeBackend(
+        stage: stage,
+        device: computeDevice,
+        availability: availability,
+        override: backendOverride(stage),
+      );
+
+  /// Pins one stage, leaving the others as they were.
+  AppSettings withBackend(ComputeStage stage, ComputeBackend backend) => switch (stage) {
+    ComputeStage.recognition => copyWith(recognitionBackend: backend),
+    ComputeStage.translation => copyWith(translationBackend: backend),
+    ComputeStage.speech => copyWith(speechBackend: backend),
+  };
+
+  /// Applies a preset, dropping every per-stage pin so the preset is what the
+  /// interface then shows.
+  AppSettings withComputeDevice(ComputeDevice device) => copyWith(
+    computeDevice: device,
+    clearBackendOverrides: true,
+  );
+
   /// What whisper.cpp should be told to expect.
   String get effectiveSourceLanguage => detectSourceLanguage ? autoSpokenLanguage : sourceLanguage;
 
@@ -69,6 +114,11 @@ class AppSettings {
     bool? detectSourceLanguage,
     String? sourceLanguage,
     String? interfaceLanguage,
+    ComputeDevice? computeDevice,
+    ComputeBackend? recognitionBackend,
+    ComputeBackend? translationBackend,
+    ComputeBackend? speechBackend,
+    bool clearBackendOverrides = false,
   }) => AppSettings(
     captureMode: captureMode ?? this.captureMode,
     targetLanguage: targetLanguage ?? this.targetLanguage,
@@ -83,5 +133,13 @@ class AppSettings {
     detectSourceLanguage: detectSourceLanguage ?? this.detectSourceLanguage,
     sourceLanguage: sourceLanguage ?? this.sourceLanguage,
     interfaceLanguage: interfaceLanguage ?? this.interfaceLanguage,
+    computeDevice: computeDevice ?? this.computeDevice,
+    recognitionBackend: clearBackendOverrides
+        ? null
+        : recognitionBackend ?? this.recognitionBackend,
+    translationBackend: clearBackendOverrides
+        ? null
+        : translationBackend ?? this.translationBackend,
+    speechBackend: clearBackendOverrides ? null : speechBackend ?? this.speechBackend,
   );
 }

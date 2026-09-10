@@ -347,6 +347,56 @@
       }
     }
   },
+  "settingsComputeDevice": "Compute device",
+  "computeDeviceNote": "\"Automatic\" finds the graphics card by itself. Each model can be moved to a different device on its own.",
+  "computeDeviceAuto": "Automatic",
+  "computeDeviceGpu": "GPU",
+  "computeDeviceCpu": "CPU",
+  "computeStageRecognition": "Whisper",
+  "computeStageTranslation": "Translation",
+  "computeStageSpeech": "Speech",
+  "computeBackendCuda": "CUDA",
+  "computeBackendVulkan": "Vulkan",
+  "computeBackendCpu": "CPU",
+  "computeAdapterDetected": "Graphics card: {name}",
+  "@computeAdapterDetected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "computeNoAdapter": "No usable graphics card found — everything runs on the processor",
+  "computeBackendUnsupported": "This model has no such build",
+  "computeBackendNoHardware": "No suitable graphics card or driver",
+  "computeRuntimeMissing": "Needs a {size} package",
+  "@computeRuntimeMissing": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "computeRuntimeDownload": "Download",
+  "computeRuntimeRemove": "Remove",
+  "computeRuntimeInstalling": "Installing…",
+  "computeSpeechCpuOnly": "Silero runs on the processor: moving it to the card costs more than the work itself.",
+  "failureRuntimeIncomplete": "The downloaded package has no {detail}",
+  "@failureRuntimeIncomplete": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureRuntimeInstallFailed": "The GPU runtime could not be installed: {detail}",
+  "@failureRuntimeInstallFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureUnknown": "Unknown error",
   "stagePython": "Starting Python",
   "stageTorch": "Loading PyTorch",

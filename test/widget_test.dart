@@ -8,10 +8,13 @@ import 'package:lore_dub/src/app.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
+import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
+import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
+import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus, TranscriptEntry;
@@ -26,6 +29,7 @@ void main() {
     final viewModel = DashboardViewModel(
       AppRepository(NativeEngineService(), SettingsService()),
       ModelRepository(ModelStorageService()),
+      RuntimeRepository(RuntimeStorageService()),
     );
     addTearDown(viewModel.dispose);
     return viewModel;
@@ -390,5 +394,58 @@ void main() {
       preferences.getString('modelProxyUrl'),
       'http://127.0.0.1:7890',
     );
+  });
+
+  testWidgets('offers the compute device presets and a row per stage', (tester) async {
+    await pumpLoreDub(tester, const Size(1280, 900));
+    await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
+
+    final section = find.text('Вычислительное устройство');
+    await tester.scrollUntilVisible(section, 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+
+    expect(section, findsOneWidget);
+    for (final preset in ['Автоматически', 'GPU', 'CPU']) {
+      expect(find.text(preset), findsWidgets, reason: preset);
+    }
+    // One row per stage, named as the player knows them.
+    expect(find.text('Whisper'), findsOneWidget);
+    expect(find.text('Перевод'), findsOneWidget);
+    expect(find.text('Озвучка'), findsOneWidget);
+  });
+
+  testWidgets('never offers speech anything but the processor', (tester) async {
+    await pumpLoreDub(tester, const Size(1280, 900));
+    await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
+
+    final speech = find.text('Озвучка');
+    await tester.scrollUntilVisible(speech, 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+
+    // Silero has no GPU build here, so its row carries a single chip.
+    final row = find.ancestor(of: speech, matching: find.byType(Row)).first;
+    expect(find.descendant(of: row, matching: find.byType(ChoiceChip)), findsOneWidget);
+  });
+
+  testWidgets('remembers the compute preset the user pressed', (tester) async {
+    await pumpLoreDub(tester, const Size(1280, 900));
+    await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
+
+    final section = find.text('Вычислительное устройство');
+    await tester.scrollUntilVisible(section, 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+
+    final preset = find.descendant(
+      of: find.byType(SegmentedButton<ComputeDevice>),
+      matching: find.text('CPU'),
+    );
+    await tester.tap(preset);
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('computeDevice'), 'cpu');
   });
 }

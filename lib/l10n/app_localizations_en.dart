@@ -481,6 +481,82 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settingsComputeDevice => 'Compute device';
+
+  @override
+  String get computeDeviceNote =>
+      '\"Automatic\" finds the graphics card by itself. Each model can be moved to a different device on its own.';
+
+  @override
+  String get computeDeviceAuto => 'Automatic';
+
+  @override
+  String get computeDeviceGpu => 'GPU';
+
+  @override
+  String get computeDeviceCpu => 'CPU';
+
+  @override
+  String get computeStageRecognition => 'Whisper';
+
+  @override
+  String get computeStageTranslation => 'Translation';
+
+  @override
+  String get computeStageSpeech => 'Speech';
+
+  @override
+  String get computeBackendCuda => 'CUDA';
+
+  @override
+  String get computeBackendVulkan => 'Vulkan';
+
+  @override
+  String get computeBackendCpu => 'CPU';
+
+  @override
+  String computeAdapterDetected(String name) {
+    return 'Graphics card: $name';
+  }
+
+  @override
+  String get computeNoAdapter => 'No usable graphics card found — everything runs on the processor';
+
+  @override
+  String get computeBackendUnsupported => 'This model has no such build';
+
+  @override
+  String get computeBackendNoHardware => 'No suitable graphics card or driver';
+
+  @override
+  String computeRuntimeMissing(String size) {
+    return 'Needs a $size package';
+  }
+
+  @override
+  String get computeRuntimeDownload => 'Download';
+
+  @override
+  String get computeRuntimeRemove => 'Remove';
+
+  @override
+  String get computeRuntimeInstalling => 'Installing…';
+
+  @override
+  String get computeSpeechCpuOnly =>
+      'Silero runs on the processor: moving it to the card costs more than the work itself.';
+
+  @override
+  String failureRuntimeIncomplete(String detail) {
+    return 'The downloaded package has no $detail';
+  }
+
+  @override
+  String failureRuntimeInstallFailed(String detail) {
+    return 'The GPU runtime could not be installed: $detail';
+  }
+
+  @override
   String get failureUnknown => 'Unknown error';
 
   @override

@@ -7,8 +7,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../l10n/app_localizations.dart';
 import 'data/repositories/app_repository.dart';
 import 'data/repositories/model_repository.dart';
+import 'data/repositories/runtime_repository.dart';
 import 'data/services/model_storage_service.dart';
 import 'data/services/native_engine_service.dart';
+import 'data/services/runtime_storage_service.dart';
 import 'data/services/settings_service.dart';
 import 'ui/dashboard/dashboard_view.dart';
 import 'ui/dashboard/dashboard_view_model.dart';
@@ -30,6 +32,7 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
     viewModel = DashboardViewModel(
       AppRepository(NativeEngineService(), SettingsService()),
       ModelRepository(ModelStorageService()),
+      RuntimeRepository(RuntimeStorageService()),
     )..initialize();
   }
 

@@ -4,6 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
+import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -76,5 +77,47 @@ void main() {
     SharedPreferences.setMockInitialValues({'sourceLanguage': 'klingon'});
 
     expect((await SettingsService().load()).sourceLanguage, 'en');
+  });
+
+  test('starts on automatic device selection with nothing pinned', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    final loaded = await SettingsService().load();
+
+    expect(loaded.computeDevice, ComputeDevice.auto);
+    expect(loaded.recognitionBackend, isNull);
+    expect(loaded.translationBackend, isNull);
+    expect(loaded.speechBackend, isNull);
+  });
+
+  test('remembers the device preset and the stages pinned against it', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    await service.save(
+      const AppSettings()
+          .withComputeDevice(ComputeDevice.gpu)
+          .withBackend(ComputeStage.recognition, ComputeBackend.vulkan),
+    );
+    final saved = await service.load();
+
+    expect(saved.computeDevice, ComputeDevice.gpu);
+    expect(saved.recognitionBackend, ComputeBackend.vulkan);
+    expect(saved.translationBackend, isNull);
+  });
+
+  test('clears a pin from storage when the preset is pressed again', () async {
+    SharedPreferences.setMockInitialValues({'recognitionBackend': 'cuda'});
+    final service = SettingsService();
+
+    await service.save(const AppSettings().withComputeDevice(ComputeDevice.cpu));
+
+    expect((await service.load()).recognitionBackend, isNull);
+  });
+
+  test('refuses a backend this build no longer offers', () async {
+    SharedPreferences.setMockInitialValues({'recognitionBackend': 'metal'});
+
+    expect((await SettingsService().load()).recognitionBackend, isNull);
   });
 }

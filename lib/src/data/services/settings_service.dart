@@ -4,6 +4,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/app_settings.dart';
+import '../../domain/compute_device.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/spoken_language.dart';
 
@@ -25,6 +26,23 @@ class SettingsService {
     if (stored == null || !isSupportedSpokenLanguage(stored)) return fallbackSpokenLanguage;
     return stored;
   }
+
+  /// A pin written by a build that offered more backends than this one must
+  /// not survive as a value no stage can resolve.
+  static ComputeBackend? _readBackend(SharedPreferences preferences, String key) {
+    final stored = preferences.getString(key);
+    if (stored == null) return null;
+    for (final backend in ComputeBackend.values) {
+      if (backend.name == stored) return backend;
+    }
+    return null;
+  }
+
+  static Future<void> _writeBackend(
+    SharedPreferences preferences,
+    String key,
+    ComputeBackend? backend,
+  ) => backend == null ? preferences.remove(key) : preferences.setString(key, backend.name);
 
   Future<AppSettings> load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -48,6 +66,13 @@ class SettingsService {
       detectSourceLanguage: preferences.getBool('detectSourceLanguage') ?? true,
       sourceLanguage: _readSourceLanguage(preferences),
       interfaceLanguage: _readInterfaceLanguage(preferences),
+      computeDevice: ComputeDevice.values.firstWhere(
+        (device) => device.name == preferences.getString('computeDevice'),
+        orElse: () => ComputeDevice.auto,
+      ),
+      recognitionBackend: _readBackend(preferences, 'recognitionBackend'),
+      translationBackend: _readBackend(preferences, 'translationBackend'),
+      speechBackend: _readBackend(preferences, 'speechBackend'),
     );
   }
 
@@ -70,6 +95,10 @@ class SettingsService {
       preferences.setBool('detectSourceLanguage', settings.detectSourceLanguage),
       preferences.setString('sourceLanguage', settings.sourceLanguage),
       preferences.setString('interfaceLanguage', settings.interfaceLanguage),
+      preferences.setString('computeDevice', settings.computeDevice.name),
+      _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
+      _writeBackend(preferences, 'translationBackend', settings.translationBackend),
+      _writeBackend(preferences, 'speechBackend', settings.speechBackend),
     ]);
   }
 }

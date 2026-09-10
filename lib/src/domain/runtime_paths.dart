@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
+import 'compute_device.dart';
 import 'failure.dart';
 
 /// Threads to hand to whisper.cpp and torch by default.
@@ -25,14 +26,39 @@ String bundledRuntimeDirectory() =>
 String bundledPythonExecutablePath({String? runtimeDirectory}) =>
     path.join(runtimeDirectory ?? bundledRuntimeDirectory(), 'python', 'python.exe');
 
-String whisperExecutablePath({String? runtimeDirectory}) =>
-    path.join(runtimeDirectory ?? bundledRuntimeDirectory(), 'whisper', 'whisper-cli.exe');
+/// Each whisper.cpp build gets its own folder: they ship ggml libraries of
+/// the same name compiled against different backends, so mixing them in one
+/// directory would load whichever happened to be copied last.
+String whisperBackendDirectory(ComputeBackend backend) => switch (backend) {
+  ComputeBackend.cpu => 'whisper',
+  ComputeBackend.vulkan => 'whisper-vulkan',
+  ComputeBackend.cuda => 'whisper-cuda',
+};
+
+String whisperExecutablePath({
+  String? runtimeDirectory,
+  ComputeBackend backend = ComputeBackend.cpu,
+}) => path.join(
+  runtimeDirectory ?? bundledRuntimeDirectory(),
+  whisperBackendDirectory(backend),
+  'whisper-cli.exe',
+);
 
 /// Verifies the whisper.cpp binary before the pipeline ducks the game and
 /// starts capturing, so a missing runtime is reported instead of silently
 /// swallowing every captured phrase.
-Future<String> resolveWhisperExecutable({String? runtimeDirectory}) async {
-  final candidate = whisperExecutablePath(runtimeDirectory: runtimeDirectory);
+///
+/// The CPU and Vulkan builds ship with the application; the CUDA one is
+/// downloaded, so it is looked for under [downloadedRuntimeDirectory].
+Future<String> resolveWhisperExecutable({
+  String? runtimeDirectory,
+  String? downloadedRuntimeDirectory,
+  ComputeBackend backend = ComputeBackend.cpu,
+}) async {
+  final root = backend == ComputeBackend.cuda
+      ? downloadedRuntimeDirectory ?? runtimeDirectory
+      : runtimeDirectory;
+  final candidate = whisperExecutablePath(runtimeDirectory: root, backend: backend);
   if (await File(candidate).exists()) return candidate;
   throw LoreDubFailure(FailureCode.whisperMissing, detail: candidate);
 }

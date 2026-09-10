@@ -484,6 +484,82 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get settingsComputeDevice => 'Вычислительное устройство';
+
+  @override
+  String get computeDeviceNote =>
+      '«Автоматически» само определяет видеокарту. Каждую модель можно перевести на другое устройство отдельно.';
+
+  @override
+  String get computeDeviceAuto => 'Автоматически';
+
+  @override
+  String get computeDeviceGpu => 'GPU';
+
+  @override
+  String get computeDeviceCpu => 'CPU';
+
+  @override
+  String get computeStageRecognition => 'Whisper';
+
+  @override
+  String get computeStageTranslation => 'Перевод';
+
+  @override
+  String get computeStageSpeech => 'Озвучка';
+
+  @override
+  String get computeBackendCuda => 'CUDA';
+
+  @override
+  String get computeBackendVulkan => 'Vulkan';
+
+  @override
+  String get computeBackendCpu => 'CPU';
+
+  @override
+  String computeAdapterDetected(String name) {
+    return 'Видеокарта: $name';
+  }
+
+  @override
+  String get computeNoAdapter => 'Подходящая видеокарта не найдена — всё считается на процессоре';
+
+  @override
+  String get computeBackendUnsupported => 'Не поддерживается этой моделью';
+
+  @override
+  String get computeBackendNoHardware => 'Нет подходящей видеокарты или драйвера';
+
+  @override
+  String computeRuntimeMissing(String size) {
+    return 'Нужен пакет $size';
+  }
+
+  @override
+  String get computeRuntimeDownload => 'Скачать';
+
+  @override
+  String get computeRuntimeRemove => 'Удалить';
+
+  @override
+  String get computeRuntimeInstalling => 'Установка…';
+
+  @override
+  String get computeSpeechCpuOnly =>
+      'Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.';
+
+  @override
+  String failureRuntimeIncomplete(String detail) {
+    return 'В скачанном пакете нет $detail';
+  }
+
+  @override
+  String failureRuntimeInstallFailed(String detail) {
+    return 'Не удалось установить GPU-рантайм: $detail';
+  }
+
+  @override
   String get failureUnknown => 'Неизвестная ошибка';
 
   @override

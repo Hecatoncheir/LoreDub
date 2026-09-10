@@ -5,7 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project
 
 LoreDub is a Windows-only Flutter desktop app that dubs game audio in real time,
-fully on the local CPU: capture -> ASR/translation -> TTS -> default output.
+fully on the local machine: capture -> ASR/translation -> TTS -> default
+output. Recognition and translation can run on the CPU or the GPU.
 See `README.md` for the user-facing pipeline description and release process,
 and `docs/UI_DESIGN.md` for the UI tokens and information architecture.
 
@@ -30,7 +31,7 @@ otherwise the pipeline fails at start):
 
 ```powershell
 flutter build windows --debug
-powershell -ExecutionPolicy Bypass -File scripts/prepare_windows_runtime.ps1 -Destination build/windows/x64/runner/Debug/runtime
+powershell -ExecutionPolicy Bypass -File scripts/prepare_windows_runtime.ps1 -Destination build/windows/x64/runner/Debug/runtime -SkipVulkan
 flutter run -d windows
 ```
 
@@ -64,9 +65,10 @@ than one of them.
    WASAPI process loopback + energy VAD writing 16 kHz WAV chunks;
    `OcrCapture` GDI + Windows OCR over the lower part of the foreground game
    window).
-3. **whisper.cpp** — invoked per audio segment as a one-shot
-   `runtime/whisper/whisper-cli.exe` subprocess with `-tr` (translate to
-   English). OCR mode skips this stage entirely.
+3. **whisper.cpp** — invoked per audio segment as a one-shot subprocess with
+   `-tr` (translate to English). Which build runs is the compute setting:
+   bundled `runtime/whisper/` (CPU) or `runtime/whisper-vulkan/`, or the
+   downloaded `<app support>/runtime/whisper-cuda/`. OCR mode skips it.
 4. **Python inference worker** — `assets/runtime/inference_worker.py`, bundled
    as a Flutter asset, extracted to the app-support `work/` directory and run
    by `LocalInferenceService` as a persistent subprocess speaking
@@ -79,6 +81,22 @@ than one of them.
 Segments are processed strictly sequentially — `NativeEngineService._processing`
 is a chained `Future` — so a small CPU is never asked to run two inferences at
 once. Preserve that when adding stages.
+
+Which device each stage runs on is decided in `domain/compute_device.dart`,
+which is pure and unit-tested: `resolveComputeBackend` takes the user's preset,
+an optional per-stage pin, and a `ComputeAvailability` (adapters from the
+native DXGI probe plus the set of downloaded runtime ids) and never returns a
+backend that cannot start. Adding a backend means touching that resolver,
+`requiredRuntimeId`, `runtime_catalog.dart`, and `whisperBackendDirectory` —
+each whisper.cpp build needs its own folder because they ship ggml libraries
+of the same name compiled against different backends.
+
+`RuntimeStorageService` fetches the GPU runtimes on demand into
+`<app support>/runtime/<id>/`: archives are downloaded, unpacked in an isolate
+and flattened to the probe file, while CUDA torch is installed by pip into its
+own directory and put on the worker's import path via `--extra-packages`.
+It shares the download loop with the model store through
+`artifact_downloader.dart`.
 
 `ModelStorageService` downloads the three model packages listed in
 `model_catalog.dart` to `<app support>/models/<id>/`, streaming to a temp file
@@ -93,7 +111,10 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `app_en.arb`; reach them with `AppLocalizations.of(context)`. Names for
   languages and model packages are resolved in `lib/src/ui/language_names.dart`
   and `model_names.dart`, so the catalogue and domain hold codes, not wording.
-  Service-layer exception messages are still **Russian** literals.
+  Services never raise a sentence: they throw `LoreDubFailure(FailureCode.x)`
+  with the technical detail attached, and `ui/failure_messages.dart` turns it
+  into text at the interface boundary. Add a code to `domain/failure.dart`, a
+  case to `describeFailure`, and the wording to both ARB files together.
 - Comments, identifiers, docs, and commit messages are English. `README.md` is
   Russian and is the primary one; `README.en.md` follows it.
 - `lib/src/native/*.g.dart` is generated — edit `native/lore_dub_native.h` and

@@ -8,20 +8,24 @@ import 'package:path/path.dart' as path;
 
 import '../../data/repositories/app_repository.dart';
 import '../../data/repositories/model_repository.dart';
+import '../../data/repositories/runtime_repository.dart';
 import '../../domain/app_settings.dart';
+import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
 import '../../data/services/python_discovery.dart';
 import '../../domain/failure.dart';
 import '../../domain/model_package.dart';
 import '../../domain/pipeline_state.dart';
+import '../../domain/runtime_package.dart';
 
 enum DashboardSection { live, models, settings }
 
 class DashboardViewModel extends ChangeNotifier {
-  DashboardViewModel(this._appRepository, this._modelRepository);
+  DashboardViewModel(this._appRepository, this._modelRepository, this._runtimeRepository);
 
   final AppRepository _appRepository;
   final ModelRepository _modelRepository;
+  final RuntimeRepository _runtimeRepository;
   StreamSubscription<Map<String, Object?>>? _eventSubscription;
 
   DashboardSection section = DashboardSection.live;
@@ -48,6 +52,51 @@ class DashboardViewModel extends ChangeNotifier {
   /// What went wrong, as raised. The interface writes it out.
   Object? error;
   String modelDirectoryPath = '';
+
+  /// What this machine offers, and which GPU runtimes are downloaded.
+  ComputeAvailability availability = const ComputeAvailability();
+  List<RuntimeInstallState> runtimes = const [];
+  String runtimeDirectoryPath = '';
+
+  /// What a running pipeline reported it actually settled on, which can
+  /// differ from the request when a driver turns out to be unusable.
+  final Map<ComputeStage, ComputeBackend> _activeBackends = {};
+
+  /// What a stage will run on: the live answer while the pipeline is up, the
+  /// resolved intention otherwise.
+  ComputeBackend backendFor(ComputeStage stage) =>
+      _activeBackends[stage] ?? settings.backendFor(stage, availability);
+
+  /// Whether the interface should offer this choice at all.
+  bool isBackendOffered(ComputeStage stage, ComputeBackend backend) =>
+      stageBackends(stage).contains(backend);
+
+  /// Whether picking it would actually work right now.
+  bool isBackendReady(ComputeStage stage, ComputeBackend backend) =>
+      availability.isReady(stage, backend);
+
+  /// The downloaded runtime this stage is using, so it can be given back.
+  RuntimeInstallState? installedRuntimeFor(ComputeStage stage) {
+    for (final backend in stageBackends(stage)) {
+      final id = requiredRuntimeId(stage, backend);
+      if (id == null || !availability.installedRuntimes.contains(id)) continue;
+      for (final state in runtimes) {
+        if (state.package.id == id) return state;
+      }
+    }
+    return null;
+  }
+
+  /// The runtime a backend still needs, or null when nothing is missing.
+  RuntimeInstallState? missingRuntimeFor(ComputeStage stage, ComputeBackend backend) {
+    if (!availability.supportsHardware(backend)) return null;
+    final id = requiredRuntimeId(stage, backend);
+    if (id == null || availability.installedRuntimes.contains(id)) return null;
+    for (final state in runtimes) {
+      if (state.package.id == id) return state;
+    }
+    return null;
+  }
 
   /// Whisper is language-independent and OCR mode does without it entirely.
   List<ModelInstallState> get recognitionModels => _modelsOfKind(ModelKind.recognition);
@@ -96,11 +145,15 @@ class DashboardViewModel extends ChangeNotifier {
         _appRepository.listProcesses(),
         _modelRepository.loadStates(),
         _modelRepository.rootDirectory(),
+        _runtimeRepository.rootDirectory(),
+        _appRepository.probeGraphics(),
       ]);
       settings = values[0] as AppSettings;
       processes = values[1] as List<GameProcess>;
       models = values[2] as List<ModelInstallState>;
       modelDirectoryPath = values[3] as String;
+      runtimeDirectoryPath = values[4] as String;
+      await refreshAvailability(probe: values[5] as ComputeAvailability);
     } catch (exception) {
       error = LoreDubFailure(FailureCode.initializationFailed, detail: '$exception');
     } finally {
@@ -126,6 +179,68 @@ class DashboardViewModel extends ChangeNotifier {
     );
     selectedProcess = matches.isEmpty ? null : matches.first;
     notifyListeners();
+  }
+
+  /// Rereads what the machine offers. The hardware half is asked for only
+  /// when it is not already known: adapters do not appear mid-session, while
+  /// a runtime download finishing is exactly what changes here.
+  Future<void> refreshAvailability({ComputeAvailability? probe}) async {
+    final hardware = probe ?? availability;
+    final installed = await _runtimeRepository.installedIds();
+    availability = hardware.copyWith(installedRuntimes: installed);
+    runtimes = [
+      for (final package in _runtimeRepository.catalog)
+        RuntimeInstallState(
+          package: package,
+          installed: installed.contains(package.id),
+        ),
+    ];
+    notifyListeners();
+  }
+
+  /// Applies one of the three presets, dropping any per-stage pins so what
+  /// the interface shows is what the preset decided.
+  Future<void> selectComputeDevice(ComputeDevice device) =>
+      updateSettings(settings.withComputeDevice(device));
+
+  /// Pins a single stage, leaving the rest of the pipeline alone.
+  Future<void> selectStageBackend(ComputeStage stage, ComputeBackend backend) =>
+      updateSettings(settings.withBackend(stage, backend));
+
+  Future<void> installRuntime(RuntimeInstallState state) async {
+    final index = runtimes.indexOf(state);
+    if (index < 0 || state.installing) return;
+    error = null;
+    runtimes[index] = state.copyWith(progress: 0, clearError: true);
+    notifyListeners();
+    try {
+      await _runtimeRepository.install(
+        state.package,
+        proxyUrl: settings.modelProxyUrl,
+        pythonExecutable: settings.pythonExecutable,
+        onProgress: (progress) {
+          runtimes[index] = runtimes[index].copyWith(progress: progress);
+          notifyListeners();
+        },
+      );
+      runtimes[index] = runtimes[index].copyWith(installed: true, clearProgress: true);
+      // The new runtime changes which backends can be picked.
+      await refreshAvailability();
+    } catch (exception) {
+      runtimes[index] = runtimes[index].copyWith(clearProgress: true, error: exception);
+    }
+    notifyListeners();
+  }
+
+  Future<void> removeRuntime(RuntimeInstallState state) async {
+    error = null;
+    try {
+      await _runtimeRepository.remove(state.package);
+      await refreshAvailability();
+    } catch (exception) {
+      error = exception;
+      notifyListeners();
+    }
   }
 
   Future<void> updateSettings(AppSettings value) async {
@@ -201,6 +316,8 @@ class DashboardViewModel extends ChangeNotifier {
       startupStage = '';
       // The detection belonged to the session that just ended.
       detectedLanguage = null;
+      // The devices belonged to that session too.
+      _activeBackends.clear();
       notifyListeners();
       return;
     }
@@ -223,6 +340,9 @@ class DashboardViewModel extends ChangeNotifier {
           'speech': path.join(speechDirectory, speech.primaryFileName),
         },
         speaker: speech.speaker ?? '',
+        recognitionBackend: settings.backendFor(ComputeStage.recognition, availability),
+        translationBackend: settings.backendFor(ComputeStage.translation, availability),
+        runtimeDirectory: runtimeDirectoryPath,
       );
     } catch (exception) {
       status = PipelineStatus.error;
@@ -287,6 +407,12 @@ class DashboardViewModel extends ChangeNotifier {
         startupStage = event['stage'] as String? ?? '';
       case 'language':
         detectedLanguage = event['code'] as String?;
+      case 'backend':
+        final stage = ComputeStage.values.where((value) => value.name == event['stage']);
+        final backend = ComputeBackend.values.where((value) => value.name == event['backend']);
+        if (stage.isNotEmpty && backend.isNotEmpty) {
+          _activeBackends[stage.first] = backend.first;
+        }
       case 'error':
         // A phrase failing does not stop the capture, so the pipeline keeps
         // its state and the controls stay usable. Marking the session as

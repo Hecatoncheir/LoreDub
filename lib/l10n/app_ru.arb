@@ -347,6 +347,56 @@
       }
     }
   },
+  "settingsComputeDevice": "Вычислительное устройство",
+  "computeDeviceNote": "«Автоматически» само определяет видеокарту. Каждую модель можно перевести на другое устройство отдельно.",
+  "computeDeviceAuto": "Автоматически",
+  "computeDeviceGpu": "GPU",
+  "computeDeviceCpu": "CPU",
+  "computeStageRecognition": "Whisper",
+  "computeStageTranslation": "Перевод",
+  "computeStageSpeech": "Озвучка",
+  "computeBackendCuda": "CUDA",
+  "computeBackendVulkan": "Vulkan",
+  "computeBackendCpu": "CPU",
+  "computeAdapterDetected": "Видеокарта: {name}",
+  "@computeAdapterDetected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "computeNoAdapter": "Подходящая видеокарта не найдена — всё считается на процессоре",
+  "computeBackendUnsupported": "Не поддерживается этой моделью",
+  "computeBackendNoHardware": "Нет подходящей видеокарты или драйвера",
+  "computeRuntimeMissing": "Нужен пакет {size}",
+  "@computeRuntimeMissing": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "computeRuntimeDownload": "Скачать",
+  "computeRuntimeRemove": "Удалить",
+  "computeRuntimeInstalling": "Установка…",
+  "computeSpeechCpuOnly": "Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.",
+  "failureRuntimeIncomplete": "В скачанном пакете нет {detail}",
+  "@failureRuntimeIncomplete": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureRuntimeInstallFailed": "Не удалось установить GPU-рантайм: {detail}",
+  "@failureRuntimeInstallFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureUnknown": "Неизвестная ошибка",
   "stagePython": "Запуск Python",
   "stageTorch": "Загрузка PyTorch",

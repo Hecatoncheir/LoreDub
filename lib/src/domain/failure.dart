@@ -63,6 +63,8 @@ enum FailureCode {
 
   /// The SOCKS5 proxy host could not be resolved.
   socksLookupFailed,
+  runtimeIncomplete,
+  runtimeInstallFailed,
 
   /// The proxy setting is not a URL the app accepts.
   proxyFormat,

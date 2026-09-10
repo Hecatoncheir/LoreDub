@@ -50,6 +50,13 @@ external int ld_poll_event_json(
 );
 
 @meta.RecordUse()
+@ffi.Native<ffi.Int32 Function(ffi.Pointer<ffi.Char>, ffi.Int32)>()
+external int ld_probe_graphics_json(
+  ffi.Pointer<ffi.Char> output,
+  int capacity,
+);
+
+@meta.RecordUse()
 @ffi.Native<ffi.Int32 Function()>()
 external int ld_restore_process_volumes();
 

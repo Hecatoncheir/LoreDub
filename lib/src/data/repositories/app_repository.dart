@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../../domain/app_settings.dart';
+import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
 import '../services/native_engine_service.dart';
 import '../services/python_discovery.dart';
@@ -24,14 +25,22 @@ class AppRepository {
   Future<void> saveSettings(AppSettings settings) => _settingsService.save(settings);
   Future<List<GameProcess>> listProcesses() => _nativeEngine.listProcesses();
 
+  /// What the machine's adapters and drivers offer, before the download
+  /// state of the GPU runtimes is taken into account.
+  Future<ComputeAvailability> probeGraphics() => _nativeEngine.probeGraphics();
+
   /// [modelDirectories] carries the three paths the pipeline needs for the
   /// chosen language: `whisper` and `translation` directories, and the
   /// `speech` model file. [speaker] is the voice of that speech model.
+  /// [runtimeDirectory] is where downloaded GPU runtimes were unpacked.
   Future<void> start({
     required GameProcess? process,
     required AppSettings settings,
     required Map<String, String> modelDirectories,
     required String speaker,
+    required ComputeBackend recognitionBackend,
+    required ComputeBackend translationBackend,
+    required String runtimeDirectory,
   }) async {
     try {
       await _nativeEngine.start({
@@ -46,6 +55,9 @@ class AppRepository {
         'ocrRegionTop': settings.ocrRegionTop,
         'pythonExecutable': settings.pythonExecutable,
         'models': modelDirectories,
+        'recognitionBackend': recognitionBackend.name,
+        'translationBackend': translationBackend.name,
+        'runtimeDirectory': runtimeDirectory,
       });
       if (process != null &&
           (settings.captureMode == CaptureMode.ocr ||

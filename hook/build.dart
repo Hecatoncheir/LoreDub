@@ -30,6 +30,7 @@ Future<void> main(List<String> arguments) async {
               'user32',
               'gdi32',
               'windowsapp',
+              'dxgi',
             ]
           : const [],
     );
