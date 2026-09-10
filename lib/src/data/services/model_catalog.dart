@@ -31,6 +31,15 @@ ModelPackage _marian({
   ],
 );
 
+/// Voices, with the gender each one reads as.
+///
+/// The genders are measured rather than looked up: every voice was
+/// synthesized and its median fundamental taken, which separates the two
+/// groups by a wide margin. Packages whose voices are named by number are
+/// left [VoiceGender.unknown], and the automatic choice then stays out of it.
+VoiceOption _male(String id) => VoiceOption(id, gender: VoiceGender.male);
+VoiceOption _female(String id) => VoiceOption(id, gender: VoiceGender.female);
+
 ModelPackage _silero({
   required String id,
   required String language,
@@ -39,12 +48,14 @@ ModelPackage _silero({
   required int byteSize,
   required String speaker,
   required String version,
+  List<VoiceOption> voices = const [],
 }) => ModelPackage(
   id: id,
   kind: ModelKind.speech,
   language: language,
   speaker: speaker,
   version: version,
+  voices: voices,
   artifacts: [
     ModelArtifact(
       fileName: fileName,
@@ -151,6 +162,13 @@ final modelCatalog = <ModelPackage>[
     directory: 'ru',
     byteSize: 145359640,
     speaker: 'xenia',
+    voices: [
+      _male('aidar'),
+      _female('baya'),
+      _female('kseniya'),
+      _male('eugene'),
+      _female('xenia'),
+    ],
   ),
   _silero(
     id: 'silero-de-v3',
@@ -160,6 +178,13 @@ final modelCatalog = <ModelPackage>[
     directory: 'de',
     byteSize: 57076082,
     speaker: 'eva_k',
+    voices: [
+      _male('bernd_ungerer'),
+      _female('eva_k'),
+      _male('friedrich'),
+      _female('hokuspokus'),
+      _male('karlsson'),
+    ],
   ),
   _silero(
     id: 'silero-es-v3',
@@ -169,6 +194,9 @@ final modelCatalog = <ModelPackage>[
     directory: 'es',
     byteSize: 57079302,
     speaker: 'es_0',
+    // Measured: all three Spanish voices are men, so there is no second
+    // gender for the automatic choice to switch to.
+    voices: [_male('es_0'), _male('es_1'), _male('es_2')],
   ),
   _silero(
     id: 'silero-fr-v3',
@@ -178,6 +206,14 @@ final modelCatalog = <ModelPackage>[
     directory: 'fr',
     byteSize: 57085158,
     speaker: 'fr_0',
+    voices: [
+      _male('fr_0'),
+      _male('fr_1'),
+      _male('fr_2'),
+      _male('fr_3'),
+      _female('fr_4'),
+      _male('fr_5'),
+    ],
   ),
   _silero(
     id: 'silero-uk-v4',
@@ -187,6 +223,8 @@ final modelCatalog = <ModelPackage>[
     directory: 'ua',
     byteSize: 35354913,
     speaker: 'mykyta',
+    // The Ukrainian package ships one voice, so there is nothing to follow.
+    voices: [_male('mykyta')],
   ),
 ];
 

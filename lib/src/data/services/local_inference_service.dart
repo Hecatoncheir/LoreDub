@@ -16,11 +16,20 @@ import '../../domain/failure.dart';
 import 'runtime_catalog.dart';
 
 class InferenceResult {
-  const InferenceResult({required this.english, required this.translated, required this.wavePath});
+  const InferenceResult({
+    required this.english,
+    required this.translated,
+    required this.wavePath,
+    this.voice = '',
+  });
 
   final String english;
   final String translated;
   final String wavePath;
+
+  /// The voice that read the line, which the automatic choice can change
+  /// from phrase to phrase.
+  final String voice;
 }
 
 /// Picks the language code out of whisper.cpp's detection line.
@@ -146,6 +155,11 @@ class LocalInferenceService {
     ComputeBackend recognitionBackend = ComputeBackend.cpu,
     ComputeBackend translationBackend = ComputeBackend.cpu,
 
+    /// Pick the voice per phrase from the gender of the original speaker.
+    bool followSpeaker = false,
+    List<String> maleVoices = const [],
+    List<String> femaleVoices = const [],
+
     /// Where downloaded GPU runtimes live; needed by the CUDA backends.
     String? downloadedRuntimeDirectory,
   }) async {
@@ -188,6 +202,13 @@ class LocalInferenceService {
         speed.toStringAsFixed(3),
         '--device',
         translationBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
+        if (followSpeaker) ...[
+          '--follow-speaker',
+          '--male-voices',
+          maleVoices.join(','),
+          '--female-voices',
+          femaleVoices.join(','),
+        ],
         // CUDA torch is installed beside the models rather than over the
         // bundled CPU build, so the worker is told where to find it.
         if (translationBackend == ComputeBackend.cuda && downloadedRuntimeDirectory != null) ...[
@@ -283,10 +304,15 @@ class LocalInferenceService {
     await outputFile.delete();
     if (english.isEmpty || RegExp(r'^\[.*\]$').hasMatch(english)) return null;
 
-    return processText(english);
+    // The captured audio is still on disk here: the worker reads its pitch to
+    // decide whose voice to answer in.
+    return processText(english, originalWavePath: wavePath);
   }
 
-  Future<InferenceResult> processText(String english) async {
+  /// [originalWavePath] is the captured phrase, when there is one. The
+  /// worker reads its pitch to follow the speaker; OCR mode has no audio and
+  /// passes nothing.
+  Future<InferenceResult> processText(String english, {String? originalWavePath}) async {
     final normalized = english.trim();
     if (normalized.isEmpty) throw ArgumentError.value(english, 'english', 'is empty');
 
@@ -296,7 +322,13 @@ class LocalInferenceService {
     final id = ++_requestId;
     final completer = Completer<Map<String, Object?>>();
     _pending[id] = completer;
-    worker.stdin.writeln(jsonEncode({'id': id, 'text': normalized}));
+    worker.stdin.writeln(
+      jsonEncode({
+        'id': id,
+        'text': normalized,
+        'wave': ?originalWavePath,
+      }),
+    );
     final response = await completer.future.timeout(
       const Duration(minutes: 2),
       onTimeout: () {
@@ -314,6 +346,7 @@ class LocalInferenceService {
       english: normalized,
       translated: response['translated']! as String,
       wavePath: response['wave']! as String,
+      voice: response['voice'] as String? ?? '',
     );
   }
 

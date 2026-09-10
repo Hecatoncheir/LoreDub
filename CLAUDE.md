@@ -82,6 +82,14 @@ Segments are processed strictly sequentially — `NativeEngineService._processin
 is a chained `Future` — so a small CPU is never asked to run two inferences at
 once. Preserve that when adding stages.
 
+The dubbing voice is chosen per phrase. With `AppSettings.automaticVoice` the
+worker is handed the male and female voices of the package plus the captured
+WAV of each phrase, estimates its median fundamental (`speaker_gender` in the
+worker) and answers in a matching voice, reporting it back so the interface
+can show it. Voice genders in `model_catalog.dart` are measured, not looked
+up — add a voice only with a gender you have measured, or leave it
+`VoiceGender.unknown`, which keeps the automatic choice out of it.
+
 Which device each stage runs on is decided in `domain/compute_device.dart`,
 which is pure and unit-tested: `resolveComputeBackend` takes the user's preset,
 an optional per-stage pin, and a `ComputeAvailability` (adapters from the

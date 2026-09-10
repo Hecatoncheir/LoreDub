@@ -96,6 +96,84 @@ def change_speed(samples, speed, sample_rate):
     return np.clip(output, -1.0, 1.0)
 
 
+def median_f0(samples, rate, low=70.0, high=350.0, clarity=0.35):
+    """Median fundamental of the voiced frames, or None when there are none.
+
+    Autocorrelation over short frames is enough for the only question asked
+    of it — whether the speaker reads as a man or a woman — and costs a
+    fraction of a millisecond next to recognition.
+    """
+    frame = int(rate * 0.04)
+    hop = int(rate * 0.02)
+    if len(samples) < frame:
+        return None
+    window = np.hanning(frame)
+    min_lag, max_lag = int(rate / high), int(rate / low)
+    energies, picks = [], []
+    for start in range(0, len(samples) - frame, hop):
+        block = samples[start : start + frame]
+        energy = float(np.sqrt(np.mean(block**2)))
+        block = (block - block.mean()) * window
+        spectrum = np.fft.rfft(block, n=2 * frame)
+        correlation = np.fft.irfft(spectrum * np.conj(spectrum))[:frame]
+        if correlation[0] <= 0:
+            continue
+        segment = correlation[min_lag : max_lag + 1]
+        if not len(segment):
+            continue
+        lag = int(np.argmax(segment)) + min_lag
+        if correlation[lag] / correlation[0] < clarity:
+            continue
+        energies.append(energy)
+        picks.append(rate / lag)
+    if not picks:
+        return None
+    # Quiet frames are mostly room tone and music; weight the answer towards
+    # the frames that actually carry speech.
+    floor = np.median(energies) * 0.5
+    strong = [f for f, e in zip(picks, energies) if e >= floor]
+    return float(np.median(strong or picks))
+
+
+def read_wave_mono(path):
+    """Reads a 16-bit PCM WAV as float32 in [-1, 1], mixed down to mono."""
+    with wave.open(path, "rb") as stream:
+        if stream.getsampwidth() != 2:
+            return None, 0
+        rate = stream.getframerate()
+        raw = stream.readframes(stream.getnframes())
+        channels = stream.getnchannels()
+    samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+    if channels > 1:
+        samples = samples.reshape(-1, channels).mean(axis=1)
+    return samples, rate
+
+
+# Between the highest male and the lowest female voice measured in the Silero
+# packages there is a wide gap; anything inside it is left undecided rather
+# than guessed.
+MALE_BELOW_HZ = 155.0
+FEMALE_ABOVE_HZ = 175.0
+
+
+def speaker_gender(path):
+    """"male", "female", or None when the audio does not say."""
+    try:
+        samples, rate = read_wave_mono(path)
+    except (OSError, wave.Error, ValueError):
+        return None
+    if samples is None or rate <= 0 or not len(samples):
+        return None
+    pitch = median_f0(samples, rate)
+    if pitch is None:
+        return None
+    if pitch < MALE_BELOW_HZ:
+        return "male"
+    if pitch > FEMALE_ABOVE_HZ:
+        return "female"
+    return None
+
+
 def main():
     use_utf8_streams()
     parser = argparse.ArgumentParser()
@@ -108,6 +186,11 @@ def main():
     parser.add_argument("--sample-rate", type=int, default=24000)
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
     parser.add_argument("--extra-packages", default="")
+    # With --follow-speaker the voice is chosen per phrase from these two
+    # lists, by the pitch of the original; otherwise --speaker is used as is.
+    parser.add_argument("--follow-speaker", action="store_true")
+    parser.add_argument("--male-voices", default="")
+    parser.add_argument("--female-voices", default="")
     args = parser.parse_args()
 
     speed = min(2.0, max(0.5, args.speed))
@@ -140,6 +223,34 @@ def main():
     # unknown name from turning the whole language into a runtime error.
     voices = list(getattr(tts, "speakers", None) or [])
     speaker = args.speaker if args.speaker in voices else (voices[0] if voices else args.speaker)
+
+    # The catalogue names the voices, but only the package knows which of them
+    # it really ships, so the two are intersected before anything is chosen.
+    def available(names):
+        return [name for name in names.split(",") if name and (not voices or name in voices)]
+
+    by_gender = {
+        "male": available(args.male_voices),
+        "female": available(args.female_voices),
+    }
+    following = args.follow_speaker and by_gender["male"] and by_gender["female"]
+    # Sticky: an unclear phrase keeps the voice the last clear one settled on,
+    # so a noisy line does not flip the character mid-conversation.
+    current_voice = speaker
+
+    def voice_for(request):
+        nonlocal current_voice
+        if not following:
+            return speaker
+        source = request.get("wave")
+        gender = speaker_gender(source) if source else None
+        if gender is None:
+            return current_voice
+        # Keep the configured voice when it already matches the gender.
+        candidates = by_gender[gender]
+        current_voice = speaker if speaker in candidates else candidates[0]
+        return current_voice
+
     pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
     # The device is reported back rather than assumed: a CUDA build that fell
     # back to the CPU must not leave the interface claiming the GPU is in use.
@@ -163,9 +274,10 @@ def main():
             with torch.inference_mode():
                 generated = translator.generate(**inputs, num_beams=1, max_new_tokens=160)
             translated = tokenizer.batch_decode(generated, skip_special_tokens=True)[0].strip()
+            chosen = voice_for(request)
             audio = tts.apply_tts(
                 text=translated,
-                speaker=speaker,
+                speaker=chosen,
                 sample_rate=args.sample_rate,
                 put_accent=True,
                 put_yo=True,
@@ -179,7 +291,14 @@ def main():
                 stream.setsampwidth(2)
                 stream.setframerate(args.sample_rate)
                 stream.writeframes(pcm)
-            reply({"id": request_id, "translated": translated, "wave": str(output)})
+            reply(
+                {
+                    "id": request_id,
+                    "translated": translated,
+                    "wave": str(output),
+                    "voice": chosen,
+                }
+            )
         except Exception as error:
             reply({"id": request_id, "error": str(error)})
 

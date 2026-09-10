@@ -24,6 +24,21 @@ class ModelArtifact {
 /// a pair per language the game can be dubbed into.
 enum ModelKind { recognition, translation, speech }
 
+/// Whether a voice reads as a man or a woman.
+///
+/// [unknown] is a real answer, not a placeholder: several Silero packages ship
+/// voices under bare numbers, and guessing at them would make the automatic
+/// choice pick wrongly with confidence.
+enum VoiceGender { male, female, unknown }
+
+/// One voice inside a speech package.
+class VoiceOption {
+  const VoiceOption(this.id, {this.gender = VoiceGender.unknown});
+
+  final String id;
+  final VoiceGender gender;
+}
+
 class ModelPackage {
   const ModelPackage({
     required this.id,
@@ -32,6 +47,7 @@ class ModelPackage {
     this.language,
     this.speaker,
     this.version,
+    this.voices = const [],
   });
 
   final String id;
@@ -48,8 +64,22 @@ class ModelPackage {
   /// Upstream release the voice comes from, shown in its name.
   final String? version;
 
+  /// Every voice the package ships, [speaker] among them.
+  final List<VoiceOption> voices;
+
   /// The file the pipeline hands to the runtime, for packages that ship one.
   String get primaryFileName => artifacts.first.fileName;
+
+  List<String> voicesOf(VoiceGender gender) => [
+    for (final voice in voices)
+      if (voice.gender == gender) voice.id,
+  ];
+
+  /// Whether the automatic choice has anything to choose between. A package
+  /// with only women's voices cannot follow a man's, and saying so beats
+  /// silently reading every character in the same voice.
+  bool get canFollowSpeaker =>
+      voicesOf(VoiceGender.male).isNotEmpty && voicesOf(VoiceGender.female).isNotEmpty;
 }
 
 class ModelInstallState {

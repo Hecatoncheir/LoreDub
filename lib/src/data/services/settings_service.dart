@@ -66,6 +66,8 @@ class SettingsService {
       detectSourceLanguage: preferences.getBool('detectSourceLanguage') ?? true,
       sourceLanguage: _readSourceLanguage(preferences),
       interfaceLanguage: _readInterfaceLanguage(preferences),
+      automaticVoice: preferences.getBool('automaticVoice') ?? true,
+      voice: preferences.getString('voice') ?? '',
       computeDevice: ComputeDevice.values.firstWhere(
         (device) => device.name == preferences.getString('computeDevice'),
         orElse: () => ComputeDevice.auto,
@@ -95,6 +97,8 @@ class SettingsService {
       preferences.setBool('detectSourceLanguage', settings.detectSourceLanguage),
       preferences.setString('sourceLanguage', settings.sourceLanguage),
       preferences.setString('interfaceLanguage', settings.interfaceLanguage),
+      preferences.setBool('automaticVoice', settings.automaticVoice),
+      preferences.setString('voice', settings.voice),
       preferences.setString('computeDevice', settings.computeDevice.name),
       _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
       _writeBackend(preferences, 'translationBackend', settings.translationBackend),

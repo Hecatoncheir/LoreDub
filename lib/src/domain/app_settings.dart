@@ -23,6 +23,8 @@ class AppSettings {
     this.detectSourceLanguage = true,
     this.sourceLanguage = fallbackSpokenLanguage,
     this.interfaceLanguage = defaultInterfaceLanguage,
+    this.automaticVoice = true,
+    this.voice = '',
     this.computeDevice = ComputeDevice.auto,
     this.recognitionBackend,
     this.translationBackend,
@@ -56,6 +58,14 @@ class AppSettings {
 
   /// Language of the interface itself, independent of what is being dubbed.
   final String interfaceLanguage;
+
+  /// Whether the voice follows the original speaker, phrase by phrase, from
+  /// the pitch of the captured audio.
+  final bool automaticVoice;
+
+  /// The voice to read every line in while [automaticVoice] is off. Empty
+  /// means the one the catalogue names for the language.
+  final String voice;
 
   /// What the user asked the pipeline to run on, as a whole.
   final ComputeDevice computeDevice;
@@ -114,6 +124,8 @@ class AppSettings {
     bool? detectSourceLanguage,
     String? sourceLanguage,
     String? interfaceLanguage,
+    bool? automaticVoice,
+    String? voice,
     ComputeDevice? computeDevice,
     ComputeBackend? recognitionBackend,
     ComputeBackend? translationBackend,
@@ -133,6 +145,8 @@ class AppSettings {
     detectSourceLanguage: detectSourceLanguage ?? this.detectSourceLanguage,
     sourceLanguage: sourceLanguage ?? this.sourceLanguage,
     interfaceLanguage: interfaceLanguage ?? this.interfaceLanguage,
+    automaticVoice: automaticVoice ?? this.automaticVoice,
+    voice: voice ?? this.voice,
     computeDevice: computeDevice ?? this.computeDevice,
     recognitionBackend: clearBackendOverrides
         ? null

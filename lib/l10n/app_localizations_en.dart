@@ -191,6 +191,41 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settingsVoice => 'Dubbing voice';
+
+  @override
+  String get voiceNote =>
+      '\"Automatic\" matches a man\'s or a woman\'s voice to the original, line by line.';
+
+  @override
+  String get voiceAutomatic => 'Automatic';
+
+  @override
+  String get voiceFixed => 'Choose';
+
+  @override
+  String get voiceFieldLabel => 'Voice';
+
+  @override
+  String get voiceUnavailable =>
+      'This language\'s package ships voices of one gender only — you can pick one, but there is nothing to match.';
+
+  @override
+  String get voiceNeedsAudio =>
+      'Subtitle mode never hears the original, so the chosen voice is used.';
+
+  @override
+  String voiceSpeaking(String name) {
+    return 'Now speaking: $name';
+  }
+
+  @override
+  String get voiceGenderMale => 'male';
+
+  @override
+  String get voiceGenderFemale => 'female';
+
+  @override
   String get settingsPerformance => 'Performance';
 
   @override

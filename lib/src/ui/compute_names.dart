@@ -3,6 +3,7 @@
 
 import '../../l10n/app_localizations.dart';
 import '../domain/compute_device.dart';
+import '../domain/model_package.dart';
 
 /// The pipeline stages, named as the player thinks of them rather than as the
 /// code does: "Whisper" is the recognizer everyone recognizes by name.
@@ -25,6 +26,19 @@ String computeDeviceName(AppLocalizations l10n, ComputeDevice device) => switch 
   ComputeDevice.gpu => l10n.computeDeviceGpu,
   ComputeDevice.cpu => l10n.computeDeviceCpu,
 };
+
+/// A voice, as "Aidar (мужской)". The identifiers come from Silero and are
+/// not translated; the gender is, because it is the part being chosen.
+String voiceLabel(AppLocalizations l10n, VoiceOption voice) {
+  final name = voice.id.isEmpty
+      ? voice.id
+      : voice.id[0].toUpperCase() + voice.id.substring(1).replaceAll('_', ' ');
+  return switch (voice.gender) {
+    VoiceGender.male => '$name (${l10n.voiceGenderMale})',
+    VoiceGender.female => '$name (${l10n.voiceGenderFemale})',
+    VoiceGender.unknown => name,
+  };
+}
 
 /// Rounded to whole gigabytes: the exact figure is noise next to the decision
 /// the reader is making, which is whether to spend the download at all.

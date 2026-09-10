@@ -49,6 +49,30 @@ The interface language — Russian or English — is switched in **Settings**
 and applies immediately, without a restart. Every label lives in
 `lib/l10n/*.arb`, with the Russian file as the source.
 
+## Dubbing voice
+
+Settings carries an **Automatic / Choose** switch. Automatic is the default:
+the worker measures the pitch of the captured phrase and answers in a man's
+or a woman's voice to match, line by line. The decision is sticky — an
+unclear phrase keeps the previous voice, so noise does not change the
+character mid-conversation. The voice in use is shown in the same section
+while the pipeline runs.
+
+The genders are measured rather than looked up: every voice was synthesized
+and its median fundamental taken.
+
+| Language | Male | Female | Automatic |
+| --- | --- | --- | --- |
+| Russian | aidar, eugene | baya, kseniya, xenia | yes |
+| German | bernd_ungerer, friedrich, karlsson | eva_k, hokuspokus | yes |
+| French | fr_0…fr_3, fr_5 | fr_4 | yes |
+| Spanish | es_0, es_1, es_2 | — | no |
+| Ukrainian | mykyta | — | no |
+
+Automatic is unavailable where a package ships voices of one gender only, and
+in subtitle mode, which never hears the original. Both say so in Settings and
+fall back to the chosen voice.
+
 ## Compute device
 
 The default is **Automatic**: the app enumerates adapters through DXGI, checks
@@ -136,9 +160,6 @@ the lightweight GDI capture path.
   and is not worth the complexity.
 - **Subtitle overlay.** `AppSettings.showOverlay` is persisted but nothing
   reads it yet; the intent is to draw the translated lines over the game.
-- **Voice choice within a language.** Each Silero package ships several
-  speakers and LoreDub uses the first one the catalogue names, falling back to
-  whatever the model actually provides.
 
 ## Requirements
 

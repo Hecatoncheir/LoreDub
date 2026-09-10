@@ -1305,6 +1305,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           ),
         ),
         const SizedBox(height: 12),
+        _VoiceCard(viewModel: viewModel),
+        const SizedBox(height: 12),
         _SettingCard(
           title: l10n.settingsPerformance,
           subtitle: l10n.performanceNote(Platform.numberOfProcessors, defaultCpuThreads()),
@@ -1487,6 +1489,89 @@ List<int> _threadOptions(int selected) {
         ..add(selected)
         ..add(defaultCpuThreads());
   return options.toList()..sort();
+}
+
+/// Which voice reads the dubbing, and whether it follows the original.
+///
+/// The automatic half only makes sense when the language's package ships
+/// both a man's and a woman's voice and there is audio to hear, so when it
+/// does not, the option is disabled and the reason is written out rather
+/// than left for the user to guess at.
+class _VoiceCard extends StatelessWidget {
+  const _VoiceCard({required this.viewModel});
+
+  final DashboardViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final settings = viewModel.settings;
+    final voices = viewModel.availableVoices;
+    final canFollow = viewModel.canFollowSpeaker;
+    final automatic = settings.automaticVoice && canFollow;
+    return _SettingCard(
+      title: l10n.settingsVoice,
+      subtitle: l10n.voiceNote,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SegmentedButton<bool>(
+            segments: [
+              ButtonSegment(
+                value: true,
+                label: Text(l10n.voiceAutomatic),
+                enabled: canFollow,
+              ),
+              ButtonSegment(value: false, label: Text(l10n.voiceFixed)),
+            ],
+            selected: {automatic},
+            onSelectionChanged: viewModel.running
+                ? null
+                : (selection) =>
+                      viewModel.updateSettings(settings.copyWith(automaticVoice: selection.first)),
+          ),
+          if (!canFollow) ...[
+            const SizedBox(height: 10),
+            Text(
+              settings.captureMode == CaptureMode.ocr
+                  ? l10n.voiceNeedsAudio
+                  : l10n.voiceUnavailable,
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+            ),
+          ],
+          if (!automatic && voices.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            DropdownButtonFormField<String>(
+              key: const ValueKey('voice'),
+              initialValue: viewModel.selectedVoice,
+              decoration: InputDecoration(labelText: l10n.voiceFieldLabel),
+              items: [
+                for (final voice in voices)
+                  DropdownMenuItem(value: voice.id, child: Text(voiceLabel(l10n, voice))),
+              ],
+              onChanged: viewModel.running
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        viewModel.updateSettings(settings.copyWith(voice: value));
+                      }
+                    },
+            ),
+          ],
+          // Which voice the automatic choice actually settled on, so it is
+          // not a silent decision — the same courtesy the detected language
+          // gets on the live screen.
+          if (automatic ? viewModel.spokenVoice : null case final speaking?) ...[
+            const SizedBox(height: 10),
+            Text(
+              l10n.voiceSpeaking(speaking),
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 /// The compute section: one preset for the whole pipeline, then a row per

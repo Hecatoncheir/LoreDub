@@ -120,6 +120,23 @@
       }
     }
   },
+  "settingsVoice": "Dubbing voice",
+  "voiceNote": "\"Automatic\" matches a man's or a woman's voice to the original, line by line.",
+  "voiceAutomatic": "Automatic",
+  "voiceFixed": "Choose",
+  "voiceFieldLabel": "Voice",
+  "voiceUnavailable": "This language's package ships voices of one gender only — you can pick one, but there is nothing to match.",
+  "voiceNeedsAudio": "Subtitle mode never hears the original, so the chosen voice is used.",
+  "voiceSpeaking": "Now speaking: {name}",
+  "@voiceSpeaking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceGenderMale": "male",
+  "voiceGenderFemale": "female",
   "settingsPerformance": "Performance",
   "performanceNote": "Recognition takes most of the delay and scales well with threads. Cores available: {cores}, recommended {recommended}.",
   "@performanceNote": {

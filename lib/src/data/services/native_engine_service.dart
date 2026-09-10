@@ -44,6 +44,7 @@ class NativeEngineService {
   Future<void> _playback = Future.value();
   Map<String, Object?>? _activeConfig;
   String? _reportedLanguage;
+  String? _reportedVoice;
 
   Stream<Map<String, Object?>> get events => _events.stream;
   bool get processLoopbackSupported => ld_is_process_loopback_supported() == 1;
@@ -72,8 +73,12 @@ class NativeEngineService {
     orElse: () => ComputeBackend.cpu,
   );
 
+  static List<String> _voiceList(Object? joined) =>
+      (joined as String? ?? '').split(',').where((name) => name.isNotEmpty).toList();
+
   Future<void> start(Map<String, Object?> config) async {
     _reportedLanguage = null;
+    _reportedVoice = null;
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
     await _inference.start(
@@ -85,6 +90,9 @@ class NativeEngineService {
       pythonExecutable: config['pythonExecutable']! as String,
       requiresWhisper: config['captureMode'] != 'ocr',
       sourceLanguage: config['sourceLanguage']! as String,
+      followSpeaker: config['followSpeaker'] as bool? ?? false,
+      maleVoices: _voiceList(config['maleVoices']),
+      femaleVoices: _voiceList(config['femaleVoices']),
       recognitionBackend: _backendFrom(config['recognitionBackend']),
       translationBackend: _backendFrom(config['translationBackend']),
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
@@ -222,6 +230,12 @@ class NativeEngineService {
       'translated': result.translated,
       'latencyMs': latencyMs,
     });
+    // Which voice read it: the automatic choice can change it per phrase, so
+    // the interface should not have to guess.
+    if (result.voice.isNotEmpty && result.voice != _reportedVoice) {
+      _reportedVoice = result.voice;
+      _events.add({'type': 'voice', 'name': result.voice});
+    }
     _enqueuePlayback(result.wavePath);
   }
 

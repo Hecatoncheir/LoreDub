@@ -98,6 +98,32 @@ class DashboardViewModel extends ChangeNotifier {
     return null;
   }
 
+  /// The speech package for the language being dubbed into, if there is one.
+  ModelPackage? get speechPackage => _selected(ModelKind.speech)?.model;
+
+  /// Every voice that package offers, the catalogue default first.
+  List<VoiceOption> get availableVoices => speechPackage?.voices ?? const [];
+
+  /// Whether the voice can follow the original speaker: it needs a man's and
+  /// a woman's voice to choose between, and audio to hear.
+  bool get canFollowSpeaker =>
+      (speechPackage?.canFollowSpeaker ?? false) && settings.captureMode != CaptureMode.ocr;
+
+  /// Whether it actually will, given what the user asked for.
+  bool get followsSpeaker => settings.automaticVoice && canFollowSpeaker;
+
+  /// The voice a fixed choice would use, falling back to the catalogue's.
+  String get selectedVoice {
+    final package = speechPackage;
+    if (package == null) return settings.voice;
+    final named = settings.voice;
+    if (named.isNotEmpty && package.voices.any((voice) => voice.id == named)) return named;
+    return package.speaker ?? '';
+  }
+
+  /// The voice the running session last read a line in, once it has.
+  String? spokenVoice;
+
   /// Whisper is language-independent and OCR mode does without it entirely.
   List<ModelInstallState> get recognitionModels => _modelsOfKind(ModelKind.recognition);
 
@@ -316,8 +342,9 @@ class DashboardViewModel extends ChangeNotifier {
       startupStage = '';
       // The detection belonged to the session that just ended.
       detectedLanguage = null;
-      // The devices belonged to that session too.
+      // The devices and the voice belonged to that session too.
       _activeBackends.clear();
+      spokenVoice = null;
       notifyListeners();
       return;
     }
@@ -326,6 +353,7 @@ class DashboardViewModel extends ChangeNotifier {
     startupProgress = null;
     startupStage = '';
     detectedLanguage = null;
+    spokenVoice = null;
     notifyListeners();
     try {
       final translation = _selected(ModelKind.translation)!.model;
@@ -339,7 +367,10 @@ class DashboardViewModel extends ChangeNotifier {
           'translation': await _modelRepository.directoryFor(translation),
           'speech': path.join(speechDirectory, speech.primaryFileName),
         },
-        speaker: speech.speaker ?? '',
+        speaker: selectedVoice,
+        followSpeaker: followsSpeaker,
+        maleVoices: speech.voicesOf(VoiceGender.male),
+        femaleVoices: speech.voicesOf(VoiceGender.female),
         recognitionBackend: settings.backendFor(ComputeStage.recognition, availability),
         translationBackend: settings.backendFor(ComputeStage.translation, availability),
         runtimeDirectory: runtimeDirectoryPath,
@@ -415,6 +446,8 @@ class DashboardViewModel extends ChangeNotifier {
         startupStage = event['stage'] as String? ?? '';
       case 'language':
         detectedLanguage = event['code'] as String?;
+      case 'voice':
+        spokenVoice = event['name'] as String?;
       case 'backend':
         final stage = ComputeStage.values.where((value) => value.name == event['stage']);
         final backend = ComputeBackend.values.where((value) => value.name == event['backend']);

@@ -57,6 +57,10 @@ All notable changes to LoreDub are documented in this file.
   over.
 - Removing a downloaded GPU runtime now asks for confirmation before giving the disk space
   back, since the button sits where the download button used to be.
+- Added a dubbing voice setting. "Automatic" measures the pitch of each captured phrase and
+  answers in a man's or a woman's voice to match; a voice can also be picked by hand. The
+  genders in the catalogue were measured, which turned up that every Spanish voice is a
+  man's, so that language cannot follow a speaker and says so.
 - Added a clear button to the Live transcript. It is disabled while there is nothing to
   clear, and clearing does not touch a running session: new phrases keep arriving.
 - Added error messages in the interface language. Services now raise an error code instead

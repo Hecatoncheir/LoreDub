@@ -16,6 +16,7 @@ import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/runtime_catalog.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
+import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
@@ -432,14 +433,13 @@ void main() {
     await tester.tap(find.text('Настройки'));
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(ListView), const Offset(0, -900));
-    await tester.pumpAndSettle();
-
     final proxyField = find.widgetWithText(
       TextFormField,
       'HTTP / SOCKS5 proxy',
     );
-    await tester.ensureVisible(proxyField);
+    // Scrolled to rather than dragged by a fixed distance: the settings list
+    // grows with every card added to it.
+    await tester.scrollUntilVisible(proxyField, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.enterText(
       proxyField,
@@ -617,6 +617,94 @@ void main() {
         findsNothing,
         reason: 'the offer goes away with the runtime',
       );
+    });
+  });
+
+  group('the dubbing voice', () {
+    /// A dashboard with every model in place, sitting on the settings screen.
+    /// The bootstrap's own load never finishes inside a widget test, so the
+    /// state the card reads is put there directly.
+    Future<DashboardViewModel> pumpSettings(
+      WidgetTester tester, {
+      AppSettings settings = const AppSettings(),
+    }) async {
+      final viewModel = buildViewModel()
+        ..initializing = false
+        ..section = DashboardSection.settings
+        ..settings = settings
+        ..models = [
+          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
+        ];
+      await pumpDashboard(tester, viewModel, const Size(1280, 1000));
+      await tester.scrollUntilVisible(
+        find.text('Голос озвучки'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      return viewModel;
+    }
+
+    testWidgets('offers automatic and a hand-picked voice', (tester) async {
+      await pumpSettings(tester);
+
+      expect(find.text('Голос озвучки'), findsOneWidget);
+      expect(find.text('Выбрать'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('voice')),
+        findsNothing,
+        reason: 'automatic is the default, so there is nothing to pick from',
+      );
+    });
+
+    testWidgets('lists the voices of the language once one is chosen by hand', (tester) async {
+      await pumpSettings(tester);
+
+      await tester.tap(find.text('Выбрать'));
+      await tester.pumpAndSettle();
+
+      final picker = find.byKey(const ValueKey('voice'));
+      expect(picker, findsOneWidget);
+      final field = tester.widget<DropdownButtonFormField<String>>(picker);
+      expect(field.initialValue, 'xenia', reason: 'the catalogue default for Russian');
+
+      field.onChanged!('eugene');
+      await tester.pumpAndSettle();
+
+      final saved = await SettingsService().load();
+      expect(saved.automaticVoice, isFalse);
+      expect(saved.voice, 'eugene');
+    });
+
+    testWidgets('names the gender beside every voice', (tester) async {
+      await pumpSettings(tester, settings: const AppSettings(automaticVoice: false));
+
+      await tester.tap(find.byKey(const ValueKey('voice')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Aidar (мужской)'), findsWidgets);
+      expect(find.text('Xenia (женский)'), findsWidgets);
+    });
+
+    testWidgets('says why the voice cannot follow a subtitle stream', (tester) async {
+      final viewModel = await pumpSettings(
+        tester,
+        settings: const AppSettings(captureMode: CaptureMode.ocr),
+      );
+
+      expect(viewModel.canFollowSpeaker, isFalse);
+      expect(find.textContaining('субтитров'), findsOneWidget);
+    });
+
+    testWidgets('says why a one-gender language cannot follow either', (tester) async {
+      // Every Spanish voice is a man's.
+      final viewModel = await pumpSettings(
+        tester,
+        settings: const AppSettings(targetLanguage: 'es'),
+      );
+
+      expect(viewModel.canFollowSpeaker, isFalse);
+      expect(find.textContaining('одного пола'), findsOneWidget);
     });
   });
 }

@@ -120,4 +120,24 @@ void main() {
 
     expect((await SettingsService().load()).recognitionBackend, isNull);
   });
+
+  test('follows the speaker until told otherwise', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    final loaded = await SettingsService().load();
+
+    expect(loaded.automaticVoice, isTrue);
+    expect(loaded.voice, isEmpty, reason: 'the catalogue names the default');
+  });
+
+  test('remembers a voice picked by hand', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    await service.save(const AppSettings(automaticVoice: false, voice: 'eugene'));
+    final saved = await service.load();
+
+    expect(saved.automaticVoice, isFalse);
+    expect(saved.voice, 'eugene');
+  });
 }

@@ -120,6 +120,23 @@
       }
     }
   },
+  "settingsVoice": "Голос озвучки",
+  "voiceNote": "«Автоматически» подбирает мужской или женский голос под голос оригинала, отдельно для каждой реплики.",
+  "voiceAutomatic": "Автоматически",
+  "voiceFixed": "Выбрать",
+  "voiceFieldLabel": "Голос",
+  "voiceUnavailable": "В пакете этого языка голоса только одного пола — выбрать можно, но подстраиваться не под что.",
+  "voiceNeedsAudio": "В режиме субтитров оригинал не слышен, поэтому голос берётся выбранный.",
+  "voiceSpeaking": "Сейчас говорит: {name}",
+  "@voiceSpeaking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceGenderMale": "мужской",
+  "voiceGenderFemale": "женский",
   "settingsPerformance": "Производительность",
   "performanceNote": "Распознавание занимает большую часть задержки и хорошо ускоряется потоками. Доступно ядер: {cores}, рекомендуется {recommended}.",
   "@performanceNote": {

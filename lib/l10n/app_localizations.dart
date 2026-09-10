@@ -417,6 +417,66 @@ abstract class AppLocalizations {
   /// **'{value}×'**
   String speedValue(String value);
 
+  /// No description provided for @settingsVoice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос озвучки'**
+  String get settingsVoice;
+
+  /// No description provided for @voiceNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'«Автоматически» подбирает мужской или женский голос под голос оригинала, отдельно для каждой реплики.'**
+  String get voiceNote;
+
+  /// No description provided for @voiceAutomatic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автоматически'**
+  String get voiceAutomatic;
+
+  /// No description provided for @voiceFixed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать'**
+  String get voiceFixed;
+
+  /// No description provided for @voiceFieldLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос'**
+  String get voiceFieldLabel;
+
+  /// No description provided for @voiceUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'В пакете этого языка голоса только одного пола — выбрать можно, но подстраиваться не под что.'**
+  String get voiceUnavailable;
+
+  /// No description provided for @voiceNeedsAudio.
+  ///
+  /// In ru, this message translates to:
+  /// **'В режиме субтитров оригинал не слышен, поэтому голос берётся выбранный.'**
+  String get voiceNeedsAudio;
+
+  /// No description provided for @voiceSpeaking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сейчас говорит: {name}'**
+  String voiceSpeaking(String name);
+
+  /// No description provided for @voiceGenderMale.
+  ///
+  /// In ru, this message translates to:
+  /// **'мужской'**
+  String get voiceGenderMale;
+
+  /// No description provided for @voiceGenderFemale.
+  ///
+  /// In ru, this message translates to:
+  /// **'женский'**
+  String get voiceGenderFemale;
+
   /// No description provided for @settingsPerformance.
   ///
   /// In ru, this message translates to:

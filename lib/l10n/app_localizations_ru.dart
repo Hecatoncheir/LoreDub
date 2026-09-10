@@ -191,6 +191,41 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get settingsVoice => 'Голос озвучки';
+
+  @override
+  String get voiceNote =>
+      '«Автоматически» подбирает мужской или женский голос под голос оригинала, отдельно для каждой реплики.';
+
+  @override
+  String get voiceAutomatic => 'Автоматически';
+
+  @override
+  String get voiceFixed => 'Выбрать';
+
+  @override
+  String get voiceFieldLabel => 'Голос';
+
+  @override
+  String get voiceUnavailable =>
+      'В пакете этого языка голоса только одного пола — выбрать можно, но подстраиваться не под что.';
+
+  @override
+  String get voiceNeedsAudio =>
+      'В режиме субтитров оригинал не слышен, поэтому голос берётся выбранный.';
+
+  @override
+  String voiceSpeaking(String name) {
+    return 'Сейчас говорит: $name';
+  }
+
+  @override
+  String get voiceGenderMale => 'мужской';
+
+  @override
+  String get voiceGenderFemale => 'женский';
+
+  @override
   String get settingsPerformance => 'Производительность';
 
   @override
