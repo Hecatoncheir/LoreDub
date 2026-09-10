@@ -211,7 +211,7 @@ class _VersionButton extends StatelessWidget {
     final updates = viewModel.updates;
     final version = updates.currentVersion;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(_footerOuterInset, 0, 8, 2),
+      padding: const EdgeInsets.fromLTRB(_footerOuterInset, 0, 8, 8),
       child: Row(
         children: [
           Expanded(
