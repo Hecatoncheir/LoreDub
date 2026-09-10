@@ -227,6 +227,18 @@ class DashboardViewModel extends ChangeNotifier {
   Future<void> selectTargetLanguage(String language) =>
       updateSettings(settings.copyWith(targetLanguage: language));
 
+  /// Whether both halves of a language's pair are on disk.
+  bool isLanguageReady(String language) {
+    var translation = false;
+    var speech = false;
+    for (final state in models) {
+      if (state.model.language != language || !state.installed) continue;
+      translation |= state.model.kind == ModelKind.translation;
+      speech |= state.model.kind == ModelKind.speech;
+    }
+    return translation && speech;
+  }
+
   Future<void> openModelDirectory() async {
     error = null;
     try {

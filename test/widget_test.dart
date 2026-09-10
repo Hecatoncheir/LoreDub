@@ -218,6 +218,46 @@ void main() {
     expect(find.text('900 мс'), findsOneWidget);
   });
 
+  testWidgets('picks the dubbing language beside the start button', (tester) async {
+    final viewModel = buildViewModel()
+      ..initializing = false
+      ..models = [
+        for (final model in modelCatalog)
+          ModelInstallState(model: model, installed: model.language != 'de'),
+      ];
+    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+
+    final picker = find.byKey(const ValueKey('targetLanguage'));
+    expect(picker, findsOneWidget);
+    expect(find.text('Русский'), findsOneWidget);
+
+    final field = tester.widget<DropdownButtonFormField<String>>(picker);
+    field.onChanged!('fr');
+    await tester.pumpAndSettle();
+
+    // The choice is the models choice: the French pair is now the one used.
+    expect(viewModel.settings.targetLanguage, 'fr');
+    expect((await SettingsService().load()).targetLanguage, 'fr');
+    expect(viewModel.requiredModelsInstalled, isTrue);
+  });
+
+  testWidgets('marks a language whose models are missing', (tester) async {
+    final viewModel = buildViewModel()
+      ..initializing = false
+      ..models = [
+        for (final model in modelCatalog)
+          ModelInstallState(model: model, installed: model.language != 'de'),
+      ];
+    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+
+    expect(viewModel.isLanguageReady('ru'), isTrue);
+    expect(viewModel.isLanguageReady('de'), isFalse);
+
+    await tester.tap(find.byKey(const ValueKey('targetLanguage')));
+    await tester.pumpAndSettle();
+    expect(find.text('Немецкий · нет моделей'), findsWidgets);
+  });
+
   testWidgets('splits the models screen into recognition, translation and voices', (
     tester,
   ) async {

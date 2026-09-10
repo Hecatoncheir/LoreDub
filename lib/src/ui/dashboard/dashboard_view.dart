@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../data/services/model_catalog.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/game_process.dart';
 import '../../domain/model_package.dart';
@@ -375,7 +376,7 @@ class _LivePanel extends StatelessWidget {
                 const Divider(height: 1),
                 Expanded(
                   child: viewModel.transcript.isEmpty
-                      ? const _EmptyTranscript()
+                      ? _EmptyTranscript(targetLanguage: viewModel.settings.targetLanguage)
                       : ListView.separated(
                           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
                           itemCount: viewModel.transcript.length,
@@ -468,6 +469,7 @@ class _SourceControls extends StatelessWidget {
       ],
     );
     final language = _LanguageControls(viewModel: viewModel);
+    final target = _TargetLanguagePicker(viewModel: viewModel);
     if (compact) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -501,6 +503,8 @@ class _SourceControls extends StatelessWidget {
             ],
             Expanded(child: picker),
             const SizedBox(width: 16),
+            target,
+            const SizedBox(width: 12),
             _StartButton(viewModel: viewModel),
           ],
         ),
@@ -514,6 +518,49 @@ class _SourceControls extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// The language the game is dubbed into. Picking it here is the same choice
+/// the models screen offers: it selects the translator and the voice together
+/// and is remembered between runs.
+class _TargetLanguagePicker extends StatelessWidget {
+  const _TargetLanguagePicker({required this.viewModel});
+
+  final DashboardViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final languages = dubbingLanguages;
+    final selected = viewModel.settings.targetLanguage;
+    return SizedBox(
+      width: 210,
+      child: DropdownButtonFormField<String>(
+        key: const ValueKey('targetLanguage'),
+        // A value stored by an older build may no longer be on offer.
+        initialValue: languages.contains(selected) ? selected : languages.first,
+        isDense: true,
+        isExpanded: true,
+        decoration: const InputDecoration(labelText: 'Язык перевода', isDense: true),
+        items: [
+          for (final language in languages)
+            DropdownMenuItem(
+              value: language,
+              child: Text(
+                viewModel.isLanguageReady(language)
+                    ? spokenLanguageTitle(language)
+                    : '${spokenLanguageTitle(language)} · нет моделей',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ],
+        onChanged: viewModel.running
+            ? null
+            : (value) {
+                if (value != null) viewModel.selectTargetLanguage(value);
+              },
+      ),
     );
   }
 }
@@ -790,7 +837,11 @@ class _LatencyBadge extends StatelessWidget {
 }
 
 class _EmptyTranscript extends StatelessWidget {
-  const _EmptyTranscript();
+  const _EmptyTranscript({required this.targetLanguage});
+
+  /// The pipeline ends in whichever language is selected, so the hint says so
+  /// rather than always naming Russian.
+  final String targetLanguage;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -800,21 +851,21 @@ class _EmptyTranscript extends StatelessWidget {
         constraints: BoxConstraints(
           minHeight: constraints.maxHeight > 24 ? constraints.maxHeight - 24 : 0,
         ),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              const Icon(
                 Icons.subtitles_outlined,
                 size: 42,
                 color: LoreDubPalette.mutedInk,
               ),
-              SizedBox(height: 14),
-              Text('Здесь появятся распознанные и переведённые реплики'),
-              SizedBox(height: 6),
+              const SizedBox(height: 14),
+              const Text('Здесь появятся распознанные и переведённые реплики'),
+              const SizedBox(height: 6),
               Text(
-                'Whisper → English → Marian → Russian → Silero',
-                style: TextStyle(color: LoreDubPalette.mutedInk),
+                'Whisper → English → Marian → ${spokenLanguageTitle(targetLanguage)} → Silero',
+                style: const TextStyle(color: LoreDubPalette.mutedInk),
               ),
             ],
           ),
