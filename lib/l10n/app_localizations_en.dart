@@ -155,6 +155,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modelInstalled => 'Installed';
 
   @override
+  String get downloadPause => 'Pause';
+
+  @override
+  String get downloadResume => 'Resume';
+
+  @override
+  String get downloadCancel => 'Cancel';
+
+  @override
+  String get downloadPaused => 'Paused';
+
+  @override
+  String get downloadStopping => 'Stopping…';
+
+  @override
+  String get downloadCancelNotResumable => 'Cancel (cannot be resumed)';
+
+  @override
   String get modelDownload => 'Download';
 
   @override

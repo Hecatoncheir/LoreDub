@@ -740,6 +740,74 @@ void main() {
     });
   });
 
+  group('stopping a download from the interface', () {
+    Future<DashboardViewModel> pumpDownloading(
+      WidgetTester tester, {
+      required bool paused,
+    }) async {
+      final whisper = modelCatalog.firstWhere((model) => model.kind == ModelKind.recognition);
+      final viewModel = buildViewModel()
+        ..initializing = false
+        ..section = DashboardSection.models
+        ..models = [
+          for (final model in modelCatalog)
+            ModelInstallState(
+              model: model,
+              progress: model.id == whisper.id ? 0.42 : null,
+              paused: model.id == whisper.id && paused,
+            ),
+        ];
+      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+      await tester.pumpAndSettle();
+      return viewModel;
+    }
+
+    testWidgets('offers pause and cancel while a download runs', (tester) async {
+      await pumpDownloading(tester, paused: false);
+
+      expect(find.byTooltip('Приостановить'), findsOneWidget);
+      expect(find.byTooltip('Отменить'), findsOneWidget);
+      expect(find.byTooltip('Продолжить'), findsNothing);
+    });
+
+    testWidgets('offers resume once it is paused', (tester) async {
+      await pumpDownloading(tester, paused: true);
+
+      expect(find.byTooltip('Продолжить'), findsOneWidget);
+      expect(find.byTooltip('Приостановить'), findsNothing);
+      expect(find.textContaining('Приостановлено'), findsOneWidget);
+    });
+
+    testWidgets('stopping what is not running changes nothing', (tester) async {
+      final viewModel = await pumpDownloading(tester, paused: false);
+
+      // The staged state has no attempt in flight, so there is no control to
+      // signal. Asking anyway must be harmless rather than throwing.
+      viewModel
+        ..pauseDownload(whisperModelId)
+        ..cancelDownload(whisperModelId);
+
+      expect(viewModel.isStopping(whisperModelId), isFalse);
+    });
+
+    testWidgets('a paused download is resumed by its own button', (tester) async {
+      await pumpDownloading(tester, paused: true);
+
+      // The whisper card is the paused one; its download button is out of
+      // action while the part waits to be continued.
+      final card = find.ancestor(
+        of: find.textContaining('Приостановлено'),
+        matching: find.byType(Card),
+      );
+      final button = tester.widget<OutlinedButton>(
+        find.descendant(of: card, matching: find.byType(OutlinedButton)),
+      );
+
+      expect(button.onPressed, isNull);
+      expect(find.descendant(of: card, matching: find.byTooltip('Продолжить')), findsOneWidget);
+    });
+  });
+
   group('choosing a recognition model', () {
     Future<DashboardViewModel> pumpModels(
       WidgetTester tester, {

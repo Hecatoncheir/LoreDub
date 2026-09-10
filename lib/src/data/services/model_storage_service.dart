@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+import '../../domain/download_control.dart';
 import '../../domain/failure.dart';
 import '../../domain/model_package.dart';
 import 'artifact_downloader.dart';
@@ -62,18 +63,20 @@ class ModelStorageService {
     return true;
   }
 
-  Future<void> install(
+  Future<DownloadOutcome> install(
     ModelPackage model, {
     required DownloadProgress onProgress,
     String proxyUrl = '',
+    DownloadControl? control,
   }) async {
     final client = _client ?? await createDownloadClient(proxyUrl);
     try {
-      await downloadArtifacts(
+      return await downloadArtifacts(
         model.artifacts,
         directory: await modelDirectory(model),
         client: client,
         onProgress: onProgress,
+        control: control,
       );
     } finally {
       if (_client == null) client.close();

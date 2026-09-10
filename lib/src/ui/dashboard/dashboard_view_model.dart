@@ -15,6 +15,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_release.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
+import '../../domain/download_control.dart';
 import '../../domain/game_process.dart';
 import '../../data/services/python_discovery.dart';
 import '../../domain/failure.dart';
@@ -308,10 +309,13 @@ class DashboardViewModel extends ChangeNotifier {
     availability = hardware.copyWith(installedRuntimes: installed);
     runtimes = [
       for (final package in _runtimeRepository.catalog)
-        RuntimeInstallState(
-          package: package,
-          installed: installed.contains(package.id),
-        ),
+        // A download that is paused or still running keeps its progress:
+        // rebuilding the list must not lose where it got to.
+        _runtimeState(package)?.copyWith(installed: installed.contains(package.id)) ??
+            RuntimeInstallState(
+              package: package,
+              installed: installed.contains(package.id),
+            ),
     ];
     notifyListeners();
   }
@@ -329,24 +333,42 @@ class DashboardViewModel extends ChangeNotifier {
     final index = runtimes.indexOf(state);
     if (index < 0 || state.installing) return;
     error = null;
-    runtimes[index] = state.copyWith(progress: 0, clearError: true);
+    final control = DownloadControl();
+    _downloads[state.package.id] = control;
+    runtimes[index] = state.copyWith(
+      progress: state.progress ?? 0,
+      paused: false,
+      clearError: true,
+    );
     notifyListeners();
     try {
-      await _runtimeRepository.install(
+      final outcome = await _runtimeRepository.install(
         state.package,
         proxyUrl: settings.modelProxyUrl,
         pythonExecutable: settings.pythonExecutable,
+        control: control,
         onProgress: (progress) {
           runtimes[index] = runtimes[index].copyWith(progress: progress);
           notifyListeners();
         },
       );
-      runtimes[index] = runtimes[index].copyWith(installed: true, clearProgress: true);
-      // The new runtime changes which backends can be picked.
+      runtimes[index] = switch (outcome) {
+        DownloadOutcome.completed => runtimes[index].copyWith(
+          installed: true,
+          clearProgress: true,
+        ),
+        DownloadOutcome.paused => runtimes[index].copyWith(paused: true),
+        DownloadOutcome.cancelled => runtimes[index].copyWith(
+          clearProgress: true,
+          paused: false,
+        ),
+      };
+      // A finished or discarded runtime changes which backends can be picked.
       await refreshAvailability();
     } catch (exception) {
       runtimes[index] = runtimes[index].copyWith(clearProgress: true, error: exception);
     }
+    _downloads.remove(state.package.id);
     notifyListeners();
   }
 
@@ -393,28 +415,59 @@ class DashboardViewModel extends ChangeNotifier {
     }
   }
 
+  RuntimeInstallState? _runtimeState(RuntimePackage package) {
+    for (final state in runtimes) {
+      if (state.package.id == package.id) return state;
+    }
+    return null;
+  }
+
+  /// The handle on each running download, by package id, so the interface
+  /// can pause or cancel the one it is showing.
+  final _downloads = <String, DownloadControl>{};
+
+  bool isStopping(String id) => _downloads[id]?.isStopping ?? false;
+
+  /// Stops a download and keeps what arrived, so asking again resumes.
+  void pauseDownload(String id) {
+    _downloads[id]?.pause();
+    notifyListeners();
+  }
+
+  /// Stops a download and throws away what arrived.
+  void cancelDownload(String id) {
+    _downloads[id]?.cancel();
+    notifyListeners();
+  }
+
   Future<void> installModel(ModelInstallState state) async {
     final index = models.indexOf(state);
     if (index < 0 || state.downloading) return;
     error = null;
-    models[index] = state.copyWith(progress: 0, clearError: true);
+    final control = DownloadControl();
+    _downloads[state.model.id] = control;
+    models[index] = state.copyWith(progress: state.progress ?? 0, paused: false, clearError: true);
     notifyListeners();
     try {
-      await _modelRepository.install(
+      final outcome = await _modelRepository.install(
         state.model,
         proxyUrl: settings.modelProxyUrl,
+        control: control,
         onProgress: (progress) {
           models[index] = models[index].copyWith(progress: progress);
           notifyListeners();
         },
       );
-      models[index] = models[index].copyWith(
-        installed: true,
-        clearProgress: true,
-      );
+      models[index] = switch (outcome) {
+        DownloadOutcome.completed => models[index].copyWith(installed: true, clearProgress: true),
+        // The bar stays where it stopped, so resuming reads as continuing.
+        DownloadOutcome.paused => models[index].copyWith(paused: true),
+        DownloadOutcome.cancelled => models[index].copyWith(clearProgress: true, paused: false),
+      };
     } catch (exception) {
       models[index] = models[index].copyWith(clearProgress: true, error: exception);
     }
+    _downloads.remove(state.model.id);
     notifyListeners();
   }
 

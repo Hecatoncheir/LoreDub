@@ -167,6 +167,15 @@ starting over, and removing a runtime asks first — hundreds of megabytes are
 not worth a stray click. They land in
 `<app support>/runtime/<id>/` and a button in the same section gives them back.
 
+Any download can be paused, resumed and cancelled. A pause keeps what has
+arrived and resuming fetches the rest with a range request; a cancel removes
+the partial file. The stop is checked between chunks, so it lands within a
+hundred kilobytes or two rather than at the end of the file.
+
+The one exception is CUDA torch: pip installs it and has no half-way point,
+so only a cancel is offered there. It kills the process and clears the
+directory, so a half-installed runtime cannot pass for a finished one.
+
 Speech stays on the processor deliberately: Silero utterances are short, and
 moving them to the card costs more than the work itself.
 

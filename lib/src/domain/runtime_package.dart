@@ -48,6 +48,7 @@ class RuntimeInstallState {
     required this.package,
     this.installed = false,
     this.progress,
+    this.paused = false,
     this.error,
   });
 
@@ -55,21 +56,31 @@ class RuntimeInstallState {
   final bool installed;
   final double? progress;
 
+  /// Stopped part way with the partial file kept, so asking again resumes.
+  /// Only the archive runtimes can reach this: pip has no half-way point.
+  final bool paused;
+
   /// Why the install failed, as raised; written out by the interface.
   final Object? error;
 
-  bool get installing => progress != null;
+  bool get installing => progress != null && !paused;
+  bool get stoppable => progress != null;
+
+  /// Whether stopping this one could be resumed later.
+  bool get pausable => package.kind == RuntimeInstallKind.archive;
 
   RuntimeInstallState copyWith({
     bool? installed,
     double? progress,
     bool clearProgress = false,
+    bool? paused,
     Object? error,
     bool clearError = false,
   }) => RuntimeInstallState(
     package: package,
     installed: installed ?? this.installed,
     progress: clearProgress ? null : progress ?? this.progress,
+    paused: paused ?? this.paused,
     error: clearError ? null : error ?? this.error,
   );
 }

@@ -9,6 +9,7 @@ import 'package:http/io_client.dart';
 import 'package:path/path.dart' as path;
 import 'package:socks5_proxy/socks_client.dart';
 
+import '../../domain/download_control.dart';
 import '../../domain/failure.dart';
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
@@ -23,11 +24,12 @@ typedef DownloadProgress = void Function(double value);
 /// A `.part` left behind by a closed application is resumed with a range
 /// request rather than thrown away: these are hundreds of megabytes, and
 /// starting over is a poor answer to a lost connection.
-Future<void> downloadArtifacts(
+Future<DownloadOutcome> downloadArtifacts(
   List<ModelArtifact> artifacts, {
   required Directory directory,
   required http.Client client,
   required DownloadProgress onProgress,
+  DownloadControl? control,
 }) async {
   await directory.create(recursive: true);
   final knownTotal = artifacts.fold<int>(0, (sum, artifact) => sum + (artifact.byteSize ?? 0));
@@ -39,14 +41,24 @@ Future<void> downloadArtifacts(
       completed += artifact.byteSize ?? 0;
       continue;
     }
+    if (control?.requestedStop case final stop?) {
+      return _stopped(stop, partial);
+    }
     final resumed = await _openStream(client, artifact, partial);
     final response = resumed.response;
     final sink = partial.openWrite(
       mode: resumed.offset > 0 ? FileMode.writeOnlyAppend : FileMode.writeOnly,
     );
     var artifactBytes = resumed.offset;
+    DownloadOutcome? stopped;
     try {
       await for (final chunk in response.stream) {
+        // Checked between chunks so a stop lands within a few hundred
+        // kilobytes rather than at the end of a half-gigabyte file.
+        if (control?.requestedStop case final stop?) {
+          stopped = stop;
+          break;
+        }
         sink.add(chunk);
         artifactBytes += chunk.length;
         final responseTotal = response.contentLength;
@@ -61,6 +73,7 @@ Future<void> downloadArtifacts(
     } finally {
       await sink.close();
     }
+    if (stopped != null) return _stopped(stopped, partial);
     if (!await verifyArtifact(partial, artifact)) {
       // A part that fails here is not worth resuming: the bytes on disk are
       // wrong, and every later attempt would inherit them.
@@ -71,6 +84,16 @@ Future<void> downloadArtifacts(
     completed += artifact.byteSize ?? artifactBytes;
   }
   onProgress(1);
+  return DownloadOutcome.completed;
+}
+
+/// Leaves the partial file in the state the stop asked for: a pause keeps it
+/// so the next attempt resumes, a cancel takes it with it.
+Future<DownloadOutcome> _stopped(DownloadOutcome stop, File partial) async {
+  if (stop == DownloadOutcome.cancelled && await partial.exists()) {
+    await partial.delete();
+  }
+  return stop;
 }
 
 /// What a download is starting from: the live response, and how many bytes

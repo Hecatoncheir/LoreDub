@@ -101,6 +101,7 @@ class ModelInstallState {
     required this.model,
     this.installed = false,
     this.progress,
+    this.paused = false,
     this.error,
   });
 
@@ -108,21 +109,30 @@ class ModelInstallState {
   final bool installed;
   final double? progress;
 
+  /// Stopped part way, with what arrived kept on disk. Asking again carries
+  /// on from there rather than starting over.
+  final bool paused;
+
   /// Why the download failed, as raised; written out by the interface.
   final Object? error;
 
-  bool get downloading => progress != null;
+  bool get downloading => progress != null && !paused;
+
+  /// Whether there is an attempt to pause or cancel.
+  bool get stoppable => progress != null;
 
   ModelInstallState copyWith({
     bool? installed,
     double? progress,
     bool clearProgress = false,
+    bool? paused,
     Object? error,
     bool clearError = false,
   }) => ModelInstallState(
     model: model,
     installed: installed ?? this.installed,
     progress: clearProgress ? null : progress ?? this.progress,
+    paused: paused ?? this.paused,
     error: clearError ? null : error ?? this.error,
   );
 }

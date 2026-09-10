@@ -357,6 +357,42 @@ abstract class AppLocalizations {
   /// **'Установлена'**
   String get modelInstalled;
 
+  /// No description provided for @downloadPause.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приостановить'**
+  String get downloadPause;
+
+  /// No description provided for @downloadResume.
+  ///
+  /// In ru, this message translates to:
+  /// **'Продолжить'**
+  String get downloadResume;
+
+  /// No description provided for @downloadCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отменить'**
+  String get downloadCancel;
+
+  /// No description provided for @downloadPaused.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приостановлено'**
+  String get downloadPaused;
+
+  /// No description provided for @downloadStopping.
+  ///
+  /// In ru, this message translates to:
+  /// **'Останавливаю…'**
+  String get downloadStopping;
+
+  /// No description provided for @downloadCancelNotResumable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отменить (продолжить будет нельзя)'**
+  String get downloadCancelNotResumable;
+
   /// No description provided for @modelDownload.
   ///
   /// In ru, this message translates to:

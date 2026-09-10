@@ -1111,6 +1111,9 @@ class _ModelsPanel extends StatelessWidget {
           _ModelCard(
             state: state,
             onInstall: () => viewModel.installModel(state),
+            onPause: () => viewModel.pauseDownload(state.model.id),
+            onCancel: () => viewModel.cancelDownload(state.model.id),
+            stopping: viewModel.isStopping(state.model.id),
             choosable: true,
             selected: state.model.id == viewModel.selectedRecognition?.model.id,
             onSelect: viewModel.running
@@ -1127,6 +1130,9 @@ class _ModelsPanel extends StatelessWidget {
           _ModelCard(
             state: state,
             onInstall: () => viewModel.installModel(state),
+            onPause: () => viewModel.pauseDownload(state.model.id),
+            onCancel: () => viewModel.cancelDownload(state.model.id),
+            stopping: viewModel.isStopping(state.model.id),
             language: state.model.language,
             choosable: true,
             selected: state.model.language == selected,
@@ -1144,6 +1150,9 @@ class _ModelsPanel extends StatelessWidget {
           _ModelCard(
             state: state,
             onInstall: () => viewModel.installModel(state),
+            onPause: () => viewModel.pauseDownload(state.model.id),
+            onCancel: () => viewModel.cancelDownload(state.model.id),
+            stopping: viewModel.isStopping(state.model.id),
             language: state.model.language,
             choosable: true,
             selected: state.model.language == selected,
@@ -1169,10 +1178,65 @@ class _SectionNote extends StatelessWidget {
   );
 }
 
+/// Pause/resume and cancel for a download in flight.
+///
+/// Kept to two small buttons so it fits both the model cards and the tight
+/// compute rows. A cancel that cannot be resumed says so in its tooltip
+/// rather than looking the same as a pause.
+class _DownloadControls extends StatelessWidget {
+  const _DownloadControls({
+    required this.paused,
+    required this.stopping,
+    required this.onPause,
+    required this.onResume,
+    required this.onCancel,
+    this.pausable = true,
+  });
+
+  final bool paused;
+  final bool stopping;
+  final bool pausable;
+  final VoidCallback onPause;
+  final VoidCallback onResume;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (pausable)
+          IconButton(
+            tooltip: stopping
+                ? l10n.downloadStopping
+                : (paused ? l10n.downloadResume : l10n.downloadPause),
+            onPressed: stopping ? null : (paused ? onResume : onPause),
+            icon: Icon(paused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 20),
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+            padding: EdgeInsets.zero,
+          ),
+        IconButton(
+          tooltip: pausable ? l10n.downloadCancel : l10n.downloadCancelNotResumable,
+          onPressed: stopping ? null : onCancel,
+          icon: const Icon(Icons.close_rounded, size: 20),
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+          padding: EdgeInsets.zero,
+        ),
+      ],
+    );
+  }
+}
+
 class _ModelCard extends StatelessWidget {
   const _ModelCard({
     required this.state,
     required this.onInstall,
+    required this.onPause,
+    required this.onCancel,
+    this.stopping = false,
     this.language,
     this.choosable = false,
     this.selected = false,
@@ -1181,6 +1245,13 @@ class _ModelCard extends StatelessWidget {
 
   final ModelInstallState state;
   final VoidCallback onInstall;
+
+  /// Stopping keeps what arrived; cancelling throws it away.
+  final VoidCallback onPause;
+  final VoidCallback onCancel;
+
+  /// A stop has been asked for and the download has not noticed yet.
+  final bool stopping;
 
   /// Set for the packages that come per language; null for the recognition
   /// models, which serve all of them.
@@ -1227,7 +1298,23 @@ class _ModelCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 LinearProgressIndicator(value: progress),
                 const SizedBox(height: 5),
-                Text('${(progress * 100).round()}%'),
+                Row(
+                  children: [
+                    Text(
+                      state.paused
+                          ? '${(progress * 100).round()}% · ${l10n.downloadPaused}'
+                          : '${(progress * 100).round()}%',
+                    ),
+                    const Spacer(),
+                    _DownloadControls(
+                      paused: state.paused,
+                      stopping: stopping,
+                      onPause: onPause,
+                      onResume: onInstall,
+                      onCancel: onCancel,
+                    ),
+                  ],
+                ),
               ],
               if (state.error case final error?) ...[
                 const SizedBox(height: 8),
@@ -1242,7 +1329,7 @@ class _ModelCard extends StatelessWidget {
       ],
     );
     final action = OutlinedButton.icon(
-      onPressed: state.installed || state.downloading ? null : onInstall,
+      onPressed: state.installed || state.stoppable ? null : onInstall,
       icon: Icon(state.installed ? Icons.check_rounded : Icons.download_rounded),
       label: Text(state.installed ? l10n.modelInstalled : l10n.modelDownload),
     );
@@ -1942,7 +2029,7 @@ class _RuntimeDownloadButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    if (state.installing) {
+    if (state.stoppable) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1952,8 +2039,18 @@ class _RuntimeDownloadButton extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '${((state.progress ?? 0) * 100).round()}%',
+            state.paused ? l10n.downloadPaused : '${((state.progress ?? 0) * 100).round()}%',
             style: const TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 12),
+          ),
+          const SizedBox(width: 4),
+          _DownloadControls(
+            paused: state.paused,
+            stopping: viewModel.isStopping(state.package.id),
+            // pip runs to the end or not at all, so only a cancel is offered.
+            pausable: state.pausable,
+            onPause: () => viewModel.pauseDownload(state.package.id),
+            onResume: () => viewModel.installRuntime(state),
+            onCancel: () => viewModel.cancelDownload(state.package.id),
           ),
         ],
       );

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../domain/download_control.dart';
 import '../../domain/runtime_package.dart';
 import '../services/artifact_downloader.dart';
 import '../services/runtime_catalog.dart';
@@ -15,16 +16,18 @@ class RuntimeRepository {
 
   Future<Set<String>> installedIds() => _storage.installedRuntimeIds();
 
-  Future<void> install(
+  Future<DownloadOutcome> install(
     RuntimePackage package, {
     required DownloadProgress onProgress,
     String proxyUrl = '',
     String pythonExecutable = '',
+    DownloadControl? control,
   }) => _storage.install(
     package,
     onProgress: onProgress,
     proxyUrl: proxyUrl,
     pythonExecutable: pythonExecutable,
+    control: control,
   );
 
   Future<void> remove(RuntimePackage package) => _storage.remove(package);

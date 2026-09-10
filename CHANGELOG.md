@@ -57,6 +57,11 @@ All notable changes to LoreDub are documented in this file.
   over.
 - Removing a downloaded GPU runtime now asks for confirmation before giving the disk space
   back, since the button sits where the download button used to be.
+- Every download can now be paused, resumed and cancelled, models and GPU runtimes alike.
+  A pause keeps the partial file so resuming continues with a range request; a cancel takes
+  it with it. The stop is checked between chunks rather than at the end of the file. CUDA
+  torch is the exception: pip has no half-way point, so only a cancel is offered there, and
+  it kills the process and clears the directory.
 - Added an update check. The sidebar shows the installed version, checks at startup and on
   request, and offers an arrow to the release page plus a Windows notification when the
   repository has published something newer. The installer now stamps its shortcuts with an

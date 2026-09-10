@@ -24,14 +24,20 @@ void main() {
     if (await root.exists()) await root.delete(recursive: true);
   });
 
-  RuntimeStorageService storeWith(
-    http.Client client, {
-    Future<ProcessResult> Function(String, List<String>)? runProcess,
-  }) => RuntimeStorageService(
-    client: client,
-    rootProvider: () async => root,
-    runProcess: runProcess,
-  );
+  RuntimeStorageService storeWith(http.Client client, {ProcessStarter? startProcess}) =>
+      RuntimeStorageService(
+        client: client,
+        rootProvider: () async => root,
+        startProcess: startProcess,
+      );
+
+  /// A process that is already finished, for the pip paths that only care
+  /// about the arguments and the exit code.
+  ProcessStarter finished(ProcessResult result, {void Function(List<String>)? record}) =>
+      (executable, arguments) {
+        record?.call(arguments);
+        return (result: Future.value(result), kill: () {});
+      };
 
   /// A zip shaped like the official whisper.cpp archives: the binaries sit in
   /// a build subdirectory rather than at the top.
@@ -130,8 +136,7 @@ void main() {
     );
     final store = storeWith(
       MockClient((_) async => http.Response('', 404)),
-      runProcess: (executable, arguments) async =>
-          ProcessResult(0, 1, '', 'ERROR: No matching distribution found'),
+      startProcess: finished(ProcessResult(0, 1, '', 'ERROR: No matching distribution found')),
     );
 
     await expectLater(
@@ -159,10 +164,7 @@ void main() {
     List<String>? seen;
     final store = storeWith(
       MockClient((_) async => http.Response('', 404)),
-      runProcess: (executable, arguments) async {
-        seen = arguments;
-        return ProcessResult(0, 0, '', '');
-      },
+      startProcess: finished(ProcessResult(0, 0, '', ''), record: (arguments) => seen = arguments),
     );
 
     await store.install(
@@ -188,10 +190,7 @@ void main() {
     List<String>? seen;
     final store = storeWith(
       MockClient((_) async => http.Response('', 404)),
-      runProcess: (executable, arguments) async {
-        seen = arguments;
-        return ProcessResult(0, 0, '', '');
-      },
+      startProcess: finished(ProcessResult(0, 0, '', ''), record: (arguments) => seen = arguments),
     );
 
     await store.install(

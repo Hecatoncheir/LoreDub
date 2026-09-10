@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../domain/download_control.dart';
 import '../../domain/model_package.dart';
 import '../services/model_catalog.dart';
 import '../services/model_storage_service.dart';
@@ -19,14 +20,16 @@ class ModelRepository {
     ),
   );
 
-  Future<void> install(
+  Future<DownloadOutcome> install(
     ModelPackage model, {
     required DownloadProgress onProgress,
     String proxyUrl = '',
+    DownloadControl? control,
   }) => _storage.install(
     model,
     onProgress: onProgress,
     proxyUrl: proxyUrl,
+    control: control,
   );
 
   Future<String> directoryFor(ModelPackage model) async =>

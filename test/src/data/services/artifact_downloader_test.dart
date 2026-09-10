@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lore_dub/src/data/services/artifact_downloader.dart';
+import 'package:lore_dub/src/domain/download_control.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:path/path.dart' as path;
@@ -191,5 +192,90 @@ void main() {
             .having((error) => error.detail, 'detail', contains('404')),
       ),
     );
+  });
+
+  group('stopping a download', () {
+    test('a pause keeps what arrived so the next attempt resumes', () async {
+      final control = DownloadControl();
+      final client = MockClient((request) async {
+        // Stop as soon as the first response is being handed over.
+        control.pause();
+        return http.Response.bytes(payload, 200);
+      });
+
+      final outcome = await downloadArtifacts(
+        [artifactOf()],
+        directory: directory,
+        client: client,
+        onProgress: (_) {},
+        control: control,
+      );
+
+      expect(outcome, DownloadOutcome.paused);
+      expect(destinationFile().existsSync(), isFalse, reason: 'nothing is finished');
+    });
+
+    test('a cancel throws the part away', () async {
+      await partFile().writeAsBytes(payload.sublist(0, 150));
+      final control = DownloadControl()..cancel();
+
+      final outcome = await downloadArtifacts(
+        [artifactOf()],
+        directory: directory,
+        client: MockClient((_) async => http.Response.bytes(payload, 200)),
+        onProgress: (_) {},
+        control: control,
+      );
+
+      expect(outcome, DownloadOutcome.cancelled);
+      expect(partFile().existsSync(), isFalse, reason: 'a cancel leaves nothing behind');
+    });
+
+    test('a pause leaves the part for a later resume', () async {
+      await partFile().writeAsBytes(payload.sublist(0, 150));
+      final control = DownloadControl()..pause();
+
+      final outcome = await downloadArtifacts(
+        [artifactOf()],
+        directory: directory,
+        client: MockClient((_) async => http.Response.bytes(payload, 200)),
+        onProgress: (_) {},
+        control: control,
+      );
+
+      expect(outcome, DownloadOutcome.paused);
+      expect(await partFile().length(), 150, reason: 'the bytes are kept');
+    });
+
+    test('resuming after a pause finishes the file', () async {
+      await partFile().writeAsBytes(payload.sublist(0, 150));
+
+      final outcome = await downloadArtifacts(
+        [artifactOf()],
+        directory: directory,
+        client: rangeServer([]),
+        onProgress: (_) {},
+        control: DownloadControl(),
+      );
+
+      expect(outcome, DownloadOutcome.completed);
+      expect(await destinationFile().readAsBytes(), payload);
+    });
+
+    test('a cancel asked for after a pause wins', () {
+      final control = DownloadControl()
+        ..pause()
+        ..cancel();
+
+      expect(control.requestedStop, DownloadOutcome.cancelled);
+    });
+
+    test('a pause does not undo a cancel', () {
+      final control = DownloadControl()
+        ..cancel()
+        ..pause();
+
+      expect(control.requestedStop, DownloadOutcome.cancelled);
+    });
   });
 }

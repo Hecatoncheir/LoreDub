@@ -155,6 +155,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get modelInstalled => 'Установлена';
 
   @override
+  String get downloadPause => 'Приостановить';
+
+  @override
+  String get downloadResume => 'Продолжить';
+
+  @override
+  String get downloadCancel => 'Отменить';
+
+  @override
+  String get downloadPaused => 'Приостановлено';
+
+  @override
+  String get downloadStopping => 'Останавливаю…';
+
+  @override
+  String get downloadCancelNotResumable => 'Отменить (продолжить будет нельзя)';
+
+  @override
   String get modelDownload => 'Скачать';
 
   @override
