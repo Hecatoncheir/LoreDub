@@ -137,7 +137,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sectionRecognitionNote =>
-      'Whisper переводит речь любого языка в английский текст. Больше для распознавания ничего скачивать не нужно.';
+      'Whisper переводит речь любого языка в английский текст. Нужна одна модель — чем больше, тем точнее и медленнее.';
 
   @override
   String get sectionTranslation => 'МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА';
@@ -294,14 +294,26 @@ class AppLocalizationsRu extends AppLocalizations {
   String get interfaceLanguageNote => 'Меняется сразу, без перезапуска.';
 
   @override
-  String get modelWhisperTitle => 'Whisper base';
+  String modelWhisperTitle(String version) {
+    return 'Whisper $version';
+  }
 
   @override
   String get modelWhisperNote =>
-      'Распознавание речи и перевод любого языка на английский. Нужна один раз, для всех языков озвучки.';
+      'Распознавание речи и перевод любого языка на английский. Одна модель на все языки озвучки.';
 
   @override
-  String get modelTranslationNote => 'Локальный CPU-переводчик Helsinki-NLP/Marian, около 300 МБ.';
+  String get modelWhisperTranscribeOnly =>
+      'Не переводит речь: подойдёт, только если оригинал уже на английском.';
+
+  @override
+  String get recognitionNeedsEnglish =>
+      'Выбранная модель не переводит речь, а язык оригинала указан не английский.';
+
+  @override
+  String modelTranslationNote(String size) {
+    return 'Локальный переводчик Helsinki-NLP/Marian, $size.';
+  }
 
   @override
   String modelTranslationTitle(String language) {

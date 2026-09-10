@@ -48,6 +48,8 @@ class ModelPackage {
     this.speaker,
     this.version,
     this.voices = const [],
+    this.translatesSpeech = true,
+    this.translationPrefix,
   });
 
   final String id;
@@ -66,6 +68,18 @@ class ModelPackage {
 
   /// Every voice the package ships, [speaker] among them.
   final List<VoiceOption> voices;
+
+  /// Whether a recognition model can turn foreign speech into English on its
+  /// own. `large-v3-turbo` cannot: OpenAI fine-tuned it without translation
+  /// data, so it is asked to transcribe and only suits an English original.
+  final bool translatesSpeech;
+
+  /// A token a translation model needs in front of the text to name the
+  /// target language, for the models that serve several at once.
+  final String? translationPrefix;
+
+  /// What the whole package costs to fetch.
+  int get downloadBytes => artifacts.fold(0, (sum, artifact) => sum + (artifact.byteSize ?? 0));
 
   /// The file the pipeline hands to the runtime, for packages that ship one.
   String get primaryFileName => artifacts.first.fileName;

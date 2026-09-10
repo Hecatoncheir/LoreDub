@@ -23,6 +23,7 @@ class AppSettings {
     this.detectSourceLanguage = true,
     this.sourceLanguage = fallbackSpokenLanguage,
     this.interfaceLanguage = defaultInterfaceLanguage,
+    this.whisperModel = '',
     this.automaticVoice = true,
     this.voice = '',
     this.computeDevice = ComputeDevice.auto,
@@ -58,6 +59,10 @@ class AppSettings {
 
   /// Language of the interface itself, independent of what is being dubbed.
   final String interfaceLanguage;
+
+  /// Which whisper.cpp model recognition uses, by catalogue id. Empty means
+  /// the one the catalogue lists first, which is the smallest.
+  final String whisperModel;
 
   /// Whether the voice follows the original speaker, phrase by phrase, from
   /// the pitch of the captured audio.
@@ -124,6 +129,7 @@ class AppSettings {
     bool? detectSourceLanguage,
     String? sourceLanguage,
     String? interfaceLanguage,
+    String? whisperModel,
     bool? automaticVoice,
     String? voice,
     ComputeDevice? computeDevice,
@@ -145,6 +151,7 @@ class AppSettings {
     detectSourceLanguage: detectSourceLanguage ?? this.detectSourceLanguage,
     sourceLanguage: sourceLanguage ?? this.sourceLanguage,
     interfaceLanguage: interfaceLanguage ?? this.interfaceLanguage,
+    whisperModel: whisperModel ?? this.whisperModel,
     automaticVoice: automaticVoice ?? this.automaticVoice,
     voice: voice ?? this.voice,
     computeDevice: computeDevice ?? this.computeDevice,

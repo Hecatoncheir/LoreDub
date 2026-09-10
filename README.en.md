@@ -73,6 +73,57 @@ Automatic is unavailable where a package ships voices of one gender only, and
 in subtitle mode, which never hears the original. Both say so in Settings and
 fall back to the chosen voice.
 
+## Translator
+
+English text is translated by a Helsinki-NLP/Marian model. Russian uses
+`opus-mt-tc-big-en-zle` from the Tatoeba Challenge (461 MB), which replaced
+the 2020 `opus-mt-en-ru` (287 MB). It serves the East Slavic languages
+together, so the target is named by a token in front of the text (`>>rus<<`).
+
+The gain is not in fine wording but in the gross failures it removes. Over
+25 lines of game dialogue:
+
+| Original | Old | New |
+| --- | --- | --- |
+| The well ran dry three summers ago. | **Лаборатория** высохла три лета назад. | Три года назад колодец высох. |
+| Keep your voice down, the guards are near. | **Не двигайся**, охранники рядом. | Не кричи, стража рядом. |
+| You there! Halt and state your business. | **Стой и стой, стой!** | Остановись и скажи… |
+| That armour will not stop an arrow. | **Эти брони не остановят** стрелу. | Эта броня не остановит стрелу. |
+
+Not everything improves: "hills" became "горы", and it addresses the player
+formally more often. It also costs more — about 400 ms a line against 260 ms.
+
+Now and then it leaves a proper noun in Latin script, which Silero cannot
+read. The worker catches that and translates again with the line lower-cased;
+over those 25 lines it happened once, and the retry fixed it.
+
+## Recognition model
+
+The Models screen picks the Whisper build. `base` is the default because it is
+the only one that suits a plain processor; the rest are worth it once
+recognition runs on a card.
+
+Measured on an RTX 3080 Ti over three 3 s English lines, warm. "Errors" counts
+how many of the three came out wrong:
+
+| Model | Size | Time | Errors |
+| --- | --- | --- | --- |
+| base | 141 MB | ~680 ms | 2 |
+| small | 465 MB | ~1120 ms | 1 |
+| medium-q5_0 | 514 MB | ~1320 ms | 0 |
+| **large-v3-turbo-q5_0** | 547 MB | **~1130 ms** | **0** |
+
+`large-v3-turbo` wins on both counts — medium's accuracy at small's speed,
+from having 4 decoder layers instead of 32. But **it must not be asked to
+translate speech**: OpenAI fine-tuned it with the translation data left out.
+LoreDub therefore does not pass it `-tr` and asks it to transcribe, which only
+suits an original already in English. The catalogue marks this, and if the
+original language is set by hand to something other than English the interface
+says so.
+
+The first run of a new model on CUDA costs a few seconds while the driver
+builds its kernel cache for those shapes. It is a one-off.
+
 ## Compute device
 
 The default is **Automatic**: the app enumerates adapters through DXGI, checks

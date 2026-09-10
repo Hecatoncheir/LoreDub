@@ -57,6 +57,15 @@ All notable changes to LoreDub are documented in this file.
   over.
 - Removing a downloaded GPU runtime now asks for confirmation before giving the disk space
   back, since the button sits where the download button used to be.
+- Made the Whisper model a choice. The Models screen now lists base, small, medium-q5_0 and
+  large-v3-turbo-q5_0 and remembers which one recognition uses; the smallest stays the
+  default. large-v3-turbo is marked as unable to translate speech — OpenAI fine-tuned it
+  without translation data — so it is asked to transcribe and only suits an English original.
+- Replaced the Russian translator with the Tatoeba-Challenge `opus-mt-tc-big-en-zle`. It
+  clears up the worst failures of the 2020 model, at 479 MB against 307 MB and about 150 ms
+  more per line. The identifier changes, so the old translator has to be downloaded again.
+  A proper noun it leaves in Latin script, which Silero cannot read, is caught and
+  translated again with the line lower-cased.
 - Added a dubbing voice setting. "Automatic" measures the pitch of each captured phrase and
   answers in a man's or a woman's voice to match; a voice can also be picked by hand. The
   genders in the catalogue were measured, which turned up that every Spanish voice is a

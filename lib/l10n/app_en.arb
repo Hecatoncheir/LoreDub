@@ -83,7 +83,7 @@
     }
   },
   "sectionRecognition": "SPEECH RECOGNITION",
-  "sectionRecognitionNote": "Whisper turns speech in any language into English text. Recognition needs nothing else.",
+  "sectionRecognitionNote": "Whisper turns speech in any language into English text. One model covers everything — larger is more accurate and slower.",
   "sectionTranslation": "TEXT TRANSLATION MODELS",
   "sectionTranslationNote": "The English text is translated into the language you pick.",
   "sectionSpeech": "TEXT-TO-SPEECH MODELS",
@@ -168,9 +168,25 @@
   "openInExplorer": "Open in Explorer",
   "settingsInterfaceLanguage": "Interface language",
   "interfaceLanguageNote": "Applies immediately, without a restart.",
-  "modelWhisperTitle": "Whisper base",
-  "modelWhisperNote": "Speech recognition and translation of any language into English. Needed once, for every dubbing language.",
-  "modelTranslationNote": "Local CPU translator by Helsinki-NLP/Marian, about 300 MB.",
+  "modelWhisperTitle": "Whisper {version}",
+  "@modelWhisperTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "modelWhisperNote": "Speech recognition and translation of any language into English. One model for every dubbing language.",
+  "modelWhisperTranscribeOnly": "Does not translate speech: only suits an original already in English.",
+  "recognitionNeedsEnglish": "The chosen model does not translate speech, and the original language is not set to English.",
+  "modelTranslationNote": "Local Helsinki-NLP/Marian translator, {size}.",
+  "@modelTranslationNote": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "modelTranslationTitle": "English → {language}",
   "@modelTranslationTitle": {
     "placeholders": {

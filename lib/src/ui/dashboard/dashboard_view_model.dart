@@ -98,6 +98,32 @@ class DashboardViewModel extends ChangeNotifier {
     return null;
   }
 
+  /// The recognition model in use: the one the user picked, or the first the
+  /// catalogue lists when the choice is unset or names a model that is gone.
+  ModelInstallState? get selectedRecognition {
+    final chosen = settings.whisperModel;
+    for (final state in recognitionModels) {
+      if (state.model.id == chosen) return state;
+    }
+    return recognitionModels.firstOrNull;
+  }
+
+  /// Whether the chosen model can turn foreign speech into English itself.
+  /// When it cannot, the original has to already be in English.
+  bool get recognitionTranslatesSpeech => selectedRecognition?.model.translatesSpeech ?? true;
+
+  /// Whether the chosen model and the named original language disagree: a
+  /// transcribe-only model handed, say, German would feed German text to an
+  /// English-to-Russian translator.
+  bool get recognitionNeedsEnglish =>
+      !recognitionTranslatesSpeech &&
+      settings.captureMode != CaptureMode.ocr &&
+      !settings.detectSourceLanguage &&
+      settings.sourceLanguage != 'en';
+
+  Future<void> selectRecognitionModel(String id) =>
+      updateSettings(settings.copyWith(whisperModel: id));
+
   /// The speech package for the language being dubbed into, if there is one.
   ModelPackage? get speechPackage => _selected(ModelKind.speech)?.model;
 
@@ -148,7 +174,7 @@ class DashboardViewModel extends ChangeNotifier {
   bool get requiredModelsInstalled {
     if (models.isEmpty) return false;
     final needsWhisper = settings.captureMode != CaptureMode.ocr;
-    if (needsWhisper && !(recognitionModels.firstOrNull?.installed ?? false)) return false;
+    if (needsWhisper && !(selectedRecognition?.installed ?? false)) return false;
     return (_selected(ModelKind.translation)?.installed ?? false) &&
         (_selected(ModelKind.speech)?.installed ?? false);
   }
@@ -363,11 +389,16 @@ class DashboardViewModel extends ChangeNotifier {
         process: _requiresProcess ? selectedProcess : null,
         settings: settings,
         modelDirectories: {
-          'whisper': await _modelRepository.directoryFor(recognitionModels.first.model),
+          'whisper': path.join(
+            await _modelRepository.directoryFor(selectedRecognition!.model),
+            selectedRecognition!.model.primaryFileName,
+          ),
           'translation': await _modelRepository.directoryFor(translation),
           'speech': path.join(speechDirectory, speech.primaryFileName),
         },
         speaker: selectedVoice,
+        translationPrefix: translation.translationPrefix ?? '',
+        translateSpeech: recognitionTranslatesSpeech,
         followSpeaker: followsSpeaker,
         maleVoices: speech.voicesOf(VoiceGender.male),
         femaleVoices: speech.voicesOf(VoiceGender.female),

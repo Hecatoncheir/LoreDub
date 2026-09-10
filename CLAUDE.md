@@ -82,6 +82,13 @@ Segments are processed strictly sequentially — `NativeEngineService._processin
 is a chained `Future` — so a small CPU is never asked to run two inferences at
 once. Preserve that when adding stages.
 
+The recognition model is a choice, not a constant: `AppSettings.whisperModel`
+names a catalogue id and the pipeline is handed that package's file path.
+`ModelPackage.translatesSpeech` is false for `large-v3-turbo`, which OpenAI
+fine-tuned without translation data — the pipeline then drops `-tr` and only
+suits an English original. `ModelPackage.translationPrefix` carries the target
+token (`>>rus<<`) that the multi-target Marian models need.
+
 The dubbing voice is chosen per phrase. With `AppSettings.automaticVoice` the
 worker is handed the male and female voices of the package plus the captured
 WAV of each phrase, estimates its median fundamental (`speaker_gender` in the

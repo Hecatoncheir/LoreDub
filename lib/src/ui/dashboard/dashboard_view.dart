@@ -978,9 +978,21 @@ class _ModelsPanel extends StatelessWidget {
         _ModuleLabel(number: '01', label: l10n.sectionRecognition),
         const SizedBox(height: 4),
         _SectionNote(l10n.sectionRecognitionNote),
+        if (viewModel.recognitionNeedsEnglish) ...[
+          const SizedBox(height: 8),
+          _SectionNote(l10n.recognitionNeedsEnglish),
+        ],
         for (final state in viewModel.recognitionModels) ...[
           const SizedBox(height: 12),
-          _ModelCard(state: state, onInstall: () => viewModel.installModel(state)),
+          _ModelCard(
+            state: state,
+            onInstall: () => viewModel.installModel(state),
+            choosable: true,
+            selected: state.model.id == viewModel.selectedRecognition?.model.id,
+            onSelect: viewModel.running
+                ? null
+                : () => viewModel.selectRecognitionModel(state.model.id),
+          ),
         ],
         const SizedBox(height: 26),
         _ModuleLabel(number: '02', label: l10n.sectionTranslation),
@@ -992,6 +1004,7 @@ class _ModelsPanel extends StatelessWidget {
             state: state,
             onInstall: () => viewModel.installModel(state),
             language: state.model.language,
+            choosable: true,
             selected: state.model.language == selected,
             onSelect: viewModel.running
                 ? null
@@ -1008,6 +1021,7 @@ class _ModelsPanel extends StatelessWidget {
             state: state,
             onInstall: () => viewModel.installModel(state),
             language: state.model.language,
+            choosable: true,
             selected: state.model.language == selected,
             onSelect: viewModel.running
                 ? null
@@ -1036,6 +1050,7 @@ class _ModelCard extends StatelessWidget {
     required this.state,
     required this.onInstall,
     this.language,
+    this.choosable = false,
     this.selected = false,
     this.onSelect,
   });
@@ -1043,9 +1058,14 @@ class _ModelCard extends StatelessWidget {
   final ModelInstallState state;
   final VoidCallback onInstall;
 
-  /// Set for the packages that come per language, which the player chooses
-  /// between; null for Whisper, which serves all of them.
+  /// Set for the packages that come per language; null for the recognition
+  /// models, which serve all of them.
   final String? language;
+
+  /// Whether this card is one of a set the player picks between — the
+  /// languages, and now the whisper builds. Such a card shows which one is
+  /// chosen instead of only whether it is downloaded.
+  final bool choosable;
   final bool selected;
   final VoidCallback? onSelect;
 
@@ -1055,7 +1075,7 @@ class _ModelCard extends StatelessWidget {
     final details = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (language != null)
+        if (choosable)
           Icon(
             selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
             color: selected ? LoreDubPalette.orange : LoreDubPalette.outline,

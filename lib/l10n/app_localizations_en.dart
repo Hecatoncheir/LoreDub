@@ -137,7 +137,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionRecognitionNote =>
-      'Whisper turns speech in any language into English text. Recognition needs nothing else.';
+      'Whisper turns speech in any language into English text. One model covers everything — larger is more accurate and slower.';
 
   @override
   String get sectionTranslation => 'TEXT TRANSLATION MODELS';
@@ -292,14 +292,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get interfaceLanguageNote => 'Applies immediately, without a restart.';
 
   @override
-  String get modelWhisperTitle => 'Whisper base';
+  String modelWhisperTitle(String version) {
+    return 'Whisper $version';
+  }
 
   @override
   String get modelWhisperNote =>
-      'Speech recognition and translation of any language into English. Needed once, for every dubbing language.';
+      'Speech recognition and translation of any language into English. One model for every dubbing language.';
 
   @override
-  String get modelTranslationNote => 'Local CPU translator by Helsinki-NLP/Marian, about 300 MB.';
+  String get modelWhisperTranscribeOnly =>
+      'Does not translate speech: only suits an original already in English.';
+
+  @override
+  String get recognitionNeedsEnglish =>
+      'The chosen model does not translate speech, and the original language is not set to English.';
+
+  @override
+  String modelTranslationNote(String size) {
+    return 'Local Helsinki-NLP/Marian translator, $size.';
+  }
 
   @override
   String modelTranslationTitle(String language) {

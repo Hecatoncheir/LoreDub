@@ -8,22 +8,53 @@ import '../../domain/model_package.dart';
 /// translator and a Silero voice for the same language.
 const whisperModelId = 'whisper-base';
 
+/// The whisper.cpp builds on offer, smallest first.
+///
+/// `base` stays the default because it is the one that fits a plain CPU;
+/// everything above it is worth the download once recognition runs on a card.
+ModelPackage _whisper({
+  required String id,
+  required String fileName,
+  required int byteSize,
+  required String version,
+  String? hash,
+  bool translatesSpeech = true,
+}) => ModelPackage(
+  id: id,
+  version: version,
+  translatesSpeech: translatesSpeech,
+  artifacts: [
+    ModelArtifact(
+      fileName: fileName,
+      url: Uri.parse('https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$fileName'),
+      byteSize: byteSize,
+      hash: hash,
+    ),
+  ],
+);
+
 ModelPackage _marian({
   required String id,
   required String language,
   required String pair,
   required Map<String, int> sizes,
   String? weightsHash,
+  String? translationPrefix,
+
+  /// Repository name under Helsinki-NLP, when it is not `opus-mt-<pair>`.
+  String? repository,
 }) => ModelPackage(
   id: id,
   kind: ModelKind.translation,
   language: language,
+  translationPrefix: translationPrefix,
   artifacts: [
     for (final entry in sizes.entries)
       ModelArtifact(
         fileName: entry.key,
         url: Uri.parse(
-          'https://huggingface.co/Helsinki-NLP/opus-mt-$pair/resolve/main/${entry.key}',
+          'https://huggingface.co/Helsinki-NLP/${repository ?? 'opus-mt-$pair'}'
+          '/resolve/main/${entry.key}',
         ),
         byteSize: entry.value,
         hash: entry.key == 'pytorch_model.bin' ? weightsHash : null,
@@ -66,35 +97,53 @@ ModelPackage _silero({
 );
 
 final modelCatalog = <ModelPackage>[
-  ModelPackage(
+  _whisper(
     id: whisperModelId,
-    artifacts: [
-      ModelArtifact(
-        fileName: 'ggml-base.bin',
-        url: Uri.parse(
-          'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin',
-        ),
-        byteSize: 147951465,
-        hash: '60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe',
-      ),
-    ],
+    version: 'base',
+    fileName: 'ggml-base.bin',
+    byteSize: 147951465,
+    hash: '60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe',
+  ),
+  _whisper(
+    id: 'whisper-small',
+    version: 'small',
+    fileName: 'ggml-small.bin',
+    byteSize: 487601967,
+  ),
+  _whisper(
+    id: 'whisper-medium-q5',
+    version: 'medium q5_0',
+    fileName: 'ggml-medium-q5_0.bin',
+    byteSize: 539212467,
+  ),
+  _whisper(
+    id: 'whisper-large-v3-turbo-q5',
+    version: 'large-v3-turbo q5_0',
+    fileName: 'ggml-large-v3-turbo-q5_0.bin',
+    byteSize: 574041195,
+    // Fine-tuned without translation data, so it is only asked to transcribe.
+    translatesSpeech: false,
   ),
 
-  // The identifiers of the Russian pair predate the other languages and are
-  // kept as they are: they name the folders models are already stored in.
+  // The Tatoeba-Challenge model rather than the 2020 opus-mt-en-ru it
+  // replaced: on the same newstest sets it scores 4 to 7 BLEU higher, which
+  // is the difference between a line that parses and one that does not. It
+  // serves the East Slavic languages together, hence the target token.
   _marian(
-    id: 'bergamot-en-ru',
+    id: 'opus-mt-tc-big-en-zle',
     language: 'ru',
-    pair: 'en-ru',
-    weightsHash: 'd15fa58c6bc3efd3629c1b6b86d9aa6d15d2751a4620aa4cdd7eed7b5cbe583b',
+    pair: 'en-zle',
+    repository: 'opus-mt-tc-big-en-zle',
+    translationPrefix: '>>rus<<',
     sizes: const {
-      'config.json': 1381,
-      'generation_config.json': 293,
-      'pytorch_model.bin': 306991893,
-      'source.spm': 802781,
-      'target.spm': 1080169,
-      'tokenizer_config.json': 42,
-      'vocab.json': 2601758,
+      'config.json': 1076,
+      'generation_config.json': 301,
+      'pytorch_model.bin': 479034117,
+      'source.spm': 802747,
+      'special_tokens_map.json': 65,
+      'target.spm': 1017004,
+      'tokenizer_config.json': 339,
+      'vocab.json': 2510527,
     },
   ),
   _marian(

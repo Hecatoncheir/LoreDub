@@ -5,6 +5,7 @@
 
 import argparse
 import json
+import re
 import pathlib
 import sys
 import wave
@@ -149,6 +150,10 @@ def read_wave_mono(path):
     return samples, rate
 
 
+# Two or more Latin letters in a translated line means a name came through
+# untranslated, which the speech model cannot read.
+LATIN_RUN = re.compile(r"[A-Za-z]{2,}")
+
 # Between the highest male and the lowest female voice measured in the Silero
 # packages there is a wide gap; anything inside it is left undecided rather
 # than guessed.
@@ -186,6 +191,9 @@ def main():
     parser.add_argument("--sample-rate", type=int, default=24000)
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
     parser.add_argument("--extra-packages", default="")
+    # Models that serve several target languages need one named in front of
+    # the text, for example ">>rus<<".
+    parser.add_argument("--translation-prefix", default="")
     # With --follow-speaker the voice is chosen per phrase from these two
     # lists, by the pitch of the original; otherwise --speaker is used as is.
     parser.add_argument("--follow-speaker", action="store_true")
@@ -233,6 +241,13 @@ def main():
         "male": available(args.male_voices),
         "female": available(args.female_voices),
     }
+    def translate(source):
+        prompt = f"{args.translation_prefix} {source}".strip() if args.translation_prefix else source
+        inputs = tokenizer([prompt], return_tensors="pt", padding=True).to(device)
+        with torch.inference_mode():
+            generated = translator.generate(**inputs, num_beams=1, max_new_tokens=160)
+        return tokenizer.batch_decode(generated, skip_special_tokens=True)[0].strip()
+
     following = args.follow_speaker and by_gender["male"] and by_gender["female"]
     # Sticky: an unclear phrase keeps the voice the last clear one settled on,
     # so a noisy line does not flip the character mid-conversation.
@@ -270,10 +285,15 @@ def main():
             continue
         try:
             text = request["text"].strip()
-            inputs = tokenizer([text], return_tensors="pt", padding=True).to(device)
-            with torch.inference_mode():
-                generated = translator.generate(**inputs, num_beams=1, max_new_tokens=160)
-            translated = tokenizer.batch_decode(generated, skip_special_tokens=True)[0].strip()
+            translated = translate(text)
+            # A capitalised name is occasionally carried over untranslated,
+            # and the speech model cannot read Latin script. Asking again
+            # without the capitals costs one extra pass on the rare line that
+            # needs it, and gives back something that can be spoken.
+            if LATIN_RUN.search(translated):
+                retry = translate(text.lower())
+                if not LATIN_RUN.search(retry):
+                    translated = retry
             chosen = voice_for(request)
             audio = tts.apply_tts(
                 text=translated,

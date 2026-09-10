@@ -324,7 +324,7 @@ abstract class AppLocalizations {
   /// No description provided for @sectionRecognitionNote.
   ///
   /// In ru, this message translates to:
-  /// **'Whisper переводит речь любого языка в английский текст. Больше для распознавания ничего скачивать не нужно.'**
+  /// **'Whisper переводит речь любого языка в английский текст. Нужна одна модель — чем больше, тем точнее и медленнее.'**
   String get sectionRecognitionNote;
 
   /// No description provided for @sectionTranslation.
@@ -606,20 +606,32 @@ abstract class AppLocalizations {
   /// No description provided for @modelWhisperTitle.
   ///
   /// In ru, this message translates to:
-  /// **'Whisper base'**
-  String get modelWhisperTitle;
+  /// **'Whisper {version}'**
+  String modelWhisperTitle(String version);
 
   /// No description provided for @modelWhisperNote.
   ///
   /// In ru, this message translates to:
-  /// **'Распознавание речи и перевод любого языка на английский. Нужна один раз, для всех языков озвучки.'**
+  /// **'Распознавание речи и перевод любого языка на английский. Одна модель на все языки озвучки.'**
   String get modelWhisperNote;
+
+  /// No description provided for @modelWhisperTranscribeOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не переводит речь: подойдёт, только если оригинал уже на английском.'**
+  String get modelWhisperTranscribeOnly;
+
+  /// No description provided for @recognitionNeedsEnglish.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбранная модель не переводит речь, а язык оригинала указан не английский.'**
+  String get recognitionNeedsEnglish;
 
   /// No description provided for @modelTranslationNote.
   ///
   /// In ru, this message translates to:
-  /// **'Локальный CPU-переводчик Helsinki-NLP/Marian, около 300 МБ.'**
-  String get modelTranslationNote;
+  /// **'Локальный переводчик Helsinki-NLP/Marian, {size}.'**
+  String modelTranslationNote(String size);
 
   /// No description provided for @modelTranslationTitle.
   ///

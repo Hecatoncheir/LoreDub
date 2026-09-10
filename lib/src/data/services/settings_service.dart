@@ -66,6 +66,7 @@ class SettingsService {
       detectSourceLanguage: preferences.getBool('detectSourceLanguage') ?? true,
       sourceLanguage: _readSourceLanguage(preferences),
       interfaceLanguage: _readInterfaceLanguage(preferences),
+      whisperModel: preferences.getString('whisperModel') ?? '',
       automaticVoice: preferences.getBool('automaticVoice') ?? true,
       voice: preferences.getString('voice') ?? '',
       computeDevice: ComputeDevice.values.firstWhere(
@@ -97,6 +98,7 @@ class SettingsService {
       preferences.setBool('detectSourceLanguage', settings.detectSourceLanguage),
       preferences.setString('sourceLanguage', settings.sourceLanguage),
       preferences.setString('interfaceLanguage', settings.interfaceLanguage),
+      preferences.setString('whisperModel', settings.whisperModel),
       preferences.setBool('automaticVoice', settings.automaticVoice),
       preferences.setString('voice', settings.voice),
       preferences.setString('computeDevice', settings.computeDevice.name),

@@ -155,6 +155,10 @@ class LocalInferenceService {
     ComputeBackend recognitionBackend = ComputeBackend.cpu,
     ComputeBackend translationBackend = ComputeBackend.cpu,
 
+    /// Target-language token some translation models want in front of the
+    /// text; empty for the pairs that serve one language.
+    String translationPrefix = '',
+
     /// Pick the voice per phrase from the gender of the original speaker.
     bool followSpeaker = false,
     List<String> maleVoices = const [],
@@ -202,6 +206,7 @@ class LocalInferenceService {
         speed.toStringAsFixed(3),
         '--device',
         translationBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
+        if (translationPrefix.isNotEmpty) ...['--translation-prefix', translationPrefix],
         if (followSpeaker) ...[
           '--follow-speaker',
           '--male-voices',
@@ -266,11 +271,18 @@ class LocalInferenceService {
 
   Future<InferenceResult?> processSegment({
     required String wavePath,
+
+    /// Full path to the ggml model file, which the user chooses.
     required String whisperModel,
     required int threads,
+
+    /// Whether to ask whisper for English rather than the spoken language.
+    /// `large-v3-turbo` was fine-tuned without translation data, so it is
+    /// asked to transcribe and only suits an original already in English.
+    bool translateSpeech = true,
   }) async {
     final whisper = _whisperExecutable ?? await resolveWhisperExecutable();
-    final model = path.join(whisperModel, 'ggml-base.bin');
+    final model = whisperModel;
     if (!await File(model).exists()) {
       throw LoreDubFailure(FailureCode.whisperModelMissing, detail: model);
     }
@@ -283,7 +295,7 @@ class LocalInferenceService {
       wavePath,
       '-l',
       _spokenLanguage ?? 'auto',
-      '-tr',
+      if (translateSpeech) '-tr',
       '-otxt',
       '-of',
       prefix,

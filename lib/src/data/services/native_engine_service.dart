@@ -90,6 +90,7 @@ class NativeEngineService {
       pythonExecutable: config['pythonExecutable']! as String,
       requiresWhisper: config['captureMode'] != 'ocr',
       sourceLanguage: config['sourceLanguage']! as String,
+      translationPrefix: config['translationPrefix'] as String? ?? '',
       followSpeaker: config['followSpeaker'] as bool? ?? false,
       maleVoices: _voiceList(config['maleVoices']),
       femaleVoices: _voiceList(config['femaleVoices']),
@@ -176,6 +177,7 @@ class NativeEngineService {
         wavePath: wavePath,
         whisperModel: models['whisper']!,
         threads: config['cpuThreads']! as int,
+        translateSpeech: config['translateSpeech'] as bool? ?? true,
       );
       _publishSpokenLanguage();
       if (result == null) return;

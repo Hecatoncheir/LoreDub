@@ -362,7 +362,7 @@ void main() {
     // The voices sit below the fold of a lazy list.
     await tester.scrollUntilVisible(find.text('МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'), 400);
     expect(find.text('МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'), findsOneWidget);
-    expect(viewModel.recognitionModels, hasLength(1));
+    expect(viewModel.recognitionModels.length, greaterThan(1), reason: 'the model is a choice');
     expect(viewModel.translationModels.length, greaterThan(1));
     expect(viewModel.speechModels.length, greaterThan(1));
   });
@@ -374,11 +374,16 @@ void main() {
       ..models = [for (final model in modelCatalog) ModelInstallState(model: model)];
     await pumpDashboard(tester, viewModel, const Size(1280, 900));
 
+    await tester.scrollUntilVisible(find.text('Английский → немецкий'), 400);
+    await tester.ensureVisible(find.text('Английский → немецкий'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Английский → немецкий'));
     await tester.pumpAndSettle();
     expect(viewModel.settings.targetLanguage, 'de');
 
     await tester.scrollUntilVisible(find.text('Русский голос — Silero v5.3'), 400);
+    await tester.ensureVisible(find.text('Русский голос — Silero v5.3'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Русский голос — Silero v5.3'));
     await tester.pumpAndSettle();
     expect(viewModel.settings.targetLanguage, 'ru');
@@ -617,6 +622,99 @@ void main() {
         findsNothing,
         reason: 'the offer goes away with the runtime',
       );
+    });
+  });
+
+  group('choosing a recognition model', () {
+    Future<DashboardViewModel> pumpModels(
+      WidgetTester tester, {
+      AppSettings settings = const AppSettings(),
+    }) async {
+      final viewModel = buildViewModel()
+        ..initializing = false
+        ..section = DashboardSection.models
+        ..settings = settings
+        ..models = [
+          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
+        ];
+      await pumpDashboard(tester, viewModel, const Size(1280, 1000));
+      await tester.pumpAndSettle();
+      return viewModel;
+    }
+
+    testWidgets('lists every whisper build and marks the default', (tester) async {
+      final viewModel = await pumpModels(tester);
+
+      expect(find.text('Whisper base'), findsOneWidget);
+      expect(find.text('Whisper small'), findsOneWidget);
+      expect(
+        viewModel.selectedRecognition?.model.id,
+        whisperModelId,
+        reason: 'an unset choice falls back to the smallest',
+      );
+    });
+
+    testWidgets('remembers the model tapped in the list', (tester) async {
+      final viewModel = await pumpModels(tester);
+
+      await tester.scrollUntilVisible(find.text('Whisper small'), 300);
+      await tester.ensureVisible(find.text('Whisper small'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Whisper small'));
+      await tester.pumpAndSettle();
+
+      expect(viewModel.selectedRecognition?.model.id, 'whisper-small');
+      expect((await SettingsService().load()).whisperModel, 'whisper-small');
+    });
+
+    testWidgets('falls back when the stored choice names a model that is gone', (tester) async {
+      final viewModel = await pumpModels(
+        tester,
+        settings: const AppSettings(whisperModel: 'whisper-from-an-older-build'),
+      );
+
+      expect(viewModel.selectedRecognition?.model.id, whisperModelId);
+    });
+
+    testWidgets('asks turbo to transcribe rather than translate', (tester) async {
+      final viewModel = await pumpModels(
+        tester,
+        settings: const AppSettings(whisperModel: 'whisper-large-v3-turbo-q5'),
+      );
+
+      expect(viewModel.recognitionTranslatesSpeech, isFalse);
+      // Auto-detection is on by default, so nothing is claimed about the
+      // original yet and no warning is due.
+      expect(viewModel.recognitionNeedsEnglish, isFalse);
+    });
+
+    testWidgets('warns when a transcribe-only model meets a named foreign original', (
+      tester,
+    ) async {
+      final viewModel = await pumpModels(
+        tester,
+        settings: const AppSettings(
+          whisperModel: 'whisper-large-v3-turbo-q5',
+          detectSourceLanguage: false,
+          sourceLanguage: 'de',
+        ),
+      );
+
+      expect(viewModel.recognitionNeedsEnglish, isTrue);
+      expect(find.textContaining('не переводит речь'), findsWidgets);
+    });
+
+    testWidgets('says nothing when that model is pointed at English', (tester) async {
+      final viewModel = await pumpModels(
+        tester,
+        settings: const AppSettings(
+          whisperModel: 'whisper-large-v3-turbo-q5',
+          detectSourceLanguage: false,
+          sourceLanguage: 'en',
+        ),
+      );
+
+      expect(viewModel.recognitionNeedsEnglish, isFalse);
     });
   });
 

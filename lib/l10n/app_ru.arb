@@ -83,7 +83,7 @@
     }
   },
   "sectionRecognition": "РАСПОЗНАВАНИЕ РЕЧИ",
-  "sectionRecognitionNote": "Whisper переводит речь любого языка в английский текст. Больше для распознавания ничего скачивать не нужно.",
+  "sectionRecognitionNote": "Whisper переводит речь любого языка в английский текст. Нужна одна модель — чем больше, тем точнее и медленнее.",
   "sectionTranslation": "МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА",
   "sectionTranslationNote": "Английский текст переводится на выбранный язык.",
   "sectionSpeech": "МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА",
@@ -168,9 +168,25 @@
   "openInExplorer": "Открыть в Explorer",
   "settingsInterfaceLanguage": "Язык интерфейса",
   "interfaceLanguageNote": "Меняется сразу, без перезапуска.",
-  "modelWhisperTitle": "Whisper base",
-  "modelWhisperNote": "Распознавание речи и перевод любого языка на английский. Нужна один раз, для всех языков озвучки.",
-  "modelTranslationNote": "Локальный CPU-переводчик Helsinki-NLP/Marian, около 300 МБ.",
+  "modelWhisperTitle": "Whisper {version}",
+  "@modelWhisperTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "modelWhisperNote": "Распознавание речи и перевод любого языка на английский. Одна модель на все языки озвучки.",
+  "modelWhisperTranscribeOnly": "Не переводит речь: подойдёт, только если оригинал уже на английском.",
+  "recognitionNeedsEnglish": "Выбранная модель не переводит речь, а язык оригинала указан не английский.",
+  "modelTranslationNote": "Локальный переводчик Helsinki-NLP/Marian, {size}.",
+  "@modelTranslationNote": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "modelTranslationTitle": "Английский → {language}",
   "@modelTranslationTitle": {
     "placeholders": {

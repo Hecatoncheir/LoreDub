@@ -7,12 +7,25 @@ import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
 
 void main() {
-  test('recognition is a single package that serves every language', () {
+  test('offers several recognition models, none tied to a language', () {
     final recognition = modelCatalog.where((model) => model.kind == ModelKind.recognition);
 
-    expect(recognition, hasLength(1));
-    expect(recognition.single.id, whisperModelId);
-    expect(recognition.single.language, isNull);
+    expect(recognition.length, greaterThan(1), reason: 'the model is a choice');
+    expect(recognition.first.id, whisperModelId, reason: 'the smallest is the default');
+    for (final model in recognition) {
+      expect(model.language, isNull, reason: model.id);
+      expect(model.version, isNotNull, reason: '${model.id} needs a name to show');
+    }
+  });
+
+  test('names the recognition model that cannot translate speech', () {
+    // large-v3-turbo was fine-tuned without translation data. Marking it is
+    // what stops the pipeline asking it for English it was never taught.
+    final transcribeOnly = modelCatalog.where(
+      (model) => model.kind == ModelKind.recognition && !model.translatesSpeech,
+    );
+
+    expect(transcribeOnly.map((model) => model.id), ['whisper-large-v3-turbo-q5']);
   });
 
   test('every dubbing language has both a translator and a voice', () {
@@ -32,11 +45,20 @@ void main() {
     }
   });
 
-  test('keeps the identifiers the Russian pair was downloaded under', () {
-    // These name folders on disk; renaming them would silently ask everyone
-    // to download half a gigabyte again.
-    expect(translationModelFor('ru')?.id, 'bergamot-en-ru');
+  test('keeps the identifier the Russian voice was downloaded under', () {
+    // Identifiers name folders on disk, so changing one asks everyone to
+    // download again. The voice keeps its name; the translator deliberately
+    // does not — it was replaced by the Tatoeba-Challenge model, which is
+    // worth the second download.
     expect(speechModelFor('ru')?.id, 'silero-ru-v5.3');
+    expect(translationModelFor('ru')?.id, 'opus-mt-tc-big-en-zle');
+  });
+
+  test('names the target language for a translator that serves several', () {
+    // opus-mt-tc-big-en-zle covers Russian, Ukrainian and Belarusian, and
+    // picks between them from a token in front of the text.
+    expect(translationModelFor('ru')?.translationPrefix, '>>rus<<');
+    expect(translationModelFor('de')?.translationPrefix, isNull);
   });
 
   test('offers a readable name for every dubbing language', () {

@@ -4,12 +4,13 @@
 import '../../l10n/app_localizations.dart';
 import '../data/services/model_catalog.dart';
 import '../domain/model_package.dart';
+import 'compute_names.dart';
 import 'language_names.dart';
 
 /// Names the packages for the reader. The catalogue holds identifiers, sizes
 /// and URLs; what to call a package belongs to the translations.
 String modelTitle(AppLocalizations l10n, ModelPackage model) => switch (model.kind) {
-  ModelKind.recognition => l10n.modelWhisperTitle,
+  ModelKind.recognition => l10n.modelWhisperTitle(model.version ?? ''),
   ModelKind.translation => l10n.modelTranslationTitle(
     translationTargetName(l10n, model.language!),
   ),
@@ -20,8 +21,11 @@ String modelTitle(AppLocalizations l10n, ModelPackage model) => switch (model.ki
 };
 
 String modelDescription(AppLocalizations l10n, ModelPackage model) => switch (model.kind) {
-  ModelKind.recognition => l10n.modelWhisperNote,
-  ModelKind.translation => l10n.modelTranslationNote,
+  ModelKind.recognition =>
+    model.translatesSpeech
+        ? l10n.modelWhisperNote
+        : '${l10n.modelWhisperNote} ${l10n.modelWhisperTranscribeOnly}',
+  ModelKind.translation => l10n.modelTranslationNote(formatPackageSize(model.downloadBytes)),
   // The Russian package ships several voices worth naming; the others do not.
   ModelKind.speech =>
     model.id == speechModelFor('ru')?.id

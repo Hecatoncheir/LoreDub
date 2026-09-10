@@ -140,4 +140,19 @@ void main() {
     expect(saved.automaticVoice, isFalse);
     expect(saved.voice, 'eugene');
   });
+
+  test('starts on the catalogue default recognition model', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    expect((await SettingsService().load()).whisperModel, isEmpty);
+  });
+
+  test('remembers a recognition model chosen by hand', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    await service.save(const AppSettings(whisperModel: 'whisper-small'));
+
+    expect((await service.load()).whisperModel, 'whisper-small');
+  });
 }
