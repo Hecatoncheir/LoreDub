@@ -41,4 +41,40 @@ void main() {
     expect(saved.audioCaptureSource, AudioCaptureSource.process);
     expect(saved.pythonExecutable, 'python.exe');
   });
+
+  test('remembers a source language chosen in advance', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    final defaults = await service.load();
+    expect(defaults.detectSourceLanguage, isTrue);
+    expect(defaults.effectiveSourceLanguage, 'auto');
+
+    await service.save(
+      defaults.copyWith(detectSourceLanguage: false, sourceLanguage: 'ja'),
+    );
+    final saved = await service.load();
+
+    expect(saved.detectSourceLanguage, isFalse);
+    expect(saved.sourceLanguage, 'ja');
+    expect(saved.effectiveSourceLanguage, 'ja');
+  });
+
+  test('keeps the chosen language while detection is on', () async {
+    SharedPreferences.setMockInitialValues({
+      'detectSourceLanguage': true,
+      'sourceLanguage': 'de',
+    });
+
+    final loaded = await SettingsService().load();
+
+    expect(loaded.sourceLanguage, 'de');
+    expect(loaded.effectiveSourceLanguage, 'auto');
+  });
+
+  test('refuses a stored language whisper would not accept', () async {
+    SharedPreferences.setMockInitialValues({'sourceLanguage': 'klingon'});
+
+    expect((await SettingsService().load()).sourceLanguage, 'en');
+  });
 }

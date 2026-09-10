@@ -60,6 +60,9 @@ The delay depends heavily on the CPU and on **Потоки CPU** in Settings, wh
 defaults to half of the logical processors. Recognition dominates it, so the
 language whisper.cpp detects is reused for the rest of the session instead of
 being detected again for every phrase, which costs a full extra encoder pass.
+When the language of the game is known in advance, turning **Определять язык**
+off and picking it from **Язык оригинала** skips that pass entirely and rules
+out a wrong guess made from a short or noisy first phrase.
 On a 12-core CPU with twelve threads a phrase is voiced about 1.5 s after it
 ends; `base` is chosen as the quality/speed compromise.
 

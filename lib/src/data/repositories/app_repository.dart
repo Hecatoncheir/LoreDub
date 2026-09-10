@@ -35,6 +35,7 @@ class AppRepository {
         'captureMode': settings.captureMode.name,
         'audioSource': settings.audioCaptureSource.name,
         'targetLanguage': settings.targetLanguage,
+        'sourceLanguage': settings.effectiveSourceLanguage,
         'ttsSpeed': settings.ttsSpeed,
         'cpuThreads': settings.cpuThreads,
         'ocrRegionTop': settings.ocrRegionTop,

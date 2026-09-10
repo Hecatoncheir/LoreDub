@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/app.dart';
+import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -75,6 +76,28 @@ void main() {
       find.text('Захватывается весь дефолтный поток, кроме звука LoreDub'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('names the original language instead of detecting it', (tester) async {
+    await pumpLoreDub(tester, const Size(1280, 720));
+
+    final dropdown = find.byKey(const ValueKey('sourceLanguage'));
+    expect(find.text('Определять язык'), findsOneWidget);
+    expect(tester.widget<DropdownButtonFormField<String>>(dropdown).onChanged, isNull);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<DropdownButtonFormField<String>>(dropdown);
+    expect(field.onChanged, isNotNull);
+
+    field.onChanged!('ja');
+    await tester.pumpAndSettle();
+
+    final saved = await SettingsService().load();
+    expect(saved.detectSourceLanguage, isFalse);
+    expect(saved.sourceLanguage, 'ja');
+    expect(saved.effectiveSourceLanguage, 'ja');
   });
 
   testWidgets('saves a model download proxy from settings', (tester) async {

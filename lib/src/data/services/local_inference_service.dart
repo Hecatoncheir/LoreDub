@@ -10,6 +10,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/runtime_paths.dart';
+import '../../domain/spoken_language.dart';
 
 class InferenceResult {
   const InferenceResult({required this.english, required this.translated, required this.wavePath});
@@ -98,10 +99,13 @@ class LocalInferenceService {
     required double speed,
     required String pythonExecutable,
     required bool requiresWhisper,
+    String sourceLanguage = autoSpokenLanguage,
   }) async {
     _workerReady = Completer<void>();
     _diagnostics.clear();
-    _spokenLanguage = null;
+    // A language the user named is used as is; anything else is detected once
+    // on the first phrase and then reused.
+    _spokenLanguage = sourceLanguage == autoSpokenLanguage ? null : sourceLanguage;
     if (!Platform.isWindows) throw UnsupportedError('Локальный pipeline доступен только в Windows');
     // Both binaries are validated before the caller ducks the game, so a
     // broken installation cannot look like a silently working pipeline.

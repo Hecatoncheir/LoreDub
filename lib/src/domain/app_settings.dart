@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'spoken_language.dart';
+
 enum CaptureMode { audio, ocr }
 
 enum AudioCaptureSource { process, system }
@@ -17,6 +19,8 @@ class AppSettings {
     this.modelProxyUrl = '',
     this.audioCaptureSource = AudioCaptureSource.process,
     this.pythonExecutable = '',
+    this.detectSourceLanguage = true,
+    this.sourceLanguage = fallbackSpokenLanguage,
   });
 
   final CaptureMode captureMode;
@@ -38,6 +42,15 @@ class AppSettings {
   final AudioCaptureSource audioCaptureSource;
   final String pythonExecutable;
 
+  /// Whether whisper.cpp guesses the language of the game itself.
+  final bool detectSourceLanguage;
+
+  /// The language to expect while [detectSourceLanguage] is off.
+  final String sourceLanguage;
+
+  /// What whisper.cpp should be told to expect.
+  String get effectiveSourceLanguage => detectSourceLanguage ? autoSpokenLanguage : sourceLanguage;
+
   AppSettings copyWith({
     CaptureMode? captureMode,
     String? targetLanguage,
@@ -49,6 +62,8 @@ class AppSettings {
     String? modelProxyUrl,
     AudioCaptureSource? audioCaptureSource,
     String? pythonExecutable,
+    bool? detectSourceLanguage,
+    String? sourceLanguage,
   }) => AppSettings(
     captureMode: captureMode ?? this.captureMode,
     targetLanguage: targetLanguage ?? this.targetLanguage,
@@ -60,5 +75,7 @@ class AppSettings {
     modelProxyUrl: modelProxyUrl ?? this.modelProxyUrl,
     audioCaptureSource: audioCaptureSource ?? this.audioCaptureSource,
     pythonExecutable: pythonExecutable ?? this.pythonExecutable,
+    detectSourceLanguage: detectSourceLanguage ?? this.detectSourceLanguage,
+    sourceLanguage: sourceLanguage ?? this.sourceLanguage,
   );
 }

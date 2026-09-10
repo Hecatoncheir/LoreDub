@@ -26,6 +26,9 @@ All notable changes to LoreDub are documented in this file.
   machine a phrase is voiced after about 1.5 s instead of 4.7 s, and no phrase is dropped.
 - Fixed a failed phrase leaving the session stuck: the pipeline kept running but could
   neither be started nor stopped.
+- Added a source-language selector next to the start button, with a toggle for automatic
+  detection. Naming the language in advance skips whisper's detection pass and rules out a
+  wrong guess made on the first phrase.
 
 ## [0.2.1] - 2026-09-10
 

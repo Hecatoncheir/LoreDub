@@ -5,8 +5,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/app_settings.dart';
 import '../../domain/runtime_paths.dart';
+import '../../domain/spoken_language.dart';
 
 class SettingsService {
+  /// A code stored by an older build, or one whose entry has since been
+  /// removed, must not reach whisper.cpp as an unknown argument.
+  static String _readSourceLanguage(SharedPreferences preferences) {
+    final stored = preferences.getString('sourceLanguage');
+    if (stored == null || !isSupportedSpokenLanguage(stored)) return fallbackSpokenLanguage;
+    return stored;
+  }
+
   Future<AppSettings> load() async {
     final preferences = await SharedPreferences.getInstance();
     return AppSettings(
@@ -26,6 +35,8 @@ class SettingsService {
         orElse: () => AudioCaptureSource.process,
       ),
       pythonExecutable: preferences.getString('pythonExecutable') ?? bundledPythonExecutablePath(),
+      detectSourceLanguage: preferences.getBool('detectSourceLanguage') ?? true,
+      sourceLanguage: _readSourceLanguage(preferences),
     );
   }
 
@@ -45,6 +56,8 @@ class SettingsService {
         settings.audioCaptureSource.name,
       ),
       preferences.setString('pythonExecutable', settings.pythonExecutable),
+      preferences.setBool('detectSourceLanguage', settings.detectSourceLanguage),
+      preferences.setString('sourceLanguage', settings.sourceLanguage),
     ]);
   }
 }

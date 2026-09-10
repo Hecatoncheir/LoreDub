@@ -11,6 +11,7 @@ import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/pipeline_state.dart';
+import '../../domain/spoken_language.dart';
 import '../theme.dart';
 import 'dashboard_view_model.dart';
 
@@ -493,6 +494,7 @@ class _SourceControls extends StatelessWidget {
         ),
       ],
     );
+    final language = _LanguageControls(viewModel: viewModel);
     if (compact) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -504,6 +506,8 @@ class _SourceControls extends StatelessWidget {
           selector,
           const SizedBox(height: 8),
           helper,
+          const SizedBox(height: 12),
+          language,
           const SizedBox(height: 12),
           Align(alignment: Alignment.centerRight, child: actions),
         ],
@@ -524,8 +528,80 @@ class _SourceControls extends StatelessWidget {
             actions,
           ],
         ),
-        const SizedBox(height: 8),
-        helper,
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: helper),
+            const SizedBox(width: 16),
+            language,
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Language of the original speech. Naming it skips whisper's detection pass,
+/// which is a noticeable share of the delay before a phrase is voiced.
+class _LanguageControls extends StatelessWidget {
+  const _LanguageControls({required this.viewModel});
+
+  final DashboardViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = viewModel.settings;
+    final locked = viewModel.running;
+    return Wrap(
+      alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 12,
+      runSpacing: 8,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Определять язык', style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(width: 6),
+            Switch(
+              value: settings.detectSourceLanguage,
+              onChanged: locked
+                  ? null
+                  : (value) => viewModel.updateSettings(
+                      settings.copyWith(detectSourceLanguage: value),
+                    ),
+            ),
+          ],
+        ),
+        SizedBox(
+          width: 220,
+          child: DropdownButtonFormField<String>(
+            key: const ValueKey('sourceLanguage'),
+            initialValue: settings.sourceLanguage,
+            isDense: true,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Язык оригинала',
+              isDense: true,
+            ),
+            items: spokenLanguages
+                .map(
+                  (language) => DropdownMenuItem(
+                    value: language.code,
+                    child: Text(language.title),
+                  ),
+                )
+                .toList(),
+            onChanged: locked || settings.detectSourceLanguage
+                ? null
+                : (value) {
+                    if (value != null) {
+                      viewModel.updateSettings(settings.copyWith(sourceLanguage: value));
+                    }
+                  },
+          ),
+        ),
       ],
     );
   }
