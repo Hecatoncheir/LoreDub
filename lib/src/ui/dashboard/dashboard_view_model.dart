@@ -19,6 +19,7 @@ import '../../domain/download_control.dart';
 import '../../domain/game_process.dart';
 import '../../data/services/python_discovery.dart';
 import '../../domain/failure.dart';
+import '../../domain/progress_ticker.dart';
 import '../../domain/model_package.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/runtime_package.dart';
@@ -334,6 +335,7 @@ class DashboardViewModel extends ChangeNotifier {
     if (index < 0 || state.installing) return;
     error = null;
     final control = DownloadControl();
+    final ticker = ProgressTicker();
     _downloads[state.package.id] = control;
     runtimes[index] = state.copyWith(
       progress: state.progress ?? 0,
@@ -349,7 +351,8 @@ class DashboardViewModel extends ChangeNotifier {
         control: control,
         onProgress: (progress) {
           runtimes[index] = runtimes[index].copyWith(progress: progress);
-          notifyListeners();
+          // Every chunk reports; only a change the reader can see redraws.
+          if (ticker.shouldReport(progress)) notifyListeners();
         },
       );
       runtimes[index] = switch (outcome) {
@@ -445,6 +448,7 @@ class DashboardViewModel extends ChangeNotifier {
     if (index < 0 || state.downloading) return;
     error = null;
     final control = DownloadControl();
+    final ticker = ProgressTicker();
     _downloads[state.model.id] = control;
     models[index] = state.copyWith(progress: state.progress ?? 0, paused: false, clearError: true);
     notifyListeners();
@@ -455,7 +459,7 @@ class DashboardViewModel extends ChangeNotifier {
         control: control,
         onProgress: (progress) {
           models[index] = models[index].copyWith(progress: progress);
-          notifyListeners();
+          if (ticker.shouldReport(progress)) notifyListeners();
         },
       );
       models[index] = switch (outcome) {
