@@ -482,18 +482,9 @@ class _SourceControls extends StatelessWidget {
           const SizedBox(height: 8),
           helper,
           const SizedBox(height: 12),
-          language,
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.end,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              target,
-              _StartButton(viewModel: viewModel),
-            ],
-          ),
+          Align(alignment: Alignment.centerRight, child: language),
+          const SizedBox(height: 10),
+          Align(alignment: Alignment.centerRight, child: target),
         ],
       );
     }
@@ -507,22 +498,20 @@ class _SourceControls extends StatelessWidget {
               sourceSwitch,
               const SizedBox(width: 16),
             ],
-            // Loose flex on the language block: it takes only what it needs
-            // and wraps its own controls instead of overflowing the row.
-            Expanded(flex: 3, child: picker),
+            Expanded(child: picker),
             const SizedBox(width: 16),
-            Flexible(flex: 2, child: language),
+            language,
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: helper),
+            Expanded(
+              child: Padding(padding: const EdgeInsets.only(top: 12), child: helper),
+            ),
             const SizedBox(width: 16),
             target,
-            const SizedBox(width: 12),
-            _StartButton(viewModel: viewModel),
           ],
         ),
       ],
@@ -542,9 +531,8 @@ class _TargetLanguagePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final languages = dubbingLanguages;
     final selected = viewModel.settings.targetLanguage;
-    return SizedBox(
-      width: 210,
-      child: DropdownButtonFormField<String>(
+    return _LanguageRow(
+      field: DropdownButtonFormField<String>(
         key: const ValueKey('targetLanguage'),
         // A value stored by an older build may no longer be on offer.
         initialValue: languages.contains(selected) ? selected : languages.first,
@@ -569,6 +557,7 @@ class _TargetLanguagePicker extends StatelessWidget {
                 if (value != null) viewModel.selectTargetLanguage(value);
               },
       ),
+      action: _StartButton(viewModel: viewModel),
     );
   }
 }
@@ -623,78 +612,83 @@ class _LanguageControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = viewModel.settings;
     final locked = viewModel.running;
-    return Wrap(
-      alignment: WrapAlignment.end,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 12,
-      runSpacing: 8,
-      children: [
-        SizedBox(
-          width: 220,
-          child: DropdownButtonFormField<String>(
-            key: const ValueKey('sourceLanguage'),
-            initialValue: settings.sourceLanguage,
-            isDense: true,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Язык оригинала',
-              isDense: true,
-            ),
-            items: spokenLanguages
-                .map(
-                  (language) => DropdownMenuItem(
-                    value: language.code,
-                    child: Text(language.title),
-                  ),
-                )
-                .toList(),
-            onChanged: locked || settings.detectSourceLanguage
+    final detected = settings.detectSourceLanguage ? viewModel.detectedLanguage : null;
+    return _LanguageRow(
+      field: DropdownButtonFormField<String>(
+        key: const ValueKey('sourceLanguage'),
+        initialValue: settings.sourceLanguage,
+        isDense: true,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'Язык оригинала',
+          isDense: true,
+          // Shown under the field rather than beside the switch: the label
+          // there would grow and push the two pickers out of alignment.
+          helperText: detected == null ? null : 'Определён: ${describeSpokenLanguage(detected)}',
+        ),
+        items: spokenLanguages
+            .map(
+              (language) => DropdownMenuItem(value: language.code, child: Text(language.title)),
+            )
+            .toList(),
+        onChanged: locked || settings.detectSourceLanguage
+            ? null
+            : (value) {
+                if (value != null) {
+                  viewModel.updateSettings(settings.copyWith(sourceLanguage: value));
+                }
+              },
+      ),
+      action: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Switch(
+            value: settings.detectSourceLanguage,
+            onChanged: locked
                 ? null
-                : (value) {
-                    if (value != null) {
-                      viewModel.updateSettings(settings.copyWith(sourceLanguage: value));
-                    }
-                  },
+                : (value) =>
+                      viewModel.updateSettings(settings.copyWith(detectSourceLanguage: value)),
           ),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Switch(
-              value: settings.detectSourceLanguage,
-              onChanged: locked
-                  ? null
-                  : (value) => viewModel.updateSettings(
-                      settings.copyWith(detectSourceLanguage: value),
-                    ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'Определять язык',
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-            const SizedBox(width: 6),
-            // Shrinkable so a narrow window trims the label instead of
-            // overflowing the row.
-            Flexible(
-              child: Text(
-                'Определять язык',
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            if (settings.detectSourceLanguage && viewModel.detectedLanguage != null) ...[
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  '— ${describeSpokenLanguage(viewModel.detectedLanguage!)}',
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
+}
+
+/// The two language pickers sit in different rows, so they are laid out
+/// identically — same field width, same gap, same trailing width — to line up
+/// exactly one under the other.
+class _LanguageRow extends StatelessWidget {
+  const _LanguageRow({required this.field, required this.action});
+
+  static const double fieldWidth = 210;
+  static const double actionWidth = 200;
+
+  final Widget field;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(width: fieldWidth, child: field),
+      const SizedBox(width: 12),
+      SizedBox(
+        width: actionWidth,
+        // Centred on the field, which is taller than the switch or the button.
+        child: Padding(padding: const EdgeInsets.only(top: 4), child: action),
+      ),
+    ],
+  );
 }
 
 class _ModuleLabel extends StatelessWidget {

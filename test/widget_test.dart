@@ -168,7 +168,7 @@ void main() {
       ..detectedLanguage = 'ja';
     await pumpDashboard(tester, viewModel, const Size(1280, 720));
 
-    expect(find.text('— Японский'), findsOneWidget);
+    expect(find.text('Определён: Японский'), findsOneWidget);
   });
 
   testWidgets('stays quiet about the language while detection is off', (tester) async {
@@ -179,7 +179,7 @@ void main() {
     await pumpDashboard(tester, viewModel, const Size(1280, 720));
 
     // The list already states the language; repeating it would be noise.
-    expect(find.text('— Японский'), findsNothing);
+    expect(find.text('Определён: Японский'), findsNothing);
   });
 
   testWidgets('shows a phrase as a bubble with its time beside the tail', (tester) async {
