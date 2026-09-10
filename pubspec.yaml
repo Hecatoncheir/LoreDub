@@ -72,6 +72,30 @@ flutter:
     - assets/branding/loredub-icon.png
     - assets/runtime/inference_worker.py
 
+  fonts:
+    # Static instances cut from the upstream variable fonts, so the weights
+    # are real rather than synthesized, and Cyrillic ships with them.
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-700.ttf
+          weight: 700
+    - family: Nunito Sans
+      fonts:
+        - asset: assets/fonts/NunitoSans-400.ttf
+          weight: 400
+        - asset: assets/fonts/NunitoSans-500.ttf
+          weight: 500
+        - asset: assets/fonts/NunitoSans-600.ttf
+          weight: 600
+        - asset: assets/fonts/NunitoSans-700.ttf
+          weight: 700
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-500.ttf
+          weight: 500
+        - asset: assets/fonts/JetBrainsMono-700.ttf
+          weight: 700
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

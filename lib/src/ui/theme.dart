@@ -3,6 +3,16 @@
 
 import 'package:flutter/material.dart';
 
+/// Nunito carries the headings, its wider sibling sets the running text, and
+/// JetBrains Mono is reserved for the instrument markings — module numbers,
+/// state labels and measured times — which is where the icon's industrial
+/// character comes from.
+abstract final class LoreDubFonts {
+  static const display = 'Nunito';
+  static const body = 'Nunito Sans';
+  static const mono = 'JetBrains Mono';
+}
+
 abstract final class LoreDubPalette {
   static const ink = Color(0xFF171717);
   static const graphite = Color(0xFF292927);
@@ -39,16 +49,18 @@ ThemeData buildLoreDubTheme() {
     brightness: Brightness.light,
     colorScheme: scheme,
     scaffoldBackgroundColor: LoreDubPalette.canvas,
-    fontFamily: 'Segoe UI',
+    fontFamily: LoreDubFonts.body,
     visualDensity: VisualDensity.standard,
     textTheme: const TextTheme(
       headlineSmall: TextStyle(
+        fontFamily: LoreDubFonts.display,
         color: LoreDubPalette.ink,
         fontSize: 24,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.4,
       ),
       titleLarge: TextStyle(
+        fontFamily: LoreDubFonts.display,
         color: LoreDubPalette.ink,
         fontSize: 19,
         fontWeight: FontWeight.w700,

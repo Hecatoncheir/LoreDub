@@ -213,6 +213,7 @@ section at the [LoreDub releases page](https://github.com/Hecatoncheir/LoreDub/r
 ```text
 assets/runtime/              persistent Marian/Silero worker
 assets/branding/             LoreDub icon and brand assets
+assets/fonts/                bundled Nunito, Nunito Sans and JetBrains Mono (OFL)
 lib/src/data/services/       orchestration, native bridge, model storage
 lib/src/ui/                  Windows dashboard and model manager
 native/                      process-loopback capture, VAD, volume, playback

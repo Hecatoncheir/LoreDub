@@ -21,9 +21,18 @@ are sparse, labelled, and visually connected to the signal flow.
 | Warning | `#9A5A00` | Loading and setup-required states |
 | Error | `#B42318` | Recoverable failures |
 
-The type system uses Segoe UI to stay native and fast on Windows. Small
-uppercase module labels provide the technical character; Russian labels remain
-plain and readable. Cards use one outline weight and a restrained 12 px radius.
+The type system has three voices, bundled as static instances cut from the
+upstream variable fonts so the weights are real and Cyrillic ships with them:
+
+| Face | Where | Why |
+| --- | --- | --- |
+| Nunito | Page titles, product name | Rounded, matching the soft moulded shell of the icon |
+| Nunito Sans | Everything the user reads | Same family, wider and calmer at text sizes |
+| JetBrains Mono | Module numbers and labels, breadcrumb, strap lines, measured times | The instrument markings; monospaced digits keep latencies from twitching |
+
+Small uppercase module labels provide the technical character; Russian labels
+remain plain and readable. Cards use one outline weight and a restrained 12 px
+radius.
 
 ## Information architecture
 

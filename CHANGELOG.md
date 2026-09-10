@@ -39,6 +39,8 @@ All notable changes to LoreDub are documented in this file.
   screen into recognition, translation and voices. Whisper stays on its own at the top:
   recognition needs nothing else. Choosing a language selects its translator and voice
   together, and only that pair has to be downloaded.
+- Replaced Segoe UI with bundled Nunito, Nunito Sans and JetBrains Mono, the last one
+  reserved for module labels and measured times.
 
 ## [0.2.1] - 2026-09-10
 

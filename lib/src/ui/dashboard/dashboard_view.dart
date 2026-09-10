@@ -113,6 +113,7 @@ class _Navigation extends StatelessWidget {
                     Text(
                       'VOICE UNIT 01',
                       style: TextStyle(
+                        fontFamily: LoreDubFonts.mono,
                         color: LoreDubPalette.mutedInk,
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -147,12 +148,15 @@ class _Navigation extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.all(12),
           child: Text(
-            'WINDOWS  ·  LOCAL PROCESSING',
+            'WINDOWS · LOCAL PROCESSING',
+            maxLines: 1,
+            // The monospaced face is wider than the label had room for.
             style: TextStyle(
+              fontFamily: LoreDubFonts.mono,
               color: LoreDubPalette.mutedInk,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.7,
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.2,
             ),
           ),
         ),
@@ -255,9 +259,10 @@ class _Header extends StatelessWidget {
                   DashboardSection.settings => '03  /  SIGNAL SETUP',
                 },
                 style: const TextStyle(
+                  fontFamily: LoreDubFonts.mono,
                   color: LoreDubPalette.mutedInk,
                   fontSize: 10,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: 1.4,
                 ),
               ),
@@ -710,9 +715,10 @@ class _ModuleLabel extends StatelessWidget {
         child: Text(
           number,
           style: const TextStyle(
+            fontFamily: LoreDubFonts.mono,
             color: LoreDubPalette.ink,
             fontSize: 10,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -720,9 +726,10 @@ class _ModuleLabel extends StatelessWidget {
       Text(
         label,
         style: const TextStyle(
+          fontFamily: LoreDubFonts.mono,
           color: LoreDubPalette.ink,
           fontSize: 11,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           letterSpacing: 1.1,
         ),
       ),
@@ -837,6 +844,7 @@ class _LatencyBadge extends StatelessWidget {
       // A fixed height with no leading keeps the label centred in the pill
       // instead of riding on the font's baseline.
       style: const TextStyle(
+        fontFamily: LoreDubFonts.mono,
         color: Colors.white,
         fontSize: 11,
         fontWeight: FontWeight.w700,
