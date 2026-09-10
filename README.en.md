@@ -4,24 +4,160 @@
 
 <h1 align="center">LoreDub</h1>
 
+<p align="center"><b>Any game dubbed into your language while you play. Nothing leaves your machine.</b></p>
+
+<p align="center">
+  <a href="https://github.com/Hecatoncheir/LoreDub/releases/latest"><img src="https://img.shields.io/github/v/release/Hecatoncheir/LoreDub?label=download&style=for-the-badge&color=e8590c" alt="Download the latest release"></a>
+</p>
+
 <p align="center">
   <a href="https://github.com/Hecatoncheir/LoreDub/actions/workflows/windows.yml"><img src="https://github.com/Hecatoncheir/LoreDub/actions/workflows/windows.yml/badge.svg" alt="Windows build"></a>
   <a href="https://github.com/Hecatoncheir/LoreDub/actions/workflows/release.yml"><img src="https://github.com/Hecatoncheir/LoreDub/actions/workflows/release.yml/badge.svg" alt="Windows release"></a>
-  <a href="https://github.com/Hecatoncheir/LoreDub/releases/latest"><img src="https://img.shields.io/github/v/release/Hecatoncheir/LoreDub" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Hecatoncheir/LoreDub" alt="MIT license"></a>
 </p>
 
 <p align="center"><a href="README.md">Русский</a> · <b>English</b></p>
 
-LoreDub is a Windows-first, fully local game voice-over companion. It captures
-only the selected game's process tree, turns speech into English, translates it
-into the language you pick, and speaks the result over the current default audio
-output while keeping the original game session quiet.
+LoreDub listens to the game you select, recognizes the lines, translates them
+and speaks them aloud while you play. The original is turned down rather than
+off. Everything runs on your own machine: neither the audio nor the text is
+sent anywhere, and there is no account to make.
+
+<p align="center">
+  <img src="docs/screenshots/live-en.png" width="900" alt="The LoreDub main screen with recognized and translated lines">
+</p>
+
+<p align="center"><i>A real run: each line recognized, translated and voiced in 1.4–1.7 s.</i></p>
+
+## What it is good for
+
+- **A game in a language you do not read becomes playable.** The lines are
+  spoken, not shown as subtitles you have to catch mid-fight.
+- **Nothing leaves the machine.** The internet is needed once, to download the
+  models. After that you can play offline: recognition, translation and speech
+  all run locally.
+- **Only the game is heard.** The audio of the selected process is captured,
+  not everything at once — Discord, music and the browser stay out of it.
+  LoreDub's own speech is excluded too, so it never feeds back into
+  recognition.
+- **The voice matches the character.** A man's or a woman's, chosen from the
+  pitch of the original, line by line.
+- **Five dubbing languages:** Russian, German, Spanish, French and Ukrainian.
+- **A graphics card is optional.** NVIDIA roughly halves the recognition time,
+  but everything works on the processor without one.
+- **There is a subtitle mode.** When the lines are written rather than spoken,
+  LoreDub reads them off the screen and voices them.
+- **Free, open source, MIT.** No ads, no telemetry, no subscription.
+
+## Quick start
+
+**1. Download and install.** The
+[latest release](https://github.com/Hecatoncheir/LoreDub/releases/latest) ships
+`LoreDub-<version>-windows-x64-setup.exe`. The installer already contains
+everything needed to run on the processor.
+
+**2. Download the models on the Models screen.**
+
+<p align="center">
+  <img src="docs/screenshots/models-en.png" width="900" alt="The Models screen: speech recognition and translators">
+</p>
+
+Two things are needed: one recognition model (start with **Whisper base**) and
+a translator/voice pair for the language you want to play in. For Russian that
+is about 740 MB. The other languages need not be downloaded — picking a
+language highlights both halves of its pair.
+
+**3. Start the game** and let it play some sound, so it appears in the process
+list.
+
+**4. Go back to Live, choose the game and press Start dubbing.**
+
+The first start takes a minute or two while the translator and the speech
+synthesizer load. After that the lines begin to appear in the list and to be
+spoken. The button becomes active as soon as a process is chosen and the
+models are in place.
+
+## What to expect
+
+So that nothing comes as a surprise, here is the honest picture.
+
+- **Delay.** A line is not voiced instantly: the phrase has to end first, then
+  be recognized, translated and synthesized. On a graphics card that is about
+  a second and a half, on a processor two and a half and up. Fine for dialogue
+  and cutscenes; noticeable for quick calls during a fight.
+- **The translation is machine translation.** Ordinary lines come out decently,
+  but idioms, jokes and proper nouns get mangled. Wins and failures are shown
+  under [Translator](#translator).
+- **The voice is synthesized.** Silero is even and clear, but it is not acting.
+- **Dense dialogue accumulates a lag.** No phrase is dropped, so if characters
+  speak without pauses the dubbing gradually falls behind the picture.
+- **The first start is slow** — a minute or two to load the models into memory.
+
+## Requirements
+
+- **Windows 10 build 20348 or later, or Windows 11** — required by the
+  process-specific loopback API.
+- An x64 CPU and about 2 GB of free disk space for the runtime and the models.
+- A graphics card is optional. NVIDIA gives the speed-up; AMD and Intel go
+  through Vulkan.
+
+The app changes only the selected process session's volume and restores it when
+the pipeline stops or the app closes.
+
+## The screens
+
+### Live
+
+This is where the audio source is chosen and the dubbing is started.
+**Process** captures the selected game only; **All audio** captures the whole
+default output except LoreDub itself. When the language of the game is known in
+advance, turn **Detect language** off and name it: that removes an extra
+recognition pass and one common mistake — a wrong guess made from a short first
+phrase.
+
+Every line is shown as the original, the translation, and the time it took to
+travel the whole pipeline.
+
+### Models
+
+At the top sits speech recognition: one Whisper model for every language. Below
+it are the translators and the voices, one of each per language. Picking a
+language in either section selects both halves of the pair.
+
+Any download can be paused, resumed and cancelled. Closing the application
+mid-download is not a loss: the next attempt fetches the rest rather than
+starting over.
+
+### Settings
+
+<p align="center">
+  <img src="docs/screenshots/settings-en.png" width="900" alt="The Settings screen">
+</p>
+
+Interface language (Russian or English, applied immediately), the text source
+(audio or subtitles), how far the original is turned down while dubbing, the
+speech rate and the voice. Below those: CPU threads, the compute device, the
+Python path and a proxy for downloads.
+
+### Graphics card
+
+<p align="center">
+  <img src="docs/screenshots/compute-en.png" width="900" alt="The Compute device section">
+</p>
+
+The default is **Automatic**: the app finds the graphics card itself and
+assigns a device to every stage. An option this machine cannot run is shown but
+disabled, with a tooltip saying why. The heavy GPU runtimes are not in the
+installer and are fetched on demand, so nobody who leaves the card off pays for
+them. Measurements and details are under
+[Compute device](#compute-device).
+
+## How it works
 
 ```text
 Game process (WASAPI process loopback, 16 kHz mono)
   -> energy VAD and phrase endpointing
-  -> whisper.cpp base --translate
+  -> whisper.cpp --translate
   -> Helsinki-NLP Marian English -> chosen language
   -> Silero TTS in that language
   -> default Windows output
@@ -29,12 +165,12 @@ Game process (WASAPI process loopback, 16 kHz mono)
 
 Audio capture can target a selected process tree or the complete default output.
 Complete-output mode excludes the LoreDub process tree so synthesized speech
-does not feed back into recognition. Alternatively, OCR mode captures a configurable lower portion of the selected
-game window, recognizes stable English subtitle text with Windows OCR, and
-sends it directly to Marian and Silero without running Whisper.
+does not feed back into recognition. Alternatively, OCR mode captures a
+configurable lower portion of the selected game window, recognizes stable
+English subtitle text with Windows OCR, and sends it directly to Marian and
+Silero without running Whisper.
 
-Everything runs on the user's CPU. Audio and text do not leave the machine.
-Models are downloaded by the Dart application on demand and kept in the Windows
+Models are downloaded by the application on demand and kept in the Windows
 application-support directory.
 
 ## Interface
@@ -72,28 +208,6 @@ and its median fundamental taken.
 Automatic is unavailable where a package ships voices of one gender only, and
 in subtitle mode, which never hears the original. Both say so in Settings and
 fall back to the chosen voice.
-
-## Checking for updates
-
-The bottom left of the sidebar carries a button with the installed version.
-The check runs by itself at startup, spinning on the button while it does;
-pressing it checks again.
-
-When the repository has published something newer, an orange arrow appears
-beside it — opening that release's page — and Windows shows a notification.
-
-Only the three version numbers are compared: the build after `+` is ignored,
-because `0.2.1+3` and `0.2.1+4` are the same release to anyone reading a
-changelog. A tag that does not read as a version, `nightly` say, is passed
-over in silence. A failed check is its own state rather than "up to date":
-an unreachable GitHub says nothing about the dubbing, so it does not raise
-the error banner.
-
-The notification only appears for a copy installed from the setup. Windows
-shows a desktop application's toast only when a Start Menu shortcut carries
-the same `AppUserModelID`, which the installer now sets. Run from the build
-folder, the notification goes straight to the notification centre while the
-button and the arrow behave as usual.
 
 ## Translator
 
@@ -207,42 +321,52 @@ build machine; without them the step is skipped with a warning, and
 wants. The resulting binary is small and ships in the installer, so there is
 nothing to download for it.
 
-## Windows release status
-
-The audio mode is wired end to end. The setup contains pinned `whisper.cpp`
-v1.8.2 binaries and an embedded Python CPU runtime for Marian and Silero.
-
-**Models** groups the downloads the way the pipeline uses them. Whisper stands
-alone at the top: it turns speech in any language into English, and recognition
-needs nothing else. Below it sit the translators and the voices, one of each per
-language — Russian, German, Spanish, French and Ukrainian. Picking a language in
-either section selects both halves of the pair, because a translation read by a
-voice for another language would be gibberish, and only that pair has to be
-downloaded. At the first launch install Whisper and one pair, choose a running
-game process, and press **Start dubbing**.
-
-The first pipeline start can take one or two minutes while Marian and Silero are
-loaded. Recognition, translation and synthesis are then serialized so a small
-CPU is never asked to run two inferences at once, while playback happens beside
-them: voicing a reply takes as long as the reply itself, and waiting for it
-would put every later phrase further behind the game. No phrase is dropped.
-
-The delay depends heavily on the CPU and on **CPU threads** in Settings, which
-defaults to half of the logical processors. Recognition dominates it, so the
-language whisper.cpp detects is reused for the rest of the session instead of
-being detected again for every phrase, which costs a full extra encoder pass.
-When the language of the game is known in advance, turning **Detect language**
-off and picking it from **Original language** skips that pass entirely and rules
-out a wrong guess made from a short or noisy first phrase.
-On a 12-core CPU with twelve threads a phrase is voiced about 1.5 s after it
-ends; `base` is chosen as the quality/speed compromise.
+## Subtitle mode
 
 The **Subtitles + OCR** mode works with visible windowed or borderless games.
 Choose how much of the lower game window to scan in Settings. English OCR must
 be installed in Windows; the app reports a direct error when that language pack
 is missing. Scanning runs only while the selected game is the foreground window,
-which prevents other windows from being mistaken for subtitles. Exclusive-fullscreen or minimized windows cannot be read through
-the lightweight GDI capture path.
+which prevents other windows from being mistaken for subtitles.
+Exclusive-fullscreen or minimized windows cannot be read through the
+lightweight GDI capture path.
+
+## Checking for updates
+
+The bottom left of the sidebar carries a button with the installed version.
+The check runs by itself at startup, spinning on the button while it does;
+pressing it checks again.
+
+When the repository has published something newer, an orange arrow appears
+beside it — opening that release's page — and Windows shows a notification.
+
+Only the three version numbers are compared: the build after `+` is ignored,
+because `0.2.1+3` and `0.2.1+4` are the same release to anyone reading a
+changelog. A tag that does not read as a version, `nightly` say, is passed
+over in silence. A failed check is its own state rather than "up to date":
+an unreachable GitHub says nothing about the dubbing, so it does not raise
+the error banner.
+
+The notification only appears for a copy installed from the setup. Windows
+shows a desktop application's toast only when a Start Menu shortcut carries
+the same `AppUserModelID`, which the installer now sets. Run from the build
+folder, the notification goes straight to the notification centre while the
+button and the arrow behave as usual.
+
+## How the pipeline is built
+
+The audio mode is wired end to end. The setup contains pinned `whisper.cpp`
+v1.8.2 binaries and an embedded Python CPU runtime for Marian and Silero.
+
+Recognition, translation and synthesis are serialized so a small CPU is never
+asked to run two inferences at once, while playback happens beside them:
+voicing a reply takes as long as the reply itself, and waiting for it would put
+every later phrase further behind the game. No phrase is dropped.
+
+The delay depends heavily on the CPU and on **CPU threads** in Settings, which
+defaults to half of the logical processors. Recognition dominates it, so the
+language whisper.cpp detects is reused for the rest of the session instead of
+being detected again for every phrase, which costs a full extra encoder pass.
 
 ## Planned
 
@@ -257,19 +381,6 @@ the lightweight GDI capture path.
   and is not worth the complexity.
 - **Subtitle overlay.** `AppSettings.showOverlay` is persisted but nothing
   reads it yet; the intent is to draw the translated lines over the game.
-
-## Requirements
-
-- Windows 10 build 20348 or later, or Windows 11. This is required by the
-  process-specific loopback API.
-- x64 CPU and about 2 GB of free disk space for the application runtime and
-  downloaded models.
-- An active audio session from the selected process. Start the game and let it
-  play sound before refreshing the process list.
-
-The app changes only the selected process session's volume and restores it when
-the pipeline stops or the app closes. TTS comes from the LoreDub process, so
-it cannot feed back into the selected game's capture.
 
 ## Development on Windows
 
@@ -375,6 +486,7 @@ section at the [LoreDub releases page](https://github.com/Hecatoncheir/LoreDub/r
 assets/runtime/              persistent Marian/Silero worker
 assets/branding/             LoreDub icon and brand assets
 assets/fonts/                bundled Nunito, Nunito Sans and JetBrains Mono (OFL)
+docs/screenshots/            screen captures used by the READMEs
 lib/l10n/                    interface translations, Russian is the source
 lib/src/data/services/       orchestration, native bridge, model storage
 lib/src/ui/                  Windows dashboard and model manager
