@@ -57,6 +57,10 @@ All notable changes to LoreDub are documented in this file.
   over.
 - Removing a downloaded GPU runtime now asks for confirmation before giving the disk space
   back, since the button sits where the download button used to be.
+- Added an update check. The sidebar shows the installed version, checks at startup and on
+  request, and offers an arrow to the release page plus a Windows notification when the
+  repository has published something newer. The installer now stamps its shortcuts with an
+  AppUserModelID, without which Windows files a desktop application's toast away unshown.
 - Made the Whisper model a choice. The Models screen now lists base, small, medium-q5_0 and
   large-v3-turbo-q5_0 and remembers which one recognition uses; the smallest stays the
   default. large-v3-turbo is marked as unable to translate speech — OpenAI fine-tuned it

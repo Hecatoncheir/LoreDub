@@ -1149,6 +1149,60 @@ abstract class AppLocalizations {
   /// **'Не удалось установить GPU-рантайм: {detail}'**
   String failureRuntimeInstallFailed(String detail);
 
+  /// No description provided for @updateCurrent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Версия {version}'**
+  String updateCurrent(String version);
+
+  /// No description provided for @updateChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверяю обновления…'**
+  String get updateChecking;
+
+  /// No description provided for @updateUpToDate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установлена последняя версия'**
+  String get updateUpToDate;
+
+  /// No description provided for @updateCheckAgain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить обновления'**
+  String get updateCheckAgain;
+
+  /// No description provided for @updateOpenRelease.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть страницу версии {version}'**
+  String updateOpenRelease(String version);
+
+  /// No description provided for @updateFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось проверить обновления'**
+  String get updateFailed;
+
+  /// No description provided for @updateAvailableTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вышла новая версия LoreDub'**
+  String get updateAvailableTitle;
+
+  /// No description provided for @updateAvailableBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступна версия {version}. Нажмите стрелку рядом с номером версии, чтобы открыть страницу релиза.'**
+  String updateAvailableBody(String version);
+
+  /// No description provided for @failureUpdateCheckFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось проверить обновления: {detail}'**
+  String failureUpdateCheckFailed(String detail);
+
   /// No description provided for @failureUnknown.
   ///
   /// In ru, this message translates to:

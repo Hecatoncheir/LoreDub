@@ -3,12 +3,16 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as path;
 
 import '../../data/repositories/app_repository.dart';
 import '../../data/repositories/model_repository.dart';
 import '../../data/repositories/runtime_repository.dart';
+import '../../data/repositories/update_repository.dart';
+import '../../data/services/update_service.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../domain/app_release.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
@@ -21,11 +25,17 @@ import '../../domain/runtime_package.dart';
 enum DashboardSection { live, models, settings }
 
 class DashboardViewModel extends ChangeNotifier {
-  DashboardViewModel(this._appRepository, this._modelRepository, this._runtimeRepository);
+  DashboardViewModel(
+    this._appRepository,
+    this._modelRepository,
+    this._runtimeRepository,
+    this._updateRepository,
+  );
 
   final AppRepository _appRepository;
   final ModelRepository _modelRepository;
   final RuntimeRepository _runtimeRepository;
+  final UpdateRepository _updateRepository;
   StreamSubscription<Map<String, Object?>>? _eventSubscription;
 
   DashboardSection section = DashboardSection.live;
@@ -52,6 +62,59 @@ class DashboardViewModel extends ChangeNotifier {
   /// What went wrong, as raised. The interface writes it out.
   Object? error;
   String modelDirectoryPath = '';
+
+  /// The version this build reports, and whether a newer one is published.
+  UpdateState updates = const UpdateState();
+
+  /// Asks the repository for the newest release.
+  ///
+  /// Failure is reported as [UpdateStatus.failed] rather than the usual error
+  /// banner: not reaching GitHub says nothing about the dubbing, and a red
+  /// bar across the screen would suggest otherwise.
+  Future<void> checkForUpdates({bool announce = false}) async {
+    if (updates.checking) return;
+    updates = updates.copyWith(status: UpdateStatus.checking, clearError: true);
+    notifyListeners();
+    try {
+      final version = updates.currentVersion.isNotEmpty
+          ? updates.currentVersion
+          : await _updateRepository.currentVersion();
+      final release = await _updateRepository.latestRelease(
+        proxyUrl: settings.modelProxyUrl,
+      );
+      final newer = release != null && isNewerRelease(release.version, version);
+      updates = UpdateState(
+        status: newer ? UpdateStatus.available : UpdateStatus.current,
+        currentVersion: version,
+        release: newer ? release : null,
+      );
+      if (newer && announce) {
+        // The toast is raised outside any widget, so the wording is loaded
+        // for the interface language rather than read from a context.
+        final l10n = await AppLocalizations.delegate.load(
+          Locale(settings.interfaceLanguage),
+        );
+        await _updateRepository.announce(
+          title: l10n.updateAvailableTitle,
+          body: l10n.updateAvailableBody(release.version),
+        );
+      }
+    } catch (exception) {
+      updates = updates.copyWith(status: UpdateStatus.failed, error: exception);
+    }
+    notifyListeners();
+  }
+
+  Future<void> openReleasePage() async {
+    final release = updates.release;
+    if (release == null) return;
+    try {
+      await _updateRepository.openPage(release.page);
+    } catch (exception) {
+      error = exception;
+      notifyListeners();
+    }
+  }
 
   /// What this machine offers, and which GPU runtimes are downloaded.
   ComputeAvailability availability = const ComputeAvailability();
@@ -212,6 +275,9 @@ class DashboardViewModel extends ChangeNotifier {
       initializing = false;
       notifyListeners();
     }
+    // Left to run on its own: the dashboard should not wait on GitHub, and
+    // a failed check must not look like a failed start.
+    unawaited(checkForUpdates(announce: true));
   }
 
   void selectSection(DashboardSection value) {

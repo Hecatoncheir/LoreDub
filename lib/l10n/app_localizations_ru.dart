@@ -627,6 +627,41 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String updateCurrent(String version) {
+    return 'Версия $version';
+  }
+
+  @override
+  String get updateChecking => 'Проверяю обновления…';
+
+  @override
+  String get updateUpToDate => 'Установлена последняя версия';
+
+  @override
+  String get updateCheckAgain => 'Проверить обновления';
+
+  @override
+  String updateOpenRelease(String version) {
+    return 'Открыть страницу версии $version';
+  }
+
+  @override
+  String get updateFailed => 'Не удалось проверить обновления';
+
+  @override
+  String get updateAvailableTitle => 'Вышла новая версия LoreDub';
+
+  @override
+  String updateAvailableBody(String version) {
+    return 'Доступна версия $version. Нажмите стрелку рядом с номером версии, чтобы открыть страницу релиза.';
+  }
+
+  @override
+  String failureUpdateCheckFailed(String detail) {
+    return 'Не удалось проверить обновления: $detail';
+  }
+
+  @override
   String get failureUnknown => 'Неизвестная ошибка';
 
   @override

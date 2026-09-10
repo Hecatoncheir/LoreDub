@@ -73,6 +73,28 @@ Automatic is unavailable where a package ships voices of one gender only, and
 in subtitle mode, which never hears the original. Both say so in Settings and
 fall back to the chosen voice.
 
+## Checking for updates
+
+The bottom left of the sidebar carries a button with the installed version.
+The check runs by itself at startup, spinning on the button while it does;
+pressing it checks again.
+
+When the repository has published something newer, an orange arrow appears
+beside it — opening that release's page — and Windows shows a notification.
+
+Only the three version numbers are compared: the build after `+` is ignored,
+because `0.2.1+3` and `0.2.1+4` are the same release to anyone reading a
+changelog. A tag that does not read as a version, `nightly` say, is passed
+over in silence. A failed check is its own state rather than "up to date":
+an unreachable GitHub says nothing about the dubbing, so it does not raise
+the error banner.
+
+The notification only appears for a copy installed from the setup. Windows
+shows a desktop application's toast only when a Start Menu shortcut carries
+the same `AppUserModelID`, which the installer now sets. Run from the build
+folder, the notification goes straight to the notification centre while the
+button and the arrow behave as usual.
+
 ## Translator
 
 English text is translated by a Helsinki-NLP/Marian model. Russian uses

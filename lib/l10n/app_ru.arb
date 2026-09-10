@@ -443,6 +443,43 @@
       }
     }
   },
+  "updateCurrent": "Версия {version}",
+  "@updateCurrent": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateChecking": "Проверяю обновления…",
+  "updateUpToDate": "Установлена последняя версия",
+  "updateCheckAgain": "Проверить обновления",
+  "updateOpenRelease": "Открыть страницу версии {version}",
+  "@updateOpenRelease": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateFailed": "Не удалось проверить обновления",
+  "updateAvailableTitle": "Вышла новая версия LoreDub",
+  "updateAvailableBody": "Доступна версия {version}. Нажмите стрелку рядом с номером версии, чтобы открыть страницу релиза.",
+  "@updateAvailableBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "failureUpdateCheckFailed": "Не удалось проверить обновления: {detail}",
+  "@failureUpdateCheckFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureUnknown": "Неизвестная ошибка",
   "stagePython": "Запуск Python",
   "stageTorch": "Загрузка PyTorch",

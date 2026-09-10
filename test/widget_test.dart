@@ -3,19 +3,26 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/app.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
+import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/runtime_catalog.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
+import 'package:lore_dub/src/data/services/notification_service.dart';
+import 'package:lore_dub/src/data/services/update_service.dart';
+import 'package:lore_dub/src/domain/app_release.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
@@ -34,6 +41,7 @@ void main() {
       AppRepository(NativeEngineService(), SettingsService()),
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),
+      UpdateRepository(UpdateService(client: _offline), NotificationService(plugin: _silent)),
     );
     addTearDown(viewModel.dispose);
     return viewModel;
@@ -549,6 +557,7 @@ void main() {
         AppRepository(NativeEngineService(), SettingsService()),
         ModelRepository(ModelStorageService()),
         runtimes,
+        UpdateRepository(UpdateService(client: _offline), NotificationService(plugin: _silent)),
       );
       addTearDown(viewModel.dispose);
       viewModel
@@ -622,6 +631,76 @@ void main() {
         findsNothing,
         reason: 'the offer goes away with the runtime',
       );
+    });
+  });
+
+  group('the version button', () {
+    DashboardViewModel withUpdates(UpdateState updates) => buildViewModel()
+      ..initializing = false
+      ..updates = updates;
+
+    testWidgets('shows the version this build carries', (tester) async {
+      final viewModel = withUpdates(
+        const UpdateState(status: UpdateStatus.current, currentVersion: '0.2.1'),
+      );
+      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+
+      expect(find.text('Версия 0.2.1'), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_outward_rounded), findsNothing);
+    });
+
+    testWidgets('spins while the check is running', (tester) async {
+      final viewModel = withUpdates(
+        const UpdateState(status: UpdateStatus.checking, currentVersion: '0.2.1'),
+      );
+      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      final button = tester.widget<TextButton>(
+        find.ancestor(of: find.text('Версия 0.2.1'), matching: find.byType(TextButton)),
+      );
+      expect(button.onPressed, isNull, reason: 'no second check on top of the first');
+    });
+
+    testWidgets('offers the release page once a newer version exists', (tester) async {
+      final viewModel = withUpdates(
+        UpdateState(
+          status: UpdateStatus.available,
+          currentVersion: '0.2.1',
+          release: AppRelease(
+            version: '0.3.0',
+            page: Uri.parse('https://github.com/Hecatoncheir/LoreDub/releases/tag/v0.3.0'),
+          ),
+        ),
+      );
+      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+
+      expect(find.byIcon(Icons.arrow_outward_rounded), findsOneWidget);
+      expect(find.byTooltip('Открыть страницу версии 0.3.0'), findsOneWidget);
+    });
+
+    testWidgets('says the check failed rather than claiming to be current', (tester) async {
+      final viewModel = withUpdates(
+        const UpdateState(status: UpdateStatus.failed, currentVersion: '0.2.1'),
+      );
+      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+
+      expect(find.byTooltip('Не удалось проверить обновления'), findsOneWidget);
+      expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
+    });
+
+    testWidgets('checks again when the version is tapped', (tester) async {
+      final viewModel = withUpdates(
+        const UpdateState(status: UpdateStatus.current, currentVersion: '0.2.1'),
+      );
+      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+
+      await tester.tap(find.text('Версия 0.2.1'));
+      await tester.pump();
+
+      // The offline client the harness uses answers 503, so the check ends
+      // in failure — what matters is that it ran.
+      expect(viewModel.updates.status, isNot(UpdateStatus.current));
     });
   });
 
@@ -824,3 +903,12 @@ class _RecordingRuntimeRepository extends RuntimeRepository {
   @override
   Future<String> rootDirectory() async => r'C:\runtime';
 }
+
+/// The tests never reach the network: the update check is answered with a
+/// refusal, which the interface renders as "could not check".
+final http.Client _offline = MockClient(
+  (_) async => http.Response('offline', 503),
+);
+
+/// A notification plugin that does nothing, so no toast escapes a test run.
+final FlutterLocalNotificationsPlugin _silent = FlutterLocalNotificationsPlugin();

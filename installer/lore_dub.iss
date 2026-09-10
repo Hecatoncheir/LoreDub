@@ -30,8 +30,11 @@ RestartApplications=no
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\LoreDub"; Filename: "{app}\lore_dub.exe"
-Name: "{autodesktop}\LoreDub"; Filename: "{app}\lore_dub.exe"; Tasks: desktopicon
+; AppUserModelID is what Windows matches a desktop application's toasts
+; against. Without a Start Menu shortcut carrying it, the update notification
+; is accepted and filed in the notification centre but never shown.
+Name: "{group}\LoreDub"; Filename: "{app}\lore_dub.exe"; AppUserModelID: "com.loredub.LoreDub"
+Name: "{autodesktop}\LoreDub"; Filename: "{app}\lore_dub.exe"; Tasks: desktopicon; AppUserModelID: "com.loredub.LoreDub"
 
 [Tasks]
 Name: "desktopicon"; Description: "Создать ярлык на рабочем столе"; GroupDescription: "Ярлыки:"

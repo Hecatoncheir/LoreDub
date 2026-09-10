@@ -1,4 +1,4 @@
-name: lore_dub
+﻿name: lore_dub
 description: "Local real-time translation and dubbing for Windows games."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -50,6 +50,9 @@ dependencies:
   record_use: ^1.1.1
   archive: ^4.2.0
   flutter_svg: ^2.3.0
+  package_info_plus: ^10.2.1
+  pub_semver: ^2.2.1
+  flutter_local_notifications: ^22.3.0
 
 dev_dependencies:
   flutter_test:

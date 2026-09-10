@@ -443,6 +443,43 @@
       }
     }
   },
+  "updateCurrent": "Version {version}",
+  "@updateCurrent": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateChecking": "Checking for updates…",
+  "updateUpToDate": "This is the newest version",
+  "updateCheckAgain": "Check for updates",
+  "updateOpenRelease": "Open the page for version {version}",
+  "@updateOpenRelease": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateFailed": "Could not check for updates",
+  "updateAvailableTitle": "A new LoreDub is out",
+  "updateAvailableBody": "Version {version} is available. Use the arrow beside the version number to open the release page.",
+  "@updateAvailableBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "failureUpdateCheckFailed": "Could not check for updates: {detail}",
+  "@failureUpdateCheckFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureUnknown": "Unknown error",
   "stagePython": "Starting Python",
   "stageTorch": "Loading PyTorch",

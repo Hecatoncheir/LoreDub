@@ -65,6 +65,7 @@ enum FailureCode {
   socksLookupFailed,
   runtimeIncomplete,
   runtimeInstallFailed,
+  updateCheckFailed,
 
   /// The proxy setting is not a URL the app accepts.
   proxyFormat,

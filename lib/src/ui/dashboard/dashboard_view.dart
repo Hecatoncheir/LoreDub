@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../data/services/model_catalog.dart';
+import '../../domain/app_release.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
@@ -156,6 +157,7 @@ class _Navigation extends StatelessWidget {
           onTap: () => viewModel.selectSection(DashboardSection.settings),
         ),
         const Spacer(),
+        _VersionButton(viewModel: viewModel),
         const Padding(
           padding: EdgeInsets.all(12),
           child: Text(
@@ -174,6 +176,95 @@ class _Navigation extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// The version, and what is known about newer ones.
+///
+/// Tapping it checks again; while a check runs the spinner takes the place of
+/// nothing else, so the row does not resize. A published newer version adds
+/// an arrow that opens its page.
+class _VersionButton extends StatelessWidget {
+  const _VersionButton({required this.viewModel});
+
+  final DashboardViewModel viewModel;
+
+  String _tooltip(AppLocalizations l10n) => switch (viewModel.updates.status) {
+    UpdateStatus.checking => l10n.updateChecking,
+    UpdateStatus.current => l10n.updateUpToDate,
+    UpdateStatus.failed => l10n.updateFailed,
+    _ => l10n.updateCheckAgain,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final updates = viewModel.updates;
+    final version = updates.currentVersion;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Tooltip(
+              message: _tooltip(l10n),
+              child: TextButton(
+                onPressed: updates.checking ? null : () => viewModel.checkForUpdates(),
+                style: TextButton.styleFrom(
+                  foregroundColor: LoreDubPalette.mutedInk,
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: const Size(0, 34),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: const TextStyle(
+                    fontFamily: LoreDubFonts.mono,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: updates.checking
+                          ? const CircularProgressIndicator(strokeWidth: 2)
+                          : Icon(
+                              updates.status == UpdateStatus.failed
+                                  ? Icons.cloud_off_rounded
+                                  : Icons.verified_outlined,
+                              size: 14,
+                              color: LoreDubPalette.mutedInk,
+                            ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        version.isEmpty ? '—' : l10n.updateCurrent(version),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (updates.release case final release?)
+            Tooltip(
+              message: l10n.updateOpenRelease(release.version),
+              child: IconButton(
+                onPressed: viewModel.openReleasePage,
+                icon: const Icon(Icons.arrow_outward_rounded, size: 18),
+                color: LoreDubPalette.orange,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _NavigationItem extends StatelessWidget {

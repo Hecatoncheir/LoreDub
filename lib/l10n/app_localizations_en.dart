@@ -624,6 +624,41 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String updateCurrent(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get updateChecking => 'Checking for updates…';
+
+  @override
+  String get updateUpToDate => 'This is the newest version';
+
+  @override
+  String get updateCheckAgain => 'Check for updates';
+
+  @override
+  String updateOpenRelease(String version) {
+    return 'Open the page for version $version';
+  }
+
+  @override
+  String get updateFailed => 'Could not check for updates';
+
+  @override
+  String get updateAvailableTitle => 'A new LoreDub is out';
+
+  @override
+  String updateAvailableBody(String version) {
+    return 'Version $version is available. Use the arrow beside the version number to open the release page.';
+  }
+
+  @override
+  String failureUpdateCheckFailed(String detail) {
+    return 'Could not check for updates: $detail';
+  }
+
+  @override
   String get failureUnknown => 'Unknown error';
 
   @override

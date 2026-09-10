@@ -37,6 +37,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.downloadRejected => l10n.failureDownloadRejected(detail),
     FailureCode.verificationFailed => l10n.failureVerificationFailed(detail),
     FailureCode.socksLookupFailed => l10n.failureSocksLookupFailed,
+    FailureCode.updateCheckFailed => l10n.failureUpdateCheckFailed(detail),
     FailureCode.runtimeIncomplete => l10n.failureRuntimeIncomplete(detail),
     FailureCode.runtimeInstallFailed => l10n.failureRuntimeInstallFailed(detail),
     FailureCode.proxyFormat => l10n.failureProxyFormat,

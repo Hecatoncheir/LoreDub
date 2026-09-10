@@ -82,6 +82,14 @@ Segments are processed strictly sequentially — `NativeEngineService._processin
 is a chained `Future` — so a small CPU is never asked to run two inferences at
 once. Preserve that when adding stages.
 
+The update check (`UpdateService`, `UpdateRepository`) reads the repository's
+latest release at startup and compares only the three version numbers. The
+Windows toast needs a Start Menu shortcut carrying the same `AppUserModelID`
+the plugin registers (`com.loredub.LoreDub`) — the installer sets it in
+`installer/lore_dub.iss`. Without that shortcut Windows accepts the toast and
+files it in the notification centre without ever showing it, so a build run
+straight from `build/` shows no banner.
+
 The recognition model is a choice, not a constant: `AppSettings.whisperModel`
 names a catalogue id and the pipeline is handed that package's file path.
 `ModelPackage.translatesSpeech` is false for `large-v3-turbo`, which OpenAI
