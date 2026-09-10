@@ -1629,8 +1629,12 @@ class _RuntimeRemoveButton extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(l10n.computeRuntimeRemoveTitle),
-        content: Text(l10n.computeRuntimeRemoveMessage(size)),
+        content: Text(
+          l10n.computeRuntimeRemoveMessage(size),
+          style: const TextStyle(fontSize: 16, height: 1.4),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -1640,6 +1644,9 @@ class _RuntimeRemoveButton extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
+              // The theme's default foreground is too dark to read on the
+              // error red, and this is the button that must be unmistakable.
+              foregroundColor: Colors.white,
             ),
             child: Text(l10n.computeRuntimeRemoveConfirm),
           ),
