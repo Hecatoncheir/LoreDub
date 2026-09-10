@@ -9,6 +9,7 @@ import pathlib
 import sys
 import wave
 
+import numpy as np
 import torch
 from transformers import MarianMTModel, MarianTokenizer
 
@@ -18,16 +19,69 @@ def reply(value):
     sys.stdout.flush()
 
 
+def change_speed(samples, speed, sample_rate):
+    """Scales speech duration without shifting pitch (WSOLA).
+
+    Silero has no rate control, so the synthesized waveform is retimed here.
+    A speed above 1.0 shortens the phrase.
+    """
+    if samples.size == 0 or abs(speed - 1.0) < 0.01:
+        return samples
+    frame = max(256, int(sample_rate * 0.04))
+    hop_out = frame // 2
+    hop_in = max(1, int(round(hop_out * speed)))
+    search = max(1, int(sample_rate * 0.005))
+    window = np.hanning(frame).astype(np.float32)
+    capacity = int(samples.size / speed) + frame
+    output = np.zeros(capacity, dtype=np.float32)
+    weights = np.zeros(capacity, dtype=np.float32)
+
+    read = 0
+    offset = 0
+    write = 0
+    while True:
+        start = read + offset
+        if start + frame > samples.size or write + frame > capacity:
+            break
+        output[write:write + frame] += samples[start:start + frame] * window
+        weights[write:write + frame] += window
+        write += hop_out
+
+        # The frame that would naturally follow the one just written. The next
+        # analysis frame is picked near the ideal position so that it continues
+        # this waveform with the least discontinuity.
+        natural = samples[start + hop_out:start + hop_out + frame]
+        if natural.size < frame:
+            break
+        read += hop_in
+        low = max(0, read - search)
+        high = min(samples.size - frame, read + search)
+        if high <= low:
+            offset = 0
+            continue
+        scores = np.correlate(samples[low:high + frame], natural, mode="valid")
+        offset = low + int(np.argmax(scores)) - read
+
+    filled = np.flatnonzero(weights > 1e-3)
+    if filled.size == 0:
+        return samples
+    output = output[filled[0]:filled[-1] + 1]
+    output /= weights[filled[0]:filled[-1] + 1]
+    return np.clip(output, -1.0, 1.0)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--translation-model", required=True)
     parser.add_argument("--tts-model", required=True)
     parser.add_argument("--work-directory", required=True)
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--speed", type=float, default=1.0)
     parser.add_argument("--speaker", default="xenia")
     parser.add_argument("--sample-rate", type=int, default=24000)
     args = parser.parse_args()
 
+    speed = min(2.0, max(0.5, args.speed))
     torch.set_num_threads(max(1, args.threads))
     tokenizer = MarianTokenizer.from_pretrained(args.translation_model, local_files_only=True)
     translator = MarianMTModel.from_pretrained(args.translation_model, local_files_only=True)
@@ -53,7 +107,9 @@ def main():
                 put_accent=True,
                 put_yo=True,
             )
-            pcm = (audio.clamp(-1, 1) * 32767).to(torch.int16).cpu().numpy().tobytes()
+            samples = audio.clamp(-1, 1).to(torch.float32).cpu().numpy()
+            samples = change_speed(samples, speed, args.sample_rate)
+            pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16).tobytes()
             output = pathlib.Path(args.work_directory) / f"speech-{request_id}.wav"
             with wave.open(str(output), "wb") as stream:
                 stream.setnchannels(1)

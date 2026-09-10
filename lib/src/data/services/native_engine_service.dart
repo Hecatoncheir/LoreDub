@@ -51,6 +51,7 @@ class NativeEngineService {
       translationModel: models['bergamot-en-ru']!,
       ttsModel: models['silero-ru-v5.3']!,
       threads: config['cpuThreads']! as int,
+      speed: config['ttsSpeed']! as double,
       pythonExecutable: config['pythonExecutable']! as String,
     );
     final work = await LocalInferenceService.createWorkDirectory();

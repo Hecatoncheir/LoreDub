@@ -20,10 +20,18 @@ class AppSettings {
   });
 
   final CaptureMode captureMode;
+
+  /// Reserved for future language packs. Only Russian output is packaged, so
+  /// nothing reads this value yet.
   final String targetLanguage;
   final double originalVolume;
+
+  /// Playback rate of the synthesized speech, applied by the inference worker.
   final double ttsSpeed;
   final int cpuThreads;
+
+  /// TODO: реализовать в будущем отображение переведённых субтитров поверх
+  /// игры. Пока значение только сохраняется и ни на что не влияет.
   final bool showOverlay;
   final double ocrRegionTop;
   final String modelProxyUrl;

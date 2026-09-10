@@ -38,6 +38,7 @@ class LocalInferenceService {
     required String translationModel,
     required String ttsModel,
     required int threads,
+    required double speed,
     required String pythonExecutable,
   }) async {
     _workerReady = Completer<void>();
@@ -58,6 +59,8 @@ class LocalInferenceService {
       work.path,
       '--threads',
       '$threads',
+      '--speed',
+      speed.toStringAsFixed(3),
     ]);
     _stdoutSubscription = _worker!.stdout
         .transform(utf8.decoder)
