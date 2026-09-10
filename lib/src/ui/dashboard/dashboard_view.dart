@@ -459,14 +459,14 @@ class _SourceControls extends StatelessWidget {
         ? SegmentedButton<AudioCaptureSource>(
             segments: const [
               ButtonSegment(
-                value: AudioCaptureSource.process,
-                icon: Icon(Icons.sports_esports_outlined),
-                label: Text('Процесс'),
-              ),
-              ButtonSegment(
                 value: AudioCaptureSource.system,
                 icon: Icon(Icons.speaker_group_outlined),
                 label: Text('Весь звук'),
+              ),
+              ButtonSegment(
+                value: AudioCaptureSource.process,
+                icon: Icon(Icons.sports_esports_outlined),
+                label: Text('Процесс'),
               ),
             ],
             selected: {viewModel.settings.audioCaptureSource},
@@ -479,16 +479,17 @@ class _SourceControls extends StatelessWidget {
                   ),
           )
         : null;
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
+    // Refreshing belongs to the picker, so it travels with it into the
+    // compact layout instead of sitting on the row with the start button.
+    final picker = Row(
       children: [
+        Expanded(child: selector),
+        const SizedBox(width: 12),
         IconButton.outlined(
           tooltip: 'Обновить список процессов',
           onPressed: viewModel.running ? null : viewModel.refreshProcesses,
           icon: const Icon(Icons.refresh_rounded),
         ),
-        const SizedBox(width: 12),
-        _StartButton(viewModel: viewModel),
       ],
     );
     final language = _LanguageControls(viewModel: viewModel);
@@ -500,13 +501,16 @@ class _SourceControls extends StatelessWidget {
             sourceSwitch,
             const SizedBox(height: 12),
           ],
-          selector,
+          picker,
           const SizedBox(height: 8),
           helper,
           const SizedBox(height: 12),
           language,
           const SizedBox(height: 12),
-          Align(alignment: Alignment.centerRight, child: actions),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _StartButton(viewModel: viewModel),
+          ),
         ],
       );
     }
@@ -520,9 +524,9 @@ class _SourceControls extends StatelessWidget {
               sourceSwitch,
               const SizedBox(width: 16),
             ],
-            Expanded(child: selector),
+            Expanded(child: picker),
             const SizedBox(width: 16),
-            actions,
+            _StartButton(viewModel: viewModel),
           ],
         ),
         const SizedBox(height: 10),
