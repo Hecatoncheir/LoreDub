@@ -131,8 +131,12 @@ are accepted. The setting affects only model downloads; recognition,
 translation, and speech synthesis remain local. Settings also shows the model
 storage directory and can open it in Explorer.
 
-The setup-bundled `runtime/python/python.exe` is selected by default. A custom
-absolute path or `python.exe` resolved from `PATH` can be selected in Settings.
+The setup-bundled `runtime/python/python.exe` is selected by default. Settings
+also accepts a custom absolute path, and **Найти автоматически** scans the
+bundled runtime, the runtime of an installed LoreDub, `PATH` and the standard
+Windows installation directories for an interpreter that actually has `torch`
+and `transformers`. The Microsoft Store `python.exe` execution alias is skipped:
+it only advertises the Store and cannot run the worker.
 
 ## GitLab CI
 

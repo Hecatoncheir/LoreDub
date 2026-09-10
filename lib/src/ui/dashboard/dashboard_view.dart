@@ -758,6 +758,12 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     );
   }
 
+  Future<void> _findPython() async {
+    final executable = await viewModel.findPythonExecutable();
+    if (executable == null || !mounted) return;
+    _pythonController.text = executable;
+  }
+
   void _savePython() {
     if (!(_pythonFormKey.currentState?.validate() ?? false)) return;
     viewModel.updateSettings(
@@ -898,12 +904,17 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   runSpacing: 8,
                   children: [
                     TextButton.icon(
-                      onPressed: () {
-                        _pythonController.text = 'python.exe';
-                        _savePython();
-                      },
-                      icon: const Icon(Icons.manage_search_rounded),
-                      label: const Text('Использовать PATH'),
+                      onPressed: viewModel.searchingPython ? null : _findPython,
+                      icon: viewModel.searchingPython
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.manage_search_rounded),
+                      label: Text(
+                        viewModel.searchingPython ? 'Идёт поиск…' : 'Найти автоматически',
+                      ),
                     ),
                     OutlinedButton.icon(
                       onPressed: () {

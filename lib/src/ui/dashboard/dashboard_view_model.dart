@@ -29,6 +29,7 @@ class DashboardViewModel extends ChangeNotifier {
   List<TranscriptEntry> transcript = const [];
   PipelineStatus status = PipelineStatus.idle;
   bool initializing = true;
+  bool searchingPython = false;
   String? error;
   String modelDirectoryPath = '';
 
@@ -94,6 +95,30 @@ class DashboardViewModel extends ChangeNotifier {
     settings = value;
     notifyListeners();
     await _appRepository.saveSettings(value);
+  }
+
+  /// Finds an interpreter that can run the worker and saves it. Returns the
+  /// path so the settings field can show what was picked.
+  Future<String?> findPythonExecutable() async {
+    searchingPython = true;
+    error = null;
+    notifyListeners();
+    try {
+      final result = await _appRepository.findPythonExecutable();
+      final executable = result.executable;
+      if (executable == null) {
+        error = result.describeFailure();
+        return null;
+      }
+      await updateSettings(settings.copyWith(pythonExecutable: executable));
+      return executable;
+    } catch (exception) {
+      error = 'Не удалось найти Python: $exception';
+      return null;
+    } finally {
+      searchingPython = false;
+      notifyListeners();
+    }
   }
 
   Future<void> installModel(ModelInstallState state) async {

@@ -4,13 +4,18 @@
 import '../../domain/app_settings.dart';
 import '../../domain/game_process.dart';
 import '../services/native_engine_service.dart';
+import '../services/python_discovery.dart';
 import '../services/settings_service.dart';
 
 class AppRepository {
-  AppRepository(this._nativeEngine, this._settingsService);
+  AppRepository(this._nativeEngine, this._settingsService, [PythonDiscovery? pythonDiscovery])
+    : _pythonDiscovery = pythonDiscovery ?? PythonDiscovery();
 
   final NativeEngineService _nativeEngine;
   final SettingsService _settingsService;
+  final PythonDiscovery _pythonDiscovery;
+
+  Future<PythonDiscoveryResult> findPythonExecutable() => _pythonDiscovery.find();
 
   Stream<Map<String, Object?>> get events => _nativeEngine.events;
   bool get processLoopbackSupported => _nativeEngine.processLoopbackSupported;

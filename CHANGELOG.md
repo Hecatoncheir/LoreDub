@@ -15,6 +15,9 @@ All notable changes to LoreDub are documented in this file.
   the pipeline ducks the game instead of silently swallowing every captured phrase.
 - Added detection of the Microsoft Store `python.exe` execution alias, which cannot run the
   worker, and reported worker crashes with the interpreter output instead of an exit code.
+- Added automatic Python detection in Settings: LoreDub now scans the bundled runtime, an
+  installed LoreDub runtime, `PATH` and the standard installation directories, and picks the
+  first interpreter that actually provides torch and transformers.
 
 ## [0.2.1] - 2026-09-10
 
