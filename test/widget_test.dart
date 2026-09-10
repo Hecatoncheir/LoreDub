@@ -649,6 +649,23 @@ void main() {
       expect(find.byIcon(Icons.arrow_outward_rounded), findsNothing);
     });
 
+    testWidgets('lines the version icon up with the status caption', (tester) async {
+      final viewModel = withUpdates(
+        const UpdateState(status: UpdateStatus.current, currentVersion: '0.2.1'),
+      );
+      await pumpDashboard(tester, viewModel, const Size(1280, 900));
+
+      final icon = tester.getTopLeft(find.byIcon(Icons.verified_outlined));
+      final status = tester.getTopLeft(find.text('WINDOWS · LOCAL PROCESSING'));
+
+      expect(
+        (icon.dx - status.dx).abs(),
+        lessThanOrEqualTo(0.5),
+        reason: 'the foot of the panel reads down one left edge',
+      );
+      expect(tester.getTopLeft(find.text('Версия 0.2.1')).dx, greaterThan(icon.dx));
+    });
+
     testWidgets('spins while the check is running', (tester) async {
       final viewModel = withUpdates(
         const UpdateState(status: UpdateStatus.checking, currentVersion: '0.2.1'),

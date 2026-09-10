@@ -159,7 +159,9 @@ class _Navigation extends StatelessWidget {
         const Spacer(),
         _VersionButton(viewModel: viewModel),
         const Padding(
-          padding: EdgeInsets.all(12),
+          // Starts where the version's icon does, so the foot of the panel
+          // reads down one left edge.
+          padding: EdgeInsets.fromLTRB(_footerInset, 0, 12, 12),
           child: Text(
             'WINDOWS · LOCAL PROCESSING',
             maxLines: 1,
@@ -177,6 +179,14 @@ class _Navigation extends StatelessWidget {
     ),
   );
 }
+
+/// Where the foot of the sidebar begins: the version's icon and the status
+/// line below it both start here. The button's own padding makes up the
+/// difference, so the two stay in step if either is adjusted.
+const _footerInset = _footerOuterInset + _footerButtonInset;
+const _footerOuterInset = 8.0;
+const _footerButtonInset = 4.0;
+const _footerIconSize = 14.0;
 
 /// The version, and what is known about newer ones.
 ///
@@ -201,7 +211,7 @@ class _VersionButton extends StatelessWidget {
     final updates = viewModel.updates;
     final version = updates.currentVersion;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
+      padding: const EdgeInsets.fromLTRB(_footerOuterInset, 0, 8, 2),
       child: Row(
         children: [
           Expanded(
@@ -212,7 +222,7 @@ class _VersionButton extends StatelessWidget {
                 style: TextButton.styleFrom(
                   foregroundColor: LoreDubPalette.mutedInk,
                   alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: _footerButtonInset),
                   minimumSize: const Size(0, 34),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: const TextStyle(
@@ -225,15 +235,15 @@ class _VersionButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 14,
-                      height: 14,
+                      width: _footerIconSize,
+                      height: _footerIconSize,
                       child: updates.checking
                           ? const CircularProgressIndicator(strokeWidth: 2)
                           : Icon(
                               updates.status == UpdateStatus.failed
                                   ? Icons.cloud_off_rounded
                                   : Icons.verified_outlined,
-                              size: 14,
+                              size: _footerIconSize,
                               color: LoreDubPalette.mutedInk,
                             ),
                     ),

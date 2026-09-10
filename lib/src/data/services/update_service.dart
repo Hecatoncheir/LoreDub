@@ -46,8 +46,7 @@ bool isNewerRelease(String candidate, String current) {
 /// Asks the repository whether a newer version has been published.
 class UpdateService {
   UpdateService({this._client, Future<PackageInfo>? packageInfo})
-    :
-      _packageInfo = packageInfo ?? PackageInfo.fromPlatform();
+    : _packageInfo = packageInfo ?? PackageInfo.fromPlatform();
 
   final http.Client? _client;
   final Future<PackageInfo> _packageInfo;
