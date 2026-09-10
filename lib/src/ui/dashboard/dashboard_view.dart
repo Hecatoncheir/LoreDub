@@ -915,7 +915,14 @@ class _StartButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _PipelineBuilder(
     cubits: cubits,
-    watch: (pipeline) => (pipeline.status, pipeline.startupProgress, pipeline.startupStage),
+    // The chosen process belongs here too: without it the button stays grey
+    // after the player picks one, because nothing else on the screen moved.
+    watch: (pipeline) => (
+      pipeline.status,
+      pipeline.startupProgress,
+      pipeline.startupStage,
+      pipeline.selectedProcess,
+    ),
     // Whether it can start at all depends on the first load having finished
     // and on the packages being there.
     builder: (context, pipeline) => _ShellBuilder(

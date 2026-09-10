@@ -96,7 +96,8 @@ void main() {
     for (final model in modelCatalog)
       ModelInstallState(
         model: model,
-        installed: installed && model.language != missingLanguage,
+        // Whisper carries no language, so it is never the missing one.
+        installed: installed && (missingLanguage == null || model.language != missingLanguage),
       ),
   ];
 
@@ -385,6 +386,31 @@ void main() {
 
     expect(find.text('Take cover.'), findsOneWidget);
     expect(find.text('900 мс'), findsOneWidget);
+  });
+
+  testWidgets('lets the dubbing start as soon as a process is chosen', (tester) async {
+    // Capturing one process needs one named, so the button waits for it. It
+    // is the only thing on the screen that moves when the player picks one:
+    // a listener that skipped the choice used to leave the button grey.
+    final cubits = stage(
+      buildCubits(),
+      settings: const AppSettings(audioCaptureSource: AudioCaptureSource.process),
+      models: catalogue(),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
+
+    FilledButton startButton() =>
+        tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Начать перевод'));
+    expect(startButton().onPressed, isNull, reason: 'no process named yet');
+
+    cubits.pipeline.selectProcess(
+      const GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe'),
+    );
+    // Twice: a cubit reaches its listeners a microtask later than the emit.
+    await tester.pump();
+    await tester.pump();
+
+    expect(startButton().onPressed, isNotNull);
   });
 
   testWidgets('picks the dubbing language beside the start button', (tester) async {
