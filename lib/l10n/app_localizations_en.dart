@@ -122,6 +122,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emptyTranscript => 'Recognized and translated lines will appear here';
 
   @override
+  String get transcriptClear => 'Clear';
+
+  @override
+  String get transcriptClearTooltip => 'Remove every line from the list';
+
+  @override
   String pipelineSummary(String language) {
     return 'Whisper → English → Marian → $language → Silero';
   }

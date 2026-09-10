@@ -122,6 +122,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get emptyTranscript => 'Здесь появятся распознанные и переведённые реплики';
 
   @override
+  String get transcriptClear => 'Очистить';
+
+  @override
+  String get transcriptClearTooltip => 'Убрать все реплики из списка';
+
+  @override
   String pipelineSummary(String language) {
     return 'Whisper → English → Marian → $language → Silero';
   }

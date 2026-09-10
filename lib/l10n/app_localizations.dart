@@ -297,6 +297,18 @@ abstract class AppLocalizations {
   /// **'Здесь появятся распознанные и переведённые реплики'**
   String get emptyTranscript;
 
+  /// No description provided for @transcriptClear.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить'**
+  String get transcriptClear;
+
+  /// No description provided for @transcriptClearTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать все реплики из списка'**
+  String get transcriptClearTooltip;
+
   /// No description provided for @pipelineSummary.
   ///
   /// In ru, this message translates to:

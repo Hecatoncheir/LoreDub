@@ -368,6 +368,14 @@ class DashboardViewModel extends ChangeNotifier {
     return translation && speech;
   }
 
+  /// Empties the transcript. The pipeline is untouched: a running session
+  /// keeps appending to the now-clear list.
+  void clearTranscript() {
+    if (transcript.isEmpty) return;
+    transcript = const [];
+    notifyListeners();
+  }
+
   Future<void> openModelDirectory() async {
     error = null;
     try {

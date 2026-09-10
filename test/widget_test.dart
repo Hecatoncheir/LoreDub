@@ -230,6 +230,62 @@ void main() {
     expect(find.byType(CustomPaint), findsWidgets, reason: 'the bubble tail is painted');
   });
 
+  testWidgets('clears the transcript on request', (tester) async {
+    final viewModel = buildViewModel()
+      ..initializing = false
+      ..transcript = [
+        const TranscriptEntry(
+          original: 'The gate is sealed.',
+          english: 'The gate is sealed.',
+          translated: 'Ворота закрыты.',
+          latency: Duration(milliseconds: 1325),
+        ),
+      ];
+    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+
+    await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
+    await tester.pumpAndSettle();
+
+    expect(viewModel.transcript, isEmpty);
+    expect(find.text('Ворота закрыты.'), findsNothing);
+    expect(
+      find.text('Здесь появятся распознанные и переведённые реплики'),
+      findsOneWidget,
+      reason: 'the empty state comes back',
+    );
+  });
+
+  testWidgets('offers nothing to clear while the transcript is empty', (tester) async {
+    final viewModel = buildViewModel()..initializing = false;
+    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+
+    final button = tester.widget<TextButton>(find.widgetWithText(TextButton, 'Очистить'));
+
+    expect(button.onPressed, isNull);
+  });
+
+  testWidgets('keeps the session running when the transcript is cleared', (tester) async {
+    final viewModel = buildViewModel()
+      ..initializing = false
+      ..status = PipelineStatus.listening
+      ..transcript = [
+        const TranscriptEntry(
+          original: '',
+          english: 'The gate is sealed.',
+          translated: 'Ворота закрыты.',
+          latency: Duration(milliseconds: 900),
+        ),
+      ];
+    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+
+    await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
+    await tester.pumpAndSettle();
+
+    expect(viewModel.transcript, isEmpty);
+    expect(viewModel.status, PipelineStatus.listening);
+    expect(find.text('Остановить'), findsOneWidget);
+  });
+
   testWidgets('falls back to the recognized English when there is no original', (tester) async {
     final viewModel = buildViewModel()
       ..initializing = false

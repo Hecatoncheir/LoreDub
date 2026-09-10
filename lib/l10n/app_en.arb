@@ -72,6 +72,8 @@
     }
   },
   "emptyTranscript": "Recognized and translated lines will appear here",
+  "transcriptClear": "Clear",
+  "transcriptClearTooltip": "Remove every line from the list",
   "pipelineSummary": "Whisper → English → Marian → {language} → Silero",
   "@pipelineSummary": {
     "placeholders": {

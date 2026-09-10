@@ -57,6 +57,8 @@ All notable changes to LoreDub are documented in this file.
   over.
 - Removing a downloaded GPU runtime now asks for confirmation before giving the disk space
   back, since the button sits where the download button used to be.
+- Added a clear button to the Live transcript. It is disabled while there is nothing to
+  clear, and clearing does not touch a running session: new phrases keep arriving.
 - Added error messages in the interface language. Services now raise an error code instead
   of a Russian sentence, so a failure raised while the app was in one language is rewritten
   the moment the other one is picked.

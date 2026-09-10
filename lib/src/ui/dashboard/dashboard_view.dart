@@ -402,9 +402,41 @@ class _LivePanel extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 14, 20, 12),
-                  child: _ModuleLabel(number: '02', label: 'LIVE TRANSCRIPT'),
+                Padding(
+                  // Tighter than a bare label row would need: the button has
+                  // to fit without making the header taller than it was.
+                  padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+                  child: Row(
+                    children: [
+                      const _ModuleLabel(number: '02', label: 'LIVE TRANSCRIPT'),
+                      const Spacer(),
+                      Tooltip(
+                        message: AppLocalizations.of(context).transcriptClearTooltip,
+                        child: TextButton.icon(
+                          // Enabled only when there is something to clear, so
+                          // the button never claims work it will not do.
+                          onPressed: viewModel.transcript.isEmpty
+                              ? null
+                              : viewModel.clearTranscript,
+                          icon: const Icon(Icons.backspace_outlined, size: 16),
+                          label: Text(AppLocalizations.of(context).transcriptClear),
+                          style: TextButton.styleFrom(
+                            foregroundColor: LoreDubPalette.mutedInk,
+                            minimumSize: const Size(0, 28),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            textStyle: const TextStyle(
+                              fontFamily: LoreDubFonts.mono,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const Divider(height: 1),
                 Expanded(
