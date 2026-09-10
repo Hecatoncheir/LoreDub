@@ -10,8 +10,10 @@ import sys
 import wave
 
 import numpy as np
-import torch
-from transformers import MarianMTModel, MarianTokenizer
+
+# torch and transformers are imported inside main(): together they account for
+# most of the startup, and importing them here would leave the application
+# without a sign of life for the first ten seconds.
 
 
 def use_utf8_streams():
@@ -30,6 +32,15 @@ def use_utf8_streams():
 def reply(value):
     sys.stdout.write(json.dumps(value, ensure_ascii=False) + "\n")
     sys.stdout.flush()
+
+
+def report_progress(value, stage):
+    """Announces the step that is about to run, with its share of the startup.
+
+    The shares come from measuring a warm start: importing torch and
+    transformers takes far longer than loading the models themselves.
+    """
+    reply({"type": "progress", "value": value, "stage": stage})
 
 
 def change_speed(samples, speed, sample_rate):
@@ -96,10 +107,20 @@ def main():
     args = parser.parse_args()
 
     speed = min(2.0, max(0.5, args.speed))
+
+    report_progress(0.10, "Загрузка PyTorch")
+    import torch
+
+    report_progress(0.35, "Загрузка Transformers")
+    from transformers import MarianMTModel, MarianTokenizer
+
+    report_progress(0.80, "Загрузка переводчика")
     torch.set_num_threads(max(1, args.threads))
     tokenizer = MarianTokenizer.from_pretrained(args.translation_model, local_files_only=True)
     translator = MarianMTModel.from_pretrained(args.translation_model, local_files_only=True)
     translator.eval()
+
+    report_progress(0.90, "Загрузка синтеза речи")
     tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
     tts.to(torch.device("cpu"))
     pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
