@@ -595,30 +595,6 @@ class _LanguageControls extends StatelessWidget {
       spacing: 12,
       runSpacing: 8,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Определять язык', style: Theme.of(context).textTheme.bodyMedium),
-            if (settings.detectSourceLanguage && viewModel.detectedLanguage != null) ...[
-              const SizedBox(width: 6),
-              Text(
-                '— ${describeSpokenLanguage(viewModel.detectedLanguage!)}',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ],
-            const SizedBox(width: 6),
-            Switch(
-              value: settings.detectSourceLanguage,
-              onChanged: locked
-                  ? null
-                  : (value) => viewModel.updateSettings(
-                      settings.copyWith(detectSourceLanguage: value),
-                    ),
-            ),
-          ],
-        ),
         SizedBox(
           width: 220,
           child: DropdownButtonFormField<String>(
@@ -646,6 +622,30 @@ class _LanguageControls extends StatelessWidget {
                     }
                   },
           ),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Switch(
+              value: settings.detectSourceLanguage,
+              onChanged: locked
+                  ? null
+                  : (value) => viewModel.updateSettings(
+                      settings.copyWith(detectSourceLanguage: value),
+                    ),
+            ),
+            const SizedBox(width: 6),
+            Text('Определять язык', style: Theme.of(context).textTheme.bodyMedium),
+            if (settings.detectSourceLanguage && viewModel.detectedLanguage != null) ...[
+              const SizedBox(width: 6),
+              Text(
+                '— ${describeSpokenLanguage(viewModel.detectedLanguage!)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ],
         ),
       ],
     );
