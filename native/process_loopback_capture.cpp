@@ -14,6 +14,7 @@
 #include <wrl.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <deque>
@@ -34,6 +35,7 @@ constexpr uint16_t kChannels = 1;
 constexpr uint16_t kBitsPerSample = 16;
 constexpr size_t kPreRollSamples = kSampleRate / 4;
 constexpr size_t kEndSilenceSamples = kSampleRate * 7 / 10;
+constexpr long long kEndSilenceMilliseconds = 700;
 constexpr size_t kMinimumSpeechSamples = kSampleRate * 35 / 100;
 constexpr size_t kMaximumSegmentSamples = kSampleRate * 12;
 constexpr double kSpeechRms = 180.0;
@@ -218,6 +220,7 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
   size_t silence_samples = 0;
   bool speaking = false;
   uint64_t sequence = 0;
+  auto last_voice = std::chrono::steady_clock::now();
   while (!stopping_) {
     WaitForSingleObject(sample_ready, 100);
     UINT32 packet_frames = 0;
@@ -236,6 +239,7 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
       }
       const double rms = frames == 0 ? 0 : std::sqrt(square_sum / frames);
       const bool voiced = rms >= kSpeechRms;
+      if (voiced) last_voice = std::chrono::steady_clock::now();
       if (!speaking) {
         for (UINT32 index = 0; index < frames; ++index) {
           pre_roll.push_back((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0 ? input[index] : 0);
@@ -255,28 +259,37 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
         silence_samples = voiced ? 0 : silence_samples + frames;
       }
       capture->ReleaseBuffer(frames);
+    }
 
-      const bool end_segment = speaking &&
-          (silence_samples >= kEndSilenceSamples || segment.size() >= kMaximumSegmentSamples);
-      if (end_segment) {
-        if (segment.size() >= kMinimumSpeechSamples) {
-          const std::wstring filename = output_directory + L"\\segment-" +
-                                        std::to_wstring(GetCurrentProcessId()) + L"-" +
-                                        std::to_wstring(++sequence) + L".wav";
-          if (WriteWave(filename, std::move(segment))) {
-            const int utf8_size = WideCharToMultiByte(CP_UTF8, 0, filename.c_str(), -1,
-                                                       nullptr, 0, nullptr, nullptr);
-            std::string utf8(static_cast<size_t>(utf8_size), '\0');
-            WideCharToMultiByte(CP_UTF8, 0, filename.c_str(), -1, utf8.data(),
-                                utf8_size, nullptr, nullptr);
-            utf8.pop_back();
-            on_segment(utf8);
-          }
+    // Endpointing is checked once per wake-up rather than per packet, and on
+    // the clock as well as on the samples. A process that keeps its render
+    // stream open delivers silent packets and the sample counter is enough,
+    // but one that stops rendering delivers nothing at all, which would leave
+    // a captured phrase open until the game speaks again.
+    const auto quiet = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           std::chrono::steady_clock::now() - last_voice)
+                           .count();
+    const bool end_segment = speaking && (silence_samples >= kEndSilenceSamples ||
+                                          segment.size() >= kMaximumSegmentSamples ||
+                                          quiet >= kEndSilenceMilliseconds);
+    if (end_segment) {
+      if (segment.size() >= kMinimumSpeechSamples) {
+        const std::wstring filename = output_directory + L"\\segment-" +
+                                      std::to_wstring(GetCurrentProcessId()) + L"-" +
+                                      std::to_wstring(++sequence) + L".wav";
+        if (WriteWave(filename, std::move(segment))) {
+          const int utf8_size = WideCharToMultiByte(CP_UTF8, 0, filename.c_str(), -1,
+                                                     nullptr, 0, nullptr, nullptr);
+          std::string utf8(static_cast<size_t>(utf8_size), '\0');
+          WideCharToMultiByte(CP_UTF8, 0, filename.c_str(), -1, utf8.data(),
+                              utf8_size, nullptr, nullptr);
+          utf8.pop_back();
+          on_segment(utf8);
         }
-        segment.clear();
-        silence_samples = 0;
-        speaking = false;
       }
+      segment.clear();
+      silence_samples = 0;
+      speaking = false;
     }
   }
   client->Stop();
