@@ -619,13 +619,7 @@ class _LanguageControls extends StatelessWidget {
         initialValue: settings.sourceLanguage,
         isDense: true,
         isExpanded: true,
-        decoration: InputDecoration(
-          labelText: 'Язык оригинала',
-          isDense: true,
-          // Shown under the field rather than beside the switch: the label
-          // there would grow and push the two pickers out of alignment.
-          helperText: detected == null ? null : 'Определён: ${describeSpokenLanguage(detected)}',
-        ),
+        decoration: const InputDecoration(labelText: 'Язык оригинала', isDense: true),
         items: spokenLanguages
             .map(
               (language) => DropdownMenuItem(value: language.code, child: Text(language.title)),
@@ -659,6 +653,7 @@ class _LanguageControls extends StatelessWidget {
           ),
         ],
       ),
+      note: detected == null ? null : 'Определён: ${describeSpokenLanguage(detected)}',
     );
   }
 }
@@ -667,7 +662,7 @@ class _LanguageControls extends StatelessWidget {
 /// identically — same field width, same gap, same trailing width — to line up
 /// exactly one under the other.
 class _LanguageRow extends StatelessWidget {
-  const _LanguageRow({required this.field, required this.action});
+  const _LanguageRow({required this.field, required this.action, this.note});
 
   static const double fieldWidth = 210;
   static const double actionWidth = 200;
@@ -675,18 +670,36 @@ class _LanguageRow extends StatelessWidget {
   final Widget field;
   final Widget action;
 
+  /// Rendered under the field rather than inside it: as the decoration's
+  /// helper text it would add to the field's height and drop the action
+  /// below the field it belongs to.
+  final String? note;
+
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      SizedBox(width: fieldWidth, child: field),
-      const SizedBox(width: 12),
-      SizedBox(
-        width: actionWidth,
-        // Centred on the field, which is taller than the switch or the button.
-        child: Padding(padding: const EdgeInsets.only(top: 4), child: action),
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(width: fieldWidth, child: field),
+          const SizedBox(width: 12),
+          SizedBox(width: actionWidth, child: action),
+        ],
       ),
+      if (note case final text?)
+        Padding(
+          padding: const EdgeInsets.only(top: 4, left: 12),
+          child: SizedBox(
+            width: fieldWidth,
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ),
     ],
   );
 }
