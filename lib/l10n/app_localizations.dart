@@ -1,0 +1,793 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
+
+import 'app_localizations_en.dart';
+import 'app_localizations_ru.dart';
+
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
+
+  static AppLocalizations of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+  }
+
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
+
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
+
+  /// No description provided for @appTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'LoreDub'**
+  String get appTitle;
+
+  /// No description provided for @navLive.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эфир'**
+  String get navLive;
+
+  /// No description provided for @navModels.
+  ///
+  /// In ru, this message translates to:
+  /// **'Модели'**
+  String get navModels;
+
+  /// No description provided for @navSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки'**
+  String get navSettings;
+
+  /// No description provided for @titleLive.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перевод игры'**
+  String get titleLive;
+
+  /// No description provided for @titleModels.
+  ///
+  /// In ru, this message translates to:
+  /// **'Локальные модели'**
+  String get titleModels;
+
+  /// No description provided for @titleSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки потока'**
+  String get titleSettings;
+
+  /// No description provided for @statusIdle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановлено'**
+  String get statusIdle;
+
+  /// No description provided for @statusStarting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запуск…'**
+  String get statusStarting;
+
+  /// No description provided for @statusListening.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слушаю'**
+  String get statusListening;
+
+  /// No description provided for @statusStopping.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановка…'**
+  String get statusStopping;
+
+  /// No description provided for @statusError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ошибка'**
+  String get statusError;
+
+  /// No description provided for @modelsNeededTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Для первого запуска нужны модели'**
+  String get modelsNeededTitle;
+
+  /// No description provided for @modelsNeededNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Они скачиваются отдельно и не входят в setup.'**
+  String get modelsNeededNote;
+
+  /// No description provided for @modelsNeededAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть модели'**
+  String get modelsNeededAction;
+
+  /// No description provided for @processLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Процесс игры'**
+  String get processLabel;
+
+  /// No description provided for @processHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Введите название процесса'**
+  String get processHint;
+
+  /// No description provided for @processEntry.
+  ///
+  /// In ru, this message translates to:
+  /// **'{name}  ·  PID {pid}'**
+  String processEntry(String name, int pid);
+
+  /// No description provided for @captureProcessNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Захватывается только звук выбранного процесса'**
+  String get captureProcessNote;
+
+  /// No description provided for @captureSystemNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Захватывается весь дефолтный поток, кроме звука LoreDub'**
+  String get captureSystemNote;
+
+  /// No description provided for @sourceSystem.
+  ///
+  /// In ru, this message translates to:
+  /// **'Весь звук'**
+  String get sourceSystem;
+
+  /// No description provided for @sourceProcess.
+  ///
+  /// In ru, this message translates to:
+  /// **'Процесс'**
+  String get sourceProcess;
+
+  /// No description provided for @refreshProcesses.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить список процессов'**
+  String get refreshProcesses;
+
+  /// No description provided for @targetLanguageLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Язык перевода'**
+  String get targetLanguageLabel;
+
+  /// No description provided for @languageWithoutModels.
+  ///
+  /// In ru, this message translates to:
+  /// **'{language} · нет моделей'**
+  String languageWithoutModels(String language);
+
+  /// No description provided for @sourceLanguageLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Язык оригинала'**
+  String get sourceLanguageLabel;
+
+  /// No description provided for @detectLanguage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Определять язык'**
+  String get detectLanguage;
+
+  /// No description provided for @detectedLanguage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Определён: {language}'**
+  String detectedLanguage(String language);
+
+  /// No description provided for @startDubbing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Начать перевод'**
+  String get startDubbing;
+
+  /// No description provided for @stopDubbing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановить'**
+  String get stopDubbing;
+
+  /// No description provided for @startingProgress.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запуск {percent}%'**
+  String startingProgress(int percent);
+
+  /// No description provided for @startingPlain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запуск'**
+  String get startingPlain;
+
+  /// No description provided for @latencyMs.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value} мс'**
+  String latencyMs(int value);
+
+  /// No description provided for @emptyTranscript.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здесь появятся распознанные и переведённые реплики'**
+  String get emptyTranscript;
+
+  /// No description provided for @pipelineSummary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Whisper → English → Marian → {language} → Silero'**
+  String pipelineSummary(String language);
+
+  /// No description provided for @sectionRecognition.
+  ///
+  /// In ru, this message translates to:
+  /// **'РАСПОЗНАВАНИЕ РЕЧИ'**
+  String get sectionRecognition;
+
+  /// No description provided for @sectionRecognitionNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Whisper переводит речь любого языка в английский текст. Больше для распознавания ничего скачивать не нужно.'**
+  String get sectionRecognitionNote;
+
+  /// No description provided for @sectionTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА'**
+  String get sectionTranslation;
+
+  /// No description provided for @sectionTranslationNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Английский текст переводится на выбранный язык.'**
+  String get sectionTranslationNote;
+
+  /// No description provided for @sectionSpeech.
+  ///
+  /// In ru, this message translates to:
+  /// **'МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'**
+  String get sectionSpeech;
+
+  /// No description provided for @sectionSpeechNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос должен быть того же языка, что и перевод.'**
+  String get sectionSpeechNote;
+
+  /// No description provided for @modelInstalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установлена'**
+  String get modelInstalled;
+
+  /// No description provided for @modelDownload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачать'**
+  String get modelDownload;
+
+  /// No description provided for @settingsCaptureSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источник текста'**
+  String get settingsCaptureSource;
+
+  /// No description provided for @captureAudio.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аудио игры'**
+  String get captureAudio;
+
+  /// No description provided for @captureOcr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Субтитры + OCR'**
+  String get captureOcr;
+
+  /// No description provided for @settingsOcrRegion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Область субтитров'**
+  String get settingsOcrRegion;
+
+  /// No description provided for @ocrRegionValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нижние {percent}% активного окна игры'**
+  String ocrRegionValue(int percent);
+
+  /// No description provided for @settingsOriginalVolume.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оригинальный звук'**
+  String get settingsOriginalVolume;
+
+  /// No description provided for @originalVolumeValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'Громкость процесса игры во время перевода: {percent}%'**
+  String originalVolumeValue(int percent);
+
+  /// No description provided for @settingsTtsSpeed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скорость озвучки'**
+  String get settingsTtsSpeed;
+
+  /// No description provided for @speedValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value}×'**
+  String speedValue(String value);
+
+  /// No description provided for @settingsPerformance.
+  ///
+  /// In ru, this message translates to:
+  /// **'Производительность'**
+  String get settingsPerformance;
+
+  /// No description provided for @performanceNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Распознавание занимает большую часть задержки и хорошо ускоряется потоками. Доступно ядер: {cores}, рекомендуется {recommended}.'**
+  String performanceNote(int cores, int recommended);
+
+  /// No description provided for @cpuThreads.
+  ///
+  /// In ru, this message translates to:
+  /// **'Потоки CPU'**
+  String get cpuThreads;
+
+  /// No description provided for @settingsPython.
+  ///
+  /// In ru, this message translates to:
+  /// **'Python runtime'**
+  String get settingsPython;
+
+  /// No description provided for @pythonNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Marian и Silero запускаются выбранным python.exe. Setup включает готовый runtime.'**
+  String get pythonNote;
+
+  /// No description provided for @pythonFieldLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Путь или команда Python'**
+  String get pythonFieldLabel;
+
+  /// No description provided for @pythonFieldHelper.
+  ///
+  /// In ru, this message translates to:
+  /// **'Можно указать полный путь или python.exe из PATH.'**
+  String get pythonFieldHelper;
+
+  /// No description provided for @pythonFieldRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Укажите python.exe'**
+  String get pythonFieldRequired;
+
+  /// No description provided for @pythonSearching.
+  ///
+  /// In ru, this message translates to:
+  /// **'Идёт поиск…'**
+  String get pythonSearching;
+
+  /// No description provided for @pythonFindAutomatically.
+  ///
+  /// In ru, this message translates to:
+  /// **'Найти автоматически'**
+  String get pythonFindAutomatically;
+
+  /// No description provided for @pythonBundled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Встроенный'**
+  String get pythonBundled;
+
+  /// No description provided for @save.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить'**
+  String get save;
+
+  /// No description provided for @settingsModelDownloads.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка моделей'**
+  String get settingsModelDownloads;
+
+  /// No description provided for @proxyNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Необязательный HTTP или SOCKS5 proxy применяется только при скачивании моделей.'**
+  String get proxyNote;
+
+  /// No description provided for @proxyLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'HTTP / SOCKS5 proxy'**
+  String get proxyLabel;
+
+  /// No description provided for @proxyHelper.
+  ///
+  /// In ru, this message translates to:
+  /// **'Формат: http://… или socks5://user:password@host:port. Значение хранится локально.'**
+  String get proxyHelper;
+
+  /// No description provided for @settingsModelDirectory.
+  ///
+  /// In ru, this message translates to:
+  /// **'Каталог моделей'**
+  String get settingsModelDirectory;
+
+  /// No description provided for @modelDirectoryNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Whisper, Marian и Silero хранятся локально.'**
+  String get modelDirectoryNote;
+
+  /// No description provided for @openInExplorer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть в Explorer'**
+  String get openInExplorer;
+
+  /// No description provided for @settingsInterfaceLanguage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Язык интерфейса'**
+  String get settingsInterfaceLanguage;
+
+  /// No description provided for @interfaceLanguageNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Меняется сразу, без перезапуска.'**
+  String get interfaceLanguageNote;
+
+  /// No description provided for @modelWhisperTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Whisper base'**
+  String get modelWhisperTitle;
+
+  /// No description provided for @modelWhisperNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Распознавание речи и перевод любого языка на английский. Нужна один раз, для всех языков озвучки.'**
+  String get modelWhisperNote;
+
+  /// No description provided for @modelTranslationNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Локальный CPU-переводчик Helsinki-NLP/Marian, около 300 МБ.'**
+  String get modelTranslationNote;
+
+  /// No description provided for @modelTranslationTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Английский → {language}'**
+  String modelTranslationTitle(String language);
+
+  /// No description provided for @modelVoiceTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'{language} — Silero {version}'**
+  String modelVoiceTitle(String language, String version);
+
+  /// No description provided for @modelVoiceNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'{language} речь, 24 kHz.'**
+  String modelVoiceNote(String language);
+
+  /// No description provided for @modelVoiceNoteRu.
+  ///
+  /// In ru, this message translates to:
+  /// **'Русская речь, 24 kHz; голоса xenia, aidar, baya, kseniya и eugene.'**
+  String get modelVoiceNoteRu;
+
+  /// No description provided for @language_ar.
+  ///
+  /// In ru, this message translates to:
+  /// **'Арабский'**
+  String get language_ar;
+
+  /// No description provided for @language_cs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чешский'**
+  String get language_cs;
+
+  /// No description provided for @language_de.
+  ///
+  /// In ru, this message translates to:
+  /// **'Немецкий'**
+  String get language_de;
+
+  /// No description provided for @language_en.
+  ///
+  /// In ru, this message translates to:
+  /// **'Английский'**
+  String get language_en;
+
+  /// No description provided for @language_es.
+  ///
+  /// In ru, this message translates to:
+  /// **'Испанский'**
+  String get language_es;
+
+  /// No description provided for @language_fr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Французский'**
+  String get language_fr;
+
+  /// No description provided for @language_it.
+  ///
+  /// In ru, this message translates to:
+  /// **'Итальянский'**
+  String get language_it;
+
+  /// No description provided for @language_ja.
+  ///
+  /// In ru, this message translates to:
+  /// **'Японский'**
+  String get language_ja;
+
+  /// No description provided for @language_ko.
+  ///
+  /// In ru, this message translates to:
+  /// **'Корейский'**
+  String get language_ko;
+
+  /// No description provided for @language_nl.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нидерландский'**
+  String get language_nl;
+
+  /// No description provided for @language_pl.
+  ///
+  /// In ru, this message translates to:
+  /// **'Польский'**
+  String get language_pl;
+
+  /// No description provided for @language_pt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Португальский'**
+  String get language_pt;
+
+  /// No description provided for @language_ru.
+  ///
+  /// In ru, this message translates to:
+  /// **'Русский'**
+  String get language_ru;
+
+  /// No description provided for @language_sv.
+  ///
+  /// In ru, this message translates to:
+  /// **'Шведский'**
+  String get language_sv;
+
+  /// No description provided for @language_tr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Турецкий'**
+  String get language_tr;
+
+  /// No description provided for @language_uk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Украинский'**
+  String get language_uk;
+
+  /// No description provided for @language_zh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Китайский'**
+  String get language_zh;
+
+  /// No description provided for @translationTarget_ru.
+  ///
+  /// In ru, this message translates to:
+  /// **'русский'**
+  String get translationTarget_ru;
+
+  /// No description provided for @translationTarget_de.
+  ///
+  /// In ru, this message translates to:
+  /// **'немецкий'**
+  String get translationTarget_de;
+
+  /// No description provided for @translationTarget_es.
+  ///
+  /// In ru, this message translates to:
+  /// **'испанский'**
+  String get translationTarget_es;
+
+  /// No description provided for @translationTarget_fr.
+  ///
+  /// In ru, this message translates to:
+  /// **'французский'**
+  String get translationTarget_fr;
+
+  /// No description provided for @translationTarget_uk.
+  ///
+  /// In ru, this message translates to:
+  /// **'украинский'**
+  String get translationTarget_uk;
+
+  /// No description provided for @voiceName_ru.
+  ///
+  /// In ru, this message translates to:
+  /// **'Русский голос'**
+  String get voiceName_ru;
+
+  /// No description provided for @voiceName_de.
+  ///
+  /// In ru, this message translates to:
+  /// **'Немецкий голос'**
+  String get voiceName_de;
+
+  /// No description provided for @voiceName_es.
+  ///
+  /// In ru, this message translates to:
+  /// **'Испанский голос'**
+  String get voiceName_es;
+
+  /// No description provided for @voiceName_fr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Французский голос'**
+  String get voiceName_fr;
+
+  /// No description provided for @voiceName_uk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Украинский голос'**
+  String get voiceName_uk;
+
+  /// No description provided for @voiceSpeech_de.
+  ///
+  /// In ru, this message translates to:
+  /// **'Немецкая'**
+  String get voiceSpeech_de;
+
+  /// No description provided for @voiceSpeech_es.
+  ///
+  /// In ru, this message translates to:
+  /// **'Испанская'**
+  String get voiceSpeech_es;
+
+  /// No description provided for @voiceSpeech_fr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Французская'**
+  String get voiceSpeech_fr;
+
+  /// No description provided for @voiceSpeech_uk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Украинская'**
+  String get voiceSpeech_uk;
+}
+
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
+  }
+
+  @override
+  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'en':
+      return AppLocalizationsEn();
+    case 'ru':
+      return AppLocalizationsRu();
+  }
+
+  throw FlutterError(
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
+}

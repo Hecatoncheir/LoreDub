@@ -21,6 +21,7 @@ class AppSettings {
     this.pythonExecutable = '',
     this.detectSourceLanguage = true,
     this.sourceLanguage = fallbackSpokenLanguage,
+    this.interfaceLanguage = defaultInterfaceLanguage,
   });
 
   final CaptureMode captureMode;
@@ -48,6 +49,9 @@ class AppSettings {
   /// The language to expect while [detectSourceLanguage] is off.
   final String sourceLanguage;
 
+  /// Language of the interface itself, independent of what is being dubbed.
+  final String interfaceLanguage;
+
   /// What whisper.cpp should be told to expect.
   String get effectiveSourceLanguage => detectSourceLanguage ? autoSpokenLanguage : sourceLanguage;
 
@@ -64,6 +68,7 @@ class AppSettings {
     String? pythonExecutable,
     bool? detectSourceLanguage,
     String? sourceLanguage,
+    String? interfaceLanguage,
   }) => AppSettings(
     captureMode: captureMode ?? this.captureMode,
     targetLanguage: targetLanguage ?? this.targetLanguage,
@@ -77,5 +82,6 @@ class AppSettings {
     pythonExecutable: pythonExecutable ?? this.pythonExecutable,
     detectSourceLanguage: detectSourceLanguage ?? this.detectSourceLanguage,
     sourceLanguage: sourceLanguage ?? this.sourceLanguage,
+    interfaceLanguage: interfaceLanguage ?? this.interfaceLanguage,
   );
 }

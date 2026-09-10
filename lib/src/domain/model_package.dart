@@ -27,17 +27,14 @@ enum ModelKind { recognition, translation, speech }
 class ModelPackage {
   const ModelPackage({
     required this.id,
-    required this.title,
-    required this.description,
     required this.artifacts,
     this.kind = ModelKind.recognition,
     this.language,
     this.speaker,
+    this.version,
   });
 
   final String id;
-  final String title;
-  final String description;
   final List<ModelArtifact> artifacts;
   final ModelKind kind;
 
@@ -47,6 +44,9 @@ class ModelPackage {
   /// Silero voice to synthesize with. The worker falls back to whatever the
   /// package actually ships if this name is not among its speakers.
   final String? speaker;
+
+  /// Upstream release the voice comes from, shown in its name.
+  final String? version;
 
   /// The file the pipeline hands to the runtime, for packages that ship one.
   String get primaryFileName => artifacts.first.fileName;

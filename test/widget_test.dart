@@ -3,7 +3,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/app.dart';
+import 'package:lore_dub/src/domain/spoken_language.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
@@ -39,6 +41,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildLoreDubTheme(),
+        locale: const Locale(defaultInterfaceLanguage),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
         home: DashboardView(viewModel: viewModel),
       ),
     );
@@ -336,6 +341,27 @@ void main() {
       isFalse,
       reason: 'the German pair has not been downloaded',
     );
+  });
+
+  testWidgets('starts in Russian and remembers a switch to English', (tester) async {
+    await pumpLoreDub(tester, const Size(1280, 900));
+
+    expect(find.text('Перевод игры'), findsOneWidget);
+    expect((await SettingsService().load()).interfaceLanguage, 'ru');
+
+    await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('English'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Signal setup'), findsOneWidget);
+    expect(find.text('Interface language'), findsOneWidget);
+    expect((await SettingsService().load()).interfaceLanguage, 'en');
+
+    await tester.tap(find.text('Live'));
+    await tester.pumpAndSettle();
+    expect(find.text('Game dubbing'), findsOneWidget);
+    expect(find.text('Start dubbing'), findsOneWidget);
   });
 
   testWidgets('saves a model download proxy from settings', (tester) async {

@@ -13,6 +13,9 @@ import '../../domain/model_proxy.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/spoken_language.dart';
+import '../../../l10n/app_localizations.dart';
+import '../language_names.dart';
+import '../model_names.dart';
 import '../theme.dart';
 import 'dashboard_view_model.dart';
 
@@ -128,19 +131,19 @@ class _Navigation extends StatelessWidget {
         ),
         _NavigationItem(
           icon: Icons.hearing_rounded,
-          label: 'Эфир',
+          label: AppLocalizations.of(context).navLive,
           selected: viewModel.section == DashboardSection.live,
           onTap: () => viewModel.selectSection(DashboardSection.live),
         ),
         _NavigationItem(
           icon: Icons.memory_rounded,
-          label: 'Модели',
+          label: AppLocalizations.of(context).navModels,
           selected: viewModel.section == DashboardSection.models,
           onTap: () => viewModel.selectSection(DashboardSection.models),
         ),
         _NavigationItem(
           icon: Icons.tune_rounded,
-          label: 'Настройки',
+          label: AppLocalizations.of(context).navSettings,
           selected: viewModel.section == DashboardSection.settings,
           onTap: () => viewModel.selectSection(DashboardSection.settings),
         ),
@@ -230,10 +233,19 @@ class _BottomNavigation extends StatelessWidget {
     indicatorColor: LoreDubPalette.orange,
     selectedIndex: viewModel.section.index,
     onDestinationSelected: (index) => viewModel.selectSection(DashboardSection.values[index]),
-    destinations: const [
-      NavigationDestination(icon: Icon(Icons.hearing_rounded), label: 'Эфир'),
-      NavigationDestination(icon: Icon(Icons.memory_rounded), label: 'Модели'),
-      NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Настройки'),
+    destinations: [
+      NavigationDestination(
+        icon: const Icon(Icons.hearing_rounded),
+        label: AppLocalizations.of(context).navLive,
+      ),
+      NavigationDestination(
+        icon: const Icon(Icons.memory_rounded),
+        label: AppLocalizations.of(context).navModels,
+      ),
+      NavigationDestination(
+        icon: const Icon(Icons.tune_rounded),
+        label: AppLocalizations.of(context).navSettings,
+      ),
     ],
   );
 }
@@ -269,9 +281,9 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 switch (viewModel.section) {
-                  DashboardSection.live => 'Перевод игры',
-                  DashboardSection.models => 'Локальные модели',
-                  DashboardSection.settings => 'Настройки потока',
+                  DashboardSection.live => AppLocalizations.of(context).titleLive,
+                  DashboardSection.models => AppLocalizations.of(context).titleModels,
+                  DashboardSection.settings => AppLocalizations.of(context).titleSettings,
                 },
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
@@ -294,12 +306,16 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final (label, color) = switch (status) {
-      PipelineStatus.idle => ('Остановлено', LoreDubPalette.mutedInk),
-      PipelineStatus.starting => (stage.isEmpty ? 'Запуск…' : stage, LoreDubPalette.warning),
-      PipelineStatus.listening => ('Слушаю', LoreDubPalette.success),
-      PipelineStatus.stopping => ('Остановка…', LoreDubPalette.warning),
-      PipelineStatus.error => ('Ошибка', LoreDubPalette.error),
+      PipelineStatus.idle => (l10n.statusIdle, LoreDubPalette.mutedInk),
+      PipelineStatus.starting => (
+        stage.isEmpty ? l10n.statusStarting : stage,
+        LoreDubPalette.warning,
+      ),
+      PipelineStatus.listening => (l10n.statusListening, LoreDubPalette.success),
+      PipelineStatus.stopping => (l10n.statusStopping, LoreDubPalette.warning),
+      PipelineStatus.error => (l10n.statusError, LoreDubPalette.error),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -359,11 +375,11 @@ class _LivePanel extends StatelessWidget {
                   Icons.download_rounded,
                   color: LoreDubPalette.warning,
                 ),
-                title: const Text('Для первого запуска нужны модели'),
-                subtitle: const Text('Они скачиваются отдельно и не входят в setup.'),
+                title: Text(AppLocalizations.of(context).modelsNeededTitle),
+                subtitle: Text(AppLocalizations.of(context).modelsNeededNote),
                 trailing: TextButton(
                   onPressed: () => viewModel.selectSection(DashboardSection.models),
-                  child: const Text('Открыть модели'),
+                  child: Text(AppLocalizations.of(context).modelsNeededAction),
                 ),
               ),
             ),
@@ -407,6 +423,7 @@ class _SourceControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final requiresProcess =
         viewModel.settings.captureMode == CaptureMode.ocr ||
         viewModel.settings.audioCaptureSource == AudioCaptureSource.process;
@@ -418,36 +435,34 @@ class _SourceControls extends StatelessWidget {
       enableFilter: true,
       enableSearch: true,
       requestFocusOnTap: true,
-      label: const Text('Процесс игры'),
-      hintText: 'Введите название процесса',
+      label: Text(l10n.processLabel),
+      hintText: l10n.processHint,
       dropdownMenuEntries: viewModel.processes
           .map(
             (process) => DropdownMenuEntry(
               value: process,
-              label: '${process.name}  ·  PID ${process.pid}',
+              label: l10n.processEntry(process.name, process.pid),
             ),
           )
           .toList(),
       onSelected: viewModel.running || !requiresProcess ? null : viewModel.selectProcess,
     );
     final helper = Text(
-      requiresProcess
-          ? 'Захватывается только звук выбранного процесса'
-          : 'Захватывается весь дефолтный поток, кроме звука LoreDub',
+      requiresProcess ? l10n.captureProcessNote : l10n.captureSystemNote,
       style: Theme.of(context).textTheme.bodySmall,
     );
     final sourceSwitch = viewModel.settings.captureMode == CaptureMode.audio
         ? SegmentedButton<AudioCaptureSource>(
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: AudioCaptureSource.system,
-                icon: Icon(Icons.speaker_group_outlined),
-                label: Text('Весь звук'),
+                icon: const Icon(Icons.speaker_group_outlined),
+                label: Text(l10n.sourceSystem),
               ),
               ButtonSegment(
                 value: AudioCaptureSource.process,
-                icon: Icon(Icons.sports_esports_outlined),
-                label: Text('Процесс'),
+                icon: const Icon(Icons.sports_esports_outlined),
+                label: Text(l10n.sourceProcess),
               ),
             ],
             selected: {viewModel.settings.audioCaptureSource},
@@ -467,7 +482,7 @@ class _SourceControls extends StatelessWidget {
         Expanded(child: selector),
         const SizedBox(width: 12),
         IconButton.outlined(
-          tooltip: 'Обновить список процессов',
+          tooltip: l10n.refreshProcesses,
           onPressed: viewModel.running ? null : viewModel.refreshProcesses,
           icon: const Icon(Icons.refresh_rounded),
         ),
@@ -534,6 +549,7 @@ class _TargetLanguagePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final languages = dubbingLanguages;
     final selected = viewModel.settings.targetLanguage;
     return _LanguageRow(
@@ -543,15 +559,15 @@ class _TargetLanguagePicker extends StatelessWidget {
         initialValue: languages.contains(selected) ? selected : languages.first,
         isDense: true,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Язык перевода', isDense: true),
+        decoration: InputDecoration(labelText: l10n.targetLanguageLabel, isDense: true),
         items: [
           for (final language in languages)
             DropdownMenuItem(
               value: language,
               child: Text(
                 viewModel.isLanguageReady(language)
-                    ? spokenLanguageTitle(language)
-                    : '${spokenLanguageTitle(language)} · нет моделей',
+                    ? spokenLanguageName(l10n, language)
+                    : l10n.languageWithoutModels(spokenLanguageName(l10n, language)),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -576,9 +592,9 @@ class _StartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final starting = viewModel.status == PipelineStatus.starting;
     final progress = viewModel.startupProgress;
-    final percent = progress == null ? '' : ' ${(progress * 100).round()}%';
     return Tooltip(
       message: starting && viewModel.startupStage.isNotEmpty ? viewModel.startupStage : '',
       child: FilledButton.icon(
@@ -596,10 +612,12 @@ class _StartButton extends StatelessWidget {
             : Icon(viewModel.running ? Icons.stop_rounded : Icons.play_arrow_rounded),
         label: Text(
           starting
-              ? 'Запуск$percent'
+              ? (progress == null
+                    ? l10n.startingPlain
+                    : l10n.startingProgress((progress * 100).round()))
               : viewModel.running
-              ? 'Остановить'
-              : 'Начать перевод',
+              ? l10n.stopDubbing
+              : l10n.startDubbing,
         ),
       ),
     );
@@ -615,6 +633,7 @@ class _LanguageControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final settings = viewModel.settings;
     final locked = viewModel.running;
     final detected = settings.detectSourceLanguage ? viewModel.detectedLanguage : null;
@@ -624,12 +643,14 @@ class _LanguageControls extends StatelessWidget {
         initialValue: settings.sourceLanguage,
         isDense: true,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Язык оригинала', isDense: true),
-        items: spokenLanguages
-            .map(
-              (language) => DropdownMenuItem(value: language.code, child: Text(language.title)),
-            )
-            .toList(),
+        decoration: InputDecoration(labelText: l10n.sourceLanguageLabel, isDense: true),
+        items: [
+          for (final language in spokenLanguages)
+            DropdownMenuItem(
+              value: language,
+              child: Text(spokenLanguageName(l10n, language)),
+            ),
+        ],
         onChanged: locked || settings.detectSourceLanguage
             ? null
             : (value) {
@@ -654,8 +675,8 @@ class _LanguageControls extends StatelessWidget {
             // the switch itself already says that detection is on.
             child: Text(
               detected == null
-                  ? 'Определять язык'
-                  : 'Определён: ${describeSpokenLanguage(detected)}',
+                  ? l10n.detectLanguage
+                  : l10n.detectedLanguage(spokenLanguageName(l10n, detected)),
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: detected == null ? null : FontWeight.w600,
@@ -840,7 +861,7 @@ class _LatencyBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(30),
     ),
     child: Text(
-      '$milliseconds мс',
+      AppLocalizations.of(context).latencyMs(milliseconds),
       // A fixed height with no leading keeps the label centred in the pill
       // instead of riding on the font's baseline.
       style: const TextStyle(
@@ -880,10 +901,12 @@ class _EmptyTranscript extends StatelessWidget {
                 color: LoreDubPalette.mutedInk,
               ),
               const SizedBox(height: 14),
-              const Text('Здесь появятся распознанные и переведённые реплики'),
+              Text(AppLocalizations.of(context).emptyTranscript),
               const SizedBox(height: 6),
               Text(
-                'Whisper → English → Marian → ${spokenLanguageTitle(targetLanguage)} → Silero',
+                AppLocalizations.of(context).pipelineSummary(
+                  spokenLanguageName(AppLocalizations.of(context), targetLanguage),
+                ),
                 style: const TextStyle(color: LoreDubPalette.mutedInk),
               ),
             ],
@@ -901,24 +924,22 @@ class _ModelsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final selected = viewModel.settings.targetLanguage;
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
-        const _ModuleLabel(number: '01', label: 'РАСПОЗНАВАНИЕ РЕЧИ'),
+        _ModuleLabel(number: '01', label: l10n.sectionRecognition),
         const SizedBox(height: 4),
-        const _SectionNote(
-          'Whisper переводит речь любого языка в английский текст. '
-          'Больше для распознавания ничего скачивать не нужно.',
-        ),
+        _SectionNote(l10n.sectionRecognitionNote),
         for (final state in viewModel.recognitionModels) ...[
           const SizedBox(height: 12),
           _ModelCard(state: state, onInstall: () => viewModel.installModel(state)),
         ],
         const SizedBox(height: 26),
-        const _ModuleLabel(number: '02', label: 'МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА'),
+        _ModuleLabel(number: '02', label: l10n.sectionTranslation),
         const SizedBox(height: 4),
-        const _SectionNote('Английский текст переводится на выбранный язык.'),
+        _SectionNote(l10n.sectionTranslationNote),
         for (final state in viewModel.translationModels) ...[
           const SizedBox(height: 12),
           _ModelCard(
@@ -932,9 +953,9 @@ class _ModelsPanel extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 26),
-        const _ModuleLabel(number: '03', label: 'МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'),
+        _ModuleLabel(number: '03', label: l10n.sectionSpeech),
         const SizedBox(height: 4),
-        const _SectionNote('Голос должен быть того же языка, что и перевод.'),
+        _SectionNote(l10n.sectionSpeechNote),
         for (final state in viewModel.speechModels) ...[
           const SizedBox(height: 12),
           _ModelCard(
@@ -984,6 +1005,7 @@ class _ModelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final details = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1003,12 +1025,12 @@ class _ModelCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                state.model.title,
+                modelTitle(l10n, state.model),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 5),
               Text(
-                state.model.description,
+                modelDescription(l10n, state.model),
                 style: const TextStyle(color: LoreDubPalette.mutedInk),
               ),
               if (state.progress case final progress?) ...[
@@ -1032,7 +1054,7 @@ class _ModelCard extends StatelessWidget {
     final action = OutlinedButton.icon(
       onPressed: state.installed || state.downloading ? null : onInstall,
       icon: Icon(state.installed ? Icons.check_rounded : Icons.download_rounded),
-      label: Text(state.installed ? 'Установлена' : 'Скачать'),
+      label: Text(state.installed ? l10n.modelInstalled : l10n.modelDownload),
     );
     final body = Padding(
       padding: const EdgeInsets.all(20),
@@ -1143,23 +1165,41 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final settings = viewModel.settings;
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
         _SettingCard(
-          title: 'Источник текста',
+          title: l10n.settingsInterfaceLanguage,
+          subtitle: l10n.interfaceLanguageNote,
+          child: SegmentedButton<String>(
+            segments: [
+              for (final language in interfaceLanguages)
+                ButtonSegment(
+                  value: language,
+                  label: Text(interfaceLanguageName(language)),
+                ),
+            ],
+            selected: {settings.interfaceLanguage},
+            onSelectionChanged: (selection) =>
+                viewModel.updateSettings(settings.copyWith(interfaceLanguage: selection.first)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SettingCard(
+          title: l10n.settingsCaptureSource,
           child: SegmentedButton<CaptureMode>(
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: CaptureMode.audio,
-                icon: Icon(Icons.hearing_rounded),
-                label: Text('Аудио игры'),
+                icon: const Icon(Icons.hearing_rounded),
+                label: Text(l10n.captureAudio),
               ),
               ButtonSegment(
                 value: CaptureMode.ocr,
-                icon: Icon(Icons.subtitles_rounded),
-                label: Text('Субтитры + OCR'),
+                icon: const Icon(Icons.subtitles_rounded),
+                label: Text(l10n.captureOcr),
               ),
             ],
             selected: {settings.captureMode},
@@ -1172,8 +1212,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         if (settings.captureMode == CaptureMode.ocr) ...[
           const SizedBox(height: 12),
           _SettingCard(
-            title: 'Область субтитров',
-            subtitle: 'Нижние ${((1 - settings.ocrRegionTop) * 100).round()}% активного окна игры',
+            title: l10n.settingsOcrRegion,
+            subtitle: l10n.ocrRegionValue(((1 - settings.ocrRegionTop) * 100).round()),
             child: Slider(
               value: settings.ocrRegionTop,
               min: 0.25,
@@ -1190,9 +1230,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ],
         const SizedBox(height: 12),
         _SettingCard(
-          title: 'Оригинальный звук',
-          subtitle:
-              'Громкость процесса игры во время перевода: ${(settings.originalVolume * 100).round()}%',
+          title: l10n.settingsOriginalVolume,
+          subtitle: l10n.originalVolumeValue((settings.originalVolume * 100).round()),
           child: Slider(
             value: settings.originalVolume,
             min: 0,
@@ -1206,14 +1245,14 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ),
         const SizedBox(height: 12),
         _SettingCard(
-          title: 'Скорость озвучки',
-          subtitle: '${settings.ttsSpeed.toStringAsFixed(2)}×',
+          title: l10n.settingsTtsSpeed,
+          subtitle: l10n.speedValue(settings.ttsSpeed.toStringAsFixed(2)),
           child: Slider(
             value: settings.ttsSpeed,
             min: 0.9,
             max: 1.35,
             divisions: 18,
-            label: '${settings.ttsSpeed.toStringAsFixed(2)}×',
+            label: l10n.speedValue(settings.ttsSpeed.toStringAsFixed(2)),
             onChanged: viewModel.running
                 ? null
                 : (value) => viewModel.updateSettings(settings.copyWith(ttsSpeed: value)),
@@ -1221,14 +1260,11 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ),
         const SizedBox(height: 12),
         _SettingCard(
-          title: 'Производительность',
-          subtitle:
-              'Распознавание занимает большую часть задержки и хорошо '
-              'ускоряется потоками. Доступно ядер: ${Platform.numberOfProcessors}, '
-              'рекомендуется ${defaultCpuThreads()}.',
+          title: l10n.settingsPerformance,
+          subtitle: l10n.performanceNote(Platform.numberOfProcessors, defaultCpuThreads()),
           child: DropdownButtonFormField<int>(
             initialValue: settings.cpuThreads,
-            decoration: const InputDecoration(labelText: 'Потоки CPU'),
+            decoration: InputDecoration(labelText: l10n.cpuThreads),
             items: _threadOptions(settings.cpuThreads)
                 .map((value) => DropdownMenuItem(value: value, child: Text('$value')))
                 .toList(),
@@ -1243,10 +1279,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ),
         const SizedBox(height: 12),
         _SettingCard(
-          title: 'Python runtime',
-          subtitle:
-              'Marian и Silero запускаются выбранным python.exe. '
-              'Setup включает готовый runtime.',
+          title: l10n.settingsPython,
+          subtitle: l10n.pythonNote,
           child: Form(
             key: _pythonFormKey,
             child: Column(
@@ -1256,12 +1290,13 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   controller: _pythonController,
                   keyboardType: TextInputType.url,
                   textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    labelText: 'Путь или команда Python',
-                    helperText: 'Можно указать полный путь или python.exe из PATH.',
-                    prefixIcon: Icon(Icons.terminal_rounded),
+                  decoration: InputDecoration(
+                    labelText: l10n.pythonFieldLabel,
+                    helperText: l10n.pythonFieldHelper,
+                    prefixIcon: const Icon(Icons.terminal_rounded),
                   ),
-                  validator: (value) => (value ?? '').trim().isEmpty ? 'Укажите python.exe' : null,
+                  validator: (value) =>
+                      (value ?? '').trim().isEmpty ? l10n.pythonFieldRequired : null,
                   onFieldSubmitted: (_) => _savePython(),
                 ),
                 const SizedBox(height: 12),
@@ -1280,7 +1315,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                             )
                           : const Icon(Icons.manage_search_rounded),
                       label: Text(
-                        viewModel.searchingPython ? 'Идёт поиск…' : 'Найти автоматически',
+                        viewModel.searchingPython
+                            ? l10n.pythonSearching
+                            : l10n.pythonFindAutomatically,
                       ),
                     ),
                     OutlinedButton.icon(
@@ -1289,12 +1326,12 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                         _savePython();
                       },
                       icon: const Icon(Icons.settings_backup_restore_rounded),
-                      label: const Text('Встроенный'),
+                      label: Text(l10n.pythonBundled),
                     ),
                     FilledButton.icon(
                       onPressed: _savePython,
                       icon: const Icon(Icons.save_outlined),
-                      label: const Text('Сохранить'),
+                      label: Text(l10n.save),
                     ),
                   ],
                 ),
@@ -1304,10 +1341,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ),
         const SizedBox(height: 12),
         _SettingCard(
-          title: 'Загрузка моделей',
-          subtitle:
-              'Необязательный HTTP или SOCKS5 proxy применяется только '
-              'при скачивании моделей.',
+          title: l10n.settingsModelDownloads,
+          subtitle: l10n.proxyNote,
           child: Form(
             key: _proxyFormKey,
             child: LayoutBuilder(
@@ -1316,14 +1351,12 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   controller: _proxyController,
                   keyboardType: TextInputType.url,
                   textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    labelText: 'HTTP / SOCKS5 proxy',
+                  decoration: InputDecoration(
+                    labelText: l10n.proxyLabel,
                     hintText: 'http://127.0.0.1:7890',
-                    helperText:
-                        'Формат: http://… или socks5://user:password@host:port. '
-                        'Значение хранится локально.',
+                    helperText: l10n.proxyHelper,
                     helperMaxLines: 2,
-                    prefixIcon: Icon(Icons.lan_outlined),
+                    prefixIcon: const Icon(Icons.lan_outlined),
                   ),
                   validator: _validateProxy,
                   onFieldSubmitted: (_) => _saveProxy(),
@@ -1331,7 +1364,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                 final save = OutlinedButton.icon(
                   onPressed: _saveProxy,
                   icon: const Icon(Icons.save_outlined),
-                  label: const Text('Сохранить'),
+                  label: Text(l10n.save),
                 );
                 if (constraints.maxWidth < 620) {
                   return Column(
@@ -1360,8 +1393,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ),
         const SizedBox(height: 12),
         _SettingCard(
-          title: 'Каталог моделей',
-          subtitle: 'Whisper, Marian и Silero хранятся локально.',
+          title: l10n.settingsModelDirectory,
+          subtitle: l10n.modelDirectoryNote,
           child: LayoutBuilder(
             builder: (context, constraints) {
               final path = SelectableText(
@@ -1371,7 +1404,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
               final open = OutlinedButton.icon(
                 onPressed: viewModel.openModelDirectory,
                 icon: const Icon(Icons.folder_open_rounded),
-                label: const Text('Открыть в Explorer'),
+                label: Text(l10n.openInExplorer),
               );
               if (constraints.maxWidth < 620) {
                 return Column(

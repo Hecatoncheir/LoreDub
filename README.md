@@ -1,119 +1,127 @@
 <p align="center">
-  <img src="assets/branding/loredub-icon.png" width="180" alt="LoreDub application icon">
+  <img src="assets/branding/loredub-icon.png" width="180" alt="Иконка приложения LoreDub">
 </p>
 
 <h1 align="center">LoreDub</h1>
 
 <p align="center">
-  <a href="https://github.com/Hecatoncheir/LoreDub/actions/workflows/windows.yml"><img src="https://github.com/Hecatoncheir/LoreDub/actions/workflows/windows.yml/badge.svg" alt="Windows build"></a>
-  <a href="https://github.com/Hecatoncheir/LoreDub/actions/workflows/release.yml"><img src="https://github.com/Hecatoncheir/LoreDub/actions/workflows/release.yml/badge.svg" alt="Windows release"></a>
-  <a href="https://github.com/Hecatoncheir/LoreDub/releases/latest"><img src="https://img.shields.io/github/v/release/Hecatoncheir/LoreDub" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/Hecatoncheir/LoreDub" alt="MIT license"></a>
+  <a href="https://github.com/Hecatoncheir/LoreDub/actions/workflows/windows.yml"><img src="https://github.com/Hecatoncheir/LoreDub/actions/workflows/windows.yml/badge.svg" alt="Сборка Windows"></a>
+  <a href="https://github.com/Hecatoncheir/LoreDub/actions/workflows/release.yml"><img src="https://github.com/Hecatoncheir/LoreDub/actions/workflows/release.yml/badge.svg" alt="Релиз Windows"></a>
+  <a href="https://github.com/Hecatoncheir/LoreDub/releases/latest"><img src="https://img.shields.io/github/v/release/Hecatoncheir/LoreDub" alt="Последний релиз"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Hecatoncheir/LoreDub" alt="Лицензия MIT"></a>
 </p>
 
-LoreDub is a Windows-first, fully local game voice-over companion. It captures
-only the selected game's process tree, turns speech into English, translates it
-into the language you pick, and speaks the result over the current default audio
-output while keeping the original game session quiet.
+<p align="center"><b>Русский</b> · <a href="README.en.md">English</a></p>
+
+LoreDub — полностью локальный озвучиватель игр для Windows. Он захватывает звук
+только выбранной игры, превращает речь в английский текст, переводит его на
+выбранный язык и проговаривает результат в текущее устройство вывода, приглушая
+при этом оригинал.
 
 ```text
-Game process (WASAPI process loopback, 16 kHz mono)
-  -> energy VAD and phrase endpointing
+Процесс игры (WASAPI process loopback, 16 кГц моно)
+  -> энергетический VAD и определение конца фразы
   -> whisper.cpp base --translate
-  -> Helsinki-NLP Marian English -> chosen language
-  -> Silero TTS in that language
-  -> default Windows output
+  -> Helsinki-NLP Marian: английский -> выбранный язык
+  -> Silero TTS на этом языке
+  -> устройство вывода Windows по умолчанию
 ```
 
-Audio capture can target a selected process tree or the complete default output.
-Complete-output mode excludes the LoreDub process tree so synthesized speech
-does not feed back into recognition. Alternatively, OCR mode captures a configurable lower portion of the selected
-game window, recognizes stable English subtitle text with Windows OCR, and
-sends it directly to Marian and Silero without running Whisper.
+Захват работает либо по дереву процессов выбранной игры, либо по всему выводу
+по умолчанию. Во втором режиме дерево процессов самого LoreDub исключается,
+поэтому синтезированная речь не попадает обратно в распознавание. Есть и режим
+OCR: он снимает настраиваемую нижнюю часть окна игры, распознаёт устойчивый
+английский текст субтитров средствами Windows OCR и отдаёт его сразу в Marian и
+Silero, минуя Whisper.
 
-Everything runs on the user's CPU. Audio and text do not leave the machine.
-Models are downloaded by the Dart application on demand and kept in the Windows
-application-support directory.
+Всё считается на процессоре пользователя. Звук и текст не покидают машину.
+Модели скачиваются самим приложением по требованию и лежат в каталоге
+данных приложения Windows.
 
-## Interface
+## Интерфейс
 
-The LoreDub interface uses the same industrial language as its icon: warm
-off-white equipment panels, graphite signal areas, restrained typography, and
-a single orange accent for active controls. The layout adapts from a persistent
-desktop sidebar to compact bottom navigation. The complete rationale and UI
-tokens are documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
+Интерфейс говорит тем же языком, что и иконка: тёплые панели цвета слоновой
+кости, графитовые сигнальные области, сдержанная типографика и единственный
+оранжевый акцент на активных элементах. Раскладка перестраивается из постоянной
+боковой панели в компактную нижнюю навигацию. Полное обоснование и токены
+описаны в [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 
-## Windows release status
+Язык интерфейса — русский или английский — переключается в **Настройках** и
+применяется сразу, без перезапуска. Все надписи хранятся в `lib/l10n/*.arb`,
+русский файл — исходный.
 
-The audio mode is wired end to end. The setup contains pinned `whisper.cpp`
-v1.8.2 binaries and an embedded Python CPU runtime for Marian and Silero.
+## Состояние Windows-релиза
 
-**Модели** groups the downloads the way the pipeline uses them. Whisper stands
-alone at the top: it turns speech in any language into English, and recognition
-needs nothing else. Below it sit the translators and the voices, one of each per
-language — Russian, German, Spanish, French and Ukrainian. Picking a language in
-either section selects both halves of the pair, because a translation read by a
-voice for another language would be gibberish, and only that pair has to be
-downloaded. At the first launch install Whisper and one pair, choose a running
-game process, and press **Start**.
+Аудиорежим работает от начала до конца. В setup входят зафиксированные бинарники
+`whisper.cpp` v1.8.2 и встроенный CPU-runtime Python для Marian и Silero.
 
-The first pipeline start can take one or two minutes while Marian and Silero are
-loaded. Recognition, translation and synthesis are then serialized so a small
-CPU is never asked to run two inferences at once, while playback happens beside
-them: voicing a reply takes as long as the reply itself, and waiting for it
-would put every later phrase further behind the game. No phrase is dropped.
+Экран **Модели** сгруппирован так, как модели использует конвейер. Whisper стоит
+сверху отдельно: он переводит речь любого языка в английский текст, и больше для
+распознавания ничего не нужно. Ниже — переводчики и голоса, по одному на язык:
+русский, немецкий, испанский, французский и украинский. Выбор языка в любой из
+двух секций выделяет обе половины пары, потому что перевод, прочитанный голосом
+другого языка, был бы бессмыслицей, — и скачать нужно только эту пару. При первом
+запуске установите Whisper и одну пару, выберите запущенный процесс игры и
+нажмите **Начать перевод**.
 
-The delay depends heavily on the CPU and on **Потоки CPU** in Settings, which
-defaults to half of the logical processors. Recognition dominates it, so the
-language whisper.cpp detects is reused for the rest of the session instead of
-being detected again for every phrase, which costs a full extra encoder pass.
-When the language of the game is known in advance, turning **Определять язык**
-off and picking it from **Язык оригинала** skips that pass entirely and rules
-out a wrong guess made from a short or noisy first phrase.
-On a 12-core CPU with twelve threads a phrase is voiced about 1.5 s after it
-ends; `base` is chosen as the quality/speed compromise.
+Первый запуск конвейера может занять минуту-две, пока грузятся Marian и Silero.
+Дальше распознавание, перевод и синтез выполняются последовательно, чтобы слабый
+процессор не считал две модели разом, а воспроизведение идёт рядом с ними:
+озвучка реплики длится столько же, сколько сама реплика, и ожидание отбрасывало
+бы каждую следующую фразу всё дальше от игры. Ни одна фраза не теряется.
 
-The **Subtitles + OCR** mode works with visible windowed or borderless games.
-Choose how much of the lower game window to scan in Settings. English OCR must
-be installed in Windows; the app reports a direct error when that language pack
-is missing. Scanning runs only while the selected game is the foreground window,
-which prevents other windows from being mistaken for subtitles. Exclusive-fullscreen or minimized windows cannot be read through
-the lightweight GDI capture path.
+Задержка сильно зависит от процессора и от настройки **Потоки CPU**, которая по
+умолчанию равна половине логических ядер. Основную её часть занимает
+распознавание, поэтому определённый whisper.cpp язык переиспользуется до конца
+сессии, а не определяется заново для каждой фразы — это стоит целого лишнего
+прогона энкодера. Если язык игры известен заранее, выключите **Определять язык**
+и выберите его в поле **Язык оригинала**: тогда лишнего прогона не будет вовсе,
+и исключается неверная догадка по короткой или шумной первой фразе. На 12-ядерном
+процессоре с двенадцатью потоками фраза озвучивается примерно через 1.5 с после
+её окончания; `base` выбрана как компромисс качества и скорости.
 
-## Planned
+Режим **Субтитры + OCR** работает с оконными и безрамочными играми. Долю нижней
+части окна для сканирования выбирают в настройках. В Windows должен быть
+установлен английский пакет OCR; при его отсутствии приложение сообщает об этом
+прямо. Сканирование идёт только пока выбранная игра — активное окно, что не даёт
+принять за субтитры чужое окно. Эксклюзивный полноэкранный режим и свёрнутые окна
+лёгкий путь захвата через GDI прочитать не может.
 
-- **Headroom for dense dialogue.** Nothing is dropped, so speech arriving
-  faster than the pipeline can dub it still accumulates a delay — currently
-  around one phrase per 1.5 s on a 12-core CPU. Unmeasured options, in the
-  order worth trying: raise **Потоки CPU** to 16–24 and measure what the game
-  loses; then benchmark a quantized Whisper model (`ggml-base-q5_1.bin`)
-  against `base` for both recognition speed and translation quality. Recognition
-  is the dominant cost, so that is where the remaining time is. Keeping the
-  bundled `whisper-server.exe` resident would save only the ~160 ms model load
-  and is not worth the complexity.
-- **Subtitle overlay.** `AppSettings.showOverlay` is persisted but nothing
-  reads it yet; the intent is to draw the translated lines over the game.
-- **Voice choice within a language.** Each Silero package ships several
-  speakers and LoreDub uses the first one the catalogue names, falling back to
-  whatever the model actually provides.
+## Планы
 
-## Requirements
+- **Запас по плотным диалогам.** Ничего не теряется, поэтому речь, приходящая
+  быстрее, чем конвейер успевает её озвучивать, всё ещё накапливает задержку —
+  сейчас это примерно одна фраза в 1.5 с на 12 ядрах. Непроверенные варианты в
+  порядке разумности: поднять **Потоки CPU** до 16–24 и померить, сколько теряет
+  игра; затем сравнить квантованную модель Whisper (`ggml-base-q5_1.bin`) с
+  `base` по скорости распознавания и качеству перевода. Основная стоимость —
+  распознавание, там и остаётся время. Держать резидентным входящий в комплект
+  `whisper-server.exe` смысла нет: это сэкономит лишь ~160 мс на загрузке модели.
+- **Оверлей субтитров.** `AppSettings.showOverlay` сохраняется, но пока ничем не
+  читается; замысел — выводить переведённые реплики поверх игры.
+- **Выбор голоса внутри языка.** В каждом пакете Silero несколько дикторов,
+  LoreDub берёт названного в каталоге и откатывается на первый доступный.
+- **Диагностика на языке интерфейса.** Сообщения об ошибках конвейера пока
+  только на русском: они рождаются в слое сервисов, которому нужен не текст, а
+  код ошибки.
 
-- Windows 10 build 20348 or later, or Windows 11. This is required by the
-  process-specific loopback API.
-- x64 CPU and about 2 GB of free disk space for the application runtime and
-  downloaded models.
-- An active audio session from the selected process. Start the game and let it
-  play sound before refreshing the process list.
+## Требования
 
-The app changes only the selected process session's volume and restores it when
-the pipeline stops or the app closes. TTS comes from the LoreDub process, so
-it cannot feed back into the selected game's capture.
+- Windows 10 сборки 20348 или новее, либо Windows 11 — этого требует API
+  захвата звука отдельного процесса.
+- Процессор x64 и около 2 ГБ свободного места под runtime приложения и
+  скачанные модели.
+- Активная аудиосессия у выбранного процесса. Запустите игру и дайте ей
+  проиграть звук до обновления списка процессов.
 
-## Development on Windows
+Приложение меняет громкость только у сессии выбранного процесса и возвращает её,
+когда конвейер останавливается или приложение закрывается. Озвучка идёт от
+процесса LoreDub, поэтому попасть обратно в захват игры она не может.
 
-Install Flutter stable, Visual Studio 2022 with **Desktop development with
-C++**, and Inno Setup 6. Then run:
+## Разработка под Windows
+
+Установите Flutter stable, Visual Studio 2022 с компонентом **Разработка
+классических приложений на C++** и Inno Setup 6. Затем выполните:
 
 ```powershell
 flutter pub get
@@ -123,15 +131,15 @@ flutter test
 powershell -ExecutionPolicy Bypass -File scripts/build_setup.ps1
 ```
 
-The last command downloads and caches the pinned runtimes, builds the Flutter
-app, and creates:
+Последняя команда скачивает и кеширует зафиксированные runtime, собирает
+приложение и создаёт:
 
 ```text
-dist/LoreDub-<version>-windows-x64-setup.exe
+dist/LoreDub-<версия>-windows-x64-setup.exe
 ```
 
-For a development run without an installer, build Flutter first and place the
-runtime beside `lore_dub.exe`:
+Для запуска без установщика сначала соберите Flutter и положите runtime рядом с
+`lore_dub.exe`:
 
 ```powershell
 flutter build windows --debug
@@ -140,10 +148,10 @@ powershell -ExecutionPolicy Bypass -File scripts/prepare_windows_runtime.ps1 `
 flutter run -d windows
 ```
 
-After updating an existing checkout across an executable rename, older Flutter
-or CMake versions may retain the previous target in their local build cache.
-The project repairs that value automatically. If configuration still reports
-`No target` for an old application name, regenerate the local artifacts once:
+Если рабочая копия обновлялась через переименование исполняемого файла, старые
+версии Flutter или CMake могут сохранить прежнюю цель в локальном кеше сборки.
+Проект чинит это значение сам. Если конфигурация всё же сообщает `No target` для
+старого имени приложения, пересоздайте локальные артефакты один раз:
 
 ```powershell
 flutter clean
@@ -151,42 +159,39 @@ flutter pub get
 flutter run -d windows
 ```
 
-## Model integrity
+## Целостность моделей
 
-Downloads are streamed to temporary files and moved atomically only after size
-and, when supplied upstream, digest validation. Every artifact in the catalogue
-has a pinned byte size, measured against the host. The Whisper weights and the
-Russian Marian weights additionally carry pinned SHA-256 values; the weights of
-the other languages are size-checked only.
+Загрузки пишутся во временные файлы и переносятся атомарно только после проверки
+размера и, где он опубликован, контрольной суммы. У каждого артефакта в каталоге
+зафиксирован размер, снятый с хоста. У весов Whisper и русского Marian вдобавок
+зафиксированы SHA-256; веса остальных языков проверяются только по размеру.
 
-An optional HTTP or SOCKS5 proxy for model downloads can be configured in
-**Settings → Model downloads**. Both `host:port` and authenticated
-`http://user:password@host:port` / `socks5://user:password@host:port` formats
-are accepted. The setting affects only model downloads; recognition,
-translation, and speech synthesis remain local. Settings also shows the model
-storage directory and can open it in Explorer.
+Необязательный HTTP- или SOCKS5-proxy для загрузки моделей настраивается в
+**Настройки → Загрузка моделей**. Принимаются форматы `host:port` и
+`http://user:password@host:port` / `socks5://user:password@host:port`. Настройка
+влияет только на загрузку моделей; распознавание, перевод и синтез остаются
+локальными. Там же показан каталог моделей и есть кнопка открыть его в Explorer.
 
-The setup-bundled `runtime/python/python.exe` is selected by default. Settings
-also accepts a custom absolute path, and **Найти автоматически** scans the
-bundled runtime, the runtime of an installed LoreDub, `PATH` and the standard
-Windows installation directories for an interpreter that actually has `torch`
-and `transformers`. The Microsoft Store `python.exe` execution alias is skipped:
-it only advertises the Store and cannot run the worker.
+По умолчанию выбран `runtime/python/python.exe` из setup. В настройках можно
+указать произвольный абсолютный путь, а кнопка **Найти автоматически** проверяет
+встроенный runtime, runtime установленной версии LoreDub, `PATH` и стандартные
+каталоги установки Windows, выбирая интерпретатор, в котором действительно есть
+`torch` и `transformers`. Ярлык `python.exe` из Microsoft Store пропускается: он
+только рекламирует Store и запустить воркер не может.
 
 ## GitLab CI
 
-`verify` runs formatting, analysis, unit/widget tests, and the portable native
-build. `windows-setup` requires a GitLab shell runner tagged `windows` with
-Flutter, Visual Studio, and Inno Setup 6. It caches runtimes under
-`%LOCALAPPDATA%` and publishes the setup executable for tags and the default
-branch.
+Задача `verify` проверяет форматирование, анализ, юнит- и виджет-тесты и
+переносимую нативную сборку. Для `windows-setup` нужен shell-runner GitLab с
+тегом `windows`, на котором есть Flutter, Visual Studio и Inno Setup 6. Она
+кеширует runtime в `%LOCALAPPDATA%` и публикует установщик для тегов и ветки по
+умолчанию.
 
-## GitHub releases
+## Релизы на GitHub
 
-Every tag named `v<major>.<minor>.<patch>` starts the Windows release workflow.
-The tag version must match the version in `pubspec.yaml` (without its `+build`
-suffix), and `CHANGELOG.md` must contain a non-empty section with the same
-version. For example:
+Каждый тег вида `v<major>.<minor>.<patch>` запускает релизный workflow. Версия
+тега должна совпадать с версией в `pubspec.yaml` (без суффикса `+build`), а в
+`CHANGELOG.md` должна быть непустая секция с той же версией. Например:
 
 ```markdown
 ## [0.2.0] - 2026-09-10
@@ -195,7 +200,7 @@ version. For example:
 - Fixed ...
 ```
 
-To publish that version, commit both files, tag that commit, and push:
+Чтобы опубликовать версию, закоммитьте оба файла, поставьте тег и запушьте:
 
 ```bash
 git add pubspec.yaml CHANGELOG.md
@@ -204,24 +209,25 @@ git tag v0.2.0
 git push origin main v0.2.0
 ```
 
-GitHub Actions validates the three versions, builds the Windows installer, and
-publishes `LoreDub-0.2.0-windows-x64-setup.exe` with the matching changelog
-section at the [LoreDub releases page](https://github.com/Hecatoncheir/LoreDub/releases).
+GitHub Actions сверяет три версии, собирает установщик Windows и публикует
+`LoreDub-0.2.0-windows-x64-setup.exe` с соответствующей секцией changelog на
+[странице релизов](https://github.com/Hecatoncheir/LoreDub/releases).
 
-## Source layout
+## Структура проекта
 
 ```text
-assets/runtime/              persistent Marian/Silero worker
-assets/branding/             LoreDub icon and brand assets
-assets/fonts/                bundled Nunito, Nunito Sans and JetBrains Mono (OFL)
-lib/src/data/services/       orchestration, native bridge, model storage
-lib/src/ui/                  Windows dashboard and model manager
-native/                      process-loopback capture, VAD, volume, playback
-hook/                        Dart Native Assets compiler hook
-tool/ffigen.dart             generated FFI bindings
-installer/                   Inno Setup definition
-scripts/                     Windows runtime and packaging scripts
+assets/runtime/              постоянный воркер Marian/Silero
+assets/branding/             иконка и фирменные материалы
+assets/fonts/                Nunito, Nunito Sans и JetBrains Mono (OFL)
+lib/l10n/                    словари интерфейса, русский — исходный
+lib/src/data/services/       оркестрация, нативный мост, хранилище моделей
+lib/src/ui/                  панель управления и менеджер моделей
+native/                      захват процесса, VAD, громкость, воспроизведение
+hook/                        хук сборки Dart Native Assets
+tool/ffigen.dart             генерация FFI-биндингов
+installer/                   описание Inno Setup
+scripts/                     скрипты runtime и упаковки под Windows
 ```
 
-Project-owned code is MIT licensed. Downloaded runtime and model artifacts keep
-their upstream licenses and are not stored in this repository.
+Собственный код проекта распространяется по лицензии MIT. Скачиваемые runtime и
+модели сохраняют лицензии правообладателей и в репозитории не хранятся.

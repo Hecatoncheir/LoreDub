@@ -98,8 +98,6 @@ void main() {
 
 ModelPackage _model(List<int> bytes, String hash) => ModelPackage(
   id: 'test',
-  title: 'Test model',
-  description: 'Test model',
   artifacts: [
     ModelArtifact(
       fileName: 'model.bin',

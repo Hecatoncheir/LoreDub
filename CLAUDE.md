@@ -89,8 +89,13 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
 
 - Every source file starts with the `Copyright (c) 2026 LoreDub contributors.` /
   `SPDX-License-Identifier: MIT` header pair.
-- User-facing strings and exception messages are **Russian**; comments,
-  identifiers, docs, and commit messages are English.
+- Interface strings live in `lib/l10n/app_ru.arb` (the template) and
+  `app_en.arb`; reach them with `AppLocalizations.of(context)`. Names for
+  languages and model packages are resolved in `lib/src/ui/language_names.dart`
+  and `model_names.dart`, so the catalogue and domain hold codes, not wording.
+  Service-layer exception messages are still **Russian** literals.
+- Comments, identifiers, docs, and commit messages are English. `README.md` is
+  Russian and is the primary one; `README.en.md` follows it.
 - `lib/src/native/*.g.dart` is generated — edit `native/lore_dub_native.h` and
   the `functions` allowlist in `tool/ffigen.dart`, then rerun ffigen.
 - Formatter is configured for `page_width: 100` and `trailing_commas: preserve`;

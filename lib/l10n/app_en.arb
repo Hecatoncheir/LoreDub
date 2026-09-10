@@ -1,0 +1,214 @@
+{
+  "@@locale": "en",
+  "appTitle": "LoreDub",
+  "navLive": "Live",
+  "navModels": "Models",
+  "navSettings": "Settings",
+  "titleLive": "Game dubbing",
+  "titleModels": "Local models",
+  "titleSettings": "Signal setup",
+  "statusIdle": "Stopped",
+  "statusStarting": "Starting…",
+  "statusListening": "Listening",
+  "statusStopping": "Stopping…",
+  "statusError": "Error",
+  "modelsNeededTitle": "The first run needs models",
+  "modelsNeededNote": "They are downloaded separately and are not part of the setup.",
+  "modelsNeededAction": "Open models",
+  "processLabel": "Game process",
+  "processHint": "Type a process name",
+  "processEntry": "{name}  ·  PID {pid}",
+  "@processEntry": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pid": {
+        "type": "int"
+      }
+    }
+  },
+  "captureProcessNote": "Only the selected process is captured",
+  "captureSystemNote": "The whole default output is captured, except LoreDub itself",
+  "sourceSystem": "All audio",
+  "sourceProcess": "Process",
+  "refreshProcesses": "Refresh the process list",
+  "targetLanguageLabel": "Dubbing language",
+  "languageWithoutModels": "{language} · not downloaded",
+  "@languageWithoutModels": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceLanguageLabel": "Original language",
+  "detectLanguage": "Detect language",
+  "detectedLanguage": "Detected: {language}",
+  "@detectedLanguage": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "startDubbing": "Start dubbing",
+  "stopDubbing": "Stop",
+  "startingProgress": "Starting {percent}%",
+  "@startingProgress": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "startingPlain": "Starting",
+  "latencyMs": "{value} ms",
+  "@latencyMs": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "emptyTranscript": "Recognized and translated lines will appear here",
+  "pipelineSummary": "Whisper → English → Marian → {language} → Silero",
+  "@pipelineSummary": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionRecognition": "SPEECH RECOGNITION",
+  "sectionRecognitionNote": "Whisper turns speech in any language into English text. Recognition needs nothing else.",
+  "sectionTranslation": "TEXT TRANSLATION MODELS",
+  "sectionTranslationNote": "The English text is translated into the language you pick.",
+  "sectionSpeech": "TEXT-TO-SPEECH MODELS",
+  "sectionSpeechNote": "The voice has to speak the same language as the translation.",
+  "modelInstalled": "Installed",
+  "modelDownload": "Download",
+  "settingsCaptureSource": "Text source",
+  "captureAudio": "Game audio",
+  "captureOcr": "Subtitles + OCR",
+  "settingsOcrRegion": "Subtitle area",
+  "ocrRegionValue": "Bottom {percent}% of the active game window",
+  "@ocrRegionValue": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsOriginalVolume": "Original audio",
+  "originalVolumeValue": "Volume of the game process while dubbing: {percent}%",
+  "@originalVolumeValue": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTtsSpeed": "Speech rate",
+  "speedValue": "{value}×",
+  "@speedValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsPerformance": "Performance",
+  "performanceNote": "Recognition takes most of the delay and scales well with threads. Cores available: {cores}, recommended {recommended}.",
+  "@performanceNote": {
+    "placeholders": {
+      "cores": {
+        "type": "int"
+      },
+      "recommended": {
+        "type": "int"
+      }
+    }
+  },
+  "cpuThreads": "CPU threads",
+  "settingsPython": "Python runtime",
+  "pythonNote": "Marian and Silero run on the python.exe you pick. The setup ships a ready runtime.",
+  "pythonFieldLabel": "Python path or command",
+  "pythonFieldHelper": "A full path, or python.exe resolved from PATH.",
+  "pythonFieldRequired": "Name a python.exe",
+  "pythonSearching": "Searching…",
+  "pythonFindAutomatically": "Find automatically",
+  "pythonBundled": "Bundled",
+  "save": "Save",
+  "settingsModelDownloads": "Model downloads",
+  "proxyNote": "An optional HTTP or SOCKS5 proxy is used for model downloads only.",
+  "proxyLabel": "HTTP / SOCKS5 proxy",
+  "proxyHelper": "Format: http://… or socks5://user:password@host:port. Stored locally.",
+  "settingsModelDirectory": "Model directory",
+  "modelDirectoryNote": "Whisper, Marian and Silero are kept on this machine.",
+  "openInExplorer": "Open in Explorer",
+  "settingsInterfaceLanguage": "Interface language",
+  "interfaceLanguageNote": "Applies immediately, without a restart.",
+  "modelWhisperTitle": "Whisper base",
+  "modelWhisperNote": "Speech recognition and translation of any language into English. Needed once, for every dubbing language.",
+  "modelTranslationNote": "Local CPU translator by Helsinki-NLP/Marian, about 300 MB.",
+  "modelTranslationTitle": "English → {language}",
+  "@modelTranslationTitle": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "modelVoiceTitle": "{language} — Silero {version}",
+  "@modelVoiceTitle": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "modelVoiceNote": "{language} speech, 24 kHz.",
+  "@modelVoiceNote": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "modelVoiceNoteRu": "Russian speech, 24 kHz; voices xenia, aidar, baya, kseniya and eugene.",
+  "language_ar": "Arabic",
+  "language_cs": "Czech",
+  "language_de": "German",
+  "language_en": "English",
+  "language_es": "Spanish",
+  "language_fr": "French",
+  "language_it": "Italian",
+  "language_ja": "Japanese",
+  "language_ko": "Korean",
+  "language_nl": "Dutch",
+  "language_pl": "Polish",
+  "language_pt": "Portuguese",
+  "language_ru": "Russian",
+  "language_sv": "Swedish",
+  "language_tr": "Turkish",
+  "language_uk": "Ukrainian",
+  "language_zh": "Chinese",
+  "translationTarget_ru": "Russian",
+  "translationTarget_de": "German",
+  "translationTarget_es": "Spanish",
+  "translationTarget_fr": "French",
+  "translationTarget_uk": "Ukrainian",
+  "voiceName_ru": "Russian voice",
+  "voiceName_de": "German voice",
+  "voiceName_es": "Spanish voice",
+  "voiceName_fr": "French voice",
+  "voiceName_uk": "Ukrainian voice",
+  "voiceSpeech_de": "German",
+  "voiceSpeech_es": "Spanish",
+  "voiceSpeech_fr": "French",
+  "voiceSpeech_uk": "Ukrainian"
+}

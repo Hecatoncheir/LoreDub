@@ -10,6 +10,16 @@ import '../../domain/spoken_language.dart';
 class SettingsService {
   /// A code stored by an older build, or one whose entry has since been
   /// removed, must not reach whisper.cpp as an unknown argument.
+  /// An interface language this build no longer offers falls back to the
+  /// default rather than leaving the app without any translation.
+  static String _readInterfaceLanguage(SharedPreferences preferences) {
+    final stored = preferences.getString('interfaceLanguage');
+    if (stored == null || !interfaceLanguages.contains(stored)) {
+      return defaultInterfaceLanguage;
+    }
+    return stored;
+  }
+
   static String _readSourceLanguage(SharedPreferences preferences) {
     final stored = preferences.getString('sourceLanguage');
     if (stored == null || !isSupportedSpokenLanguage(stored)) return fallbackSpokenLanguage;
@@ -37,6 +47,7 @@ class SettingsService {
       pythonExecutable: preferences.getString('pythonExecutable') ?? bundledPythonExecutablePath(),
       detectSourceLanguage: preferences.getBool('detectSourceLanguage') ?? true,
       sourceLanguage: _readSourceLanguage(preferences),
+      interfaceLanguage: _readInterfaceLanguage(preferences),
     );
   }
 
@@ -58,6 +69,7 @@ class SettingsService {
       preferences.setString('pythonExecutable', settings.pythonExecutable),
       preferences.setBool('detectSourceLanguage', settings.detectSourceLanguage),
       preferences.setString('sourceLanguage', settings.sourceLanguage),
+      preferences.setString('interfaceLanguage', settings.interfaceLanguage),
     ]);
   }
 }

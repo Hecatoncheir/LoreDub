@@ -12,15 +12,12 @@ ModelPackage _marian({
   required String id,
   required String language,
   required String pair,
-  required String title,
   required Map<String, int> sizes,
   String? weightsHash,
 }) => ModelPackage(
   id: id,
   kind: ModelKind.translation,
   language: language,
-  title: title,
-  description: 'Локальный CPU-переводчик Helsinki-NLP/Marian, около 300 МБ.',
   artifacts: [
     for (final entry in sizes.entries)
       ModelArtifact(
@@ -37,19 +34,17 @@ ModelPackage _marian({
 ModelPackage _silero({
   required String id,
   required String language,
-  required String title,
   required String fileName,
   required String directory,
   required int byteSize,
   required String speaker,
-  required String description,
+  required String version,
 }) => ModelPackage(
   id: id,
   kind: ModelKind.speech,
   language: language,
-  title: title,
   speaker: speaker,
-  description: description,
+  version: version,
   artifacts: [
     ModelArtifact(
       fileName: fileName,
@@ -62,10 +57,6 @@ ModelPackage _silero({
 final modelCatalog = <ModelPackage>[
   ModelPackage(
     id: whisperModelId,
-    title: 'Whisper base',
-    description:
-        'Распознавание речи и перевод любого языка на английский. '
-        'Нужна один раз, для всех языков озвучки.',
     artifacts: [
       ModelArtifact(
         fileName: 'ggml-base.bin',
@@ -84,7 +75,6 @@ final modelCatalog = <ModelPackage>[
     id: 'bergamot-en-ru',
     language: 'ru',
     pair: 'en-ru',
-    title: 'Английский → русский',
     weightsHash: 'd15fa58c6bc3efd3629c1b6b86d9aa6d15d2751a4620aa4cdd7eed7b5cbe583b',
     sizes: const {
       'config.json': 1381,
@@ -100,7 +90,6 @@ final modelCatalog = <ModelPackage>[
     id: 'marian-en-de',
     language: 'de',
     pair: 'en-de',
-    title: 'Английский → немецкий',
     sizes: const {
       'config.json': 1335,
       'generation_config.json': 293,
@@ -115,7 +104,6 @@ final modelCatalog = <ModelPackage>[
     id: 'marian-en-es',
     language: 'es',
     pair: 'en-es',
-    title: 'Английский → испанский',
     sizes: const {
       'config.json': 1473,
       'generation_config.json': 293,
@@ -130,7 +118,6 @@ final modelCatalog = <ModelPackage>[
     id: 'marian-en-fr',
     language: 'fr',
     pair: 'en-fr',
-    title: 'Английский → французский',
     sizes: const {
       'config.json': 1416,
       'generation_config.json': 293,
@@ -145,7 +132,6 @@ final modelCatalog = <ModelPackage>[
     id: 'marian-en-uk',
     language: 'uk',
     pair: 'en-uk',
-    title: 'Английский → украинский',
     sizes: const {
       'config.json': 1381,
       'generation_config.json': 293,
@@ -159,53 +145,48 @@ final modelCatalog = <ModelPackage>[
 
   _silero(
     id: 'silero-ru-v5.3',
+    version: 'v5.3',
     language: 'ru',
-    title: 'Русский голос — Silero v5.3',
     fileName: 'v5_3_ru.pt',
     directory: 'ru',
     byteSize: 145359640,
     speaker: 'xenia',
-    description: 'Русская речь, 24 kHz; голоса xenia, aidar, baya, kseniya и eugene.',
   ),
   _silero(
     id: 'silero-de-v3',
+    version: 'v3',
     language: 'de',
-    title: 'Немецкий голос — Silero v3',
     fileName: 'v3_de.pt',
     directory: 'de',
     byteSize: 57076082,
     speaker: 'eva_k',
-    description: 'Немецкая речь, 24 kHz.',
   ),
   _silero(
     id: 'silero-es-v3',
+    version: 'v3',
     language: 'es',
-    title: 'Испанский голос — Silero v3',
     fileName: 'v3_es.pt',
     directory: 'es',
     byteSize: 57079302,
     speaker: 'es_0',
-    description: 'Испанская речь, 24 kHz.',
   ),
   _silero(
     id: 'silero-fr-v3',
+    version: 'v3',
     language: 'fr',
-    title: 'Французский голос — Silero v3',
     fileName: 'v3_fr.pt',
     directory: 'fr',
     byteSize: 57085158,
     speaker: 'fr_0',
-    description: 'Французская речь, 24 kHz.',
   ),
   _silero(
     id: 'silero-uk-v4',
+    version: 'v4',
     language: 'uk',
-    title: 'Украинский голос — Silero v4',
     fileName: 'v4_ua.pt',
     directory: 'ua',
     byteSize: 35354913,
     speaker: 'mykyta',
-    description: 'Украинская речь, 24 kHz.',
   ),
 ];
 

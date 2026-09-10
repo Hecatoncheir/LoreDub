@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../l10n/app_localizations.dart';
 import 'data/repositories/app_repository.dart';
 import 'data/repositories/model_repository.dart';
 import 'data/services/model_storage_service.dart';
@@ -38,10 +40,23 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'LoreDub',
-    debugShowCheckedModeBanner: false,
-    theme: buildLoreDubTheme(),
-    home: DashboardView(viewModel: viewModel),
+  Widget build(BuildContext context) => ListenableBuilder(
+    // Rebuilt with the view model so switching the interface language takes
+    // effect without a restart.
+    listenable: viewModel,
+    builder: (context, _) => MaterialApp(
+      title: 'LoreDub',
+      debugShowCheckedModeBanner: false,
+      theme: buildLoreDubTheme(),
+      locale: Locale(viewModel.settings.interfaceLanguage),
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: DashboardView(viewModel: viewModel),
+    ),
   );
 }

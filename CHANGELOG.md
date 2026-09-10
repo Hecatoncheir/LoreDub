@@ -41,6 +41,9 @@ All notable changes to LoreDub are documented in this file.
   together, and only that pair has to be downloaded.
 - Replaced Segoe UI with bundled Nunito, Nunito Sans and JetBrains Mono, the last one
   reserved for module labels and measured times.
+- Added an English interface alongside Russian. Every label moved into `lib/l10n/*.arb`,
+  and Settings carries the switch; Russian stays the default and the source of the
+  wording. `README.md` is now Russian, with `README.en.md` beside it.
 
 ## [0.2.1] - 2026-09-10
 
