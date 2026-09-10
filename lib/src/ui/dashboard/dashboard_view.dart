@@ -484,9 +484,15 @@ class _SourceControls extends StatelessWidget {
           const SizedBox(height: 12),
           language,
           const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: _StartButton(viewModel: viewModel),
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              target,
+              _StartButton(viewModel: viewModel),
+            ],
           ),
         ],
       );
@@ -501,9 +507,11 @@ class _SourceControls extends StatelessWidget {
               sourceSwitch,
               const SizedBox(width: 16),
             ],
-            Expanded(child: picker),
+            // Loose flex on the language block: it takes only what it needs
+            // and wraps its own controls instead of overflowing the row.
+            Expanded(flex: 3, child: picker),
             const SizedBox(width: 16),
-            language,
+            Flexible(flex: 2, child: language),
           ],
         ),
         const SizedBox(height: 10),
@@ -661,14 +669,25 @@ class _LanguageControls extends StatelessWidget {
                     ),
             ),
             const SizedBox(width: 6),
-            Text('Определять язык', style: Theme.of(context).textTheme.bodyMedium),
+            // Shrinkable so a narrow window trims the label instead of
+            // overflowing the row.
+            Flexible(
+              child: Text(
+                'Определять язык',
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
             if (settings.detectSourceLanguage && viewModel.detectedLanguage != null) ...[
               const SizedBox(width: 6),
-              Text(
-                '— ${describeSpokenLanguage(viewModel.detectedLanguage!)}',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              Flexible(
+                child: Text(
+                  '— ${describeSpokenLanguage(viewModel.detectedLanguage!)}',
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
               ),
             ],
           ],
