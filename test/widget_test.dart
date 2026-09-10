@@ -6,10 +6,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/app.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
+import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
+import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus, TranscriptEntry;
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view_model.dart';
@@ -214,6 +216,69 @@ void main() {
 
     expect(find.text('Take cover.'), findsOneWidget);
     expect(find.text('900 мс'), findsOneWidget);
+  });
+
+  testWidgets('splits the models screen into recognition, translation and voices', (
+    tester,
+  ) async {
+    final viewModel = buildViewModel()
+      ..initializing = false
+      ..section = DashboardSection.models
+      ..models = [
+        for (final model in modelCatalog) ModelInstallState(model: model),
+      ];
+    await pumpDashboard(tester, viewModel, const Size(1280, 900));
+
+    expect(find.text('РАСПОЗНАВАНИЕ РЕЧИ'), findsOneWidget);
+    expect(find.text('МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА'), findsOneWidget);
+    expect(find.text('Whisper base'), findsOneWidget);
+
+    // The voices sit below the fold of a lazy list.
+    await tester.scrollUntilVisible(find.text('МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'), 400);
+    expect(find.text('МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'), findsOneWidget);
+    expect(viewModel.recognitionModels, hasLength(1));
+    expect(viewModel.translationModels.length, greaterThan(1));
+    expect(viewModel.speechModels.length, greaterThan(1));
+  });
+
+  testWidgets('picks the language by tapping its card in either section', (tester) async {
+    final viewModel = buildViewModel()
+      ..initializing = false
+      ..section = DashboardSection.models
+      ..models = [for (final model in modelCatalog) ModelInstallState(model: model)];
+    await pumpDashboard(tester, viewModel, const Size(1280, 900));
+
+    await tester.tap(find.text('Английский → немецкий'));
+    await tester.pumpAndSettle();
+    expect(viewModel.settings.targetLanguage, 'de');
+
+    await tester.scrollUntilVisible(find.text('Русский голос — Silero v5.3'), 400);
+    await tester.tap(find.text('Русский голос — Silero v5.3'));
+    await tester.pumpAndSettle();
+    expect(viewModel.settings.targetLanguage, 'ru');
+  });
+
+  testWidgets('needs only the pair of the chosen language', (tester) async {
+    final viewModel = buildViewModel()..initializing = false;
+    viewModel.models = [
+      for (final model in modelCatalog)
+        ModelInstallState(
+          model: model,
+          installed: model.language == null || model.language == 'ru',
+        ),
+    ];
+    await pumpDashboard(tester, viewModel, const Size(1280, 720));
+
+    expect(viewModel.settings.targetLanguage, 'ru');
+    expect(viewModel.requiredModelsInstalled, isTrue);
+
+    await viewModel.selectTargetLanguage('de');
+
+    expect(
+      viewModel.requiredModelsInstalled,
+      isFalse,
+      reason: 'the German pair has not been downloaded',
+    );
   });
 
   testWidgets('saves a model download proxy from settings', (tester) async {

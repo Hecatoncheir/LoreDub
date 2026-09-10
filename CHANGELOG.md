@@ -35,6 +35,10 @@ All notable changes to LoreDub are documented in this file.
   a silent decision.
 - Fixed synthesized audio being left in the work directory when the pipeline was stopped
   while a phrase was still being voiced.
+- Added German, Spanish, French and Ukrainian alongside Russian, and grouped the models
+  screen into recognition, translation and voices. Whisper stays on its own at the top:
+  recognition needs nothing else. Choosing a language selects its translator and voice
+  together, and only that pair has to be downloaded.
 
 ## [0.2.1] - 2026-09-10
 

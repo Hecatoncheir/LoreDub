@@ -123,6 +123,10 @@ def main():
     report_progress(0.90, "Загрузка синтеза речи")
     tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
     tts.to(torch.device("cpu"))
+    # Every Silero language ships its own voices. Falling back keeps an
+    # unknown name from turning the whole language into a runtime error.
+    voices = list(getattr(tts, "speakers", None) or [])
+    speaker = args.speaker if args.speaker in voices else (voices[0] if voices else args.speaker)
     pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
     reply({"type": "ready"})
 
@@ -146,7 +150,7 @@ def main():
             translated = tokenizer.batch_decode(generated, skip_special_tokens=True)[0].strip()
             audio = tts.apply_tts(
                 text=translated,
-                speaker=args.speaker,
+                speaker=speaker,
                 sample_rate=args.sample_rate,
                 put_accent=True,
                 put_yo=True,

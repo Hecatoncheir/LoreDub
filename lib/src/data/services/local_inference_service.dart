@@ -123,7 +123,10 @@ class LocalInferenceService {
 
   Future<void> start({
     required String translationModel,
+
+    /// Full path to the Silero model file: its name differs per language.
     required String ttsModel,
+    required String speaker,
     required int threads,
     required double speed,
     required String pythonExecutable,
@@ -153,7 +156,9 @@ class LocalInferenceService {
         '--translation-model',
         translationModel,
         '--tts-model',
-        path.join(ttsModel, 'v5_3_ru.pt'),
+        ttsModel,
+        '--speaker',
+        speaker,
         '--work-directory',
         work.path,
         '--threads',

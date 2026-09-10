@@ -62,8 +62,9 @@ class NativeEngineService {
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
     await _inference.start(
-      translationModel: models['bergamot-en-ru']!,
-      ttsModel: models['silero-ru-v5.3']!,
+      translationModel: models['translation']!,
+      ttsModel: models['speech']!,
+      speaker: config['speaker']! as String,
       threads: config['cpuThreads']! as int,
       speed: config['ttsSpeed']! as double,
       pythonExecutable: config['pythonExecutable']! as String,
@@ -143,7 +144,7 @@ class NativeEngineService {
       final models = config['models']! as Map<String, String>;
       final result = await _inference.processSegment(
         wavePath: wavePath,
-        whisperModel: models['whisper-base']!,
+        whisperModel: models['whisper']!,
         threads: config['cpuThreads']! as int,
       );
       _publishSpokenLanguage();

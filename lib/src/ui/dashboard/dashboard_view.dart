@@ -830,32 +830,103 @@ class _ModelsPanel extends StatelessWidget {
   final DashboardViewModel viewModel;
 
   @override
-  Widget build(BuildContext context) => ListView.separated(
-    padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
-    itemCount: viewModel.models.length,
-    separatorBuilder: (_, _) => const SizedBox(height: 12),
-    itemBuilder: (context, index) => _ModelCard(
-      state: viewModel.models[index],
-      onInstall: () => viewModel.installModel(viewModel.models[index]),
-    ),
+  Widget build(BuildContext context) {
+    final selected = viewModel.settings.targetLanguage;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
+      children: [
+        const _ModuleLabel(number: '01', label: 'РАСПОЗНАВАНИЕ РЕЧИ'),
+        const SizedBox(height: 4),
+        const _SectionNote(
+          'Whisper переводит речь любого языка в английский текст. '
+          'Больше для распознавания ничего скачивать не нужно.',
+        ),
+        for (final state in viewModel.recognitionModels) ...[
+          const SizedBox(height: 12),
+          _ModelCard(state: state, onInstall: () => viewModel.installModel(state)),
+        ],
+        const SizedBox(height: 26),
+        const _ModuleLabel(number: '02', label: 'МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА'),
+        const SizedBox(height: 4),
+        const _SectionNote('Английский текст переводится на выбранный язык.'),
+        for (final state in viewModel.translationModels) ...[
+          const SizedBox(height: 12),
+          _ModelCard(
+            state: state,
+            onInstall: () => viewModel.installModel(state),
+            language: state.model.language,
+            selected: state.model.language == selected,
+            onSelect: viewModel.running
+                ? null
+                : () => viewModel.selectTargetLanguage(state.model.language!),
+          ),
+        ],
+        const SizedBox(height: 26),
+        const _ModuleLabel(number: '03', label: 'МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'),
+        const SizedBox(height: 4),
+        const _SectionNote('Голос должен быть того же языка, что и перевод.'),
+        for (final state in viewModel.speechModels) ...[
+          const SizedBox(height: 12),
+          _ModelCard(
+            state: state,
+            onInstall: () => viewModel.installModel(state),
+            language: state.model.language,
+            selected: state.model.language == selected,
+            onSelect: viewModel.running
+                ? null
+                : () => viewModel.selectTargetLanguage(state.model.language!),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SectionNote extends StatelessWidget {
+  const _SectionNote(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 2, bottom: 2),
+    child: Text(text, style: Theme.of(context).textTheme.bodySmall),
   );
 }
 
 class _ModelCard extends StatelessWidget {
-  const _ModelCard({required this.state, required this.onInstall});
+  const _ModelCard({
+    required this.state,
+    required this.onInstall,
+    this.language,
+    this.selected = false,
+    this.onSelect,
+  });
 
   final ModelInstallState state;
   final VoidCallback onInstall;
+
+  /// Set for the packages that come per language, which the player chooses
+  /// between; null for Whisper, which serves all of them.
+  final String? language;
+  final bool selected;
+  final VoidCallback? onSelect;
 
   @override
   Widget build(BuildContext context) {
     final details = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          state.installed ? Icons.check_circle_rounded : Icons.memory_rounded,
-          color: state.installed ? LoreDubPalette.success : LoreDubPalette.mutedInk,
-        ),
+        if (language != null)
+          Icon(
+            selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+            color: selected ? LoreDubPalette.orange : LoreDubPalette.outline,
+          )
+        else
+          Icon(
+            state.installed ? Icons.check_circle_rounded : Icons.memory_rounded,
+            color: state.installed ? LoreDubPalette.success : LoreDubPalette.mutedInk,
+          ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
@@ -893,31 +964,39 @@ class _ModelCard extends StatelessWidget {
       icon: Icon(state.installed ? Icons.check_rounded : Icons.download_rounded),
       label: Text(state.installed ? 'Установлена' : 'Скачать'),
     );
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth < 600) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  details,
-                  const SizedBox(height: 16),
-                  Align(alignment: Alignment.centerRight, child: action),
-                ],
-              );
-            }
-            return Row(
+    final body = Padding(
+      padding: const EdgeInsets.all(20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 600) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: details),
-                const SizedBox(width: 20),
-                action,
+                details,
+                const SizedBox(height: 16),
+                Align(alignment: Alignment.centerRight, child: action),
               ],
             );
-          },
-        ),
+          }
+          return Row(
+            children: [
+              Expanded(child: details),
+              const SizedBox(width: 20),
+              action,
+            ],
+          );
+        },
       ),
+    );
+    return Card(
+      // The whole card picks the language, not just the small indicator.
+      child: onSelect == null
+          ? body
+          : InkWell(
+              onTap: onSelect,
+              borderRadius: BorderRadius.circular(12),
+              child: body,
+            ),
     );
   }
 }

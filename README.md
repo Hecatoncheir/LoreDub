@@ -13,15 +13,15 @@
 
 LoreDub is a Windows-first, fully local game voice-over companion. It captures
 only the selected game's process tree, turns speech into English, translates it
-to Russian, and speaks the result over the current default audio output while
-keeping the original game session quiet.
+into the language you pick, and speaks the result over the current default audio
+output while keeping the original game session quiet.
 
 ```text
 Game process (WASAPI process loopback, 16 kHz mono)
   -> energy VAD and phrase endpointing
   -> whisper.cpp base --translate
-  -> Helsinki-NLP Marian English -> Russian
-  -> Silero TTS v5.3 Russian
+  -> Helsinki-NLP Marian English -> chosen language
+  -> Silero TTS in that language
   -> default Windows output
 ```
 
@@ -46,9 +46,16 @@ tokens are documented in [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 ## Windows release status
 
 The audio mode is wired end to end. The setup contains pinned `whisper.cpp`
-v1.8.2 binaries and an embedded Python CPU runtime for Marian and Silero. At the
-first launch, install all three model cards, choose a running game process, and
-press **Start**.
+v1.8.2 binaries and an embedded Python CPU runtime for Marian and Silero.
+
+**Модели** groups the downloads the way the pipeline uses them. Whisper stands
+alone at the top: it turns speech in any language into English, and recognition
+needs nothing else. Below it sit the translators and the voices, one of each per
+language — Russian, German, Spanish, French and Ukrainian. Picking a language in
+either section selects both halves of the pair, because a translation read by a
+voice for another language would be gibberish, and only that pair has to be
+downloaded. At the first launch install Whisper and one pair, choose a running
+game process, and press **Start**.
 
 The first pipeline start can take one or two minutes while Marian and Silero are
 loaded. Recognition, translation and synthesis are then serialized so a small
@@ -71,7 +78,7 @@ Choose how much of the lower game window to scan in Settings. English OCR must
 be installed in Windows; the app reports a direct error when that language pack
 is missing. Scanning runs only while the selected game is the foreground window,
 which prevents other windows from being mistaken for subtitles. Exclusive-fullscreen or minimized windows cannot be read through
-the lightweight GDI capture path. Only Russian output is packaged at the moment.
+the lightweight GDI capture path.
 
 ## Planned
 
@@ -86,8 +93,9 @@ the lightweight GDI capture path. Only Russian output is packaged at the moment.
   and is not worth the complexity.
 - **Subtitle overlay.** `AppSettings.showOverlay` is persisted but nothing
   reads it yet; the intent is to draw the translated lines over the game.
-- **More target languages.** `AppSettings.targetLanguage` is likewise a
-  placeholder: only the Russian Marian and Silero pair is packaged.
+- **Voice choice within a language.** Each Silero package ships several
+  speakers and LoreDub uses the first one the catalogue names, falling back to
+  whatever the model actually provides.
 
 ## Requirements
 
@@ -146,10 +154,10 @@ flutter run -d windows
 ## Model integrity
 
 Downloads are streamed to temporary files and moved atomically only after size
-and, when supplied upstream, digest validation. The Whisper base and large
-Marian weights have pinned SHA-256 values. Smaller Marian metadata files are
-size-checked. The Silero host does not currently publish a digest or stable
-content length, so Dart validates that download by successful completion.
+and, when supplied upstream, digest validation. Every artifact in the catalogue
+has a pinned byte size, measured against the host. The Whisper weights and the
+Russian Marian weights additionally carry pinned SHA-256 values; the weights of
+the other languages are size-checked only.
 
 An optional HTTP or SOCKS5 proxy for model downloads can be configured in
 **Settings → Model downloads**. Both `host:port` and authenticated

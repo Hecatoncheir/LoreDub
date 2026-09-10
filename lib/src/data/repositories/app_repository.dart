@@ -24,13 +24,18 @@ class AppRepository {
   Future<void> saveSettings(AppSettings settings) => _settingsService.save(settings);
   Future<List<GameProcess>> listProcesses() => _nativeEngine.listProcesses();
 
+  /// [modelDirectories] carries the three paths the pipeline needs for the
+  /// chosen language: `whisper` and `translation` directories, and the
+  /// `speech` model file. [speaker] is the voice of that speech model.
   Future<void> start({
     required GameProcess? process,
     required AppSettings settings,
     required Map<String, String> modelDirectories,
+    required String speaker,
   }) async {
     try {
       await _nativeEngine.start({
+        'speaker': speaker,
         'processId': process?.pid ?? 0,
         'captureMode': settings.captureMode.name,
         'audioSource': settings.audioCaptureSource.name,

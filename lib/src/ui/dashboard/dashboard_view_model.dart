@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as path;
 
 import '../../data/repositories/app_repository.dart';
 import '../../data/repositories/model_repository.dart';
@@ -40,14 +41,35 @@ class DashboardViewModel extends ChangeNotifier {
   String? error;
   String modelDirectoryPath = '';
 
-  bool get requiredModelsInstalled =>
-      models.isNotEmpty &&
-      models.every((state) {
-        if (settings.captureMode == CaptureMode.ocr && state.model.id == 'whisper-base') {
-          return true;
-        }
-        return state.installed;
-      });
+  /// Whisper is language-independent and OCR mode does without it entirely.
+  List<ModelInstallState> get recognitionModels => _modelsOfKind(ModelKind.recognition);
+
+  List<ModelInstallState> get translationModels => _modelsOfKind(ModelKind.translation);
+
+  List<ModelInstallState> get speechModels => _modelsOfKind(ModelKind.speech);
+
+  List<ModelInstallState> _modelsOfKind(ModelKind kind) =>
+      models.where((state) => state.model.kind == kind).toList();
+
+  ModelInstallState? _selected(ModelKind kind) {
+    for (final state in models) {
+      if (state.model.kind == kind && state.model.language == settings.targetLanguage) {
+        return state;
+      }
+    }
+    return null;
+  }
+
+  /// Only the pair for the chosen language has to be present, not the whole
+  /// catalogue: a player dubbing into Russian owes nothing to the French voice.
+  bool get requiredModelsInstalled {
+    if (models.isEmpty) return false;
+    final needsWhisper = settings.captureMode != CaptureMode.ocr;
+    if (needsWhisper && !(recognitionModels.firstOrNull?.installed ?? false)) return false;
+    return (_selected(ModelKind.translation)?.installed ?? false) &&
+        (_selected(ModelKind.speech)?.installed ?? false);
+  }
+
   bool get canStart =>
       !initializing &&
       status == PipelineStatus.idle &&
@@ -180,16 +202,18 @@ class DashboardViewModel extends ChangeNotifier {
     detectedLanguage = null;
     notifyListeners();
     try {
-      final directories = <String, String>{};
-      for (final state in models) {
-        directories[state.model.id] = await _modelRepository.directoryFor(
-          state.model,
-        );
-      }
+      final translation = _selected(ModelKind.translation)!.model;
+      final speech = _selected(ModelKind.speech)!.model;
+      final speechDirectory = await _modelRepository.directoryFor(speech);
       await _appRepository.start(
         process: _requiresProcess ? selectedProcess : null,
         settings: settings,
-        modelDirectories: directories,
+        modelDirectories: {
+          'whisper': await _modelRepository.directoryFor(recognitionModels.first.model),
+          'translation': await _modelRepository.directoryFor(translation),
+          'speech': path.join(speechDirectory, speech.primaryFileName),
+        },
+        speaker: speech.speaker ?? '',
       );
     } catch (exception) {
       status = PipelineStatus.error;
@@ -197,6 +221,11 @@ class DashboardViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Choosing the language picks both the translator and the voice: text in
+  /// one language read by a voice for another would be gibberish.
+  Future<void> selectTargetLanguage(String language) =>
+      updateSettings(settings.copyWith(targetLanguage: language));
 
   Future<void> openModelDirectory() async {
     error = null;
