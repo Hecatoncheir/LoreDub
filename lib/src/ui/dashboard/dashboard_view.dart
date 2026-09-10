@@ -670,10 +670,13 @@ class _LanguageRow extends StatelessWidget {
   final Widget field;
   final Widget action;
 
-  /// Rendered under the field rather than inside it: as the decoration's
-  /// helper text it would add to the field's height and drop the action
-  /// below the field it belongs to.
+  /// Rendered under the action's label, and outside the row: inside either
+  /// of them it would add height and drop the action below its field.
   final String? note;
+
+  /// Material switch plus the gap before its label, so the note starts under
+  /// the label rather than under the switch.
+  static const double _switchLead = 58;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -690,9 +693,9 @@ class _LanguageRow extends StatelessWidget {
       ),
       if (note case final text?)
         Padding(
-          padding: const EdgeInsets.only(top: 4, left: 12),
+          padding: const EdgeInsets.only(top: 4, left: fieldWidth + 12 + _switchLead),
           child: SizedBox(
-            width: fieldWidth,
+            width: actionWidth - _switchLead,
             child: Text(
               text,
               overflow: TextOverflow.ellipsis,
