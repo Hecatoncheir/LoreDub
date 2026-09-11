@@ -4,6 +4,8 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-11
+
 - Added a drawn subtitle area: in subtitle mode Settings show a scaled-down screen shaped like
   the monitor, on which the player drags, moves and resizes the frame OCR reads, instead of
   choosing only the height of a full-width band at the bottom of the window.
