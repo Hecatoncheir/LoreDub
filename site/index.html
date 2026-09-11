@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="LoreDub — локальный перевод и озвучка игр в реальном времени для Windows. Без облака, аккаунта и телеметрии."
+    />
+    <meta name="theme-color" content="#e8e5de" />
+    <meta property="og:title" content="LoreDub — игры говорят на вашем языке" />
+    <meta
+      property="og:description"
+      content="Распознаёт, переводит и озвучивает игру прямо на вашем компьютере."
+    />
+    <meta property="og:image" content="assets/branding/loredub-icon.png" />
+    <title>LoreDub — локальная озвучка игр</title>
+    <link rel="icon" href="assets/branding/loredub-icon.png" />
+    <link rel="preload" href="assets/fonts/Nunito-700.ttf" as="font" type="font/ttf" crossorigin />
+    <link
+      rel="preload"
+      href="assets/fonts/NunitoSans-400.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Перейти к содержанию</a>
+
+    <header class="site-header" data-header>
+      <a class="brand" href="#top" aria-label="LoreDub — на главную">
+        <img src="assets/branding/loredub-icon.png" width="44" height="44" alt="" />
+        <span><strong>LoreDub</strong><small>VOICE UNIT 01</small></span>
+      </a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a href="#how">Как работает</a>
+        <a href="#features">Возможности</a>
+        <a href="#interface">Интерфейс</a>
+      </nav>
+      <a class="button button--compact button--dark" href="https://github.com/Hecatoncheir/LoreDub" aria-label="Открыть исходный код LoreDub на GitHub">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.17-1.11-1.48-1.11-1.48-.91-.63.07-.62.07-.62 1 .08 1.53 1.04 1.53 1.04.9 1.55 2.35 1.1 2.92.84.09-.66.35-1.1.64-1.36-2.22-.26-4.56-1.12-4.56-4.95 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.28.1-2.65 0 0 .84-.27 2.75 1.03A9.4 9.4 0 0 1 12 6.74a9.4 9.4 0 0 1 2.5.34c1.91-1.3 2.75-1.03 2.75-1.03.55 1.37.2 2.4.1 2.65.64.7 1.03 1.6 1.03 2.69 0 3.84-2.34 4.69-4.57 4.94.36.31.68.93.68 1.88v2.8c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+        GitHub
+      </a>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero__copy reveal">
+          <p class="eyebrow"><span class="signal-dot"></span> WINDOWS · LOCAL PROCESSING</p>
+          <h1>Игры говорят<br /><em>на вашем языке.</em></h1>
+          <p class="hero__lead">
+            LoreDub слышит выбранную игру, переводит реплики и озвучивает их — прямо во время
+            игры. Аудио и текст никогда не покидают ваш компьютер.
+          </p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="https://github.com/Hecatoncheir/LoreDub/releases/latest">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14"/></svg>
+              Скачать для Windows
+            </a>
+            <a class="text-link" href="#how">Посмотреть, как это работает <span>↓</span></a>
+          </div>
+          <ul class="hero__facts" aria-label="Ключевые свойства">
+            <li><b>100%</b><span>локально</span></li>
+            <li><b>5</b><span>языков</span></li>
+            <li><b>0 ₽</b><span>навсегда</span></li>
+          </ul>
+        </div>
+
+        <div class="hero__instrument reveal" aria-label="Схема голосового тракта LoreDub">
+          <div class="instrument-top"><span>LD–01</span><span>REALTIME VOICE PROCESSOR</span></div>
+          <div class="instrument-screen">
+            <div class="screen-labels"><span>INPUT / EN</span><span>OUTPUT / RU</span></div>
+            <div class="waveform" aria-hidden="true">
+              <div class="waveform__half waveform__half--in">
+                <i style="--h: 18%"></i><i style="--h: 36%"></i><i style="--h: 58%"></i><i style="--h: 82%"></i><i style="--h: 50%"></i>
+              </div>
+              <svg viewBox="0 0 64 36"><path d="M2 18h19c8 0 9-9 18-9v18c-9 0-10-9-18-9H2Z"/></svg>
+              <div class="waveform__half waveform__half--out">
+                <i style="--h: 52%"></i><i style="--h: 88%"></i><i style="--h: 62%"></i><i style="--h: 28%"></i>
+              </div>
+            </div>
+            <div class="screen-copy">
+              <span>That armor will not stop an arrow.</span>
+              <strong>Эта броня не остановит стрелу.</strong>
+            </div>
+          </div>
+          <div class="instrument-controls">
+            <div class="speaker" aria-hidden="true"></div>
+            <div class="dial-wrap"><span>VOICE</span><div class="dial"><i></i></div></div>
+            <div class="latency"><span>LATENCY</span><strong>1.6</strong><small>SEC</small></div>
+            <button class="hardware-button" type="button" data-demo-button aria-pressed="true">
+              <span class="hardware-button__light"></span><b>LIVE</b><small>нажмите</small>
+            </button>
+          </div>
+          <div class="instrument-screws" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        </div>
+      </section>
+
+      <section class="marquee" aria-label="Основные преимущества">
+        <div>
+          <span>БЕЗ ОБЛАКА</span><i></i><span>БЕЗ АККАУНТА</span><i></i><span>БЕЗ ТЕЛЕМЕТРИИ</span><i></i><span>ОТКРЫТЫЙ КОД</span><i></i>
+          <span aria-hidden="true">БЕЗ ОБЛАКА</span><i aria-hidden="true"></i><span aria-hidden="true">БЕЗ АККАУНТА</span><i aria-hidden="true"></i><span aria-hidden="true">БЕЗ ТЕЛЕМЕТРИИ</span><i aria-hidden="true"></i><span aria-hidden="true">ОТКРЫТЫЙ КОД</span><i aria-hidden="true"></i>
+        </div>
+      </section>
+
+      <section class="section signal-section" id="how">
+        <div class="section-heading reveal">
+          <p class="eyebrow">01 / SIGNAL FLOW</p>
+          <h2>От реплики до голоса.<br />За несколько мгновений.</h2>
+          <p>Четыре этапа работают последовательно и полностью на вашем устройстве.</p>
+        </div>
+        <ol class="signal-path">
+          <li class="signal-card reveal"><span>01</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 10v4m4-7v10m4-7v4M4 12h1m14 0h1"/></svg><h3>Слушает</h3><p>Захватывает только звук выбранной игры, не Discord или браузер.</p></li>
+          <li class="signal-card reveal"><span>02</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h9v12H5zM9 20h10V8h-2M8 8h3M8 11h3"/></svg><h3>Распознаёт</h3><p>Whisper превращает речь в текст и определяет язык оригинала.</p></li>
+          <li class="signal-card reveal"><span>03</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h10M9 3v2m3 0c-1 5-4 8-8 10m2-6c2 3 5 5 8 6m2-4 4 10m-6 0 4-10"/></svg><h3>Переводит</h3><p>Локальная модель переводит реплику на выбранный язык.</p></li>
+          <li class="signal-card signal-card--active reveal"><span>04</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 10v4m4-7v10m4-13v16m4-11v6m4-3v0"/></svg><h3>Озвучивает</h3><p>Синтезатор подбирает голос и воспроизводит перевод поверх игры.</p></li>
+        </ol>
+      </section>
+
+      <section class="section features" id="features">
+        <div class="section-heading section-heading--row reveal">
+          <div><p class="eyebrow">02 / CAPABILITIES</p><h2>Всё нужное.<br />Ничего лишнего.</h2></div>
+          <p>Настройте один раз — дальше LoreDub остаётся незаметным напарником в каждой игре.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature feature--wide feature--dark reveal">
+            <div class="feature__copy"><span>PRIVATE BY DESIGN</span><h3>Ваши слова остаются вашими.</h3><p>Распознавание, перевод и голос работают локально. Интернет нужен только для первой загрузки моделей.</p></div>
+            <div class="privacy-viz" aria-hidden="true"><span>GAME</span><i></i><strong>YOUR PC</strong><i></i><span>VOICE</span></div>
+          </article>
+          <article class="feature reveal">
+            <span>VOICE MATCH</span><h3>Голос к лицу</h3><p>Автоматический выбор мужского или женского голоса для каждой реплики.</p>
+            <div class="mini-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </article>
+          <article class="feature feature--orange reveal">
+            <span>5 LANGUAGES</span><h3>Один клик до понимания</h3><p>Русский, немецкий, испанский, французский и украинский.</p>
+            <div class="language-wheel" aria-hidden="true"><b>RU</b><span>DE</span><span>ES</span><span>FR</span><span>UA</span></div>
+          </article>
+          <article class="feature reveal">
+            <span>SUBTITLE MODE</span><h3>Читает даже тишину</h3><p>Выделите область с субтитрами — LoreDub распознает текст на экране и озвучит его.</p>
+            <div class="scan-frame" aria-hidden="true"><i></i><span>OCR ACTIVE</span></div>
+          </article>
+          <article class="feature feature--wide reveal">
+            <div class="feature__copy"><span>CPU + GPU</span><h3>Работает на том, что есть.</h3><p>NVIDIA ускоряет обработку, AMD и Intel поддерживаются через Vulkan, а для старта достаточно процессора.</p></div>
+            <div class="device-meter" aria-hidden="true"><span>CPU</span><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>GPU</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section interface" id="interface">
+        <div class="section-heading section-heading--center reveal">
+          <p class="eyebrow">03 / INTERFACE</p>
+          <h2>Инструмент, а не пульт управления.</h2>
+          <p>Чёткий сигнал, понятные состояния и одна главная кнопка.</p>
+        </div>
+        <div class="app-frame reveal">
+          <div class="app-frame__bar"><i></i><span>LOREDUB · LIVE VOICE</span><b>LOCAL</b></div>
+          <img src="assets/screenshots/live-ru.png" width="1400" height="920" loading="lazy" alt="Главный экран LoreDub с выбором игры и переведёнными репликами" />
+        </div>
+      </section>
+
+      <section class="section requirements">
+        <div class="requirements__panel reveal">
+          <div><p class="eyebrow">SYSTEM CHECK</p><h2>Готовы попробовать?</h2><p>Windows 10 (build 20348+) или Windows 11 · x64 · около 2 ГБ на runtime и модели.</p></div>
+          <a class="button button--primary" href="https://github.com/Hecatoncheir/LoreDub/releases/latest">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14"/></svg>
+            Скачать LoreDub
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="brand"><img src="assets/branding/loredub-icon.png" width="52" height="52" alt="" /><span><strong>LoreDub</strong><small>VOICE UNIT 01</small></span></div>
+      <p>Свободное ПО с открытым исходным кодом.<br />Создано для игр, которые хочется услышать.</p>
+      <div class="footer-links"><a href="https://github.com/Hecatoncheir/LoreDub">GitHub</a><a href="https://github.com/Hecatoncheir/LoreDub/blob/main/README.en.md">English</a><a href="https://github.com/Hecatoncheir/LoreDub/blob/main/LICENSE">MIT License</a></div>
+    </footer>
+  </body>
+</html>

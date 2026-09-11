@@ -1,0 +1,48 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "site/**"
+      - "assets/branding/**"
+      - "assets/fonts/**"
+      - "docs/screenshots/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/configure-pages@v5
+      - name: Assemble static site
+        run: |
+          mkdir -p _site/assets/branding _site/assets/fonts _site/assets/screenshots
+          cp site/index.html site/styles.css site/script.js _site/
+          cp assets/branding/loredub-icon.png _site/assets/branding/
+          cp assets/fonts/Nunito-700.ttf _site/assets/fonts/
+          cp assets/fonts/NunitoSans-400.ttf assets/fonts/NunitoSans-600.ttf _site/assets/fonts/
+          cp assets/fonts/JetBrainsMono-500.ttf _site/assets/fonts/
+          cp docs/screenshots/live-ru.png _site/assets/screenshots/
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
