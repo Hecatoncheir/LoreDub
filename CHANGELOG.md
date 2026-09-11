@@ -4,6 +4,8 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-09-11
+
 - Fixed the process list covering the search field in a short window: with dozens of processes
   the menu slid up over what was being typed. It is now held to the room under the field.
 
