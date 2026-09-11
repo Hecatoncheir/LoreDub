@@ -5,11 +5,12 @@ import 'model_package.dart';
 
 /// How a GPU runtime gets onto the machine.
 ///
-/// The two heavy runtimes cannot be shipped the same way. The whisper.cpp
-/// cuBLAS build is a signed release archive, so it is downloaded and unpacked
-/// like a model. CUDA torch is a set of wheels that only pip can resolve for
-/// the interpreter in use, so it is installed rather than copied.
-enum RuntimeInstallKind { archive, pip }
+/// The whisper.cpp cuBLAS build is a signed release archive, so it is
+/// downloaded and unpacked like a model. CUDA torch is one large wheel plus a
+/// few small dependencies: [wheel] fetches the wheel with the model
+/// downloader and has pip install the local file, while [pip] leaves the
+/// whole thing to pip resolving from an index.
+enum RuntimeInstallKind { archive, pip, wheel }
 
 /// A GPU runtime the application fetches on demand.
 ///
@@ -23,6 +24,7 @@ class RuntimePackage {
     this.artifacts = const [],
     this.pipArguments = const [],
     this.probeFileName,
+    this.wheelPython,
   });
 
   final String id;
@@ -41,6 +43,10 @@ class RuntimePackage {
   /// A file that proves the unpack or install finished, relative to the
   /// package directory. Size alone cannot answer that for an archive.
   final String? probeFileName;
+
+  /// The interpreter tag the [wheel] kind's wheel was built for, `cp311`.
+  /// Any other interpreter falls back to [pipArguments].
+  final String? wheelPython;
 }
 
 class RuntimeInstallState {
@@ -57,7 +63,7 @@ class RuntimeInstallState {
   final double? progress;
 
   /// Stopped part way with the partial file kept, so asking again resumes.
-  /// Only the archive runtimes can reach this: pip has no half-way point.
+  /// A runtime left wholly to pip cannot reach this: pip has no half-way point.
   final bool paused;
 
   /// Why the install failed, as raised; written out by the interface.
@@ -67,7 +73,7 @@ class RuntimeInstallState {
   bool get stoppable => progress != null;
 
   /// Whether stopping this one could be resumed later.
-  bool get pausable => package.kind == RuntimeInstallKind.archive;
+  bool get pausable => package.kind != RuntimeInstallKind.pip;
 
   RuntimeInstallState copyWith({
     bool? installed,

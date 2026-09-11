@@ -1083,6 +1083,12 @@ abstract class AppLocalizations {
   /// **'Сервер вернул {detail}'**
   String failureDownloadRejected(String detail);
 
+  /// No description provided for @failureDownloadStalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка {detail} встала: данные перестали приходить и после нескольких переподключений. Нажмите «Скачать» ещё раз — уже скачанное сохранится.'**
+  String failureDownloadStalled(String detail);
+
   /// No description provided for @failureVerificationFailed.
   ///
   /// In ru, this message translates to:

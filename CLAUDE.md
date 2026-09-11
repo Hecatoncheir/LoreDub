@@ -138,15 +138,22 @@ of the same name compiled against different backends.
 `<app support>/runtime/<id>/`: archives are downloaded, unpacked in an isolate
 and flattened to the probe file, while CUDA torch is installed by pip into its
 own directory and put on the worker's import path via `--extra-packages`.
+CUDA torch is a `RuntimeInstallKind.wheel`: when the interpreter's tag matches
+`wheelPython` (`cp311`), the 2.7 GB wheel comes through the shared downloader
+into `runtime/.downloads/<id>/` and pip only installs that local file plus its
+small dependencies; any other interpreter falls back to `pipArguments`, where
+pip resolves torch from the index itself.
 It shares the download loop with the model store through
 `artifact_downloader.dart`, which streams to a `.part` file and resumes it
 with a range request rather than refetching; a 200 to a ranged request, a 416,
-or a part that fails verification all fall back to starting over. A
-`DownloadControl` passed in lets the interface pause (keep the part) or
+or a part that fails verification all fall back to starting over. A response
+that delivers nothing for `stallTimeout` is taken for stalled and reconnected
+with a range, up to `stallRetries` times, before `FailureCode.downloadStalled`.
+A `DownloadControl` passed in lets the interface pause (keep the part) or
 cancel (delete it); the loop checks it between chunks and returns a
 `DownloadOutcome` rather than throwing, because a stop the user asked for is
-not a failure. The pip runtime has no half-way point, so it only honours a
-cancel, by killing the process and clearing the target directory.
+not a failure. pip itself has no half-way point: a stop kills it and clears
+the target directory, and the pip-only route offers nothing but a cancel.
 
 `ModelStorageService` downloads the three model packages listed in
 `model_catalog.dart` to `<app support>/models/<id>/`, streaming to a temp file

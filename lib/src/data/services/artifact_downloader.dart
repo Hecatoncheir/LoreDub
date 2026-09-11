@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
@@ -30,6 +31,14 @@ Future<DownloadOutcome> downloadArtifacts(
   required http.Client client,
   required DownloadProgress onProgress,
   DownloadControl? control,
+
+  /// How long a response may go without delivering a byte before it counts
+  /// as stalled. A stalled connection does not always close, and waiting on
+  /// it is how a download could sit at the same percentage for an hour.
+  Duration stallTimeout = const Duration(seconds: 60),
+
+  /// How many times a stalled download reconnects before it gives up.
+  int stallRetries = 5,
 }) async {
   await directory.create(recursive: true);
   final knownTotal = artifacts.fold<int>(0, (sum, artifact) => sum + (artifact.byteSize ?? 0));
@@ -44,34 +53,50 @@ Future<DownloadOutcome> downloadArtifacts(
     if (control?.requestedStop case final stop?) {
       return _stopped(stop, partial);
     }
-    final resumed = await _openStream(client, artifact, partial);
-    final response = resumed.response;
-    final sink = partial.openWrite(
-      mode: resumed.offset > 0 ? FileMode.writeOnlyAppend : FileMode.writeOnly,
-    );
-    var artifactBytes = resumed.offset;
+    var artifactBytes = 0;
     DownloadOutcome? stopped;
-    try {
-      await for (final chunk in response.stream) {
-        // Checked between chunks so a stop lands within a few hundred
-        // kilobytes rather than at the end of a half-gigabyte file.
+    for (var stalls = 0; ; stalls++) {
+      try {
+        final resumed = await _openStream(client, artifact, partial, stallTimeout);
+        final response = resumed.response;
+        final sink = partial.openWrite(
+          mode: resumed.offset > 0 ? FileMode.writeOnlyAppend : FileMode.writeOnly,
+        );
+        artifactBytes = resumed.offset;
+        try {
+          await for (final chunk in response.stream.timeout(stallTimeout)) {
+            // Checked between chunks so a stop lands within a few hundred
+            // kilobytes rather than at the end of a half-gigabyte file.
+            if (control?.requestedStop case final stop?) {
+              stopped = stop;
+              break;
+            }
+            sink.add(chunk);
+            artifactBytes += chunk.length;
+            final responseTotal = response.contentLength;
+            if (knownTotal > 0) {
+              onProgress(((completed + artifactBytes) / knownTotal).clamp(0, 1));
+            } else if (responseTotal != null && responseTotal > 0) {
+              onProgress(((artifactBytes) / (responseTotal + resumed.offset)).clamp(0, 1));
+            } else {
+              onProgress(0);
+            }
+          }
+        } finally {
+          await sink.close();
+        }
+        break;
+      } on TimeoutException {
+        // The connection went quiet without closing. What arrived is on
+        // disk, so a fresh request picks up from there with a range.
         if (control?.requestedStop case final stop?) {
           stopped = stop;
           break;
         }
-        sink.add(chunk);
-        artifactBytes += chunk.length;
-        final responseTotal = response.contentLength;
-        if (knownTotal > 0) {
-          onProgress(((completed + artifactBytes) / knownTotal).clamp(0, 1));
-        } else if (responseTotal != null && responseTotal > 0) {
-          onProgress(((artifactBytes) / (responseTotal + resumed.offset)).clamp(0, 1));
-        } else {
-          onProgress(0);
+        if (stalls >= stallRetries) {
+          throw LoreDubFailure(FailureCode.downloadStalled, detail: artifact.fileName);
         }
       }
-    } finally {
-      await sink.close();
     }
     if (stopped != null) return _stopped(stopped, partial);
     if (!await verifyArtifact(partial, artifact)) {
@@ -109,16 +134,17 @@ Future<_ResumedDownload> _openStream(
   http.Client client,
   ModelArtifact artifact,
   File partial,
+  Duration stallTimeout,
 ) async {
   var offset = await _resumeOffset(partial, artifact);
-  var response = await _send(client, artifact.url, offset);
+  var response = await _send(client, artifact.url, offset, stallTimeout);
 
   // The server no longer recognizes the range: the file changed, or what is
   // on disk is longer than it. Either way the part is worthless.
   if (response.statusCode == HttpStatus.requestedRangeNotSatisfiable && offset > 0) {
     await partial.delete();
     offset = 0;
-    response = await _send(client, artifact.url, 0);
+    response = await _send(client, artifact.url, 0, stallTimeout);
   }
 
   if (response.statusCode == HttpStatus.partialContent) {
@@ -135,10 +161,16 @@ Future<_ResumedDownload> _openStream(
   return _ResumedDownload(response, 0);
 }
 
-Future<http.StreamedResponse> _send(http.Client client, Uri url, int offset) {
+/// A server that never answers stalls as surely as one that stops sending.
+Future<http.StreamedResponse> _send(
+  http.Client client,
+  Uri url,
+  int offset,
+  Duration stallTimeout,
+) {
   final request = http.Request('GET', url);
   if (offset > 0) request.headers[HttpHeaders.rangeHeader] = 'bytes=$offset-';
-  return client.send(request);
+  return client.send(request).timeout(stallTimeout);
 }
 
 /// How much of [partial] can be kept. Zero means starting over.

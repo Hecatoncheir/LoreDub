@@ -696,7 +696,7 @@ void main() {
     expect(message, findsOneWidget);
     expect(find.textContaining('OSError'), findsOneWidget);
     expect(
-      find.textContaining('Скачать · 2.7 GB'),
+      find.textContaining('Скачать · 2.5 GB'),
       findsOneWidget,
       reason: 'the button stays, so the install can be tried again',
     );

@@ -129,6 +129,14 @@ class RuntimeStorageService {
         directory: directory,
         onProgress: onProgress,
         proxyUrl: proxyUrl,
+        python: await resolvePythonExecutable(pythonExecutable),
+        control: control,
+      ),
+      RuntimeInstallKind.wheel => await _installWheel(
+        package,
+        directory: directory,
+        onProgress: onProgress,
+        proxyUrl: proxyUrl,
         pythonExecutable: pythonExecutable,
         control: control,
       ),
@@ -198,13 +206,16 @@ class RuntimeStorageService {
     throw LoreDubFailure(FailureCode.runtimeIncomplete, detail: probeFileName);
   }
 
-  /// CUDA torch is a wheel set only pip can resolve for the interpreter in
-  /// use, so it is installed into its own directory and put on the worker's
-  /// import path rather than replacing the bundled CPU build.
-  /// pip runs to the end or not at all: there is no way to hold it half way
-  /// and pick it up later, so only a cancel is offered, and it kills the
-  /// process and clears what was written into the target directory.
-  Future<DownloadOutcome> _installWithPip(
+  /// CUDA torch is one 2.7 GB wheel. Fetched with the same downloader as the
+  /// models, it can be paused, picked up again after a dropped or stalled
+  /// connection, and verified; pip is then only asked to install the file and
+  /// fetch the few small packages it depends on. Left to pip, the download
+  /// showed no progress, could not be resumed, and was seen to hang for an
+  /// hour on a connection that stopped delivering.
+  ///
+  /// An interpreter the wheel was not built for gets the old route, where pip
+  /// resolves torch from the index itself.
+  Future<DownloadOutcome> _installWheel(
     RuntimePackage package, {
     required Directory directory,
     required DownloadProgress onProgress,
@@ -213,10 +224,85 @@ class RuntimeStorageService {
     DownloadControl? control,
   }) async {
     final python = await resolvePythonExecutable(pythonExecutable);
+    if (await _interpreterTag(python) != package.wheelPython) {
+      return _installWithPip(
+        package,
+        directory: directory,
+        onProgress: onProgress,
+        proxyUrl: proxyUrl,
+        python: python,
+        control: control,
+      );
+    }
+    final downloads = await _downloadsFor(package);
+    final client = _client ?? await createDownloadClient(proxyUrl);
+    final DownloadOutcome fetched;
+    try {
+      fetched = await downloadArtifacts(
+        package.artifacts,
+        directory: downloads,
+        client: client,
+        // Installing the wheel gets the last tenth of the bar.
+        onProgress: (value) => onProgress(value * 0.9),
+        control: control,
+      );
+    } finally {
+      if (_client == null) client.close();
+    }
+    if (fetched == DownloadOutcome.cancelled) await _deleteIfExists(downloads);
+    if (fetched != DownloadOutcome.completed) return fetched;
+
+    final outcome = await _runPip(
+      python,
+      directory,
+      [for (final artifact in package.artifacts) path.join(downloads.path, artifact.fileName)],
+      proxyUrl: proxyUrl,
+      onStart: () => onProgress(0.9),
+      control: control,
+    );
+    // Gigabytes that are worth nothing once installed, or once cancelled.
+    // After a pause or a failed install the wheel stays, so the next attempt
+    // does not fetch it again.
+    if (outcome == DownloadOutcome.completed || outcome == DownloadOutcome.cancelled) {
+      await _deleteIfExists(downloads);
+    }
+    return outcome;
+  }
+
+  /// pip resolving torch from the index on its own. It reports progress on a
+  /// terminal it does not have here, and cannot be held half way, so the bar
+  /// shows the one step that is happening and only a cancel is offered.
+  Future<DownloadOutcome> _installWithPip(
+    RuntimePackage package, {
+    required Directory directory,
+    required DownloadProgress onProgress,
+    required String proxyUrl,
+    required String python,
+    DownloadControl? control,
+  }) => _runPip(
+    python,
+    directory,
+    package.pipArguments,
+    proxyUrl: proxyUrl,
+    onStart: () => onProgress(0.05),
+    control: control,
+  );
+
+  /// `pip install --target`, leaving nothing behind unless it finished.
+  ///
+  /// The packages are installed into their own directory and put on the
+  /// worker's import path rather than replacing the bundled CPU build. pip
+  /// cannot be held half way: a stop kills it and clears what it wrote.
+  Future<DownloadOutcome> _runPip(
+    String python,
+    Directory directory,
+    List<String> packages, {
+    required String proxyUrl,
+    required void Function() onStart,
+    DownloadControl? control,
+  }) async {
     await directory.create(recursive: true);
-    // pip reports its own progress on a terminal it does not have here, so
-    // the bar reflects the one step that is happening rather than guessing.
-    onProgress(0.05);
+    onStart();
     final proxy = parseModelProxyUrl(proxyUrl);
     final running = _startProcess(python, [
       '-m',
@@ -225,28 +311,50 @@ class RuntimeStorageService {
       '--no-cache-dir',
       '--target',
       directory.path,
+      // A connection dropped while fetching a dependency is tried again.
+      '--retries',
+      '10',
       if (proxy != null) ...['--proxy', proxyUrl.trim()],
-      ...package.pipArguments,
+      ...packages,
     ]);
     final watch = _killWhenStopped(running, control);
     final result = await running.result;
     watch?.cancel();
-    if (control?.isStopping ?? false) {
+    if (control?.requestedStop case final stop?) {
       // Whatever pip managed to unpack is not a runtime, and it must not be
       // mistaken for one on the next start.
-      if (await directory.exists()) await directory.delete(recursive: true);
-      return DownloadOutcome.cancelled;
+      await _deleteIfExists(directory);
+      return stop;
     }
     if (result.exitCode != 0) {
       // pip can fail after it has moved part of the wheels into place, and a
       // torch directory would pass the probe. Only a finished install stays.
-      if (await directory.exists()) await directory.delete(recursive: true);
+      await _deleteIfExists(directory);
       throw LoreDubFailure(
         FailureCode.runtimeInstallFailed,
         detail: '${result.exitCode}\n${_tail('${result.stderr}')}'.trim(),
       );
     }
     return DownloadOutcome.completed;
+  }
+
+  /// The wheel tag of an interpreter, `cp311` for Python 3.11, or null when
+  /// it could not be asked.
+  Future<String?> _interpreterTag(String python) async {
+    final result = await _startProcess(python, [
+      '-c',
+      "import sys; sys.stdout.write('cp%d%d' % sys.version_info[:2])",
+    ]).result;
+    return result.exitCode == 0 ? '${result.stdout}'.trim() : null;
+  }
+
+  /// Where a wheel waits between its download and its install: beside the
+  /// runtimes, so the probe never mistakes it for one.
+  Future<Directory> _downloadsFor(RuntimePackage package) async =>
+      Directory(path.join((await rootDirectory()).path, '.downloads', package.id));
+
+  static Future<void> _deleteIfExists(Directory directory) async {
+    if (await directory.exists()) await directory.delete(recursive: true);
   }
 
   /// The last lines pip printed. It writes its whole resolution before the
@@ -267,7 +375,8 @@ class RuntimeStorageService {
   }
 
   Future<void> remove(RuntimePackage package) async {
-    final directory = await directoryFor(package);
-    if (await directory.exists()) await directory.delete(recursive: true);
+    await _deleteIfExists(await directoryFor(package));
+    // A wheel left from a paused download goes with it.
+    await _deleteIfExists(await _downloadsFor(package));
   }
 }

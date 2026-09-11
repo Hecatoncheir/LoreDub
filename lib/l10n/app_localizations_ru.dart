@@ -590,6 +590,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String failureDownloadStalled(String detail) {
+    return 'Загрузка $detail встала: данные перестали приходить и после нескольких переподключений. Нажмите «Скачать» ещё раз — уже скачанное сохранится.';
+  }
+
+  @override
   String failureVerificationFailed(String detail) {
     return 'Проверка $detail не пройдена';
   }

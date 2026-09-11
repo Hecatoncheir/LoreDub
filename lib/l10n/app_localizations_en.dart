@@ -589,6 +589,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String failureDownloadStalled(String detail) {
+    return 'The download of $detail stalled: no data arrived, even after several reconnects. Press Download again — what arrived is kept.';
+  }
+
+  @override
   String failureVerificationFailed(String detail) {
     return '$detail failed verification';
   }

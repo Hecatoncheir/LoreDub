@@ -61,6 +61,10 @@ enum FailureCode {
   /// A model host answered with something other than 200.
   downloadRejected,
 
+  /// A download stopped receiving data and kept stopping after every
+  /// reconnect; the detail is the file. What arrived is kept.
+  downloadStalled,
+
   /// A downloaded file did not match its pinned size or digest.
   verificationFailed,
 

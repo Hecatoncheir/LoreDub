@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -192,6 +193,63 @@ void main() {
             .having((error) => error.detail, 'detail', contains('404')),
       ),
     );
+  });
+
+  /// A response that hands over [bytes] and then goes quiet without closing,
+  /// the way a stalled connection does.
+  http.StreamedResponse stalling(List<int> bytes) {
+    final body = StreamController<List<int>>();
+    addTearDown(body.close);
+    if (bytes.isNotEmpty) body.add(bytes);
+    return http.StreamedResponse(body.stream, 200, contentLength: payload.length);
+  }
+
+  test('picks a stalled download back up from where it stopped', () async {
+    final ranges = <String?>[];
+    final client = MockClient.streaming((request, _) async {
+      final range = request.headers[HttpHeaders.rangeHeader];
+      ranges.add(range);
+      if (range == null) return stalling(payload.sublist(0, 150));
+      final offset = int.parse(RegExp(r'bytes=(\d+)-').firstMatch(range)!.group(1)!);
+      return http.StreamedResponse(Stream.value(payload.sublist(offset)), 206);
+    });
+
+    final outcome = await downloadArtifacts(
+      [artifactOf()],
+      directory: directory,
+      client: client,
+      onProgress: (_) {},
+      stallTimeout: const Duration(milliseconds: 100),
+    );
+
+    expect(outcome, DownloadOutcome.completed);
+    expect(ranges, [null, 'bytes=150-'], reason: 'the reconnect asks only for what is missing');
+    expect(await destinationFile().readAsBytes(), payload);
+  });
+
+  test('gives up with a clear failure when every reconnect stalls too', () async {
+    var attempts = 0;
+    final client = MockClient.streaming((request, _) async {
+      attempts++;
+      return stalling(const []);
+    });
+
+    await expectLater(
+      downloadArtifacts(
+        [artifactOf()],
+        directory: directory,
+        client: client,
+        onProgress: (_) {},
+        stallTimeout: const Duration(milliseconds: 50),
+        stallRetries: 2,
+      ),
+      throwsA(
+        isA<LoreDubFailure>()
+            .having((error) => error.code, 'code', FailureCode.downloadStalled)
+            .having((error) => error.detail, 'detail', 'build.zip'),
+      ),
+    );
+    expect(attempts, 3, reason: 'the first request and two reconnects');
   });
 
   group('stopping a download', () {

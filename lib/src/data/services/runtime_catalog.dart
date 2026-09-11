@@ -32,14 +32,26 @@ final runtimeCatalog = <RuntimePackage>[
       ),
     ],
   ),
-  const RuntimePackage(
+  RuntimePackage(
     id: torchCudaRuntimeId,
-    kind: RuntimeInstallKind.pip,
-    // The CUDA wheels carry their own cuDNN and cuBLAS, which is where the
-    // bulk sits; pip reports the exact figure while it works.
-    approximateBytes: 2900000000,
+    kind: RuntimeInstallKind.wheel,
+    // The CUDA wheel carries its own cuDNN and cuBLAS, which is where the
+    // bulk sits; the dependencies pip adds come to a few megabytes.
+    approximateBytes: 2716982502,
     probeFileName: 'torch',
-    pipArguments: [
+    // Built for the bundled Python. Another interpreter gets the index route.
+    wheelPython: 'cp311',
+    artifacts: [
+      ModelArtifact(
+        fileName: 'torch-2.7.1+cu126-cp311-cp311-win_amd64.whl',
+        url: Uri.parse(
+          'https://download.pytorch.org/whl/cu126/torch-2.7.1%2Bcu126-cp311-cp311-win_amd64.whl',
+        ),
+        byteSize: 2716982502,
+        hash: 'f3af23387ac106b5b01dbef0eb021883e0c00ff4073477b7ce1cbade5ef5038d',
+      ),
+    ],
+    pipArguments: const [
       '--index-url',
       'https://download.pytorch.org/whl/cu126',
       'torch==2.7.1+cu126',

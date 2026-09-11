@@ -242,6 +242,128 @@ void main() {
     expect(seen, containsAllInOrder(['--proxy', 'http://proxy.invalid:3128']));
   });
 
+  group('the CUDA torch wheel', () {
+    final wheel = List<int>.generate(64, (index) => index);
+    const wheelName = 'torch-2.7.1+cu126-cp311-cp311-win_amd64.whl';
+
+    RuntimePackage wheelPackage() => RuntimePackage(
+      id: 'torch-cuda',
+      kind: RuntimeInstallKind.wheel,
+      approximateBytes: wheel.length,
+      probeFileName: 'torch',
+      wheelPython: 'cp311',
+      artifacts: [
+        ModelArtifact(
+          fileName: wheelName,
+          url: Uri.parse('https://example.invalid/torch.whl'),
+          byteSize: wheel.length,
+        ),
+      ],
+      pipArguments: const ['--index-url', 'https://example.invalid/cu126', 'torch==2.7.1+cu126'],
+    );
+
+    /// An interpreter that answers the version question with [tag] and runs
+    /// pip with [pipExit], recording pip's arguments. A pip that succeeds
+    /// leaves torch in the target directory, as the real one would.
+    ProcessStarter interpreter(
+      String tag, {
+      required List<List<String>> pipRuns,
+      int pipExit = 0,
+    }) => (executable, arguments) {
+      if (arguments.first == '-c') {
+        return (result: Future.value(ProcessResult(0, 0, tag, '')), kill: () {});
+      }
+      pipRuns.add(arguments);
+      if (pipExit == 0) {
+        final target = arguments[arguments.indexOf('--target') + 1];
+        Directory(path.join(target, 'torch')).createSync(recursive: true);
+      }
+      return (
+        result: Future.value(ProcessResult(0, pipExit, '', pipExit == 0 ? '' : 'ERROR: disk full')),
+        kill: () {},
+      );
+    };
+
+    Directory downloads() => Directory(path.join(root.path, '.downloads', 'torch-cuda'));
+
+    test('fetches the wheel itself and has pip install the local file', () async {
+      final pipRuns = <List<String>>[];
+      final package = wheelPackage();
+      final store = storeWith(
+        MockClient((_) async => http.Response.bytes(wheel, 200)),
+        startProcess: interpreter('cp311', pipRuns: pipRuns),
+      );
+
+      await store.install(
+        package,
+        onProgress: (_) {},
+        pythonExecutable: Platform.resolvedExecutable,
+      );
+
+      expect(pipRuns, hasLength(1));
+      expect(pipRuns.single.last, path.join(downloads().path, wheelName));
+      expect(pipRuns.single, isNot(contains('--index-url')), reason: 'torch is not fetched again');
+      expect(await store.isInstalled(package), isTrue);
+      expect(downloads().existsSync(), isFalse, reason: 'the wheel is not kept once installed');
+    });
+
+    test('leaves another interpreter to pip and the index, as before', () async {
+      final pipRuns = <List<String>>[];
+      var fetched = 0;
+      final store = storeWith(
+        MockClient((_) async {
+          fetched++;
+          return http.Response.bytes(wheel, 200);
+        }),
+        startProcess: interpreter('cp312', pipRuns: pipRuns),
+      );
+
+      await store.install(
+        wheelPackage(),
+        onProgress: (_) {},
+        pythonExecutable: Platform.resolvedExecutable,
+      );
+
+      expect(fetched, 0, reason: 'a cp311 wheel is no use to Python 3.12');
+      expect(pipRuns.single.last, 'torch==2.7.1+cu126');
+    });
+
+    test('keeps the wheel when pip fails, so trying again does not fetch it twice', () async {
+      final pipRuns = <List<String>>[];
+      var fetched = 0;
+      final client = MockClient((_) async {
+        fetched++;
+        return http.Response.bytes(wheel, 200);
+      });
+      final package = wheelPackage();
+
+      await expectLater(
+        storeWith(
+          client,
+          startProcess: interpreter('cp311', pipRuns: pipRuns, pipExit: 1),
+        ).install(package, onProgress: (_) {}, pythonExecutable: Platform.resolvedExecutable),
+        throwsA(
+          isA<LoreDubFailure>().having(
+            (error) => error.code,
+            'code',
+            FailureCode.runtimeInstallFailed,
+          ),
+        ),
+      );
+      final store = storeWith(client, startProcess: interpreter('cp311', pipRuns: pipRuns));
+      expect(await store.isInstalled(package), isFalse);
+
+      await store.install(
+        package,
+        onProgress: (_) {},
+        pythonExecutable: Platform.resolvedExecutable,
+      );
+
+      expect(fetched, 1, reason: 'the verified wheel on disk is used again');
+      expect(await store.isInstalled(package), isTrue);
+    });
+  });
+
   test('removes a runtime the user no longer wants', () async {
     final bytes = nestedArchive();
     final package = packageFor(bytes);

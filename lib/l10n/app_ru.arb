@@ -420,6 +420,14 @@
       }
     }
   },
+  "failureDownloadStalled": "Загрузка {detail} встала: данные перестали приходить и после нескольких переподключений. Нажмите «Скачать» ещё раз — уже скачанное сохранится.",
+  "@failureDownloadStalled": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureVerificationFailed": "Проверка {detail} не пройдена",
   "@failureVerificationFailed": {
     "placeholders": {

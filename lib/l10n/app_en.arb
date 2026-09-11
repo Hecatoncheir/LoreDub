@@ -420,6 +420,14 @@
       }
     }
   },
+  "failureDownloadStalled": "The download of {detail} stalled: no data arrived, even after several reconnects. Press Download again — what arrived is kept.",
+  "@failureDownloadStalled": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureVerificationFailed": "{detail} failed verification",
   "@failureVerificationFailed": {
     "placeholders": {

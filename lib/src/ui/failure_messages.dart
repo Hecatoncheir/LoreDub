@@ -36,6 +36,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.windowsOnly => l10n.failureWindowsOnly,
     FailureCode.explorerUnsupported => l10n.failureExplorerUnsupported,
     FailureCode.downloadRejected => l10n.failureDownloadRejected(detail),
+    FailureCode.downloadStalled => l10n.failureDownloadStalled(detail),
     FailureCode.verificationFailed => l10n.failureVerificationFailed(detail),
     FailureCode.socksLookupFailed => l10n.failureSocksLookupFailed,
     FailureCode.updateCheckFailed => l10n.failureUpdateCheckFailed(detail),

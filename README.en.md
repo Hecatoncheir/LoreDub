@@ -286,7 +286,7 @@ but disabled, with a tooltip saying why.
 | Stage | CUDA | Vulkan | CPU |
 | --- | --- | --- | --- |
 | Whisper | yes, downloaded (436 MB) | yes, if built (see below) | always |
-| Translation (Marian) | yes, downloaded (~2.7 GB) | no: torch has no Vulkan backend | always |
+| Translation (Marian) | yes, downloaded (~2.5 GB) | no: torch has no Vulkan backend | always |
 | Speech (Silero) | no | no | always |
 
 The heavy GPU runtimes are **not in the installer**. They are fetched on demand
@@ -300,11 +300,20 @@ not worth a stray click. They land in
 Any download can be paused, resumed and cancelled. A pause keeps what has
 arrived and resuming fetches the rest with a range request; a cancel removes
 the partial file. The stop is checked between chunks, so it lands within a
-hundred kilobytes or two rather than at the end of the file.
+hundred kilobytes or two rather than at the end of the file. When data stops
+arriving but the connection stays open, the download reconnects by itself after
+a minute and carries on from where it was; after five such attempts it stops
+with a plain error and keeps what arrived.
 
-The one exception is CUDA torch: pip installs it and has no half-way point,
-so only a cancel is offered there. It kills the process and clears the
-directory, so a half-installed runtime cannot pass for a finished one.
+CUDA torch is a single 2.5 GB wheel. LoreDub fetches it with the same
+downloader as the models — pausable, resumable and checked against its
+SHA-256 — and pip then only installs that file and fetches a few small
+dependencies. It used to be left to pip entirely: no progress, no resuming,
+and on a connection that stopped delivering it could hang for hours. The wheel
+is built for the bundled Python 3.11; with another interpreter set in Settings
+pip resolves torch the old way, and only a cancel is offered there — it kills
+the process and clears the directory, so a half-installed runtime cannot pass
+for a finished one.
 
 Speech stays on the processor deliberately: Silero utterances are short, and
 moving them to the card costs more than the work itself.
