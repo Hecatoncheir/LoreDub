@@ -252,6 +252,41 @@
     }
   },
   "modelWhisperNote": "Speech recognition and translation of any language into English. One model for every dubbing language.",
+  "whisperAxisSize": "Size",
+  "whisperAxisQuality": "Quality",
+  "whisperQualityFair": "fair",
+  "whisperQualityGood": "good",
+  "whisperQualityExcellent": "excellent",
+  "whisperLegendMissing": "not downloaded",
+  "whisperLegendInstalled": "downloaded",
+  "whisperLegendSelected": "selected",
+  "whisperLegendDownloading": "downloading",
+  "whisperNoTranslation": "no translation",
+  "whisperHintDownload": "Click to download ({size})",
+  "@whisperHintDownload": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "whisperHintSelect": "Click to use it",
+  "whisperHintSelected": "In use for recognition",
+  "whisperHintLocked": "The model can be changed once dubbing is stopped",
+  "whisperDownloadProgress": "{percent}% · {done} of {total}",
+  "@whisperDownloadProgress": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
   "modelWhisperTranscribeOnly": "Does not translate speech: only suits an original already in English.",
   "recognitionNeedsEnglish": "The chosen model does not translate speech, and the original language is not set to English.",
   "modelTranslationNote": "Local Helsinki-NLP/Marian translator, {size}.",
@@ -457,7 +492,31 @@
   "failureSocksLookupFailed": "The SOCKS5 proxy address could not be resolved",
   "failureProxyFormat": "Use the form http://host:port or socks5://host:port",
   "failureProxyPort": "The proxy port has to be between 1 and 65535",
-  "failureVoiceBankClearFailed": "The voice bank could not be cleared: {detail}",
+  "failureModelRemoveFailed": "The model could not be deleted: {detail}",
+  "@failureModelRemoveFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "modelRemove": "Delete",
+  "modelRemoveInUse": "The model in use cannot be deleted while dubbing runs",
+  "modelRemoveTitle": "Delete the model?",
+  "modelRemoveMessage": "{name} ({size}) will be deleted from disk. It can be downloaded again at any time.",
+  "@modelRemoveMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelRemoveConfirm": "Delete",
+  "modelRemoveCancel": "Keep",
+  "failureVoiceBankClearFailed":"The voice bank could not be cleared: {detail}",
   "@failureVoiceBankClearFailed": {
     "placeholders": {
       "detail": {

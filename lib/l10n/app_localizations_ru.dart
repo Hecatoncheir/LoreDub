@@ -422,6 +422,55 @@ class AppLocalizationsRu extends AppLocalizations {
       'Распознавание речи и перевод любого языка на английский. Одна модель на все языки озвучки.';
 
   @override
+  String get whisperAxisSize => 'Размер';
+
+  @override
+  String get whisperAxisQuality => 'Качество';
+
+  @override
+  String get whisperQualityFair => 'нормально';
+
+  @override
+  String get whisperQualityGood => 'хорошо';
+
+  @override
+  String get whisperQualityExcellent => 'отлично';
+
+  @override
+  String get whisperLegendMissing => 'не скачана';
+
+  @override
+  String get whisperLegendInstalled => 'скачана';
+
+  @override
+  String get whisperLegendSelected => 'выбрана';
+
+  @override
+  String get whisperLegendDownloading => 'скачивается';
+
+  @override
+  String get whisperNoTranslation => 'без перевода';
+
+  @override
+  String whisperHintDownload(String size) {
+    return 'Нажмите, чтобы скачать ($size)';
+  }
+
+  @override
+  String get whisperHintSelect => 'Нажмите, чтобы выбрать';
+
+  @override
+  String get whisperHintSelected => 'Выбрана для распознавания';
+
+  @override
+  String get whisperHintLocked => 'Модель можно сменить, когда озвучка остановлена';
+
+  @override
+  String whisperDownloadProgress(int percent, String done, String total) {
+    return '$percent% · $done из $total';
+  }
+
+  @override
   String get modelWhisperTranscribeOnly =>
       'Не переводит речь: подойдёт, только если оригинал уже на английском.';
 
@@ -654,6 +703,31 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get failureProxyPort => 'Порт proxy должен быть от 1 до 65535';
+
+  @override
+  String failureModelRemoveFailed(String detail) {
+    return 'Не удалось удалить модель: $detail';
+  }
+
+  @override
+  String get modelRemove => 'Удалить';
+
+  @override
+  String get modelRemoveInUse => 'Выбранную модель нельзя удалить, пока идёт озвучка';
+
+  @override
+  String get modelRemoveTitle => 'Удалить модель?';
+
+  @override
+  String modelRemoveMessage(String name, String size) {
+    return '$name ($size) будет удалена с диска. Скачать её заново можно в любой момент.';
+  }
+
+  @override
+  String get modelRemoveConfirm => 'Удалить';
+
+  @override
+  String get modelRemoveCancel => 'Оставить';
 
   @override
   String failureVoiceBankClearFailed(String detail) {

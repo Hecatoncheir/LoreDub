@@ -252,6 +252,41 @@
     }
   },
   "modelWhisperNote": "Распознавание речи и перевод любого языка на английский. Одна модель на все языки озвучки.",
+  "whisperAxisSize": "Размер",
+  "whisperAxisQuality": "Качество",
+  "whisperQualityFair": "нормально",
+  "whisperQualityGood": "хорошо",
+  "whisperQualityExcellent": "отлично",
+  "whisperLegendMissing": "не скачана",
+  "whisperLegendInstalled": "скачана",
+  "whisperLegendSelected": "выбрана",
+  "whisperLegendDownloading": "скачивается",
+  "whisperNoTranslation": "без перевода",
+  "whisperHintDownload": "Нажмите, чтобы скачать ({size})",
+  "@whisperHintDownload": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "whisperHintSelect": "Нажмите, чтобы выбрать",
+  "whisperHintSelected": "Выбрана для распознавания",
+  "whisperHintLocked": "Модель можно сменить, когда озвучка остановлена",
+  "whisperDownloadProgress": "{percent}% · {done} из {total}",
+  "@whisperDownloadProgress": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
   "modelWhisperTranscribeOnly": "Не переводит речь: подойдёт, только если оригинал уже на английском.",
   "recognitionNeedsEnglish": "Выбранная модель не переводит речь, а язык оригинала указан не английский.",
   "modelTranslationNote": "Локальный переводчик Helsinki-NLP/Marian, {size}.",
@@ -457,7 +492,31 @@
   "failureSocksLookupFailed": "Не удалось определить адрес SOCKS5 proxy",
   "failureProxyFormat": "Укажите proxy в формате http://host:port или socks5://host:port",
   "failureProxyPort": "Порт proxy должен быть от 1 до 65535",
-  "failureVoiceBankClearFailed": "Не удалось очистить банк голосов: {detail}",
+  "failureModelRemoveFailed": "Не удалось удалить модель: {detail}",
+  "@failureModelRemoveFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "modelRemove": "Удалить",
+  "modelRemoveInUse": "Выбранную модель нельзя удалить, пока идёт озвучка",
+  "modelRemoveTitle": "Удалить модель?",
+  "modelRemoveMessage": "{name} ({size}) будет удалена с диска. Скачать её заново можно в любой момент.",
+  "@modelRemoveMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelRemoveConfirm": "Удалить",
+  "modelRemoveCancel": "Оставить",
+  "failureVoiceBankClearFailed":"Не удалось очистить банк голосов: {detail}",
   "@failureVoiceBankClearFailed": {
     "placeholders": {
       "detail": {

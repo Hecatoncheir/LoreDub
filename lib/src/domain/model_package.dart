@@ -33,6 +33,10 @@ enum ModelKind { recognition, translation, speech, voiceConversion }
 /// choice pick wrongly with confidence.
 enum VoiceGender { male, female, unknown }
 
+/// How well a recognition model hears speech, as the models screen ranks
+/// the builds against each other. A rank, not a score.
+enum RecognitionQuality { fair, good, excellent }
+
 /// One voice inside a speech package.
 class VoiceOption {
   const VoiceOption(this.id, {this.gender = VoiceGender.unknown});
@@ -52,6 +56,7 @@ class ModelPackage {
     this.voices = const [],
     this.translatesSpeech = true,
     this.translationPrefix,
+    this.quality,
   });
 
   final String id;
@@ -79,6 +84,9 @@ class ModelPackage {
   /// A token a translation model needs in front of the text to name the
   /// target language, for the models that serve several at once.
   final String? translationPrefix;
+
+  /// Where a recognition model stands among the others; null for the rest.
+  final RecognitionQuality? quality;
 
   /// What the whole package costs to fetch.
   int get downloadBytes => artifacts.fold(0, (sum, artifact) => sum + (artifact.byteSize ?? 0));

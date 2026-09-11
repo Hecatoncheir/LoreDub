@@ -46,6 +46,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.proxyPort => l10n.failureProxyPort,
     FailureCode.initializationFailed => l10n.failureInitializationFailed(detail),
     FailureCode.voiceBankClearFailed => l10n.failureVoiceBankClearFailed(detail),
+    FailureCode.modelRemoveFailed => l10n.failureModelRemoveFailed(detail),
   };
 }
 

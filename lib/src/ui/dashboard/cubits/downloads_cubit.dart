@@ -236,6 +236,20 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     _finished(install.package.id);
   }
 
+  /// Deletes a downloaded model to give its space back. A download still in
+  /// flight is not a model yet; that one is cancelled instead.
+  Future<void> removeModel(ModelInstallState install) async {
+    final index = state.models.indexWhere((model) => model.model.id == install.model.id);
+    if (index < 0 || state.models[index].stoppable) return;
+    _errors.report(null);
+    try {
+      await _modelRepository.remove(install.model);
+      _replaceModel(index, state.models[index].copyWith(installed: false, clearError: true));
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
   Future<void> removeRuntime(RuntimeInstallState install) async {
     _errors.report(null);
     try {

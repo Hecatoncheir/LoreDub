@@ -21,11 +21,13 @@ ModelPackage _whisper({
   required String fileName,
   required int byteSize,
   required String version,
+  required RecognitionQuality quality,
   String? hash,
   bool translatesSpeech = true,
 }) => ModelPackage(
   id: id,
   version: version,
+  quality: quality,
   translatesSpeech: translatesSpeech,
   artifacts: [
     ModelArtifact(
@@ -104,6 +106,7 @@ final modelCatalog = <ModelPackage>[
   _whisper(
     id: whisperModelId,
     version: 'base',
+    quality: RecognitionQuality.fair,
     fileName: 'ggml-base.bin',
     byteSize: 147951465,
     hash: '60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe',
@@ -111,18 +114,22 @@ final modelCatalog = <ModelPackage>[
   _whisper(
     id: 'whisper-small',
     version: 'small',
+    quality: RecognitionQuality.good,
     fileName: 'ggml-small.bin',
     byteSize: 487601967,
   ),
   _whisper(
     id: 'whisper-medium-q5',
     version: 'medium q5_0',
+    quality: RecognitionQuality.excellent,
     fileName: 'ggml-medium-q5_0.bin',
     byteSize: 539212467,
   ),
   _whisper(
     id: 'whisper-large-v3-turbo-q5',
     version: 'large-v3-turbo q5_0',
+    // As accurate as medium on transcription, and faster.
+    quality: RecognitionQuality.excellent,
     fileName: 'ggml-large-v3-turbo-q5_0.bin',
     byteSize: 574041195,
     // Fine-tuned without translation data, so it is only asked to transcribe.

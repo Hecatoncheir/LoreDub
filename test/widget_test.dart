@@ -482,7 +482,7 @@ void main() {
 
     expect(find.text('РАСПОЗНАВАНИЕ РЕЧИ'), findsOneWidget);
     expect(find.text('МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА'), findsOneWidget);
-    expect(find.text('Whisper base'), findsOneWidget);
+    expect(find.text('base'), findsOneWidget, reason: 'the whisper builds are bars on a chart');
 
     // The voices sit below the fold of a lazy list.
     await tester.scrollUntilVisible(find.text('МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'), 400);
@@ -906,7 +906,7 @@ void main() {
 
       expect(find.byTooltip('Продолжить'), findsOneWidget);
       expect(find.byTooltip('Приостановить'), findsNothing);
-      expect(find.textContaining('Приостановлено'), findsOneWidget);
+      expect(find.text('42%'), findsOneWidget, reason: 'the ring keeps where it stopped');
     });
 
     testWidgets('stopping what is not running changes nothing', (tester) async {
@@ -921,21 +921,41 @@ void main() {
       expect(cubits.downloads.state.isStopping(whisperModelId), isFalse);
     });
 
-    testWidgets('a paused download is resumed by its own button', (tester) async {
+    testWidgets('a paused download is resumed from its own bar', (tester) async {
       await pumpDownloading(tester, paused: true);
 
-      // The whisper card is the paused one; its download button is out of
-      // action while the part waits to be continued.
-      final card = find.ancestor(
-        of: find.textContaining('Приостановлено'),
-        matching: find.byType(Card),
-      );
-      final button = tester.widget<OutlinedButton>(
-        find.descendant(of: card, matching: find.byType(OutlinedButton)),
-      );
+      final bar = find.byKey(const ValueKey('whisperBar-$whisperModelId'));
 
-      expect(button.onPressed, isNull);
-      expect(find.descendant(of: card, matching: find.byTooltip('Продолжить')), findsOneWidget);
+      // The smallest bar spends its room on the ring; the pause shows as the
+      // play button in place of the pause one.
+      expect(find.descendant(of: bar, matching: find.text('42%')), findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byTooltip('Продолжить')), findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byTooltip('Отменить')), findsOneWidget);
+      expect(
+        find.descendant(of: bar, matching: find.byTooltip('Скачать')),
+        findsNothing,
+        reason: 'resuming is the download button of a paused bar',
+      );
+    });
+
+    testWidgets('fills the bar of a download from the bottom', (tester) async {
+      await pumpDownloading(tester, paused: false);
+
+      final fill = tester.widget<AnimatedFractionallySizedBox>(
+        find.descendant(
+          of: find.byKey(const ValueKey('whisperBar-$whisperModelId')),
+          matching: find.byType(AnimatedFractionallySizedBox),
+        ),
+      );
+      expect(fill.heightFactor, 0.42);
+      // The figure sits inside the ring, even on the smallest bar.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('whisperDial-$whisperModelId')),
+          matching: find.text('42%'),
+        ),
+        findsOneWidget,
+      );
     });
   });
 
@@ -958,22 +978,138 @@ void main() {
     testWidgets('lists every whisper build and marks the default', (tester) async {
       final cubits = await pumpModels(tester);
 
-      expect(find.text('Whisper base'), findsOneWidget);
-      expect(find.text('Whisper small'), findsOneWidget);
+      expect(find.text('base'), findsOneWidget);
+      expect(find.text('small'), findsOneWidget);
+      expect(find.text('large-v3-turbo'), findsOneWidget);
       expect(
         cubits.selection.recognition?.model.id,
         whisperModelId,
         reason: 'an unset choice falls back to the smallest',
       );
+      // The build in use is the dark bar; the others stay light.
+      Color barColour(String id) => tester
+          .widget<Material>(
+            find
+                .descendant(
+                  of: find.byKey(ValueKey('whisperBar-$id')),
+                  matching: find.byType(Material),
+                )
+                .first,
+          )
+          .color!;
+      expect(barColour(whisperModelId), LoreDubPalette.graphite);
+      expect(barColour('whisper-small'), LoreDubPalette.panel);
+    });
+
+    testWidgets('draws every bar to the size of its download', (tester) async {
+      await pumpModels(tester);
+
+      double height(String id) => tester.getSize(find.byKey(ValueKey('whisperBar-$id'))).height;
+      final small = modelCatalog.firstWhere((model) => model.id == 'whisper-small');
+      final turbo = modelCatalog.firstWhere((model) => model.id == 'whisper-large-v3-turbo-q5');
+
+      expect(
+        height('whisper-large-v3-turbo-q5') / height('whisper-small'),
+        closeTo(turbo.downloadBytes / small.downloadBytes, 0.01),
+      );
+      expect(height(whisperModelId), lessThan(height('whisper-small')));
+      expect(find.text('465 MB'), findsOneWidget, reason: 'each size is written on the axis');
+      expect(find.text('хорошо'), findsOneWidget);
+      expect(find.text('без перевода'), findsOneWidget, reason: 'turbo only transcribes');
+    });
+
+    testWidgets('keeps a button on every bar for what can be done with it', (tester) async {
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.models,
+        models: [
+          for (final state in catalogue())
+            state.model.id == 'whisper-small' ? ModelInstallState(model: state.model) : state,
+        ],
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
+      await tester.pumpAndSettle();
+
+      Finder on(String id, String tooltip) => find.descendant(
+        of: find.byKey(ValueKey('whisperBar-$id')),
+        matching: find.byTooltip(tooltip),
+      );
+      expect(on('whisper-small', 'Скачать'), findsOneWidget);
+      expect(on(whisperModelId, 'Удалить'), findsOneWidget);
+      expect(on('whisper-large-v3-turbo-q5', 'Удалить'), findsOneWidget);
+    });
+
+    testWidgets('asks before deleting a downloaded model', (tester) async {
+      final cubits = await pumpModels(tester);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('whisperBar-whisper-small')),
+          matching: find.byTooltip('Удалить'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Удалить модель?'), findsOneWidget);
+      expect(find.textContaining('Whisper small (465 MB)'), findsOneWidget);
+
+      await tester.tap(find.text('Оставить'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Удалить модель?'), findsNothing);
+      expect(
+        cubits.downloads.state.models
+            .firstWhere((state) => state.model.id == 'whisper-small')
+            .installed,
+        isTrue,
+      );
+    });
+
+    testWidgets('keeps the model in use while dubbing runs', (tester) async {
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.models,
+        models: catalogue(),
+        status: PipelineStatus.listening,
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
+      await tester.pumpAndSettle();
+
+      final locked = find.descendant(
+        of: find.byKey(const ValueKey('whisperBar-$whisperModelId')),
+        matching: find.byTooltip('Выбранную модель нельзя удалить, пока идёт озвучка'),
+      );
+      expect(locked, findsOneWidget);
+      expect(
+        tester
+            // The button builds its tooltip inside itself.
+            .widget<IconButton>(find.ancestor(of: locked, matching: find.byType(IconButton)))
+            .onPressed,
+        isNull,
+      );
+    });
+
+    testWidgets('grows a bar a little under the pointer', (tester) async {
+      await pumpModels(tester);
+      final bar = find.byKey(const ValueKey('whisperBar-whisper-small'));
+      double scale() => tester
+          .widget<AnimatedScale>(find.descendant(of: bar, matching: find.byType(AnimatedScale)))
+          .scale;
+      expect(scale(), 1);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(bar));
+      await tester.pumpAndSettle();
+
+      expect(scale(), greaterThan(1));
+      expect(scale(), lessThan(1.1), reason: 'a little, not a zoom');
     });
 
     testWidgets('remembers the model tapped in the list', (tester) async {
       final cubits = await pumpModels(tester);
 
-      await tester.scrollUntilVisible(find.text('Whisper small'), 300);
-      await tester.ensureVisible(find.text('Whisper small'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Whisper small'));
+      await tester.tap(find.text('small'));
       await tester.pumpAndSettle();
 
       expect(cubits.selection.recognition?.model.id, 'whisper-small');

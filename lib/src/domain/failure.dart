@@ -86,6 +86,10 @@ enum FailureCode {
   /// The saved voice fingerprints could not be deleted; the detail is the
   /// file system's own message.
   voiceBankClearFailed,
+
+  /// A downloaded model could not be deleted; the detail is the file
+  /// system's own message.
+  modelRemoveFailed,
 }
 
 class LoreDubFailure implements Exception {

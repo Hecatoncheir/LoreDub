@@ -420,6 +420,55 @@ class AppLocalizationsEn extends AppLocalizations {
       'Speech recognition and translation of any language into English. One model for every dubbing language.';
 
   @override
+  String get whisperAxisSize => 'Size';
+
+  @override
+  String get whisperAxisQuality => 'Quality';
+
+  @override
+  String get whisperQualityFair => 'fair';
+
+  @override
+  String get whisperQualityGood => 'good';
+
+  @override
+  String get whisperQualityExcellent => 'excellent';
+
+  @override
+  String get whisperLegendMissing => 'not downloaded';
+
+  @override
+  String get whisperLegendInstalled => 'downloaded';
+
+  @override
+  String get whisperLegendSelected => 'selected';
+
+  @override
+  String get whisperLegendDownloading => 'downloading';
+
+  @override
+  String get whisperNoTranslation => 'no translation';
+
+  @override
+  String whisperHintDownload(String size) {
+    return 'Click to download ($size)';
+  }
+
+  @override
+  String get whisperHintSelect => 'Click to use it';
+
+  @override
+  String get whisperHintSelected => 'In use for recognition';
+
+  @override
+  String get whisperHintLocked => 'The model can be changed once dubbing is stopped';
+
+  @override
+  String whisperDownloadProgress(int percent, String done, String total) {
+    return '$percent% · $done of $total';
+  }
+
+  @override
   String get modelWhisperTranscribeOnly =>
       'Does not translate speech: only suits an original already in English.';
 
@@ -651,6 +700,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get failureProxyPort => 'The proxy port has to be between 1 and 65535';
+
+  @override
+  String failureModelRemoveFailed(String detail) {
+    return 'The model could not be deleted: $detail';
+  }
+
+  @override
+  String get modelRemove => 'Delete';
+
+  @override
+  String get modelRemoveInUse => 'The model in use cannot be deleted while dubbing runs';
+
+  @override
+  String get modelRemoveTitle => 'Delete the model?';
+
+  @override
+  String modelRemoveMessage(String name, String size) {
+    return '$name ($size) will be deleted from disk. It can be downloaded again at any time.';
+  }
+
+  @override
+  String get modelRemoveConfirm => 'Delete';
+
+  @override
+  String get modelRemoveCancel => 'Keep';
 
   @override
   String failureVoiceBankClearFailed(String detail) {

@@ -5,12 +5,14 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/model_proxy.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:path/path.dart' as p;
 
 import '../../../support/temporary_directory.dart';
 
@@ -25,6 +27,22 @@ void main() {
     });
 
     tearDown(() => deleteOnceReleased(temporaryDirectory));
+
+    test('deletes a downloaded package and nothing else', () async {
+      final service = ModelStorageService(rootProvider: () async => temporaryDirectory);
+      final whisper = modelCatalog.firstWhere((model) => model.kind == ModelKind.recognition);
+      final other = modelCatalog.firstWhere((model) => model.kind == ModelKind.translation);
+      final kept = File(p.join((await service.modelDirectory(other)).path, 'kept.bin'));
+      await kept.create(recursive: true);
+      final deleted = File(p.join((await service.modelDirectory(whisper)).path, 'model.bin'));
+      await deleted.create(recursive: true);
+
+      await service.remove(whisper);
+
+      expect(await deleted.exists(), isFalse);
+      expect(await kept.exists(), isTrue);
+      await service.remove(whisper);
+    });
 
     test('installs an artifact only after hash verification', () async {
       final bytes = List<int>.generate(64, (index) => index);

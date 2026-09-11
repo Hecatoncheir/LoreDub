@@ -63,6 +63,20 @@ class ModelStorageService {
     return true;
   }
 
+  /// Deletes a downloaded package, part files and all, so its space is given
+  /// back. Nothing there is nothing to do.
+  Future<void> remove(ModelPackage model) async {
+    final directory = await modelDirectory(model);
+    try {
+      if (await directory.exists()) await directory.delete(recursive: true);
+    } on FileSystemException catch (error) {
+      throw LoreDubFailure(
+        FailureCode.modelRemoveFailed,
+        detail: '${error.path}: ${error.message}',
+      );
+    }
+  }
+
   Future<DownloadOutcome> install(
     ModelPackage model, {
     required DownloadProgress onProgress,

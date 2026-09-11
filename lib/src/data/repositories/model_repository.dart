@@ -32,6 +32,8 @@ class ModelRepository {
     control: control,
   );
 
+  Future<void> remove(ModelPackage model) => _storage.remove(model);
+
   Future<String> directoryFor(ModelPackage model) async =>
       (await _storage.modelDirectory(model)).path;
 

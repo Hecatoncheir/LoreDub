@@ -4,6 +4,15 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+- Redrew the Whisper models on the Models screen as a chart of size against quality: each build
+  is a bar as tall as its download, light when missing, ticked once downloaded, dark with an
+  orange edge when in use, and filling from the bottom while it downloads. Every bar keeps its
+  buttons in sight — download, pause or resume and cancel, or delete — and grows slightly under
+  the pointer; a click on a downloaded bar picks it. Large-v3-turbo is marked as not
+  translating. Narrow windows keep the list of cards.
+- Added deleting a downloaded Whisper model, after a confirmation. The model in use cannot be
+  deleted while dubbing runs.
+
 ## [0.7.0] - 2026-09-11
 
 - Lines of different characters can now overlap: a new line starts at once while another

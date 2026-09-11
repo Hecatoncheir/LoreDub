@@ -801,6 +801,96 @@ abstract class AppLocalizations {
   /// **'Распознавание речи и перевод любого языка на английский. Одна модель на все языки озвучки.'**
   String get modelWhisperNote;
 
+  /// No description provided for @whisperAxisSize.
+  ///
+  /// In ru, this message translates to:
+  /// **'Размер'**
+  String get whisperAxisSize;
+
+  /// No description provided for @whisperAxisQuality.
+  ///
+  /// In ru, this message translates to:
+  /// **'Качество'**
+  String get whisperAxisQuality;
+
+  /// No description provided for @whisperQualityFair.
+  ///
+  /// In ru, this message translates to:
+  /// **'нормально'**
+  String get whisperQualityFair;
+
+  /// No description provided for @whisperQualityGood.
+  ///
+  /// In ru, this message translates to:
+  /// **'хорошо'**
+  String get whisperQualityGood;
+
+  /// No description provided for @whisperQualityExcellent.
+  ///
+  /// In ru, this message translates to:
+  /// **'отлично'**
+  String get whisperQualityExcellent;
+
+  /// No description provided for @whisperLegendMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'не скачана'**
+  String get whisperLegendMissing;
+
+  /// No description provided for @whisperLegendInstalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'скачана'**
+  String get whisperLegendInstalled;
+
+  /// No description provided for @whisperLegendSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'выбрана'**
+  String get whisperLegendSelected;
+
+  /// No description provided for @whisperLegendDownloading.
+  ///
+  /// In ru, this message translates to:
+  /// **'скачивается'**
+  String get whisperLegendDownloading;
+
+  /// No description provided for @whisperNoTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'без перевода'**
+  String get whisperNoTranslation;
+
+  /// No description provided for @whisperHintDownload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите, чтобы скачать ({size})'**
+  String whisperHintDownload(String size);
+
+  /// No description provided for @whisperHintSelect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите, чтобы выбрать'**
+  String get whisperHintSelect;
+
+  /// No description provided for @whisperHintSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрана для распознавания'**
+  String get whisperHintSelected;
+
+  /// No description provided for @whisperHintLocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Модель можно сменить, когда озвучка остановлена'**
+  String get whisperHintLocked;
+
+  /// No description provided for @whisperDownloadProgress.
+  ///
+  /// In ru, this message translates to:
+  /// **'{percent}% · {done} из {total}'**
+  String whisperDownloadProgress(int percent, String done, String total);
+
   /// No description provided for @modelWhisperTranscribeOnly.
   ///
   /// In ru, this message translates to:
@@ -1178,6 +1268,48 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Порт proxy должен быть от 1 до 65535'**
   String get failureProxyPort;
+
+  /// No description provided for @failureModelRemoveFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось удалить модель: {detail}'**
+  String failureModelRemoveFailed(String detail);
+
+  /// No description provided for @modelRemove.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить'**
+  String get modelRemove;
+
+  /// No description provided for @modelRemoveInUse.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбранную модель нельзя удалить, пока идёт озвучка'**
+  String get modelRemoveInUse;
+
+  /// No description provided for @modelRemoveTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить модель?'**
+  String get modelRemoveTitle;
+
+  /// No description provided for @modelRemoveMessage.
+  ///
+  /// In ru, this message translates to:
+  /// **'{name} ({size}) будет удалена с диска. Скачать её заново можно в любой момент.'**
+  String modelRemoveMessage(String name, String size);
+
+  /// No description provided for @modelRemoveConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить'**
+  String get modelRemoveConfirm;
+
+  /// No description provided for @modelRemoveCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оставить'**
+  String get modelRemoveCancel;
 
   /// No description provided for @failureVoiceBankClearFailed.
   ///

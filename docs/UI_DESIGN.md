@@ -40,7 +40,13 @@ radius.
    start/stop action are grouped as `01 / GAME INPUT`; translated dialogue is
    grouped as `02 / LIVE TRANSCRIPT`.
 2. **Model bank** shows installation state, download progress, and recovery
-   errors without mixing them into the live controls.
+   errors without mixing them into the live controls. The Whisper builds are a
+   size-against-quality chart (`whisper_model_chart.dart`): bar height is the
+   download to scale, and a bar is light when missing, ticked when downloaded,
+   graphite with an orange edge when in use, and fills from the bottom while it
+   downloads. Each bar keeps its buttons (download, pause/resume and cancel, or
+   delete) always visible at its foot and grows slightly under the pointer;
+   only a failure's wording goes to a row under the chart.
 3. **Signal setup** contains capture mode, OCR region, original volume, speech
    speed, and CPU budget. Settings are disabled while the pipeline is active.
 

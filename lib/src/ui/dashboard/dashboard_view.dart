@@ -32,6 +32,7 @@ import 'cubits/pipeline_cubit.dart';
 import 'cubits/settings_cubit.dart';
 import 'cubits/shell_cubit.dart';
 import 'ocr_region_picker.dart';
+import 'whisper_model_chart.dart';
 
 /// Rebuilds only when the shell changes, which is the section, the banner
 /// and the version. Every other part of the screen listens for itself.
@@ -1321,19 +1322,50 @@ class _ModelsPanel extends StatelessWidget {
           const SizedBox(height: 8),
           _SectionNote(l10n.recognitionNeedsEnglish),
         ],
-        for (final state in selection.recognitionModels) ...[
-          const SizedBox(height: 12),
-          _ModelCard(
-            state: state,
-            onInstall: () => cubits.downloads.installModel(state),
-            onPause: () => cubits.downloads.pauseDownload(state.model.id),
-            onCancel: () => cubits.downloads.cancelDownload(state.model.id),
-            stopping: downloads.isStopping(state.model.id),
-            choosable: true,
-            selected: state.model.id == selection.recognition?.model.id,
-            onSelect: running ? null : () => cubits.settings.selectRecognitionModel(state.model.id),
-          ),
-        ],
+        // Size against quality is the whole choice, so it is drawn as a chart;
+        // a window too narrow for the bars gets the plain cards instead.
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth >= WhisperModelChart.minimumWidth) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 18),
+                child: WhisperModelChart(
+                  models: selection.recognitionModels,
+                  selectedId: selection.recognition?.model.id,
+                  running: running,
+                  isStopping: downloads.isStopping,
+                  onInstall: cubits.downloads.installModel,
+                  onPause: (state) => cubits.downloads.pauseDownload(state.model.id),
+                  onCancel: (state) => cubits.downloads.cancelDownload(state.model.id),
+                  onRemove: cubits.downloads.removeModel,
+                  onSelect: running
+                      ? null
+                      : (state) => cubits.settings.selectRecognitionModel(state.model.id),
+                ),
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final state in selection.recognitionModels) ...[
+                  const SizedBox(height: 12),
+                  _ModelCard(
+                    state: state,
+                    onInstall: () => cubits.downloads.installModel(state),
+                    onPause: () => cubits.downloads.pauseDownload(state.model.id),
+                    onCancel: () => cubits.downloads.cancelDownload(state.model.id),
+                    stopping: downloads.isStopping(state.model.id),
+                    choosable: true,
+                    selected: state.model.id == selection.recognition?.model.id,
+                    onSelect: running
+                        ? null
+                        : () => cubits.settings.selectRecognitionModel(state.model.id),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
         const SizedBox(height: 26),
         _ModuleLabel(number: '02', label: l10n.sectionTranslation),
         const SizedBox(height: 4),

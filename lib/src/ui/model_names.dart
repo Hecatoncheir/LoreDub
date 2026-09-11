@@ -21,6 +21,18 @@ String modelTitle(AppLocalizations l10n, ModelPackage model) => switch (model.ki
   ModelKind.voiceConversion => l10n.modelConverterTitle(model.version ?? ''),
 };
 
+/// A Whisper build by its size alone, as a bar on the chart can hold it:
+/// "medium" rather than "Whisper medium q5_0".
+String whisperShortName(ModelPackage model) => (model.version ?? model.id).split(' ').first;
+
+String? recognitionQualityName(AppLocalizations l10n, RecognitionQuality? quality) =>
+    switch (quality) {
+      RecognitionQuality.fair => l10n.whisperQualityFair,
+      RecognitionQuality.good => l10n.whisperQualityGood,
+      RecognitionQuality.excellent => l10n.whisperQualityExcellent,
+      null => null,
+    };
+
 String modelDescription(AppLocalizations l10n, ModelPackage model) => switch (model.kind) {
   ModelKind.recognition =>
     model.translatesSpeech

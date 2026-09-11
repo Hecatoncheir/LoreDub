@@ -61,7 +61,7 @@ everything needed to run on the processor.
 **2. Download the models on the Models screen.**
 
 <p align="center">
-  <img src="docs/screenshots/models-en.png" width="900" alt="The Models screen: speech recognition and translators">
+  <img src="docs/screenshots/models-en.png" width="900" alt="The Models screen: the Whisper models on a size-against-quality chart, with the translators below">
 </p>
 
 Two things are needed: one recognition model (start with **Whisper base**) and
@@ -122,7 +122,14 @@ travel the whole pipeline.
 
 ### Models
 
-At the top sits speech recognition: one Whisper model for every language. Below
+At the top sits speech recognition: one Whisper model for every language. The
+builds are drawn as a chart: a bar's height is its download to scale, its
+place along the bottom is how well it recognizes speech. A light bar with a
+download cloud is not downloaded yet, a light one with a tick is, a dark one
+with an orange edge is in use, and one being downloaded fills from the bottom
+with its percentage in a ring. The buttons are always on the bar: download,
+pause or resume and cancel, or delete for a downloaded model (after a
+confirmation). A click on a downloaded bar picks it. Below
 it are the translators and the voices, one of each per language. Picking a
 language in either section selects both halves of the pair. At the bottom is
 the voice converter: one for every language, needed only by Original voice
