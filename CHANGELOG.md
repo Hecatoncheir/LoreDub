@@ -4,6 +4,8 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-11
+
 - Redrew the Whisper models on the Models screen as a chart of size against quality: each build
   is a bar as tall as its download, light when missing, ticked once downloaded, dark with an
   orange edge when in use, and filling from the bottom while it downloads. Every bar keeps its
