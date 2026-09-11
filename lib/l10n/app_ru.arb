@@ -603,7 +603,27 @@
   "computeRuntimeRemoveConfirm": "Удалить полностью",
   "computeRuntimeRemoveCancel": "Оставить",
   "computeRuntimeInstalling": "Установка…",
-  "computeSpeechCpuOnly": "Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.",
+  "computeRuntimesTitle": "ПАКЕТЫ ДЛЯ ВИДЕОКАРТЫ",
+  "runtimeWhisperCuda": "CUDA · Whisper",
+  "runtimeTorchCuda": "CUDA · перевод",
+  "runtimeServesWhisper": "распознавание",
+  "runtimeServesTorch": "перевод и OpenVoice",
+  "runtimeHintInUse": "Сейчас используется",
+  "runtimeHintIdle": "Скачан, но сейчас ни одна стадия его не использует",
+  "runtimeRemoveLocked": "Пакет можно удалить, когда озвучка остановлена",
+  "computeRuntimeDownloading": "Пакет {size} скачивается — пауза и отмена на его плитке ниже",
+  "@computeRuntimeDownloading": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "computeCellHintDownload": "Нажмите, чтобы скачать",
+  "computeCellSelect": "Нажмите, чтобы считать эту стадию здесь",
+  "computeCellSelected": "Стадия считается здесь",
+  "computeCellLocked": "Устройство можно сменить, когда озвучка остановлена",
+  "computeSpeechCpuOnly":"Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.",
   "failureRuntimeIncomplete": "В скачанном пакете нет {detail}",
   "@failureRuntimeIncomplete": {
     "placeholders": {

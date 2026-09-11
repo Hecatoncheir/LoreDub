@@ -603,7 +603,27 @@
   "computeRuntimeRemoveConfirm": "Remove completely",
   "computeRuntimeRemoveCancel": "Keep",
   "computeRuntimeInstalling": "Installing…",
-  "computeSpeechCpuOnly": "Silero runs on the processor: moving it to the card costs more than the work itself.",
+  "computeRuntimesTitle": "GRAPHICS CARD PACKAGES",
+  "runtimeWhisperCuda": "CUDA · Whisper",
+  "runtimeTorchCuda": "CUDA · translation",
+  "runtimeServesWhisper": "recognition",
+  "runtimeServesTorch": "translation and OpenVoice",
+  "runtimeHintInUse": "In use now",
+  "runtimeHintIdle": "Downloaded, but no stage uses it now",
+  "runtimeRemoveLocked": "The package can be deleted once dubbing is stopped",
+  "computeRuntimeDownloading": "The {size} package is downloading — pause and cancel are on its tile below",
+  "@computeRuntimeDownloading": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "computeCellHintDownload": "Click to download",
+  "computeCellSelect": "Click to run this stage here",
+  "computeCellSelected": "This stage runs here",
+  "computeCellLocked": "The device can be changed once dubbing is stopped",
+  "computeSpeechCpuOnly":"Silero runs on the processor: moving it to the card costs more than the work itself.",
   "failureRuntimeIncomplete": "The downloaded package has no {detail}",
   "@failureRuntimeIncomplete": {
     "placeholders": {

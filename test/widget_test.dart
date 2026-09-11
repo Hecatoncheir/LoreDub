@@ -26,6 +26,7 @@ import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/app_release.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
+import 'package:lore_dub/src/domain/download_control.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
@@ -723,9 +724,110 @@ void main() {
     await tester.scrollUntilVisible(speech, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
 
-    // Silero has no GPU build here, so its row carries a single chip.
-    final row = find.ancestor(of: speech, matching: find.byType(Row)).first;
-    expect(find.descendant(of: row, matching: find.byType(ChoiceChip)), findsOneWidget);
+    // Silero has no GPU build here, so only its processor cell is live.
+    Finder cell(String backend) => find.byKey(ValueKey('backendCell-speech-$backend'));
+    for (final backend in ['cuda', 'vulkan']) {
+      expect(
+        find.descendant(
+          of: cell(backend),
+          matching: find.byTooltip('Не поддерживается этой моделью'),
+        ),
+        findsOneWidget,
+        reason: backend,
+      );
+    }
+    expect(
+      find.descendant(of: cell('cpu'), matching: find.byTooltip('Стадия считается здесь')),
+      findsOneWidget,
+    );
+  });
+
+  group('the stage-by-device table', () {
+    const nvidia = ComputeAvailability(
+      adapters: [
+        GraphicsAdapter(name: 'NVIDIA GeForce RTX 3080 Ti', vendor: GraphicsVendor.nvidia),
+      ],
+      cudaDriver: true,
+      vulkanLoader: true,
+      installedRuntimes: {whisperCudaRuntimeId},
+    );
+    late _RecordingRuntimeRepository runtimes;
+
+    Future<DashboardCubits> pumpTable(WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+      runtimes = _RecordingRuntimeRepository();
+      final cubits = stage(
+        buildCubits(runtimes: runtimes),
+        section: DashboardSection.settings,
+        availability: nvidia,
+        runtimes: [
+          RuntimeInstallState(package: runtimePackageById(whisperCudaRuntimeId)!, installed: true),
+          RuntimeInstallState(package: runtimePackageById(torchCudaRuntimeId)!),
+        ],
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('runtimeTile-$torchCudaRuntimeId')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      return cubits;
+    }
+
+    Finder cell(String stage, String backend) =>
+        find.byKey(ValueKey('backendCell-$stage-$backend'));
+
+    testWidgets('marks the device each stage runs on', (tester) async {
+      await pumpTable(tester);
+
+      Color colour(Finder finder) => tester
+          .widget<Material>(find.descendant(of: finder, matching: find.byType(Material)).first)
+          .color!;
+      // Automatic puts Whisper on the CUDA it has, and translation, still
+      // without its package, on the processor.
+      expect(colour(cell('recognition', 'cuda')), LoreDubPalette.graphite);
+      expect(colour(cell('recognition', 'cpu')), LoreDubPalette.panel);
+      expect(colour(cell('translation', 'cpu')), LoreDubPalette.graphite);
+      expect(
+        find.descendant(of: cell('translation', 'cuda'), matching: find.text('2.5 GB')),
+        findsOneWidget,
+        reason: 'the missing package names its size',
+      );
+    });
+
+    testWidgets('picks a ready device by tapping its cell', (tester) async {
+      final cubits = await pumpTable(tester);
+
+      await tester.ensureVisible(cell('recognition', 'vulkan'));
+      await tester.pumpAndSettle();
+      await tester.tap(cell('recognition', 'vulkan'));
+      await tester.pumpAndSettle();
+
+      expect(cubits.settings.settings.recognitionBackend, ComputeBackend.vulkan);
+    });
+
+    testWidgets('fetches a missing package from its cell', (tester) async {
+      await pumpTable(tester);
+
+      await tester.ensureVisible(cell('translation', 'cuda'));
+      await tester.pumpAndSettle();
+      await tester.tap(cell('translation', 'cuda'));
+      await tester.pumpAndSettle();
+
+      expect(runtimes.installed, [torchCudaRuntimeId]);
+    });
+
+    testWidgets('draws the packages as tiles with their buttons', (tester) async {
+      await pumpTable(tester);
+
+      Finder on(String id, String tooltip) => find.descendant(
+        of: find.byKey(ValueKey('runtimeTile-$id')),
+        matching: find.byTooltip(tooltip),
+      );
+      expect(on(whisperCudaRuntimeId, 'Удалить'), findsOneWidget);
+      expect(on(torchCudaRuntimeId, 'Скачать'), findsOneWidget);
+    });
   });
 
   testWidgets('remembers the compute preset the user pressed', (tester) async {
@@ -802,7 +904,10 @@ void main() {
     expect(message, findsOneWidget);
     expect(find.textContaining('OSError'), findsOneWidget);
     expect(
-      find.textContaining('Скачать · 2.5 GB'),
+      find.descendant(
+        of: find.byKey(const ValueKey('runtimeTile-$torchCudaRuntimeId')),
+        matching: find.byTooltip('Скачать'),
+      ),
       findsOneWidget,
       reason: 'the button stays, so the install can be tried again',
     );
@@ -814,6 +919,12 @@ void main() {
     /// zone, and what is under test here is the question, not the delete —
     /// the delete itself is covered in the runtime store's own tests.
     late _RecordingRuntimeRepository runtimes;
+
+    /// The delete button of the CUDA Whisper tile.
+    Finder removeButton() => find.descendant(
+      of: find.byKey(const ValueKey('runtimeTile-$whisperCudaRuntimeId')),
+      matching: find.byTooltip('Удалить'),
+    );
 
     Future<void> stageInstalledRuntime(WidgetTester tester) async {
       SharedPreferences.setMockInitialValues({});
@@ -832,7 +943,7 @@ void main() {
 
       await pumpDashboard(tester, cubits, const Size(1280, 1000));
       await tester.scrollUntilVisible(
-        find.textContaining('Удалить · '),
+        removeButton(),
         300,
         scrollable: find.byType(Scrollable).first,
       );
@@ -842,7 +953,7 @@ void main() {
     testWidgets('asks before giving hundreds of megabytes back', (tester) async {
       await stageInstalledRuntime(tester);
 
-      await tester.tap(find.textContaining('Удалить · '));
+      await tester.tap(removeButton());
       await tester.pumpAndSettle();
 
       expect(find.text('Точно удалить?'), findsOneWidget);
@@ -854,7 +965,7 @@ void main() {
     testWidgets('names the size that is about to be freed', (tester) async {
       await stageInstalledRuntime(tester);
 
-      await tester.tap(find.textContaining('Удалить · '));
+      await tester.tap(removeButton());
       await tester.pumpAndSettle();
 
       expect(find.textContaining('436 MB'), findsWidgets);
@@ -863,20 +974,20 @@ void main() {
     testWidgets('keeps the runtime when the question is declined', (tester) async {
       await stageInstalledRuntime(tester);
 
-      await tester.tap(find.textContaining('Удалить · '));
+      await tester.tap(removeButton());
       await tester.pumpAndSettle();
       await tester.tap(find.text('Оставить'));
       await tester.pumpAndSettle();
 
       expect(find.text('Точно удалить?'), findsNothing);
       expect(runtimes.removed, isEmpty);
-      expect(find.textContaining('Удалить · '), findsOneWidget);
+      expect(removeButton(), findsOneWidget);
     });
 
     testWidgets('removes it once the question is answered', (tester) async {
       await stageInstalledRuntime(tester);
 
-      await tester.tap(find.textContaining('Удалить · '));
+      await tester.tap(removeButton());
       await tester.pumpAndSettle();
       await tester.tap(find.text('Удалить полностью'));
       await tester.pumpAndSettle();
@@ -884,7 +995,7 @@ void main() {
       expect(find.text('Точно удалить?'), findsNothing);
       expect(runtimes.removed, [whisperCudaRuntimeId]);
       expect(
-        find.textContaining('Удалить · '),
+        removeButton(),
         findsNothing,
         reason: 'the offer goes away with the runtime',
       );
@@ -1589,9 +1700,22 @@ class _RecordingRuntimeRepository extends RuntimeRepository {
   _RecordingRuntimeRepository() : super(RuntimeStorageService());
 
   final removed = <String>[];
+  final installed = <String>[];
 
   @override
   Future<void> remove(RuntimePackage package) async => removed.add(package.id);
+
+  @override
+  Future<DownloadOutcome> install(
+    RuntimePackage package, {
+    required DownloadProgress onProgress,
+    String proxyUrl = '',
+    String pythonExecutable = '',
+    DownloadControl? control,
+  }) async {
+    installed.add(package.id);
+    return DownloadOutcome.completed;
+  }
 
   @override
   Future<Set<String>> installedIds() async =>

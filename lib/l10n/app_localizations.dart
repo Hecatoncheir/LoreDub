@@ -1521,6 +1521,84 @@ abstract class AppLocalizations {
   /// **'Установка…'**
   String get computeRuntimeInstalling;
 
+  /// No description provided for @computeRuntimesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПАКЕТЫ ДЛЯ ВИДЕОКАРТЫ'**
+  String get computeRuntimesTitle;
+
+  /// No description provided for @runtimeWhisperCuda.
+  ///
+  /// In ru, this message translates to:
+  /// **'CUDA · Whisper'**
+  String get runtimeWhisperCuda;
+
+  /// No description provided for @runtimeTorchCuda.
+  ///
+  /// In ru, this message translates to:
+  /// **'CUDA · перевод'**
+  String get runtimeTorchCuda;
+
+  /// No description provided for @runtimeServesWhisper.
+  ///
+  /// In ru, this message translates to:
+  /// **'распознавание'**
+  String get runtimeServesWhisper;
+
+  /// No description provided for @runtimeServesTorch.
+  ///
+  /// In ru, this message translates to:
+  /// **'перевод и OpenVoice'**
+  String get runtimeServesTorch;
+
+  /// No description provided for @runtimeHintInUse.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сейчас используется'**
+  String get runtimeHintInUse;
+
+  /// No description provided for @runtimeHintIdle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачан, но сейчас ни одна стадия его не использует'**
+  String get runtimeHintIdle;
+
+  /// No description provided for @runtimeRemoveLocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакет можно удалить, когда озвучка остановлена'**
+  String get runtimeRemoveLocked;
+
+  /// No description provided for @computeRuntimeDownloading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакет {size} скачивается — пауза и отмена на его плитке ниже'**
+  String computeRuntimeDownloading(String size);
+
+  /// No description provided for @computeCellHintDownload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите, чтобы скачать'**
+  String get computeCellHintDownload;
+
+  /// No description provided for @computeCellSelect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите, чтобы считать эту стадию здесь'**
+  String get computeCellSelect;
+
+  /// No description provided for @computeCellSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стадия считается здесь'**
+  String get computeCellSelected;
+
+  /// No description provided for @computeCellLocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Устройство можно сменить, когда озвучка остановлена'**
+  String get computeCellLocked;
+
   /// No description provided for @computeSpeechCpuOnly.
   ///
   /// In ru, this message translates to:

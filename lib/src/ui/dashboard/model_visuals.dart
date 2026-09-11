@@ -256,6 +256,7 @@ Future<bool> confirmModelRemoval(
   BuildContext context, {
   required String title,
   required String message,
+  String? confirmLabel,
 }) async {
   final l10n = AppLocalizations.of(context);
   final confirmed = await showDialog<bool>(
@@ -275,7 +276,7 @@ Future<bool> confirmModelRemoval(
             backgroundColor: Theme.of(context).colorScheme.error,
             foregroundColor: Colors.white,
           ),
-          child: Text(l10n.modelRemoveConfirm),
+          child: Text(confirmLabel ?? l10n.modelRemoveConfirm),
         ),
       ],
     ),

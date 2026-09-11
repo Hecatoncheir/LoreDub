@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../../l10n/app_localizations.dart';
+import '../data/services/runtime_catalog.dart';
 import '../domain/compute_device.dart';
 import '../domain/model_package.dart';
 
@@ -20,6 +21,20 @@ String computeBackendName(AppLocalizations l10n, ComputeBackend backend) => swit
   ComputeBackend.cuda => l10n.computeBackendCuda,
   ComputeBackend.vulkan => l10n.computeBackendVulkan,
   ComputeBackend.cpu => l10n.computeBackendCpu,
+};
+
+/// A GPU runtime by what it is for, as its tile is titled.
+String runtimeName(AppLocalizations l10n, String id) => switch (id) {
+  whisperCudaRuntimeId => l10n.runtimeWhisperCuda,
+  torchCudaRuntimeId => l10n.runtimeTorchCuda,
+  _ => id,
+};
+
+/// The stages a GPU runtime serves, in the line under its title.
+String runtimeServes(AppLocalizations l10n, String id) => switch (id) {
+  whisperCudaRuntimeId => l10n.runtimeServesWhisper,
+  torchCudaRuntimeId => l10n.runtimeServesTorch,
+  _ => id,
 };
 
 String computeDeviceName(AppLocalizations l10n, ComputeDevice device) => switch (device) {

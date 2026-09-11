@@ -162,8 +162,12 @@ Python path and a proxy for downloads.
 </p>
 
 The default is **Automatic**: the app finds the graphics card itself and
-assigns a device to every stage. An option this machine cannot run is shown but
-disabled, with a tooltip saying why. The heavy GPU runtimes are not in the
+assigns a device to every stage. Below the preset is a table of stage by
+device. The cell a stage runs on is dark with an orange edge; a light one can be
+picked with a click; one with a cloud needs a package first, and a click
+fetches it; a faded one is ruled out by the machine or the stage, with the
+reason in its tooltip. Below that, the graphics card packages are tiles like the
+models: download, pause, resume, cancel, delete. The heavy GPU runtimes are not in the
 installer and are fetched on demand, so nobody who leaves the card off pays for
 them. Measurements and details are under
 [Compute device](#compute-device).

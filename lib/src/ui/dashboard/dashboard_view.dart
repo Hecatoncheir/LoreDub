@@ -17,7 +17,6 @@ import '../../domain/model_proxy.dart';
 import '../../domain/ocr_region.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/pipeline_state.dart';
-import '../../domain/runtime_package.dart';
 import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
 import '../app_icons.dart';
@@ -31,6 +30,7 @@ import 'cubits/downloads_cubit.dart';
 import 'cubits/pipeline_cubit.dart';
 import 'cubits/settings_cubit.dart';
 import 'cubits/shell_cubit.dart';
+import 'compute_matrix.dart';
 import 'model_tiles.dart';
 import 'model_visuals.dart';
 import 'ocr_region_picker.dart';
@@ -1445,9 +1445,8 @@ class _SectionNote extends StatelessWidget {
 
 /// Pause/resume and cancel for a download in flight.
 ///
-/// Kept to two small buttons so it fits both the model cards and the tight
-/// compute rows. A cancel that cannot be resumed says so in its tooltip
-/// rather than looking the same as a pause.
+/// Kept to two small buttons so it fits the Whisper cards a narrow window
+/// falls back to.
 class _DownloadControls extends StatelessWidget {
   const _DownloadControls({
     required this.paused,
@@ -1455,12 +1454,10 @@ class _DownloadControls extends StatelessWidget {
     required this.onPause,
     required this.onResume,
     required this.onCancel,
-    this.pausable = true,
   });
 
   final bool paused;
   final bool stopping;
-  final bool pausable;
   final VoidCallback onPause;
   final VoidCallback onResume;
   final VoidCallback onCancel;
@@ -1471,19 +1468,18 @@ class _DownloadControls extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (pausable)
-          IconButton(
-            tooltip: stopping
-                ? l10n.downloadStopping
-                : (paused ? l10n.downloadResume : l10n.downloadPause),
-            onPressed: stopping ? null : (paused ? onResume : onPause),
-            icon: Icon(paused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 20),
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-            padding: EdgeInsets.zero,
-          ),
         IconButton(
-          tooltip: pausable ? l10n.downloadCancel : l10n.downloadCancelNotResumable,
+          tooltip: stopping
+              ? l10n.downloadStopping
+              : (paused ? l10n.downloadResume : l10n.downloadPause),
+          onPressed: stopping ? null : (paused ? onResume : onPause),
+          icon: Icon(paused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 20),
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+          padding: EdgeInsets.zero,
+        ),
+        IconButton(
+          tooltip: l10n.downloadCancel,
           onPressed: stopping ? null : onCancel,
           icon: const Icon(Icons.close_rounded, size: 20),
           visualDensity: VisualDensity.compact,
@@ -2267,10 +2263,11 @@ class _VoiceBankControls extends StatelessWidget {
   }
 }
 
-/// The compute section: one preset for the whole pipeline, then a row per
-/// stage showing what that preset actually resolved to and letting it be
-/// overridden. A backend the machine cannot run is shown but disabled, so an
-/// AMD owner can see that CUDA exists and why it is not on offer.
+/// The compute section: one preset for the whole pipeline, then a table of
+/// stage by device showing what that preset actually resolved to and letting
+/// any cell be picked, and the GPU packages as tiles. A backend the machine
+/// cannot run is shown but faded, so an AMD owner can see that CUDA exists
+/// and why it is not on offer.
 class _ComputeDeviceCard extends StatelessWidget {
   const _ComputeDeviceCard({required this.cubits});
 
@@ -2303,6 +2300,16 @@ class _ComputeDeviceCard extends StatelessWidget {
       for (final stage in ComputeStage.values)
         if (stage != ComputeStage.voiceConversion || settings.originalVoice) stage,
     ];
+    final availability = downloads.availability;
+    // The packages this machine could use, and any already on disk: a card
+    // that was taken out must not strand gigabytes nobody can give back.
+    final runtimes = [
+      for (final runtime in downloads.runtimes)
+        if (runtime.installed ||
+            runtime.stoppable ||
+            _servesHardware(runtime.package.id, availability))
+          runtime,
+    ];
     return _SettingCard(
       title: l10n.settingsComputeDevice,
       subtitle: l10n.computeDeviceNote,
@@ -2325,15 +2332,72 @@ class _ComputeDeviceCard extends StatelessWidget {
             style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
           ),
           const SizedBox(height: 14),
-          for (final stage in stages) ...[
-            _ComputeStageRow(
-              cubits: cubits,
-              downloads: downloads,
-              settings: settings,
-              pipeline: pipeline,
-              stage: stage,
+          // Stage by device: every cell says at a glance whether the stage
+          // runs there, could, needs a package first, or cannot at all.
+          for (final stage in stages)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 104,
+                    child: Text(
+                      computeStageName(l10n, stage),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  for (final backend in ComputeBackend.values) ...[
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: _cell(l10n, stage, backend, downloads, settings, pipeline),
+                      ),
+                    ),
+                    if (backend != ComputeBackend.values.last) const SizedBox(width: 8),
+                  ],
+                ],
+              ),
             ),
-            if (stage != stages.last) const SizedBox(height: 10),
+          if (runtimes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              l10n.computeRuntimesTitle,
+              style: const TextStyle(
+                fontFamily: LoreDubFonts.mono,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+                color: LoreDubPalette.mutedInk,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ModelTileGrid(
+              children: [
+                for (final runtime in runtimes)
+                  RuntimeTile(
+                    key: ValueKey('runtimeTile-${runtime.package.id}'),
+                    state: runtime,
+                    inUse: _inUse(runtime.package.id, stages, settings, pipeline, availability),
+                    running: running,
+                    stopping: downloads.isStopping(runtime.package.id),
+                    onInstall: () => cubits.downloads.installRuntime(runtime),
+                    onPause: () => cubits.downloads.pauseDownload(runtime.package.id),
+                    onCancel: () => cubits.downloads.cancelDownload(runtime.package.id),
+                    onRemove: () => cubits.downloads.removeRuntime(runtime),
+                  ),
+              ],
+            ),
+            // A failed install puts the tile back as it was, so without the
+            // reason spelled out the press looked like it had done nothing.
+            for (final runtime in runtimes)
+              if (runtime.error case final error?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: SelectableText(
+                    '${runtimeName(l10n, runtime.package.id)}: ${describeFailure(l10n, error)}',
+                    style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+                  ),
+                ),
           ],
           const SizedBox(height: 12),
           Text(
@@ -2344,267 +2408,92 @@ class _ComputeDeviceCard extends StatelessWidget {
       ),
     );
   }
-}
 
-class _ComputeStageRow extends StatelessWidget {
-  const _ComputeStageRow({
-    required this.cubits,
-    required this.downloads,
-    required this.settings,
-    required this.pipeline,
-    required this.stage,
-  });
-
-  /// Handed the states its card already read, rather than listening again:
-  /// the whole card is redrawn together anyway.
-  final DashboardCubits cubits;
-  final DownloadsState downloads;
-  final AppSettings settings;
-  final LivePipelineState pipeline;
-  final ComputeStage stage;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+  Widget _cell(
+    AppLocalizations l10n,
+    ComputeStage stage,
+    ComputeBackend backend,
+    DownloadsState downloads,
+    AppSettings settings,
+    LivePipelineState pipeline,
+  ) {
+    final key = ValueKey('backendCell-${stage.name}-${backend.name}');
+    final label = computeBackendName(l10n, backend);
     final running = pipeline.running;
-    final selected = pipeline.backendFor(stage, settings, downloads.availability);
-    final offered = stageBackends(stage);
-    // The missing runtime of whichever backend the reader is most likely to
-    // want: the best one the hardware could run but has nothing installed for.
-    RuntimeInstallState? missing;
-    for (final backend in offered) {
-      missing ??= downloads.missingRuntimeFor(stage, backend);
-    }
-    // A downloaded runtime is worth gigabytes, so it can be given back.
-    final installed = missing != null ? null : downloads.installedRuntimeFor(stage);
-    final row = Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 96,
-          child: Text(
-            computeStageName(l10n, stage),
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-        Expanded(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              for (final backend in offered)
-                _BackendChip(
-                  label: computeBackendName(l10n, backend),
-                  selected: backend == selected,
-                  enabled: !running && downloads.isBackendReady(stage, backend),
-                  tooltip: _reasonUnavailable(l10n, backend),
-                  onTap: () => cubits.settings.selectStageBackend(stage, backend),
-                ),
-              if (missing != null)
-                _RuntimeDownloadButton(
-                  cubits: cubits,
-                  downloads: downloads,
-                  running: running,
-                  state: missing,
-                ),
-              if (installed != null)
-                _RuntimeRemoveButton(cubits: cubits, running: running, state: installed),
-            ],
-          ),
-        ),
-      ],
-    );
-    // A failed install puts the button back as it was, so without this the
-    // press looked like it had done nothing at all.
-    final error = missing?.error;
-    if (error == null) return row;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        row,
-        Padding(
-          padding: const EdgeInsets.only(left: 96, top: 6),
-          child: SelectableText(
-            describeFailure(l10n, error),
-            style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Why a chip is greyed out, or null when it is not.
-  String? _reasonUnavailable(AppLocalizations l10n, ComputeBackend backend) {
-    if (downloads.isBackendReady(stage, backend)) return null;
-    if (!downloads.availability.supportsHardware(backend)) {
-      return l10n.computeBackendNoHardware;
-    }
-    final package = downloads.missingRuntimeFor(stage, backend);
-    if (package != null) {
-      return l10n.computeRuntimeMissing(formatPackageSize(package.package.approximateBytes));
-    }
-    return l10n.computeBackendUnsupported;
-  }
-}
-
-class _BackendChip extends StatelessWidget {
-  const _BackendChip({
-    required this.label,
-    required this.selected,
-    required this.enabled,
-    required this.onTap,
-    this.tooltip,
-  });
-
-  final String label;
-  final bool selected;
-  final bool enabled;
-  final String? tooltip;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final chip = ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: enabled ? (_) => onTap() : null,
-      showCheckmark: false,
-      // The same orange the preset above uses: both are selections, and two
-      // different selected colours in one card read as two different things.
-      selectedColor: scheme.primary,
-      disabledColor: LoreDubPalette.panel,
-      labelStyle: TextStyle(
-        fontFamily: LoreDubFonts.mono,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: selected
-            ? scheme.onPrimary
-            : enabled
-            ? LoreDubPalette.ink
-            : LoreDubPalette.mutedInk,
-      ),
-    );
-    return tooltip == null ? chip : Tooltip(message: tooltip!, child: chip);
-  }
-}
-
-/// Gives a downloaded runtime back, once the user has confirmed it.
-///
-/// Hundreds of megabytes are not worth losing to a stray click, and this row
-/// sits where the download button used to be — so the question is asked.
-class _RuntimeRemoveButton extends StatelessWidget {
-  const _RuntimeRemoveButton({
-    required this.cubits,
-    required this.running,
-    required this.state,
-  });
-
-  final DashboardCubits cubits;
-  final bool running;
-  final RuntimeInstallState state;
-
-  Future<void> _confirm(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
-    final size = formatPackageSize(state.package.approximateBytes);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(l10n.computeRuntimeRemoveTitle),
-        content: Text(
-          l10n.computeRuntimeRemoveMessage(size),
-          style: const TextStyle(fontSize: 16, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.computeRuntimeRemoveCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              // The theme's default foreground is too dark to read on the
-              // error red, and this is the button that must be unmistakable.
-              foregroundColor: Colors.white,
-            ),
-            child: Text(l10n.computeRuntimeRemoveConfirm),
-          ),
-        ],
-      ),
-    );
-    if (confirmed ?? false) await cubits.downloads.removeRuntime(state);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return TextButton.icon(
-      onPressed: running ? null : () => _confirm(context),
-      icon: const Icon(Icons.delete_outline_rounded, size: 18),
-      label: Text(
-        '${l10n.computeRuntimeRemove} · '
-        '${formatPackageSize(state.package.approximateBytes)}',
-      ),
-      style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
-    );
-  }
-}
-
-/// Offers the download a backend is waiting on, and shows it running.
-class _RuntimeDownloadButton extends StatelessWidget {
-  const _RuntimeDownloadButton({
-    required this.cubits,
-    required this.downloads,
-    required this.running,
-    required this.state,
-  });
-
-  final DashboardCubits cubits;
-  final DownloadsState downloads;
-  final bool running;
-  final RuntimeInstallState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    if (state.stoppable) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 90,
-            child: LinearProgressIndicator(value: state.progress, minHeight: 6),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            state.paused ? l10n.downloadPaused : '${((state.progress ?? 0) * 100).round()}%',
-            style: const TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 12),
-          ),
-          const SizedBox(width: 4),
-          _DownloadControls(
-            paused: state.paused,
-            stopping: downloads.isStopping(state.package.id),
-            // pip runs to the end or not at all, so only a cancel is offered.
-            pausable: state.pausable,
-            onPause: () => cubits.downloads.pauseDownload(state.package.id),
-            onResume: () => cubits.downloads.installRuntime(state),
-            onCancel: () => cubits.downloads.cancelDownload(state.package.id),
-          ),
-        ],
+    if (!stageBackends(stage).contains(backend)) {
+      return BackendCell(
+        key: key,
+        label: label,
+        state: BackendCellState.unsupported,
+        tooltip: l10n.computeBackendUnsupported,
       );
     }
-    return TextButton.icon(
-      onPressed: running ? null : () => cubits.downloads.installRuntime(state),
-      icon: const Icon(Icons.download_rounded, size: 18),
-      label: Text(
-        '${l10n.computeRuntimeDownload} · '
-        '${formatPackageSize(state.package.approximateBytes)}',
-      ),
+    if (!downloads.availability.supportsHardware(backend)) {
+      return BackendCell(
+        key: key,
+        label: label,
+        state: BackendCellState.noHardware,
+        tooltip: l10n.computeBackendNoHardware,
+      );
+    }
+    if (downloads.missingRuntimeFor(stage, backend) case final missing?) {
+      final size = formatPackageSize(missing.package.approximateBytes);
+      if (missing.progress case final progress?) {
+        return BackendCell(
+          key: key,
+          label: label,
+          state: BackendCellState.downloading,
+          progress: progress,
+          detail: missing.paused ? l10n.downloadPaused : '${(progress * 100).round()}%',
+          tooltip: l10n.computeRuntimeDownloading(size),
+        );
+      }
+      return BackendCell(
+        key: key,
+        label: label,
+        state: BackendCellState.needsRuntime,
+        detail: size,
+        tooltip: '${l10n.computeRuntimeMissing(size)}\n${l10n.computeCellHintDownload}',
+        onTap: running ? null : () => cubits.downloads.installRuntime(missing),
+      );
+    }
+    // While dubbing runs this is what the stage really settled on.
+    final selected = pipeline.backendFor(stage, settings, downloads.availability) == backend;
+    return BackendCell(
+      key: key,
+      label: label,
+      state: selected ? BackendCellState.selected : BackendCellState.ready,
+      tooltip: selected
+          ? l10n.computeCellSelected
+          : running
+          ? l10n.computeCellLocked
+          : l10n.computeCellSelect,
+      onTap: selected || running ? null : () => cubits.settings.selectStageBackend(stage, backend),
     );
   }
+
+  /// Whether any stage could put a runtime to use on this machine.
+  static bool _servesHardware(String id, ComputeAvailability availability) {
+    for (final stage in ComputeStage.values) {
+      for (final backend in stageBackends(stage)) {
+        if (requiredRuntimeId(stage, backend) == id && availability.supportsHardware(backend)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Whether a stage on the card runs on this runtime right now.
+  static bool _inUse(
+    String id,
+    List<ComputeStage> stages,
+    AppSettings settings,
+    LivePipelineState pipeline,
+    ComputeAvailability availability,
+  ) => stages.any(
+    (stage) => requiredRuntimeId(stage, pipeline.backendFor(stage, settings, availability)) == id,
+  );
 }
 
 class _SettingCard extends StatelessWidget {

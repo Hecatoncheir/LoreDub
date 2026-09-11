@@ -199,15 +199,20 @@ class ModelTile extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: LoreDubFonts.display,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: ink,
+              // A long name such as "CUDA · translation" shrinks to fit
+              // rather than losing its end.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontFamily: LoreDubFonts.display,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: ink,
+                  ),
                 ),
               ),
             ),

@@ -9,7 +9,12 @@ All notable changes to LoreDub are documented in this file.
   deleted together, with one progress ring for the pair; the converter is a tile of its own.
   Every tile keeps its buttons in sight and grows slightly under the pointer, and any
   downloaded model can now be deleted.
-- Fixed Cancel on a paused download doing nothing: the paused part files are now deleted.
+- Redrew the Compute device section: a table of stage by device where every cell shows whether
+  the stage runs there, could, needs a package first — a click fetches it — or cannot, with
+  the reason in its tooltip. The GPU packages are tiles like the models, with download, pause,
+  resume, cancel and delete on each.
+- Fixed Cancel on a paused download doing nothing, for models and GPU packages alike: the
+  paused part files are now deleted.
 
 ## [0.8.0] - 2026-09-11
 

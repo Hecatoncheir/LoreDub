@@ -276,11 +276,26 @@ class DownloadsCubit extends Cubit<DownloadsState> {
   }
 
   Future<void> _discardPaused(String id) async {
-    final index = state.models.indexWhere((model) => model.model.id == id);
-    if (index < 0 || !state.models[index].paused || state.models[index].installed) return;
     try {
-      await _modelRepository.remove(state.models[index].model);
-      _replaceModel(index, state.models[index].copyWith(clearProgress: true, paused: false));
+      final model = state.models.indexWhere((install) => install.model.id == id);
+      if (model >= 0) {
+        final install = state.models[model];
+        if (!install.paused || install.installed) return;
+        await _modelRepository.remove(install.model);
+        _replaceModel(model, state.models[model].copyWith(clearProgress: true, paused: false));
+        return;
+      }
+      // A paused GPU runtime waits the same way, its part under
+      // runtime/.downloads, which removing the runtime clears too.
+      final runtime = state.runtimes.indexWhere((install) => install.package.id == id);
+      if (runtime < 0) return;
+      final install = state.runtimes[runtime];
+      if (!install.paused || install.installed) return;
+      await _runtimeRepository.remove(install.package);
+      _replaceRuntime(
+        runtime,
+        state.runtimes[runtime].copyWith(clearProgress: true, paused: false),
+      );
     } catch (exception) {
       _errors.report(exception);
     }

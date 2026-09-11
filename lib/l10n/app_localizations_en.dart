@@ -848,6 +848,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get computeRuntimeInstalling => 'Installing…';
 
   @override
+  String get computeRuntimesTitle => 'GRAPHICS CARD PACKAGES';
+
+  @override
+  String get runtimeWhisperCuda => 'CUDA · Whisper';
+
+  @override
+  String get runtimeTorchCuda => 'CUDA · translation';
+
+  @override
+  String get runtimeServesWhisper => 'recognition';
+
+  @override
+  String get runtimeServesTorch => 'translation and OpenVoice';
+
+  @override
+  String get runtimeHintInUse => 'In use now';
+
+  @override
+  String get runtimeHintIdle => 'Downloaded, but no stage uses it now';
+
+  @override
+  String get runtimeRemoveLocked => 'The package can be deleted once dubbing is stopped';
+
+  @override
+  String computeRuntimeDownloading(String size) {
+    return 'The $size package is downloading — pause and cancel are on its tile below';
+  }
+
+  @override
+  String get computeCellHintDownload => 'Click to download';
+
+  @override
+  String get computeCellSelect => 'Click to run this stage here';
+
+  @override
+  String get computeCellSelected => 'This stage runs here';
+
+  @override
+  String get computeCellLocked => 'The device can be changed once dubbing is stopped';
+
+  @override
   String get computeSpeechCpuOnly =>
       'Silero runs on the processor: moving it to the card costs more than the work itself.';
 

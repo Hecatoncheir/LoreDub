@@ -851,6 +851,47 @@ class AppLocalizationsRu extends AppLocalizations {
   String get computeRuntimeInstalling => 'Установка…';
 
   @override
+  String get computeRuntimesTitle => 'ПАКЕТЫ ДЛЯ ВИДЕОКАРТЫ';
+
+  @override
+  String get runtimeWhisperCuda => 'CUDA · Whisper';
+
+  @override
+  String get runtimeTorchCuda => 'CUDA · перевод';
+
+  @override
+  String get runtimeServesWhisper => 'распознавание';
+
+  @override
+  String get runtimeServesTorch => 'перевод и OpenVoice';
+
+  @override
+  String get runtimeHintInUse => 'Сейчас используется';
+
+  @override
+  String get runtimeHintIdle => 'Скачан, но сейчас ни одна стадия его не использует';
+
+  @override
+  String get runtimeRemoveLocked => 'Пакет можно удалить, когда озвучка остановлена';
+
+  @override
+  String computeRuntimeDownloading(String size) {
+    return 'Пакет $size скачивается — пауза и отмена на его плитке ниже';
+  }
+
+  @override
+  String get computeCellHintDownload => 'Нажмите, чтобы скачать';
+
+  @override
+  String get computeCellSelect => 'Нажмите, чтобы считать эту стадию здесь';
+
+  @override
+  String get computeCellSelected => 'Стадия считается здесь';
+
+  @override
+  String get computeCellLocked => 'Устройство можно сменить, когда озвучка остановлена';
+
+  @override
   String get computeSpeechCpuOnly =>
       'Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.';
 

@@ -51,7 +51,9 @@ radius.
    (`model_tiles.dart`): one tile per language holds its translator and voice,
    downloaded, picked and deleted as a pair with one ring for both. The shared
    pieces — buttons, ring, hover growth, the delete dialog — live in
-   `model_visuals.dart`.
+   `model_visuals.dart`. The Compute device card in Settings uses the same
+   states for its stage-by-device table and GPU package tiles
+   (`compute_matrix.dart`).
 3. **Signal setup** contains capture mode, OCR region, original volume, speech
    speed, and CPU budget. Settings are disabled while the pipeline is active.
 
