@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../domain/compute_device.dart';
 import '../../domain/runtime_paths.dart';
+import '../../domain/sound_captions.dart';
 import '../../domain/spoken_language.dart';
 import '../../domain/failure.dart';
 import 'runtime_catalog.dart';
@@ -340,6 +341,9 @@ class LocalInferenceService {
       '-l',
       _spokenLanguage ?? 'auto',
       if (translateSpeech) '-tr',
+      // Music and noise would otherwise come back as "(soft music)" or
+      // "[Music]" — captions whisper learned from subtitles — and be voiced.
+      '-sns',
       '-otxt',
       '-of',
       prefix,
@@ -356,9 +360,11 @@ class LocalInferenceService {
     }
     final outputFile = File('$prefix.txt');
     if (!await outputFile.exists()) return null;
-    final english = (await outputFile.readAsString()).trim();
+    // `-sns` keeps most captions out; what still comes back as "(soft music)"
+    // or "[BLANK_AUDIO]" has nothing to translate once it is taken out.
+    final english = withoutSoundCaptions(await outputFile.readAsString());
     await outputFile.delete();
-    if (english.isEmpty || RegExp(r'^\[.*\]$').hasMatch(english)) return null;
+    if (english.isEmpty) return null;
 
     // The captured audio is still on disk here: the worker reads its pitch to
     // decide whose voice to answer in.

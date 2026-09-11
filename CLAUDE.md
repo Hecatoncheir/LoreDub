@@ -80,7 +80,13 @@ than one of them.
    player draws in Settings and stored as fractions of the foreground game
    window's client area).
 3. **whisper.cpp** — invoked per audio segment as a one-shot subprocess with
-   `-tr` (translate to English). Which build runs is the compute setting:
+   `-tr` (translate to English) and `-sns` (suppress non-speech tokens, so
+   music and noise do not come back as "(soft music)" or "[Music]" captions
+   that would be translated and voiced; every build ships v1.8.2, which has
+   the flag). The flag does not catch everything, so what it recognizes goes
+   through `withoutSoundCaptions` (`domain/sound_captions.dart`) as well —
+   as does text read off the screen — and a phrase left without words is
+   dropped. Which build runs is the compute setting:
    bundled `runtime/whisper/` (CPU) or `runtime/whisper-vulkan/`, or the
    downloaded `<app support>/runtime/whisper-cuda/`. OCR mode skips it.
 4. **Python inference worker** — `assets/runtime/inference_worker.py`, bundled
@@ -90,7 +96,10 @@ than one of them.
    `{"id","error"}` out, plus one `{"type":"ready"}` handshake). It keeps
    Marian and Silero loaded, which is why the first start takes minutes.
    Startup uses the bundled embedded Python (`runtime/python/python.exe`,
-   see `resolvePythonExecutable`).
+   see `resolvePythonExecutable`), which `scripts/prepare_windows_runtime.ps1`
+   fills with torch, transformers, sentencepiece and sacremoses — the last one
+   is what the Marian tokenizer normalizes punctuation with, and transformers
+   prints a recommendation on every start without it.
 
 Segments are processed strictly sequentially — `NativeEngineService._processing`
 is a chained `Future` — so a small CPU is never asked to run two inferences at

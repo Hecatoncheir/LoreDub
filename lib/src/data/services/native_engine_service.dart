@@ -14,6 +14,7 @@ import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
 import '../../domain/hotkey.dart';
 import '../../domain/ocr_text_delta.dart';
+import '../../domain/sound_captions.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
 import 'phrase_queue.dart';
@@ -323,15 +324,22 @@ class NativeEngineService {
     try {
       final config = _activeConfig;
       if (config == null) return;
+      // Subtitles caption sounds the way whisper does: "[Music]" is not a line.
+      final spoken = withoutSoundCaptions(recognizedText);
+      if (spoken.isEmpty) {
+        // A selection is waiting for its answer; this one held no words.
+        if (snapshot) _events.add({'type': 'snapshot', 'text': ''});
+        return;
+      }
       // Text read in the dubbing language itself is voiced as it is.
       final result = await _inference.processText(
-        recognizedText,
+        spoken,
         translate: config['textLanguage'] != config['targetLanguage'],
       );
       await _publishResult(
         result,
         started.elapsedMilliseconds,
-        original: recognizedText,
+        original: spoken,
         snapshot: snapshot,
       );
     } catch (error) {

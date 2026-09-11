@@ -104,6 +104,15 @@ if (-not (Test-Path (Join-Path $PythonCache "Lib\site-packages\torch"))) {
   & (Join-Path $PythonCache "python.exe") -m pip install --no-cache-dir `
     numpy==2.2.6 transformers==4.53.3 sentencepiece==0.2.0
 }
+
+# sacremoses is what the Marian tokenizer normalizes punctuation with. It is
+# optional, and without it transformers prints a recommendation on every start
+# and leaves quotes and dashes as the text had them. Checked on its own so a
+# cache filled by an earlier build gains it without downloading torch again.
+if (-not (Test-Path (Join-Path $PythonCache "Lib\site-packages\sacremoses"))) {
+  & (Join-Path $PythonCache "python.exe") -m pip install --no-cache-dir `
+    --no-warn-script-location sacremoses==0.2.0
+}
 $PythonDestination = Join-Path $Destination "python"
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $PythonDestination
 Copy-Item $PythonCache $PythonDestination -Recurse
