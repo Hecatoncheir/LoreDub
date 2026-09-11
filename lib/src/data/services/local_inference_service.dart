@@ -179,6 +179,10 @@ class LocalInferenceService {
 
     /// Pick the voice per phrase from the gender of the original speaker.
     bool followSpeaker = false,
+
+    /// Carry the original's timbre onto the voice. Without it a loaded
+    /// converter only tells the characters apart.
+    bool revoice = false,
     List<String> maleVoices = const [],
     List<String> femaleVoices = const [],
 
@@ -262,6 +266,7 @@ class LocalInferenceService {
           voiceConverter,
           '--converter-device',
           voiceConversionBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
+          if (revoice) '--revoice',
           if (voiceBank != null) ...['--voice-bank', voiceBank],
         ],
       ],

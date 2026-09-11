@@ -247,13 +247,15 @@ class PipelineCubit extends Cubit<LivePipelineState> {
           ),
           'translation': await _modelRepository.directoryFor(translation),
           'speech': path.join(speechDirectory, speech.primaryFileName),
-          if (selection.clonesVoice)
+          if (selection.needsVoiceConverter)
             'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
         },
         speaker: selection.voice,
         translationPrefix: translation.translationPrefix ?? '',
         translateSpeech: selection.recognitionTranslatesSpeech,
         followSpeaker: selection.followsSpeaker,
+        // The converter may be loaded only to hear who is speaking.
+        revoice: selection.clonesVoice,
         maleVoices: speech.voicesOf(VoiceGender.male),
         femaleVoices: speech.voicesOf(VoiceGender.female),
         recognitionBackend: settings.backendFor(
@@ -270,7 +272,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         ),
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
         // Kept per game, so one game's cast does not answer for another's.
-        voiceBank: selection.clonesVoice && settings.voiceBank
+        voiceBank: selection.keepsVoiceBank
             ? await _appRepository.voiceBankFileFor(state.selectedProcess?.name ?? '')
             : null,
       );

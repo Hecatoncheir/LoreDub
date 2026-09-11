@@ -1586,10 +1586,35 @@ void main() {
       expect((await SettingsService().load()).originalVoice, isTrue);
       expect(find.textContaining('Тембр оригинала накладывается'), findsOneWidget);
       expect(
-        find.textContaining('Тембр берётся из каждой реплики заново'),
+        find.textContaining('Персонажи не запоминаются'),
         findsOneWidget,
         reason: 'the voice bank starts off',
       );
+    });
+
+    testWidgets('offers to remember the characters without the original voice', (tester) async {
+      // Automatic voice with the converter downloaded: it is what hears who
+      // is speaking, so each character can be given a voice of their own.
+      await pumpSettings(tester);
+
+      expect(find.text('Запоминать голоса персонажей'), findsOneWidget);
+
+      // The label is not the control; the switch beside it is.
+      final remember = find.descendant(
+        of: find
+            .ancestor(
+              of: find.text('Запоминать голоса персонажей'),
+              matching: find.byType(Row),
+            )
+            .first,
+        matching: find.byType(Switch),
+      );
+      await tester.ensureVisible(remember);
+      await tester.pumpAndSettle();
+      await tester.tap(remember);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('получает свой голос Silero'), findsOneWidget);
     });
 
     testWidgets('asks for the converter before re-voicing', (tester) async {

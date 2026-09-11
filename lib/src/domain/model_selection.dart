@@ -68,6 +68,25 @@ class ModelSelection {
   /// answers.
   bool get clonesVoice => settings.originalVoice && canUseOriginalVoice;
 
+  /// Whether the worker will be told which character is speaking.
+  ///
+  /// The converter package is what hears that, so it is loaded for the
+  /// fingerprints even when the timbre is not carried over: each character
+  /// then keeps a voice of their own. Subtitle mode has nothing to listen
+  /// to, and one fixed voice has nobody to tell apart.
+  bool get tracksSpeakers =>
+      settings.voiceBank &&
+      settings.voiceMode != VoiceMode.chosen &&
+      settings.captureMode != CaptureMode.ocr &&
+      (voiceConverter?.installed ?? false);
+
+  /// Whether the converter is needed at all: to re-voice, or to tell the
+  /// characters apart.
+  bool get needsVoiceConverter => clonesVoice || tracksSpeakers;
+
+  /// Whether this game's characters are kept between sessions.
+  bool get keepsVoiceBank => settings.voiceBank && needsVoiceConverter;
+
   /// The package for the language being dubbed into, if the catalogue has one.
   ModelInstallState? forTargetLanguage(ModelKind kind) {
     for (final state in models) {

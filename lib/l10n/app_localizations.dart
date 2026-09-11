@@ -810,7 +810,7 @@ abstract class AppLocalizations {
   /// No description provided for @voiceOverlapNote.
   ///
   /// In ru, this message translates to:
-  /// **'Реплика другого персонажа начинается сразу, не дожидаясь конца текущей; одновременно звучат не больше двух голосов. В режиме «Автоматически» персонажи различаются только по полу голоса.'**
+  /// **'Реплика другого персонажа начинается сразу, не дожидаясь конца текущей; одновременно звучат не больше двух голосов. Без запоминания персонажей они различаются только по полу голоса.'**
   String get voiceOverlapNote;
 
   /// No description provided for @voiceBank.
@@ -822,13 +822,13 @@ abstract class AppLocalizations {
   /// No description provided for @voiceBankOnNote.
   ///
   /// In ru, this message translates to:
-  /// **'Отпечаток голоса каждого нового персонажа сохраняется, и его следующие реплики звучат тем же тембром — и после перезапуска. У каждой игры свой банк голосов.'**
+  /// **'Каждый новый персонаж запоминается по голосу и получает свой голос Silero, а в режиме «Голос оригинала» — ещё и свой тембр. Следующие его реплики звучат так же, в том числе после перезапуска. У каждой игры свой банк голосов.'**
   String get voiceBankOnNote;
 
   /// No description provided for @voiceBankOffNote.
   ///
   /// In ru, this message translates to:
-  /// **'Тембр берётся из каждой реплики заново и нигде не сохраняется.'**
+  /// **'Персонажи не запоминаются: голос подбирается по полу каждой реплики заново, а тембр берётся из неё же и нигде не сохраняется.'**
   String get voiceBankOffNote;
 
   /// No description provided for @voiceBankCount.

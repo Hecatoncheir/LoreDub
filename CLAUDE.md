@@ -204,10 +204,20 @@ runtime with translation; the worker brings that runtime in when either stage
 asks for CUDA and reports both devices in its `ready` line. With
 `AppSettings.voiceBank` the worker is also handed `--voice-bank`, a per-game
 JSON file (`VoiceBankService`, `<app support>/voice_bank/<exe>.json`): a line
-whose fingerprint meets a kept one at cosine >= 0.80 is voiced with the kept
-one, otherwise a line of 1.5 s or more is kept as a new voice. Kept voices are
+whose fingerprint meets a kept one at cosine >= 0.80 belongs to that
+character, otherwise a line of 1.5 s or more founds a new one. Kept voices are
 never averaged — the user asked for that explicitly — and replies carry
 `bankSize` so the settings count can be refreshed.
+
+Telling the characters apart is not the same switch as re-voicing them.
+`ModelSelection.tracksSpeakers` loads the converter whenever the package is
+installed and the bank is on, and `--revoice` (`clonesVoice`) decides whether
+its timbre is carried over at all. So the worker `identify()`s the speaker
+first, then `voice_for()` gives each character a Silero voice of their own —
+kept in the bank with the gender heard in their founding line, so a whisper
+or a shout no longer flips a character's voice mid-scene (bank format v2;
+v1's bare fingerprints still load). Without the converter nothing hears who
+is speaking and the per-line gender choice stands.
 
 Which device each stage runs on is decided in `domain/compute_device.dart`,
 which is pure and unit-tested: `resolveComputeBackend` takes the user's preset,

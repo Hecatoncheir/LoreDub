@@ -89,6 +89,50 @@ void main() {
     expect(selection.requiredModelsInstalled, isTrue, reason: 'the converter is not needed here');
   });
 
+  group('telling the characters apart', () {
+    final remembering = const AppSettings(voiceBank: true);
+
+    test('hears who is speaking without re-voicing, once the converter is there', () {
+      final selection = selectionWith(remembering);
+
+      expect(selection.tracksSpeakers, isTrue);
+      expect(selection.clonesVoice, isFalse, reason: 'the timbre stays where it was');
+      expect(selection.needsVoiceConverter, isTrue);
+      expect(selection.keepsVoiceBank, isTrue);
+    });
+
+    test('cannot hear anyone without the converter', () {
+      final selection = selectionWith(remembering, converter: false);
+
+      expect(selection.tracksSpeakers, isFalse);
+      expect(selection.needsVoiceConverter, isFalse);
+      expect(selection.requiredModelsInstalled, isTrue, reason: 'it is not needed to start');
+    });
+
+    test('leaves a fixed voice and subtitle mode alone', () {
+      expect(
+        selectionWith(remembering.withVoiceMode(VoiceMode.chosen)).tracksSpeakers,
+        isFalse,
+        reason: 'one voice for every line has nobody to tell apart',
+      );
+      expect(
+        selectionWith(remembering.copyWith(captureMode: CaptureMode.ocr)).tracksSpeakers,
+        isFalse,
+        reason: 'subtitles have nothing to listen to',
+      );
+    });
+
+    test('still loads the converter for the original voice with nothing remembered', () {
+      final selection = selectionWith(
+        const AppSettings().withVoiceMode(VoiceMode.original),
+      );
+
+      expect(selection.tracksSpeakers, isFalse);
+      expect(selection.needsVoiceConverter, isTrue);
+      expect(selection.keepsVoiceBank, isFalse, reason: 'the bank switch is off');
+    });
+  });
+
   test('lays the original timbre over a base voice that follows the speaker', () {
     // Picked by hand first, then switched to the original voice: the base
     // still follows the speaker, so the converter has less to move.

@@ -110,6 +110,7 @@ class NativeEngineService {
       sourceLanguage: config['sourceLanguage']! as String,
       translationPrefix: config['translationPrefix'] as String? ?? '',
       followSpeaker: config['followSpeaker'] as bool? ?? false,
+      revoice: config['revoice'] as bool? ?? false,
       maleVoices: _voiceList(config['maleVoices']),
       femaleVoices: _voiceList(config['femaleVoices']),
       recognitionBackend: _backendFrom(config['recognitionBackend']),

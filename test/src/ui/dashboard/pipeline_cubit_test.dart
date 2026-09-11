@@ -265,6 +265,7 @@ class _SlowStartRepository extends AppRepository {
     required String translationPrefix,
     required bool translateSpeech,
     required bool followSpeaker,
+    required bool revoice,
     required List<String> maleVoices,
     required List<String> femaleVoices,
     required ComputeBackend recognitionBackend,

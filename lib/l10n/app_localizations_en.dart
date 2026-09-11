@@ -414,17 +414,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceOverlapNote =>
-      'Another character\'s line starts at once instead of waiting for the current one to end; no more than two voices sound together. In Automatic mode characters are told apart only by the gender of their voice.';
+      'Another character\'s line starts at once instead of waiting for the current one to end; no more than two voices sound together. Without remembered characters they are told apart only by the gender of their voice.';
 
   @override
   String get voiceBank => 'Remember the characters\' voices';
 
   @override
   String get voiceBankOnNote =>
-      'Each new character\'s voice fingerprint is saved, and their later lines keep that timbre, restarts included. Every game has a voice bank of its own.';
+      'Every new character is remembered by their voice and given a Silero voice of their own — and their own timbre with Original voice on. Their later lines keep both, restarts included. Every game has a voice bank of its own.';
 
   @override
-  String get voiceBankOffNote => 'The timbre is taken from every line afresh and never saved.';
+  String get voiceBankOffNote =>
+      'Characters are not remembered: the voice is matched to the gender of each line afresh, and the timbre is taken from that line and never saved.';
 
   @override
   String voiceBankCount(int count) {

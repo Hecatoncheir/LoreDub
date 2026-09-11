@@ -2802,15 +2802,18 @@ class _VoiceCard extends StatelessWidget {
                 fontSize: 12,
               ),
             ),
-            if (converterInstalled) ...[
-              const SizedBox(height: 12),
-              _VoiceBankControls(
-                cubits: cubits,
-                settings: settings,
-                size: state.voiceBankSize,
-                running: running,
-              ),
-            ],
+          ],
+          // The converter is what hears who is speaking, so remembering the
+          // characters is on offer wherever it is installed — with the
+          // original voice it also keeps their timbre.
+          if (converterInstalled && mode != VoiceMode.chosen) ...[
+            const SizedBox(height: 12),
+            _VoiceBankControls(
+              cubits: cubits,
+              settings: settings,
+              size: state.voiceBankSize,
+              running: running,
+            ),
           ],
           if (!canFollow) ...[
             const SizedBox(height: 10),

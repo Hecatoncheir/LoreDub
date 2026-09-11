@@ -28,7 +28,9 @@ String voiceBankFileName(String game) {
 ///
 /// The worker is the one that fills a bank, since only it can compute a
 /// fingerprint; this side names the file, counts what is there and deletes
-/// it. A file is `{"version": 1, "voices": [[256 numbers], ...]}`.
+/// it. A file is `{"version": 2, "voices": [{"vector": [256 numbers],
+/// "gender": "male", "voice": "eugene"}, ...]}` — version 1 wrote the bare
+/// fingerprints, and the worker still reads those.
 class VoiceBankService {
   VoiceBankService({VoiceBankRootProvider? root}) : _root = root ?? _defaultRoot;
 

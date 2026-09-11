@@ -58,6 +58,10 @@ class AppRepository {
     required String translationPrefix,
     required bool translateSpeech,
     required bool followSpeaker,
+
+    /// Whether the converter carries the original's timbre over, rather than
+    /// only telling the characters apart.
+    required bool revoice,
     required List<String> maleVoices,
     required List<String> femaleVoices,
     required ComputeBackend recognitionBackend,
@@ -87,6 +91,7 @@ class AppRepository {
         'translationPrefix': translationPrefix,
         'translateSpeech': translateSpeech,
         'followSpeaker': followSpeaker,
+        'revoice': revoice,
         'overlapVoices': settings.overlapVoices,
         'maleVoices': maleVoices.join(','),
         'femaleVoices': femaleVoices.join(','),

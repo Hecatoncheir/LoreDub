@@ -196,11 +196,13 @@ BANK_LIMIT = 256
 
 
 class VoiceBank:
-    """The voice fingerprints of one game's characters, kept between sessions.
+    """The voices of one game's characters, kept between sessions.
 
-    Nothing is averaged: the first clear line of a character stands for them,
-    so their timbre stays the same from line to line and from one session to
-    the next.
+    Every character holds a fingerprint, the gender heard in the line that
+    founded them, and the Silero voice they were given. Nothing is averaged:
+    the first clear line of a character stands for them, so their timbre,
+    their gender and their voice stay the same from line to line and from one
+    session to the next.
     """
 
     def __init__(self, path):
@@ -208,20 +210,47 @@ class VoiceBank:
         # speakers apart, and nothing is written.
         self.path = pathlib.Path(path) if path else None
         self.voices = []
+        # One entry per voice: {"gender": str|None, "voice": str|None}.
+        self.details = []
         if self.path is None:
             return
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
             for voice in data.get("voices", []):
-                vector = np.asarray(voice, dtype=np.float32)
+                # Version 1 wrote bare fingerprints; a bank from it keeps its
+                # characters and earns their genders and voices again.
+                detail = voice if isinstance(voice, dict) else {}
+                vector = np.asarray(detail.get("vector", voice), dtype=np.float32)
                 if vector.ndim == 1 and vector.size and np.all(np.isfinite(vector)):
                     self.voices.append(vector)
+                    self.details.append(
+                        {
+                            "gender": detail.get("gender") or None,
+                            "voice": detail.get("voice") or None,
+                        }
+                    )
         except (OSError, ValueError, AttributeError, TypeError):
             # A missing or damaged bank starts empty; the next voice rewrites it.
             self.voices = []
+            self.details = []
 
     def __len__(self):
         return len(self.voices)
+
+    def voice_of(self, index):
+        """The Silero voice this character was given, if they have one."""
+        return self.details[index]["voice"] if 0 <= index < len(self.details) else None
+
+    def spoken_by(self, gender):
+        """How many characters already read in a voice of [gender]."""
+        return sum(1 for detail in self.details if detail["gender"] == gender)
+
+    def remember(self, index, gender, voice):
+        """Keeps the gender and voice a character's first clear line earned."""
+        if not 0 <= index < len(self.details):
+            return
+        self.details[index] = {"gender": gender, "voice": voice}
+        self.save()
 
     def nearest(self, vector):
         """The index of the stored voice closest to [vector] and its cosine."""
@@ -237,13 +266,24 @@ class VoiceBank:
 
     def add(self, vector):
         self.voices.append(np.asarray(vector, dtype=np.float32))
+        self.details.append({"gender": None, "voice": None})
+        self.save()
+
+    def save(self):
         if self.path is None:
             return
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             temporary = self.path.with_suffix(".tmp")
-            voices = [[round(float(value), 6) for value in voice] for voice in self.voices]
-            temporary.write_text(json.dumps({"version": 1, "voices": voices}), encoding="utf-8")
+            voices = [
+                {
+                    "vector": [round(float(value), 6) for value in voice],
+                    "gender": detail["gender"],
+                    "voice": detail["voice"],
+                }
+                for voice, detail in zip(self.voices, self.details)
+            ]
+            temporary.write_text(json.dumps({"version": 2, "voices": voices}), encoding="utf-8")
             # Replaced in one step, so a crash mid-write leaves the old bank.
             os.replace(temporary, self.path)
         except OSError as error:
@@ -272,9 +312,13 @@ def main():
     parser.add_argument("--follow-speaker", action="store_true")
     parser.add_argument("--male-voices", default="")
     parser.add_argument("--female-voices", default="")
-    # The OpenVoice tone converter's directory. With it, every line is
-    # re-voiced in the timbre of the phrase it answers.
+    # The OpenVoice tone converter's directory. It is what hears who is
+    # speaking, so it is loaded to tell the characters apart even when their
+    # timbre is not carried over.
     parser.add_argument("--voice-converter", default="")
+    # Carry the original's timbre onto the voice, which is the converter's
+    # other half. Without it the converter only says who is speaking.
+    parser.add_argument("--revoice", action="store_true")
     # The converter is placed apart from the translator: on the CPU it is
     # the slow half of a line, on a GPU next to nothing.
     parser.add_argument("--converter-device", default="cpu", choices=["cpu", "cuda"])
@@ -357,53 +401,38 @@ def main():
     # so a noisy line does not flip the character mid-conversation.
     current_voice = speaker
 
-    def voice_for(request):
-        nonlocal current_voice
-        if not following:
-            return speaker
-        source = request.get("wave")
-        gender = speaker_gender(source) if source else None
-        if gender is None:
-            return current_voice
-        # Keep the configured voice when it already matches the gender.
-        candidates = by_gender[gender]
-        current_voice = speaker if speaker in candidates else candidates[0]
-        return current_voice
-
     # The timbre of the last phrase that had a voice in it. A line of music or
     # a short grunt keeps it, the same way the automatic choice keeps its voice.
     current_timbre = None
 
-    # Who is speaking, as a key the application compares to let two different
-    # characters overlap while one never talks over themselves. With the
-    # converter it is the voice the line matched — kept in the game's bank,
-    # or in one that lasts only this session. Sticky, like the timbre.
+    # The characters this game's lines have been matched to — kept in its bank,
+    # or in one that lasts only this session.
     speakers = bank if bank is not None else VoiceBank(None)
-    current_speaker = None
 
-    def timbre_for(request):
-        nonlocal current_timbre, current_speaker
+    def identify(request):
+        """The character this line belongs to and the fingerprint read from
+        it, as (index, fingerprint).
+
+        Both are None without the converter, which is what hears who is
+        speaking, and for a line too short or too unvoiced to place.
+        """
         source = request.get("wave")
-        if source:
-            try:
-                samples, rate = read_wave_mono(source)
-            except (OSError, wave.Error, ValueError):
-                samples, rate = None, 0
-            if (
-                samples is not None
-                and rate > 0
-                and len(samples) >= rate // 2
-                and median_f0(samples, rate) is not None
-            ):
-                fingerprint = converter.embed(samples, rate)
-                index = speaker_of(fingerprint, len(samples) / rate)
-                # A short line nobody matched could be anyone.
-                current_speaker = None if index is None else f"timbre:{index}"
-                current_timbre = fingerprint
-                if bank is not None and index is not None:
-                    kept = torch.from_numpy(bank.voices[index]).reshape(fingerprint.shape)
-                    current_timbre = kept.to(device=fingerprint.device, dtype=fingerprint.dtype)
-        return current_timbre
+        if converter is None or not source:
+            return None, None
+        try:
+            samples, rate = read_wave_mono(source)
+        except (OSError, wave.Error, ValueError):
+            return None, None
+        if (
+            samples is None
+            or rate <= 0
+            or len(samples) < rate // 2
+            or median_f0(samples, rate) is None
+        ):
+            return None, None
+        fingerprint = converter.embed(samples, rate)
+        # A short line nobody matched could be anyone.
+        return speaker_of(fingerprint, len(samples) / rate), fingerprint
 
     def speaker_of(fingerprint, seconds):
         """The index of the voice this line belongs to; a new one is kept first."""
@@ -415,6 +444,50 @@ def main():
             speakers.add(vector)
             return len(speakers) - 1
         return None
+
+    def voice_for(request, index):
+        """The voice this line is read in.
+
+        A character keeps the voice their first clear line earned, so the same
+        person is never read by two voices; a line belonging to nobody falls
+        back to the gender heard in the line itself.
+        """
+        nonlocal current_voice
+        if not following:
+            return speaker
+        if index is not None:
+            kept = speakers.voice_of(index)
+            # A bank filled for another language package names voices this
+            # one does not ship.
+            if kept in by_gender["male"] or kept in by_gender["female"]:
+                current_voice = kept
+                return kept
+        source = request.get("wave")
+        gender = speaker_gender(source) if source else None
+        if gender is None:
+            return current_voice
+        candidates = by_gender[gender]
+        if index is None:
+            # Keep the configured voice when it already matches the gender.
+            current_voice = speaker if speaker in candidates else candidates[0]
+            return current_voice
+        # A voice of their own: two men in a scene are read by different
+        # voices, and the list wraps once the cast outgrows it.
+        current_voice = candidates[speakers.spoken_by(gender) % len(candidates)]
+        speakers.remember(index, gender, current_voice)
+        return current_voice
+
+    def timbre_for(fingerprint, index):
+        """The timbre to re-voice a line in: the character's kept one, or the
+        fingerprint of the line itself."""
+        nonlocal current_timbre
+        if fingerprint is None:
+            return current_timbre
+        current_timbre = fingerprint
+        if bank is not None and index is not None:
+            kept = torch.from_numpy(bank.voices[index]).reshape(fingerprint.shape)
+            current_timbre = kept.to(device=fingerprint.device, dtype=fingerprint.dtype)
+        return current_timbre
 
     pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
     # The device is reported back rather than assumed: a CUDA build that fell
@@ -452,7 +525,10 @@ def main():
                         translated = retry
             else:
                 translated = text
-            chosen = voice_for(request)
+            # Who is speaking is settled first: the character decides both the
+            # voice they are read in and the timbre laid over it.
+            index, fingerprint = identify(request)
+            chosen = voice_for(request, index)
             audio = tts.apply_tts(
                 text=translated,
                 speaker=chosen,
@@ -462,7 +538,7 @@ def main():
             )
             samples = audio.clamp(-1, 1).to(torch.float32).cpu().numpy()
             rate = args.sample_rate
-            timbre = timbre_for(request) if converter is not None else None
+            timbre = timbre_for(fingerprint, index) if args.revoice else None
             if timbre is not None:
                 # The converter answers at its own rate; the file is written at it.
                 samples, rate = converter.convert(samples, rate, timbre)
@@ -480,12 +556,13 @@ def main():
                 "wave": str(output),
                 "voice": chosen,
                 "cloned": timbre is not None,
-                # Without a timbre the Silero voice is all that tells lines
-                # apart, which separates men from women and nothing more.
-                "speaker": current_speaker if timbre is not None else f"voice:{chosen}",
             }
-            if timbre is not None and current_speaker is None:
-                del answer["speaker"]
+            if index is not None:
+                answer["speaker"] = f"timbre:{index}"
+            elif converter is None:
+                # Nothing heard who is speaking, so the Silero voice is all
+                # that tells lines apart: men from women and nothing more.
+                answer["speaker"] = f"voice:{chosen}"
             if bank is not None:
                 answer["bankSize"] = len(bank)
             reply(answer)
