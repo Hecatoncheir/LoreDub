@@ -173,6 +173,42 @@ void main() {
     }
   });
 
+  testWidgets('opens the process list below the field so the typing stays in sight', (
+    tester,
+  ) async {
+    final cubits = stage(buildCubits(), models: catalogue());
+    cubits.pipeline.seed(
+      LivePipelineState(
+        processes: [
+          for (var index = 0; index < 40; index++)
+            GameProcess(pid: 1000 + index, name: 'game$index.exe', path: 'C:\\game$index.exe'),
+        ],
+      ),
+    );
+    // A short window: the forty entries are far taller than the room left.
+    await pumpDashboard(tester, cubits, const Size(1280, 700));
+    await tester.pumpAndSettle();
+
+    final field = find.descendant(
+      of: find.byType(DropdownMenu<GameProcess>),
+      matching: find.byType(TextField),
+    );
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+
+    final first = find.text('game0.exe  ·  PID 1000').hitTestable();
+    expect(first, findsOneWidget);
+    expect(
+      tester.getTopLeft(first).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(field).dy),
+      reason: 'the list must not slide up over what is being typed',
+    );
+    expect(
+      tester.getBottomLeft(find.text('game0.exe  ·  PID 1000').hitTestable()).dy,
+      lessThanOrEqualTo(700),
+    );
+  });
+
   testWidgets('aligns source actions with the process selector', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 720));
 
