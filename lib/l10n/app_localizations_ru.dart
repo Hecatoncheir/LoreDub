@@ -72,6 +72,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get captureSystemNote => 'Захватывается весь дефолтный поток, кроме звука LoreDub';
 
   @override
+  String get captureOcrNote => 'Субтитры читаются с окна выбранной игры, пока оно активно';
+
+  @override
   String get sourceSystem => 'Весь звук';
 
   @override
@@ -130,6 +133,11 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String pipelineSummary(String language) {
     return 'Whisper → English → Marian → $language → Silero';
+  }
+
+  @override
+  String pipelineSummaryOcr(String language) {
+    return 'Windows OCR → English → Marian → $language → Silero';
   }
 
   @override

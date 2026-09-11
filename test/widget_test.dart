@@ -210,6 +210,30 @@ void main() {
     );
   });
 
+  testWidgets('names the audio path while dubbing what the game says', (tester) async {
+    final cubits = stage(buildCubits(), settings: const AppSettings());
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
+
+    expect(find.text('Захватывается только звук выбранного процесса'), findsOneWidget);
+    expect(find.text('Whisper → English → Marian → Русский → Silero'), findsOneWidget);
+  });
+
+  testWidgets('says subtitle mode reads the window rather than the audio', (tester) async {
+    final cubits = stage(
+      buildCubits(),
+      settings: const AppSettings(captureMode: CaptureMode.ocr),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
+
+    expect(
+      find.text('Субтитры читаются с окна выбранной игры, пока оно активно'),
+      findsOneWidget,
+    );
+    expect(find.text('Windows OCR → English → Marian → Русский → Silero'), findsOneWidget);
+    expect(find.textContaining('звук выбранного процесса'), findsNothing);
+    expect(find.textContaining('Whisper'), findsNothing);
+  });
+
   testWidgets('names the original language instead of detecting it', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 720));
 

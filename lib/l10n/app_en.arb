@@ -30,6 +30,7 @@
   },
   "captureProcessNote": "Only the selected process is captured",
   "captureSystemNote": "The whole default output is captured, except LoreDub itself",
+  "captureOcrNote": "Subtitles are read off the selected game's window while it is in front",
   "sourceSystem": "All audio",
   "sourceProcess": "Process",
   "refreshProcesses": "Refresh the process list",
@@ -76,6 +77,14 @@
   "transcriptClearTooltip": "Remove every line from the list",
   "pipelineSummary": "Whisper → English → Marian → {language} → Silero",
   "@pipelineSummary": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "pipelineSummaryOcr": "Windows OCR → English → Marian → {language} → Silero",
+  "@pipelineSummaryOcr": {
     "placeholders": {
       "language": {
         "type": "String"

@@ -4,6 +4,10 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+- Fixed the Live screen describing the audio path in subtitle mode: the note under the process
+  picker and the empty transcript now say the lines are read off the game window by Windows OCR
+  instead of captured as audio and recognized by Whisper.
+
 ## [0.4.0] - 2026-09-11
 
 - Added a drawn subtitle area: in subtitle mode Settings show a scaled-down screen shaped like

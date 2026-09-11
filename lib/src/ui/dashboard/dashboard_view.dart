@@ -673,6 +673,7 @@ class _LivePanel extends StatelessWidget {
                             cubits: cubits,
                             builder: (context, settings) => _EmptyTranscript(
                               targetLanguage: settings.settings.targetLanguage,
+                              captureMode: settings.settings.captureMode,
                             ),
                           )
                         : ListView.separated(
@@ -759,7 +760,11 @@ class _SourceControls extends StatelessWidget {
       onSelected: running || !requiresProcess ? null : cubits.pipeline.selectProcess,
     );
     final helper = Text(
-      requiresProcess ? l10n.captureProcessNote : l10n.captureSystemNote,
+      settings.captureMode == CaptureMode.ocr
+          ? l10n.captureOcrNote
+          : requiresProcess
+          ? l10n.captureProcessNote
+          : l10n.captureSystemNote,
       style: Theme.of(context).textTheme.bodySmall,
     );
     final sourceSwitch = settings.captureMode == CaptureMode.audio
@@ -1240,11 +1245,14 @@ class _LatencyBadge extends StatelessWidget {
 }
 
 class _EmptyTranscript extends StatelessWidget {
-  const _EmptyTranscript({required this.targetLanguage});
+  const _EmptyTranscript({required this.targetLanguage, required this.captureMode});
 
   /// The pipeline ends in whichever language is selected, so the hint says so
   /// rather than always naming Russian.
   final String targetLanguage;
+
+  /// Subtitle mode starts from Windows OCR, not Whisper, and the hint says so.
+  final CaptureMode captureMode;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -1267,9 +1275,10 @@ class _EmptyTranscript extends StatelessWidget {
               Text(AppLocalizations.of(context).emptyTranscript),
               const SizedBox(height: 6),
               Text(
-                AppLocalizations.of(context).pipelineSummary(
-                  spokenLanguageName(AppLocalizations.of(context), targetLanguage),
-                ),
+                switch (captureMode) {
+                  CaptureMode.audio => AppLocalizations.of(context).pipelineSummary,
+                  CaptureMode.ocr => AppLocalizations.of(context).pipelineSummaryOcr,
+                }(spokenLanguageName(AppLocalizations.of(context), targetLanguage)),
                 style: const TextStyle(color: LoreDubPalette.mutedInk),
               ),
             ],

@@ -213,6 +213,12 @@ abstract class AppLocalizations {
   /// **'Захватывается весь дефолтный поток, кроме звука LoreDub'**
   String get captureSystemNote;
 
+  /// No description provided for @captureOcrNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Субтитры читаются с окна выбранной игры, пока оно активно'**
+  String get captureOcrNote;
+
   /// No description provided for @sourceSystem.
   ///
   /// In ru, this message translates to:
@@ -314,6 +320,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Whisper → English → Marian → {language} → Silero'**
   String pipelineSummary(String language);
+
+  /// No description provided for @pipelineSummaryOcr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Windows OCR → English → Marian → {language} → Silero'**
+  String pipelineSummaryOcr(String language);
 
   /// No description provided for @sectionRecognition.
   ///

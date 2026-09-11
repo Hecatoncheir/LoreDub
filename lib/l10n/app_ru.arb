@@ -30,6 +30,7 @@
   },
   "captureProcessNote": "Захватывается только звук выбранного процесса",
   "captureSystemNote": "Захватывается весь дефолтный поток, кроме звука LoreDub",
+  "captureOcrNote": "Субтитры читаются с окна выбранной игры, пока оно активно",
   "sourceSystem": "Весь звук",
   "sourceProcess": "Процесс",
   "refreshProcesses": "Обновить список процессов",
@@ -76,6 +77,14 @@
   "transcriptClearTooltip": "Убрать все реплики из списка",
   "pipelineSummary": "Whisper → English → Marian → {language} → Silero",
   "@pipelineSummary": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "pipelineSummaryOcr": "Windows OCR → English → Marian → {language} → Silero",
+  "@pipelineSummaryOcr": {
     "placeholders": {
       "language": {
         "type": "String"

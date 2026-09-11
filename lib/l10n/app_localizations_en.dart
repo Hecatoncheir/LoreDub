@@ -72,6 +72,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureSystemNote => 'The whole default output is captured, except LoreDub itself';
 
   @override
+  String get captureOcrNote =>
+      'Subtitles are read off the selected game\'s window while it is in front';
+
+  @override
   String get sourceSystem => 'All audio';
 
   @override
@@ -130,6 +134,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String pipelineSummary(String language) {
     return 'Whisper → English → Marian → $language → Silero';
+  }
+
+  @override
+  String pipelineSummaryOcr(String language) {
+    return 'Windows OCR → English → Marian → $language → Silero';
   }
 
   @override
