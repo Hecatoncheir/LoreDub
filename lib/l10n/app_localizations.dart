@@ -1059,6 +1059,12 @@ abstract class AppLocalizations {
   /// **'Не удалось инициализировать приложение: {detail}'**
   String failureInitializationFailed(String detail);
 
+  /// No description provided for @failureCaptureFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Захват прервался: {detail}'**
+  String failureCaptureFailed(String detail);
+
   /// No description provided for @settingsComputeDevice.
   ///
   /// In ru, this message translates to:

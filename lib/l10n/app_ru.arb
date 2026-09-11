@@ -409,6 +409,14 @@
       }
     }
   },
+  "failureCaptureFailed": "Захват прервался: {detail}",
+  "@failureCaptureFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "settingsComputeDevice": "Вычислительное устройство",
   "computeDeviceNote": "«Автоматически» само определяет видеокарту. Каждую модель можно перевести на другое устройство отдельно.",
   "computeDeviceAuto": "Автоматически",

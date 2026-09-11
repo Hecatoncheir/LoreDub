@@ -4,6 +4,12 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+- Fixed a double-click on Start cancelling the start it had just begun, which left the Live
+  screen on "Stopped" with nothing to explain it. A second press within 800 ms of Start is now
+  taken for the rest of the double-click; a later press still cancels.
+- Fixed native capture errors, such as a missing English OCR pack, clearing the error banner
+  instead of raising it.
+
 - Fixed the Live screen describing the audio path in subtitle mode: the note under the process
   picker and the empty transcript now say the lines are read off the game window by Windows OCR
   instead of captured as audio and recognized by Whisper.

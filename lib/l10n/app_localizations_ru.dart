@@ -574,6 +574,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String failureCaptureFailed(String detail) {
+    return 'Захват прервался: $detail';
+  }
+
+  @override
   String get settingsComputeDevice => 'Вычислительное устройство';
 
   @override

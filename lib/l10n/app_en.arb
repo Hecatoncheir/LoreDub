@@ -409,6 +409,14 @@
       }
     }
   },
+  "failureCaptureFailed": "Capture stopped: {detail}",
+  "@failureCaptureFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "settingsComputeDevice": "Compute device",
   "computeDeviceNote": "\"Automatic\" finds the graphics card by itself. Each model can be moved to a different device on its own.",
   "computeDeviceAuto": "Automatic",

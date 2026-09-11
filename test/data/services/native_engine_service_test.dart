@@ -6,8 +6,27 @@ import 'dart:ffi';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
+import 'package:lore_dub/src/domain/failure.dart';
 
 void main() {
+  test('turns a native capture error into a failure the banner can show', () {
+    final event = fromNativeEvent({
+      'type': 'error',
+      'message': 'English OCR language is not installed.',
+    });
+
+    expect(event['type'], 'error');
+    final failure = event['failure']! as LoreDubFailure;
+    expect(failure.code, FailureCode.captureFailed);
+    expect(failure.detail, 'English OCR language is not installed.');
+  });
+
+  test('passes every other native event on untouched', () {
+    const state = {'type': 'state', 'state': 'listening'};
+
+    expect(fromNativeEvent(state), same(state));
+  });
+
   test('retries when a native string grows between size and copy', () {
     const initialValue = '[]';
     const grownValue = '[{"pid":42,"name":"Игра.exe"}]';

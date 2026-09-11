@@ -10,6 +10,7 @@ import 'dart:isolate';
 import 'package:ffi/ffi.dart';
 
 import '../../domain/compute_device.dart';
+import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
@@ -157,7 +158,7 @@ class NativeEngineService {
         if (_activeConfig == null) continue;
         _phrases.add(PendingPhrase.text(event['text']! as String));
       } else {
-        _events.add(event);
+        _events.add(fromNativeEvent(event));
       }
     }
   }
@@ -309,6 +310,20 @@ class NativeEngineService {
     unawaited(_inference.stop());
     _events.close();
   }
+}
+
+/// An event from the native queue in the shape the rest of the app reads.
+///
+/// Native capture reports trouble as `{"type":"error","message":...}`, a
+/// sentence in English, while the interface expects a [LoreDubFailure] under
+/// `failure`. Passed on as it came, the error arrived with no failure and
+/// cleared the banner instead of raising one.
+Map<String, Object?> fromNativeEvent(Map<String, Object?> event) {
+  if (event['type'] != 'error' || event['failure'] != null) return event;
+  return {
+    'type': 'error',
+    'failure': LoreDubFailure(FailureCode.captureFailed, detail: event['message'] as String?),
+  };
 }
 
 String readNativeUtf8String(

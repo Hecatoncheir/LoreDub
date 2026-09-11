@@ -107,15 +107,27 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     this._modelRepository,
     this._settings,
     this._downloads,
-    this._errors,
-  ) : super(const LivePipelineState());
+    this._errors, {
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now,
+       super(const LivePipelineState());
+
+  /// How long after a start a second press is taken for the rest of a
+  /// double-click. Windows counts clicks as double within 500 ms by default.
+  static const doubleClickGrace = Duration(milliseconds: 800);
 
   final AppRepository _appRepository;
   final ModelRepository _modelRepository;
   final SettingsCubit _settings;
   final DownloadsCubit _downloads;
   final FailureSink _errors;
+  final DateTime Function() _clock;
   StreamSubscription<Map<String, Object?>>? _events;
+
+  /// When the last start was asked for. The button that starts the pipeline
+  /// also cancels a start in progress, so without this a double-click would
+  /// start and cancel at once and leave "Stopped" with nothing to explain it.
+  DateTime? _startRequestedAt;
 
   ModelSelection get _selection =>
       ModelSelection(models: _downloads.state.models, settings: _settings.settings);
@@ -145,6 +157,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }
 
   Future<void> toggle({required bool initializing}) async {
+    final startedAt = _startRequestedAt;
+    if (state.status == PipelineStatus.starting &&
+        startedAt != null &&
+        _clock().difference(startedAt) < doubleClickGrace) {
+      return;
+    }
     _errors.report(null);
     if (state.running) {
       emit(state.copyWith(status: PipelineStatus.stopping));
@@ -172,6 +190,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     }
     final selection = _selection;
     if (!state.canStart(selection, initializing: initializing)) return;
+    _startRequestedAt = _clock();
     emit(
       state.copyWith(
         status: PipelineStatus.starting,
@@ -284,7 +303,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         // A phrase failing does not stop the capture, so the pipeline keeps
         // its state and the controls stay usable. Marking the session as
         // failed here used to leave it stuck: neither startable nor stoppable.
-        _errors.report(event['failure']);
+        // An event without a failure has nothing to show, and reporting null
+        // would clear a banner raised a moment earlier.
+        if (event['failure'] case final failure?) _errors.report(failure);
     }
   }
 

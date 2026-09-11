@@ -49,6 +49,9 @@ enum FailureCode {
   /// The pipeline was stopped while a phrase was in flight.
   pipelineStopped,
 
+  /// Native audio or subtitle capture gave up; the detail is its own message.
+  captureFailed,
+
   /// The pipeline only runs on Windows.
   windowsOnly,
 

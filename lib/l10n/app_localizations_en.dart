@@ -572,6 +572,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String failureCaptureFailed(String detail) {
+    return 'Capture stopped: $detail';
+  }
+
+  @override
   String get settingsComputeDevice => 'Compute device';
 
   @override
