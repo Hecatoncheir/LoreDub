@@ -334,6 +334,19 @@ which prevents other windows from being mistaken for subtitles.
 Exclusive-fullscreen or minimized windows cannot be read through the
 lightweight GDI capture path.
 
+The mode can be tried without a game. `scripts/ocr_test_window.ps1` opens a
+game-like window with English dialogue changing at the bottom centre and the
+current objective in the top-left corner. Pick `LoreDubOcrTest.exe` in the
+process list, frame the dialogue, start dubbing and switch to that window: only
+the dialogue should reach the transcript. `scripts/check_ocr_region.ps1` does the
+same without models or the interface, running the native capture with a few
+frames and checking what Windows OCR read.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/ocr_test_window.ps1
+powershell -ExecutionPolicy Bypass -File scripts/check_ocr_region.ps1
+```
+
 ## Checking for updates
 
 The bottom left of the sidebar carries a button with the installed version.

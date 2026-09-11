@@ -7,6 +7,9 @@ All notable changes to LoreDub are documented in this file.
 - Added a drawn subtitle area: in subtitle mode Settings show a scaled-down screen shaped like
   the monitor, on which the player drags, moves and resizes the frame OCR reads, instead of
   choosing only the height of a full-width band at the bottom of the window.
+- Added `scripts/ocr_test_window.ps1`, a game-like window for trying subtitle mode without a
+  game, and `scripts/check_ocr_region.ps1`, which runs the native capture against it with
+  several frames and checks that each reads only the text inside it.
 
 ## [0.3.0] - 2026-09-11
 
