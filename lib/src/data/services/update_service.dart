@@ -83,9 +83,34 @@ class UpdateService {
       return AppRelease(
         version: tag.startsWith('v') ? tag.substring(1) : tag,
         page: Uri.parse(page ?? 'https://github.com/Hecatoncheir/LoreDub/releases'),
+        installer: releaseInstallerFrom(body['assets']),
       );
     } finally {
       if (_client == null) client.close();
     }
   }
+}
+
+/// The Windows setup among a release's files, named the way the release
+/// workflow names it, or null when the release has none.
+ReleaseInstaller? releaseInstallerFrom(Object? assets) {
+  if (assets is! List<Object?>) return null;
+  for (final asset in assets) {
+    if (asset
+        case {
+          'name': final String name,
+          'browser_download_url': final String url,
+          'size': final int size,
+        }
+        when name.endsWith('-windows-x64-setup.exe')) {
+      final digest = asset['digest'];
+      return ReleaseInstaller(
+        name: name,
+        url: Uri.parse(url),
+        size: size,
+        sha256: digest is String && digest.startsWith('sha256:') ? digest.substring(7) : null,
+      );
+    }
+  }
+  return null;
 }

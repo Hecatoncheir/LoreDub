@@ -1659,10 +1659,52 @@ abstract class AppLocalizations {
   /// **'Вышла новая версия LoreDub'**
   String get updateAvailableTitle;
 
+  /// No description provided for @updateFromTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущая версия v{current} → v{latest}'**
+  String updateFromTo(String current, String latest);
+
+  /// No description provided for @updateInstallHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите, чтобы скачать и установить обновление'**
+  String get updateInstallHint;
+
+  /// No description provided for @updateDownloading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачиваю обновление…'**
+  String get updateDownloading;
+
+  /// No description provided for @updateInstalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновлено'**
+  String get updateInstalled;
+
+  /// No description provided for @updateRestart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перезапустить'**
+  String get updateRestart;
+
+  /// No description provided for @updateRestartHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'LoreDub закроется, за несколько секунд установит новую версию и откроется снова'**
+  String get updateRestartHint;
+
+  /// No description provided for @failureUpdateInstallFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось установить обновление: {detail}'**
+  String failureUpdateInstallFailed(String detail);
+
   /// No description provided for @updateAvailableBody.
   ///
   /// In ru, this message translates to:
-  /// **'Доступна версия {version}. Нажмите стрелку рядом с номером версии, чтобы открыть страницу релиза.'**
+  /// **'Доступна версия {version}. Нажмите на строку с версиями внизу слева, чтобы обновиться.'**
   String updateAvailableBody(String version);
 
   /// No description provided for @failureUpdateCheckFailed.

@@ -484,8 +484,20 @@ The bottom left of the sidebar carries a button with the installed version.
 The check runs by itself at startup, spinning on the button while it does;
 pressing it checks again.
 
-When the repository has published something newer, an orange arrow appears
-beside it — opening that release's page — and Windows shows a notification.
+When the repository has published something newer, Windows shows a
+notification and the version gives way to a line reading "Current version
+v0.8.0 → v0.9.0" with an orange mark. A click downloads the new version's
+setup — with a bar and a percentage, resuming after a dropped connection,
+checked against its size and SHA-256 when GitHub publishes one. Once it is
+down, the line turns into "Updated" and a **Restart** button. That stops the
+dubbing and closes LoreDub; the setup installs the new version over the old
+one with no window — for the current user, with no administrator prompt — and
+the application opens again. The install itself takes the few seconds between
+closing and opening: a running application cannot overwrite its own files.
+What happened is written to `updates/update.log` in the application data.
+
+A copy run from the build folder is not updated by the setup, which would
+install a second copy elsewhere, so there the line opens the release page.
 
 Only the three version numbers are compared: the build after `+` is ignored,
 because `0.2.1+3` and `0.2.1+4` are the same release to anyone reading a

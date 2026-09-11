@@ -107,6 +107,41 @@ void main() {
     expect((await service.latestRelease())?.page.toString(), endsWith('/releases'));
   });
 
+  test('finds the setup among the files of a release', () async {
+    final service = serviceReturning(
+      http.Response(
+        jsonEncode({
+          'tag_name': 'v0.9.0',
+          'assets': [
+            {'name': 'notes.txt', 'browser_download_url': 'https://example.com/notes', 'size': 4},
+            {
+              'name': 'LoreDub-0.9.0-windows-x64-setup.exe',
+              'browser_download_url':
+                  'https://github.com/Hecatoncheir/LoreDub/releases/download/v0.9.0/'
+                  'LoreDub-0.9.0-windows-x64-setup.exe',
+              'size': 181234513,
+              'digest': 'sha256:0123abcd',
+            },
+          ],
+        }),
+        200,
+      ),
+    );
+
+    final installer = (await service.latestRelease())?.installer;
+
+    expect(installer?.name, 'LoreDub-0.9.0-windows-x64-setup.exe');
+    expect(installer?.size, 181234513);
+    expect(installer?.sha256, '0123abcd');
+    expect(installer?.url.path, endsWith('/v0.9.0/LoreDub-0.9.0-windows-x64-setup.exe'));
+  });
+
+  test('leaves a release without a setup to its page', () async {
+    final release = await serviceReturning(releaseBody('v0.9.0')).latestRelease();
+
+    expect(release?.installer, isNull);
+  });
+
   test('reports the version this build carries', () async {
     expect(
       await serviceReturning(releaseBody('v0.4.0'), version: '0.2.1').currentVersion(),

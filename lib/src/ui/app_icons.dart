@@ -21,4 +21,19 @@ abstract final class LoreDubIcons {
     // colour, exactly as it does for a font icon.
     colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
   );
+
+  /// The mark beside a newer version waiting to be installed.
+  static Widget deployedCodeUpdate({required Color color, double size = 24}) =>
+      _symbol('assets/icons/deployed_code_update.svg', color, size);
+
+  /// The mark on the restart that finishes an update.
+  static Widget directorySync({required Color color, double size = 24}) =>
+      _symbol('assets/icons/directory_sync.svg', color, size);
+
+  static Widget _symbol(String asset, Color color, double size) => SvgPicture.asset(
+    asset,
+    width: size,
+    height: size,
+    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+  );
 }

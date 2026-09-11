@@ -4,6 +4,12 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+- Added installing updates from the application. When a newer release is published, the version
+  at the bottom left gives way to "Current version vX → vY" with an update mark; a click
+  downloads the new setup with a progress bar, then "Updated" and Restart close LoreDub, run
+  the setup silently for the current user and open the new version. A copy run from the build
+  folder still opens the release page.
+
 - Redrew the translators, voices and the voice converter in the Whisper chart's style. A
   dubbing language is now one tile holding its translator and voice, downloaded, picked and
   deleted together, with one progress ring for the pair; the converter is a tile of its own.

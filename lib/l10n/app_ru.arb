@@ -661,7 +661,31 @@
   },
   "updateFailed": "Не удалось проверить обновления",
   "updateAvailableTitle": "Вышла новая версия LoreDub",
-  "updateAvailableBody": "Доступна версия {version}. Нажмите стрелку рядом с номером версии, чтобы открыть страницу релиза.",
+  "updateFromTo": "Текущая версия v{current} → v{latest}",
+  "@updateFromTo": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      },
+      "latest": {
+        "type": "String"
+      }
+    }
+  },
+  "updateInstallHint": "Нажмите, чтобы скачать и установить обновление",
+  "updateDownloading": "Скачиваю обновление…",
+  "updateInstalled": "Обновлено",
+  "updateRestart": "Перезапустить",
+  "updateRestartHint": "LoreDub закроется, за несколько секунд установит новую версию и откроется снова",
+  "failureUpdateInstallFailed": "Не удалось установить обновление: {detail}",
+  "@failureUpdateInstallFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "updateAvailableBody": "Доступна версия {version}. Нажмите на строку с версиями внизу слева, чтобы обновиться.",
   "@updateAvailableBody": {
     "placeholders": {
       "version": {

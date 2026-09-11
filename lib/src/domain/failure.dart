@@ -90,6 +90,10 @@ enum FailureCode {
   /// A downloaded model could not be deleted; the detail is the file
   /// system's own message.
   modelRemoveFailed,
+
+  /// The newer setup could not be fetched in full or started; the detail is
+  /// what stopped it.
+  updateInstallFailed,
 }
 
 class LoreDubFailure implements Exception {

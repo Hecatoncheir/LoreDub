@@ -291,8 +291,8 @@ const _footerIconSize = 14.0;
 /// The version, and what is known about newer ones.
 ///
 /// Tapping it checks again; while a check runs the spinner takes the place of
-/// nothing else, so the row does not resize. A published newer version adds
-/// an arrow that opens its page.
+/// nothing else, so the row does not resize. Once a newer version is
+/// published the version steps aside for [_UpdateRow].
 class _VersionButton extends StatelessWidget {
   const _VersionButton({required this.cubits});
 
@@ -314,6 +314,12 @@ class _VersionButton extends StatelessWidget {
   Widget _build(BuildContext context, UpdateState updates) {
     final l10n = AppLocalizations.of(context);
     final version = updates.currentVersion;
+    if (updates.hasUpdate) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(_footerOuterInset, 0, 8, 8),
+        child: _UpdateRow(cubits: cubits, updates: updates),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(_footerOuterInset, 0, 8, 8),
       child: Row(
@@ -363,19 +369,115 @@ class _VersionButton extends StatelessWidget {
               ),
             ),
           ),
-          if (updates.release case final release?)
-            Tooltip(
-              message: l10n.updateOpenRelease(release.version),
-              child: IconButton(
-                onPressed: cubits.shell.openReleasePage,
-                icon: const Icon(Icons.arrow_outward_rounded, size: 18),
-                color: LoreDubPalette.orange,
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+        ],
+      ),
+    );
+  }
+}
+
+/// A newer version, in three steps on the spot the version held: where the
+/// update goes ("v0.8.0 → v0.9.0"), a bar while its setup downloads, and
+/// "Updated" with the restart that runs the setup.
+///
+/// A running application cannot overwrite its own files, so the setup itself
+/// runs in the few seconds between closing and opening again; the bar is the
+/// download, which is nearly all of the wait.
+class _UpdateRow extends StatelessWidget {
+  const _UpdateRow({required this.cubits, required this.updates});
+
+  final DashboardCubits cubits;
+  final UpdateState updates;
+
+  static const _label = TextStyle(
+    fontFamily: LoreDubFonts.mono,
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final release = updates.release!;
+    if (updates.readyToRestart) {
+      return Row(
+        children: [
+          const SizedBox(width: _footerButtonInset),
+          // The word never breaks: beside the restart the sidebar is narrow,
+          // so it shrinks a little rather than wrapping mid-word.
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                l10n.updateInstalled,
+                maxLines: 1,
+                style: _label.copyWith(color: LoreDubPalette.ink),
               ),
             ),
+          ),
+          Tooltip(
+            message: l10n.updateRestartHint,
+            child: TextButton.icon(
+              key: const ValueKey('updateRestart'),
+              onPressed: cubits.shell.restartToUpdate,
+              icon: LoreDubIcons.directorySync(color: LoreDubPalette.orange, size: 16),
+              label: Text(l10n.updateRestart),
+              style: TextButton.styleFrom(
+                foregroundColor: LoreDubPalette.orangeDark,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                minimumSize: const Size(0, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: _label.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
         ],
+      );
+    }
+    if (updates.installProgress case final progress?) {
+      return Tooltip(
+        message: l10n.updateDownloading,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: _footerButtonInset, vertical: 11),
+          child: Row(
+            children: [
+              Expanded(child: LinearProgressIndicator(value: progress, minHeight: 6)),
+              const SizedBox(width: 8),
+              Text('${(progress * 100).round()}%', style: _label),
+            ],
+          ),
+        ),
+      );
+    }
+    return Tooltip(
+      // A build run from its folder cannot be replaced by the setup, so it
+      // is sent to the page instead, and says so.
+      message: updates.installable
+          ? l10n.updateInstallHint
+          : l10n.updateOpenRelease(release.version),
+      child: TextButton(
+        key: const ValueKey('updateAvailable'),
+        onPressed: cubits.shell.installUpdate,
+        style: TextButton.styleFrom(
+          foregroundColor: LoreDubPalette.ink,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: _footerButtonInset, vertical: 6),
+          minimumSize: const Size(0, 34),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle: _label,
+        ),
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                l10n.updateFromTo(updates.currentVersion, release.version),
+                maxLines: 2,
+              ),
+            ),
+            const SizedBox(width: 6),
+            LoreDubIcons.deployedCodeUpdate(color: LoreDubPalette.orange, size: 18),
+          ],
+        ),
       ),
     );
   }

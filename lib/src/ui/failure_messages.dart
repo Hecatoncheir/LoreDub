@@ -47,6 +47,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.initializationFailed => l10n.failureInitializationFailed(detail),
     FailureCode.voiceBankClearFailed => l10n.failureVoiceBankClearFailed(detail),
     FailureCode.modelRemoveFailed => l10n.failureModelRemoveFailed(detail),
+    FailureCode.updateInstallFailed => l10n.failureUpdateInstallFailed(detail),
   };
 }
 

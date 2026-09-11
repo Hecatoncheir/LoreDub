@@ -11,6 +11,7 @@ import '../../../data/repositories/update_repository.dart';
 import '../../../data/services/update_service.dart';
 import '../../../domain/app_release.dart';
 import '../../../domain/app_settings.dart';
+import '../../../domain/progress_ticker.dart';
 
 enum DashboardSection { live, models, settings }
 
@@ -68,6 +69,10 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
   /// The proxy the update check should go through, if the user set one.
   String Function()? proxyUrl;
 
+  /// Run before the application closes for an update, so dubbing stops and
+  /// the game's volume comes back rather than staying turned down.
+  Future<void> Function()? beforeRestart;
+
   @override
   void report(Object? error) {
     if (isClosed) return;
@@ -84,7 +89,9 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
   /// banner: not reaching GitHub says nothing about the dubbing, and a red
   /// bar across the screen would suggest otherwise.
   Future<void> checkForUpdates({bool announce = false}) async {
-    if (state.updates.checking) return;
+    // An update on its way, or waiting for its restart, is past checking.
+    final current = state.updates;
+    if (current.checking || current.installing || current.readyToRestart) return;
     emit(
       state.copyWith(
         updates: state.updates.copyWith(status: UpdateStatus.checking, clearError: true),
@@ -101,6 +108,7 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
         status: newer ? UpdateStatus.available : UpdateStatus.current,
         currentVersion: version,
         release: newer ? release : null,
+        installable: newer && release.installer != null && _updateRepository.canInstall,
       );
       if (newer && announce) {
         // The toast is raised outside any widget, so the wording is loaded
@@ -125,6 +133,54 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
     if (release == null) return;
     try {
       await _updateRepository.openPage(release.page);
+    } catch (exception) {
+      report(exception);
+    }
+  }
+
+  /// Downloads the newer release's setup, reporting how far it got. A copy
+  /// the setup cannot replace — a build run from its folder, or a release
+  /// with no setup — is sent to the release page instead.
+  Future<void> installUpdate() async {
+    final updates = state.updates;
+    final release = updates.release;
+    if (release == null || updates.installing || updates.readyToRestart) return;
+    final installer = release.installer;
+    if (!updates.installable || installer == null) return openReleasePage();
+    report(null);
+    emit(state.copyWith(updates: updates.copyWith(installProgress: 0)));
+    final ticker = ProgressTicker();
+    try {
+      final setup = await _updateRepository.downloadInstaller(
+        installer,
+        proxyUrl: proxyUrl?.call() ?? '',
+        onProgress: (value) {
+          // Every chunk reports; only a change the reader can see redraws.
+          if (isClosed || !ticker.shouldReport(value)) return;
+          emit(state.copyWith(updates: state.updates.copyWith(installProgress: value)));
+        },
+      );
+      if (isClosed) return;
+      emit(
+        state.copyWith(
+          updates: state.updates.copyWith(clearInstallProgress: true, installerPath: setup),
+        ),
+      );
+    } catch (exception) {
+      if (isClosed) return;
+      emit(state.copyWith(updates: state.updates.copyWith(clearInstallProgress: true)));
+      report(exception);
+    }
+  }
+
+  /// Stops what is running, then closes the application so the downloaded
+  /// setup can replace it and open the new version.
+  Future<void> restartToUpdate() async {
+    final setup = state.updates.installerPath;
+    if (setup == null) return;
+    try {
+      await beforeRestart?.call();
+      await _updateRepository.restartInto(setup);
     } catch (exception) {
       report(exception);
     }

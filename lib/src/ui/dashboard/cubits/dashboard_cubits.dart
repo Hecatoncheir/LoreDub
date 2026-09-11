@@ -32,6 +32,10 @@ class DashboardCubits {
     pipeline = PipelineCubit(appRepository, modelRepository, settings, downloads, shell);
     shell.interfaceLanguage = () => settings.settings.interfaceLanguage;
     shell.proxyUrl = () => settings.settings.modelProxyUrl;
+    // Closing for an update must not leave the game turned down.
+    shell.beforeRestart = () async {
+      if (pipeline.state.running) await appRepository.stop();
+    };
   }
 
   final AppRepository _appRepository;

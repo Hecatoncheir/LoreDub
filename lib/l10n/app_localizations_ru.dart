@@ -931,8 +931,34 @@ class AppLocalizationsRu extends AppLocalizations {
   String get updateAvailableTitle => 'Вышла новая версия LoreDub';
 
   @override
+  String updateFromTo(String current, String latest) {
+    return 'Текущая версия v$current → v$latest';
+  }
+
+  @override
+  String get updateInstallHint => 'Нажмите, чтобы скачать и установить обновление';
+
+  @override
+  String get updateDownloading => 'Скачиваю обновление…';
+
+  @override
+  String get updateInstalled => 'Обновлено';
+
+  @override
+  String get updateRestart => 'Перезапустить';
+
+  @override
+  String get updateRestartHint =>
+      'LoreDub закроется, за несколько секунд установит новую версию и откроется снова';
+
+  @override
+  String failureUpdateInstallFailed(String detail) {
+    return 'Не удалось установить обновление: $detail';
+  }
+
+  @override
   String updateAvailableBody(String version) {
-    return 'Доступна версия $version. Нажмите стрелку рядом с номером версии, чтобы открыть страницу релиза.';
+    return 'Доступна версия $version. Нажмите на строку с версиями внизу слева, чтобы обновиться.';
   }
 
   @override

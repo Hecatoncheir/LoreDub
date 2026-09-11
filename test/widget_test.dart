@@ -1045,21 +1045,89 @@ void main() {
       expect(button.onPressed, isNull, reason: 'no second check on top of the first');
     });
 
-    testWidgets('offers the release page once a newer version exists', (tester) async {
-      final cubits = withUpdates(
-        UpdateState(
-          status: UpdateStatus.available,
-          currentVersion: '0.2.1',
-          release: AppRelease(
-            version: '0.3.0',
-            page: Uri.parse('https://github.com/Hecatoncheir/LoreDub/releases/tag/v0.3.0'),
-          ),
+    final release = AppRelease(
+      version: '0.3.0',
+      page: Uri.parse('https://github.com/Hecatoncheir/LoreDub/releases/tag/v0.3.0'),
+      installer: ReleaseInstaller(
+        name: 'LoreDub-0.3.0-windows-x64-setup.exe',
+        url: Uri.parse(
+          'https://github.com/Hecatoncheir/LoreDub/releases/download/v0.3.0/setup.exe',
         ),
+        size: 181234513,
+      ),
+    );
+
+    testWidgets('puts the update where the version was once a newer one exists', (tester) async {
+      final cubits = withUpdates(
+        UpdateState(status: UpdateStatus.available, currentVersion: '0.2.1', release: release),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
-      expect(find.byIcon(Icons.arrow_outward_rounded), findsOneWidget);
+      expect(find.text('Текущая версия v0.2.1 → v0.3.0'), findsOneWidget);
+      expect(find.text('Версия 0.2.1'), findsNothing, reason: 'the version steps aside');
+      // This test build was not put in place by the setup, so it points at
+      // the release page instead of installing over itself.
       expect(find.byTooltip('Открыть страницу версии 0.3.0'), findsOneWidget);
+    });
+
+    group('installing it', () {
+      late _FakeUpdateRepository updates;
+
+      DashboardCubits withInstaller(UpdateState state) {
+        SharedPreferences.setMockInitialValues({});
+        updates = _FakeUpdateRepository();
+        final cubits = DashboardCubits(
+          AppRepository(NativeEngineService(), SettingsService()),
+          ModelRepository(ModelStorageService()),
+          RuntimeRepository(RuntimeStorageService()),
+          updates,
+        );
+        addTearDown(cubits.dispose);
+        return stage(cubits, updates: state);
+      }
+
+      final available = UpdateState(
+        status: UpdateStatus.available,
+        currentVersion: '0.2.1',
+        release: release,
+        installable: true,
+      );
+
+      testWidgets('downloads the setup and then offers the restart', (tester) async {
+        final cubits = withInstaller(available);
+        await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+        expect(find.byTooltip('Нажмите, чтобы скачать и установить обновление'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('updateAvailable')));
+        await tester.pumpAndSettle();
+
+        expect(updates.downloaded, ['LoreDub-0.3.0-windows-x64-setup.exe']);
+        expect(find.text('Текущая версия v0.2.1 → v0.3.0'), findsNothing);
+        expect(find.text('Обновлено'), findsOneWidget);
+        expect(find.text('Перезапустить'), findsOneWidget);
+      });
+
+      testWidgets('shows a bar and the share in place of the text while it downloads', (
+        tester,
+      ) async {
+        final cubits = withInstaller(available.copyWith(installProgress: 0.42));
+        await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+        expect(find.text('42%'), findsOneWidget);
+        expect(find.text('Текущая версия v0.2.1 → v0.3.0'), findsNothing);
+      });
+
+      testWidgets('restarts into the downloaded setup', (tester) async {
+        final cubits = withInstaller(
+          available.copyWith(installerPath: r'C:\updates\LoreDub-0.3.0-windows-x64-setup.exe'),
+        );
+        await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+        await tester.tap(find.byKey(const ValueKey('updateRestart')));
+        await tester.pumpAndSettle();
+
+        expect(updates.restarted, [r'C:\updates\LoreDub-0.3.0-windows-x64-setup.exe']);
+      });
     });
 
     testWidgets('says the check failed rather than claiming to be current', (tester) async {
@@ -1723,6 +1791,34 @@ class _RecordingRuntimeRepository extends RuntimeRepository {
 
   @override
   Future<String> rootDirectory() async => r'C:\runtime';
+}
+
+/// Records the update the interface asked for instead of downloading a setup
+/// or closing the test runner.
+class _FakeUpdateRepository extends UpdateRepository {
+  _FakeUpdateRepository()
+    : super(UpdateService(client: _offline), NotificationService(plugin: _silent));
+
+  final downloaded = <String>[];
+  final restarted = <String>[];
+
+  @override
+  bool get canInstall => true;
+
+  @override
+  Future<String> downloadInstaller(
+    ReleaseInstaller installer, {
+    required DownloadProgress onProgress,
+    String proxyUrl = '',
+  }) async {
+    onProgress(0.5);
+    onProgress(1);
+    downloaded.add(installer.name);
+    return 'C:\\updates\\${installer.name}';
+  }
+
+  @override
+  Future<void> restartInto(String setup) async => restarted.add(setup);
 }
 
 /// The tests never reach the network: the update check is answered with a

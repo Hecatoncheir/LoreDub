@@ -82,6 +82,8 @@ flutter:
   assets:
     - assets/branding/loredub-icon.png
     - assets/icons/audio_capture.svg
+    - assets/icons/deployed_code_update.svg
+    - assets/icons/directory_sync.svg
     - assets/runtime/inference_worker.py
     - assets/runtime/tone_converter.py
 

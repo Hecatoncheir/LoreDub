@@ -109,7 +109,14 @@ Windows toast needs a Start Menu shortcut carrying the same `AppUserModelID`
 the plugin registers (`com.loredub.LoreDub`) — the installer sets it in
 `installer/lore_dub.iss`. Without that shortcut Windows accepts the toast and
 files it in the notification centre without ever showing it, so a build run
-straight from `build/` shows no banner.
+straight from `build/` shows no banner. `UpdateInstaller` installs a newer
+release: it downloads the release's `-windows-x64-setup.exe` asset through
+`artifact_downloader.dart` into `<app support>/updates/`, and on Restart
+writes `apply_update.ps1` there, starts it detached (wait for this PID, run
+the setup with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+/CLOSEAPPLICATIONS`, start the new exe, log to `update.log`) and exits. It
+only offers this when `unins000.exe` sits beside the executable, i.e. the
+per-user setup put this copy there; otherwise the line opens the release page.
 
 The recognition model is a choice, not a constant: `AppSettings.whisperModel`
 names a catalogue id and the pipeline is handed that package's file path.

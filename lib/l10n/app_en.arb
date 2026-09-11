@@ -661,7 +661,31 @@
   },
   "updateFailed": "Could not check for updates",
   "updateAvailableTitle": "A new LoreDub is out",
-  "updateAvailableBody": "Version {version} is available. Use the arrow beside the version number to open the release page.",
+  "updateFromTo": "Current version v{current} → v{latest}",
+  "@updateFromTo": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      },
+      "latest": {
+        "type": "String"
+      }
+    }
+  },
+  "updateInstallHint": "Click to download and install the update",
+  "updateDownloading": "Downloading the update…",
+  "updateInstalled": "Updated",
+  "updateRestart": "Restart",
+  "updateRestartHint": "LoreDub closes, installs the new version in a few seconds and opens again",
+  "failureUpdateInstallFailed": "The update could not be installed: {detail}",
+  "@failureUpdateInstallFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "updateAvailableBody": "Version {version} is available. Click the versions line at the bottom left to update.",
   "@updateAvailableBody": {
     "placeholders": {
       "version": {
