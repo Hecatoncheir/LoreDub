@@ -8,6 +8,8 @@ import 'package:lore_dub/src/data/services/python_discovery.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../support/temporary_directory.dart';
+
 void main() {
   late Directory root;
 
@@ -15,9 +17,7 @@ void main() {
     root = await Directory.systemTemp.createTemp('lore-dub-python');
   });
 
-  tearDown(() async {
-    if (await root.exists()) await root.delete(recursive: true);
-  });
+  tearDown(() => deleteOnceReleased(root));
 
   Future<String> createInterpreter(List<String> segments) async {
     final file = File(path.joinAll([root.path, ...segments]));

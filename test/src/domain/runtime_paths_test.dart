@@ -9,12 +9,12 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/runtime_paths.dart';
 import 'package:path/path.dart' as path;
 
+import '../../support/temporary_directory.dart';
+
 void main() {
   Future<Directory> createRuntime() async {
     final directory = await Directory.systemTemp.createTemp('lore-dub-runtime');
-    addTearDown(() async {
-      if (await directory.exists()) await directory.delete(recursive: true);
-    });
+    addTearDown(() => deleteOnceReleased(directory));
     return directory;
   }
 

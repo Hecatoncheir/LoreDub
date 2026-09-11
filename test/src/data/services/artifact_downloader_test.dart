@@ -12,6 +12,8 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../support/temporary_directory.dart';
+
 void main() {
   late Directory directory;
   final payload = List<int>.generate(400, (index) => index % 251);
@@ -20,9 +22,7 @@ void main() {
     directory = await Directory.systemTemp.createTemp('lore-dub-download');
   });
 
-  tearDown(() async {
-    if (await directory.exists()) await directory.delete(recursive: true);
-  });
+  tearDown(() => deleteOnceReleased(directory));
 
   ModelArtifact artifactOf({int? byteSize}) => ModelArtifact(
     fileName: 'build.zip',
@@ -248,18 +248,42 @@ void main() {
     });
 
     test('resuming after a pause finishes the file', () async {
-      await partFile().writeAsBytes(payload.sublist(0, 150));
+      final control = DownloadControl();
+      final firstAttempt = MockClient.streaming(
+        (request, _) async => http.StreamedResponse(
+          Stream.fromIterable([payload.sublist(0, 150), payload.sublist(150)]),
+          200,
+          contentLength: payload.length,
+        ),
+      );
 
+      final paused = await downloadArtifacts(
+        [artifactOf()],
+        directory: directory,
+        client: firstAttempt,
+        // Progress is reported once a chunk is on disk, and the next chunk is
+        // checked against the control before it is written, so pausing here
+        // stops after exactly the first chunk with no timing involved.
+        onProgress: (_) => control.pause(),
+        control: control,
+      );
+
+      expect(paused, DownloadOutcome.paused);
+      expect(await partFile().readAsBytes(), payload.sublist(0, 150));
+
+      final ranges = <String?>[];
       final outcome = await downloadArtifacts(
         [artifactOf()],
         directory: directory,
-        client: rangeServer([]),
+        client: rangeServer(ranges),
         onProgress: (_) {},
         control: DownloadControl(),
       );
 
       expect(outcome, DownloadOutcome.completed);
+      expect(ranges, ['bytes=150-'], reason: 'only what the pause left out is fetched');
       expect(await destinationFile().readAsBytes(), payload);
+      expect(await partFile().exists(), isFalse);
     });
 
     test('a cancel asked for after a pause wins', () {

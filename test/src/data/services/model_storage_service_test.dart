@@ -12,6 +12,8 @@ import 'package:lore_dub/src/domain/model_proxy.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import '../../../support/temporary_directory.dart';
+
 void main() {
   group('ModelStorageService', () {
     late Directory temporaryDirectory;
@@ -22,11 +24,7 @@ void main() {
       );
     });
 
-    tearDown(() async {
-      if (await temporaryDirectory.exists()) {
-        await temporaryDirectory.delete(recursive: true);
-      }
-    });
+    tearDown(() => deleteOnceReleased(temporaryDirectory));
 
     test('installs an artifact only after hash verification', () async {
       final bytes = List<int>.generate(64, (index) => index);

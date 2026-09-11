@@ -9,12 +9,12 @@ import 'package:lore_dub/src/data/services/local_inference_service.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../support/temporary_directory.dart';
+
 void main() {
   test('clears audio a stopped or crashed run left behind', () async {
     final work = await Directory.systemTemp.createTemp('lore-dub-work');
-    addTearDown(() async {
-      if (await work.exists()) await work.delete(recursive: true);
-    });
+    addTearDown(() => deleteOnceReleased(work));
     final capture = Directory(path.join(work.path, 'capture'));
     await capture.create(recursive: true);
     Future<File> write(Directory directory, String name) =>

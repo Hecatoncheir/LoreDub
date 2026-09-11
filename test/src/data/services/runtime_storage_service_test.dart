@@ -13,6 +13,8 @@ import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../support/temporary_directory.dart';
+
 void main() {
   late Directory root;
 
@@ -20,9 +22,7 @@ void main() {
     root = await Directory.systemTemp.createTemp('lore-dub-runtime-store');
   });
 
-  tearDown(() async {
-    if (await root.exists()) await root.delete(recursive: true);
-  });
+  tearDown(() => deleteOnceReleased(root));
 
   RuntimeStorageService storeWith(http.Client client, {ProcessStarter? startProcess}) =>
       RuntimeStorageService(
