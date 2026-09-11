@@ -45,8 +45,9 @@ sent anywhere, and there is no account to make.
 - **Five dubbing languages:** Russian, German, Spanish, French and Ukrainian.
 - **A graphics card is optional.** NVIDIA roughly halves the recognition time,
   but everything works on the processor without one.
-- **There is a subtitle mode.** When the lines are written rather than spoken,
-  LoreDub reads them off the screen and voices them.
+- **There is a [subtitle mode](#subtitle-mode).** When the lines are written
+  rather than spoken, LoreDub reads them off the screen — from a frame you draw
+  with the mouse — and voices them.
 - **Free, open source, MIT.** No ads, no telemetry, no subscription.
 
 ## Quick start
@@ -323,16 +324,74 @@ nothing to download for it.
 
 ## Subtitle mode
 
-The **Subtitles + OCR** mode works with visible windowed or borderless games.
-Settings show a scaled-down, monitor-shaped screen: drag a frame around the
-place where the game prints its subtitles, then move it or pull its corners and
-sides. The frame is kept as a share of the game window, so it fits any
-resolution; by default it is the bottom 45% of the window. English OCR must
-be installed in Windows; the app reports a direct error when that language pack
-is missing. Scanning runs only while the selected game is the foreground window,
-which prevents other windows from being mistaken for subtitles.
-Exclusive-fullscreen or minimized windows cannot be read through the
-lightweight GDI capture path.
+When the lines of a game are written rather than spoken, LoreDub reads them
+off the screen. Windows OCR recognizes the English text inside a chosen area of
+the game window, and each line goes straight to the translator and the speech
+synthesizer — this mode needs neither Whisper nor a recognition model.
+
+### Setting it up
+
+**1. Turn the mode on.** **Settings → Text source → Subtitles + OCR.**
+
+**2. Frame the place where the game prints its subtitles.** A **Subtitle area**
+card appears below the switch, with a scaled-down screen shaped like your
+monitor that stands for the game window. Drag across it to draw a frame, then
+move it and pull its corners and sides. From the keyboard, the arrows move the
+frame and Shift with the arrows resizes it. **Reset** puts back the default,
+the bottom 45% of the window.
+
+<p align="center">
+  <img src="docs/screenshots/ocr-settings-en.png" width="900" alt="Settings: the Subtitles + OCR mode and a frame on the scaled-down monitor">
+</p>
+
+The frame is kept as a share of the game window rather than in pixels, so it
+survives a change of resolution. The line under the screen gives its size and
+offsets in percent.
+
+**3. Start dubbing.** On **Live**, choose the game process, press **Start
+dubbing** and switch to the game. Text is read only while the game is the
+foreground window, so neither LoreDub nor a browser over the game can pass for
+subtitles.
+
+<p align="center">
+  <img src="docs/screenshots/ocr-game.png" width="900" alt="The game window: only the text inside the frame is read, the objective in the corner stays outside it">
+</p>
+
+<p align="center"><i>What OCR sees: everything outside the frame is dimmed. The line at the bottom is translated, the objective in the corner is not.</i></p>
+
+<p align="center">
+  <img src="docs/screenshots/ocr-live-en.png" width="900" alt="Live: lines read off the screen, translated and voiced">
+</p>
+
+<p align="center"><i>A real run over the test window: each line read off the screen, translated and voiced in under a second — there is no speech recognition to wait for. None of the objectives from the corner reached the transcript.</i></p>
+
+### Framing tips
+
+- **The tighter the frame, the cleaner the dubbing.** Health bars, names over
+  heads and control prompts inside the frame are read just as readily as a
+  line of dialogue, and get voiced with it.
+- **Leave room in height.** A long line often wraps onto a second row, and a
+  frame one row high cuts it off.
+- **A line has to stay put.** The screen is scanned about every two thirds of
+  a second, and a line is sent on once two scans in a row agree, so subtitles
+  typed out letter by letter are not voiced in pieces. The same line is not
+  repeated while it stays on screen.
+
+### Limits
+
+- Only English text is read, and Windows needs its English OCR pack. Without
+  it LoreDub says so. The pack comes with the English language under
+  **Settings → Time & language → Language & region**, or from an elevated
+  PowerShell:
+  `Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0"`.
+- Windowed and borderless games work. Exclusive fullscreen and a minimized
+  window cannot be read through the lightweight GDI capture — switch the game
+  to borderless windowed.
+- The voice does not follow the character in this mode: there is no original
+  to hear, so no pitch to measure. The lines are read in the voice chosen by
+  hand.
+
+### Trying it without a game
 
 The mode can be tried without a game. `scripts/ocr_test_window.ps1` opens a
 game-like window with English dialogue changing at the bottom centre and the
