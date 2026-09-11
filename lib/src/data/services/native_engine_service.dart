@@ -70,7 +70,7 @@ class NativeEngineService {
     final processes = values
         .map((value) => GameProcess.fromJson(value! as Map<String, Object?>))
         .toList();
-    processes.sort((left, right) => left.name.compareTo(right.name));
+    processes.sort(compareGameProcesses);
     return processes;
   }
 

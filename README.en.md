@@ -112,7 +112,9 @@ the pipeline stops or the app closes.
 
 This is where the audio source is chosen and the dubbing is started.
 **Process** captures the selected game only; **All audio** captures the whole
-default output except LoreDub itself. When the language of the game is known in
+default output except LoreDub itself. The process list puts the most recently
+started first, so the game is usually at the top rather than somewhere among
+dozens of background services. When the language of the game is known in
 advance, turn **Detect language** off and name it: that removes an extra
 recognition pass and one common mistake — a wrong guess made from a short first
 phrase.

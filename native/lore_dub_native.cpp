@@ -176,6 +176,29 @@ std::wstring ProcessPath(DWORD process_id) {
   return path;
 }
 
+// When Windows started the process, in milliseconds since the Unix epoch, or
+// 0 when it will not say: a process of another user, or one that ended
+// between the snapshot and this question.
+uint64_t ProcessStartedAt(DWORD process_id) {
+  HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, process_id);
+  if (process == nullptr) return 0;
+  FILETIME created{};
+  FILETIME exited{};
+  FILETIME kernel{};
+  FILETIME user{};
+  const BOOL read = GetProcessTimes(process, &created, &exited, &kernel, &user);
+  CloseHandle(process);
+  if (!read) return 0;
+  ULARGE_INTEGER ticks{};
+  ticks.LowPart = created.dwLowDateTime;
+  ticks.HighPart = created.dwHighDateTime;
+  // FILETIME counts 100-nanosecond intervals from 1601; the Unix epoch is
+  // 11644473600 seconds later.
+  constexpr uint64_t epoch_difference = 116444736000000000ULL;
+  if (ticks.QuadPart < epoch_difference) return 0;
+  return (ticks.QuadPart - epoch_difference) / 10000;
+}
+
 std::wstring BaseName(const std::wstring& path) {
   const auto separator = path.find_last_of(L"\\/");
   return separator == std::wstring::npos ? path : path.substr(separator + 1);
@@ -197,7 +220,8 @@ std::string ListProcesses() {
       first = false;
       out << "{\"pid\":" << entry.th32ProcessID << ",\"name\":\""
           << EscapeJson(Utf8(BaseName(path))) << "\",\"path\":\""
-          << EscapeJson(Utf8(path)) << "\"}";
+          << EscapeJson(Utf8(path)) << "\",\"startedAt\":"
+          << ProcessStartedAt(entry.th32ProcessID) << '}';
     } while (Process32NextW(snapshot, &entry));
   }
   CloseHandle(snapshot);
