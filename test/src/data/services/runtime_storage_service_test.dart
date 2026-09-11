@@ -153,6 +153,45 @@ void main() {
     );
   });
 
+  test('clears what a failed pip left behind, keeping only the end of its output', () async {
+    const package = RuntimePackage(
+      id: 'torch-cuda',
+      kind: RuntimeInstallKind.pip,
+      approximateBytes: 1,
+      probeFileName: 'torch',
+      pipArguments: ['torch'],
+    );
+    final output = [
+      for (var line = 0; line < 40; line++) 'Collecting dependency $line',
+      'ERROR: Could not install packages due to an OSError',
+    ].join('\n');
+    final store = storeWith(
+      MockClient((_) async => http.Response('', 404)),
+      startProcess: (executable, arguments) {
+        // pip got as far as moving torch into place before it gave up.
+        final target = arguments[arguments.indexOf('--target') + 1];
+        Directory(path.join(target, 'torch')).createSync(recursive: true);
+        return (result: Future.value(ProcessResult(0, 1, '', output)), kill: () {});
+      },
+    );
+
+    await expectLater(
+      store.install(package, onProgress: (_) {}, pythonExecutable: Platform.resolvedExecutable),
+      throwsA(
+        isA<LoreDubFailure>().having(
+          (error) => error.detail,
+          'detail',
+          allOf(contains('OSError'), isNot(contains('dependency 0'))),
+        ),
+      ),
+    );
+    expect(
+      await store.isInstalled(package),
+      isFalse,
+      reason: 'a half-moved torch directory must not pass the probe',
+    );
+  });
+
   test('installs the CUDA wheels into their own directory', () async {
     const package = RuntimePackage(
       id: 'torch-cuda',

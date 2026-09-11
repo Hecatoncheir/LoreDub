@@ -192,15 +192,18 @@ class DownloadsCubit extends Cubit<DownloadsState> {
   }
 
   Future<void> installRuntime(RuntimeInstallState install) async {
-    final index = state.runtimes.indexOf(install);
-    if (index < 0 || install.installing) return;
+    // Found by id: the state a button was built with may already have been
+    // replaced by a newer one for the same package.
+    final index = state.runtimes.indexWhere((runtime) => runtime.package.id == install.package.id);
+    if (index < 0 || state.runtimes[index].installing) return;
+    final current = state.runtimes[index];
     _errors.report(null);
     final control = DownloadControl();
     final ticker = ProgressTicker();
     _controls[install.package.id] = control;
     _replaceRuntime(
       index,
-      install.copyWith(progress: install.progress ?? 0, paused: false, clearError: true),
+      current.copyWith(progress: current.progress ?? 0, paused: false, clearError: true),
     );
     try {
       final outcome = await _runtimeRepository.install(

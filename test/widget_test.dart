@@ -26,6 +26,7 @@ import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/app_release.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
+import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
@@ -660,6 +661,44 @@ void main() {
     expect(
       find.descendant(of: find.byType(NavigationBar), matching: find.byType(SvgPicture)),
       findsWidgets,
+    );
+  });
+
+  testWidgets('says why a GPU runtime did not install instead of looking untouched', (
+    tester,
+  ) async {
+    final cubits = stage(
+      buildCubits(),
+      section: DashboardSection.settings,
+      availability: const ComputeAvailability(
+        adapters: [
+          GraphicsAdapter(name: 'NVIDIA GeForce RTX 3080 Ti', vendor: GraphicsVendor.nvidia),
+        ],
+        cudaDriver: true,
+      ),
+      runtimes: [
+        RuntimeInstallState(package: runtimePackageById(whisperCudaRuntimeId)!),
+        RuntimeInstallState(
+          package: runtimePackageById(torchCudaRuntimeId)!,
+          error: const LoreDubFailure(
+            FailureCode.runtimeInstallFailed,
+            detail: '1\nERROR: Could not install packages due to an OSError',
+          ),
+        ),
+      ],
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 1000));
+
+    final message = find.textContaining('Не удалось установить GPU-рантайм');
+    await tester.scrollUntilVisible(message, 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+
+    expect(message, findsOneWidget);
+    expect(find.textContaining('OSError'), findsOneWidget);
+    expect(
+      find.textContaining('Скачать · 2.7 GB'),
+      findsOneWidget,
+      reason: 'the button stays, so the install can be tried again',
     );
   });
 

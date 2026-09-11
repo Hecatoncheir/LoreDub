@@ -4,6 +4,11 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+- Fixed the GPU runtime download failing without a word: the button went back to "Download" and
+  nothing said why. The reason now shows under the stage, with the last lines pip printed, and a
+  failed CUDA torch install no longer leaves a half-written directory that could pass for a
+  finished one.
+
 ## [0.4.1] - 2026-09-11
 
 - Fixed a double-click on Start cancelling the start it had just begun, which left the Live

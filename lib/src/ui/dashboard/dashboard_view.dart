@@ -2176,7 +2176,7 @@ class _ComputeStageRow extends StatelessWidget {
     }
     // A downloaded runtime is worth gigabytes, so it can be given back.
     final installed = missing != null ? null : downloads.installedRuntimeFor(stage);
-    return Row(
+    final row = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
@@ -2210,6 +2210,23 @@ class _ComputeStageRow extends StatelessWidget {
               if (installed != null)
                 _RuntimeRemoveButton(cubits: cubits, running: running, state: installed),
             ],
+          ),
+        ),
+      ],
+    );
+    // A failed install puts the button back as it was, so without this the
+    // press looked like it had done nothing at all.
+    final error = missing?.error;
+    if (error == null) return row;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        row,
+        Padding(
+          padding: const EdgeInsets.only(left: 96, top: 6),
+          child: SelectableText(
+            describeFailure(l10n, error),
+            style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
           ),
         ),
       ],

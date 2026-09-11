@@ -238,12 +238,22 @@ class RuntimeStorageService {
       return DownloadOutcome.cancelled;
     }
     if (result.exitCode != 0) {
+      // pip can fail after it has moved part of the wheels into place, and a
+      // torch directory would pass the probe. Only a finished install stays.
+      if (await directory.exists()) await directory.delete(recursive: true);
       throw LoreDubFailure(
         FailureCode.runtimeInstallFailed,
-        detail: '${result.exitCode}\n${result.stderr}'.trim(),
+        detail: '${result.exitCode}\n${_tail('${result.stderr}')}'.trim(),
       );
     }
     return DownloadOutcome.completed;
+  }
+
+  /// The last lines pip printed. It writes its whole resolution before the
+  /// error, and the reason is always at the end.
+  static String _tail(String output, {int lines = 6}) {
+    final kept = output.split(RegExp(r'\r?\n')).where((line) => line.trim().isNotEmpty).toList();
+    return kept.sublist(kept.length > lines ? kept.length - lines : 0).join('\n');
   }
 
   /// Watches for a stop while a process runs, and kills it when one comes.
