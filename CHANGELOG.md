@@ -4,6 +4,8 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-11
+
 - Added a device choice for the Original voice: an OpenVoice row under Device puts the converter
   on the CPU or on an NVIDIA card independently of translation. On the card a line is
   re-voiced in about 0.1 s instead of about a second; it uses the same CUDA torch runtime as
