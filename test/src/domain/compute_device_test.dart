@@ -119,6 +119,37 @@ void main() {
     );
   });
 
+  test('puts the voice converter on the card with the same torch as translation', () {
+    final waiting = nvidiaMachine(runtimes: {'whisper-cuda'});
+    final ready = nvidiaMachine(runtimes: {'torch-cuda'});
+
+    expect(
+      resolve(ComputeStage.voiceConversion, ComputeDevice.auto, waiting),
+      ComputeBackend.cpu,
+      reason: 'the CUDA torch is not downloaded yet',
+    );
+    expect(resolve(ComputeStage.voiceConversion, ComputeDevice.auto, ready), ComputeBackend.cuda);
+    expect(
+      resolve(ComputeStage.voiceConversion, ComputeDevice.auto, amdMachine()),
+      ComputeBackend.cpu,
+    );
+  });
+
+  test('lets the converter be pinned apart from translation', () {
+    final ready = nvidiaMachine(runtimes: {'torch-cuda'});
+    final settings = const AppSettings()
+        .withBackend(ComputeStage.translation, ComputeBackend.cpu)
+        .withBackend(ComputeStage.voiceConversion, ComputeBackend.cuda);
+
+    expect(settings.backendFor(ComputeStage.translation, ready), ComputeBackend.cpu);
+    expect(settings.backendFor(ComputeStage.voiceConversion, ready), ComputeBackend.cuda);
+    expect(
+      settings.withComputeDevice(ComputeDevice.cpu).voiceConversionBackend,
+      isNull,
+      reason: 'a preset drops this pin like the others',
+    );
+  });
+
   test('honours the CPU preset even with everything installed', () {
     final ready = nvidiaMachine(runtimes: {'whisper-cuda', 'torch-cuda'});
 
@@ -161,6 +192,7 @@ void main() {
     expect(requiredRuntimeId(ComputeStage.recognition, ComputeBackend.cuda), 'whisper-cuda');
     expect(requiredRuntimeId(ComputeStage.recognition, ComputeBackend.vulkan), 'whisper-vulkan');
     expect(requiredRuntimeId(ComputeStage.translation, ComputeBackend.cuda), 'torch-cuda');
+    expect(requiredRuntimeId(ComputeStage.voiceConversion, ComputeBackend.cuda), 'torch-cuda');
     expect(requiredRuntimeId(ComputeStage.speech, ComputeBackend.cpu), isNull);
     expect(requiredRuntimeId(ComputeStage.recognition, ComputeBackend.cpu), isNull);
   });

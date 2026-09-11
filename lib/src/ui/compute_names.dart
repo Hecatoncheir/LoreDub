@@ -11,6 +11,7 @@ String computeStageName(AppLocalizations l10n, ComputeStage stage) => switch (st
   ComputeStage.recognition => l10n.computeStageRecognition,
   ComputeStage.translation => l10n.computeStageTranslation,
   ComputeStage.speech => l10n.computeStageSpeech,
+  ComputeStage.voiceConversion => l10n.computeStageVoiceConversion,
 };
 
 /// Backend names are trademarks and stay untranslated, but they still come

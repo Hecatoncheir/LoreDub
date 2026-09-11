@@ -197,4 +197,22 @@ void main() {
     expect(saved.voiceMode, VoiceMode.original);
     expect(saved.automaticVoice, isTrue, reason: 'the base voice still follows the speaker');
   });
+
+  test('keeps no voices until asked, and remembers where OpenVoice runs', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    final fresh = await service.load();
+    expect(fresh.voiceBank, isFalse);
+    expect(fresh.voiceConversionBackend, isNull);
+
+    await service.save(
+      const AppSettings(voiceBank: true)
+          .withBackend(ComputeStage.voiceConversion, ComputeBackend.cuda),
+    );
+    final saved = await service.load();
+
+    expect(saved.voiceBank, isTrue);
+    expect(saved.voiceConversionBackend, ComputeBackend.cuda);
+  });
 }

@@ -1125,7 +1125,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect((await SettingsService().load()).originalVoice, isTrue);
-      expect(find.textContaining('Тембр берётся из каждой реплики'), findsOneWidget);
+      expect(find.textContaining('Тембр оригинала накладывается'), findsOneWidget);
+      expect(
+        find.textContaining('Тембр берётся из каждой реплики заново'),
+        findsOneWidget,
+        reason: 'the voice bank starts off',
+      );
     });
 
     testWidgets('asks for the converter before re-voicing', (tester) async {
@@ -1146,6 +1151,75 @@ void main() {
         isFalse,
         reason: 'the start button waits for the download',
       );
+    });
+
+    Finder clearButton() => find.ancestor(
+      of: find.text('Очистить'),
+      matching: find.byWidgetPredicate((widget) => widget is TextButton),
+    );
+
+    testWidgets('remembers the characters only once asked', (tester) async {
+      await pumpSettings(tester, settings: const AppSettings(originalVoice: true));
+
+      expect(find.text('Сохранённых голосов нет'), findsOneWidget);
+      expect(
+        tester.widget<TextButton>(clearButton()).onPressed,
+        isNull,
+        reason: 'there is nothing to clear',
+      );
+
+      final row = find.ancestor(
+        of: find.text('Запоминать голоса персонажей'),
+        matching: find.byType(Row),
+      );
+      await tester.tap(find.descendant(of: row.first, matching: find.byType(Switch)));
+      await tester.pumpAndSettle();
+
+      expect((await SettingsService().load()).voiceBank, isTrue);
+      expect(find.textContaining('У каждой игры свой банк'), findsOneWidget);
+    });
+
+    testWidgets('asks before clearing the kept voices', (tester) async {
+      final cubits = await pumpSettings(tester, settings: const AppSettings(originalVoice: true));
+      cubits.settings.seed(
+        const SettingsState(
+          settings: AppSettings(originalVoice: true, voiceBank: true),
+          voiceBankSize: 3,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Сохранено 3 голоса'), findsOneWidget);
+      await tester.tap(clearButton());
+      await tester.pumpAndSettle();
+      expect(find.text('Очистить банк голосов?'), findsOneWidget);
+
+      await tester.tap(find.text('Отмена'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Очистить банк голосов?'), findsNothing);
+      expect(cubits.settings.state.voiceBankSize, 3, reason: 'a cancel keeps every voice');
+    });
+
+    testWidgets('leaves OpenVoice out of the devices without the original voice', (tester) async {
+      await pumpSettings(tester);
+      await tester.scrollUntilVisible(
+        find.textContaining('Silero считается на процессоре'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(find.text('OpenVoice'), findsNothing);
+    });
+
+    testWidgets('gives OpenVoice a device of its own with the original voice', (tester) async {
+      await pumpSettings(tester, settings: const AppSettings(originalVoice: true));
+      await tester.scrollUntilVisible(
+        find.text('OpenVoice'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('OpenVoice'), findsOneWidget);
     });
   });
 

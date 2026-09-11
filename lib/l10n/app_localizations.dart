@@ -534,7 +534,7 @@ abstract class AppLocalizations {
   /// No description provided for @voiceOriginalNote.
   ///
   /// In ru, this message translates to:
-  /// **'Тембр берётся из каждой реплики и накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже.'**
+  /// **'Тембр оригинала накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже, на видеокарте — без заметной задержки: устройство выбирается в строке OpenVoice раздела «Устройство».'**
   String get voiceOriginalNote;
 
   /// No description provided for @voiceOriginalMissing.
@@ -548,6 +548,60 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Тембр оригинала поверх голоса {name}'**
   String voiceOriginalSpeaking(String name);
+
+  /// No description provided for @voiceBank.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запоминать голоса персонажей'**
+  String get voiceBank;
+
+  /// No description provided for @voiceBankOnNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отпечаток голоса каждого нового персонажа сохраняется, и его следующие реплики звучат тем же тембром — и после перезапуска. У каждой игры свой банк голосов.'**
+  String get voiceBankOnNote;
+
+  /// No description provided for @voiceBankOffNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тембр берётся из каждой реплики заново и нигде не сохраняется.'**
+  String get voiceBankOffNote;
+
+  /// No description provided for @voiceBankCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, =0{Сохранённых голосов нет} one{Сохранён {count} голос} few{Сохранено {count} голоса} other{Сохранено {count} голосов}}'**
+  String voiceBankCount(int count);
+
+  /// No description provided for @voiceBankClear.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить'**
+  String get voiceBankClear;
+
+  /// No description provided for @voiceBankClearTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить банк голосов?'**
+  String get voiceBankClearTitle;
+
+  /// No description provided for @voiceBankClearMessage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранённые голоса всех игр будут удалены. Персонажи получат тембр заново по своим следующим репликам.'**
+  String get voiceBankClearMessage;
+
+  /// No description provided for @voiceBankClearCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмена'**
+  String get voiceBankClearCancel;
+
+  /// No description provided for @voiceBankClearConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить'**
+  String get voiceBankClearConfirm;
 
   /// No description provided for @sectionVoiceConversion.
   ///
@@ -1113,6 +1167,12 @@ abstract class AppLocalizations {
   /// **'Порт proxy должен быть от 1 до 65535'**
   String get failureProxyPort;
 
+  /// No description provided for @failureVoiceBankClearFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось очистить банк голосов: {detail}'**
+  String failureVoiceBankClearFailed(String detail);
+
   /// No description provided for @failureInitializationFailed.
   ///
   /// In ru, this message translates to:
@@ -1172,6 +1232,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Озвучка'**
   String get computeStageSpeech;
+
+  /// No description provided for @computeStageVoiceConversion.
+  ///
+  /// In ru, this message translates to:
+  /// **'OpenVoice'**
+  String get computeStageVoiceConversion;
 
   /// No description provided for @computeBackendCuda.
   ///

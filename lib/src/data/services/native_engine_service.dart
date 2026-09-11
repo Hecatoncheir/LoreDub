@@ -46,6 +46,7 @@ class NativeEngineService {
   Map<String, Object?>? _activeConfig;
   String? _reportedLanguage;
   String? _reportedVoice;
+  int? _reportedBankSize;
 
   Stream<Map<String, Object?>> get events => _events.stream;
   bool get processLoopbackSupported => ld_is_process_loopback_supported() == 1;
@@ -80,6 +81,7 @@ class NativeEngineService {
   Future<void> start(Map<String, Object?> config) async {
     _reportedLanguage = null;
     _reportedVoice = null;
+    _reportedBankSize = null;
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
     await _inference.start(
@@ -99,10 +101,15 @@ class NativeEngineService {
       translationBackend: _backendFrom(config['translationBackend']),
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
       voiceConverter: models['converter'],
+      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+      voiceBank: config['voiceBank'] as String?,
     );
     // What the worker settled on, which is not always what it was asked for.
     if (_inference.translationBackend case final actual?) {
       _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
+    }
+    if (_inference.voiceConversionBackend case final actual?) {
+      _events.add({'type': 'backend', 'stage': 'voiceConversion', 'backend': actual.name});
     }
     _events.add({'type': 'startup', 'value': 0.98, 'stage': 'capture'});
     final work = await LocalInferenceService.createWorkDirectory();
@@ -239,6 +246,11 @@ class NativeEngineService {
     if (result.voice.isNotEmpty && result.voice != _reportedVoice) {
       _reportedVoice = result.voice;
       _events.add({'type': 'voice', 'name': result.voice});
+    }
+    // A new character joined the bank, so the count in the settings is stale.
+    if (result.bankSize case final size? when size != _reportedBankSize) {
+      _reportedBankSize = size;
+      _events.add({'type': 'voiceBank', 'size': size});
     }
     _enqueuePlayback(result.wavePath);
   }

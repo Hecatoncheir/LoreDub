@@ -18,6 +18,7 @@ class SettingsState {
     this.settings = const AppSettings(),
     this.searchingPython = false,
     this.rejectedPython = const [],
+    this.voiceBankSize = 0,
   });
 
   final AppSettings settings;
@@ -27,14 +28,19 @@ class SettingsState {
   /// written out in the interface language.
   final List<RejectedPython> rejectedPython;
 
+  /// How many voices the original voice has kept, across all games.
+  final int voiceBankSize;
+
   SettingsState copyWith({
     AppSettings? settings,
     bool? searchingPython,
     List<RejectedPython>? rejectedPython,
+    int? voiceBankSize,
   }) => SettingsState(
     settings: settings ?? this.settings,
     searchingPython: searchingPython ?? this.searchingPython,
     rejectedPython: rejectedPython ?? this.rejectedPython,
+    voiceBankSize: voiceBankSize ?? this.voiceBankSize,
   );
 }
 
@@ -48,6 +54,28 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   Future<void> load() async {
     emit(state.copyWith(settings: await _appRepository.loadSettings()));
+    await refreshVoiceBank();
+  }
+
+  /// Recounts the kept voices. The count is a courtesy next to a switch, so
+  /// a bank that cannot be read shows as whatever was counted last.
+  Future<void> refreshVoiceBank() async {
+    try {
+      final size = await _appRepository.voiceBankSize();
+      if (!isClosed) emit(state.copyWith(voiceBankSize: size));
+    } catch (exception) {
+      debugPrint('voice bank not counted: $exception');
+    }
+  }
+
+  /// Forgets every kept voice of every game.
+  Future<void> clearVoiceBank() async {
+    try {
+      await _appRepository.clearVoiceBank();
+    } catch (exception) {
+      _errors.report(exception);
+    }
+    await refreshVoiceBank();
   }
 
   Future<void> update(AppSettings value) async {

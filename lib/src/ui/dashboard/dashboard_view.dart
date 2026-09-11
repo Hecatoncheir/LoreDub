@@ -2008,13 +2008,14 @@ class _VoiceCard extends StatelessWidget {
       builder: (context, _) => _PipelineBuilder(
         cubits: cubits,
         watch: (pipeline) => (pipeline.running, pipeline.spokenVoice),
-        builder: (context, pipeline) => _build(context, state.settings, pipeline),
+        builder: (context, pipeline) => _build(context, state, pipeline),
       ),
     ),
   );
 
-  Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
+  Widget _build(BuildContext context, SettingsState state, LivePipelineState pipeline) {
     final l10n = AppLocalizations.of(context);
+    final settings = state.settings;
     final selection = cubits.selection;
     final running = pipeline.running;
     final voices = selection.availableVoices;
@@ -2061,6 +2062,15 @@ class _VoiceCard extends StatelessWidget {
                 fontSize: 12,
               ),
             ),
+            if (converterInstalled) ...[
+              const SizedBox(height: 12),
+              _VoiceBankControls(
+                cubits: cubits,
+                settings: settings,
+                size: state.voiceBankSize,
+                running: running,
+              ),
+            ],
           ],
           if (!canFollow) ...[
             const SizedBox(height: 10),
@@ -2111,6 +2121,98 @@ class _VoiceCard extends StatelessWidget {
   }
 }
 
+/// Whether the original voice remembers the characters, how many it has,
+/// and a way to forget them. Forgetting cannot be undone, so it is asked.
+class _VoiceBankControls extends StatelessWidget {
+  const _VoiceBankControls({
+    required this.cubits,
+    required this.settings,
+    required this.size,
+    required this.running,
+  });
+
+  final DashboardCubits cubits;
+  final AppSettings settings;
+  final int size;
+  final bool running;
+
+  Future<void> _confirmClear(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(l10n.voiceBankClearTitle),
+        content: Text(
+          l10n.voiceBankClearMessage,
+          style: const TextStyle(fontSize: 16, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.voiceBankClearCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.voiceBankClearConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) await cubits.settings.clearVoiceBank();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Switch(
+              value: settings.voiceBank,
+              onChanged: running
+                  ? null
+                  : (value) => cubits.settings.update(settings.copyWith(voiceBank: value)),
+            ),
+            const SizedBox(width: 6),
+            Flexible(child: Text(l10n.voiceBank)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          settings.voiceBank ? l10n.voiceBankOnNote : l10n.voiceBankOffNote,
+          style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+        ),
+        // Shown with the switch off too: voices kept earlier are still on
+        // disk, and this is where they are given back.
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n.voiceBankCount(size),
+                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+              ),
+            ),
+            TextButton.icon(
+              // The running worker holds the bank and would write it back.
+              onPressed: running || size == 0 ? null : () => _confirmClear(context),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: Text(l10n.voiceBankClear),
+              style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 /// The compute section: one preset for the whole pipeline, then a row per
 /// stage showing what that preset actually resolved to and letting it be
 /// overridden. A backend the machine cannot run is shown but disabled, so an
@@ -2142,6 +2244,11 @@ class _ComputeDeviceCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final running = pipeline.running;
     final adapter = downloads.availability.adapters.firstOrNull;
+    // OpenVoice runs only for the original voice, so its row waits for it.
+    final stages = [
+      for (final stage in ComputeStage.values)
+        if (stage != ComputeStage.voiceConversion || settings.originalVoice) stage,
+    ];
     return _SettingCard(
       title: l10n.settingsComputeDevice,
       subtitle: l10n.computeDeviceNote,
@@ -2164,7 +2271,7 @@ class _ComputeDeviceCard extends StatelessWidget {
             style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
           ),
           const SizedBox(height: 14),
-          for (final stage in ComputeStage.values) ...[
+          for (final stage in stages) ...[
             _ComputeStageRow(
               cubits: cubits,
               downloads: downloads,
@@ -2172,7 +2279,7 @@ class _ComputeDeviceCard extends StatelessWidget {
               pipeline: pipeline,
               stage: stage,
             ),
-            if (stage != ComputeStage.values.last) const SizedBox(height: 10),
+            if (stage != stages.last) const SizedBox(height: 10),
           ],
           const SizedBox(height: 12),
           Text(

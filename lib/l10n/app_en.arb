@@ -155,7 +155,7 @@
   "voiceUnavailable": "This language's package ships voices of one gender only — you can pick one, but there is nothing to match.",
   "voiceNeedsAudio": "Subtitle mode never hears the original, so the chosen voice is used.",
   "voiceOriginal": "Original voice",
-  "voiceOriginalNote": "The timbre is taken from every line and laid over the Silero voice. On the processor each line sounds about a second later.",
+  "voiceOriginalNote": "The original's timbre is laid over the Silero voice. On the processor each line sounds about a second later, on a graphics card with no noticeable delay: pick the device in the OpenVoice row under Device.",
   "voiceOriginalMissing": "This needs the voice converter: download it under Original voice on the Models screen.",
   "voiceOriginalSpeaking": "The original's timbre over {name}",
   "@voiceOriginalSpeaking": {
@@ -165,7 +165,23 @@
       }
     }
   },
-  "sectionVoiceConversion": "ORIGINAL VOICE",
+  "voiceBank": "Remember the characters' voices",
+  "voiceBankOnNote": "Each new character's voice fingerprint is saved, and their later lines keep that timbre, restarts included. Every game has a voice bank of its own.",
+  "voiceBankOffNote": "The timbre is taken from every line afresh and never saved.",
+  "voiceBankCount": "{count, plural, =0{No voices saved} one{{count} voice saved} other{{count} voices saved}}",
+  "@voiceBankCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceBankClear": "Clear",
+  "voiceBankClearTitle": "Clear the voice bank?",
+  "voiceBankClearMessage": "The saved voices of every game will be deleted. Characters will take their timbre afresh from their next lines.",
+  "voiceBankClearCancel": "Cancel",
+  "voiceBankClearConfirm": "Clear",
+  "sectionVoiceConversion":"ORIGINAL VOICE",
   "sectionVoiceConversionNote": "Only needed for the Original voice mode: it carries the speaker's timbre over into the dubbing. One converter serves every language.",
   "modelConverterTitle": "OpenVoice {version} voice converter",
   "@modelConverterTitle": {
@@ -439,6 +455,14 @@
   "failureSocksLookupFailed": "The SOCKS5 proxy address could not be resolved",
   "failureProxyFormat": "Use the form http://host:port or socks5://host:port",
   "failureProxyPort": "The proxy port has to be between 1 and 65535",
+  "failureVoiceBankClearFailed": "The voice bank could not be cleared: {detail}",
+  "@failureVoiceBankClearFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureInitializationFailed": "The application could not start: {detail}",
   "@failureInitializationFailed": {
     "placeholders": {
@@ -463,6 +487,7 @@
   "computeStageRecognition": "Whisper",
   "computeStageTranslation": "Translation",
   "computeStageSpeech": "Speech",
+  "computeStageVoiceConversion": "OpenVoice",
   "computeBackendCuda": "CUDA",
   "computeBackendVulkan": "Vulkan",
   "computeBackendCpu": "CPU",

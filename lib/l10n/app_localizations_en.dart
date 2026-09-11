@@ -257,7 +257,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceOriginalNote =>
-      'The timbre is taken from every line and laid over the Silero voice. On the processor each line sounds about a second later.';
+      'The original\'s timbre is laid over the Silero voice. On the processor each line sounds about a second later, on a graphics card with no noticeable delay: pick the device in the OpenVoice row under Device.';
 
   @override
   String get voiceOriginalMissing =>
@@ -267,6 +267,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String voiceOriginalSpeaking(String name) {
     return 'The original\'s timbre over $name';
   }
+
+  @override
+  String get voiceBank => 'Remember the characters\' voices';
+
+  @override
+  String get voiceBankOnNote =>
+      'Each new character\'s voice fingerprint is saved, and their later lines keep that timbre, restarts included. Every game has a voice bank of its own.';
+
+  @override
+  String get voiceBankOffNote => 'The timbre is taken from every line afresh and never saved.';
+
+  @override
+  String voiceBankCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count voices saved',
+      one: '$count voice saved',
+      zero: 'No voices saved',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get voiceBankClear => 'Clear';
+
+  @override
+  String get voiceBankClearTitle => 'Clear the voice bank?';
+
+  @override
+  String get voiceBankClearMessage =>
+      'The saved voices of every game will be deleted. Characters will take their timbre afresh from their next lines.';
+
+  @override
+  String get voiceBankClearCancel => 'Cancel';
+
+  @override
+  String get voiceBankClearConfirm => 'Clear';
 
   @override
   String get sectionVoiceConversion => 'ORIGINAL VOICE';
@@ -608,6 +646,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get failureProxyPort => 'The proxy port has to be between 1 and 65535';
 
   @override
+  String failureVoiceBankClearFailed(String detail) {
+    return 'The voice bank could not be cleared: $detail';
+  }
+
+  @override
   String failureInitializationFailed(String detail) {
     return 'The application could not start: $detail';
   }
@@ -641,6 +684,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get computeStageSpeech => 'Speech';
+
+  @override
+  String get computeStageVoiceConversion => 'OpenVoice';
 
   @override
   String get computeBackendCuda => 'CUDA';

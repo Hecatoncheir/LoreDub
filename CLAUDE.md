@@ -123,7 +123,16 @@ its captured WAV. The network lives in `assets/runtime/tone_converter.py`, a
 torch-and-numpy-only port of the MIT converter that the worker imports from
 its own directory; its weights load with `weights_only=True`. A phrase with no
 voiced frames keeps the previous timbre, and subtitle mode has no audio, so
-`ModelSelection.clonesVoice` is false there.
+`ModelSelection.clonesVoice` is false there. The converter is its own
+`ComputeStage.voiceConversion` (`--converter-device`), sharing the `torch-cuda`
+runtime with translation; the worker brings that runtime in when either stage
+asks for CUDA and reports both devices in its `ready` line. With
+`AppSettings.voiceBank` the worker is also handed `--voice-bank`, a per-game
+JSON file (`VoiceBankService`, `<app support>/voice_bank/<exe>.json`): a line
+whose fingerprint meets a kept one at cosine >= 0.80 is voiced with the kept
+one, otherwise a line of 1.5 s or more is kept as a new voice. Kept voices are
+never averaged — the user asked for that explicitly — and replies carry
+`bankSize` so the settings count can be refreshed.
 
 Which device each stage runs on is decided in `domain/compute_device.dart`,
 which is pure and unit-tested: `resolveComputeBackend` takes the user's preset,

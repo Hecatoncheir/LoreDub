@@ -82,6 +82,10 @@ enum FailureCode {
 
   /// Loading settings, processes or model states failed at startup.
   initializationFailed,
+
+  /// The saved voice fingerprints could not be deleted; the detail is the
+  /// file system's own message.
+  voiceBankClearFailed,
 }
 
 class LoreDubFailure implements Exception {

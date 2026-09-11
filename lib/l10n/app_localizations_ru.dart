@@ -256,7 +256,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get voiceOriginalNote =>
-      'Тембр берётся из каждой реплики и накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже.';
+      'Тембр оригинала накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже, на видеокарте — без заметной задержки: устройство выбирается в строке OpenVoice раздела «Устройство».';
 
   @override
   String get voiceOriginalMissing =>
@@ -266,6 +266,45 @@ class AppLocalizationsRu extends AppLocalizations {
   String voiceOriginalSpeaking(String name) {
     return 'Тембр оригинала поверх голоса $name';
   }
+
+  @override
+  String get voiceBank => 'Запоминать голоса персонажей';
+
+  @override
+  String get voiceBankOnNote =>
+      'Отпечаток голоса каждого нового персонажа сохраняется, и его следующие реплики звучат тем же тембром — и после перезапуска. У каждой игры свой банк голосов.';
+
+  @override
+  String get voiceBankOffNote => 'Тембр берётся из каждой реплики заново и нигде не сохраняется.';
+
+  @override
+  String voiceBankCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Сохранено $count голосов',
+      few: 'Сохранено $count голоса',
+      one: 'Сохранён $count голос',
+      zero: 'Сохранённых голосов нет',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get voiceBankClear => 'Очистить';
+
+  @override
+  String get voiceBankClearTitle => 'Очистить банк голосов?';
+
+  @override
+  String get voiceBankClearMessage =>
+      'Сохранённые голоса всех игр будут удалены. Персонажи получат тембр заново по своим следующим репликам.';
+
+  @override
+  String get voiceBankClearCancel => 'Отмена';
+
+  @override
+  String get voiceBankClearConfirm => 'Очистить';
 
   @override
   String get sectionVoiceConversion => 'ГОЛОС ОРИГИНАЛА';
@@ -610,6 +649,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get failureProxyPort => 'Порт proxy должен быть от 1 до 65535';
 
   @override
+  String failureVoiceBankClearFailed(String detail) {
+    return 'Не удалось очистить банк голосов: $detail';
+  }
+
+  @override
   String failureInitializationFailed(String detail) {
     return 'Не удалось инициализировать приложение: $detail';
   }
@@ -643,6 +687,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get computeStageSpeech => 'Озвучка';
+
+  @override
+  String get computeStageVoiceConversion => 'OpenVoice';
 
   @override
   String get computeBackendCuda => 'CUDA';

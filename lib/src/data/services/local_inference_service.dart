@@ -21,6 +21,7 @@ class InferenceResult {
     required this.translated,
     required this.wavePath,
     this.voice = '',
+    this.bankSize,
   });
 
   final String english;
@@ -30,6 +31,10 @@ class InferenceResult {
   /// The voice that read the line, which the automatic choice can change
   /// from phrase to phrase.
   final String voice;
+
+  /// How many voices the game's bank holds after this line, or null when
+  /// the session keeps none.
+  final int? bankSize;
 }
 
 /// Picks the language code out of whisper.cpp's detection line.
@@ -106,7 +111,13 @@ class LocalInferenceService {
 
   /// What the worker actually put the translator on, as it reported at start.
   String? _translationDevice;
-  ComputeBackend? get translationBackend => switch (_translationDevice) {
+  ComputeBackend? get translationBackend => _backendOf(_translationDevice);
+
+  /// Where the worker put the voice converter, or null when it loaded none.
+  String? _converterDevice;
+  ComputeBackend? get voiceConversionBackend => _backendOf(_converterDevice);
+
+  static ComputeBackend? _backendOf(String? device) => switch (device) {
     'cuda' => ComputeBackend.cuda,
     'cpu' => ComputeBackend.cpu,
     _ => null,
@@ -170,8 +181,14 @@ class LocalInferenceService {
     /// The OpenVoice converter directory, when each line is to be re-voiced
     /// in the timbre of the phrase it answers.
     String? voiceConverter,
+    ComputeBackend voiceConversionBackend = ComputeBackend.cpu,
+
+    /// The game's voice bank file, when the converter is to remember the
+    /// characters it meets rather than take each line's timbre afresh.
+    String? voiceBank,
   }) async {
     _workerReady = Completer<void>();
+    _converterDevice = null;
     _diagnostics.clear();
     // A language the user named is used as is; anything else is detected once
     // on the first phrase and then reused.
@@ -194,6 +211,11 @@ class LocalInferenceService {
     final converterFile = File(path.join(work.path, 'tone_converter.py'));
     final converterBytes = await rootBundle.load('assets/runtime/tone_converter.py');
     await converterFile.writeAsBytes(converterBytes.buffer.asUint8List(), flush: true);
+    // The translator and the converter each ask for the CUDA build on their
+    // own, and whichever does brings it in for both.
+    final cudaTorch =
+        translationBackend == ComputeBackend.cuda ||
+        (voiceConverter != null && voiceConversionBackend == ComputeBackend.cuda);
     onStartupProgress?.call(0.05, 'python');
     _worker = await Process.start(
       python,
@@ -224,11 +246,17 @@ class LocalInferenceService {
         ],
         // CUDA torch is installed beside the models rather than over the
         // bundled CPU build, so the worker is told where to find it.
-        if (translationBackend == ComputeBackend.cuda && downloadedRuntimeDirectory != null) ...[
+        if (cudaTorch && downloadedRuntimeDirectory != null) ...[
           '--extra-packages',
           path.join(downloadedRuntimeDirectory, torchCudaRuntimeId),
         ],
-        if (voiceConverter != null) ...['--voice-converter', voiceConverter],
+        if (voiceConverter != null) ...[
+          '--voice-converter',
+          voiceConverter,
+          '--converter-device',
+          voiceConversionBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
+          if (voiceBank != null) ...['--voice-bank', voiceBank],
+        ],
       ],
       environment: const {'PYTHONIOENCODING': 'utf-8'},
     );
@@ -258,6 +286,7 @@ class LocalInferenceService {
       final message = jsonDecode(line) as Map<String, Object?>;
       if (message['type'] == 'ready') {
         _translationDevice = message['device'] as String?;
+        _converterDevice = message['converterDevice'] as String?;
         if (!(_workerReady?.isCompleted ?? true)) _workerReady!.complete();
         return;
       }
@@ -368,6 +397,7 @@ class LocalInferenceService {
       translated: response['translated']! as String,
       wavePath: response['wave']! as String,
       voice: response['voice'] as String? ?? '',
+      bankSize: (response['bankSize'] as num?)?.toInt(),
     );
   }
 

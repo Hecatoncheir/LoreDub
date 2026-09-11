@@ -225,6 +225,23 @@ Original voice section of the **Models** screen, and on the processor it adds
 about 0.9 s a line. Subtitle mode cannot offer it for the same reason:
 there is no original to hear.
 
+Where the converter runs is chosen apart from translation, in the
+**OpenVoice** row of the Device section, which appears with the mode. On an
+NVIDIA card a line is re-voiced in about 0.1 s; that takes the same CUDA torch
+runtime translation uses, and either row can download it.
+
+The **Remember the characters' voices** switch (off by default) keeps a voice
+bank. Every new character's voice fingerprint is saved, and when they speak
+again the line is voiced with that fingerprint instead of the timbre of the
+current phrase, so a character's voice does not drift from line to line and
+stays the same after a restart. Fingerprints are not averaged: a character is
+represented by their first clear line longer than a second and a half. A line
+counts as the same character when the fingerprints meet at a cosine of 0.80
+or more: on the OpenVoice demo voices two noisy lines of one person met at
+0.86 and above, two different people at 0.79 at most. Every game has a bank of
+its own (`voice_bank/<game>.json` in the application data); the switch shows
+how many voices are kept, and **Clear** deletes them all once confirmed.
+
 ## Translator
 
 English text is translated by a Helsinki-NLP/Marian model. Russian uses

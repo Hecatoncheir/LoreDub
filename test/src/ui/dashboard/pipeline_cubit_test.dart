@@ -164,7 +164,9 @@ class _SlowStartRepository extends AppRepository {
     required List<String> femaleVoices,
     required ComputeBackend recognitionBackend,
     required ComputeBackend translationBackend,
+    required ComputeBackend voiceConversionBackend,
     required String runtimeDirectory,
+    String? voiceBank,
   }) {
     starts++;
     return Completer<void>().future;

@@ -32,10 +32,12 @@ class AppSettings {
     this.automaticVoice = true,
     this.voice = '',
     this.originalVoice = false,
+    this.voiceBank = false,
     this.computeDevice = ComputeDevice.auto,
     this.recognitionBackend,
     this.translationBackend,
     this.speechBackend,
+    this.voiceConversionBackend,
   });
 
   final CaptureMode captureMode;
@@ -84,6 +86,11 @@ class AppSettings {
   /// answers, over the Silero voice picked the usual way.
   final bool originalVoice;
 
+  /// Whether the original voice keeps a fingerprint of every character it
+  /// meets, per game and across sessions, and voices their later lines with
+  /// it. Off, the timbre is taken from each line afresh and never stored.
+  final bool voiceBank;
+
   VoiceMode get voiceMode => originalVoice
       ? VoiceMode.original
       : automaticVoice
@@ -108,11 +115,13 @@ class AppSettings {
   final ComputeBackend? recognitionBackend;
   final ComputeBackend? translationBackend;
   final ComputeBackend? speechBackend;
+  final ComputeBackend? voiceConversionBackend;
 
   ComputeBackend? backendOverride(ComputeStage stage) => switch (stage) {
     ComputeStage.recognition => recognitionBackend,
     ComputeStage.translation => translationBackend,
     ComputeStage.speech => speechBackend,
+    ComputeStage.voiceConversion => voiceConversionBackend,
   };
 
   /// What a stage will actually run on, given what the machine offers.
@@ -129,6 +138,7 @@ class AppSettings {
     ComputeStage.recognition => copyWith(recognitionBackend: backend),
     ComputeStage.translation => copyWith(translationBackend: backend),
     ComputeStage.speech => copyWith(speechBackend: backend),
+    ComputeStage.voiceConversion => copyWith(voiceConversionBackend: backend),
   };
 
   /// Applies a preset, dropping every per-stage pin so the preset is what the
@@ -159,10 +169,12 @@ class AppSettings {
     bool? automaticVoice,
     String? voice,
     bool? originalVoice,
+    bool? voiceBank,
     ComputeDevice? computeDevice,
     ComputeBackend? recognitionBackend,
     ComputeBackend? translationBackend,
     ComputeBackend? speechBackend,
+    ComputeBackend? voiceConversionBackend,
     bool clearBackendOverrides = false,
   }) => AppSettings(
     captureMode: captureMode ?? this.captureMode,
@@ -182,6 +194,7 @@ class AppSettings {
     automaticVoice: automaticVoice ?? this.automaticVoice,
     voice: voice ?? this.voice,
     originalVoice: originalVoice ?? this.originalVoice,
+    voiceBank: voiceBank ?? this.voiceBank,
     computeDevice: computeDevice ?? this.computeDevice,
     recognitionBackend: clearBackendOverrides
         ? null
@@ -190,5 +203,8 @@ class AppSettings {
         ? null
         : translationBackend ?? this.translationBackend,
     speechBackend: clearBackendOverrides ? null : speechBackend ?? this.speechBackend,
+    voiceConversionBackend: clearBackendOverrides
+        ? null
+        : voiceConversionBackend ?? this.voiceConversionBackend,
   );
 }

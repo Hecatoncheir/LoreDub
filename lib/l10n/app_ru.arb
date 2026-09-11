@@ -155,7 +155,7 @@
   "voiceUnavailable": "В пакете этого языка голоса только одного пола — выбрать можно, но подстраиваться не под что.",
   "voiceNeedsAudio": "В режиме субтитров оригинал не слышен, поэтому голос берётся выбранный.",
   "voiceOriginal": "Голос оригинала",
-  "voiceOriginalNote": "Тембр берётся из каждой реплики и накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже.",
+  "voiceOriginalNote": "Тембр оригинала накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже, на видеокарте — без заметной задержки: устройство выбирается в строке OpenVoice раздела «Устройство».",
   "voiceOriginalMissing": "Нужен конвертер голоса: скачайте его в разделе «Голос оригинала» на экране «Модели».",
   "voiceOriginalSpeaking": "Тембр оригинала поверх голоса {name}",
   "@voiceOriginalSpeaking": {
@@ -165,6 +165,22 @@
       }
     }
   },
+  "voiceBank": "Запоминать голоса персонажей",
+  "voiceBankOnNote": "Отпечаток голоса каждого нового персонажа сохраняется, и его следующие реплики звучат тем же тембром — и после перезапуска. У каждой игры свой банк голосов.",
+  "voiceBankOffNote": "Тембр берётся из каждой реплики заново и нигде не сохраняется.",
+  "voiceBankCount": "{count, plural, =0{Сохранённых голосов нет} one{Сохранён {count} голос} few{Сохранено {count} голоса} other{Сохранено {count} голосов}}",
+  "@voiceBankCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceBankClear": "Очистить",
+  "voiceBankClearTitle": "Очистить банк голосов?",
+  "voiceBankClearMessage": "Сохранённые голоса всех игр будут удалены. Персонажи получат тембр заново по своим следующим репликам.",
+  "voiceBankClearCancel": "Отмена",
+  "voiceBankClearConfirm": "Очистить",
   "sectionVoiceConversion": "ГОЛОС ОРИГИНАЛА",
   "sectionVoiceConversionNote": "Нужен только для режима «Голос оригинала»: переносит на озвучку тембр говорящего. Один конвертер на все языки.",
   "modelConverterTitle": "OpenVoice {version} — конвертер голоса",
@@ -439,6 +455,14 @@
   "failureSocksLookupFailed": "Не удалось определить адрес SOCKS5 proxy",
   "failureProxyFormat": "Укажите proxy в формате http://host:port или socks5://host:port",
   "failureProxyPort": "Порт proxy должен быть от 1 до 65535",
+  "failureVoiceBankClearFailed": "Не удалось очистить банк голосов: {detail}",
+  "@failureVoiceBankClearFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureInitializationFailed": "Не удалось инициализировать приложение: {detail}",
   "@failureInitializationFailed": {
     "placeholders": {
@@ -463,6 +487,7 @@
   "computeStageRecognition": "Whisper",
   "computeStageTranslation": "Перевод",
   "computeStageSpeech": "Озвучка",
+  "computeStageVoiceConversion": "OpenVoice",
   "computeBackendCuda": "CUDA",
   "computeBackendVulkan": "Vulkan",
   "computeBackendCpu": "CPU",

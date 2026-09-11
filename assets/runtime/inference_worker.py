@@ -5,6 +5,7 @@
 
 import argparse
 import json
+import os
 import re
 import pathlib
 import sys
@@ -179,6 +180,72 @@ def speaker_gender(path):
     return None
 
 
+# A line joins a stored voice from this cosine between fingerprints up.
+# Measured on the OpenVoice demo speakers: two noisy lines of one person met
+# at 0.86 and above, the closest two different people at 0.79. A miss only
+# stores the same voice twice, while a false match would voice a character
+# in someone else's timbre, so the bar sits above the rivals.
+BANK_MATCH = 0.80
+
+# Only a line this long founds a new voice: a shorter one gives a
+# fingerprint that wanders, and it would then stand for the character.
+BANK_MIN_SECONDS = 1.5
+
+# A long game still fits; past this, new voices are used but not kept.
+BANK_LIMIT = 256
+
+
+class VoiceBank:
+    """The voice fingerprints of one game's characters, kept between sessions.
+
+    Nothing is averaged: the first clear line of a character stands for them,
+    so their timbre stays the same from line to line and from one session to
+    the next.
+    """
+
+    def __init__(self, path):
+        self.path = pathlib.Path(path)
+        self.voices = []
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            for voice in data.get("voices", []):
+                vector = np.asarray(voice, dtype=np.float32)
+                if vector.ndim == 1 and vector.size and np.all(np.isfinite(vector)):
+                    self.voices.append(vector)
+        except (OSError, ValueError, AttributeError, TypeError):
+            # A missing or damaged bank starts empty; the next voice rewrites it.
+            self.voices = []
+
+    def __len__(self):
+        return len(self.voices)
+
+    def nearest(self, vector):
+        """The index of the stored voice closest to [vector] and its cosine."""
+        best, score = None, -1.0
+        norm = float(np.linalg.norm(vector)) or 1.0
+        for index, voice in enumerate(self.voices):
+            if voice.shape != vector.shape:
+                continue
+            value = float(np.dot(voice, vector)) / ((float(np.linalg.norm(voice)) or 1.0) * norm)
+            if value > score:
+                best, score = index, value
+        return best, score
+
+    def add(self, vector):
+        self.voices.append(np.asarray(vector, dtype=np.float32))
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = self.path.with_suffix(".tmp")
+            voices = [[round(float(value), 6) for value in voice] for voice in self.voices]
+            temporary.write_text(json.dumps({"version": 1, "voices": voices}), encoding="utf-8")
+            # Replaced in one step, so a crash mid-write leaves the old bank.
+            os.replace(temporary, self.path)
+        except OSError as error:
+            # The voice still serves this session; losing the file must not
+            # cost the line.
+            sys.stderr.write(f"voice bank not saved: {error}\n")
+
+
 def main():
     use_utf8_streams()
     parser = argparse.ArgumentParser()
@@ -202,6 +269,12 @@ def main():
     # The OpenVoice tone converter's directory. With it, every line is
     # re-voiced in the timbre of the phrase it answers.
     parser.add_argument("--voice-converter", default="")
+    # The converter is placed apart from the translator: on the CPU it is
+    # the slow half of a line, on a GPU next to nothing.
+    parser.add_argument("--converter-device", default="cpu", choices=["cpu", "cuda"])
+    # The game's voice bank. With it, a character met before is voiced with
+    # the fingerprint kept for them instead of the one of the current line.
+    parser.add_argument("--voice-bank", default="")
     args = parser.parse_args()
 
     speed = min(2.0, max(0.5, args.speed))
@@ -242,12 +315,20 @@ def main():
     # The Silero voice picked below stays the base: the converter only moves
     # the original speaker's timbre onto it.
     converter = None
+    bank = None
     if args.voice_converter:
         report_progress(0.95, "converter")
         sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
         from tone_converter import ToneConverter
 
-        converter = ToneConverter(args.voice_converter, device)
+        # The same fallback as the translator's: a card torch cannot see
+        # leaves the converter on the CPU rather than the pipeline stopped.
+        converter_device = torch.device(
+            "cuda" if args.converter_device == "cuda" and torch.cuda.is_available() else "cpu"
+        )
+        converter = ToneConverter(args.voice_converter, converter_device)
+        if args.voice_bank:
+            bank = VoiceBank(args.voice_bank)
 
     # The catalogue names the voices, but only the package knows which of them
     # it really ships, so the two are intersected before anything is chosen.
@@ -301,13 +382,30 @@ def main():
                 and len(samples) >= rate // 2
                 and median_f0(samples, rate) is not None
             ):
-                current_timbre = converter.embed(samples, rate)
+                fingerprint = converter.embed(samples, rate)
+                current_timbre = (
+                    fingerprint if bank is None else banked(fingerprint, len(samples) / rate)
+                )
         return current_timbre
+
+    def banked(fingerprint, seconds):
+        """The kept voice this line belongs to; a new one is kept first."""
+        vector = fingerprint.flatten().float().cpu().numpy()
+        index, score = bank.nearest(vector)
+        if index is not None and score >= BANK_MATCH:
+            kept = torch.from_numpy(bank.voices[index]).reshape(fingerprint.shape)
+            return kept.to(device=fingerprint.device, dtype=fingerprint.dtype)
+        if seconds >= BANK_MIN_SECONDS and len(bank) < BANK_LIMIT:
+            bank.add(vector)
+        return fingerprint
 
     pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
     # The device is reported back rather than assumed: a CUDA build that fell
     # back to the CPU must not leave the interface claiming the GPU is in use.
-    reply({"type": "ready", "device": device.type})
+    ready = {"type": "ready", "device": device.type}
+    if converter is not None:
+        ready["converterDevice"] = converter.device.type
+    reply(ready)
 
     for raw_line in sys.stdin:
         # A malformed line must not take the worker down with it: the pipeline
@@ -354,15 +452,16 @@ def main():
                 stream.setsampwidth(2)
                 stream.setframerate(rate)
                 stream.writeframes(pcm)
-            reply(
-                {
-                    "id": request_id,
-                    "translated": translated,
-                    "wave": str(output),
-                    "voice": chosen,
-                    "cloned": timbre is not None,
-                }
-            )
+            answer = {
+                "id": request_id,
+                "translated": translated,
+                "wave": str(output),
+                "voice": chosen,
+                "cloned": timbre is not None,
+            }
+            if bank is not None:
+                answer["bankSize"] = len(bank)
+            reply(answer)
         except Exception as error:
             reply({"id": request_id, "error": str(error)})
 

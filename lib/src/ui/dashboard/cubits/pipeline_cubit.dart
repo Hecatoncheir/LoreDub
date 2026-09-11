@@ -186,6 +186,8 @@ class PipelineCubit extends Cubit<LivePipelineState> {
           activeBackends: const {},
         ),
       );
+      // The worker has written its last voices by now.
+      unawaited(_settings.refreshVoiceBank());
       return;
     }
     final selection = _selection;
@@ -233,7 +235,15 @@ class PipelineCubit extends Cubit<LivePipelineState> {
           ComputeStage.translation,
           _downloads.state.availability,
         ),
+        voiceConversionBackend: settings.backendFor(
+          ComputeStage.voiceConversion,
+          _downloads.state.availability,
+        ),
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+        // Kept per game, so one game's cast does not answer for another's.
+        voiceBank: selection.clonesVoice && settings.voiceBank
+            ? await _appRepository.voiceBankFileFor(state.selectedProcess?.name ?? '')
+            : null,
       );
     } catch (exception) {
       if (isClosed) return;
@@ -292,6 +302,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       case 'voice':
         final name = event['name'] as String?;
         emit(state.copyWith(spokenVoice: name, clearSpokenVoice: name == null));
+      case 'voiceBank':
+        // The event carries this game's count; the settings show all games.
+        unawaited(_settings.refreshVoiceBank());
       case 'backend':
         final stage = ComputeStage.values.where((value) => value.name == event['stage']);
         final backend = ComputeBackend.values.where((value) => value.name == event['backend']);

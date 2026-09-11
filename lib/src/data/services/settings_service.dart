@@ -80,6 +80,7 @@ class SettingsService {
       automaticVoice: preferences.getBool('automaticVoice') ?? true,
       voice: preferences.getString('voice') ?? '',
       originalVoice: preferences.getBool('originalVoice') ?? false,
+      voiceBank: preferences.getBool('voiceBank') ?? false,
       computeDevice: ComputeDevice.values.firstWhere(
         (device) => device.name == preferences.getString('computeDevice'),
         orElse: () => ComputeDevice.auto,
@@ -87,6 +88,7 @@ class SettingsService {
       recognitionBackend: _readBackend(preferences, 'recognitionBackend'),
       translationBackend: _readBackend(preferences, 'translationBackend'),
       speechBackend: _readBackend(preferences, 'speechBackend'),
+      voiceConversionBackend: _readBackend(preferences, 'voiceConversionBackend'),
     );
   }
 
@@ -116,10 +118,12 @@ class SettingsService {
       preferences.setBool('automaticVoice', settings.automaticVoice),
       preferences.setString('voice', settings.voice),
       preferences.setBool('originalVoice', settings.originalVoice),
+      preferences.setBool('voiceBank', settings.voiceBank),
       preferences.setString('computeDevice', settings.computeDevice.name),
       _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
       _writeBackend(preferences, 'translationBackend', settings.translationBackend),
       _writeBackend(preferences, 'speechBackend', settings.speechBackend),
+      _writeBackend(preferences, 'voiceConversionBackend', settings.voiceConversionBackend),
     ]);
   }
 }

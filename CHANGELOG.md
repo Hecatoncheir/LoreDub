@@ -4,6 +4,15 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+- Added a device choice for the Original voice: an OpenVoice row under Device puts the converter
+  on the CPU or on an NVIDIA card independently of translation. On the card a line is
+  re-voiced in about 0.1 s instead of about a second; it uses the same CUDA torch runtime as
+  translation.
+- Added a voice bank for the Original voice, off by default. With "Remember the characters'
+  voices" on, every new character's voice fingerprint is kept per game, and their later lines —
+  restarts included — are voiced with it instead of the timbre of each line. Fingerprints are
+  matched, not averaged. Settings show how many voices are kept, and Clear deletes them.
+
 ## [0.5.0] - 2026-09-11
 
 - Fixed the CUDA runtime download hanging with the bar stuck at 5%: pip fetched the 2.5 GB
