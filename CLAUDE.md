@@ -66,7 +66,10 @@ than one of them.
    (`hook/build.dart` compiles it with `CBuilder`; there is no `.dll` to ship
    manually). The C ABI in `native/lore_dub_native.h` is intentionally tiny:
    `ld_start(config_json)`, `ld_stop`, `ld_poll_event_json`, process listing,
-   per-process volume, WAV playback. Everything crosses the boundary as UTF-8
+   per-process volume, WAV playback, `ld_set_paused` (capture drops what it
+   finishes while set) and `ld_set_hotkeys` (RegisterHotKey on a thread with
+   its own message loop, presses queued as `hotkey` events; `ld_stop` drops
+   them). Everything crosses the boundary as UTF-8
    JSON. The native side hand-rolls its JSON parsing/escaping (`JsonString`,
    `EscapeJson`) — keep config keys flat and string/number valued.
    `NativeEngineService` polls `ld_poll_event_json` every 80 ms and turns

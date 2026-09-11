@@ -216,6 +216,26 @@ void main() {
     expect(saved.voiceConversionBackend, ComputeBackend.cuda);
   });
 
+  test('starts with the default hotkeys and remembers a removed one', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    final fresh = await service.load();
+    expect(fresh.pauseHotkey, Hotkey.defaultPause);
+    expect(fresh.resumeHotkey, Hotkey.defaultResume);
+
+    await service.save(
+      fresh.copyWith(
+        pauseHotkey: const Hotkey(keyCode: 0x78, label: 'F9', shift: true),
+        clearResumeHotkey: true,
+      ),
+    );
+    final saved = await service.load();
+
+    expect(saved.pauseHotkey?.display, 'Shift + F9');
+    expect(saved.resumeHotkey, isNull, reason: 'a removed combination must not come back');
+  });
+
   test('lets characters overlap until told otherwise', () async {
     SharedPreferences.setMockInitialValues({});
     final service = SettingsService();

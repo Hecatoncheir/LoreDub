@@ -153,6 +153,12 @@ abstract class AppLocalizations {
   /// **'Слушаю'**
   String get statusListening;
 
+  /// No description provided for @statusPaused.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пауза'**
+  String get statusPaused;
+
   /// No description provided for @statusStopping.
   ///
   /// In ru, this message translates to:
@@ -278,6 +284,96 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Остановить'**
   String get stopDubbing;
+
+  /// No description provided for @stopHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановить перевод полностью'**
+  String get stopHint;
+
+  /// No description provided for @pauseDubbing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пауза'**
+  String get pauseDubbing;
+
+  /// No description provided for @pauseHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пауза: модели остаются загруженными, игра звучит в полную громкость'**
+  String get pauseHint;
+
+  /// No description provided for @resumeDubbing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Продолжить'**
+  String get resumeDubbing;
+
+  /// No description provided for @settingsHotkeys.
+  ///
+  /// In ru, this message translates to:
+  /// **'Горячие клавиши'**
+  String get settingsHotkeys;
+
+  /// No description provided for @hotkeysNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Работают во время перевода, даже когда на экране игра. Пока LoreDub переводит, назначенное сочетание до игры не доходит.'**
+  String get hotkeysNote;
+
+  /// No description provided for @hotkeyPause.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пауза'**
+  String get hotkeyPause;
+
+  /// No description provided for @hotkeyResume.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановление'**
+  String get hotkeyResume;
+
+  /// No description provided for @hotkeyUnset.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не назначено'**
+  String get hotkeyUnset;
+
+  /// No description provided for @hotkeyListening.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите сочетание… (Esc — отмена)'**
+  String get hotkeyListening;
+
+  /// No description provided for @hotkeyClear.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать сочетание'**
+  String get hotkeyClear;
+
+  /// No description provided for @hotkeyNeedsModifier.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавьте Ctrl, Alt или Win: одиночная клавиша перестала бы доходить до игры'**
+  String get hotkeyNeedsModifier;
+
+  /// No description provided for @hotkeyUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эту клавишу назначить нельзя'**
+  String get hotkeyUnsupported;
+
+  /// No description provided for @hotkeyDuplicate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это сочетание уже назначено на «{action}»'**
+  String hotkeyDuplicate(String action);
+
+  /// No description provided for @failureHotkeyTaken.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сочетание для «{action}» уже занято другой программой — назначьте другое в настройках.'**
+  String failureHotkeyTaken(String action);
 
   /// No description provided for @startingProgress.
   ///

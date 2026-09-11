@@ -120,6 +120,15 @@ phrase.
 Every line is shown as the original, the translation, and the time it took to
 travel the whole pipeline.
 
+While dubbing, a pause sits beside **Stop**. A pause keeps the models loaded:
+capture stops handing lines on, the queue of lines to voice is cleared, the
+game plays at full volume, and **Resume** picks the dubbing up at once, with no
+minute of startup. **Stop** ends it altogether. Pause and resume can be bound
+to hotkeys in **Settings** — Ctrl+Alt+P and Ctrl+Alt+R by default — which work
+system-wide while the game is open. A bare letter cannot be bound without Ctrl,
+Alt or Win: Windows hands a registered combination to LoreDub alone, so the key
+would stop reaching the game.
+
 ### Models
 
 At the top sits speech recognition: one Whisper model for every language. The

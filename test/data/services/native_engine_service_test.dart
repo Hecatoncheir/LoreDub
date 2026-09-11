@@ -27,6 +27,24 @@ void main() {
     expect(fromNativeEvent(state), same(state));
   });
 
+  test('names the action whose hotkey another program holds', () {
+    final event = fromNativeEvent({'type': 'hotkeyTaken', 'action': 'resume'});
+
+    expect(event['type'], 'error');
+    expect(
+      event['failure'],
+      isA<LoreDubFailure>()
+          .having((failure) => failure.code, 'code', FailureCode.hotkeyTaken)
+          .having((failure) => failure.detail, 'detail', 'resume'),
+    );
+  });
+
+  test('passes a hotkey press on for the pipeline to act on', () {
+    final press = {'type': 'hotkey', 'action': 'pause'};
+
+    expect(fromNativeEvent(press), same(press));
+  });
+
   test('retries when a native string grows between size and copy', () {
     const initialValue = '[]';
     const grownValue = '[{"pid":42,"name":"Игра.exe"}]';

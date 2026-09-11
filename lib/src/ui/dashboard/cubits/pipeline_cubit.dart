@@ -53,7 +53,12 @@ class LivePipelineState {
   /// differ from the request when a driver turns out to be unusable.
   final Map<ComputeStage, ComputeBackend> activeBackends;
 
-  bool get running => status == PipelineStatus.starting || status == PipelineStatus.listening;
+  /// A paused session is still a session: its settings stay locked and its
+  /// models loaded.
+  bool get running =>
+      status == PipelineStatus.starting ||
+      status == PipelineStatus.listening ||
+      status == PipelineStatus.paused;
 
   /// The reported devices as a value that can be compared, so the compute
   /// card can be held still through everything else the session reports.
@@ -164,32 +169,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       return;
     }
     _errors.report(null);
-    if (state.running) {
-      emit(state.copyWith(status: PipelineStatus.stopping));
-      var status = PipelineStatus.idle;
-      try {
-        await _appRepository.stop();
-      } catch (exception) {
-        status = PipelineStatus.error;
-        _errors.report(exception);
-      }
-      if (isClosed) return;
-      emit(
-        state.copyWith(
-          status: status,
-          clearStartupProgress: true,
-          startupStage: '',
-          // The detection, the devices and the voice belonged to the session
-          // that just ended.
-          clearDetectedLanguage: true,
-          clearSpokenVoice: true,
-          activeBackends: const {},
-        ),
-      );
-      // The worker has written its last voices by now.
-      unawaited(_settings.refreshVoiceBank());
-      return;
-    }
+    if (state.running) return stop();
     final selection = _selection;
     if (!state.canStart(selection, initializing: initializing)) return;
     _startRequestedAt = _clock();
@@ -248,6 +228,57 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     } catch (exception) {
       if (isClosed) return;
       emit(state.copyWith(status: PipelineStatus.error));
+      _errors.report(exception);
+    }
+  }
+
+  /// Ends the session, paused or not, and gives the game its volume back.
+  Future<void> stop() async {
+    if (!state.running) return;
+    _errors.report(null);
+    emit(state.copyWith(status: PipelineStatus.stopping));
+    var status = PipelineStatus.idle;
+    try {
+      await _appRepository.stop();
+    } catch (exception) {
+      status = PipelineStatus.error;
+      _errors.report(exception);
+    }
+    if (isClosed) return;
+    emit(
+      state.copyWith(
+        status: status,
+        clearStartupProgress: true,
+        startupStage: '',
+        // The detection, the devices and the voice belonged to the session
+        // that just ended.
+        clearDetectedLanguage: true,
+        clearSpokenVoice: true,
+        activeBackends: const {},
+      ),
+    );
+    // The worker has written its last voices by now.
+    unawaited(_settings.refreshVoiceBank());
+  }
+
+  /// Rests a listening session without tearing it down: the models stay
+  /// loaded, so resuming is instant rather than another minute of startup.
+  Future<void> pause() async {
+    if (state.status != PipelineStatus.listening) return;
+    try {
+      await _appRepository.pause();
+      if (!isClosed) emit(state.copyWith(status: PipelineStatus.paused));
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
+  Future<void> resume() async {
+    if (state.status != PipelineStatus.paused) return;
+    try {
+      await _appRepository.resume();
+      if (!isClosed) emit(state.copyWith(status: PipelineStatus.listening));
+    } catch (exception) {
       _errors.report(exception);
     }
   }
@@ -314,6 +345,14 @@ class PipelineCubit extends Cubit<LivePipelineState> {
             activeBackends: {...state.activeBackends, stage.first: backend.first},
           ),
         );
+      // A system-wide combination, pressed from inside the game.
+      case 'hotkey':
+        switch (event['action']) {
+          case 'pause':
+            unawaited(pause());
+          case 'resume':
+            unawaited(resume());
+        }
       case 'error':
         // A phrase failing does not stop the capture, so the pipeline keeps
         // its state and the controls stay usable. Marking the session as

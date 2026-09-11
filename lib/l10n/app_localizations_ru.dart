@@ -40,6 +40,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get statusListening => 'Слушаю';
 
   @override
+  String get statusPaused => 'Пауза';
+
+  @override
   String get statusStopping => 'Остановка…';
 
   @override
@@ -107,6 +110,57 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get stopDubbing => 'Остановить';
+
+  @override
+  String get stopHint => 'Остановить перевод полностью';
+
+  @override
+  String get pauseDubbing => 'Пауза';
+
+  @override
+  String get pauseHint => 'Пауза: модели остаются загруженными, игра звучит в полную громкость';
+
+  @override
+  String get resumeDubbing => 'Продолжить';
+
+  @override
+  String get settingsHotkeys => 'Горячие клавиши';
+
+  @override
+  String get hotkeysNote =>
+      'Работают во время перевода, даже когда на экране игра. Пока LoreDub переводит, назначенное сочетание до игры не доходит.';
+
+  @override
+  String get hotkeyPause => 'Пауза';
+
+  @override
+  String get hotkeyResume => 'Восстановление';
+
+  @override
+  String get hotkeyUnset => 'Не назначено';
+
+  @override
+  String get hotkeyListening => 'Нажмите сочетание… (Esc — отмена)';
+
+  @override
+  String get hotkeyClear => 'Убрать сочетание';
+
+  @override
+  String get hotkeyNeedsModifier =>
+      'Добавьте Ctrl, Alt или Win: одиночная клавиша перестала бы доходить до игры';
+
+  @override
+  String get hotkeyUnsupported => 'Эту клавишу назначить нельзя';
+
+  @override
+  String hotkeyDuplicate(String action) {
+    return 'Это сочетание уже назначено на «$action»';
+  }
+
+  @override
+  String failureHotkeyTaken(String action) {
+    return 'Сочетание для «$action» уже занято другой программой — назначьте другое в настройках.';
+  }
 
   @override
   String startingProgress(int percent) {

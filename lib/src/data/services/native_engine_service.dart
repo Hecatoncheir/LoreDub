@@ -12,6 +12,7 @@ import 'package:ffi/ffi.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
+import '../../domain/hotkey.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
 import 'phrase_queue.dart';
@@ -49,6 +50,10 @@ class NativeEngineService {
   String? _reportedVoice;
   int? _reportedBankSize;
 
+  /// Set while the session rests: capture hands nothing on, and a line
+  /// finishing its translation meanwhile is shown but not voiced.
+  bool _paused = false;
+
   Stream<Map<String, Object?>> get events => _events.stream;
   bool get processLoopbackSupported => ld_is_process_loopback_supported() == 1;
 
@@ -83,6 +88,7 @@ class NativeEngineService {
     _reportedLanguage = null;
     _reportedVoice = null;
     _reportedBankSize = null;
+    _paused = false;
     _playback.maxVoices = config['overlapVoices'] == true ? overlappingVoices : 1;
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
@@ -137,6 +143,8 @@ class NativeEngineService {
     // Cleared first: segments captured moments ago are still travelling
     // through the queue, and failing them is expected once the user stops.
     _activeConfig = null;
+    _paused = false;
+    // ld_stop drops the hotkeys too; nothing is left for them to pause.
     _throwIfError(ld_stop());
     _pollEvents();
     _pollTimer?.cancel();
@@ -155,6 +163,44 @@ class NativeEngineService {
     _throwIfError(ld_set_process_volume(processId, volume));
   }
 
+  /// Rests or wakes the running session without tearing it down, so the
+  /// worker keeps its models and resuming costs no startup.
+  void setPaused(bool paused) {
+    if (_activeConfig == null) return;
+    _paused = paused;
+    _throwIfError(ld_set_paused(paused ? 1 : 0));
+    if (!paused) return;
+    // Nothing heard before the pause is voiced after it.
+    for (final phrase in _phrases.clear()) {
+      final wavePath = phrase.wavePath;
+      if (wavePath != null) unawaited(_deleteIfPresent(wavePath));
+    }
+    for (final wavePath in _playback.clear()) {
+      unawaited(_deleteIfPresent(wavePath));
+    }
+    // The game plays at its own volume while dubbing rests. A device that
+    // cannot be reached is no reason to refuse the pause, so the result is
+    // not checked.
+    ld_restore_process_volumes();
+  }
+
+  /// Registers the system-wide combinations that pause and resume the
+  /// session; their presses arrive as `hotkey` events. A combination another
+  /// program holds comes back as an error naming the action.
+  void setHotkeys({Hotkey? pause, Hotkey? resume}) {
+    final config = jsonEncode({
+      'pauseKey': pause?.keyCode ?? 0,
+      'pauseModifiers': pause?.modifiers ?? 0,
+      'resumeKey': resume?.keyCode ?? 0,
+      'resumeModifiers': resume?.modifiers ?? 0,
+    }).toNativeUtf8();
+    try {
+      _throwIfError(ld_set_hotkeys(config.cast()));
+    } finally {
+      malloc.free(config);
+    }
+  }
+
   void _pollEvents() {
     for (var index = 0; index < 16; index++) {
       final json = _readNativeString(ld_poll_event_json, emptyAllowed: true);
@@ -162,13 +208,15 @@ class NativeEngineService {
       final event = jsonDecode(json) as Map<String, Object?>;
       if (event['type'] == 'audioSegment') {
         final wavePath = event['path']! as String;
-        if (_activeConfig == null) {
+        // A segment queued a moment before the pause is dropped like one
+        // captured during it.
+        if (_activeConfig == null || _paused) {
           unawaited(_deleteIfPresent(wavePath));
           continue;
         }
         _phrases.add(PendingPhrase.audio(wavePath));
       } else if (event['type'] == 'ocrText') {
-        if (_activeConfig == null) continue;
+        if (_activeConfig == null || _paused) continue;
         _phrases.add(PendingPhrase.text(event['text']! as String));
       } else {
         _events.add(fromNativeEvent(event));
@@ -257,6 +305,12 @@ class NativeEngineService {
       _reportedBankSize = size;
       _events.add({'type': 'voiceBank', 'size': size});
     }
+    // A line that was already being translated when the pause came is shown
+    // in the transcript, but the pause means quiet.
+    if (_paused) {
+      unawaited(_deleteIfPresent(result.wavePath));
+      return;
+    }
     // The worker says who is speaking, so a different character may start
     // while the last one is still talking — when the settings allow it.
     _playback.add(result.wavePath, speaker: result.speaker);
@@ -333,6 +387,13 @@ class NativeEngineService {
 /// `failure`. Passed on as it came, the error arrived with no failure and
 /// cleared the banner instead of raising one.
 Map<String, Object?> fromNativeEvent(Map<String, Object?> event) {
+  // Windows refused a combination: another program already holds it.
+  if (event['type'] == 'hotkeyTaken') {
+    return {
+      'type': 'error',
+      'failure': LoreDubFailure(FailureCode.hotkeyTaken, detail: event['action'] as String?),
+    };
+  }
   if (event['type'] != 'error' || event['failure'] != null) return event;
   return {
     'type': 'error',

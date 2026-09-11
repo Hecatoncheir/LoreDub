@@ -3,6 +3,7 @@
 
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1697,6 +1698,134 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('OpenVoice'), findsOneWidget);
+    });
+  });
+
+  group('pausing a session', () {
+    testWidgets('offers a pause beside a full stop, then a resume', (tester) async {
+      final cubits = stage(buildCubits(), models: catalogue(), status: PipelineStatus.listening);
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      expect(find.byKey(const ValueKey('pauseButton')), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Остановить'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('pauseButton')));
+      await tester.pumpAndSettle();
+
+      expect(cubits.pipeline.state.status, PipelineStatus.paused);
+      expect(find.text('Пауза'), findsOneWidget, reason: 'the status says so');
+      expect(find.byKey(const ValueKey('stopButton')), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Продолжить'));
+      await tester.pumpAndSettle();
+
+      expect(cubits.pipeline.state.status, PipelineStatus.listening);
+    });
+  });
+
+  group('the hotkeys', () {
+    Future<DashboardCubits> pumpHotkeys(WidgetTester tester) async {
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.settings,
+        settings: const AppSettings(),
+        models: catalogue(),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('resumeHotkey')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      return cubits;
+    }
+
+    Finder field(String key) => find.descendant(
+      of: find.byKey(ValueKey(key)),
+      matching: find.byType(OutlinedButton),
+    );
+
+    Future<void> press(WidgetTester tester, List<LogicalKeyboardKey> keys) async {
+      for (final key in keys) {
+        await tester.sendKeyDownEvent(key);
+      }
+      for (final key in keys.reversed) {
+        await tester.sendKeyUpEvent(key);
+      }
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('comes with a combination for each action', (tester) async {
+      await pumpHotkeys(tester);
+
+      expect(find.text('Горячие клавиши'), findsOneWidget);
+      expect(find.text('Ctrl + Alt + P'), findsOneWidget);
+      expect(find.text('Ctrl + Alt + R'), findsOneWidget);
+    });
+
+    testWidgets('records the combination pressed on the field', (tester) async {
+      await pumpHotkeys(tester);
+
+      await tester.ensureVisible(field('pauseHotkey'));
+      await tester.pumpAndSettle();
+      await tester.tap(field('pauseHotkey'));
+      await tester.pump();
+      expect(find.text('Нажмите сочетание… (Esc — отмена)'), findsOneWidget);
+
+      await press(tester, [
+        LogicalKeyboardKey.controlLeft,
+        LogicalKeyboardKey.shiftLeft,
+        LogicalKeyboardKey.f9,
+      ]);
+
+      expect(find.text('Ctrl + Shift + F9'), findsOneWidget);
+      expect((await SettingsService().load()).pauseHotkey?.display, 'Ctrl + Shift + F9');
+    });
+
+    testWidgets('refuses a bare letter, which would leave the game', (tester) async {
+      await pumpHotkeys(tester);
+
+      await tester.ensureVisible(field('pauseHotkey'));
+      await tester.pumpAndSettle();
+      await tester.tap(field('pauseHotkey'));
+      await tester.pump();
+      await press(tester, [LogicalKeyboardKey.keyK]);
+
+      expect(find.textContaining('Добавьте Ctrl, Alt или Win'), findsOneWidget);
+      expect((await SettingsService().load()).pauseHotkey, Hotkey.defaultPause);
+    });
+
+    testWidgets('refuses the combination the other action has', (tester) async {
+      await pumpHotkeys(tester);
+
+      await tester.ensureVisible(field('pauseHotkey'));
+      await tester.pumpAndSettle();
+      await tester.tap(field('pauseHotkey'));
+      await tester.pump();
+      await press(tester, [
+        LogicalKeyboardKey.controlLeft,
+        LogicalKeyboardKey.altLeft,
+        LogicalKeyboardKey.keyR,
+      ]);
+
+      expect(find.text('Это сочетание уже назначено на «Восстановление»'), findsOneWidget);
+    });
+
+    testWidgets('lets a combination be removed', (tester) async {
+      await pumpHotkeys(tester);
+
+      final clear = find.descendant(
+        of: find.byKey(const ValueKey('pauseHotkey')),
+        matching: find.byTooltip('Убрать сочетание'),
+      );
+      await tester.ensureVisible(clear);
+      await tester.pumpAndSettle();
+      await tester.tap(clear);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Не назначено'), findsOneWidget);
+      expect((await SettingsService().load()).pauseHotkey, isNull);
     });
   });
 

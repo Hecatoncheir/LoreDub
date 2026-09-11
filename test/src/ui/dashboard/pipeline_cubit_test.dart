@@ -116,6 +116,35 @@ void main() {
     expect(repository.stops, 1);
   });
 
+  test('pauses and resumes on the hotkeys pressed in the game', () async {
+    pipeline
+      ..listen()
+      ..seed(const LivePipelineState(status: PipelineStatus.listening));
+
+    repository.push({'type': 'hotkey', 'action': 'pause'});
+    await settle();
+    expect(pipeline.state.status, PipelineStatus.paused);
+    expect(pipeline.state.running, isTrue, reason: 'a paused session is still a session');
+
+    repository.push({'type': 'hotkey', 'action': 'pause'});
+    await settle();
+    expect(pipeline.state.status, PipelineStatus.paused, reason: 'pausing twice changes nothing');
+
+    repository.push({'type': 'hotkey', 'action': 'resume'});
+    await settle();
+    expect(pipeline.state.status, PipelineStatus.listening);
+    expect(repository.stops, 0, reason: 'neither tears the session down');
+  });
+
+  test('stops for good from a pause', () async {
+    pipeline.seed(const LivePipelineState(status: PipelineStatus.paused));
+
+    await pipeline.stop();
+
+    expect(pipeline.state.status, PipelineStatus.idle);
+    expect(repository.stops, 1);
+  });
+
   test('raises the banner for a capture failure and keeps it through an empty error', () async {
     pipeline.listen();
     const failure = LoreDubFailure(

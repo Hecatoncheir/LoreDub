@@ -10,6 +10,7 @@
   "statusIdle": "Остановлено",
   "statusStarting": "Запуск…",
   "statusListening": "Слушаю",
+  "statusPaused": "Пауза",
   "statusStopping": "Остановка…",
   "statusError": "Ошибка",
   "modelsNeededTitle": "Для первого запуска нужны модели",
@@ -55,6 +56,35 @@
   },
   "startDubbing": "Начать перевод",
   "stopDubbing": "Остановить",
+  "stopHint": "Остановить перевод полностью",
+  "pauseDubbing": "Пауза",
+  "pauseHint": "Пауза: модели остаются загруженными, игра звучит в полную громкость",
+  "resumeDubbing": "Продолжить",
+  "settingsHotkeys": "Горячие клавиши",
+  "hotkeysNote": "Работают во время перевода, даже когда на экране игра. Пока LoreDub переводит, назначенное сочетание до игры не доходит.",
+  "hotkeyPause": "Пауза",
+  "hotkeyResume": "Восстановление",
+  "hotkeyUnset": "Не назначено",
+  "hotkeyListening": "Нажмите сочетание… (Esc — отмена)",
+  "hotkeyClear": "Убрать сочетание",
+  "hotkeyNeedsModifier": "Добавьте Ctrl, Alt или Win: одиночная клавиша перестала бы доходить до игры",
+  "hotkeyUnsupported": "Эту клавишу назначить нельзя",
+  "hotkeyDuplicate": "Это сочетание уже назначено на «{action}»",
+  "@hotkeyDuplicate": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "failureHotkeyTaken": "Сочетание для «{action}» уже занято другой программой — назначьте другое в настройках.",
+  "@failureHotkeyTaken": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
   "startingProgress": "Запуск {percent}%",
   "@startingProgress": {
     "placeholders": {

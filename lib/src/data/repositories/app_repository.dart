@@ -94,20 +94,47 @@ class AppRepository {
         'runtimeDirectory': runtimeDirectory,
         'voiceBank': ?voiceBank,
       });
-      if (process != null &&
-          (settings.captureMode == CaptureMode.ocr ||
-              settings.audioCaptureSource == AudioCaptureSource.process)) {
-        await _nativeEngine.setProcessVolume(
-          process.pid,
-          settings.originalVolume,
-        );
-      }
+      await _duck(process, settings);
+      _sessionProcess = process;
+      _sessionSettings = settings;
+      _nativeEngine.setHotkeys(pause: settings.pauseHotkey, resume: settings.resumeHotkey);
     } catch (_) {
       await _nativeEngine.stop();
       rethrow;
     }
   }
 
-  Future<void> stop() => _nativeEngine.stop();
+  /// What the running session was started with, so a resume can turn the
+  /// game down again exactly as the start did.
+  GameProcess? _sessionProcess;
+  AppSettings? _sessionSettings;
+
+  /// Turns the captured game down while it is dubbed.
+  Future<void> _duck(GameProcess? process, AppSettings settings) async {
+    if (process == null) return;
+    if (settings.captureMode != CaptureMode.ocr &&
+        settings.audioCaptureSource != AudioCaptureSource.process) {
+      return;
+    }
+    await _nativeEngine.setProcessVolume(process.pid, settings.originalVolume);
+  }
+
+  /// Rests the session: capture hands nothing on, what was queued is
+  /// dropped, and the game plays at its own volume.
+  Future<void> pause() async => _nativeEngine.setPaused(true);
+
+  /// Picks the session up where it rested.
+  Future<void> resume() async {
+    _nativeEngine.setPaused(false);
+    final settings = _sessionSettings;
+    if (settings != null) await _duck(_sessionProcess, settings);
+  }
+
+  Future<void> stop() {
+    _sessionProcess = null;
+    _sessionSettings = null;
+    return _nativeEngine.stop();
+  }
+
   void dispose() => _nativeEngine.dispose();
 }

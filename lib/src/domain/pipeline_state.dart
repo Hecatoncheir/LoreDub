@@ -1,7 +1,9 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-enum PipelineStatus { idle, starting, listening, stopping, error }
+/// [paused] is a live session resting: the models stay loaded and capture
+/// stays open, so resuming takes no startup at all.
+enum PipelineStatus { idle, starting, listening, paused, stopping, error }
 
 class TranscriptEntry {
   const TranscriptEntry({

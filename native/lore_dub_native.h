@@ -47,6 +47,20 @@ LD_API int32_t ld_play_wave(const char* utf8_path);
 LD_API int32_t ld_start(const char* config_json);
 LD_API int32_t ld_stop(void);
 
+// Pauses (1) or resumes (0) the running pipeline without tearing it down.
+// While paused, capture keeps its devices; recognized subtitle text is
+// dropped here, and audio segments are dropped by the caller.
+LD_API int32_t ld_set_paused(int32_t paused);
+
+// Registers system-wide hotkeys for pausing and resuming. Config is a flat
+// UTF-8 JSON object with pauseKey, pauseModifiers, resumeKey and
+// resumeModifiers: Windows virtual-key codes and MOD_* flags, a zero key
+// leaving that action unbound. Presses arrive as
+// {"type":"hotkey","action":"pause"|"resume"} events, a combination Windows
+// refuses as {"type":"hotkeyTaken","action":...}. Null or an empty string
+// unregisters them; ld_stop does too.
+LD_API int32_t ld_set_hotkeys(const char* config_json);
+
 // Pops one UTF-8 JSON event. Returns 0 when the queue is empty, a positive
 // byte count on success/required capacity, or a negative error code.
 LD_API int32_t ld_poll_event_json(char* output, int32_t capacity);

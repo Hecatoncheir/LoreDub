@@ -6,8 +6,11 @@
 #include "process_loopback_capture.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <deque>
+#include <future>
+#include <thread>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -33,6 +36,10 @@ namespace {
 std::mutex event_mutex;
 std::deque<std::string> events;
 bool running = false;
+
+// Read on the capture threads: while set, what they finish is thrown away
+// instead of queued.
+std::atomic<bool> paused{false};
 std::unique_ptr<ProcessLoopbackCapture> loopback_capture;
 std::unique_ptr<OcrCapture> ocr_capture;
 
@@ -341,6 +348,84 @@ int32_t ld_restore_process_volumes(void) {
 #if defined(_WIN32)
 namespace {
 
+// RegisterHotKey delivers WM_HOTKEY to the thread that registered, so the
+// hotkeys live on a thread of their own with nothing but a message loop.
+std::mutex hotkey_mutex;
+std::thread hotkey_thread;
+std::atomic<DWORD> hotkey_thread_id{0};
+
+constexpr int kPauseHotkey = 1;
+constexpr int kResumeHotkey = 2;
+
+void HotkeyLoop(uint32_t pause_key, uint32_t pause_modifiers, uint32_t resume_key,
+                uint32_t resume_modifiers, std::promise<void>* ready) {
+  MSG message;
+  // Creates this thread's message queue, so a WM_QUIT posted from the
+  // outside cannot arrive before there is a queue to receive it.
+  PeekMessageW(&message, nullptr, WM_USER, WM_USER, PM_NOREMOVE);
+  hotkey_thread_id = GetCurrentThreadId();
+  const bool pause_ok =
+      pause_key == 0 || RegisterHotKey(nullptr, kPauseHotkey, pause_modifiers | MOD_NOREPEAT,
+                                       pause_key);
+  const bool resume_ok =
+      resume_key == 0 || RegisterHotKey(nullptr, kResumeHotkey, resume_modifiers | MOD_NOREPEAT,
+                                        resume_key);
+  ready->set_value();
+  if (!pause_ok) PushEvent("{\"type\":\"hotkeyTaken\",\"action\":\"pause\"}");
+  if (!resume_ok) PushEvent("{\"type\":\"hotkeyTaken\",\"action\":\"resume\"}");
+  while (GetMessageW(&message, nullptr, 0, 0) > 0) {
+    if (message.message != WM_HOTKEY) continue;
+    PushEvent(message.wParam == kPauseHotkey
+                  ? "{\"type\":\"hotkey\",\"action\":\"pause\"}"
+                  : "{\"type\":\"hotkey\",\"action\":\"resume\"}");
+  }
+  if (pause_key != 0 && pause_ok) UnregisterHotKey(nullptr, kPauseHotkey);
+  if (resume_key != 0 && resume_ok) UnregisterHotKey(nullptr, kResumeHotkey);
+}
+
+void StopHotkeys() {
+  std::lock_guard<std::mutex> lock(hotkey_mutex);
+  if (!hotkey_thread.joinable()) return;
+  PostThreadMessageW(hotkey_thread_id.load(), WM_QUIT, 0, 0);
+  hotkey_thread.join();
+  hotkey_thread_id = 0;
+}
+
+}  // namespace
+#endif
+
+int32_t ld_set_paused(int32_t value) {
+  paused = value != 0;
+  return 0;
+}
+
+int32_t ld_set_hotkeys(const char* config_json) {
+#if defined(_WIN32)
+  StopHotkeys();
+  if (config_json == nullptr || config_json[0] == '\0') return 0;
+  const std::string config(config_json);
+  const uint32_t pause_key = JsonUnsigned(config, "pauseKey");
+  const uint32_t pause_modifiers = JsonUnsigned(config, "pauseModifiers");
+  const uint32_t resume_key = JsonUnsigned(config, "resumeKey");
+  const uint32_t resume_modifiers = JsonUnsigned(config, "resumeModifiers");
+  if (pause_key == 0 && resume_key == 0) return 0;
+  std::lock_guard<std::mutex> lock(hotkey_mutex);
+  std::promise<void> ready;
+  auto registered = ready.get_future();
+  hotkey_thread = std::thread(HotkeyLoop, pause_key, pause_modifiers, resume_key,
+                              resume_modifiers, &ready);
+  // The thread holds [ready] only until it has registered.
+  registered.wait();
+  return 0;
+#else
+  (void)config_json;
+  return -2;
+#endif
+}
+
+#if defined(_WIN32)
+namespace {
+
 // A PCM WAV file's format and samples, as far as playback needs them.
 struct WaveClip {
   WAVEFORMATEX format{};
@@ -432,6 +517,7 @@ int32_t ld_start(const char* config_json) {
   if (running) return -3;
   if (config_json == nullptr || config_json[0] == '\0') return -4;
   running = true;
+  paused = false;
   PushEvent("{\"type\":\"state\",\"state\":\"starting\"}");
 #if defined(_WIN32)
   const std::string config(config_json);
@@ -454,6 +540,7 @@ int32_t ld_start(const char* config_json) {
     if (!ocr_capture->Start(
             process_id, region,
             [](const std::string& recognized_text) {
+              if (paused) return;
               PushEvent("{\"type\":\"ocrText\",\"text\":\"" +
                         EscapeJson(recognized_text) + "\"}");
             },
@@ -473,6 +560,9 @@ int32_t ld_start(const char* config_json) {
     if (!loopback_capture->Start(
             capture_process_id, capture_system, Wide(capture_directory),
             [](const std::string& filename) {
+              // Queued even while paused: the Dart side drops a segment that
+              // arrives during the pause and deletes its file, so the native
+              // library never deletes files itself.
               PushEvent("{\"type\":\"audioSegment\",\"path\":\"" +
                         EscapeJson(filename) + "\"}");
             },
@@ -504,6 +594,11 @@ int32_t ld_stop(void) {
     ocr_capture.reset();
   }
   running = false;
+  paused = false;
+#if defined(_WIN32)
+  // Nothing is left to pause or resume.
+  StopHotkeys();
+#endif
   PushEvent("{\"type\":\"state\",\"state\":\"idle\"}");
   ld_restore_process_volumes();
   return 0;

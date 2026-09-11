@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import 'compute_device.dart';
+import 'hotkey.dart';
+
+export 'hotkey.dart';
 import 'ocr_region.dart';
 import 'spoken_language.dart';
 
@@ -34,6 +37,8 @@ class AppSettings {
     this.originalVoice = false,
     this.voiceBank = false,
     this.overlapVoices = true,
+    this.pauseHotkey = Hotkey.defaultPause,
+    this.resumeHotkey = Hotkey.defaultResume,
     this.computeDevice = ComputeDevice.auto,
     this.recognitionBackend,
     this.translationBackend,
@@ -95,6 +100,11 @@ class AppSettings {
   /// Whether a line of another character may start while the current one is
   /// still being spoken. A character never talks over themselves either way.
   final bool overlapVoices;
+
+  /// The system-wide combinations that pause and resume a running session;
+  /// null leaves the action to its button.
+  final Hotkey? pauseHotkey;
+  final Hotkey? resumeHotkey;
 
   VoiceMode get voiceMode => originalVoice
       ? VoiceMode.original
@@ -176,6 +186,10 @@ class AppSettings {
     bool? originalVoice,
     bool? voiceBank,
     bool? overlapVoices,
+    Hotkey? pauseHotkey,
+    bool clearPauseHotkey = false,
+    Hotkey? resumeHotkey,
+    bool clearResumeHotkey = false,
     ComputeDevice? computeDevice,
     ComputeBackend? recognitionBackend,
     ComputeBackend? translationBackend,
@@ -202,6 +216,8 @@ class AppSettings {
     originalVoice: originalVoice ?? this.originalVoice,
     voiceBank: voiceBank ?? this.voiceBank,
     overlapVoices: overlapVoices ?? this.overlapVoices,
+    pauseHotkey: clearPauseHotkey ? null : pauseHotkey ?? this.pauseHotkey,
+    resumeHotkey: clearResumeHotkey ? null : resumeHotkey ?? this.resumeHotkey,
     computeDevice: computeDevice ?? this.computeDevice,
     recognitionBackend: clearBackendOverrides
         ? null

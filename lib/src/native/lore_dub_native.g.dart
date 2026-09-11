@@ -61,6 +61,18 @@ external int ld_probe_graphics_json(
 external int ld_restore_process_volumes();
 
 @meta.RecordUse()
+@ffi.Native<ffi.Int32 Function(ffi.Pointer<ffi.Char>)>()
+external int ld_set_hotkeys(
+  ffi.Pointer<ffi.Char> config_json,
+);
+
+@meta.RecordUse()
+@ffi.Native<ffi.Int32 Function(ffi.Int32)>()
+external int ld_set_paused(
+  int paused,
+);
+
+@meta.RecordUse()
 @ffi.Native<ffi.Int32 Function(ffi.Uint32, ffi.Float)>()
 external int ld_set_process_volume(
   int process_id,

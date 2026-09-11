@@ -31,6 +31,7 @@ import 'cubits/pipeline_cubit.dart';
 import 'cubits/settings_cubit.dart';
 import 'cubits/shell_cubit.dart';
 import 'compute_matrix.dart';
+import 'hotkey_field.dart';
 import 'model_tiles.dart';
 import 'model_visuals.dart';
 import 'ocr_region_picker.dart';
@@ -646,6 +647,7 @@ class _StatusChip extends StatelessWidget {
         LoreDubPalette.warning,
       ),
       PipelineStatus.listening => (l10n.statusListening, LoreDubPalette.success),
+      PipelineStatus.paused => (l10n.statusPaused, LoreDubPalette.warning),
       PipelineStatus.stopping => (l10n.statusStopping, LoreDubPalette.warning),
       PipelineStatus.error => (l10n.statusError, LoreDubPalette.error),
     };
@@ -1106,6 +1108,9 @@ class _StartButton extends StatelessWidget {
     final progress = pipeline.startupProgress;
     final running = pipeline.running;
     final canStart = pipeline.canStart(cubits.selection, initializing: initializing);
+    if (pipeline.status == PipelineStatus.listening || pipeline.status == PipelineStatus.paused) {
+      return _SessionButtons(cubits: cubits, paused: pipeline.status == PipelineStatus.paused);
+    }
     return Tooltip(
       message: starting && pipeline.startupStage.isNotEmpty
           ? describeStartupStage(l10n, pipeline.startupStage)
@@ -1135,6 +1140,67 @@ class _StartButton extends StatelessWidget {
               : l10n.startDubbing,
         ),
       ),
+    );
+  }
+}
+
+/// A live session's two controls: rest or wake it, and end it.
+///
+/// The wide button is the press most likely next — stop while dubbing,
+/// resume while paused — and the other waits beside it as an outlined icon,
+/// its name in the tooltip. Both fit the slot the start button had.
+class _SessionButtons extends StatelessWidget {
+  const _SessionButtons({required this.cubits, required this.paused});
+
+  final DashboardCubits cubits;
+  final bool paused;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (paused) {
+      return Row(
+        children: [
+          Expanded(
+            child: FilledButton.icon(
+              key: const ValueKey('resumeButton'),
+              onPressed: cubits.pipeline.resume,
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: Text(l10n.resumeDubbing),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: l10n.stopHint,
+            child: IconButton.outlined(
+              key: const ValueKey('stopButton'),
+              onPressed: cubits.pipeline.stop,
+              icon: const Icon(Icons.stop_rounded),
+            ),
+          ),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Tooltip(
+          message: l10n.pauseHint,
+          child: IconButton.outlined(
+            key: const ValueKey('pauseButton'),
+            onPressed: cubits.pipeline.pause,
+            icon: const Icon(Icons.pause_rounded),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: FilledButton.icon(
+            key: const ValueKey('stopButton'),
+            onPressed: cubits.pipeline.stop,
+            icon: const Icon(Icons.stop_rounded),
+            label: Text(l10n.stopDubbing),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1825,6 +1891,19 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     }
   }
 
+  /// Why a combination cannot be bound: one that takes a key from the game,
+  /// or one the other action already has.
+  String? _hotkeyProblem(
+    AppLocalizations l10n,
+    Hotkey hotkey, {
+    required Hotkey? other,
+    required String otherName,
+  }) {
+    if (!hotkey.leavesGameKeys) return l10n.hotkeyNeedsModifier;
+    if (other != null && other.sameCombination(hotkey)) return l10n.hotkeyDuplicate(otherName);
+    return null;
+  }
+
   void _saveProxy() {
     if (!(_proxyFormKey.currentState?.validate() ?? false)) return;
     cubits.settings.update(_settings.copyWith(modelProxyUrl: _proxyController.text.trim()));
@@ -1981,6 +2060,54 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ),
         const SizedBox(height: 12),
         _VoiceCard(cubits: cubits),
+        const SizedBox(height: 12),
+        _SettingCard(
+          title: l10n.settingsHotkeys,
+          subtitle: l10n.hotkeysNote,
+          child: Column(
+            children: [
+              _HotkeyRow(
+                label: l10n.hotkeyPause,
+                field: HotkeyField(
+                  key: const ValueKey('pauseHotkey'),
+                  value: settings.pauseHotkey,
+                  enabled: !running,
+                  validate: (hotkey) => _hotkeyProblem(
+                    l10n,
+                    hotkey,
+                    other: _settings.resumeHotkey,
+                    otherName: l10n.hotkeyResume,
+                  ),
+                  onChanged: (hotkey) => cubits.settings.update(
+                    hotkey == null
+                        ? _settings.copyWith(clearPauseHotkey: true)
+                        : _settings.copyWith(pauseHotkey: hotkey),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              _HotkeyRow(
+                label: l10n.hotkeyResume,
+                field: HotkeyField(
+                  key: const ValueKey('resumeHotkey'),
+                  value: settings.resumeHotkey,
+                  enabled: !running,
+                  validate: (hotkey) => _hotkeyProblem(
+                    l10n,
+                    hotkey,
+                    other: _settings.pauseHotkey,
+                    otherName: l10n.hotkeyPause,
+                  ),
+                  onChanged: (hotkey) => cubits.settings.update(
+                    hotkey == null
+                        ? _settings.copyWith(clearResumeHotkey: true)
+                        : _settings.copyWith(resumeHotkey: hotkey),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 12),
         _SettingCard(
           title: l10n.settingsPerformance,
@@ -2644,6 +2771,29 @@ class _ComputeDeviceCard extends StatelessWidget {
     ComputeAvailability availability,
   ) => stages.any(
     (stage) => requiredRuntimeId(stage, pipeline.backendFor(stage, settings, availability)) == id,
+  );
+}
+
+/// An action and the field that binds its combination.
+class _HotkeyRow extends StatelessWidget {
+  const _HotkeyRow({required this.label, required this.field});
+
+  final String label;
+  final Widget field;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(
+        width: 160,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        ),
+      ),
+      Expanded(child: field),
+    ],
   );
 }
 

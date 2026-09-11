@@ -48,6 +48,14 @@ class SettingsService {
     bottom: preferences.getDouble('ocrRegionBottom') ?? OcrRegion.standard.bottom,
   ).normalized();
 
+  /// Never set means the default; set to nothing means none.
+  static Hotkey? _readHotkey(SharedPreferences preferences, String key, Hotkey fallback) {
+    final value = preferences.getString(key);
+    if (value == null) return fallback;
+    if (value.isEmpty) return null;
+    return Hotkey.decode(value) ?? fallback;
+  }
+
   static Future<void> _writeBackend(
     SharedPreferences preferences,
     String key,
@@ -82,6 +90,8 @@ class SettingsService {
       originalVoice: preferences.getBool('originalVoice') ?? false,
       voiceBank: preferences.getBool('voiceBank') ?? false,
       overlapVoices: preferences.getBool('overlapVoices') ?? true,
+      pauseHotkey: _readHotkey(preferences, 'pauseHotkey', Hotkey.defaultPause),
+      resumeHotkey: _readHotkey(preferences, 'resumeHotkey', Hotkey.defaultResume),
       computeDevice: ComputeDevice.values.firstWhere(
         (device) => device.name == preferences.getString('computeDevice'),
         orElse: () => ComputeDevice.auto,
@@ -121,6 +131,10 @@ class SettingsService {
       preferences.setBool('originalVoice', settings.originalVoice),
       preferences.setBool('voiceBank', settings.voiceBank),
       preferences.setBool('overlapVoices', settings.overlapVoices),
+      // An empty string is a combination the player removed on purpose,
+      // which must not come back as the default next time.
+      preferences.setString('pauseHotkey', settings.pauseHotkey?.encode() ?? ''),
+      preferences.setString('resumeHotkey', settings.resumeHotkey?.encode() ?? ''),
       preferences.setString('computeDevice', settings.computeDevice.name),
       _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
       _writeBackend(preferences, 'translationBackend', settings.translationBackend),

@@ -40,6 +40,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusListening => 'Listening';
 
   @override
+  String get statusPaused => 'Paused';
+
+  @override
   String get statusStopping => 'Stopping…';
 
   @override
@@ -108,6 +111,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stopDubbing => 'Stop';
+
+  @override
+  String get stopHint => 'Stop dubbing altogether';
+
+  @override
+  String get pauseDubbing => 'Pause';
+
+  @override
+  String get pauseHint => 'Pause: the models stay loaded and the game plays at full volume';
+
+  @override
+  String get resumeDubbing => 'Resume';
+
+  @override
+  String get settingsHotkeys => 'Hotkeys';
+
+  @override
+  String get hotkeysNote =>
+      'They work while dubbing, even with the game on screen. While LoreDub dubs, a bound combination does not reach the game.';
+
+  @override
+  String get hotkeyPause => 'Pause';
+
+  @override
+  String get hotkeyResume => 'Resume';
+
+  @override
+  String get hotkeyUnset => 'Not set';
+
+  @override
+  String get hotkeyListening => 'Press a combination… (Esc cancels)';
+
+  @override
+  String get hotkeyClear => 'Remove the combination';
+
+  @override
+  String get hotkeyNeedsModifier =>
+      'Add Ctrl, Alt or Win: a key on its own would stop reaching the game';
+
+  @override
+  String get hotkeyUnsupported => 'This key cannot be bound';
+
+  @override
+  String hotkeyDuplicate(String action) {
+    return 'This combination is already bound to $action';
+  }
+
+  @override
+  String failureHotkeyTaken(String action) {
+    return 'Another program already holds the combination for $action — bind a different one in Settings.';
+  }
 
   @override
   String startingProgress(int percent) {

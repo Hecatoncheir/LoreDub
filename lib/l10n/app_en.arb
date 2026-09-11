@@ -10,6 +10,7 @@
   "statusIdle": "Stopped",
   "statusStarting": "Starting…",
   "statusListening": "Listening",
+  "statusPaused": "Paused",
   "statusStopping": "Stopping…",
   "statusError": "Error",
   "modelsNeededTitle": "The first run needs models",
@@ -55,6 +56,35 @@
   },
   "startDubbing": "Start dubbing",
   "stopDubbing": "Stop",
+  "stopHint": "Stop dubbing altogether",
+  "pauseDubbing": "Pause",
+  "pauseHint": "Pause: the models stay loaded and the game plays at full volume",
+  "resumeDubbing": "Resume",
+  "settingsHotkeys": "Hotkeys",
+  "hotkeysNote": "They work while dubbing, even with the game on screen. While LoreDub dubs, a bound combination does not reach the game.",
+  "hotkeyPause": "Pause",
+  "hotkeyResume": "Resume",
+  "hotkeyUnset": "Not set",
+  "hotkeyListening": "Press a combination… (Esc cancels)",
+  "hotkeyClear": "Remove the combination",
+  "hotkeyNeedsModifier": "Add Ctrl, Alt or Win: a key on its own would stop reaching the game",
+  "hotkeyUnsupported": "This key cannot be bound",
+  "hotkeyDuplicate": "This combination is already bound to {action}",
+  "@hotkeyDuplicate": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "failureHotkeyTaken": "Another program already holds the combination for {action} — bind a different one in Settings.",
+  "@failureHotkeyTaken": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
   "startingProgress": "Starting {percent}%",
   "@startingProgress": {
     "placeholders": {

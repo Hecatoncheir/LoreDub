@@ -94,6 +94,10 @@ enum FailureCode {
   /// The newer setup could not be fetched in full or started; the detail is
   /// what stopped it.
   updateInstallFailed,
+
+  /// Windows refused a hotkey because another program holds the same
+  /// combination; the detail is the action, `pause` or `resume`.
+  hotkeyTaken,
 }
 
 class LoreDubFailure implements Exception {
