@@ -1153,6 +1153,26 @@ void main() {
       );
     });
 
+    testWidgets('offers overlapping characters only when voices can differ', (tester) async {
+      await pumpSettings(tester);
+
+      expect(find.text('Накладывать реплики разных персонажей'), findsOneWidget);
+      final row = find.ancestor(
+        of: find.text('Накладывать реплики разных персонажей'),
+        matching: find.byType(Row),
+      );
+      await tester.tap(find.descendant(of: row.first, matching: find.byType(Switch)));
+      await tester.pumpAndSettle();
+
+      expect((await SettingsService().load()).overlapVoices, isFalse);
+    });
+
+    testWidgets('hides overlapping when one voice reads every line', (tester) async {
+      await pumpSettings(tester, settings: const AppSettings(automaticVoice: false));
+
+      expect(find.text('Накладывать реплики разных персонажей'), findsNothing);
+    });
+
     Finder clearButton() => find.ancestor(
       of: find.text('Очистить'),
       matching: find.byWidgetPredicate((widget) => widget is TextButton),

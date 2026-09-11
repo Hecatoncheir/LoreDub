@@ -269,6 +269,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get voiceOverlap => 'Let different characters overlap';
+
+  @override
+  String get voiceOverlapNote =>
+      'Another character\'s line starts at once instead of waiting for the current one to end; no more than two voices sound together. In Automatic mode characters are told apart only by the gender of their voice.';
+
+  @override
   String get voiceBank => 'Remember the characters\' voices';
 
   @override

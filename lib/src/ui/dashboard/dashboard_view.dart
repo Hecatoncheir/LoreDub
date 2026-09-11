@@ -2103,6 +2103,27 @@ class _VoiceCard extends StatelessWidget {
                     },
             ),
           ],
+          // With one voice for every line there is nobody to tell apart.
+          if (mode != VoiceMode.chosen) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Switch(
+                  value: settings.overlapVoices,
+                  onChanged: running
+                      ? null
+                      : (value) => cubits.settings.update(settings.copyWith(overlapVoices: value)),
+                ),
+                const SizedBox(width: 6),
+                Flexible(child: Text(l10n.voiceOverlap)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.voiceOverlapNote,
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+            ),
+          ],
           // Which voice the automatic choice actually settled on, so it is
           // not a silent decision — the same courtesy the detected language
           // gets on the live screen.

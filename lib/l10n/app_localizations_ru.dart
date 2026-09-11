@@ -268,6 +268,13 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get voiceOverlap => 'Накладывать реплики разных персонажей';
+
+  @override
+  String get voiceOverlapNote =>
+      'Реплика другого персонажа начинается сразу, не дожидаясь конца текущей; одновременно звучат не больше двух голосов. В режиме «Автоматически» персонажи различаются только по полу голоса.';
+
+  @override
   String get voiceBank => 'Запоминать голоса персонажей';
 
   @override

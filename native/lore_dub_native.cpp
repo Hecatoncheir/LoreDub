@@ -13,6 +13,7 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
+#include <vector>
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -337,13 +338,90 @@ int32_t ld_restore_process_volumes(void) {
 #endif
 }
 
+#if defined(_WIN32)
+namespace {
+
+// A PCM WAV file's format and samples, as far as playback needs them.
+struct WaveClip {
+  WAVEFORMATEX format{};
+  std::vector<char> samples;
+};
+
+bool ReadWaveClip(const std::wstring& path, WaveClip& clip) {
+  HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (file == INVALID_HANDLE_VALUE) return false;
+  LARGE_INTEGER size{};
+  std::vector<char> bytes;
+  bool ok = GetFileSizeEx(file, &size) && size.QuadPart > 12 && size.QuadPart < (1LL << 30);
+  if (ok) {
+    bytes.resize(static_cast<size_t>(size.QuadPart));
+    DWORD read = 0;
+    ok = ReadFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &read, nullptr) &&
+         read == bytes.size();
+  }
+  CloseHandle(file);
+  if (!ok || std::memcmp(bytes.data(), "RIFF", 4) != 0 ||
+      std::memcmp(bytes.data() + 8, "WAVE", 4) != 0) {
+    return false;
+  }
+  bool has_format = false;
+  size_t offset = 12;
+  while (offset + 8 <= bytes.size()) {
+    uint32_t length = 0;
+    std::memcpy(&length, bytes.data() + offset + 4, sizeof(length));
+    const size_t body = offset + 8;
+    const size_t available = std::min<size_t>(length, bytes.size() - body);
+    if (std::memcmp(bytes.data() + offset, "fmt ", 4) == 0 && available >= 16) {
+      // The first 16 bytes of the chunk are WAVEFORMATEX without cbSize.
+      std::memcpy(&clip.format, bytes.data() + body, 16);
+      clip.format.cbSize = 0;
+      has_format = true;
+    } else if (std::memcmp(bytes.data() + offset, "data", 4) == 0) {
+      clip.samples.assign(bytes.data() + body, bytes.data() + body + available);
+    }
+    offset = body + static_cast<size_t>(length) + (length & 1);
+  }
+  return has_format && clip.format.wFormatTag == WAVE_FORMAT_PCM && !clip.samples.empty();
+}
+
+}  // namespace
+#endif
+
+// Blocks until the clip has played, as PlaySound with SND_SYNC did. PlaySound
+// holds one sound per process and cuts off whatever is playing, so two
+// characters could never be heard at once; every call here opens a waveOut
+// stream of its own instead, and Windows mixes the ones that overlap.
 int32_t ld_play_wave(const char* utf8_path) {
 #if defined(_WIN32)
   if (utf8_path == nullptr || utf8_path[0] == '\0') return -20;
-  return PlaySoundW(Wide(utf8_path).c_str(), nullptr,
-                    SND_FILENAME | SND_SYNC | SND_NODEFAULT)
-             ? 0
-             : -21;
+  WaveClip clip;
+  if (!ReadWaveClip(Wide(utf8_path), clip)) return -21;
+  HANDLE done = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+  if (done == nullptr) return -21;
+  HWAVEOUT device = nullptr;
+  if (waveOutOpen(&device, WAVE_MAPPER, &clip.format, reinterpret_cast<DWORD_PTR>(done), 0,
+                  CALLBACK_EVENT) != MMSYSERR_NOERROR) {
+    CloseHandle(done);
+    return -21;
+  }
+  WAVEHDR header{};
+  header.lpData = clip.samples.data();
+  header.dwBufferLength = static_cast<DWORD>(clip.samples.size());
+  int32_t result = -21;
+  if (waveOutPrepareHeader(device, &header, sizeof(header)) == MMSYSERR_NOERROR) {
+    if (waveOutWrite(device, &header, sizeof(header)) == MMSYSERR_NOERROR) {
+      // The event also fires when the device opens and closes, so the flag the
+      // driver sets is what says the clip is over.
+      const volatile DWORD& flags = header.dwFlags;
+      while ((flags & WHDR_DONE) == 0) WaitForSingleObject(done, 1000);
+      result = 0;
+    }
+    waveOutUnprepareHeader(device, &header, sizeof(header));
+  }
+  waveOutClose(device);
+  CloseHandle(done);
+  return result;
 #else
   (void)utf8_path;
   return -2;

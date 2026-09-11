@@ -165,6 +165,8 @@
       }
     }
   },
+  "voiceOverlap": "Let different characters overlap",
+  "voiceOverlapNote": "Another character's line starts at once instead of waiting for the current one to end; no more than two voices sound together. In Automatic mode characters are told apart only by the gender of their voice.",
   "voiceBank": "Remember the characters' voices",
   "voiceBankOnNote": "Each new character's voice fingerprint is saved, and their later lines keep that timbre, restarts included. Every game has a voice bank of its own.",
   "voiceBankOffNote": "The timbre is taken from every line afresh and never saved.",

@@ -4,6 +4,13 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+- Lines of different characters can now overlap: a new line starts at once while another
+  character is still speaking, instead of waiting for them to finish. A character never talks
+  over themselves, and no more than two voices sound together. Characters are told apart by
+  the voice fingerprint in Original voice mode and by the Silero voice (man or woman) in
+  Automatic mode; "Let different characters overlap" in the voice settings turns it off.
+  Playback moved from PlaySound, which could hold one sound at a time, to waveOut.
+
 ## [0.6.0] - 2026-09-11
 
 - Added a device choice for the Original voice: an OpenVoice row under Device puts the converter

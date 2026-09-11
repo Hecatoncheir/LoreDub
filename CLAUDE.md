@@ -93,6 +93,16 @@ Segments are processed strictly sequentially — `NativeEngineService._processin
 is a chained `Future` — so a small CPU is never asked to run two inferences at
 once. Preserve that when adding stages.
 
+Playback is not sequential in the same way. Every worker reply carries a
+`speaker` key (`timbre:<n>` from the voice fingerprints with the converter,
+`voice:<silero name>` without it, absent when unknown), and
+`PlaybackScheduler` (`data/services/playback_scheduler.dart`) plays lines of
+different speakers side by side, up to `overlappingVoices` (2) with
+`AppSettings.overlapVoices`, while one speaker's lines stay in order and a
+line of unknown speaker plays alone. `ld_play_wave` therefore uses its own
+waveOut stream per call and blocks until the clip ends; do not go back to
+`PlaySound`, which holds one sound per process and cuts off the other.
+
 The update check (`UpdateService`, `UpdateRepository`) reads the repository's
 latest release at startup and compares only the three version numbers. The
 Windows toast needs a Start Menu shortcut carrying the same `AppUserModelID`

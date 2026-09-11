@@ -15,6 +15,7 @@ import '../../domain/game_process.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
 import 'phrase_queue.dart';
+import 'playback_scheduler.dart';
 
 typedef NativeStringReader = int Function(Pointer<Char> output, int capacity);
 
@@ -42,7 +43,7 @@ class NativeEngineService {
   /// Playback runs beside recognition instead of inside it. Voicing a reply
   /// takes as long as the reply itself, and holding the pipeline for that
   /// would put every later phrase further behind the game.
-  Future<void> _playback = Future.value();
+  late final _playback = PlaybackScheduler(play: _playQueued);
   Map<String, Object?>? _activeConfig;
   String? _reportedLanguage;
   String? _reportedVoice;
@@ -82,6 +83,7 @@ class NativeEngineService {
     _reportedLanguage = null;
     _reportedVoice = null;
     _reportedBankSize = null;
+    _playback.maxVoices = config['overlapVoices'] == true ? overlappingVoices : 1;
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
     await _inference.start(
@@ -142,6 +144,9 @@ class NativeEngineService {
     for (final phrase in _phrases.clear()) {
       final wavePath = phrase.wavePath;
       if (wavePath != null) unawaited(_deleteIfPresent(wavePath));
+    }
+    for (final wavePath in _playback.clear()) {
+      unawaited(_deleteIfPresent(wavePath));
     }
     await _inference.stop();
   }
@@ -252,13 +257,9 @@ class NativeEngineService {
       _reportedBankSize = size;
       _events.add({'type': 'voiceBank', 'size': size});
     }
-    _enqueuePlayback(result.wavePath);
-  }
-
-  /// Utterances are voiced one after another so they never overlap, but the
-  /// next phrase is recognized while the previous one is still being spoken.
-  void _enqueuePlayback(String wavePath) {
-    _playback = _playback.then((_) => _playQueued(wavePath));
+    // The worker says who is speaking, so a different character may start
+    // while the last one is still talking — when the settings allow it.
+    _playback.add(result.wavePath, speaker: result.speaker);
   }
 
   Future<void> _playQueued(String wavePath) async {

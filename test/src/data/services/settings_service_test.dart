@@ -215,4 +215,15 @@ void main() {
     expect(saved.voiceBank, isTrue);
     expect(saved.voiceConversionBackend, ComputeBackend.cuda);
   });
+
+  test('lets characters overlap until told otherwise', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    expect((await service.load()).overlapVoices, isTrue);
+
+    await service.save(const AppSettings(overlapVoices: false));
+
+    expect((await service.load()).overlapVoices, isFalse);
+  });
 }

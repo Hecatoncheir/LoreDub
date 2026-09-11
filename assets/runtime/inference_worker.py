@@ -204,8 +204,12 @@ class VoiceBank:
     """
 
     def __init__(self, path):
-        self.path = pathlib.Path(path)
+        # Without a path the bank lives for the session only: it still tells
+        # speakers apart, and nothing is written.
+        self.path = pathlib.Path(path) if path else None
         self.voices = []
+        if self.path is None:
+            return
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
             for voice in data.get("voices", []):
@@ -233,6 +237,8 @@ class VoiceBank:
 
     def add(self, vector):
         self.voices.append(np.asarray(vector, dtype=np.float32))
+        if self.path is None:
+            return
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             temporary = self.path.with_suffix(".tmp")
@@ -368,8 +374,15 @@ def main():
     # a short grunt keeps it, the same way the automatic choice keeps its voice.
     current_timbre = None
 
+    # Who is speaking, as a key the application compares to let two different
+    # characters overlap while one never talks over themselves. With the
+    # converter it is the voice the line matched — kept in the game's bank,
+    # or in one that lasts only this session. Sticky, like the timbre.
+    speakers = bank if bank is not None else VoiceBank(None)
+    current_speaker = None
+
     def timbre_for(request):
-        nonlocal current_timbre
+        nonlocal current_timbre, current_speaker
         source = request.get("wave")
         if source:
             try:
@@ -383,21 +396,25 @@ def main():
                 and median_f0(samples, rate) is not None
             ):
                 fingerprint = converter.embed(samples, rate)
-                current_timbre = (
-                    fingerprint if bank is None else banked(fingerprint, len(samples) / rate)
-                )
+                index = speaker_of(fingerprint, len(samples) / rate)
+                # A short line nobody matched could be anyone.
+                current_speaker = None if index is None else f"timbre:{index}"
+                current_timbre = fingerprint
+                if bank is not None and index is not None:
+                    kept = torch.from_numpy(bank.voices[index]).reshape(fingerprint.shape)
+                    current_timbre = kept.to(device=fingerprint.device, dtype=fingerprint.dtype)
         return current_timbre
 
-    def banked(fingerprint, seconds):
-        """The kept voice this line belongs to; a new one is kept first."""
+    def speaker_of(fingerprint, seconds):
+        """The index of the voice this line belongs to; a new one is kept first."""
         vector = fingerprint.flatten().float().cpu().numpy()
-        index, score = bank.nearest(vector)
+        index, score = speakers.nearest(vector)
         if index is not None and score >= BANK_MATCH:
-            kept = torch.from_numpy(bank.voices[index]).reshape(fingerprint.shape)
-            return kept.to(device=fingerprint.device, dtype=fingerprint.dtype)
-        if seconds >= BANK_MIN_SECONDS and len(bank) < BANK_LIMIT:
-            bank.add(vector)
-        return fingerprint
+            return index
+        if seconds >= BANK_MIN_SECONDS and len(speakers) < BANK_LIMIT:
+            speakers.add(vector)
+            return len(speakers) - 1
+        return None
 
     pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
     # The device is reported back rather than assumed: a CUDA build that fell
@@ -458,7 +475,12 @@ def main():
                 "wave": str(output),
                 "voice": chosen,
                 "cloned": timbre is not None,
+                # Without a timbre the Silero voice is all that tells lines
+                # apart, which separates men from women and nothing more.
+                "speaker": current_speaker if timbre is not None else f"voice:{chosen}",
             }
+            if timbre is not None and current_speaker is None:
+                del answer["speaker"]
             if bank is not None:
                 answer["bankSize"] = len(bank)
             reply(answer)

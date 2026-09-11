@@ -85,6 +85,7 @@ class AppRepository {
         'translationPrefix': translationPrefix,
         'translateSpeech': translateSpeech,
         'followSpeaker': followSpeaker,
+        'overlapVoices': settings.overlapVoices,
         'maleVoices': maleVoices.join(','),
         'femaleVoices': femaleVoices.join(','),
         'recognitionBackend': recognitionBackend.name,

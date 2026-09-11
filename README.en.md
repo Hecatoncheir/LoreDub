@@ -242,6 +242,21 @@ or more: on the OpenVoice demo voices two noisy lines of one person met at
 its own (`voice_bank/<game>.json` in the application data); the switch shows
 how many voices are kept, and **Clear** deletes them all once confirmed.
 
+The **Let different characters overlap** switch (on by default) lets another
+character's new line start at once while the previous one is still sounding,
+so the dubbing falls behind less in a quick exchange. A character never talks
+over themselves: their next line waits for the last to end. No more than two
+voices sound together; a third waits. Who is speaking is told apart
+differently by mode:
+
+- Original voice: by the voice fingerprint (the kept character with the voice
+  bank on, this session's fingerprints without it);
+- Automatic: by the Silero voice, which separates men from women and nothing
+  more;
+- Choose and subtitle mode have one voice, so lines play strictly in turn.
+
+A short line nobody could be matched to plays on its own.
+
 ## Translator
 
 English text is translated by a Helsinki-NLP/Marian model. Russian uses

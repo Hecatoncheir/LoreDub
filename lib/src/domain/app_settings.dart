@@ -33,6 +33,7 @@ class AppSettings {
     this.voice = '',
     this.originalVoice = false,
     this.voiceBank = false,
+    this.overlapVoices = true,
     this.computeDevice = ComputeDevice.auto,
     this.recognitionBackend,
     this.translationBackend,
@@ -90,6 +91,10 @@ class AppSettings {
   /// meets, per game and across sessions, and voices their later lines with
   /// it. Off, the timbre is taken from each line afresh and never stored.
   final bool voiceBank;
+
+  /// Whether a line of another character may start while the current one is
+  /// still being spoken. A character never talks over themselves either way.
+  final bool overlapVoices;
 
   VoiceMode get voiceMode => originalVoice
       ? VoiceMode.original
@@ -170,6 +175,7 @@ class AppSettings {
     String? voice,
     bool? originalVoice,
     bool? voiceBank,
+    bool? overlapVoices,
     ComputeDevice? computeDevice,
     ComputeBackend? recognitionBackend,
     ComputeBackend? translationBackend,
@@ -195,6 +201,7 @@ class AppSettings {
     voice: voice ?? this.voice,
     originalVoice: originalVoice ?? this.originalVoice,
     voiceBank: voiceBank ?? this.voiceBank,
+    overlapVoices: overlapVoices ?? this.overlapVoices,
     computeDevice: computeDevice ?? this.computeDevice,
     recognitionBackend: clearBackendOverrides
         ? null

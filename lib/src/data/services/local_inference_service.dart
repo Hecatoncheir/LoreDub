@@ -22,6 +22,7 @@ class InferenceResult {
     required this.wavePath,
     this.voice = '',
     this.bankSize,
+    this.speaker,
   });
 
   final String english;
@@ -35,6 +36,11 @@ class InferenceResult {
   /// How many voices the game's bank holds after this line, or null when
   /// the session keeps none.
   final int? bankSize;
+
+  /// Who is speaking, as a key only compared for equality: the matched voice
+  /// with the original voice on, the Silero voice otherwise. Null when the
+  /// worker cannot tell.
+  final String? speaker;
 }
 
 /// Picks the language code out of whisper.cpp's detection line.
@@ -398,6 +404,7 @@ class LocalInferenceService {
       wavePath: response['wave']! as String,
       voice: response['voice'] as String? ?? '',
       bankSize: (response['bankSize'] as num?)?.toInt(),
+      speaker: response['speaker'] as String?,
     );
   }
 

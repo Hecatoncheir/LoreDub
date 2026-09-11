@@ -549,6 +549,18 @@ abstract class AppLocalizations {
   /// **'Тембр оригинала поверх голоса {name}'**
   String voiceOriginalSpeaking(String name);
 
+  /// No description provided for @voiceOverlap.
+  ///
+  /// In ru, this message translates to:
+  /// **'Накладывать реплики разных персонажей'**
+  String get voiceOverlap;
+
+  /// No description provided for @voiceOverlapNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Реплика другого персонажа начинается сразу, не дожидаясь конца текущей; одновременно звучат не больше двух голосов. В режиме «Автоматически» персонажи различаются только по полу голоса.'**
+  String get voiceOverlapNote;
+
   /// No description provided for @voiceBank.
   ///
   /// In ru, this message translates to:
