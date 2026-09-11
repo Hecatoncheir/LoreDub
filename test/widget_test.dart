@@ -32,7 +32,8 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
-import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus, TranscriptEntry;
+import 'package:lore_dub/src/domain/pipeline_state.dart'
+    show PipelineSession, PipelineStatus, TranscriptEntry;
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
@@ -1733,7 +1734,7 @@ void main() {
       );
       await pumpDashboard(tester, cubits, const Size(1280, 1000));
       await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('resumeHotkey')),
+        find.byKey(const ValueKey('snapshotHotkey')),
         300,
         scrollable: find.byType(Scrollable).first,
       );
@@ -1762,6 +1763,24 @@ void main() {
       expect(find.text('Горячие клавиши'), findsOneWidget);
       expect(find.text('Ctrl + Alt + P'), findsOneWidget);
       expect(find.text('Ctrl + Alt + R'), findsOneWidget);
+      expect(find.text('Ctrl + Alt + S'), findsOneWidget);
+    });
+
+    testWidgets('refuses for selection the combination pausing has', (tester) async {
+      await pumpHotkeys(tester);
+
+      await tester.ensureVisible(field('snapshotHotkey'));
+      await tester.pumpAndSettle();
+      await tester.tap(field('snapshotHotkey'));
+      await tester.pump();
+      await press(tester, [
+        LogicalKeyboardKey.controlLeft,
+        LogicalKeyboardKey.altLeft,
+        LogicalKeyboardKey.keyP,
+      ]);
+
+      expect(find.text('Это сочетание уже назначено на «Пауза»'), findsOneWidget);
+      expect((await SettingsService().load()).snapshotHotkey, Hotkey.defaultSnapshot);
     });
 
     testWidgets('records the combination pressed on the field', (tester) async {
@@ -1826,6 +1845,126 @@ void main() {
 
       expect(find.text('Не назначено'), findsOneWidget);
       expect((await SettingsService().load()).pauseHotkey, isNull);
+    });
+  });
+
+  group('the snapshot screen', () {
+    const snippet = TranscriptEntry(
+      original: 'Press E to open',
+      english: 'Press E to open',
+      translated: 'Нажмите E, чтобы открыть',
+      latency: Duration(milliseconds: 800),
+    );
+
+    FilledButton startButton(WidgetTester tester) =>
+        tester.widget<FilledButton>(find.byKey(const ValueKey('snapshotStart')));
+
+    DashboardCubits stageSnapshot({
+      AppSettings settings = const AppSettings(),
+      List<ModelInstallState>? models,
+      LivePipelineState pipeline = const LivePipelineState(),
+    }) {
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.snapshot,
+        settings: settings,
+        models: models ?? catalogue(),
+      );
+      cubits.pipeline.seed(pipeline);
+      return cubits;
+    }
+
+    testWidgets('sits under Live and says how to select', (tester) async {
+      await pumpDashboard(tester, stageSnapshot(), const Size(1280, 900));
+
+      expect(find.text('02  /  AREA SNAPSHOT'), findsOneWidget);
+      expect(find.text('Фрагмент'), findsOneWidget);
+      expect(find.text('Перевод фрагмента'), findsOneWidget);
+      expect(find.textContaining('Удерживайте Ctrl + Alt + S'), findsOneWidget);
+      expect(find.text('Выделенные фрагменты появятся здесь'), findsOneWidget);
+      expect(startButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('needs the translator and the voice, not whisper', (tester) async {
+      final cubits = stageSnapshot(
+        models: [
+          for (final model in modelCatalog)
+            ModelInstallState(model: model, installed: model.kind != ModelKind.recognition),
+        ],
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      expect(find.text('Для первого запуска нужны модели'), findsNothing);
+      expect(startButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('cannot start without a key to select with', (tester) async {
+      final cubits = stageSnapshot(
+        settings: const AppSettings().copyWith(clearSnapshotHotkey: true),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      expect(find.text('Клавиша выделения не назначена.'), findsOneWidget);
+      expect(startButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('shows what was selected while the session waits', (tester) async {
+      final cubits = stageSnapshot(
+        pipeline: const LivePipelineState(
+          status: PipelineStatus.listening,
+          session: PipelineSession.snapshot,
+          snapshots: [snippet],
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      expect(find.text('Нажмите E, чтобы открыть'), findsOneWidget);
+      expect(find.text('Ждёт фрагмента'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Остановить'), findsOneWidget);
+    });
+
+    testWidgets('says when the selection held no text', (tester) async {
+      final cubits = stageSnapshot(
+        pipeline: const LivePipelineState(
+          status: PipelineStatus.listening,
+          session: PipelineSession.snapshot,
+          snapshotMissed: true,
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      expect(find.text('В выделенной области текст не найден'), findsOneWidget);
+    });
+
+    testWidgets('leaves the key to live dubbing while it runs', (tester) async {
+      final cubits = stageSnapshot(
+        pipeline: const LivePipelineState(status: PipelineStatus.listening),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      expect(find.text('Идёт «Эфир» — клавиша выделения работает и в нём'), findsOneWidget);
+      expect(startButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('lets Live take the worker over', (tester) async {
+      final cubits = stage(
+        buildCubits(),
+        settings: const AppSettings(audioCaptureSource: AudioCaptureSource.system),
+        models: catalogue(),
+      );
+      cubits.pipeline.seed(
+        const LivePipelineState(
+          status: PipelineStatus.listening,
+          session: PipelineSession.snapshot,
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      expect(find.byKey(const ValueKey('pauseButton')), findsNothing);
+      final start = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Начать перевод'),
+      );
+      expect(start.onPressed, isNotNull);
     });
   });
 

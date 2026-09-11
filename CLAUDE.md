@@ -106,6 +106,23 @@ line of unknown speaker plays alone. `ld_play_wave` therefore uses its own
 waveOut stream per call and blocks until the clip ends; do not go back to
 `PlaySound`, which holds one sound per process and cuts off the other.
 
+The Snippet screen ("Фрагмент", `DashboardSection.snapshot`) runs a second kind of
+session, `PipelineSession.snapshot`: `AppRepository.startSnapshot` ->
+`NativeEngineService.startSnapshot` loads the worker with Marian and Silero
+only (no whisper, no `ld_start`) and registers just the snapshot key through
+`ld_set_hotkeys`; live dubbing registers it as well. The key is held, not
+pressed: on its WM_HOTKEY the hotkey thread runs `SelectScreenArea`
+(`native/snapshot_overlay.cpp`) — a dimming layered window over the virtual
+screen, a click-through orange frame above it, a nested message loop, and
+`GetAsyncKeyState` polled for the release — and `RecognizeScreenArea`
+(`ocr_capture.cpp`) then reads the rectangle on a thread of its own. The
+events are `snapshotReading`, then `snapshot` with the text (`failed` when
+OCR could not run). The text is queued as `PendingPhrase.text(snapshot:
+true)`, its `transcript` event carries `snapshot: true` and lands in
+`LivePipelineState.snapshots` rather than the transcript, and it is voiced
+even while a live session is paused. Starting live dubbing over a running
+snapshot session stops that session first, since its worker has no whisper.
+
 The update check (`UpdateService`, `UpdateRepository`) reads the repository's
 latest release at startup and compares only the three version numbers. The
 Windows toast needs a Start Menu shortcut carrying the same `AppUserModelID`

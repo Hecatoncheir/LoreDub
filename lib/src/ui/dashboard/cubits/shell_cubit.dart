@@ -13,7 +13,8 @@ import '../../../domain/app_release.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/progress_ticker.dart';
 
-enum DashboardSection { live, models, settings }
+/// In the order the navigation lists them; the compact bar picks by index.
+enum DashboardSection { live, snapshot, models, settings }
 
 /// Where the parts of the dashboard put what went wrong.
 ///

@@ -2,14 +2,17 @@
   "@@locale": "ru",
   "appTitle": "LoreDub",
   "navLive": "Эфир",
+  "navSnapshot": "Фрагмент",
   "navModels": "Модели",
   "navSettings": "Настройки",
   "titleLive": "Перевод игры",
+  "titleSnapshot": "Перевод фрагмента",
   "titleModels": "Локальные модели",
   "titleSettings": "Настройки потока",
   "statusIdle": "Остановлено",
   "statusStarting": "Запуск…",
   "statusListening": "Слушаю",
+  "statusSnapshotReady": "Ждёт фрагмента",
   "statusPaused": "Пауза",
   "statusStopping": "Остановка…",
   "statusError": "Ошибка",
@@ -60,10 +63,36 @@
   "pauseDubbing": "Пауза",
   "pauseHint": "Пауза: модели остаются загруженными, игра звучит в полную громкость",
   "resumeDubbing": "Продолжить",
+  "snapshotHowTo": "Удерживайте {hotkey}, обведите мышью текст поверх игры и отпустите клавишу — LoreDub прочитает его, переведёт и озвучит.",
+  "@snapshotHowTo": {
+    "placeholders": {
+      "hotkey": {
+        "type": "String"
+      }
+    }
+  },
+  "snapshotNoHotkey": "Клавиша выделения не назначена.",
+  "snapshotOpenSettings": "Назначить в настройках",
+  "snapshotNote": "Загружаются только переводчик и голос ({language}), без распознавания речи. Текст читается распознаванием Windows на английском, а рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.",
+  "@snapshotNote": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "snapshotStart": "Запустить",
+  "snapshotStop": "Остановить",
+  "snapshotReading": "Читаю и перевожу фрагмент…",
+  "snapshotMissed": "В выделенной области текст не найден",
+  "snapshotInLive": "Идёт «Эфир» — клавиша выделения работает и в нём",
+  "snapshotEmpty": "Выделенные фрагменты появятся здесь",
+  "snapshotClearTooltip": "Убрать фрагменты из списка",
   "settingsHotkeys": "Горячие клавиши",
-  "hotkeysNote": "Работают во время перевода, даже когда на экране игра. Пока LoreDub переводит, назначенное сочетание до игры не доходит.",
+  "hotkeysNote": "Работают, пока идёт «Эфир» или «Фрагмент», даже когда на экране игра; назначенное сочетание тогда до игры не доходит. Клавишу выделения держат нажатой, пока обводят область мышью.",
   "hotkeyPause": "Пауза",
   "hotkeyResume": "Восстановление",
+  "hotkeySnapshot": "Выделение области",
   "hotkeyUnset": "Не назначено",
   "hotkeyListening": "Нажмите сочетание… (Esc — отмена)",
   "hotkeyClear": "Убрать сочетание",

@@ -16,6 +16,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navLive => 'Live';
 
   @override
+  String get navSnapshot => 'Snippet';
+
+  @override
   String get navModels => 'Models';
 
   @override
@@ -23,6 +26,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get titleLive => 'Game dubbing';
+
+  @override
+  String get titleSnapshot => 'Snippet translation';
 
   @override
   String get titleModels => 'Local models';
@@ -38,6 +44,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusListening => 'Listening';
+
+  @override
+  String get statusSnapshotReady => 'Waiting for a snippet';
 
   @override
   String get statusPaused => 'Paused';
@@ -125,17 +134,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resumeDubbing => 'Resume';
 
   @override
+  String snapshotHowTo(String hotkey) {
+    return 'Hold $hotkey, draw a frame around the text over the game and let go — LoreDub reads it, translates it and voices it.';
+  }
+
+  @override
+  String get snapshotNoHotkey => 'No snapshot key is bound.';
+
+  @override
+  String get snapshotOpenSettings => 'Bind one in Settings';
+
+  @override
+  String snapshotNote(String language) {
+    return 'Only the translator and the voice ($language) are loaded, no speech recognition. Windows OCR reads the text in English, and the frame is drawn over other windows — run the game windowed or borderless.';
+  }
+
+  @override
+  String get snapshotStart => 'Start';
+
+  @override
+  String get snapshotStop => 'Stop';
+
+  @override
+  String get snapshotReading => 'Reading and translating the snippet…';
+
+  @override
+  String get snapshotMissed => 'No text found in the selected area';
+
+  @override
+  String get snapshotInLive => 'Live dubbing is running — the snapshot key works there too';
+
+  @override
+  String get snapshotEmpty => 'Selected text will appear here';
+
+  @override
+  String get snapshotClearTooltip => 'Remove the snippets from the list';
+
+  @override
   String get settingsHotkeys => 'Hotkeys';
 
   @override
   String get hotkeysNote =>
-      'They work while dubbing, even with the game on screen. While LoreDub dubs, a bound combination does not reach the game.';
+      'They work while Live or Snippet is running, even with the game on screen; a bound combination then does not reach the game. The snapshot key is held down while the area is drawn with the mouse.';
 
   @override
   String get hotkeyPause => 'Pause';
 
   @override
   String get hotkeyResume => 'Resume';
+
+  @override
+  String get hotkeySnapshot => 'Select an area';
 
   @override
   String get hotkeyUnset => 'Not set';

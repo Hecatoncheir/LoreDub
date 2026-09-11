@@ -145,6 +145,80 @@ void main() {
     expect(repository.stops, 1);
   });
 
+  group('the snapshot session', () {
+    const waiting = LivePipelineState(
+      status: PipelineStatus.listening,
+      session: PipelineSession.snapshot,
+    );
+
+    test('loads only the translator and the voice', () async {
+      await pipeline.toggleSnapshot(initializing: false);
+
+      expect(repository.snapshotStarts, 1);
+      expect(repository.snapshotModels.keys, unorderedEquals(['translation', 'speech']));
+      expect(pipeline.state.session, PipelineSession.snapshot);
+      expect(repository.starts, 0, reason: 'nothing is captured');
+    });
+
+    test('keeps a selection apart from the live transcript', () async {
+      pipeline
+        ..listen()
+        ..seed(waiting);
+
+      repository
+        ..push({'type': 'snapshotReading'})
+        ..push({'type': 'snapshot', 'text': 'Press E to open'});
+      await settle();
+      expect(pipeline.state.snapshotReading, isTrue, reason: 'the translation is on its way');
+
+      repository.push({
+        'type': 'transcript',
+        'original': 'Press E to open',
+        'translated': 'Нажмите E, чтобы открыть',
+        'latencyMs': 800,
+        'snapshot': true,
+      });
+      await settle();
+      expect(pipeline.state.snapshots.single.translated, 'Нажмите E, чтобы открыть');
+      expect(pipeline.state.transcript, isEmpty);
+      expect(pipeline.state.snapshotReading, isFalse);
+    });
+
+    test('says when a selection held no text', () async {
+      pipeline
+        ..listen()
+        ..seed(waiting);
+
+      repository
+        ..push({'type': 'snapshotReading'})
+        ..push({'type': 'snapshot', 'text': ''});
+      await settle();
+
+      expect(pipeline.state.snapshotMissed, isTrue);
+      expect(pipeline.state.snapshotReading, isFalse);
+    });
+
+    test('gives the worker over when live dubbing starts', () async {
+      pipeline.seed(waiting);
+
+      unawaited(pipeline.toggle(initializing: false));
+      await settle();
+
+      expect(repository.stops, 1, reason: 'the worker was loaded without whisper');
+      expect(repository.starts, 1);
+      expect(pipeline.state.session, PipelineSession.live);
+    });
+
+    test('leaves live dubbing to be stopped from its own screen', () async {
+      pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+
+      await pipeline.toggleSnapshot(initializing: false);
+
+      expect(repository.stops, 0);
+      expect(repository.snapshotStarts, 0);
+    });
+  });
+
   test('raises the banner for a capture failure and keeps it through an empty error', () async {
     pipeline.listen();
     const failure = LoreDubFailure(
@@ -174,6 +248,8 @@ class _SlowStartRepository extends AppRepository {
   final _events = StreamController<Map<String, Object?>>.broadcast();
   int starts = 0;
   int stops = 0;
+  int snapshotStarts = 0;
+  Map<String, String> snapshotModels = const {};
 
   void push(Map<String, Object?> event) => _events.add(event);
 
@@ -199,6 +275,19 @@ class _SlowStartRepository extends AppRepository {
   }) {
     starts++;
     return Completer<void>().future;
+  }
+
+  @override
+  Future<void> startSnapshot({
+    required AppSettings settings,
+    required Map<String, String> modelDirectories,
+    required String speaker,
+    required String translationPrefix,
+    required ComputeBackend translationBackend,
+    required String runtimeDirectory,
+  }) async {
+    snapshotStarts++;
+    snapshotModels = modelDirectories;
   }
 
   @override

@@ -16,6 +16,7 @@ Future<void> main(List<String> arguments) async {
         'native/lore_dub_native.cpp',
         'native/process_loopback_capture.cpp',
         'native/ocr_capture.cpp',
+        'native/snapshot_overlay.cpp',
       ],
       includes: const ['native'],
       language: Language.cpp,

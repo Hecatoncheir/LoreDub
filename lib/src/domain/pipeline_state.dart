@@ -5,6 +5,11 @@
 /// stays open, so resuming takes no startup at all.
 enum PipelineStatus { idle, starting, listening, paused, stopping, error }
 
+/// Which session holds the worker: live dubbing of the game, or the snapshot
+/// session, which loads only the translator and the voice and waits for the
+/// player to select an area of the screen.
+enum PipelineSession { live, snapshot }
+
 class TranscriptEntry {
   const TranscriptEntry({
     required this.original,

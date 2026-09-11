@@ -23,6 +23,9 @@
 
 namespace {
 
+constexpr char kEnglishMissing[] =
+    "English OCR language is not installed. Add English in Windows language settings.";
+
 struct WindowSearch {
   DWORD process_id;
   HWND best = nullptr;
@@ -53,27 +56,11 @@ HWND FindProcessWindow(DWORD process_id) {
   return search.best;
 }
 
-bool CaptureRegion(HWND window, const OcrRegion& region, std::vector<uint8_t>* pixels,
-                   int32_t* output_width, int32_t* output_height) {
-  RECT client{};
-  if (!GetClientRect(window, &client)) return false;
-  POINT origin{};
-  if (!ClientToScreen(window, &origin)) return false;
-  const int source_width = client.right - client.left;
-  const int source_height = client.bottom - client.top;
-  const int source_x = std::clamp(static_cast<int>(source_width * region.left), 0,
-                                  std::max(0, source_width - 1));
-  const int source_y = std::clamp(static_cast<int>(source_height * region.top), 0,
-                                  std::max(0, source_height - 1));
-  const int crop_width =
-      std::clamp(static_cast<int>(source_width * region.right), source_x, source_width) - source_x;
-  const int crop_height =
-      std::clamp(static_cast<int>(source_height * region.bottom), source_y, source_height) -
-      source_y;
-  if (crop_width < 32 || crop_height < 16) return false;
-
-  // Windows OCR refuses images beyond OcrEngine::MaxImageDimension.
-  const double scale = std::min(1.0, 2400.0 / std::max(crop_width, crop_height));
+// Copies [crop_width] by [crop_height] screen pixels from ([x], [y]), scaled
+// by [scale], as top-down BGRA.
+bool CaptureScreen(int x, int y, int crop_width, int crop_height, double scale,
+                   std::vector<uint8_t>* pixels, int32_t* output_width,
+                   int32_t* output_height) {
   const int width = std::max(1, static_cast<int>(crop_width * scale));
   const int height = std::max(1, static_cast<int>(crop_height * scale));
   HDC screen = GetDC(nullptr);
@@ -96,9 +83,8 @@ bool CaptureRegion(HWND window, const OcrRegion& region, std::vector<uint8_t>* p
   }
   const HGDIOBJ previous = SelectObject(memory, bitmap);
   SetStretchBltMode(memory, HALFTONE);
-  const BOOL copied = StretchBlt(memory, 0, 0, width, height, screen, origin.x + source_x,
-                                 origin.y + source_y, crop_width, crop_height,
-                                 SRCCOPY | CAPTUREBLT);
+  const BOOL copied = StretchBlt(memory, 0, 0, width, height, screen, x, y, crop_width,
+                                 crop_height, SRCCOPY | CAPTUREBLT);
   if (copied) {
     const auto* begin = static_cast<const uint8_t*>(bitmap_pixels);
     pixels->assign(begin, begin + static_cast<size_t>(width) * height * 4);
@@ -110,6 +96,31 @@ bool CaptureRegion(HWND window, const OcrRegion& region, std::vector<uint8_t>* p
   DeleteDC(memory);
   ReleaseDC(nullptr, screen);
   return copied == TRUE;
+}
+
+bool CaptureRegion(HWND window, const OcrRegion& region, std::vector<uint8_t>* pixels,
+                   int32_t* output_width, int32_t* output_height) {
+  RECT client{};
+  if (!GetClientRect(window, &client)) return false;
+  POINT origin{};
+  if (!ClientToScreen(window, &origin)) return false;
+  const int source_width = client.right - client.left;
+  const int source_height = client.bottom - client.top;
+  const int source_x = std::clamp(static_cast<int>(source_width * region.left), 0,
+                                  std::max(0, source_width - 1));
+  const int source_y = std::clamp(static_cast<int>(source_height * region.top), 0,
+                                  std::max(0, source_height - 1));
+  const int crop_width =
+      std::clamp(static_cast<int>(source_width * region.right), source_x, source_width) - source_x;
+  const int crop_height =
+      std::clamp(static_cast<int>(source_height * region.bottom), source_y, source_height) -
+      source_y;
+  if (crop_width < 32 || crop_height < 16) return false;
+
+  // Windows OCR refuses images beyond OcrEngine::MaxImageDimension.
+  const double scale = std::min(1.0, 2400.0 / std::max(crop_width, crop_height));
+  return CaptureScreen(origin.x + source_x, origin.y + source_y, crop_width, crop_height, scale,
+                       pixels, output_width, output_height);
 }
 
 std::string Utf8(const winrt::hstring& input) {
@@ -140,6 +151,22 @@ std::string NormalizeText(std::string text) {
   return output;
 }
 
+std::string Recognize(const winrt::Windows::Media::Ocr::OcrEngine& engine,
+                      const std::vector<uint8_t>& pixels, int32_t width, int32_t height) {
+  const auto buffer =
+      winrt::Windows::Security::Cryptography::CryptographicBuffer::CreateFromByteArray(pixels);
+  const auto bitmap = winrt::Windows::Graphics::Imaging::SoftwareBitmap::CreateCopyFromBuffer(
+      buffer, winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8, width, height,
+      winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore);
+  return NormalizeText(Utf8(engine.RecognizeAsync(bitmap).get().Text()));
+}
+
+// Keeps the Windows Runtime initialized for as long as it is in scope.
+struct Apartment {
+  Apartment() { winrt::init_apartment(winrt::apartment_type::multi_threaded); }
+  ~Apartment() { winrt::uninit_apartment(); }
+};
+
 }  // namespace
 
 #endif
@@ -159,6 +186,47 @@ OcrRegion SanitizeRegion(OcrRegion region) {
 }
 
 }  // namespace
+
+bool RecognizeScreenArea(ScreenArea area, std::string* text, std::string* error) {
+#if !defined(_WIN32)
+  (void)area;
+  (void)text;
+  *error = "Windows OCR is only available on Windows";
+  return false;
+#else
+  text->clear();
+  const int width = area.right - area.left;
+  const int height = area.bottom - area.top;
+  if (width < 8 || height < 8) return true;
+  try {
+    const Apartment apartment;
+    const winrt::Windows::Globalization::Language language(L"en-US");
+    if (!winrt::Windows::Media::Ocr::OcrEngine::IsLanguageSupported(language)) {
+      *error = kEnglishMissing;
+      return false;
+    }
+    const auto engine = winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromLanguage(language);
+    // A small area is enlarged: Windows OCR misses text only a few pixels
+    // tall, and a line picked out of a game is often that small.
+    const double scale = std::min(2.0, 2400.0 / std::max(width, height));
+    std::vector<uint8_t> pixels;
+    int32_t output_width = 0;
+    int32_t output_height = 0;
+    if (!CaptureScreen(area.left, area.top, width, height, scale, &pixels, &output_width,
+                       &output_height)) {
+      *error = "The selected part of the screen could not be copied";
+      return false;
+    }
+    *text = Recognize(engine, pixels, output_width, output_height);
+    return true;
+  } catch (const winrt::hresult_error& failure) {
+    *error = Utf8(failure.message());
+  } catch (const std::exception& failure) {
+    *error = failure.what();
+  }
+  return false;
+#endif
+}
 
 OcrCapture::OcrCapture() = default;
 OcrCapture::~OcrCapture() { Stop(); }
@@ -190,7 +258,7 @@ void OcrCapture::CaptureThread(uint32_t process_id, OcrRegion region,
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
     const winrt::Windows::Globalization::Language language(L"en-US");
     if (!winrt::Windows::Media::Ocr::OcrEngine::IsLanguageSupported(language)) {
-      on_error("English OCR language is not installed. Add English in Windows language settings.");
+      on_error(kEnglishMissing);
       return;
     }
     const auto engine =
@@ -207,15 +275,7 @@ void OcrCapture::CaptureThread(uint32_t process_id, OcrRegion region,
       std::string text;
       if (window != nullptr && window == GetForegroundWindow() &&
           CaptureRegion(window, region, &pixels, &width, &height)) {
-        const auto buffer =
-            winrt::Windows::Security::Cryptography::CryptographicBuffer::CreateFromByteArray(
-                pixels);
-        const auto bitmap =
-            winrt::Windows::Graphics::Imaging::SoftwareBitmap::CreateCopyFromBuffer(
-                buffer, winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
-                width, height,
-                winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore);
-        text = NormalizeText(Utf8(engine.RecognizeAsync(bitmap).get().Text()));
+        text = Recognize(engine, pixels, width, height);
       }
       if (text.empty()) {
         candidate.clear();

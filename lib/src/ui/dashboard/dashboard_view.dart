@@ -14,6 +14,7 @@ import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
+import '../../domain/model_selection.dart';
 import '../../domain/ocr_region.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/pipeline_state.dart';
@@ -146,6 +147,10 @@ class DashboardView extends StatelessWidget {
                         key: const ValueKey('live'),
                         cubits: cubits,
                       ),
+                      DashboardSection.snapshot => _SnapshotPanel(
+                        key: const ValueKey('snapshot'),
+                        cubits: cubits,
+                      ),
                       DashboardSection.models => _ModelsPanel(
                         key: const ValueKey('models'),
                         cubits: cubits,
@@ -241,6 +246,12 @@ class _Navigation extends StatelessWidget {
                 label: AppLocalizations.of(context).navLive,
                 selected: shell.section == DashboardSection.live,
                 onTap: () => cubits.shell.selectSection(DashboardSection.live),
+              ),
+              _NavigationItem(
+                icon: (color) => Icon(Icons.highlight_alt_rounded, size: 21, color: color),
+                label: AppLocalizations.of(context).navSnapshot,
+                selected: shell.section == DashboardSection.snapshot,
+                onTap: () => cubits.shell.selectSection(DashboardSection.snapshot),
               ),
               _NavigationItem(
                 icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
@@ -563,6 +574,10 @@ class _BottomNavigation extends StatelessWidget {
           label: AppLocalizations.of(context).navLive,
         ),
         NavigationDestination(
+          icon: const Icon(Icons.highlight_alt_rounded),
+          label: AppLocalizations.of(context).navSnapshot,
+        ),
+        NavigationDestination(
           icon: const Icon(Icons.memory_rounded),
           label: AppLocalizations.of(context).navModels,
         ),
@@ -594,8 +609,9 @@ class _Header extends StatelessWidget {
                 Text(
                   switch (shell.section) {
                     DashboardSection.live => '01  /  LIVE VOICE',
-                    DashboardSection.models => '02  /  MODEL BANK',
-                    DashboardSection.settings => '03  /  SIGNAL SETUP',
+                    DashboardSection.snapshot => '02  /  AREA SNAPSHOT',
+                    DashboardSection.models => '03  /  MODEL BANK',
+                    DashboardSection.settings => '04  /  SIGNAL SETUP',
                   },
                   style: const TextStyle(
                     fontFamily: LoreDubFonts.mono,
@@ -609,6 +625,7 @@ class _Header extends StatelessWidget {
                 Text(
                   switch (shell.section) {
                     DashboardSection.live => AppLocalizations.of(context).titleLive,
+                    DashboardSection.snapshot => AppLocalizations.of(context).titleSnapshot,
                     DashboardSection.models => AppLocalizations.of(context).titleModels,
                     DashboardSection.settings => AppLocalizations.of(context).titleSettings,
                   },
@@ -620,9 +637,12 @@ class _Header extends StatelessWidget {
         ),
         _PipelineBuilder(
           cubits: cubits,
-          watch: (pipeline) => (pipeline.status, pipeline.startupStage),
-          builder: (context, pipeline) =>
-              _StatusChip(status: pipeline.status, stage: pipeline.startupStage),
+          watch: (pipeline) => (pipeline.status, pipeline.startupStage, pipeline.session),
+          builder: (context, pipeline) => _StatusChip(
+            status: pipeline.status,
+            stage: pipeline.startupStage,
+            snapshot: pipeline.session == PipelineSession.snapshot,
+          ),
         ),
       ],
     ),
@@ -630,12 +650,15 @@ class _Header extends StatelessWidget {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status, this.stage = ''});
+  const _StatusChip({required this.status, this.stage = '', this.snapshot = false});
 
   final PipelineStatus status;
 
   /// What the startup is doing right now, shown instead of a bare "Запуск…".
   final String stage;
+
+  /// The snapshot session listens for nothing: it waits for a selection.
+  final bool snapshot;
 
   @override
   Widget build(BuildContext context) {
@@ -646,7 +669,10 @@ class _StatusChip extends StatelessWidget {
         stage.isEmpty ? l10n.statusStarting : describeStartupStage(l10n, stage),
         LoreDubPalette.warning,
       ),
-      PipelineStatus.listening => (l10n.statusListening, LoreDubPalette.success),
+      PipelineStatus.listening => (
+        snapshot ? l10n.statusSnapshotReady : l10n.statusListening,
+        LoreDubPalette.success,
+      ),
       PipelineStatus.paused => (l10n.statusPaused, LoreDubPalette.warning),
       PipelineStatus.stopping => (l10n.statusStopping, LoreDubPalette.warning),
       PipelineStatus.error => (l10n.statusError, LoreDubPalette.error),
@@ -700,33 +726,9 @@ class _LivePanel extends StatelessWidget {
             ),
           ),
         ),
-        // What is missing is decided by the packages and the chosen language
-        // together, so this notice watches both.
-        _DownloadsBuilder(
-          onlyWhatIsInstalled: true,
+        _ModelsNeededNotice(
           cubits: cubits,
-          builder: (context, _) => _SettingsBuilder(
-            cubits: cubits,
-            builder: (context, _) => cubits.selection.requiredModelsInstalled
-                ? const SizedBox.shrink()
-                : Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Card(
-                      child: ListTile(
-                        leading: const Icon(
-                          Icons.download_rounded,
-                          color: LoreDubPalette.warning,
-                        ),
-                        title: Text(AppLocalizations.of(context).modelsNeededTitle),
-                        subtitle: Text(AppLocalizations.of(context).modelsNeededNote),
-                        trailing: TextButton(
-                          onPressed: () => cubits.shell.selectSection(DashboardSection.models),
-                          child: Text(AppLocalizations.of(context).modelsNeededAction),
-                        ),
-                      ),
-                    ),
-                  ),
-          ),
+          ready: (selection) => selection.requiredModelsInstalled,
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -745,30 +747,11 @@ class _LivePanel extends StatelessWidget {
                       children: [
                         const _ModuleLabel(number: '02', label: 'LIVE TRANSCRIPT'),
                         const Spacer(),
-                        Tooltip(
-                          message: AppLocalizations.of(context).transcriptClearTooltip,
-                          child: TextButton.icon(
-                            // Enabled only when there is something to clear, so
-                            // the button never claims work it will not do.
-                            onPressed: pipeline.transcript.isEmpty
-                                ? null
-                                : cubits.pipeline.clearTranscript,
-                            icon: const Icon(Icons.backspace_outlined, size: 16),
-                            label: Text(AppLocalizations.of(context).transcriptClear),
-                            style: TextButton.styleFrom(
-                              foregroundColor: LoreDubPalette.mutedInk,
-                              minimumSize: const Size(0, 28),
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                              textStyle: const TextStyle(
-                                fontFamily: LoreDubFonts.mono,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.6,
-                              ),
-                            ),
-                          ),
+                        _ClearListButton(
+                          tooltip: AppLocalizations.of(context).transcriptClearTooltip,
+                          onPressed: pipeline.transcript.isEmpty
+                              ? null
+                              : cubits.pipeline.clearTranscript,
                         ),
                       ],
                     ),
@@ -797,6 +780,369 @@ class _LivePanel extends StatelessWidget {
           ),
         ),
       ],
+    ),
+  );
+}
+
+/// Says the packages a screen needs are missing, and leads to them. What
+/// counts as missing is the screen's own question: the snapshot session
+/// does without whisper.
+class _ModelsNeededNotice extends StatelessWidget {
+  const _ModelsNeededNotice({required this.cubits, required this.ready});
+
+  final DashboardCubits cubits;
+  final bool Function(ModelSelection selection) ready;
+
+  // What is missing is decided by the packages and the chosen language
+  // together, so this notice watches both.
+  @override
+  Widget build(BuildContext context) => _DownloadsBuilder(
+    onlyWhatIsInstalled: true,
+    cubits: cubits,
+    builder: (context, _) => _SettingsBuilder(
+      cubits: cubits,
+      builder: (context, _) => ready(cubits.selection)
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Card(
+                child: ListTile(
+                  leading: const Icon(Icons.download_rounded, color: LoreDubPalette.warning),
+                  title: Text(AppLocalizations.of(context).modelsNeededTitle),
+                  subtitle: Text(AppLocalizations.of(context).modelsNeededNote),
+                  trailing: TextButton(
+                    onPressed: () => cubits.shell.selectSection(DashboardSection.models),
+                    child: Text(AppLocalizations.of(context).modelsNeededAction),
+                  ),
+                ),
+              ),
+            ),
+    ),
+  );
+}
+
+/// Clears the list under a card's header.
+class _ClearListButton extends StatelessWidget {
+  const _ClearListButton({required this.tooltip, required this.onPressed});
+
+  final String tooltip;
+
+  /// Null when there is nothing to clear, so the button never claims work it
+  /// will not do.
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: TextButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.backspace_outlined, size: 16),
+      label: Text(AppLocalizations.of(context).transcriptClear),
+      style: TextButton.styleFrom(
+        foregroundColor: LoreDubPalette.mutedInk,
+        minimumSize: const Size(0, 28),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        textStyle: const TextStyle(
+          fontFamily: LoreDubFonts.mono,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+        ),
+      ),
+    ),
+  );
+}
+
+/// The snapshot screen: a session that loads only the translator and the
+/// voice, and translates what the player frames over the game while the
+/// snapshot key is held.
+class _SnapshotPanel extends StatelessWidget {
+  const _SnapshotPanel({super.key, required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
+    child: Column(
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _ModuleLabel(number: '01', label: 'AREA CAPTURE'),
+                const SizedBox(height: 14),
+                _SnapshotControls(cubits: cubits),
+              ],
+            ),
+          ),
+        ),
+        _ModelsNeededNotice(
+          cubits: cubits,
+          ready: (selection) => selection.snapshotModelsInstalled,
+        ),
+        const SizedBox(height: 16),
+        Expanded(child: _SnapshotHistory(cubits: cubits)),
+      ],
+    ),
+  );
+}
+
+/// How to select, what the last selection came to, and the session's button.
+class _SnapshotControls extends StatelessWidget {
+  const _SnapshotControls({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => _SettingsBuilder(
+    cubits: cubits,
+    builder: (context, state) => _PipelineBuilder(
+      cubits: cubits,
+      watch: (pipeline) => (
+        pipeline.status,
+        pipeline.session,
+        pipeline.snapshotReading,
+        pipeline.snapshotMissed,
+      ),
+      builder: (context, pipeline) => _build(context, state.settings, pipeline),
+    ),
+  );
+
+  Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
+    final l10n = AppLocalizations.of(context);
+    final hotkey = settings.snapshotHotkey;
+    final status = _status(l10n, pipeline);
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hotkey == null)
+          Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                l10n.snapshotNoHotkey,
+                style: const TextStyle(
+                  color: LoreDubPalette.warning,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              TextButton(
+                onPressed: () => cubits.shell.selectSection(DashboardSection.settings),
+                child: Text(l10n.snapshotOpenSettings),
+              ),
+            ],
+          )
+        else
+          Text(
+            l10n.snapshotHowTo(hotkey.display),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        const SizedBox(height: 6),
+        Text(
+          l10n.snapshotNote(spokenLanguageName(l10n, settings.targetLanguage)),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        if (status != null) ...[const SizedBox(height: 12), status],
+      ],
+    );
+    final button = _SnapshotStartButton(cubits: cubits);
+    return LayoutBuilder(
+      builder: (context, constraints) => constraints.maxWidth < 640
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [details, const SizedBox(height: 14), button],
+            )
+          : Row(
+              children: [
+                Expanded(child: details),
+                const SizedBox(width: 24),
+                SizedBox(width: _LanguageRow.actionWidth, child: button),
+              ],
+            ),
+    );
+  }
+
+  /// What became of the last selection, or that live dubbing holds the key.
+  Widget? _status(AppLocalizations l10n, LivePipelineState pipeline) {
+    final (icon, text, color) = switch (pipeline) {
+      _ when pipeline.snapshotReading => (
+        Icons.hourglass_top_rounded,
+        l10n.snapshotReading,
+        LoreDubPalette.warning,
+      ),
+      _ when pipeline.snapshotMissed => (
+        Icons.search_off_rounded,
+        l10n.snapshotMissed,
+        LoreDubPalette.warning,
+      ),
+      _ when pipeline.liveRunning => (
+        Icons.info_outline_rounded,
+        l10n.snapshotInLive,
+        LoreDubPalette.mutedInk,
+      ),
+      _ => (null, '', LoreDubPalette.mutedInk),
+    };
+    if (icon == null) return null;
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Starts and ends the snapshot session. While live dubbing runs, that
+/// session answers the snapshot key, so there is nothing here to start.
+class _SnapshotStartButton extends StatelessWidget {
+  const _SnapshotStartButton({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => _PipelineBuilder(
+    cubits: cubits,
+    watch: (pipeline) => (
+      pipeline.status,
+      pipeline.session,
+      pipeline.startupProgress,
+      pipeline.startupStage,
+    ),
+    // Whether it can start depends on the first load, the packages and the
+    // key being bound.
+    builder: (context, pipeline) => _ShellBuilder(
+      cubits: cubits,
+      builder: (context, shell) => _DownloadsBuilder(
+        onlyWhatIsInstalled: true,
+        cubits: cubits,
+        builder: (context, _) => _SettingsBuilder(
+          cubits: cubits,
+          builder: (context, _) => _build(context, pipeline, initializing: shell.initializing),
+        ),
+      ),
+    ),
+  );
+
+  Widget _build(BuildContext context, LivePipelineState pipeline, {required bool initializing}) {
+    final l10n = AppLocalizations.of(context);
+    final own = pipeline.session == PipelineSession.snapshot;
+    final starting = own && pipeline.status == PipelineStatus.starting;
+    final running = own && pipeline.running;
+    final progress = pipeline.startupProgress;
+    final canStart = pipeline.canStartSnapshot(cubits.selection, initializing: initializing);
+    return Tooltip(
+      message: starting && pipeline.startupStage.isNotEmpty
+          ? describeStartupStage(l10n, pipeline.startupStage)
+          : '',
+      child: FilledButton.icon(
+        key: const ValueKey('snapshotStart'),
+        onPressed: running || canStart
+            ? () => cubits.pipeline.toggleSnapshot(initializing: initializing)
+            : null,
+        icon: starting
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 2.4,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              )
+            : Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
+        label: Text(
+          starting
+              ? (progress == null
+                    ? l10n.startingPlain
+                    : l10n.startingProgress((progress * 100).round()))
+              : running
+              ? l10n.snapshotStop
+              : l10n.snapshotStart,
+        ),
+      ),
+    );
+  }
+}
+
+/// Every selection translated so far, newest first.
+class _SnapshotHistory extends StatelessWidget {
+  const _SnapshotHistory({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => _PipelineBuilder(
+    cubits: cubits,
+    watch: (pipeline) => pipeline.snapshots,
+    builder: (context, pipeline) => Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+            child: Row(
+              children: [
+                const _ModuleLabel(number: '02', label: 'SELECTED TEXT'),
+                const Spacer(),
+                _ClearListButton(
+                  tooltip: AppLocalizations.of(context).snapshotClearTooltip,
+                  onPressed: pipeline.snapshots.isEmpty ? null : cubits.pipeline.clearSnapshots,
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: pipeline.snapshots.isEmpty
+                ? const _EmptySnapshots()
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                    itemCount: pipeline.snapshots.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 14),
+                    itemBuilder: (context, index) =>
+                        _TranscriptBubble(entry: pipeline.snapshots[index]),
+                  ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _EmptySnapshots extends StatelessWidget {
+  const _EmptySnapshots();
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: constraints.maxHeight > 24 ? constraints.maxHeight - 24 : 0,
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.highlight_alt_rounded, size: 42, color: LoreDubPalette.mutedInk),
+              const SizedBox(height: 14),
+              Text(AppLocalizations.of(context).snapshotEmpty, textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      ),
     ),
   );
 }
@@ -1082,6 +1428,7 @@ class _StartButton extends StatelessWidget {
     // after the player picks one, because nothing else on the screen moved.
     watch: (pipeline) => (
       pipeline.status,
+      pipeline.session,
       pipeline.startupProgress,
       pipeline.startupStage,
       pipeline.selectedProcess,
@@ -1104,11 +1451,15 @@ class _StartButton extends StatelessWidget {
     required bool initializing,
   }) {
     final l10n = AppLocalizations.of(context);
-    final starting = pipeline.status == PipelineStatus.starting;
+    // A snapshot session is not this screen's to show: starting here takes
+    // the worker over from it.
+    final live = pipeline.session == PipelineSession.live;
+    final starting = live && pipeline.status == PipelineStatus.starting;
     final progress = pipeline.startupProgress;
-    final running = pipeline.running;
+    final running = pipeline.liveRunning;
     final canStart = pipeline.canStart(cubits.selection, initializing: initializing);
-    if (pipeline.status == PipelineStatus.listening || pipeline.status == PipelineStatus.paused) {
+    if (live &&
+        (pipeline.status == PipelineStatus.listening || pipeline.status == PipelineStatus.paused)) {
       return _SessionButtons(cubits: cubits, paused: pipeline.status == PipelineStatus.paused);
     }
     return Tooltip(
@@ -1892,15 +2243,17 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   /// Why a combination cannot be bound: one that takes a key from the game,
-  /// or one the other action already has.
+  /// or one another action already has. [others] pairs each other action's
+  /// combination with its name.
   String? _hotkeyProblem(
     AppLocalizations l10n,
     Hotkey hotkey, {
-    required Hotkey? other,
-    required String otherName,
+    required List<(Hotkey?, String)> others,
   }) {
     if (!hotkey.leavesGameKeys) return l10n.hotkeyNeedsModifier;
-    if (other != null && other.sameCombination(hotkey)) return l10n.hotkeyDuplicate(otherName);
+    for (final (other, name) in others) {
+      if (other != null && other.sameCombination(hotkey)) return l10n.hotkeyDuplicate(name);
+    }
     return null;
   }
 
@@ -2075,8 +2428,10 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   validate: (hotkey) => _hotkeyProblem(
                     l10n,
                     hotkey,
-                    other: _settings.resumeHotkey,
-                    otherName: l10n.hotkeyResume,
+                    others: [
+                      (_settings.resumeHotkey, l10n.hotkeyResume),
+                      (_settings.snapshotHotkey, l10n.hotkeySnapshot),
+                    ],
                   ),
                   onChanged: (hotkey) => cubits.settings.update(
                     hotkey == null
@@ -2095,13 +2450,37 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   validate: (hotkey) => _hotkeyProblem(
                     l10n,
                     hotkey,
-                    other: _settings.pauseHotkey,
-                    otherName: l10n.hotkeyPause,
+                    others: [
+                      (_settings.pauseHotkey, l10n.hotkeyPause),
+                      (_settings.snapshotHotkey, l10n.hotkeySnapshot),
+                    ],
                   ),
                   onChanged: (hotkey) => cubits.settings.update(
                     hotkey == null
                         ? _settings.copyWith(clearResumeHotkey: true)
                         : _settings.copyWith(resumeHotkey: hotkey),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              _HotkeyRow(
+                label: l10n.hotkeySnapshot,
+                field: HotkeyField(
+                  key: const ValueKey('snapshotHotkey'),
+                  value: settings.snapshotHotkey,
+                  enabled: !running,
+                  validate: (hotkey) => _hotkeyProblem(
+                    l10n,
+                    hotkey,
+                    others: [
+                      (_settings.pauseHotkey, l10n.hotkeyPause),
+                      (_settings.resumeHotkey, l10n.hotkeyResume),
+                    ],
+                  ),
+                  onChanged: (hotkey) => cubits.settings.update(
+                    hotkey == null
+                        ? _settings.copyWith(clearSnapshotHotkey: true)
+                        : _settings.copyWith(snapshotHotkey: hotkey),
                   ),
                 ),
               ),

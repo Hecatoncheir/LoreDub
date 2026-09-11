@@ -4,9 +4,11 @@
 #include "lore_dub_native.h"
 #include "ocr_capture.h"
 #include "process_loopback_capture.h"
+#include "snapshot_overlay.h"
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <deque>
 #include <future>
@@ -354,33 +356,87 @@ std::mutex hotkey_mutex;
 std::thread hotkey_thread;
 std::atomic<DWORD> hotkey_thread_id{0};
 
+// Reads the area the player selected. Only the hotkey thread starts it, and
+// StopHotkeys joins it once that thread is gone.
+std::thread snapshot_reader;
+
 constexpr int kPauseHotkey = 1;
 constexpr int kResumeHotkey = 2;
+constexpr int kSnapshotHotkey = 3;
 
-void HotkeyLoop(uint32_t pause_key, uint32_t pause_modifiers, uint32_t resume_key,
-                uint32_t resume_modifiers, std::promise<void>* ready) {
+struct HotkeyConfig {
+  uint32_t pause_key = 0;
+  uint32_t pause_modifiers = 0;
+  uint32_t resume_key = 0;
+  uint32_t resume_modifiers = 0;
+  uint32_t snapshot_key = 0;
+  uint32_t snapshot_modifiers = 0;
+};
+
+// Registers one combination, or says which action another program holds it
+// for. A zero key leaves the action unbound.
+bool RegisterAction(int id, uint32_t key, uint32_t modifiers, const char* action) {
+  if (key == 0) return false;
+  if (RegisterHotKey(nullptr, id, modifiers | MOD_NOREPEAT, key)) return true;
+  PushEvent(std::string("{\"type\":\"hotkeyTaken\",\"action\":\"") + action + "\"}");
+  return false;
+}
+
+void PushHotkeyPress(uintptr_t id) {
+  if (id == kPauseHotkey) PushEvent("{\"type\":\"hotkey\",\"action\":\"pause\"}");
+  if (id == kResumeHotkey) PushEvent("{\"type\":\"hotkey\",\"action\":\"resume\"}");
+}
+
+// Lets the player select an area while the snapshot key is held, then reads
+// it on a thread of its own, so the hotkeys keep answering meanwhile.
+// Returns false when a WM_QUIT arrived during the selection.
+bool TakeSnapshot(uint32_t key) {
+  ScreenArea area;
+  const auto result = SelectScreenArea(key, &area, PushHotkeyPress);
+  if (result == SelectionResult::quit) return false;
+  if (result == SelectionResult::cancelled) return true;
+  if (snapshot_reader.joinable()) snapshot_reader.join();
+  PushEvent("{\"type\":\"snapshotReading\"}");
+  snapshot_reader = std::thread([area] {
+    // The shade has to leave the screen, and a game that lost the
+    // foreground to it has to draw itself again, before the area is copied.
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    std::string text;
+    std::string error;
+    if (RecognizeScreenArea(area, &text, &error)) {
+      PushEvent("{\"type\":\"snapshot\",\"text\":\"" + EscapeJson(text) + "\"}");
+    } else {
+      PushEvent("{\"type\":\"snapshot\",\"text\":\"\",\"failed\":true}");
+      PushEvent("{\"type\":\"error\",\"message\":\"" + EscapeJson(error) + "\"}");
+    }
+  });
+  return true;
+}
+
+void HotkeyLoop(HotkeyConfig config, std::promise<void>* ready) {
   MSG message;
   // Creates this thread's message queue, so a WM_QUIT posted from the
   // outside cannot arrive before there is a queue to receive it.
   PeekMessageW(&message, nullptr, WM_USER, WM_USER, PM_NOREMOVE);
   hotkey_thread_id = GetCurrentThreadId();
   const bool pause_ok =
-      pause_key == 0 || RegisterHotKey(nullptr, kPauseHotkey, pause_modifiers | MOD_NOREPEAT,
-                                       pause_key);
+      RegisterAction(kPauseHotkey, config.pause_key, config.pause_modifiers, "pause");
   const bool resume_ok =
-      resume_key == 0 || RegisterHotKey(nullptr, kResumeHotkey, resume_modifiers | MOD_NOREPEAT,
-                                        resume_key);
+      RegisterAction(kResumeHotkey, config.resume_key, config.resume_modifiers, "resume");
+  const bool snapshot_ok =
+      RegisterAction(kSnapshotHotkey, config.snapshot_key, config.snapshot_modifiers, "snapshot");
   ready->set_value();
-  if (!pause_ok) PushEvent("{\"type\":\"hotkeyTaken\",\"action\":\"pause\"}");
-  if (!resume_ok) PushEvent("{\"type\":\"hotkeyTaken\",\"action\":\"resume\"}");
   while (GetMessageW(&message, nullptr, 0, 0) > 0) {
     if (message.message != WM_HOTKEY) continue;
-    PushEvent(message.wParam == kPauseHotkey
-                  ? "{\"type\":\"hotkey\",\"action\":\"pause\"}"
-                  : "{\"type\":\"hotkey\",\"action\":\"resume\"}");
+    if (message.wParam == kSnapshotHotkey) {
+      if (!TakeSnapshot(config.snapshot_key)) break;
+      continue;
+    }
+    PushHotkeyPress(static_cast<uintptr_t>(message.wParam));
   }
-  if (pause_key != 0 && pause_ok) UnregisterHotKey(nullptr, kPauseHotkey);
-  if (resume_key != 0 && resume_ok) UnregisterHotKey(nullptr, kResumeHotkey);
+  if (pause_ok) UnregisterHotKey(nullptr, kPauseHotkey);
+  if (resume_ok) UnregisterHotKey(nullptr, kResumeHotkey);
+  if (snapshot_ok) UnregisterHotKey(nullptr, kSnapshotHotkey);
 }
 
 void StopHotkeys() {
@@ -389,6 +445,7 @@ void StopHotkeys() {
   PostThreadMessageW(hotkey_thread_id.load(), WM_QUIT, 0, 0);
   hotkey_thread.join();
   hotkey_thread_id = 0;
+  if (snapshot_reader.joinable()) snapshot_reader.join();
 }
 
 }  // namespace
@@ -404,16 +461,17 @@ int32_t ld_set_hotkeys(const char* config_json) {
   StopHotkeys();
   if (config_json == nullptr || config_json[0] == '\0') return 0;
   const std::string config(config_json);
-  const uint32_t pause_key = JsonUnsigned(config, "pauseKey");
-  const uint32_t pause_modifiers = JsonUnsigned(config, "pauseModifiers");
-  const uint32_t resume_key = JsonUnsigned(config, "resumeKey");
-  const uint32_t resume_modifiers = JsonUnsigned(config, "resumeModifiers");
-  if (pause_key == 0 && resume_key == 0) return 0;
+  const HotkeyConfig hotkeys{JsonUnsigned(config, "pauseKey"),
+                             JsonUnsigned(config, "pauseModifiers"),
+                             JsonUnsigned(config, "resumeKey"),
+                             JsonUnsigned(config, "resumeModifiers"),
+                             JsonUnsigned(config, "snapshotKey"),
+                             JsonUnsigned(config, "snapshotModifiers")};
+  if (hotkeys.pause_key == 0 && hotkeys.resume_key == 0 && hotkeys.snapshot_key == 0) return 0;
   std::lock_guard<std::mutex> lock(hotkey_mutex);
   std::promise<void> ready;
   auto registered = ready.get_future();
-  hotkey_thread = std::thread(HotkeyLoop, pause_key, pause_modifiers, resume_key,
-                              resume_modifiers, &ready);
+  hotkey_thread = std::thread(HotkeyLoop, hotkeys, &ready);
   // The thread holds [ready] only until it has registered.
   registered.wait();
   return 0;

@@ -129,6 +129,23 @@ system-wide while the game is open. A bare letter cannot be bound without Ctrl,
 Alt or Win: Windows hands a registered combination to LoreDub alone, so the key
 would stop reaching the game.
 
+### Snippet
+
+One-off translation of text on screen — notes, hints, menu lines, anything
+the game does not say aloud. Press **Start**: only the translator and the
+voice are loaded, with no speech recognition and no process to pick. Then,
+in the game, hold the snapshot key (Ctrl+Alt+S by default) — the screen dims
+a little — draw a frame around the text with the mouse and let go of the key.
+The frame disappears, Windows OCR reads the text inside it, and it is
+translated and voiced; the tab shows the original with its translation. Esc
+or the right mouse button cancels the selection.
+
+The key works during **Live** too, on the models already loaded; starting
+**Live** while the snapshot session runs stops that session first. The
+combination is changed in **Settings** → **Hotkeys**. The text is read in
+English. The frame is drawn over other windows, so the game has to run
+windowed or borderless: a game in exclusive fullscreen would minimize.
+
 ### Models
 
 At the top sits speech recognition: one Whisper model for every language. The

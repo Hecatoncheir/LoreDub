@@ -105,6 +105,12 @@ abstract class AppLocalizations {
   /// **'Эфир'**
   String get navLive;
 
+  /// No description provided for @navSnapshot.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фрагмент'**
+  String get navSnapshot;
+
   /// No description provided for @navModels.
   ///
   /// In ru, this message translates to:
@@ -122,6 +128,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Перевод игры'**
   String get titleLive;
+
+  /// No description provided for @titleSnapshot.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перевод фрагмента'**
+  String get titleSnapshot;
 
   /// No description provided for @titleModels.
   ///
@@ -152,6 +164,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Слушаю'**
   String get statusListening;
+
+  /// No description provided for @statusSnapshotReady.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ждёт фрагмента'**
+  String get statusSnapshotReady;
 
   /// No description provided for @statusPaused.
   ///
@@ -309,6 +327,72 @@ abstract class AppLocalizations {
   /// **'Продолжить'**
   String get resumeDubbing;
 
+  /// No description provided for @snapshotHowTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удерживайте {hotkey}, обведите мышью текст поверх игры и отпустите клавишу — LoreDub прочитает его, переведёт и озвучит.'**
+  String snapshotHowTo(String hotkey);
+
+  /// No description provided for @snapshotNoHotkey.
+  ///
+  /// In ru, this message translates to:
+  /// **'Клавиша выделения не назначена.'**
+  String get snapshotNoHotkey;
+
+  /// No description provided for @snapshotOpenSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Назначить в настройках'**
+  String get snapshotOpenSettings;
+
+  /// No description provided for @snapshotNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загружаются только переводчик и голос ({language}), без распознавания речи. Текст читается распознаванием Windows на английском, а рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.'**
+  String snapshotNote(String language);
+
+  /// No description provided for @snapshotStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запустить'**
+  String get snapshotStart;
+
+  /// No description provided for @snapshotStop.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановить'**
+  String get snapshotStop;
+
+  /// No description provided for @snapshotReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Читаю и перевожу фрагмент…'**
+  String get snapshotReading;
+
+  /// No description provided for @snapshotMissed.
+  ///
+  /// In ru, this message translates to:
+  /// **'В выделенной области текст не найден'**
+  String get snapshotMissed;
+
+  /// No description provided for @snapshotInLive.
+  ///
+  /// In ru, this message translates to:
+  /// **'Идёт «Эфир» — клавиша выделения работает и в нём'**
+  String get snapshotInLive;
+
+  /// No description provided for @snapshotEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выделенные фрагменты появятся здесь'**
+  String get snapshotEmpty;
+
+  /// No description provided for @snapshotClearTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать фрагменты из списка'**
+  String get snapshotClearTooltip;
+
   /// No description provided for @settingsHotkeys.
   ///
   /// In ru, this message translates to:
@@ -318,7 +402,7 @@ abstract class AppLocalizations {
   /// No description provided for @hotkeysNote.
   ///
   /// In ru, this message translates to:
-  /// **'Работают во время перевода, даже когда на экране игра. Пока LoreDub переводит, назначенное сочетание до игры не доходит.'**
+  /// **'Работают, пока идёт «Эфир» или «Фрагмент», даже когда на экране игра; назначенное сочетание тогда до игры не доходит. Клавишу выделения держат нажатой, пока обводят область мышью.'**
   String get hotkeysNote;
 
   /// No description provided for @hotkeyPause.
@@ -332,6 +416,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Восстановление'**
   String get hotkeyResume;
+
+  /// No description provided for @hotkeySnapshot.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выделение области'**
+  String get hotkeySnapshot;
 
   /// No description provided for @hotkeyUnset.
   ///

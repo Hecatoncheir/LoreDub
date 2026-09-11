@@ -18,6 +18,19 @@ struct OcrRegion {
   double bottom = 1.0;
 };
 
+// A rectangle of the screen in physical pixels, right and bottom exclusive.
+struct ScreenArea {
+  int left = 0;
+  int top = 0;
+  int right = 0;
+  int bottom = 0;
+};
+
+// Reads the English text inside [area] of the screen once, on the calling
+// thread. An area with no text in it is a success with [text] empty; false
+// means OCR could not run, with [error] saying why.
+bool RecognizeScreenArea(ScreenArea area, std::string* text, std::string* error);
+
 class OcrCapture {
  public:
   using TextCallback = std::function<void(const std::string&)>;

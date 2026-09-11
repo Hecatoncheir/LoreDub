@@ -97,7 +97,41 @@ class AppRepository {
       await _duck(process, settings);
       _sessionProcess = process;
       _sessionSettings = settings;
-      _nativeEngine.setHotkeys(pause: settings.pauseHotkey, resume: settings.resumeHotkey);
+      _nativeEngine.setHotkeys(
+        pause: settings.pauseHotkey,
+        resume: settings.resumeHotkey,
+        snapshot: settings.snapshotHotkey,
+      );
+    } catch (_) {
+      await _nativeEngine.stop();
+      rethrow;
+    }
+  }
+
+  /// Starts the snapshot session: the translator, the voice and the snapshot
+  /// key. Nothing is captured until the player selects an area, and no game
+  /// is turned down.
+  Future<void> startSnapshot({
+    required AppSettings settings,
+    required Map<String, String> modelDirectories,
+    required String speaker,
+    required String translationPrefix,
+    required ComputeBackend translationBackend,
+    required String runtimeDirectory,
+  }) async {
+    try {
+      await _nativeEngine.startSnapshot({
+        'speaker': speaker,
+        'targetLanguage': settings.targetLanguage,
+        'ttsSpeed': settings.ttsSpeed,
+        'cpuThreads': settings.cpuThreads,
+        'pythonExecutable': settings.pythonExecutable,
+        'models': modelDirectories,
+        'translationPrefix': translationPrefix,
+        'translationBackend': translationBackend.name,
+        'runtimeDirectory': runtimeDirectory,
+      });
+      _nativeEngine.setHotkeys(snapshot: settings.snapshotHotkey);
     } catch (_) {
       await _nativeEngine.stop();
       rethrow;

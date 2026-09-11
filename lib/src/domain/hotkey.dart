@@ -17,6 +17,9 @@ class Hotkey {
   static const defaultPause = Hotkey(keyCode: 0x50, label: 'P', control: true, alt: true);
   static const defaultResume = Hotkey(keyCode: 0x52, label: 'R', control: true, alt: true);
 
+  /// Held rather than pressed: the area is drawn while it is down.
+  static const defaultSnapshot = Hotkey(keyCode: 0x53, label: 'S', control: true, alt: true);
+
   /// The Windows virtual-key code of the main key.
   final int keyCode;
 

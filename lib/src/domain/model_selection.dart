@@ -137,6 +137,14 @@ class ModelSelection {
     return pairInstalled && (!clonesVoice || (voiceConverter?.installed ?? false));
   }
 
+  /// What the snapshot session needs: the translator and the voice of the
+  /// chosen language. It reads the screen, so whisper plays no part, and a
+  /// selected line has no audio for the original voice to follow.
+  bool get snapshotModelsInstalled =>
+      models.isNotEmpty &&
+      (forTargetLanguage(ModelKind.translation)?.installed ?? false) &&
+      (forTargetLanguage(ModelKind.speech)?.installed ?? false);
+
   /// Whether both halves of a language's pair are on disk.
   bool isLanguageReady(String language) {
     var translation = false;

@@ -92,6 +92,7 @@ class SettingsService {
       overlapVoices: preferences.getBool('overlapVoices') ?? true,
       pauseHotkey: _readHotkey(preferences, 'pauseHotkey', Hotkey.defaultPause),
       resumeHotkey: _readHotkey(preferences, 'resumeHotkey', Hotkey.defaultResume),
+      snapshotHotkey: _readHotkey(preferences, 'snapshotHotkey', Hotkey.defaultSnapshot),
       computeDevice: ComputeDevice.values.firstWhere(
         (device) => device.name == preferences.getString('computeDevice'),
         orElse: () => ComputeDevice.auto,
@@ -135,6 +136,7 @@ class SettingsService {
       // which must not come back as the default next time.
       preferences.setString('pauseHotkey', settings.pauseHotkey?.encode() ?? ''),
       preferences.setString('resumeHotkey', settings.resumeHotkey?.encode() ?? ''),
+      preferences.setString('snapshotHotkey', settings.snapshotHotkey?.encode() ?? ''),
       preferences.setString('computeDevice', settings.computeDevice.name),
       _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
       _writeBackend(preferences, 'translationBackend', settings.translationBackend),

@@ -236,6 +236,19 @@ void main() {
     expect(saved.resumeHotkey, isNull, reason: 'a removed combination must not come back');
   });
 
+  test('remembers the key held to select an area, and its removal', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+    final fresh = await service.load();
+    expect(fresh.snapshotHotkey, Hotkey.defaultSnapshot);
+
+    await service.save(fresh.copyWith(snapshotHotkey: const Hotkey(keyCode: 0x7A, label: 'F11')));
+    expect((await service.load()).snapshotHotkey?.display, 'F11');
+
+    await service.save(fresh.copyWith(clearSnapshotHotkey: true));
+    expect((await service.load()).snapshotHotkey, isNull);
+  });
+
   test('lets characters overlap until told otherwise', () async {
     SharedPreferences.setMockInitialValues({});
     final service = SettingsService();

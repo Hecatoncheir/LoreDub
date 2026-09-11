@@ -2,14 +2,17 @@
   "@@locale": "en",
   "appTitle": "LoreDub",
   "navLive": "Live",
+  "navSnapshot": "Snippet",
   "navModels": "Models",
   "navSettings": "Settings",
   "titleLive": "Game dubbing",
+  "titleSnapshot": "Snippet translation",
   "titleModels": "Local models",
   "titleSettings": "Signal setup",
   "statusIdle": "Stopped",
   "statusStarting": "Starting…",
   "statusListening": "Listening",
+  "statusSnapshotReady": "Waiting for a snippet",
   "statusPaused": "Paused",
   "statusStopping": "Stopping…",
   "statusError": "Error",
@@ -60,10 +63,36 @@
   "pauseDubbing": "Pause",
   "pauseHint": "Pause: the models stay loaded and the game plays at full volume",
   "resumeDubbing": "Resume",
+  "snapshotHowTo": "Hold {hotkey}, draw a frame around the text over the game and let go — LoreDub reads it, translates it and voices it.",
+  "@snapshotHowTo": {
+    "placeholders": {
+      "hotkey": {
+        "type": "String"
+      }
+    }
+  },
+  "snapshotNoHotkey": "No snapshot key is bound.",
+  "snapshotOpenSettings": "Bind one in Settings",
+  "snapshotNote": "Only the translator and the voice ({language}) are loaded, no speech recognition. Windows OCR reads the text in English, and the frame is drawn over other windows — run the game windowed or borderless.",
+  "@snapshotNote": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "snapshotStart": "Start",
+  "snapshotStop": "Stop",
+  "snapshotReading": "Reading and translating the snippet…",
+  "snapshotMissed": "No text found in the selected area",
+  "snapshotInLive": "Live dubbing is running — the snapshot key works there too",
+  "snapshotEmpty": "Selected text will appear here",
+  "snapshotClearTooltip": "Remove the snippets from the list",
   "settingsHotkeys": "Hotkeys",
-  "hotkeysNote": "They work while dubbing, even with the game on screen. While LoreDub dubs, a bound combination does not reach the game.",
+  "hotkeysNote": "They work while Live or Snippet is running, even with the game on screen; a bound combination then does not reach the game. The snapshot key is held down while the area is drawn with the mouse.",
   "hotkeyPause": "Pause",
   "hotkeyResume": "Resume",
+  "hotkeySnapshot": "Select an area",
   "hotkeyUnset": "Not set",
   "hotkeyListening": "Press a combination… (Esc cancels)",
   "hotkeyClear": "Remove the combination",

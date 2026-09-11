@@ -39,6 +39,7 @@ class AppSettings {
     this.overlapVoices = true,
     this.pauseHotkey = Hotkey.defaultPause,
     this.resumeHotkey = Hotkey.defaultResume,
+    this.snapshotHotkey = Hotkey.defaultSnapshot,
     this.computeDevice = ComputeDevice.auto,
     this.recognitionBackend,
     this.translationBackend,
@@ -105,6 +106,10 @@ class AppSettings {
   /// null leaves the action to its button.
   final Hotkey? pauseHotkey;
   final Hotkey? resumeHotkey;
+
+  /// The combination held down to select an area of the screen to translate
+  /// once; null leaves the snapshot screen without a way to select.
+  final Hotkey? snapshotHotkey;
 
   VoiceMode get voiceMode => originalVoice
       ? VoiceMode.original
@@ -190,6 +195,8 @@ class AppSettings {
     bool clearPauseHotkey = false,
     Hotkey? resumeHotkey,
     bool clearResumeHotkey = false,
+    Hotkey? snapshotHotkey,
+    bool clearSnapshotHotkey = false,
     ComputeDevice? computeDevice,
     ComputeBackend? recognitionBackend,
     ComputeBackend? translationBackend,
@@ -218,6 +225,7 @@ class AppSettings {
     overlapVoices: overlapVoices ?? this.overlapVoices,
     pauseHotkey: clearPauseHotkey ? null : pauseHotkey ?? this.pauseHotkey,
     resumeHotkey: clearResumeHotkey ? null : resumeHotkey ?? this.resumeHotkey,
+    snapshotHotkey: clearSnapshotHotkey ? null : snapshotHotkey ?? this.snapshotHotkey,
     computeDevice: computeDevice ?? this.computeDevice,
     recognitionBackend: clearBackendOverrides
         ? null

@@ -52,13 +52,18 @@ LD_API int32_t ld_stop(void);
 // dropped here, and audio segments are dropped by the caller.
 LD_API int32_t ld_set_paused(int32_t paused);
 
-// Registers system-wide hotkeys for pausing and resuming. Config is a flat
-// UTF-8 JSON object with pauseKey, pauseModifiers, resumeKey and
-// resumeModifiers: Windows virtual-key codes and MOD_* flags, a zero key
+// Registers system-wide hotkeys for pausing, resuming and selecting an area
+// of the screen. Config is a flat UTF-8 JSON object with pauseKey,
+// pauseModifiers, resumeKey, resumeModifiers, snapshotKey and
+// snapshotModifiers: Windows virtual-key codes and MOD_* flags, a zero key
 // leaving that action unbound. Presses arrive as
 // {"type":"hotkey","action":"pause"|"resume"} events, a combination Windows
-// refuses as {"type":"hotkeyTaken","action":...}. Null or an empty string
-// unregisters them; ld_stop does too.
+// refuses as {"type":"hotkeyTaken","action":...}. The snapshot key is held:
+// the player draws an area over the screen while it is down, and letting go
+// sends {"type":"snapshotReading"}, then {"type":"snapshot","text":...} with
+// the English text read there ("failed":true, followed by an error event,
+// when OCR could not run). Null or an empty string unregisters them;
+// ld_stop does too.
 LD_API int32_t ld_set_hotkeys(const char* config_json);
 
 // Pops one UTF-8 JSON event. Returns 0 when the queue is empty, a positive

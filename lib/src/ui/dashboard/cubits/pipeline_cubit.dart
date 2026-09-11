@@ -32,6 +32,10 @@ class LivePipelineState {
     this.detectedLanguage,
     this.spokenVoice,
     this.activeBackends = const {},
+    this.session = PipelineSession.live,
+    this.snapshots = const [],
+    this.snapshotReading = false,
+    this.snapshotMissed = false,
   });
 
   final PipelineStatus status;
@@ -53,12 +57,33 @@ class LivePipelineState {
   /// differ from the request when a driver turns out to be unusable.
   final Map<ComputeStage, ComputeBackend> activeBackends;
 
+  /// Which session [status] describes. Meaningless while idle.
+  final PipelineSession session;
+
+  /// What the player selected and had translated, newest first. Kept apart
+  /// from [transcript], which follows the running capture.
+  final List<TranscriptEntry> snapshots;
+
+  /// Set from the moment a selection is let go until its translation, or
+  /// the news that it held no text, arrives.
+  final bool snapshotReading;
+
+  /// Whether the last selection held no text Windows could read.
+  final bool snapshotMissed;
+
   /// A paused session is still a session: its settings stay locked and its
   /// models loaded.
   bool get running =>
       status == PipelineStatus.starting ||
       status == PipelineStatus.listening ||
       status == PipelineStatus.paused;
+
+  /// Live dubbing is up, starting or resting.
+  bool get liveRunning => running && session == PipelineSession.live;
+
+  /// The snapshot session is up and waiting for a selection.
+  bool get snapshotRunning =>
+      session == PipelineSession.snapshot && status == PipelineStatus.listening;
 
   /// The reported devices as a value that can be compared, so the compute
   /// card can be held still through everything else the session reports.
@@ -73,11 +98,20 @@ class LivePipelineState {
     ComputeAvailability availability,
   ) => activeBackends[stage] ?? settings.backendFor(stage, availability);
 
+  /// A running snapshot session does not stand in the way: starting live
+  /// dubbing takes the worker over from it.
   bool canStart(ModelSelection selection, {required bool initializing}) =>
       !initializing &&
-      status == PipelineStatus.idle &&
+      (status == PipelineStatus.idle || snapshotRunning) &&
       (!selection.requiresProcess || selectedProcess != null) &&
       selection.requiredModelsInstalled;
+
+  /// The snapshot session needs its pair of models and a key to select with.
+  bool canStartSnapshot(ModelSelection selection, {required bool initializing}) =>
+      !initializing &&
+      status == PipelineStatus.idle &&
+      selection.snapshotModelsInstalled &&
+      selection.settings.snapshotHotkey != null;
 
   LivePipelineState copyWith({
     PipelineStatus? status,
@@ -93,6 +127,10 @@ class LivePipelineState {
     String? spokenVoice,
     bool clearSpokenVoice = false,
     Map<ComputeStage, ComputeBackend>? activeBackends,
+    PipelineSession? session,
+    List<TranscriptEntry>? snapshots,
+    bool? snapshotReading,
+    bool? snapshotMissed,
   }) => LivePipelineState(
     status: status ?? this.status,
     transcript: transcript ?? this.transcript,
@@ -103,6 +141,10 @@ class LivePipelineState {
     detectedLanguage: clearDetectedLanguage ? null : detectedLanguage ?? this.detectedLanguage,
     spokenVoice: clearSpokenVoice ? null : spokenVoice ?? this.spokenVoice,
     activeBackends: activeBackends ?? this.activeBackends,
+    session: session ?? this.session,
+    snapshots: snapshots ?? this.snapshots,
+    snapshotReading: snapshotReading ?? this.snapshotReading,
+    snapshotMissed: snapshotMissed ?? this.snapshotMissed,
   );
 }
 
@@ -169,13 +211,20 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       return;
     }
     _errors.report(null);
-    if (state.running) return stop();
+    if (state.liveRunning) return stop();
     final selection = _selection;
     if (!state.canStart(selection, initializing: initializing)) return;
+    // The snapshot session holds the worker loaded without whisper, so live
+    // dubbing takes it over by starting afresh.
+    if (state.running) {
+      await stop();
+      if (isClosed || state.status != PipelineStatus.idle) return;
+    }
     _startRequestedAt = _clock();
     emit(
       state.copyWith(
         status: PipelineStatus.starting,
+        session: PipelineSession.live,
         clearStartupProgress: true,
         startupStage: '',
         clearDetectedLanguage: true,
@@ -232,6 +281,62 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     }
   }
 
+  /// Starts or ends the snapshot session, which loads only the translator
+  /// and the voice and then waits for the player to select an area.
+  Future<void> toggleSnapshot({required bool initializing}) async {
+    final startedAt = _startRequestedAt;
+    if (state.status == PipelineStatus.starting &&
+        startedAt != null &&
+        _clock().difference(startedAt) < doubleClickGrace) {
+      return;
+    }
+    _errors.report(null);
+    if (state.running) {
+      // Live dubbing is ended from its own screen.
+      if (state.session == PipelineSession.snapshot) await stop();
+      return;
+    }
+    final selection = _selection;
+    if (!state.canStartSnapshot(selection, initializing: initializing)) return;
+    _startRequestedAt = _clock();
+    emit(
+      state.copyWith(
+        status: PipelineStatus.starting,
+        session: PipelineSession.snapshot,
+        clearStartupProgress: true,
+        startupStage: '',
+        clearSpokenVoice: true,
+        snapshotReading: false,
+        snapshotMissed: false,
+      ),
+    );
+    try {
+      final settings = _settings.settings;
+      final translation = selection.forTargetLanguage(ModelKind.translation)!.model;
+      final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
+      final speechDirectory = await _modelRepository.directoryFor(speech);
+      await _appRepository.startSnapshot(
+        settings: settings,
+        modelDirectories: {
+          'translation': await _modelRepository.directoryFor(translation),
+          'speech': path.join(speechDirectory, speech.primaryFileName),
+        },
+        // A selected line has no audio to follow the speaker by.
+        speaker: selection.voice,
+        translationPrefix: translation.translationPrefix ?? '',
+        translationBackend: settings.backendFor(
+          ComputeStage.translation,
+          _downloads.state.availability,
+        ),
+        runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+      );
+    } catch (exception) {
+      if (isClosed) return;
+      emit(state.copyWith(status: PipelineStatus.error));
+      _errors.report(exception);
+    }
+  }
+
   /// Ends the session, paused or not, and gives the game its volume back.
   Future<void> stop() async {
     if (!state.running) return;
@@ -255,6 +360,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         clearDetectedLanguage: true,
         clearSpokenVoice: true,
         activeBackends: const {},
+        snapshotReading: false,
       ),
     );
     // The worker has written its last voices by now.
@@ -264,7 +370,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// Rests a listening session without tearing it down: the models stay
   /// loaded, so resuming is instant rather than another minute of startup.
   Future<void> pause() async {
-    if (state.status != PipelineStatus.listening) return;
+    if (state.status != PipelineStatus.listening || !state.liveRunning) return;
     try {
       await _appRepository.pause();
       if (!isClosed) emit(state.copyWith(status: PipelineStatus.paused));
@@ -290,6 +396,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     emit(state.copyWith(transcript: const []));
   }
 
+  /// Empties the list of selections, leaving the session alone.
+  void clearSnapshots() {
+    if (state.snapshots.isEmpty) return;
+    emit(state.copyWith(snapshots: const []));
+  }
+
   void _handleEvent(Map<String, Object?> event) {
     switch (event['type']) {
       case 'state':
@@ -306,19 +418,30 @@ class PipelineCubit extends Cubit<LivePipelineState> {
           ),
         );
       case 'transcript':
-        emit(
-          state.copyWith(
-            transcript: [
-              TranscriptEntry(
-                original: event['original'] as String? ?? '',
-                english: event['english'] as String? ?? '',
-                translated: event['translated'] as String? ?? '',
-                latency: Duration(milliseconds: event['latencyMs'] as int? ?? 0),
-              ),
-              ...state.transcript.take(49),
-            ],
-          ),
+        final entry = TranscriptEntry(
+          original: event['original'] as String? ?? '',
+          english: event['english'] as String? ?? '',
+          translated: event['translated'] as String? ?? '',
+          latency: Duration(milliseconds: event['latencyMs'] as int? ?? 0),
         );
+        // A selection answers the player's request, not the running capture,
+        // so it has a list of its own.
+        if (event['snapshot'] == true) {
+          emit(
+            state.copyWith(
+              snapshots: [entry, ...state.snapshots.take(49)],
+              snapshotReading: false,
+            ),
+          );
+        } else {
+          emit(state.copyWith(transcript: [entry, ...state.transcript.take(49)]));
+        }
+      case 'snapshotReading':
+        emit(state.copyWith(snapshotReading: true, snapshotMissed: false));
+      case 'snapshot':
+        // Text that was found stays in reading until its translation lands.
+        if ((event['text'] as String? ?? '').isNotEmpty) return;
+        emit(state.copyWith(snapshotReading: false, snapshotMissed: event['failed'] != true));
       case 'startup':
         emit(
           state.copyWith(
@@ -359,6 +482,8 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         // failed here used to leave it stuck: neither startable nor stoppable.
         // An event without a failure has nothing to show, and reporting null
         // would clear a banner raised a moment earlier.
+        // Whatever failed, a selection still waiting will not be answered.
+        if (state.snapshotReading) emit(state.copyWith(snapshotReading: false));
         if (event['failure'] case final failure?) _errors.report(failure);
     }
   }

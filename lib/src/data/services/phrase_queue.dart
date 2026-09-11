@@ -6,15 +6,19 @@ import 'dart:collection';
 
 /// One captured phrase waiting to be recognized, translated and voiced.
 class PendingPhrase {
-  PendingPhrase.audio(String this.wavePath) : text = null;
+  PendingPhrase.audio(String this.wavePath) : text = null, snapshot = false;
 
-  PendingPhrase.text(String this.text) : wavePath = null;
+  PendingPhrase.text(String this.text, {this.snapshot = false}) : wavePath = null;
 
   /// Set for captured audio; the file is deleted once the phrase is handled.
   final String? wavePath;
 
   /// Set for text that OCR already recognized.
   final String? text;
+
+  /// Whether the text comes from an area the player selected by hand,
+  /// rather than from the running capture.
+  final bool snapshot;
 }
 
 /// Processes captured phrases one at a time, in the order they were spoken.

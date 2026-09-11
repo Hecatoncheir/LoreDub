@@ -16,6 +16,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navLive => 'Эфир';
 
   @override
+  String get navSnapshot => 'Фрагмент';
+
+  @override
   String get navModels => 'Модели';
 
   @override
@@ -23,6 +26,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get titleLive => 'Перевод игры';
+
+  @override
+  String get titleSnapshot => 'Перевод фрагмента';
 
   @override
   String get titleModels => 'Локальные модели';
@@ -38,6 +44,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get statusListening => 'Слушаю';
+
+  @override
+  String get statusSnapshotReady => 'Ждёт фрагмента';
 
   @override
   String get statusPaused => 'Пауза';
@@ -124,17 +133,57 @@ class AppLocalizationsRu extends AppLocalizations {
   String get resumeDubbing => 'Продолжить';
 
   @override
+  String snapshotHowTo(String hotkey) {
+    return 'Удерживайте $hotkey, обведите мышью текст поверх игры и отпустите клавишу — LoreDub прочитает его, переведёт и озвучит.';
+  }
+
+  @override
+  String get snapshotNoHotkey => 'Клавиша выделения не назначена.';
+
+  @override
+  String get snapshotOpenSettings => 'Назначить в настройках';
+
+  @override
+  String snapshotNote(String language) {
+    return 'Загружаются только переводчик и голос ($language), без распознавания речи. Текст читается распознаванием Windows на английском, а рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.';
+  }
+
+  @override
+  String get snapshotStart => 'Запустить';
+
+  @override
+  String get snapshotStop => 'Остановить';
+
+  @override
+  String get snapshotReading => 'Читаю и перевожу фрагмент…';
+
+  @override
+  String get snapshotMissed => 'В выделенной области текст не найден';
+
+  @override
+  String get snapshotInLive => 'Идёт «Эфир» — клавиша выделения работает и в нём';
+
+  @override
+  String get snapshotEmpty => 'Выделенные фрагменты появятся здесь';
+
+  @override
+  String get snapshotClearTooltip => 'Убрать фрагменты из списка';
+
+  @override
   String get settingsHotkeys => 'Горячие клавиши';
 
   @override
   String get hotkeysNote =>
-      'Работают во время перевода, даже когда на экране игра. Пока LoreDub переводит, назначенное сочетание до игры не доходит.';
+      'Работают, пока идёт «Эфир» или «Фрагмент», даже когда на экране игра; назначенное сочетание тогда до игры не доходит. Клавишу выделения держат нажатой, пока обводят область мышью.';
 
   @override
   String get hotkeyPause => 'Пауза';
 
   @override
   String get hotkeyResume => 'Восстановление';
+
+  @override
+  String get hotkeySnapshot => 'Выделение области';
 
   @override
   String get hotkeyUnset => 'Не назначено';

@@ -48,9 +48,11 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.voiceBankClearFailed => l10n.failureVoiceBankClearFailed(detail),
     FailureCode.modelRemoveFailed => l10n.failureModelRemoveFailed(detail),
     FailureCode.updateInstallFailed => l10n.failureUpdateInstallFailed(detail),
-    FailureCode.hotkeyTaken => l10n.failureHotkeyTaken(
-      detail == 'resume' ? l10n.hotkeyResume : l10n.hotkeyPause,
-    ),
+    FailureCode.hotkeyTaken => l10n.failureHotkeyTaken(switch (detail) {
+      'resume' => l10n.hotkeyResume,
+      'snapshot' => l10n.hotkeySnapshot,
+      _ => l10n.hotkeyPause,
+    }),
   };
 }
 

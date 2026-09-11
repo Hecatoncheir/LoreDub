@@ -139,6 +139,42 @@ class NativeEngineService {
     );
   }
 
+  /// Loads the translator and the voice for the snapshot session, which
+  /// captures nothing by itself: text arrives only from areas the player
+  /// selects while holding the snapshot key.
+  Future<void> startSnapshot(Map<String, Object?> config) async {
+    _reportedLanguage = null;
+    _reportedVoice = null;
+    _reportedBankSize = null;
+    _paused = false;
+    // One selection at a time is read, so there is no one to talk over.
+    _playback.maxVoices = 1;
+    await LocalInferenceService.removeStaleAudio();
+    final models = config['models']! as Map<String, String>;
+    await _inference.start(
+      translationModel: models['translation']!,
+      ttsModel: models['speech']!,
+      speaker: config['speaker']! as String,
+      threads: config['cpuThreads']! as int,
+      speed: config['ttsSpeed']! as double,
+      pythonExecutable: config['pythonExecutable']! as String,
+      requiresWhisper: false,
+      translationPrefix: config['translationPrefix'] as String? ?? '',
+      translationBackend: _backendFrom(config['translationBackend']),
+      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+    );
+    if (_inference.translationBackend case final actual?) {
+      _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
+    }
+    _activeConfig = config;
+    _pollTimer ??= Timer.periodic(
+      const Duration(milliseconds: 80),
+      (_) => _pollEvents(),
+    );
+    // Nothing native starts here to say so itself.
+    _events.add({'type': 'state', 'state': 'listening'});
+  }
+
   Future<void> stop() async {
     // Cleared first: segments captured moments ago are still travelling
     // through the queue, and failing them is expected once the user stops.
@@ -185,14 +221,18 @@ class NativeEngineService {
   }
 
   /// Registers the system-wide combinations that pause and resume the
-  /// session; their presses arrive as `hotkey` events. A combination another
-  /// program holds comes back as an error naming the action.
-  void setHotkeys({Hotkey? pause, Hotkey? resume}) {
+  /// session, and the one held to select an area of the screen. Presses
+  /// arrive as `hotkey` events, a selection as `snapshotReading` and then
+  /// `snapshot`. A combination another program holds comes back as an error
+  /// naming the action.
+  void setHotkeys({Hotkey? pause, Hotkey? resume, Hotkey? snapshot}) {
     final config = jsonEncode({
       'pauseKey': pause?.keyCode ?? 0,
       'pauseModifiers': pause?.modifiers ?? 0,
       'resumeKey': resume?.keyCode ?? 0,
       'resumeModifiers': resume?.modifiers ?? 0,
+      'snapshotKey': snapshot?.keyCode ?? 0,
+      'snapshotModifiers': snapshot?.modifiers ?? 0,
     }).toNativeUtf8();
     try {
       _throwIfError(ld_set_hotkeys(config.cast()));
@@ -218,6 +258,12 @@ class NativeEngineService {
       } else if (event['type'] == 'ocrText') {
         if (_activeConfig == null || _paused) continue;
         _phrases.add(PendingPhrase.text(event['text']! as String));
+      } else if (event['type'] == 'snapshot') {
+        if (_activeConfig == null) continue;
+        // Read even while dubbing rests: a selection is asked for by hand.
+        final text = event['text'] as String? ?? '';
+        if (text.isNotEmpty) _phrases.add(PendingPhrase.text(text, snapshot: true));
+        _events.add(event);
       } else {
         _events.add(fromNativeEvent(event));
       }
@@ -226,7 +272,9 @@ class NativeEngineService {
 
   Future<void> _processPhrase(PendingPhrase phrase) {
     final wavePath = phrase.wavePath;
-    return wavePath != null ? _processSegment(wavePath) : _processOcrText(phrase.text!);
+    return wavePath != null
+        ? _processSegment(wavePath)
+        : _processOcrText(phrase.text!, snapshot: phrase.snapshot);
   }
 
   Future<void> _processSegment(String wavePath) async {
@@ -251,7 +299,7 @@ class NativeEngineService {
     }
   }
 
-  Future<void> _processOcrText(String recognizedText) async {
+  Future<void> _processOcrText(String recognizedText, {bool snapshot = false}) async {
     final started = Stopwatch()..start();
     try {
       if (_activeConfig == null) return;
@@ -260,6 +308,7 @@ class NativeEngineService {
         result,
         started.elapsedMilliseconds,
         original: recognizedText,
+        snapshot: snapshot,
       );
     } catch (error) {
       _reportFailure(error);
@@ -286,6 +335,7 @@ class NativeEngineService {
     InferenceResult result,
     int latencyMs, {
     required String original,
+    bool snapshot = false,
   }) async {
     _events.add({
       'type': 'transcript',
@@ -293,6 +343,7 @@ class NativeEngineService {
       'english': result.english,
       'translated': result.translated,
       'latencyMs': latencyMs,
+      if (snapshot) 'snapshot': true,
     });
     // Which voice read it: the automatic choice can change it per phrase, so
     // the interface should not have to guess.
@@ -306,8 +357,9 @@ class NativeEngineService {
       _events.add({'type': 'voiceBank', 'size': size});
     }
     // A line that was already being translated when the pause came is shown
-    // in the transcript, but the pause means quiet.
-    if (_paused) {
+    // in the transcript, but the pause means quiet. A selection is the
+    // exception: the player asked for that one.
+    if (_paused && !snapshot) {
       unawaited(_deleteIfPresent(result.wavePath));
       return;
     }
