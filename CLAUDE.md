@@ -199,7 +199,10 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   into text at the interface boundary. Add a code to `domain/failure.dart`, a
   case to `describeFailure`, and the wording to both ARB files together.
 - Comments, identifiers, docs, and commit messages are English. `README.md` is
-  Russian and is the primary one; `README.en.md` follows it.
+  Russian and is the primary one; `README.en.md` follows it. `CHANGELOG.md` is
+  Russian too — it becomes the GitHub release notes the players read — with
+  `## [Не выпущено]` on top and the `## [x.y.z] - YYYY-MM-DD` headings the
+  release script matches.
 - `lib/src/native/*.g.dart` is generated — edit `native/lore_dub_native.h` and
   the `functions` allowlist in `tool/ffigen.dart`, then rerun ffigen.
 - Formatter is configured for `page_width: 100` and `trailing_commas: preserve`;

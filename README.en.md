@@ -617,13 +617,14 @@ branch.
 Every tag named `v<major>.<minor>.<patch>` starts the Windows release workflow.
 The tag version must match the version in `pubspec.yaml` (without its `+build`
 suffix), and `CHANGELOG.md` must contain a non-empty section with the same
-version. For example:
+version. The changelog is kept in Russian, since it becomes the GitHub release
+notes. For example:
 
 ```markdown
 ## [0.2.0] - 2026-09-10
 
-- Added ...
-- Fixed ...
+- Добавлено ...
+- Исправлено ...
 ```
 
 To publish that version, commit both files, tag that commit, and push:

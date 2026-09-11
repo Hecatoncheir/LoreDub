@@ -1,213 +1,218 @@
-# Changelog
+# Список изменений
 
-All notable changes to LoreDub are documented in this file.
+Здесь записаны все заметные изменения LoreDub.
 
-## [Unreleased]
+## [Не выпущено]
 
 ## [0.9.1] - 2026-09-11
 
-- Fixed the process list covering the search field in a short window: with dozens of processes
-  the menu slid up over what was being typed. It is now held to the room under the field.
+- Исправлено: в невысоком окне список процессов закрывал поле поиска — при десятках процессов
+  меню наезжало на вводимый текст. Теперь его высота ограничена местом под полем.
 
 ## [0.9.0] - 2026-09-11
 
-- Added installing updates from the application. When a newer release is published, the version
-  at the bottom left gives way to "Current version vX → vY" with an update mark; a click
-  downloads the new setup with a progress bar, then "Updated" and Restart close LoreDub, run
-  the setup silently for the current user and open the new version. A copy run from the build
-  folder still opens the release page.
-
-- Redrew the translators, voices and the voice converter in the Whisper chart's style. A
-  dubbing language is now one tile holding its translator and voice, downloaded, picked and
-  deleted together, with one progress ring for the pair; the converter is a tile of its own.
-  Every tile keeps its buttons in sight and grows slightly under the pointer, and any
-  downloaded model can now be deleted.
-- Redrew the Compute device section: a table of stage by device where every cell shows whether
-  the stage runs there, could, needs a package first — a click fetches it — or cannot, with
-  the reason in its tooltip. The GPU packages are tiles like the models, with download, pause,
-  resume, cancel and delete on each.
-- Fixed Cancel on a paused download doing nothing, for models and GPU packages alike: the
-  paused part files are now deleted.
+- Добавлена установка обновлений из приложения. Когда выходит новый релиз, вместо версии внизу
+  слева появляется строка «Текущая версия vX → vY» со значком обновления. Нажатие скачивает
+  новый установщик с полосой прогресса, а затем «Обновлено» и «Перезапустить» закрывают LoreDub,
+  тихо запускают установщик для текущего пользователя и открывают новую версию. Копия,
+  запущенная из папки сборки, по-прежнему открывает страницу релиза.
+- Переводчики, голоса и конвертер голоса перерисованы в стиле графика Whisper. Язык озвучки
+  теперь — одна плитка с переводчиком и голосом: они скачиваются, выбираются и удаляются вместе,
+  с одним кольцом прогресса на пару; у конвертера своя плитка. Кнопки каждой плитки всегда на
+  виду, при наведении она немного увеличивается, и любую скачанную модель теперь можно удалить.
+- Перерисован раздел «Вычислительное устройство»: таблица «стадия × устройство», где каждая
+  ячейка показывает, считается ли стадия здесь, может ли, нужен ли сначала пакет — нажатие его
+  скачивает — или не может вовсе, с причиной в подсказке. Пакеты для видеокарты — плитки, как у
+  моделей, с кнопками «Скачать», «Пауза», «Продолжить», «Отменить» и «Удалить».
+- Исправлено: «Отменить» у приостановленной загрузки ничего не делало — и у моделей, и у пакетов
+  для видеокарты. Теперь недокачанные файлы удаляются.
 
 ## [0.8.0] - 2026-09-11
 
-- Redrew the Whisper models on the Models screen as a chart of size against quality: each build
-  is a bar as tall as its download, light when missing, ticked once downloaded, dark with an
-  orange edge when in use, and filling from the bottom while it downloads. Every bar keeps its
-  buttons in sight — download, pause or resume and cancel, or delete — and grows slightly under
-  the pointer; a click on a downloaded bar picks it. Large-v3-turbo is marked as not
-  translating. Narrow windows keep the list of cards.
-- Added deleting a downloaded Whisper model, after a confirmation. The model in use cannot be
-  deleted while dubbing runs.
+- Модели Whisper на экране «Модели» нарисованы графиком «размер против качества»: каждая сборка —
+  столбик высотой с её загрузку; светлый — не скачана, с галочкой — скачана, тёмный с оранжевой
+  рамкой — выбрана, заполняется снизу — скачивается. Кнопки столбика всегда на виду — скачать,
+  пауза или продолжить и отменить, удалить, — и при наведении он немного увеличивается; нажатие
+  на скачанный столбик выбирает модель. Large-v3-turbo помечена как не переводящая. В узком окне
+  остаётся список карточек.
+- Добавлено удаление скачанной модели Whisper с подтверждением. Используемую модель нельзя
+  удалить, пока идёт озвучка.
 
 ## [0.7.0] - 2026-09-11
 
-- Lines of different characters can now overlap: a new line starts at once while another
-  character is still speaking, instead of waiting for them to finish. A character never talks
-  over themselves, and no more than two voices sound together. Characters are told apart by
-  the voice fingerprint in Original voice mode and by the Silero voice (man or woman) in
-  Automatic mode; "Let different characters overlap" in the voice settings turns it off.
-  Playback moved from PlaySound, which could hold one sound at a time, to waveOut.
+- Реплики разных персонажей теперь могут накладываться: новая реплика начинается сразу, пока
+  другой персонаж ещё говорит, а не ждёт конца. Персонаж никогда не перебивает сам себя, и
+  одновременно звучат не больше двух голосов. В режиме «Голос оригинала» персонажи различаются
+  по отпечатку голоса, в режиме «Автоматически» — по голосу Silero (мужчина или женщина);
+  выключается переключателем «Накладывать реплики разных персонажей» в настройках голоса.
+  Воспроизведение переведено с PlaySound, который держал только один звук, на waveOut.
 
 ## [0.6.0] - 2026-09-11
 
-- Added a device choice for the Original voice: an OpenVoice row under Device puts the converter
-  on the CPU or on an NVIDIA card independently of translation. On the card a line is
-  re-voiced in about 0.1 s instead of about a second; it uses the same CUDA torch runtime as
-  translation.
-- Added a voice bank for the Original voice, off by default. With "Remember the characters'
-  voices" on, every new character's voice fingerprint is kept per game, and their later lines —
-  restarts included — are voiced with it instead of the timbre of each line. Fingerprints are
-  matched, not averaged. Settings show how many voices are kept, and Clear deletes them.
+- Добавлен выбор устройства для «Голоса оригинала»: строка OpenVoice в разделе «Устройство»
+  ставит конвертер на процессор или на видеокарту NVIDIA независимо от перевода. На видеокарте
+  реплика перекрашивается примерно за 0,1 с вместо секунды; нужен тот же CUDA-рантайм torch,
+  что и для перевода.
+- Добавлен банк голосов для «Голоса оригинала», по умолчанию выключен. С включённым
+  «Запоминать голоса персонажей» отпечаток голоса каждого нового персонажа сохраняется отдельно
+  для каждой игры, и его следующие реплики — в том числе после перезапуска — озвучиваются этим
+  отпечатком, а не тембром каждой реплики. Отпечатки сопоставляются, а не усредняются. В
+  настройках видно, сколько голосов сохранено, а «Очистить» их удаляет.
 
 ## [0.5.0] - 2026-09-11
 
-- Fixed the CUDA runtime download hanging with the bar stuck at 5%: pip fetched the 2.5 GB
-  wheel with no progress, no resume, and no end on a connection that stopped delivering.
-  LoreDub now downloads the wheel itself — pausable, resumable, checked against its SHA-256 —
-  and pip only installs the local file. Any download that stops receiving data reconnects by
-  itself after a minute and carries on from where it was.
-- Added an Original voice mode beside Automatic and Choose: every line is re-voiced in the
-  timbre of the phrase it answers by the OpenVoice V2 tone colour converter (MIT, 131 MB,
-  downloaded from the new Original voice section of the Models screen), laid over the Silero
-  voice picked by pitch. A line with no voice in it keeps the previous timbre. Subtitle mode
-  cannot offer it, having no audio.
-- Fixed translation running on a single processor thread: loading the Silero voice reset
-  torch's thread count, so the CPU threads setting only held until the voice was loaded.
+- Исправлено зависание загрузки CUDA-рантайма на 5%: pip качал колесо на 2,5 ГБ без прогресса,
+  без докачки и бесконечно, если соединение переставало отдавать данные. Теперь LoreDub
+  скачивает колесо сам — с паузой, докачкой и проверкой SHA-256, — а pip только ставит
+  локальный файл. Любая загрузка, которая перестала получать данные, через минуту сама
+  переподключается и продолжает с того же места.
+- Добавлен режим «Голос оригинала» рядом с «Автоматически» и «Выбрать»: каждая реплика
+  перекрашивается в тембр фразы, на которую отвечает, конвертером тембра OpenVoice V2 (MIT,
+  131 МБ, скачивается в новом разделе «Голос оригинала» экрана «Модели») поверх голоса Silero,
+  подобранного по высоте тона. Реплика без голоса оставляет прошлый тембр. В режиме субтитров он
+  недоступен: там нет звука.
+- Исправлено: перевод считался в один поток процессора — загрузка голоса Silero сбрасывала число
+  потоков torch, и настройка «Потоки CPU» действовала только до загрузки голоса.
 
 ## [0.4.2] - 2026-09-11
 
-- Fixed the GPU runtime download failing without a word: the button went back to "Download" and
-  nothing said why. The reason now shows under the stage, with the last lines pip printed, and a
-  failed CUDA torch install no longer leaves a half-written directory that could pass for a
-  finished one.
+- Исправлено: загрузка GPU-рантайма срывалась молча — кнопка возвращалась к «Скачать», и ничто
+  не объясняло почему. Теперь причина показана под стадией вместе с последними строками вывода
+  pip, а неудачная установка CUDA-torch больше не оставляет недописанный каталог, который мог
+  сойти за готовый.
 
 ## [0.4.1] - 2026-09-11
 
-- Fixed a double-click on Start cancelling the start it had just begun, which left the Live
-  screen on "Stopped" with nothing to explain it. A second press within 800 ms of Start is now
-  taken for the rest of the double-click; a later press still cancels.
-- Fixed native capture errors, such as a missing English OCR pack, clearing the error banner
-  instead of raising it.
-- Fixed the Live screen describing the audio path in subtitle mode: the note under the process
-  picker and the empty transcript now say the lines are read off the game window by Windows OCR
-  instead of captured as audio and recognized by Whisper.
+- Исправлено: двойной щелчок по «Начать» отменял только что начатый запуск, и экран «Эфир»
+  оставался на «Остановлено» без объяснений. Второе нажатие в течение 800 мс после «Начать»
+  теперь считается частью двойного щелчка; более позднее по-прежнему отменяет запуск.
+- Исправлено: ошибки нативного захвата, например отсутствие английского пакета OCR, сбрасывали
+  полосу ошибки, а не показывали её.
+- Исправлено описание пути звука на экране «Эфир» в режиме субтитров: подпись под выбором
+  процесса и пустая расшифровка теперь говорят, что реплики читаются с окна игры средствами
+  Windows OCR, а не захватываются как звук и распознаются Whisper.
 
 ## [0.4.0] - 2026-09-11
 
-- Added a drawn subtitle area: in subtitle mode Settings show a scaled-down screen shaped like
-  the monitor, on which the player drags, moves and resizes the frame OCR reads, instead of
-  choosing only the height of a full-width band at the bottom of the window.
-- Added `scripts/ocr_test_window.ps1`, a game-like window for trying subtitle mode without a
-  game, and `scripts/check_ocr_region.ps1`, which runs the native capture against it with
-  several frames and checks that each reads only the text inside it.
+- Добавлена рисуемая область субтитров: в режиме субтитров в настройках показан уменьшенный
+  экран в пропорциях монитора, на котором игрок рисует, двигает и растягивает рамку для OCR,
+  вместо выбора только высоты полосы во всю ширину внизу окна.
+- Добавлены `scripts/ocr_test_window.ps1` — окно, похожее на игру, чтобы попробовать режим
+  субтитров без игры, — и `scripts/check_ocr_region.ps1`, который запускает нативный захват над
+  этим окном с несколькими рамками и проверяет, что каждая читает только текст внутри себя.
 
 ## [0.3.0] - 2026-09-11
 
-- Added optional HTTP and SOCKS5 proxy settings for model downloads, including authentication.
-- Added a searchable process picker and full default-output capture that excludes LoreDub playback.
-- Added configurable bundled/PATH Python runtime selection.
-- Added the model storage path and an Explorer shortcut to Settings.
-- Fixed the speech speed setting, which was stored and shown but never applied.
-- Fixed translated phrases being dropped when the Python worker wrote its replies in the
-  Windows ANSI code page instead of UTF-8.
-- Added runtime preflight: a missing whisper.cpp binary or Whisper model is reported before
-  the pipeline ducks the game instead of silently swallowing every captured phrase.
-- Added detection of the Microsoft Store `python.exe` execution alias, which cannot run the
-  worker, and reported worker crashes with the interpreter output instead of an exit code.
-- Added automatic Python detection in Settings: LoreDub now scans the bundled runtime, an
-  installed LoreDub runtime, `PATH` and the standard installation directories, and picks the
-  first interpreter that actually provides torch and transformers.
-- Fixed stopping the pipeline reporting an error for the phrase that was still being
-  processed at that moment.
-- Fixed the dubbing falling further behind the game the longer it ran. Playback no longer
-  blocks recognition, the language whisper.cpp detects is reused instead of being detected
-  again for every phrase, and the default thread count now follows the CPU. On a 12-core
-  machine a phrase is voiced after about 1.5 s instead of 4.7 s, and no phrase is dropped.
-- Fixed a failed phrase leaving the session stuck: the pipeline kept running but could
-  neither be started nor stopped.
-- Added a source-language selector next to the start button, with a toggle for automatic
-  detection. Naming the language in advance skips whisper's detection pass and rules out a
-  wrong guess made on the first phrase.
-- Added startup progress on the start button: the worker now reports each stage it is
-  loading, so the first start no longer looks frozen for ten seconds.
-- Added the detected language beside the toggle, so automatic detection is no longer
-  a silent decision.
-- Fixed synthesized audio being left in the work directory when the pipeline was stopped
-  while a phrase was still being voiced.
-- Added German, Spanish, French and Ukrainian alongside Russian, and grouped the models
-  screen into recognition, translation and voices. Whisper stays on its own at the top:
-  recognition needs nothing else. Choosing a language selects its translator and voice
-  together, and only that pair has to be downloaded.
-- Replaced Segoe UI with bundled Nunito, Nunito Sans and JetBrains Mono, the last one
-  reserved for module labels and measured times.
-- Added an English interface alongside Russian. Every label moved into `lib/l10n/*.arb`,
-  and Settings carries the switch; Russian stays the default and the source of the
-  wording. `README.md` is now Russian, with `README.en.md` beside it.
-- Replaced the Live section icon with the Material Symbols `audio_capture` mark. It has no
-  glyph in the Material Icons font Flutter bundles, so it ships as the upstream SVG and is
-  tinted at draw time like any other icon.
-- Added a compute device section to Settings. "Automatic" probes the graphics adapters and
-  assigns CUDA, Vulkan or the CPU to recognition, translation and speech; each stage can then
-  be moved by hand, and a backend the machine cannot run is shown disabled with the reason.
-  The heavy GPU runtimes stay out of the installer and are downloaded on demand.
-- Downloads now resume. A `.part` left behind when the application closed is continued with
-  a range request instead of being fetched again, which matters most for the 436 MB GPU
-  runtime; a server that refuses the range, or a part that fails verification, still starts
-  over.
-- Removing a downloaded GPU runtime now asks for confirmation before giving the disk space
-  back, since the button sits where the download button used to be.
-- Every download can now be paused, resumed and cancelled, models and GPU runtimes alike.
-  A pause keeps the partial file so resuming continues with a range request; a cancel takes
-  it with it. The stop is checked between chunks rather than at the end of the file. CUDA
-  torch is the exception: pip has no half-way point, so only a cancel is offered there, and
-  it kills the process and clears the directory.
-- Added an update check. The sidebar shows the installed version, checks at startup and on
-  request, and offers an arrow to the release page plus a Windows notification when the
-  repository has published something newer. The installer now stamps its shortcuts with an
-  AppUserModelID, without which Windows files a desktop application's toast away unshown.
-- Made the Whisper model a choice. The Models screen now lists base, small, medium-q5_0 and
-  large-v3-turbo-q5_0 and remembers which one recognition uses; the smallest stays the
-  default. large-v3-turbo is marked as unable to translate speech — OpenAI fine-tuned it
-  without translation data — so it is asked to transcribe and only suits an English original.
-- Replaced the Russian translator with the Tatoeba-Challenge `opus-mt-tc-big-en-zle`. It
-  clears up the worst failures of the 2020 model, at 479 MB against 307 MB and about 150 ms
-  more per line. The identifier changes, so the old translator has to be downloaded again.
-  A proper noun it leaves in Latin script, which Silero cannot read, is caught and
-  translated again with the line lower-cased.
-- Added a dubbing voice setting. "Automatic" measures the pitch of each captured phrase and
-  answers in a man's or a woman's voice to match; a voice can also be picked by hand. The
-  genders in the catalogue were measured, which turned up that every Spanish voice is a
-  man's, so that language cannot follow a speaker and says so.
-- Added a clear button to the Live transcript. It is disabled while there is nothing to
-  clear, and clearing does not touch a running session: new phrases keep arriving.
-- Added error messages in the interface language. Services now raise an error code instead
-  of a Russian sentence, so a failure raised while the app was in one language is rewritten
-  the moment the other one is picked.
-- Fixed the game process picker being squeezed to a stub, with its label broken mid-word,
-  in windows too narrow for the one-row layout; below that width the controls now stack.
-- Made the dashboard redraw only what changed. A download used to redraw the whole screen
-  for every chunk it received; it now reports whole percent, and neither a progress tick
-  nor a recognized phrase redraws the screens that do not show it.
-- Rewrote both READMEs around getting started, with screenshots of a real session.
+- Добавлены необязательные HTTP- и SOCKS5-proxy для загрузки моделей, в том числе с
+  авторизацией.
+- Добавлены выбор процесса с поиском и захват всего вывода по умолчанию без звука самого
+  LoreDub.
+- Добавлен выбор среды Python: встроенной или из PATH.
+- В настройки добавлены путь к каталогу моделей и кнопка, открывающая его в Explorer.
+- Исправлена настройка скорости озвучки: она сохранялась и показывалась, но не применялась.
+- Исправлена потеря переведённых фраз, когда воркер Python писал ответы в ANSI-кодировке Windows
+  вместо UTF-8.
+- Добавлена проверка перед запуском: отсутствующий бинарник whisper.cpp или модель Whisper
+  обнаруживаются до того, как конвейер приглушит игру, а не молча глотают каждую захваченную
+  фразу.
+- Добавлено распознавание ярлыка `python.exe` из Microsoft Store, который не может запустить
+  воркер, а падения воркера теперь показываются с выводом интерпретатора, а не кодом выхода.
+- Добавлен автопоиск Python в настройках: LoreDub проверяет встроенную среду, среду
+  установленного LoreDub, `PATH` и стандартные каталоги установки и выбирает первый
+  интерпретатор, в котором действительно есть torch и transformers.
+- Исправлено: остановка конвейера сообщала об ошибке для фразы, которая как раз обрабатывалась.
+- Исправлено нарастающее отставание озвучки от игры. Воспроизведение больше не блокирует
+  распознавание, язык, определённый whisper.cpp, переиспользуется, а не определяется заново для
+  каждой фразы, а число потоков по умолчанию теперь зависит от процессора. На 12-ядерной машине
+  фраза озвучивается примерно через 1,5 с вместо 4,7 с, и ни одна фраза не теряется.
+- Исправлено: неудачная фраза оставляла сессию в тупике — конвейер работал, но его нельзя было
+  ни запустить, ни остановить.
+- Добавлен выбор языка оригинала рядом с кнопкой запуска, с переключателем автоопределения.
+  Язык, заданный заранее, избавляет от прохода определения языка в whisper и от неверной догадки
+  по первой фразе.
+- На кнопке запуска добавлен прогресс старта: воркер сообщает, что загружает, поэтому первый
+  запуск больше не выглядит зависшим на десять секунд.
+- Рядом с переключателем показывается определённый язык, так что автоопределение больше не
+  решает молча.
+- Исправлено: синтезированный звук оставался в рабочем каталоге, если конвейер останавливали во
+  время озвучки фразы.
+- Добавлены немецкий, испанский, французский и украинский вместе с русским, а экран моделей
+  разбит на распознавание, перевод и голоса. Whisper стоит отдельно наверху: распознаванию больше
+  ничего не нужно. Выбор языка выделяет его переводчик и голос вместе, и скачивать нужно только
+  эту пару.
+- Segoe UI заменён встроенными шрифтами Nunito, Nunito Sans и JetBrains Mono; последний — для
+  меток модулей и измеренного времени.
+- Добавлен английский интерфейс рядом с русским. Все надписи перенесены в `lib/l10n/*.arb`,
+  переключатель — в настройках; русский остаётся языком по умолчанию и исходным. `README.md`
+  теперь на русском, рядом `README.en.md`.
+- Значок раздела «Эфир» заменён знаком `audio_capture` из Material Symbols. В шрифте Material
+  Icons, который поставляется с Flutter, такого глифа нет, поэтому он лежит исходным SVG и
+  окрашивается при отрисовке, как любой другой значок.
+- В настройки добавлен раздел вычислительного устройства. «Автоматически» опрашивает видеокарты
+  и назначает CUDA, Vulkan или процессор распознаванию, переводу и озвучке; каждую стадию затем
+  можно перевести вручную, а вариант, который машина не потянет, показан выключенным с причиной.
+  Тяжёлые GPU-рантаймы не входят в установщик и скачиваются по требованию.
+- Загрузки теперь докачиваются. `.part`, оставшийся после закрытия приложения, продолжается
+  range-запросом, а не качается заново, — это важнее всего для GPU-рантайма на 436 МБ; сервер,
+  отказавший в range, или часть, не прошедшая проверку, по-прежнему начинаются сначала.
+- Удаление скачанного GPU-рантайма теперь спрашивает подтверждение, прежде чем вернуть место на
+  диске: кнопка стоит там, где раньше была кнопка загрузки.
+- Любую загрузку теперь можно приостановить, продолжить и отменить — и модели, и GPU-рантаймы.
+  Пауза сохраняет недокачанный файл, и продолжение идёт range-запросом; отмена его удаляет.
+  Остановка проверяется между кусками данных, а не в конце файла. Исключение — CUDA-torch: у pip
+  нет промежуточной точки, поэтому там предлагается только отмена, которая убивает процесс и
+  очищает каталог.
+- Добавлена проверка обновлений. Боковая панель показывает установленную версию, проверяет её
+  при запуске и по запросу и, когда в репозитории вышло что-то новее, предлагает стрелку на
+  страницу релиза и уведомление Windows. Установщик теперь ставит ярлыкам AppUserModelID, без
+  которого Windows убирает уведомление обычного приложения, не показав его.
+- Модель Whisper стала выбором. Экран «Модели» перечисляет base, small, medium-q5_0 и
+  large-v3-turbo-q5_0 и запоминает, какая используется для распознавания; по умолчанию — самая
+  маленькая. large-v3-turbo помечена как не умеющая переводить речь — OpenAI дообучали её без
+  данных перевода, — поэтому её просят расшифровать, и она подходит только для английского
+  оригинала.
+- Русский переводчик заменён на `opus-mt-tc-big-en-zle` из Tatoeba-Challenge. Он убирает самые
+  грубые провалы модели 2020 года ценой 479 МБ против 307 МБ и примерно 150 мс на реплику.
+  Идентификатор сменился, поэтому старый переводчик нужно скачать заново. Имя собственное,
+  оставленное латиницей, которую Silero не прочитает, ловится, и строка переводится заново
+  строчными буквами.
+- Добавлена настройка голоса озвучки. «Автоматически» измеряет высоту голоса каждой захваченной
+  фразы и отвечает мужским или женским голосом под неё; голос можно выбрать и вручную. Пол
+  голосов в каталоге измерен, и оказалось, что все испанские голоса мужские, поэтому этот язык не
+  может следовать за говорящим и сообщает об этом.
+- На экран «Эфир» добавлена кнопка очистки расшифровки. Она выключена, пока очищать нечего, и не
+  трогает идущую сессию: новые фразы продолжают приходить.
+- Добавлены сообщения об ошибках на языке интерфейса. Сервисы теперь выдают код ошибки, а не
+  русскую фразу, поэтому ошибка, возникшая при одном языке, переписывается сразу, как только
+  выбран другой.
+- Исправлено: в окнах, слишком узких для раскладки в одну строку, выбор процесса игры сжимался до
+  огрызка с подписью, разорванной посреди слова; ниже этой ширины элементы теперь встают друг
+  под другом.
+- Панель теперь перерисовывает только изменившееся. Загрузка раньше перерисовывала весь экран на
+  каждый полученный кусок; теперь она сообщает целые проценты, и ни тик прогресса, ни
+  распознанная фраза не перерисовывают экраны, где их не видно.
+- Оба README переписаны вокруг первого запуска, со снимками настоящей сессии.
 
 ## [0.2.1] - 2026-09-10
 
-- Fixed local Windows builds after the executable rename by migrating stale CMake target caches.
-- Fixed intermittent UTF-8 decoding failures while the Windows process list changes during initialization.
-- Aligned the refresh and start buttons vertically with the game process selector.
+- Исправлены локальные сборки под Windows после переименования исполняемого файла: устаревшие
+  кэши целей CMake переносятся.
+- Исправлены редкие ошибки декодирования UTF-8, когда список процессов Windows менялся во время
+  инициализации.
+- Кнопки обновления и запуска выровнены по вертикали с выбором процесса игры.
 
 ## [0.2.0] - 2026-09-10
 
-- Completed the project-wide LoreDub rename across the app, native bridge, and build outputs.
-- Added the LoreDub icon to the Windows executable, installer, application shell, and README.
-- Redesigned the dashboard around a tactile industrial audio-module visual system.
-- Added responsive desktop navigation and compact-window widget coverage.
+- Завершено переименование проекта в LoreDub во всём: в приложении, нативном мосте и
+  результатах сборки.
+- Иконка LoreDub добавлена в исполняемый файл Windows, установщик, оболочку приложения и README.
+- Панель перерисована в тактильной индустриальной визуальной системе аудиомодуля.
+- Добавлены адаптивная навигация для рабочего стола и тесты виджетов для компактного окна.
 
 ## [0.1.0] - 2026-09-09
 
-- Added Windows process-specific audio capture with quiet original audio.
-- Added local speech recognition and English translation using whisper.cpp base.
-- Added English-to-Russian Marian translation and Russian Silero speech synthesis.
-- Added subtitle recognition using Windows OCR with configurable capture area.
-- Added on-demand model downloads and a Windows Inno Setup installer.
+- Добавлен захват звука отдельного процесса Windows с приглушённым оригиналом.
+- Добавлены локальное распознавание речи и перевод на английский на whisper.cpp base.
+- Добавлены перевод с английского на русский моделью Marian и русский синтез речи Silero.
+- Добавлено распознавание субтитров средствами Windows OCR с настраиваемой областью захвата.
+- Добавлены загрузка моделей по требованию и установщик Windows на Inno Setup.
