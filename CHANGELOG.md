@@ -4,6 +4,8 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-11
+
 - Lines of different characters can now overlap: a new line starts at once while another
   character is still speaking, instead of waiting for them to finish. A character never talks
   over themselves, and no more than two voices sound together. Characters are told apart by
