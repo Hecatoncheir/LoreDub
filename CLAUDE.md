@@ -133,6 +133,16 @@ recognizer by primary subtag, and a missing one comes back as an
 `targetLanguage`, `processText` sends `"translate": false` and the worker
 voices the text as it is.
 
+Subtitle mode voices only what a line gained: `NativeEngineService` keeps the
+last `ocrText` and passes each new one through `freshOcrText`
+(`domain/ocr_text_delta.dart`) — when at least half of the previous words
+open the new text (case and punctuation ignored), only the words from the
+first difference on are queued, and text identical to the previous is not
+queued at all. The previous text is kept for the whole session — the user
+asked that a line coming back unchanged, even after leaving the screen, stay
+silent — and forgotten only on stop. Snippets are never compared: each one
+is asked for by hand.
+
 The update check (`UpdateService`, `UpdateRepository`) reads the repository's
 latest release at startup and compares only the three version numbers. The
 Windows toast needs a Start Menu shortcut carrying the same `AppUserModelID`

@@ -13,6 +13,7 @@ import '../../domain/compute_device.dart';
 import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
 import '../../domain/hotkey.dart';
+import '../../domain/ocr_text_delta.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
 import 'phrase_queue.dart';
@@ -53,6 +54,11 @@ class NativeEngineService {
   /// Set while the session rests: capture hands nothing on, and a line
   /// finishing its translation meanwhile is shown but not voiced.
   bool _paused = false;
+
+  /// What subtitle mode read last, so a line that grows in place is voiced
+  /// only for what it gained, and one that comes back unchanged — even after
+  /// leaving the screen — is not voiced again.
+  String? _previousOcrText;
 
   Stream<Map<String, Object?>> get events => _events.stream;
   bool get processLoopbackSupported => ld_is_process_loopback_supported() == 1;
@@ -180,6 +186,7 @@ class NativeEngineService {
     // through the queue, and failing them is expected once the user stops.
     _activeConfig = null;
     _paused = false;
+    _previousOcrText = null;
     // ld_stop drops the hotkeys too; nothing is left for them to pause.
     _throwIfError(ld_stop());
     _pollEvents();
@@ -265,7 +272,10 @@ class NativeEngineService {
         _phrases.add(PendingPhrase.audio(wavePath));
       } else if (event['type'] == 'ocrText') {
         if (_activeConfig == null || _paused) continue;
-        _phrases.add(PendingPhrase.text(event['text']! as String));
+        final text = event['text']! as String;
+        final fresh = freshOcrText(_previousOcrText, text);
+        _previousOcrText = text;
+        if (fresh != null) _phrases.add(PendingPhrase.text(fresh));
       } else if (event['type'] == 'snapshot') {
         if (_activeConfig == null) continue;
         // Read even while dubbing rests: a selection is asked for by hand.

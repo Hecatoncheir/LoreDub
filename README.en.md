@@ -480,6 +480,12 @@ subtitles.
   a second, and a line is sent on once two scans in a row agree, so subtitles
   typed out letter by letter are not voiced in pieces. The same line is not
   repeated while it stays on screen.
+- **A line that grows is voiced only for what it gained.** When the new text
+  opens with at least half of the previous one, word for word — a dialogue box
+  finishing its sentence or adding a second one — only the words from the
+  point where the two part are voiced. Otherwise it is a different line and is
+  voiced whole. Text identical to the previous one is not voiced at all, even
+  after it has left the screen and come back.
 
 ### Limits
 
