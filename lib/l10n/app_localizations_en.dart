@@ -374,7 +374,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceNote =>
-      '\"Automatic\" matches a man\'s or a woman\'s voice to the original, line by line. \"Original voice\" also carries the speaker\'s timbre over into the dubbing.';
+      '\"Automatic\" matches a man\'s or a woman\'s voice to the original, and with remembered characters gives each of them a voice of their own. \"Original voice\" also carries the speaker\'s own timbre over into the dubbing.';
 
   @override
   String get voiceAutomatic => 'Automatic';

@@ -291,6 +291,11 @@ class _SlowStartRepository extends AppRepository {
     snapshotModels = modelDirectories;
   }
 
+  // The characters are remembered by default, so a start asks for the game's
+  // bank; naming the file must not go looking for the application directory.
+  @override
+  Future<String> voiceBankFileFor(String game) async => 'voice_bank/$game.json';
+
   @override
   Future<void> stop() async {
     stops++;

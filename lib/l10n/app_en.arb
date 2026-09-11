@@ -235,7 +235,7 @@
     }
   },
   "settingsVoice": "Dubbing voice",
-  "voiceNote": "\"Automatic\" matches a man's or a woman's voice to the original, line by line. \"Original voice\" also carries the speaker's timbre over into the dubbing.",
+  "voiceNote": "\"Automatic\" matches a man's or a woman's voice to the original, and with remembered characters gives each of them a voice of their own. \"Original voice\" also carries the speaker's own timbre over into the dubbing.",
   "voiceAutomatic": "Automatic",
   "voiceFixed": "Choose",
   "voiceFieldLabel": "Voice",

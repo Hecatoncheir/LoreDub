@@ -35,7 +35,7 @@ class AppSettings {
     this.automaticVoice = true,
     this.voice = '',
     this.originalVoice = false,
-    this.voiceBank = false,
+    this.voiceBank = true,
     this.overlapVoices = true,
     this.pauseHotkey = Hotkey.defaultPause,
     this.resumeHotkey = Hotkey.defaultResume,

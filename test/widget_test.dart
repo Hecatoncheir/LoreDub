@@ -1586,9 +1586,9 @@ void main() {
       expect((await SettingsService().load()).originalVoice, isTrue);
       expect(find.textContaining('Тембр оригинала накладывается'), findsOneWidget);
       expect(
-        find.textContaining('Персонажи не запоминаются'),
+        find.textContaining('получает свой голос Silero'),
         findsOneWidget,
-        reason: 'the voice bank starts off',
+        reason: 'the characters are remembered from the start',
       );
     });
 
@@ -1611,9 +1611,8 @@ void main() {
       );
       await tester.ensureVisible(remember);
       await tester.pumpAndSettle();
-      await tester.tap(remember);
-      await tester.pumpAndSettle();
 
+      expect(tester.widget<Switch>(remember).value, isTrue, reason: 'on from the start');
       expect(find.textContaining('получает свой голос Silero'), findsOneWidget);
     });
 
@@ -1662,7 +1661,7 @@ void main() {
       matching: find.byWidgetPredicate((widget) => widget is TextButton),
     );
 
-    testWidgets('remembers the characters only once asked', (tester) async {
+    testWidgets('remembers the characters until told otherwise', (tester) async {
       await pumpSettings(tester, settings: const AppSettings(originalVoice: true));
 
       expect(find.text('Сохранённых голосов нет'), findsOneWidget);
@@ -1671,6 +1670,7 @@ void main() {
         isNull,
         reason: 'there is nothing to clear',
       );
+      expect(find.textContaining('У каждой игры свой банк'), findsOneWidget);
 
       final row = find.ancestor(
         of: find.text('Запоминать голоса персонажей'),
@@ -1679,8 +1679,8 @@ void main() {
       await tester.tap(find.descendant(of: row.first, matching: find.byType(Switch)));
       await tester.pumpAndSettle();
 
-      expect((await SettingsService().load()).voiceBank, isTrue);
-      expect(find.textContaining('У каждой игры свой банк'), findsOneWidget);
+      expect((await SettingsService().load()).voiceBank, isFalse);
+      expect(find.textContaining('Персонажи не запоминаются'), findsOneWidget);
     });
 
     testWidgets('asks before clearing the kept voices', (tester) async {

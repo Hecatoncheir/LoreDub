@@ -276,7 +276,7 @@ Where the converter runs is chosen apart from translation, in the
 NVIDIA card a line is re-voiced in about 0.1 s; that takes the same CUDA torch
 runtime translation uses, and either row can download it.
 
-The **Remember the characters' voices** switch (off by default) keeps a voice
+The **Remember the characters' voices** switch (on by default) keeps a voice
 bank. It is on offer wherever the converter is downloaded — in Automatic mode
 too, where the converter only listens to who is speaking. Every new character
 is remembered by their voice fingerprint and given a Silero voice of their own

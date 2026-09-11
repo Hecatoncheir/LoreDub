@@ -88,7 +88,7 @@ class SettingsService {
       automaticVoice: preferences.getBool('automaticVoice') ?? true,
       voice: preferences.getString('voice') ?? '',
       originalVoice: preferences.getBool('originalVoice') ?? false,
-      voiceBank: preferences.getBool('voiceBank') ?? false,
+      voiceBank: preferences.getBool('voiceBank') ?? const AppSettings().voiceBank,
       overlapVoices: preferences.getBool('overlapVoices') ?? true,
       pauseHotkey: _readHotkey(preferences, 'pauseHotkey', Hotkey.defaultPause),
       resumeHotkey: _readHotkey(preferences, 'resumeHotkey', Hotkey.defaultResume),

@@ -198,21 +198,21 @@ void main() {
     expect(saved.automaticVoice, isTrue, reason: 'the base voice still follows the speaker');
   });
 
-  test('keeps no voices until asked, and remembers where OpenVoice runs', () async {
+  test('remembers the characters from the start, and where OpenVoice runs', () async {
     SharedPreferences.setMockInitialValues({});
     final service = SettingsService();
 
     final fresh = await service.load();
-    expect(fresh.voiceBank, isFalse);
+    expect(fresh.voiceBank, isTrue, reason: 'each character gets a voice without being asked');
     expect(fresh.voiceConversionBackend, isNull);
 
     await service.save(
-      const AppSettings(voiceBank: true)
+      const AppSettings(voiceBank: false)
           .withBackend(ComputeStage.voiceConversion, ComputeBackend.cuda),
     );
     final saved = await service.load();
 
-    expect(saved.voiceBank, isTrue);
+    expect(saved.voiceBank, isFalse, reason: 'a switch turned off stays off');
     expect(saved.voiceConversionBackend, ComputeBackend.cuda);
   });
 

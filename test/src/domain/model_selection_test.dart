@@ -124,12 +124,12 @@ void main() {
 
     test('still loads the converter for the original voice with nothing remembered', () {
       final selection = selectionWith(
-        const AppSettings().withVoiceMode(VoiceMode.original),
+        const AppSettings(voiceBank: false).withVoiceMode(VoiceMode.original),
       );
 
       expect(selection.tracksSpeakers, isFalse);
       expect(selection.needsVoiceConverter, isTrue);
-      expect(selection.keepsVoiceBank, isFalse, reason: 'the bank switch is off');
+      expect(selection.keepsVoiceBank, isFalse, reason: 'the bank switch was turned off');
     });
   });
 
