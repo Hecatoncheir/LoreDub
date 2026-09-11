@@ -46,7 +46,12 @@ radius.
    graphite with an orange edge when in use, and fills from the bottom while it
    downloads. Each bar keeps its buttons (download, pause/resume and cancel, or
    delete) always visible at its foot and grows slightly under the pointer;
-   only a failure's wording goes to a row under the chart.
+   only a failure's wording goes to a row under the chart. The dubbing
+   languages and the voice converter are tiles in the same vocabulary
+   (`model_tiles.dart`): one tile per language holds its translator and voice,
+   downloaded, picked and deleted as a pair with one ring for both. The shared
+   pieces — buttons, ring, hover growth, the delete dialog — live in
+   `model_visuals.dart`.
 3. **Signal setup** contains capture mode, OCR region, original volume, speech
    speed, and CPU budget. Settings are disabled while the pipeline is active.
 

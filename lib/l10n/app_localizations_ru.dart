@@ -148,16 +148,43 @@ class AppLocalizationsRu extends AppLocalizations {
       'Whisper переводит речь любого языка в английский текст. Нужна одна модель — чем больше, тем точнее и медленнее.';
 
   @override
-  String get sectionTranslation => 'МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА';
+  String get sectionLanguages => 'ЯЗЫКИ ОЗВУЧКИ';
 
   @override
-  String get sectionTranslationNote => 'Английский текст переводится на выбранный язык.';
+  String get sectionLanguagesNote =>
+      'Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете.';
 
   @override
-  String get sectionSpeech => 'МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА';
+  String get modelPartTranslation => 'перевод';
 
   @override
-  String get sectionSpeechNote => 'Голос должен быть того же языка, что и перевод.';
+  String get modelPartVoice => 'голос';
+
+  @override
+  String get modelPartConverter => 'конвертер голоса';
+
+  @override
+  String get languageHintSelect => 'Нажмите, чтобы озвучивать на этом языке';
+
+  @override
+  String get languageHintSelected => 'Озвучка идёт на этом языке';
+
+  @override
+  String get languageHintLocked => 'Язык можно сменить, когда озвучка остановлена';
+
+  @override
+  String get languageRemoveTitle => 'Удалить язык?';
+
+  @override
+  String languageRemoveMessage(String language, String size) {
+    return 'Переводчик и голос языка «$language» ($size) будут удалены с диска. Скачать их заново можно в любой момент.';
+  }
+
+  @override
+  String get converterHintInUse => 'Работает в режиме «Голос оригинала»';
+
+  @override
+  String get converterHintIdle => 'Нужен только для режима «Голос оригинала»';
 
   @override
   String get modelInstalled => 'Установлена';

@@ -93,10 +93,28 @@
   },
   "sectionRecognition": "SPEECH RECOGNITION",
   "sectionRecognitionNote": "Whisper turns speech in any language into English text. One model covers everything — larger is more accurate and slower.",
-  "sectionTranslation": "TEXT TRANSLATION MODELS",
-  "sectionTranslationNote": "The English text is translated into the language you pick.",
-  "sectionSpeech": "TEXT-TO-SPEECH MODELS",
-  "sectionSpeechNote": "The voice has to speak the same language as the translation.",
+  "sectionLanguages": "DUBBING LANGUAGES",
+  "sectionLanguagesNote": "A language's translator and voice are downloaded, picked and deleted together. Only the language you play in is needed.",
+  "modelPartTranslation": "translation",
+  "modelPartVoice": "voice",
+  "modelPartConverter": "voice converter",
+  "languageHintSelect": "Click to dub into this language",
+  "languageHintSelected": "Dubbing goes into this language",
+  "languageHintLocked": "The language can be changed once dubbing is stopped",
+  "languageRemoveTitle": "Delete the language?",
+  "languageRemoveMessage": "The {language} translator and voice ({size}) will be deleted from disk. They can be downloaded again at any time.",
+  "@languageRemoveMessage": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "converterHintInUse": "In use by Original voice mode",
+  "converterHintIdle": "Needed only by Original voice mode",
   "modelInstalled": "Installed",
   "downloadPause": "Pause",
   "downloadResume": "Resume",

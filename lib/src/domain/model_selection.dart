@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import 'app_settings.dart';
+import 'language_pair.dart';
 import 'model_package.dart';
+
+export 'language_pair.dart';
 
 /// What the settings and the installed packages together say the pipeline
 /// will use.
@@ -27,6 +30,32 @@ class ModelSelection {
   List<ModelInstallState> get speechModels => ofKind(ModelKind.speech);
 
   List<ModelInstallState> get voiceConverters => ofKind(ModelKind.voiceConversion);
+
+  /// Every dubbing language with its translator and voice, in catalogue order.
+  List<LanguagePair> get languagePairs {
+    final languages = <String>[];
+    for (final state in models) {
+      final language = state.model.language;
+      final paired =
+          state.model.kind == ModelKind.translation || state.model.kind == ModelKind.speech;
+      if (language != null && paired && !languages.contains(language)) languages.add(language);
+    }
+    ModelInstallState? find(ModelKind kind, String language) {
+      for (final state in models) {
+        if (state.model.kind == kind && state.model.language == language) return state;
+      }
+      return null;
+    }
+
+    return [
+      for (final language in languages)
+        LanguagePair(
+          language: language,
+          translation: find(ModelKind.translation, language),
+          speech: find(ModelKind.speech, language),
+        ),
+    ];
+  }
 
   /// The converter the original voice needs, if the catalogue has one.
   ModelInstallState? get voiceConverter => voiceConverters.firstOrNull;

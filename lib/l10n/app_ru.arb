@@ -93,10 +93,28 @@
   },
   "sectionRecognition": "РАСПОЗНАВАНИЕ РЕЧИ",
   "sectionRecognitionNote": "Whisper переводит речь любого языка в английский текст. Нужна одна модель — чем больше, тем точнее и медленнее.",
-  "sectionTranslation": "МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА",
-  "sectionTranslationNote": "Английский текст переводится на выбранный язык.",
-  "sectionSpeech": "МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА",
-  "sectionSpeechNote": "Голос должен быть того же языка, что и перевод.",
+  "sectionLanguages": "ЯЗЫКИ ОЗВУЧКИ",
+  "sectionLanguagesNote": "Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете.",
+  "modelPartTranslation": "перевод",
+  "modelPartVoice": "голос",
+  "modelPartConverter": "конвертер голоса",
+  "languageHintSelect": "Нажмите, чтобы озвучивать на этом языке",
+  "languageHintSelected": "Озвучка идёт на этом языке",
+  "languageHintLocked": "Язык можно сменить, когда озвучка остановлена",
+  "languageRemoveTitle": "Удалить язык?",
+  "languageRemoveMessage": "Переводчик и голос языка «{language}» ({size}) будут удалены с диска. Скачать их заново можно в любой момент.",
+  "@languageRemoveMessage": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "converterHintInUse": "Работает в режиме «Голос оригинала»",
+  "converterHintIdle": "Нужен только для режима «Голос оригинала»",
   "modelInstalled": "Установлена",
   "downloadPause": "Приостановить",
   "downloadResume": "Продолжить",

@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/model_package.dart';
 import '../compute_names.dart';
-import '../failure_messages.dart';
 import '../model_names.dart';
 import '../theme.dart';
+import 'model_visuals.dart';
 
 /// The Whisper builds drawn as a chart: each model is a bar whose height is
 /// its download to scale and whose place along the bottom is how well it
@@ -87,7 +87,7 @@ class WhisperModelChart extends StatelessWidget {
         _Legend(l10n: l10n),
         for (final state in failed) ...[
           const SizedBox(height: 10),
-          _FailureRow(state: state),
+          ModelFailureRow(state: state),
         ],
       ],
     );
@@ -221,87 +221,31 @@ class WhisperModelChart extends StatelessWidget {
     return () => select(state);
   }
 
-  List<_BarAction> _actionsFor(
+  List<ModelAction> _actionsFor(
     BuildContext context,
     AppLocalizations l10n,
     ModelInstallState state,
-  ) {
-    final stopping = isStopping(state.model.id);
-    if (state.progress != null) {
-      return [
-        _BarAction(
-          icon: state.paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-          tooltip: stopping
-              ? l10n.downloadStopping
-              : state.paused
-              ? l10n.downloadResume
-              : l10n.downloadPause,
-          onPressed: stopping ? null : () => state.paused ? onInstall(state) : onPause(state),
-        ),
-        _BarAction(
-          icon: Icons.close_rounded,
-          tooltip: l10n.downloadCancel,
-          onPressed: stopping ? null : () => onCancel(state),
-        ),
-      ];
-    }
-    if (!state.installed) {
-      return [
-        _BarAction(
-          icon: Icons.download_rounded,
-          tooltip: l10n.modelDownload,
-          onPressed: () => onInstall(state),
-        ),
-      ];
-    }
+  ) => modelActions(
+    l10n: l10n,
+    parts: [state],
+    isStopping: isStopping,
     // The model a live session reads from cannot vanish under it.
-    final locked = running && state.model.id == selectedId;
-    return [
-      _BarAction(
-        icon: Icons.delete_outline_rounded,
-        tooltip: locked ? l10n.modelRemoveInUse : l10n.modelRemove,
-        onPressed: locked ? null : () => _confirmRemove(context, l10n, state),
-      ),
-    ];
-  }
-
-  /// Hundreds of megabytes are not worth losing to a stray click, so the
-  /// question is asked, as it is for the GPU runtimes.
-  Future<void> _confirmRemove(
-    BuildContext context,
-    AppLocalizations l10n,
-    ModelInstallState state,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(l10n.modelRemoveTitle),
-        content: Text(
-          l10n.modelRemoveMessage(
-            modelTitle(l10n, state.model),
-            formatPackageSize(state.model.downloadBytes),
-          ),
-          style: const TextStyle(fontSize: 16, height: 1.4),
+    locked: running && state.model.id == selectedId,
+    onInstall: onInstall,
+    onPause: onPause,
+    onCancel: onCancel,
+    onRemove: () async {
+      final confirmed = await confirmModelRemoval(
+        context,
+        title: l10n.modelRemoveTitle,
+        message: l10n.modelRemoveMessage(
+          modelTitle(l10n, state.model),
+          formatPackageSize(state.model.downloadBytes),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.modelRemoveCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(l10n.modelRemoveConfirm),
-          ),
-        ],
-      ),
-    );
-    if (confirmed ?? false) onRemove(state);
-  }
+      );
+      if (confirmed) onRemove(state);
+    },
+  );
 
   String _tooltip(AppLocalizations l10n, ModelInstallState state) {
     final model = state.model;
@@ -327,14 +271,6 @@ class WhisperModelChart extends StatelessWidget {
   }
 }
 
-class _BarAction {
-  const _BarAction({required this.icon, required this.tooltip, required this.onPressed});
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-}
-
 /// One model. It grows a little under the pointer, from the axis up, so the
 /// bar about to be clicked stands out without the chart shifting around it.
 class _ModelBar extends StatefulWidget {
@@ -351,7 +287,7 @@ class _ModelBar extends StatefulWidget {
   final bool selected;
   final String tooltip;
   final VoidCallback? onTap;
-  final List<_BarAction> actions;
+  final List<ModelAction> actions;
 
   @override
   State<_ModelBar> createState() => _ModelBarState();
@@ -438,7 +374,7 @@ class _ModelBarState extends State<_ModelBar> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           for (final action in widget.actions)
-                            _ActionButton(action: action, onDark: darkFoot),
+                            ModelActionButton(action: action, onDark: darkFoot),
                         ],
                       ),
                     ),
@@ -483,7 +419,7 @@ class _ModelBarState extends State<_ModelBar> {
           math.min(constraints.maxWidth * 0.62, constraints.maxHeight * 0.92),
         );
         return Center(
-          child: _ProgressDial(
+          child: ModelProgressDial(
             key: ValueKey('whisperDial-${state.model.id}'),
             progress: progress,
             paused: state.paused,
@@ -497,7 +433,7 @@ class _ModelBarState extends State<_ModelBar> {
           math.min(constraints.maxWidth * 0.62, constraints.maxHeight * 0.62),
         );
         children.add(
-          _ProgressDial(
+          ModelProgressDial(
             key: ValueKey('whisperDial-${state.model.id}'),
             progress: progress,
             paused: state.paused,
@@ -554,83 +490,6 @@ class _ModelBarState extends State<_ModelBar> {
       );
     },
   );
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.action, required this.onDark});
-
-  final _BarAction action;
-  final bool onDark;
-
-  @override
-  Widget build(BuildContext context) {
-    final colour = onDark ? LoreDubPalette.raised : LoreDubPalette.ink;
-    return IconButton(
-      tooltip: action.tooltip,
-      onPressed: action.onPressed,
-      icon: Icon(action.icon, size: 19),
-      style: IconButton.styleFrom(
-        foregroundColor: colour,
-        disabledForegroundColor: colour.withValues(alpha: 0.35),
-        hoverColor: LoreDubPalette.orange.withValues(alpha: 0.18),
-        minimumSize: const Size(34, 34),
-        fixedSize: const Size(34, 34),
-        padding: EdgeInsets.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-    );
-  }
-}
-
-/// The share downloaded as a ring that fills clockwise from the top, with
-/// the figure inside it. Orange reads on the light top of a bar and on its
-/// dark fill alike; a paused download dims its arc.
-class _ProgressDial extends StatelessWidget {
-  const _ProgressDial({
-    super.key,
-    required this.progress,
-    required this.paused,
-    required this.size,
-  });
-
-  final double progress;
-  final bool paused;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final stroke = (size * 0.08).clamp(3.0, 7.0);
-    return SizedBox.square(
-      dimension: size,
-      // Progress arrives in steps; the arc glides between them.
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(end: progress.clamp(0.0, 1.0)),
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-        builder: (context, value, child) => CustomPaint(
-          painter: _ProgressRingPainter(value: value, paused: paused, stroke: stroke),
-          child: child,
-        ),
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(stroke + size * 0.07),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                '${(progress * 100).round()}%',
-                style: TextStyle(
-                  fontFamily: LoreDubFonts.mono,
-                  fontSize: math.max(12, size * 0.27),
-                  fontWeight: FontWeight.w600,
-                  color: LoreDubPalette.orange,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// What the four looks of a bar mean. Light, ticked, dark and filling are
@@ -714,39 +573,6 @@ class _Legend extends StatelessWidget {
   }
 }
 
-/// A download that failed. The bar went back to "not downloaded", so its
-/// own button tries again; the reason needs more room than a bar has.
-class _FailureRow extends StatelessWidget {
-  const _FailureRow({required this.state});
-
-  final ModelInstallState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Container(
-      key: ValueKey('whisperFailure-${state.model.id}'),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      decoration: BoxDecoration(
-        color: LoreDubPalette.panel,
-        borderRadius: const BorderRadius.all(Radius.circular(10)),
-        border: Border.all(color: LoreDubPalette.outline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(modelTitle(l10n, state.model), style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          SelectableText(
-            describeFailure(l10n, state.error!),
-            style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _AxesPainter extends CustomPainter {
   const _AxesPainter({
     required this.left,
@@ -808,39 +634,4 @@ class _AxesPainter extends CustomPainter {
     }
     return true;
   }
-}
-
-/// A dashed track, as in the reference drawing, with the downloaded share
-/// laid over it as a solid arc.
-class _ProgressRingPainter extends CustomPainter {
-  const _ProgressRingPainter({required this.value, required this.paused, required this.stroke});
-
-  final double value;
-  final bool paused;
-  final double stroke;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = (Offset.zero & size).deflate(stroke / 2);
-    final track = Paint()
-      ..color = LoreDubPalette.orange.withValues(alpha: 0.45)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1.5, stroke * 0.45);
-    const segments = 36;
-    const sweep = 2 * math.pi / segments;
-    for (var index = 0; index < segments; index++) {
-      canvas.drawArc(rect, index * sweep, sweep * 0.55, false, track);
-    }
-    if (value <= 0) return;
-    final arc = Paint()
-      ..color = paused ? LoreDubPalette.orange.withValues(alpha: 0.55) : LoreDubPalette.orange
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = stroke;
-    canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * value, false, arc);
-  }
-
-  @override
-  bool shouldRepaint(_ProgressRingPainter oldDelegate) =>
-      oldDelegate.value != value || oldDelegate.paused != paused || oldDelegate.stroke != stroke;
 }

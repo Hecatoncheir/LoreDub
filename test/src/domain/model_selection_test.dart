@@ -22,6 +22,50 @@ void main() {
     settings: settings,
   );
 
+  group('language pairs', () {
+    final translation = translationModelFor('ru')!;
+    final speech = speechModelFor('ru')!;
+
+    LanguagePair russianWith(List<ModelInstallState> models) =>
+        ModelSelection(models: models, settings: const AppSettings()).languagePairs.firstWhere(
+          (pair) => pair.language == 'ru',
+        );
+
+    test('pairs each language with its translator and voice, in catalogue order', () {
+      final pairs = selectionWith(const AppSettings()).languagePairs;
+
+      expect(pairs.map((pair) => pair.language), ['ru', 'de', 'es', 'fr', 'uk']);
+      for (final pair in pairs) {
+        expect(pair.translation?.model.kind, ModelKind.translation, reason: pair.language);
+        expect(pair.speech?.model.kind, ModelKind.speech, reason: pair.language);
+      }
+    });
+
+    test('counts as installed only with both halves on disk', () {
+      final half = russianWith([
+        ModelInstallState(model: translation, installed: true),
+        ModelInstallState(model: speech),
+      ]);
+
+      expect(half.installed, isFalse);
+      expect(half.progress, isNull, reason: 'nothing is downloading');
+      expect(half.downloadBytes, translation.downloadBytes + speech.downloadBytes);
+    });
+
+    test('shows one share for the pair while a half downloads', () {
+      final pair = russianWith([
+        ModelInstallState(model: translation, installed: true),
+        ModelInstallState(model: speech, progress: 0.5, paused: true),
+      ]);
+      final expected =
+          (translation.downloadBytes + speech.downloadBytes * 0.5) /
+          (translation.downloadBytes + speech.downloadBytes);
+
+      expect(pair.progress, closeTo(expected, 1e-9));
+      expect(pair.paused, isTrue);
+    });
+  });
+
   test('needs the voice converter only once the original voice is asked for', () {
     expect(
       selectionWith(const AppSettings(), converter: false).requiredModelsInstalled,

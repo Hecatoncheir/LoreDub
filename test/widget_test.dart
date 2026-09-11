@@ -470,7 +470,7 @@ void main() {
     expect(find.text('Немецкий · нет моделей'), findsWidgets);
   });
 
-  testWidgets('splits the models screen into recognition, translation and voices', (
+  testWidgets('splits the models screen into recognition, languages and the converter', (
     tester,
   ) async {
     final cubits = stage(
@@ -481,39 +481,145 @@ void main() {
     await pumpDashboard(tester, cubits, const Size(1280, 900));
 
     expect(find.text('РАСПОЗНАВАНИЕ РЕЧИ'), findsOneWidget);
-    expect(find.text('МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА'), findsOneWidget);
     expect(find.text('base'), findsOneWidget, reason: 'the whisper builds are bars on a chart');
 
-    // The voices sit below the fold of a lazy list.
-    await tester.scrollUntilVisible(find.text('МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'), 400);
-    expect(find.text('МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'), findsOneWidget);
+    // The tiles sit below the fold of a lazy list.
+    await tester.scrollUntilVisible(find.text('ЯЗЫКИ ОЗВУЧКИ'), 400);
+    expect(find.text('ЯЗЫКИ ОЗВУЧКИ'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('ГОЛОС ОРИГИНАЛА'), 400);
+    expect(find.text('ГОЛОС ОРИГИНАЛА'), findsOneWidget);
     final selection = cubits.selection;
     expect(selection.recognitionModels.length, greaterThan(1), reason: 'the model is a choice');
-    expect(selection.translationModels.length, greaterThan(1));
-    expect(selection.speechModels.length, greaterThan(1));
+    expect(selection.languagePairs.length, greaterThan(1));
   });
 
-  testWidgets('picks the language by tapping its card in either section', (tester) async {
-    final cubits = stage(
-      buildCubits(),
-      section: DashboardSection.models,
-      models: catalogue(installed: false),
-    );
-    await pumpDashboard(tester, cubits, const Size(1280, 900));
+  group('the language tiles', () {
+    Future<DashboardCubits> pumpTiles(
+      WidgetTester tester, {
+      List<ModelInstallState>? models,
+      AppSettings settings = const AppSettings(),
+      PipelineStatus status = PipelineStatus.idle,
+    }) async {
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.models,
+        settings: settings,
+        models: models ?? catalogue(missingLanguage: 'de'),
+        status: status,
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
+      await tester.scrollUntilVisible(find.byKey(const ValueKey('languageTile-uk')), 300);
+      await tester.pumpAndSettle();
+      return cubits;
+    }
 
-    await tester.scrollUntilVisible(find.text('Английский → немецкий'), 400);
-    await tester.ensureVisible(find.text('Английский → немецкий'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Английский → немецкий'));
-    await tester.pumpAndSettle();
-    expect(cubits.settings.settings.targetLanguage, 'de');
+    Finder tile(String language) => find.byKey(ValueKey('languageTile-$language'));
+    Finder on(String language, Finder what) => find.descendant(of: tile(language), matching: what);
 
-    await tester.scrollUntilVisible(find.text('Русский голос — Silero v5.3'), 400);
-    await tester.ensureVisible(find.text('Русский голос — Silero v5.3'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Русский голос — Silero v5.3'));
-    await tester.pumpAndSettle();
-    expect(cubits.settings.settings.targetLanguage, 'ru');
+    testWidgets('holds a translator and a voice in one tile per language', (tester) async {
+      await pumpTiles(tester);
+
+      for (final language in ['ru', 'de', 'es', 'fr', 'uk']) {
+        expect(tile(language), findsOneWidget, reason: language);
+      }
+      expect(on('ru', find.text('Русский')), findsOneWidget);
+      expect(on('ru', find.text('перевод')), findsOneWidget);
+      expect(on('ru', find.text('голос')), findsOneWidget);
+      expect(on('ru', find.byTooltip('Удалить')), findsOneWidget);
+      expect(on('de', find.byTooltip('Скачать')), findsOneWidget, reason: 'German is missing');
+      expect(on('de', find.byTooltip('Удалить')), findsNothing);
+    });
+
+    testWidgets('picks the language by tapping its tile', (tester) async {
+      final cubits = await pumpTiles(tester);
+
+      await tester.tap(on('de', find.text('Немецкий')));
+      await tester.pumpAndSettle();
+      expect(cubits.settings.settings.targetLanguage, 'de');
+
+      await tester.tap(on('ru', find.text('Русский')));
+      await tester.pumpAndSettle();
+      expect(cubits.settings.settings.targetLanguage, 'ru');
+    });
+
+    testWidgets('marks the language in use dark and the others light', (tester) async {
+      await pumpTiles(tester);
+
+      Color face(String language) => tester
+          .widget<Material>(
+            find.descendant(of: tile(language), matching: find.byType(Material)).first,
+          )
+          .color!;
+      expect(face('ru'), LoreDubPalette.graphite);
+      expect(face('fr'), LoreDubPalette.panel);
+    });
+
+    testWidgets('shows a pair downloading as one ring with its controls', (tester) async {
+      final translation = translationModelFor('ru')!;
+      final speech = speechModelFor('ru')!;
+      await pumpTiles(
+        tester,
+        models: [
+          for (final model in modelCatalog)
+            model.id == speech.id
+                ? ModelInstallState(model: model, progress: 0.5)
+                : ModelInstallState(model: model, installed: true),
+        ],
+      );
+
+      final share =
+          (translation.downloadBytes + speech.downloadBytes * 0.5) /
+          (translation.downloadBytes + speech.downloadBytes);
+      expect(on('ru', find.text('${(share * 100).round()}%')), findsOneWidget);
+      expect(on('ru', find.byTooltip('Приостановить')), findsOneWidget);
+      expect(on('ru', find.byTooltip('Отменить')), findsOneWidget);
+      expect(on('ru', find.byTooltip('Удалить')), findsNothing, reason: 'not while it downloads');
+    });
+
+    testWidgets('asks before deleting a language', (tester) async {
+      final cubits = await pumpTiles(tester);
+
+      await tester.tap(on('ru', find.byTooltip('Удалить')));
+      await tester.pumpAndSettle();
+      expect(find.text('Удалить язык?'), findsOneWidget);
+      expect(find.textContaining('языка «Русский»'), findsOneWidget);
+
+      await tester.tap(find.text('Оставить'));
+      await tester.pumpAndSettle();
+      expect(cubits.selection.isLanguageReady('ru'), isTrue);
+    });
+
+    testWidgets('keeps the language in use while dubbing runs', (tester) async {
+      await pumpTiles(tester, status: PipelineStatus.listening);
+
+      final locked = on('ru', find.byTooltip('Выбранную модель нельзя удалить, пока идёт озвучка'));
+      expect(locked, findsOneWidget);
+      expect(
+        // The button builds its tooltip inside itself.
+        tester
+            .widget<IconButton>(find.ancestor(of: locked, matching: find.byType(IconButton)))
+            .onPressed,
+        isNull,
+      );
+    });
+
+    testWidgets('draws the converter as a tile in use with the original voice', (tester) async {
+      await pumpTiles(tester, settings: const AppSettings().withVoiceMode(VoiceMode.original));
+      final converter = find.byKey(const ValueKey('converterTile-$voiceConverterModelId'));
+      await tester.scrollUntilVisible(converter, 300);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(of: converter, matching: find.text('конвертер голоса')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<Material>(find.descendant(of: converter, matching: find.byType(Material)).first)
+            .color,
+        LoreDubPalette.graphite,
+      );
+    });
   });
 
   testWidgets('needs only the pair of the chosen language', (tester) async {

@@ -66,8 +66,8 @@ everything needed to run on the processor.
 
 Two things are needed: one recognition model (start with **Whisper base**) and
 a translator/voice pair for the language you want to play in. For Russian that
-is about 740 MB. The other languages need not be downloaded — picking a
-language highlights both halves of its pair.
+is about 740 MB. The other languages need not be downloaded: every language
+has its own tile, and its one Download button fetches both halves of the pair.
 
 **3. Start the game** and let it play some sound, so it appears in the process
 list.
@@ -129,11 +129,16 @@ download cloud is not downloaded yet, a light one with a tick is, a dark one
 with an orange edge is in use, and one being downloaded fills from the bottom
 with its percentage in a ring. The buttons are always on the bar: download,
 pause or resume and cancel, or delete for a downloaded model (after a
-confirmation). A click on a downloaded bar picks it. Below
-it are the translators and the voices, one of each per language. Picking a
-language in either section selects both halves of the pair. At the bottom is
-the voice converter: one for every language, needed only by Original voice
-mode.
+confirmation). A click on a downloaded bar picks it.
+
+Below it are the dubbing languages, a tile each. A tile holds the pair: the
+translator and the voice, each with its size and a tick once on disk. The pair
+is downloaded, picked and deleted as one, with one ring for both while it
+downloads. A click on a tile picks the language. At the bottom is the voice
+converter's tile: one for every language, needed only by Original voice mode.
+The tiles speak the Whisper bars' language: light is missing, ticked is
+downloaded, dark with an orange edge is in use, a fill from the bottom is
+downloading.
 
 Any download can be paused, resumed and cancelled. Closing the application
 mid-download is not a loss: the next attempt fetches the rest rather than

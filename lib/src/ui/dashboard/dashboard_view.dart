@@ -31,6 +31,8 @@ import 'cubits/downloads_cubit.dart';
 import 'cubits/pipeline_cubit.dart';
 import 'cubits/settings_cubit.dart';
 import 'cubits/shell_cubit.dart';
+import 'model_tiles.dart';
+import 'model_visuals.dart';
 import 'ocr_region_picker.dart';
 import 'whisper_model_chart.dart';
 
@@ -1367,59 +1369,63 @@ class _ModelsPanel extends StatelessWidget {
           },
         ),
         const SizedBox(height: 26),
-        _ModuleLabel(number: '02', label: l10n.sectionTranslation),
+        // A translator and a voice are only ever useful together, so a
+        // language is one tile: downloaded, picked and deleted as a pair.
+        _ModuleLabel(number: '02', label: l10n.sectionLanguages),
         const SizedBox(height: 4),
-        _SectionNote(l10n.sectionTranslationNote),
-        for (final state in selection.translationModels) ...[
-          const SizedBox(height: 12),
-          _ModelCard(
-            state: state,
-            onInstall: () => cubits.downloads.installModel(state),
-            onPause: () => cubits.downloads.pauseDownload(state.model.id),
-            onCancel: () => cubits.downloads.cancelDownload(state.model.id),
-            stopping: downloads.isStopping(state.model.id),
-            language: state.model.language,
-            choosable: true,
-            selected: state.model.language == selected,
-            onSelect: running
-                ? null
-                : () => cubits.settings.selectTargetLanguage(state.model.language!),
-          ),
-        ],
+        _SectionNote(l10n.sectionLanguagesNote),
+        const SizedBox(height: 12),
+        ModelTileGrid(
+          children: [
+            for (final pair in selection.languagePairs)
+              LanguagePairTile(
+                key: ValueKey('languageTile-${pair.language}'),
+                pair: pair,
+                selected: pair.language == selected,
+                running: running,
+                isStopping: downloads.isStopping,
+                onSelect: running
+                    ? null
+                    : () => cubits.settings.selectTargetLanguage(pair.language),
+                onInstall: cubits.downloads.installModel,
+                onPause: (state) => cubits.downloads.pauseDownload(state.model.id),
+                onCancel: (state) => cubits.downloads.cancelDownload(state.model.id),
+                onRemove: cubits.downloads.removeModel,
+              ),
+          ],
+        ),
+        for (final pair in selection.languagePairs)
+          for (final part in pair.parts)
+            if (part.error != null) ...[
+              const SizedBox(height: 10),
+              ModelFailureRow(state: part),
+            ],
         const SizedBox(height: 26),
-        _ModuleLabel(number: '03', label: l10n.sectionSpeech),
-        const SizedBox(height: 4),
-        _SectionNote(l10n.sectionSpeechNote),
-        for (final state in selection.speechModels) ...[
-          const SizedBox(height: 12),
-          _ModelCard(
-            state: state,
-            onInstall: () => cubits.downloads.installModel(state),
-            onPause: () => cubits.downloads.pauseDownload(state.model.id),
-            onCancel: () => cubits.downloads.cancelDownload(state.model.id),
-            stopping: downloads.isStopping(state.model.id),
-            language: state.model.language,
-            choosable: true,
-            selected: state.model.language == selected,
-            onSelect: running
-                ? null
-                : () => cubits.settings.selectTargetLanguage(state.model.language!),
-          ),
-        ],
-        const SizedBox(height: 26),
-        _ModuleLabel(number: '04', label: l10n.sectionVoiceConversion),
+        _ModuleLabel(number: '03', label: l10n.sectionVoiceConversion),
         const SizedBox(height: 4),
         _SectionNote(l10n.sectionVoiceConversionNote),
-        for (final state in selection.voiceConverters) ...[
-          const SizedBox(height: 12),
-          _ModelCard(
-            state: state,
-            onInstall: () => cubits.downloads.installModel(state),
-            onPause: () => cubits.downloads.pauseDownload(state.model.id),
-            onCancel: () => cubits.downloads.cancelDownload(state.model.id),
-            stopping: downloads.isStopping(state.model.id),
-          ),
-        ],
+        const SizedBox(height: 12),
+        ModelTileGrid(
+          children: [
+            for (final state in selection.voiceConverters)
+              ConverterTile(
+                key: ValueKey('converterTile-${state.model.id}'),
+                state: state,
+                inUse: selection.clonesVoice,
+                running: running,
+                isStopping: downloads.isStopping,
+                onInstall: cubits.downloads.installModel,
+                onPause: (state) => cubits.downloads.pauseDownload(state.model.id),
+                onCancel: (state) => cubits.downloads.cancelDownload(state.model.id),
+                onRemove: cubits.downloads.removeModel,
+              ),
+          ],
+        ),
+        for (final state in selection.voiceConverters)
+          if (state.error != null) ...[
+            const SizedBox(height: 10),
+            ModelFailureRow(state: state),
+          ],
       ],
     );
   }
@@ -1496,7 +1502,6 @@ class _ModelCard extends StatelessWidget {
     required this.onPause,
     required this.onCancel,
     this.stopping = false,
-    this.language,
     this.choosable = false,
     this.selected = false,
     this.onSelect,
@@ -1512,13 +1517,9 @@ class _ModelCard extends StatelessWidget {
   /// A stop has been asked for and the download has not noticed yet.
   final bool stopping;
 
-  /// Set for the packages that come per language; null for the recognition
-  /// models, which serve all of them.
-  final String? language;
-
-  /// Whether this card is one of a set the player picks between — the
-  /// languages, and now the whisper builds. Such a card shows which one is
-  /// chosen instead of only whether it is downloaded.
+  /// Whether this card is one of a set the player picks between. Only the
+  /// Whisper builds are drawn as cards now, in a window too narrow for
+  /// their chart; such a card shows which one is chosen.
   final bool choosable;
   final bool selected;
   final VoidCallback? onSelect;

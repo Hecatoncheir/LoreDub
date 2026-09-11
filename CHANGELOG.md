@@ -4,6 +4,13 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+- Redrew the translators, voices and the voice converter in the Whisper chart's style. A
+  dubbing language is now one tile holding its translator and voice, downloaded, picked and
+  deleted together, with one progress ring for the pair; the converter is a tile of its own.
+  Every tile keeps its buttons in sight and grows slightly under the pointer, and any
+  downloaded model can now be deleted.
+- Fixed Cancel on a paused download doing nothing: the paused part files are now deleted.
+
 ## [0.8.0] - 2026-09-11
 
 - Redrew the Whisper models on the Models screen as a chart of size against quality: each build

@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -264,7 +266,25 @@ class DownloadsCubit extends Cubit<DownloadsState> {
   void pauseDownload(String id) => _stop(id, (control) => control.pause());
 
   /// Stops a download and throws away what arrived.
-  void cancelDownload(String id) => _stop(id, (control) => control.cancel());
+  ///
+  /// A paused model has no attempt left to signal — the pause ended it — so
+  /// its waiting part files are deleted here instead. Without that the
+  /// cancel button of a paused download did nothing at all.
+  void cancelDownload(String id) {
+    if (_controls.containsKey(id)) return _stop(id, (control) => control.cancel());
+    unawaited(_discardPaused(id));
+  }
+
+  Future<void> _discardPaused(String id) async {
+    final index = state.models.indexWhere((model) => model.model.id == id);
+    if (index < 0 || !state.models[index].paused || state.models[index].installed) return;
+    try {
+      await _modelRepository.remove(state.models[index].model);
+      _replaceModel(index, state.models[index].copyWith(clearProgress: true, paused: false));
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
 
   void _stop(String id, void Function(DownloadControl) ask) {
     final control = _controls[id];

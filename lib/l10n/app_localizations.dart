@@ -339,29 +339,77 @@ abstract class AppLocalizations {
   /// **'Whisper переводит речь любого языка в английский текст. Нужна одна модель — чем больше, тем точнее и медленнее.'**
   String get sectionRecognitionNote;
 
-  /// No description provided for @sectionTranslation.
+  /// No description provided for @sectionLanguages.
   ///
   /// In ru, this message translates to:
-  /// **'МОДЕЛИ ДЛЯ ПЕРЕВОДА ТЕКСТА'**
-  String get sectionTranslation;
+  /// **'ЯЗЫКИ ОЗВУЧКИ'**
+  String get sectionLanguages;
 
-  /// No description provided for @sectionTranslationNote.
+  /// No description provided for @sectionLanguagesNote.
   ///
   /// In ru, this message translates to:
-  /// **'Английский текст переводится на выбранный язык.'**
-  String get sectionTranslationNote;
+  /// **'Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете.'**
+  String get sectionLanguagesNote;
 
-  /// No description provided for @sectionSpeech.
+  /// No description provided for @modelPartTranslation.
   ///
   /// In ru, this message translates to:
-  /// **'МОДЕЛИ ДЛЯ ОЗВУЧИВАНИЯ ТЕКСТА'**
-  String get sectionSpeech;
+  /// **'перевод'**
+  String get modelPartTranslation;
 
-  /// No description provided for @sectionSpeechNote.
+  /// No description provided for @modelPartVoice.
   ///
   /// In ru, this message translates to:
-  /// **'Голос должен быть того же языка, что и перевод.'**
-  String get sectionSpeechNote;
+  /// **'голос'**
+  String get modelPartVoice;
+
+  /// No description provided for @modelPartConverter.
+  ///
+  /// In ru, this message translates to:
+  /// **'конвертер голоса'**
+  String get modelPartConverter;
+
+  /// No description provided for @languageHintSelect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите, чтобы озвучивать на этом языке'**
+  String get languageHintSelect;
+
+  /// No description provided for @languageHintSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Озвучка идёт на этом языке'**
+  String get languageHintSelected;
+
+  /// No description provided for @languageHintLocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Язык можно сменить, когда озвучка остановлена'**
+  String get languageHintLocked;
+
+  /// No description provided for @languageRemoveTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить язык?'**
+  String get languageRemoveTitle;
+
+  /// No description provided for @languageRemoveMessage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переводчик и голос языка «{language}» ({size}) будут удалены с диска. Скачать их заново можно в любой момент.'**
+  String languageRemoveMessage(String language, String size);
+
+  /// No description provided for @converterHintInUse.
+  ///
+  /// In ru, this message translates to:
+  /// **'Работает в режиме «Голос оригинала»'**
+  String get converterHintInUse;
+
+  /// No description provided for @converterHintIdle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужен только для режима «Голос оригинала»'**
+  String get converterHintIdle;
 
   /// No description provided for @modelInstalled.
   ///

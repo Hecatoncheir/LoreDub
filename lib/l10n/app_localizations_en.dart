@@ -149,16 +149,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'Whisper turns speech in any language into English text. One model covers everything — larger is more accurate and slower.';
 
   @override
-  String get sectionTranslation => 'TEXT TRANSLATION MODELS';
+  String get sectionLanguages => 'DUBBING LANGUAGES';
 
   @override
-  String get sectionTranslationNote => 'The English text is translated into the language you pick.';
+  String get sectionLanguagesNote =>
+      'A language\'s translator and voice are downloaded, picked and deleted together. Only the language you play in is needed.';
 
   @override
-  String get sectionSpeech => 'TEXT-TO-SPEECH MODELS';
+  String get modelPartTranslation => 'translation';
 
   @override
-  String get sectionSpeechNote => 'The voice has to speak the same language as the translation.';
+  String get modelPartVoice => 'voice';
+
+  @override
+  String get modelPartConverter => 'voice converter';
+
+  @override
+  String get languageHintSelect => 'Click to dub into this language';
+
+  @override
+  String get languageHintSelected => 'Dubbing goes into this language';
+
+  @override
+  String get languageHintLocked => 'The language can be changed once dubbing is stopped';
+
+  @override
+  String get languageRemoveTitle => 'Delete the language?';
+
+  @override
+  String languageRemoveMessage(String language, String size) {
+    return 'The $language translator and voice ($size) will be deleted from disk. They can be downloaded again at any time.';
+  }
+
+  @override
+  String get converterHintInUse => 'In use by Original voice mode';
+
+  @override
+  String get converterHintIdle => 'Needed only by Original voice mode';
 
   @override
   String get modelInstalled => 'Installed';
