@@ -135,10 +135,15 @@ voices the text as it is.
 
 Subtitle mode voices only what a line gained: `NativeEngineService` keeps the
 last `ocrText` and passes each new one through `freshOcrText`
-(`domain/ocr_text_delta.dart`) — when at least half of the previous words
-open the new text (case and punctuation ignored), only the words from the
-first difference on are queued, and text identical to the previous is not
-queued at all. The previous text is kept for the whole session — the user
+(`domain/ocr_text_delta.dart`), which compares the two texts whole — the
+longest common word subsequence, case and punctuation ignored. When more than
+half of the previous words reappear, only the words of the new text outside
+that alignment are queued, wherever they stand; a gap no longer than the
+words it replaces is a misreading and is skipped. Less in common queues the
+whole text, and text identical to the previous is not queued at all. The
+user chose this whole-text comparison over an earlier first-line rule.
+Windows OCR hands its lines over joined by `\n` (`Recognize` in
+`ocr_capture.cpp`); the snippet path flattens them before translating. The previous text is kept for the whole session — the user
 asked that a line coming back unchanged, even after leaving the screen, stay
 silent — and forgotten only on stop. Snippets are never compared: each one
 is asked for by hand.

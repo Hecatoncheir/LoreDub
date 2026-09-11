@@ -156,7 +156,16 @@ std::string Recognize(const winrt::Windows::Media::Ocr::OcrEngine& engine,
   const auto bitmap = winrt::Windows::Graphics::Imaging::SoftwareBitmap::CreateCopyFromBuffer(
       buffer, winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8, width, height,
       winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore);
-  return NormalizeText(Utf8(engine.RecognizeAsync(bitmap).get().Text()));
+  // One line of text per line on screen: subtitle mode tells a line that
+  // grew from a new one by comparing first lines.
+  std::string text;
+  for (const auto& line : engine.RecognizeAsync(bitmap).get().Lines()) {
+    const std::string part = NormalizeText(Utf8(line.Text()));
+    if (part.empty()) continue;
+    if (!text.empty()) text.push_back('\n');
+    text += part;
+  }
+  return text;
 }
 
 // The installed recognizer whose primary subtag is [code] — "en" finds

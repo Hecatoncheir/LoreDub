@@ -279,7 +279,8 @@ class NativeEngineService {
       } else if (event['type'] == 'snapshot') {
         if (_activeConfig == null) continue;
         // Read even while dubbing rests: a selection is asked for by hand.
-        final text = event['text'] as String? ?? '';
+        // OCR reports the lines on screen apart; the translator wants prose.
+        final text = (event['text'] as String? ?? '').split(RegExp(r'\s+')).join(' ').trim();
         if (text.isNotEmpty) _phrases.add(PendingPhrase.text(text, snapshot: true));
         _events.add(event);
       } else {
