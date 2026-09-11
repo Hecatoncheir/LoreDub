@@ -4,12 +4,13 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-11
+
 - Fixed the CUDA runtime download hanging with the bar stuck at 5%: pip fetched the 2.5 GB
   wheel with no progress, no resume, and no end on a connection that stopped delivering.
   LoreDub now downloads the wheel itself — pausable, resumable, checked against its SHA-256 —
   and pip only installs the local file. Any download that stops receiving data reconnects by
   itself after a minute and carries on from where it was.
-
 - Added an Original voice mode beside Automatic and Choose: every line is re-voiced in the
   timbre of the phrase it answers by the OpenVoice V2 tone colour converter (MIT, 131 MB,
   downloaded from the new Original voice section of the Models screen), laid over the Silero
