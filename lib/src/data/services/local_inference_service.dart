@@ -166,6 +166,10 @@ class LocalInferenceService {
 
     /// Where downloaded GPU runtimes live; needed by the CUDA backends.
     String? downloadedRuntimeDirectory,
+
+    /// The OpenVoice converter directory, when each line is to be re-voiced
+    /// in the timbre of the phrase it answers.
+    String? voiceConverter,
   }) async {
     _workerReady = Completer<void>();
     _diagnostics.clear();
@@ -186,6 +190,10 @@ class LocalInferenceService {
     final workerFile = File(path.join(work.path, 'inference_worker.py'));
     final workerBytes = await rootBundle.load('assets/runtime/inference_worker.py');
     await workerFile.writeAsBytes(workerBytes.buffer.asUint8List(), flush: true);
+    // The converter is a module the worker imports from its own directory.
+    final converterFile = File(path.join(work.path, 'tone_converter.py'));
+    final converterBytes = await rootBundle.load('assets/runtime/tone_converter.py');
+    await converterFile.writeAsBytes(converterBytes.buffer.asUint8List(), flush: true);
     onStartupProgress?.call(0.05, 'python');
     _worker = await Process.start(
       python,
@@ -220,6 +228,7 @@ class LocalInferenceService {
           '--extra-packages',
           path.join(downloadedRuntimeDirectory, torchCudaRuntimeId),
         ],
+        if (voiceConverter != null) ...['--voice-converter', voiceConverter],
       ],
       environment: const {'PYTHONIOENCODING': 'utf-8'},
     );

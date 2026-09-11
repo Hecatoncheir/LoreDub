@@ -1038,12 +1038,13 @@ void main() {
     Future<DashboardCubits> pumpSettings(
       WidgetTester tester, {
       AppSettings settings = const AppSettings(),
+      List<ModelInstallState>? models,
     }) async {
       final cubits = stage(
         buildCubits(),
         section: DashboardSection.settings,
         settings: settings,
-        models: catalogue(),
+        models: models ?? catalogue(),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 1000));
       await tester.scrollUntilVisible(
@@ -1115,6 +1116,36 @@ void main() {
 
       expect(cubits.selection.canFollowSpeaker, isFalse);
       expect(find.textContaining('одного пола'), findsOneWidget);
+    });
+
+    testWidgets('re-voices in the original timbre once asked', (tester) async {
+      await pumpSettings(tester);
+
+      await tester.tap(find.text('Голос оригинала'));
+      await tester.pumpAndSettle();
+
+      expect((await SettingsService().load()).originalVoice, isTrue);
+      expect(find.textContaining('Тембр берётся из каждой реплики'), findsOneWidget);
+    });
+
+    testWidgets('asks for the converter before re-voicing', (tester) async {
+      final cubits = await pumpSettings(
+        tester,
+        settings: const AppSettings(originalVoice: true),
+        models: [
+          for (final state in catalogue())
+            state.model.kind == ModelKind.voiceConversion
+                ? ModelInstallState(model: state.model)
+                : state,
+        ],
+      );
+
+      expect(find.textContaining('Нужен конвертер голоса'), findsOneWidget);
+      expect(
+        cubits.selection.requiredModelsInstalled,
+        isFalse,
+        reason: 'the start button waits for the download',
+      );
     });
   });
 

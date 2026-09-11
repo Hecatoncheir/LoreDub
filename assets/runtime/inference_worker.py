@@ -199,6 +199,9 @@ def main():
     parser.add_argument("--follow-speaker", action="store_true")
     parser.add_argument("--male-voices", default="")
     parser.add_argument("--female-voices", default="")
+    # The OpenVoice tone converter's directory. With it, every line is
+    # re-voiced in the timbre of the phrase it answers.
+    parser.add_argument("--voice-converter", default="")
     args = parser.parse_args()
 
     speed = min(2.0, max(0.5, args.speed))
@@ -227,10 +230,24 @@ def main():
     report_progress(0.90, "speech")
     tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
     tts.to(torch.device("cpu"))
+    # Loading the Silero package drops torch to a single thread, and that
+    # holds for everything after it: the translator ran on one core, and the
+    # voice converter took three times as long. The requested count goes back.
+    torch.set_num_threads(max(1, args.threads))
     # Every Silero language ships its own voices. Falling back keeps an
     # unknown name from turning the whole language into a runtime error.
     voices = list(getattr(tts, "speakers", None) or [])
     speaker = args.speaker if args.speaker in voices else (voices[0] if voices else args.speaker)
+
+    # The Silero voice picked below stays the base: the converter only moves
+    # the original speaker's timbre onto it.
+    converter = None
+    if args.voice_converter:
+        report_progress(0.95, "converter")
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        from tone_converter import ToneConverter
+
+        converter = ToneConverter(args.voice_converter, device)
 
     # The catalogue names the voices, but only the package knows which of them
     # it really ships, so the two are intersected before anything is chosen.
@@ -265,6 +282,27 @@ def main():
         candidates = by_gender[gender]
         current_voice = speaker if speaker in candidates else candidates[0]
         return current_voice
+
+    # The timbre of the last phrase that had a voice in it. A line of music or
+    # a short grunt keeps it, the same way the automatic choice keeps its voice.
+    current_timbre = None
+
+    def timbre_for(request):
+        nonlocal current_timbre
+        source = request.get("wave")
+        if source:
+            try:
+                samples, rate = read_wave_mono(source)
+            except (OSError, wave.Error, ValueError):
+                samples, rate = None, 0
+            if (
+                samples is not None
+                and rate > 0
+                and len(samples) >= rate // 2
+                and median_f0(samples, rate) is not None
+            ):
+                current_timbre = converter.embed(samples, rate)
+        return current_timbre
 
     pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
     # The device is reported back rather than assumed: a CUDA build that fell
@@ -303,13 +341,18 @@ def main():
                 put_yo=True,
             )
             samples = audio.clamp(-1, 1).to(torch.float32).cpu().numpy()
-            samples = change_speed(samples, speed, args.sample_rate)
+            rate = args.sample_rate
+            timbre = timbre_for(request) if converter is not None else None
+            if timbre is not None:
+                # The converter answers at its own rate; the file is written at it.
+                samples, rate = converter.convert(samples, rate, timbre)
+            samples = change_speed(samples, speed, rate)
             pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16).tobytes()
             output = pathlib.Path(args.work_directory) / f"speech-{request_id}.wav"
             with wave.open(str(output), "wb") as stream:
                 stream.setnchannels(1)
                 stream.setsampwidth(2)
-                stream.setframerate(args.sample_rate)
+                stream.setframerate(rate)
                 stream.writeframes(pcm)
             reply(
                 {
@@ -317,6 +360,7 @@ def main():
                     "translated": translated,
                     "wave": str(output),
                     "voice": chosen,
+                    "cloned": timbre is not None,
                 }
             )
         except Exception as error:

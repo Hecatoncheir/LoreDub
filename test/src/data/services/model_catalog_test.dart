@@ -94,4 +94,23 @@ void main() {
 
     expect(ids.toSet(), hasLength(ids.length));
   });
+
+  test('offers one voice converter for every language, pinned byte for byte', () {
+    final converters = modelCatalog.where((model) => model.kind == ModelKind.voiceConversion);
+
+    expect(converters.map((model) => model.id), [voiceConverterModelId]);
+    final converter = converters.single;
+    expect(converter.language, isNull, reason: 'the timbre is moved the same way for any language');
+    expect(
+      converter.artifacts.map((artifact) => artifact.fileName),
+      containsAll(['checkpoint.pth', 'config.json']),
+    );
+    for (final artifact in converter.artifacts) {
+      expect(
+        artifact.hash,
+        hasLength(64),
+        reason: '${artifact.fileName} runs as code in the worker',
+      );
+    }
+  });
 }

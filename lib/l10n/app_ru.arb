@@ -148,12 +148,42 @@
     }
   },
   "settingsVoice": "Голос озвучки",
-  "voiceNote": "«Автоматически» подбирает мужской или женский голос под голос оригинала, отдельно для каждой реплики.",
+  "voiceNote": "«Автоматически» подбирает мужской или женский голос под голос оригинала, отдельно для каждой реплики. «Голос оригинала» вдобавок переносит на озвучку тембр говорящего.",
   "voiceAutomatic": "Автоматически",
   "voiceFixed": "Выбрать",
   "voiceFieldLabel": "Голос",
   "voiceUnavailable": "В пакете этого языка голоса только одного пола — выбрать можно, но подстраиваться не под что.",
   "voiceNeedsAudio": "В режиме субтитров оригинал не слышен, поэтому голос берётся выбранный.",
+  "voiceOriginal": "Голос оригинала",
+  "voiceOriginalNote": "Тембр берётся из каждой реплики и накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже.",
+  "voiceOriginalMissing": "Нужен конвертер голоса: скачайте его в разделе «Голос оригинала» на экране «Модели».",
+  "voiceOriginalSpeaking": "Тембр оригинала поверх голоса {name}",
+  "@voiceOriginalSpeaking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionVoiceConversion": "ГОЛОС ОРИГИНАЛА",
+  "sectionVoiceConversionNote": "Нужен только для режима «Голос оригинала»: переносит на озвучку тембр говорящего. Один конвертер на все языки.",
+  "modelConverterTitle": "OpenVoice {version} — конвертер голоса",
+  "@modelConverterTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "modelConverterNote": "Переносит тембр оригинальной реплики на голос Silero, {size}.",
+  "@modelConverterNote": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "stageConverter": "Загрузка конвертера голоса",
   "voiceSpeaking": "Сейчас говорит: {name}",
   "@voiceSpeaking": {
     "placeholders": {

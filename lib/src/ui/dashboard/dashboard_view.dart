@@ -1374,6 +1374,20 @@ class _ModelsPanel extends StatelessWidget {
                 : () => cubits.settings.selectTargetLanguage(state.model.language!),
           ),
         ],
+        const SizedBox(height: 26),
+        _ModuleLabel(number: '04', label: l10n.sectionVoiceConversion),
+        const SizedBox(height: 4),
+        _SectionNote(l10n.sectionVoiceConversionNote),
+        for (final state in selection.voiceConverters) ...[
+          const SizedBox(height: 12),
+          _ModelCard(
+            state: state,
+            onInstall: () => cubits.downloads.installModel(state),
+            onPause: () => cubits.downloads.pauseDownload(state.model.id),
+            onCancel: () => cubits.downloads.cancelDownload(state.model.id),
+            stopping: downloads.isStopping(state.model.id),
+          ),
+        ],
       ],
     );
   }
@@ -2005,28 +2019,49 @@ class _VoiceCard extends StatelessWidget {
     final running = pipeline.running;
     final voices = selection.availableVoices;
     final canFollow = selection.canFollowSpeaker;
-    final automatic = settings.automaticVoice && canFollow;
+    final canClone = selection.canUseOriginalVoice;
+    // A mode this setup cannot honour is shown as the one that will run.
+    final mode = switch (settings.voiceMode) {
+      VoiceMode.original when canClone => VoiceMode.original,
+      VoiceMode.automatic || VoiceMode.original when canFollow => VoiceMode.automatic,
+      _ => VoiceMode.chosen,
+    };
+    final converterInstalled = selection.voiceConverter?.installed ?? false;
     return _SettingCard(
       title: l10n.settingsVoice,
       subtitle: l10n.voiceNote,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SegmentedButton<bool>(
+          SegmentedButton<VoiceMode>(
             segments: [
               ButtonSegment(
-                value: true,
+                value: VoiceMode.automatic,
                 label: Text(l10n.voiceAutomatic),
                 enabled: canFollow,
               ),
-              ButtonSegment(value: false, label: Text(l10n.voiceFixed)),
+              ButtonSegment(value: VoiceMode.chosen, label: Text(l10n.voiceFixed)),
+              ButtonSegment(
+                value: VoiceMode.original,
+                label: Text(l10n.voiceOriginal),
+                enabled: canClone,
+              ),
             ],
-            selected: {automatic},
+            selected: {mode},
             onSelectionChanged: running
                 ? null
-                : (selection) =>
-                      cubits.settings.update(settings.copyWith(automaticVoice: selection.first)),
+                : (picked) => cubits.settings.update(settings.withVoiceMode(picked.first)),
           ),
+          if (mode == VoiceMode.original) ...[
+            const SizedBox(height: 10),
+            Text(
+              converterInstalled ? l10n.voiceOriginalNote : l10n.voiceOriginalMissing,
+              style: TextStyle(
+                color: converterInstalled ? LoreDubPalette.mutedInk : LoreDubPalette.warning,
+                fontSize: 12,
+              ),
+            ),
+          ],
           if (!canFollow) ...[
             const SizedBox(height: 10),
             Text(
@@ -2036,7 +2071,10 @@ class _VoiceCard extends StatelessWidget {
               style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
             ),
           ],
-          if (!automatic && voices.isNotEmpty) ...[
+          // The original voice needs a base to lay its timbre over; when the
+          // package cannot follow the speaker, that base is chosen by hand.
+          if ((mode == VoiceMode.chosen || (mode == VoiceMode.original && !canFollow)) &&
+              voices.isNotEmpty) ...[
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               key: const ValueKey('voice'),
@@ -2058,10 +2096,12 @@ class _VoiceCard extends StatelessWidget {
           // Which voice the automatic choice actually settled on, so it is
           // not a silent decision — the same courtesy the detected language
           // gets on the live screen.
-          if (automatic ? pipeline.spokenVoice : null case final speaking?) ...[
+          if (mode != VoiceMode.chosen ? pipeline.spokenVoice : null case final speaking?) ...[
             const SizedBox(height: 10),
             Text(
-              l10n.voiceSpeaking(speaking),
+              mode == VoiceMode.original
+                  ? l10n.voiceOriginalSpeaking(speaking)
+                  : l10n.voiceSpeaking(speaking),
               style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
             ),
           ],

@@ -492,7 +492,7 @@ abstract class AppLocalizations {
   /// No description provided for @voiceNote.
   ///
   /// In ru, this message translates to:
-  /// **'«Автоматически» подбирает мужской или женский голос под голос оригинала, отдельно для каждой реплики.'**
+  /// **'«Автоматически» подбирает мужской или женский голос под голос оригинала, отдельно для каждой реплики. «Голос оригинала» вдобавок переносит на озвучку тембр говорящего.'**
   String get voiceNote;
 
   /// No description provided for @voiceAutomatic.
@@ -524,6 +524,60 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'В режиме субтитров оригинал не слышен, поэтому голос берётся выбранный.'**
   String get voiceNeedsAudio;
+
+  /// No description provided for @voiceOriginal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос оригинала'**
+  String get voiceOriginal;
+
+  /// No description provided for @voiceOriginalNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тембр берётся из каждой реплики и накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже.'**
+  String get voiceOriginalNote;
+
+  /// No description provided for @voiceOriginalMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужен конвертер голоса: скачайте его в разделе «Голос оригинала» на экране «Модели».'**
+  String get voiceOriginalMissing;
+
+  /// No description provided for @voiceOriginalSpeaking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тембр оригинала поверх голоса {name}'**
+  String voiceOriginalSpeaking(String name);
+
+  /// No description provided for @sectionVoiceConversion.
+  ///
+  /// In ru, this message translates to:
+  /// **'ГОЛОС ОРИГИНАЛА'**
+  String get sectionVoiceConversion;
+
+  /// No description provided for @sectionVoiceConversionNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужен только для режима «Голос оригинала»: переносит на озвучку тембр говорящего. Один конвертер на все языки.'**
+  String get sectionVoiceConversionNote;
+
+  /// No description provided for @modelConverterTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'OpenVoice {version} — конвертер голоса'**
+  String modelConverterTitle(String version);
+
+  /// No description provided for @modelConverterNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переносит тембр оригинальной реплики на голос Silero, {size}.'**
+  String modelConverterNote(String size);
+
+  /// No description provided for @stageConverter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка конвертера голоса'**
+  String get stageConverter;
 
   /// No description provided for @voiceSpeaking.
   ///

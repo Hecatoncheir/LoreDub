@@ -41,7 +41,8 @@ sent anywhere, and there is no account to make.
   LoreDub's own speech is excluded too, so it never feeds back into
   recognition.
 - **The voice matches the character.** A man's or a woman's, chosen from the
-  pitch of the original, line by line.
+  pitch of the original, line by line — and in [Original voice](#dubbing-voice)
+  mode the dubbing takes on the speaker's timbre too.
 - **Five dubbing languages:** Russian, German, Spanish, French and Ukrainian.
 - **A graphics card is optional.** NVIDIA roughly halves the recognition time,
   but everything works on the processor without one.
@@ -123,7 +124,9 @@ travel the whole pipeline.
 
 At the top sits speech recognition: one Whisper model for every language. Below
 it are the translators and the voices, one of each per language. Picking a
-language in either section selects both halves of the pair.
+language in either section selects both halves of the pair. At the bottom is
+the voice converter: one for every language, needed only by Original voice
+mode.
 
 Any download can be paused, resumed and cancelled. Closing the application
 mid-download is not a loss: the next attempt fetches the rest rather than
@@ -161,6 +164,7 @@ Game process (WASAPI process loopback, 16 kHz mono)
   -> whisper.cpp --translate
   -> Helsinki-NLP Marian English -> chosen language
   -> Silero TTS in that language
+  -> (Original voice mode) OpenVoice V2: the line's timbre over the Silero voice
   -> default Windows output
 ```
 
@@ -188,7 +192,7 @@ and applies immediately, without a restart. Every label lives in
 
 ## Dubbing voice
 
-Settings carries an **Automatic / Choose** switch. Automatic is the default:
+Settings carries an **Automatic / Choose / Original voice** switch. Automatic is the default:
 the worker measures the pitch of the captured phrase and answers in a man's
 or a woman's voice to match, line by line. The decision is sticky — an
 unclear phrase keeps the previous voice, so noise does not change the
@@ -209,6 +213,17 @@ and its median fundamental taken.
 Automatic is unavailable where a package ships voices of one gender only, and
 in subtitle mode, which never hears the original. Both say so in Settings and
 fall back to the chosen voice.
+
+**Original voice** goes further: the timbre is taken from the same captured
+line and moved onto the Silero voice by the
+[OpenVoice V2](https://github.com/myshell-ai/OpenVoice) tone colour converter
+(MIT licence). The base voice is still picked by pitch, which leaves the
+converter less to move; where the package cannot follow the speaker's gender,
+the chosen voice is the base. A line with no voice in it — music, noise, a short
+grunt — keeps the previous timbre. It needs the converter (131 MB) from the
+Original voice section of the **Models** screen, and on the processor it adds
+about 0.9 s a line. Subtitle mode cannot offer it for the same reason:
+there is no original to hear.
 
 ## Translator
 

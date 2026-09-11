@@ -79,6 +79,7 @@ class SettingsService {
       whisperModel: preferences.getString('whisperModel') ?? '',
       automaticVoice: preferences.getBool('automaticVoice') ?? true,
       voice: preferences.getString('voice') ?? '',
+      originalVoice: preferences.getBool('originalVoice') ?? false,
       computeDevice: ComputeDevice.values.firstWhere(
         (device) => device.name == preferences.getString('computeDevice'),
         orElse: () => ComputeDevice.auto,
@@ -114,6 +115,7 @@ class SettingsService {
       preferences.setString('whisperModel', settings.whisperModel),
       preferences.setBool('automaticVoice', settings.automaticVoice),
       preferences.setString('voice', settings.voice),
+      preferences.setBool('originalVoice', settings.originalVoice),
       preferences.setString('computeDevice', settings.computeDevice.name),
       _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
       _writeBackend(preferences, 'translationBackend', settings.translationBackend),

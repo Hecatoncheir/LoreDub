@@ -233,7 +233,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceNote =>
-      '\"Automatic\" matches a man\'s or a woman\'s voice to the original, line by line.';
+      '\"Automatic\" matches a man\'s or a woman\'s voice to the original, line by line. \"Original voice\" also carries the speaker\'s timbre over into the dubbing.';
 
   @override
   String get voiceAutomatic => 'Automatic';
@@ -251,6 +251,42 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voiceNeedsAudio =>
       'Subtitle mode never hears the original, so the chosen voice is used.';
+
+  @override
+  String get voiceOriginal => 'Original voice';
+
+  @override
+  String get voiceOriginalNote =>
+      'The timbre is taken from every line and laid over the Silero voice. On the processor each line sounds about a second later.';
+
+  @override
+  String get voiceOriginalMissing =>
+      'This needs the voice converter: download it under Original voice on the Models screen.';
+
+  @override
+  String voiceOriginalSpeaking(String name) {
+    return 'The original\'s timbre over $name';
+  }
+
+  @override
+  String get sectionVoiceConversion => 'ORIGINAL VOICE';
+
+  @override
+  String get sectionVoiceConversionNote =>
+      'Only needed for the Original voice mode: it carries the speaker\'s timbre over into the dubbing. One converter serves every language.';
+
+  @override
+  String modelConverterTitle(String version) {
+    return 'OpenVoice $version voice converter';
+  }
+
+  @override
+  String modelConverterNote(String size) {
+    return 'Moves the timbre of the original line onto the Silero voice, $size.';
+  }
+
+  @override
+  String get stageConverter => 'Loading the voice converter';
 
   @override
   String voiceSpeaking(String name) {

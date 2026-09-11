@@ -116,6 +116,15 @@ can show it. Voice genders in `model_catalog.dart` are measured, not looked
 up — add a voice only with a gender you have measured, or leave it
 `VoiceGender.unknown`, which keeps the automatic choice out of it.
 
+With `AppSettings.originalVoice` (the "Original voice" mode) the worker is
+also handed the OpenVoice V2 converter directory (`--voice-converter`, a
+`ModelKind.voiceConversion` package) and re-voices each line in the timbre of
+its captured WAV. The network lives in `assets/runtime/tone_converter.py`, a
+torch-and-numpy-only port of the MIT converter that the worker imports from
+its own directory; its weights load with `weights_only=True`. A phrase with no
+voiced frames keeps the previous timbre, and subtitle mode has no audio, so
+`ModelSelection.clonesVoice` is false there.
+
 Which device each stage runs on is decided in `domain/compute_device.dart`,
 which is pure and unit-tested: `resolveComputeBackend` takes the user's preset,
 an optional per-stage pin, and a `ComputeAvailability` (adapters from the

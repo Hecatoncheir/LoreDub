@@ -18,6 +18,7 @@ String modelTitle(AppLocalizations l10n, ModelPackage model) => switch (model.ki
     voiceName(l10n, model.language!),
     model.version ?? '',
   ),
+  ModelKind.voiceConversion => l10n.modelConverterTitle(model.version ?? ''),
 };
 
 String modelDescription(AppLocalizations l10n, ModelPackage model) => switch (model.kind) {
@@ -31,4 +32,5 @@ String modelDescription(AppLocalizations l10n, ModelPackage model) => switch (mo
     model.id == speechModelFor('ru')?.id
         ? l10n.modelVoiceNoteRu
         : l10n.modelVoiceNote(voiceSpeechName(l10n, model.language!)),
+  ModelKind.voiceConversion => l10n.modelConverterNote(formatPackageSize(model.downloadBytes)),
 };

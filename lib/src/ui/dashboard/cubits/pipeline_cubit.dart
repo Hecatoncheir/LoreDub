@@ -216,6 +216,8 @@ class PipelineCubit extends Cubit<LivePipelineState> {
           ),
           'translation': await _modelRepository.directoryFor(translation),
           'speech': path.join(speechDirectory, speech.primaryFileName),
+          if (selection.clonesVoice)
+            'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
         },
         speaker: selection.voice,
         translationPrefix: translation.translationPrefix ?? '',

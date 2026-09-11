@@ -148,12 +148,42 @@
     }
   },
   "settingsVoice": "Dubbing voice",
-  "voiceNote": "\"Automatic\" matches a man's or a woman's voice to the original, line by line.",
+  "voiceNote": "\"Automatic\" matches a man's or a woman's voice to the original, line by line. \"Original voice\" also carries the speaker's timbre over into the dubbing.",
   "voiceAutomatic": "Automatic",
   "voiceFixed": "Choose",
   "voiceFieldLabel": "Voice",
   "voiceUnavailable": "This language's package ships voices of one gender only — you can pick one, but there is nothing to match.",
   "voiceNeedsAudio": "Subtitle mode never hears the original, so the chosen voice is used.",
+  "voiceOriginal": "Original voice",
+  "voiceOriginalNote": "The timbre is taken from every line and laid over the Silero voice. On the processor each line sounds about a second later.",
+  "voiceOriginalMissing": "This needs the voice converter: download it under Original voice on the Models screen.",
+  "voiceOriginalSpeaking": "The original's timbre over {name}",
+  "@voiceOriginalSpeaking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionVoiceConversion": "ORIGINAL VOICE",
+  "sectionVoiceConversionNote": "Only needed for the Original voice mode: it carries the speaker's timbre over into the dubbing. One converter serves every language.",
+  "modelConverterTitle": "OpenVoice {version} voice converter",
+  "@modelConverterTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "modelConverterNote": "Moves the timbre of the original line onto the Silero voice, {size}.",
+  "@modelConverterNote": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "stageConverter": "Loading the voice converter",
   "voiceSpeaking": "Now speaking: {name}",
   "@voiceSpeaking": {
     "placeholders": {

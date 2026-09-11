@@ -98,6 +98,7 @@ class NativeEngineService {
       recognitionBackend: _backendFrom(config['recognitionBackend']),
       translationBackend: _backendFrom(config['translationBackend']),
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+      voiceConverter: models['converter'],
     );
     // What the worker settled on, which is not always what it was asked for.
     if (_inference.translationBackend case final actual?) {

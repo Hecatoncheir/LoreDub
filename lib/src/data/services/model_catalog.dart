@@ -8,6 +8,10 @@ import '../../domain/model_package.dart';
 /// translator and a Silero voice for the same language.
 const whisperModelId = 'whisper-base';
 
+/// OpenVoice V2's tone colour converter, which re-voices Silero in the timbre
+/// of the phrase being answered. MIT, and the same package for every language.
+const voiceConverterModelId = 'openvoice-v2-converter';
+
 /// The whisper.cpp builds on offer, smallest first.
 ///
 /// `base` stays the default because it is the one that fits a plain CPU;
@@ -274,6 +278,30 @@ final modelCatalog = <ModelPackage>[
     speaker: 'mykyta',
     // The Ukrainian package ships one voice, so there is nothing to follow.
     voices: [_male('mykyta')],
+  ),
+
+  ModelPackage(
+    id: voiceConverterModelId,
+    kind: ModelKind.voiceConversion,
+    version: 'V2',
+    artifacts: [
+      ModelArtifact(
+        fileName: 'checkpoint.pth',
+        url: Uri.parse(
+          'https://huggingface.co/myshell-ai/OpenVoiceV2/resolve/main/converter/checkpoint.pth',
+        ),
+        byteSize: 131320490,
+        hash: '9652c27e92b6b2a91632590ac9962ef7ae2b712e5c5b7f4c34ec55ee2b37ab9e',
+      ),
+      ModelArtifact(
+        fileName: 'config.json',
+        url: Uri.parse(
+          'https://huggingface.co/myshell-ai/OpenVoiceV2/resolve/main/converter/config.json',
+        ),
+        byteSize: 838,
+        hash: '9dfff60350b8c63f2c664efd92a61b2516efb22671466960f0e5dfebd881fa47',
+      ),
+    ],
   ),
 ];
 

@@ -183,4 +183,18 @@ void main() {
 
     expect((await service.load()).whisperModel, 'whisper-small');
   });
+
+  test('starts without the original voice and remembers it once chosen', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    expect((await service.load()).originalVoice, isFalse);
+
+    await service.save(const AppSettings().withVoiceMode(VoiceMode.original));
+    final saved = await service.load();
+
+    expect(saved.originalVoice, isTrue);
+    expect(saved.voiceMode, VoiceMode.original);
+    expect(saved.automaticVoice, isTrue, reason: 'the base voice still follows the speaker');
+  });
 }

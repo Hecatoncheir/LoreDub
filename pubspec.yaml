@@ -83,6 +83,7 @@ flutter:
     - assets/branding/loredub-icon.png
     - assets/icons/audio_capture.svg
     - assets/runtime/inference_worker.py
+    - assets/runtime/tone_converter.py
 
   fonts:
     # Static instances cut from the upstream variable fonts, so the weights

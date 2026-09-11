@@ -232,7 +232,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get voiceNote =>
-      '«Автоматически» подбирает мужской или женский голос под голос оригинала, отдельно для каждой реплики.';
+      '«Автоматически» подбирает мужской или женский голос под голос оригинала, отдельно для каждой реплики. «Голос оригинала» вдобавок переносит на озвучку тембр говорящего.';
 
   @override
   String get voiceAutomatic => 'Автоматически';
@@ -250,6 +250,42 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get voiceNeedsAudio =>
       'В режиме субтитров оригинал не слышен, поэтому голос берётся выбранный.';
+
+  @override
+  String get voiceOriginal => 'Голос оригинала';
+
+  @override
+  String get voiceOriginalNote =>
+      'Тембр берётся из каждой реплики и накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже.';
+
+  @override
+  String get voiceOriginalMissing =>
+      'Нужен конвертер голоса: скачайте его в разделе «Голос оригинала» на экране «Модели».';
+
+  @override
+  String voiceOriginalSpeaking(String name) {
+    return 'Тембр оригинала поверх голоса $name';
+  }
+
+  @override
+  String get sectionVoiceConversion => 'ГОЛОС ОРИГИНАЛА';
+
+  @override
+  String get sectionVoiceConversionNote =>
+      'Нужен только для режима «Голос оригинала»: переносит на озвучку тембр говорящего. Один конвертер на все языки.';
+
+  @override
+  String modelConverterTitle(String version) {
+    return 'OpenVoice $version — конвертер голоса';
+  }
+
+  @override
+  String modelConverterNote(String size) {
+    return 'Переносит тембр оригинальной реплики на голос Silero, $size.';
+  }
+
+  @override
+  String get stageConverter => 'Загрузка конвертера голоса';
 
   @override
   String voiceSpeaking(String name) {

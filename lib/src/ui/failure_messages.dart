@@ -72,5 +72,6 @@ String describeStartupStage(AppLocalizations l10n, String stage) => switch (stag
   'translator' => l10n.stageTranslator,
   'speech' => l10n.stageSpeech,
   'capture' => l10n.stageCapture,
+  'converter' => l10n.stageConverter,
   _ => stage,
 };

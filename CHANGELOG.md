@@ -4,6 +4,14 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+- Added an Original voice mode beside Automatic and Choose: every line is re-voiced in the
+  timbre of the phrase it answers by the OpenVoice V2 tone colour converter (MIT, 131 MB,
+  downloaded from the new Original voice section of the Models screen), laid over the Silero
+  voice picked by pitch. A line with no voice in it keeps the previous timbre. Subtitle mode
+  cannot offer it, having no audio.
+- Fixed translation running on a single processor thread: loading the Silero voice reset
+  torch's thread count, so the CPU threads setting only held until the voice was loaded.
+
 ## [0.4.2] - 2026-09-11
 
 - Fixed the GPU runtime download failing without a word: the button went back to "Download" and

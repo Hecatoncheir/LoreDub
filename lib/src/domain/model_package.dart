@@ -21,8 +21,10 @@ class ModelArtifact {
 
 /// What a package is for. Recognition is language-independent — one Whisper
 /// model turns any speech into English — while translation and speech come as
-/// a pair per language the game can be dubbed into.
-enum ModelKind { recognition, translation, speech }
+/// a pair per language the game can be dubbed into. The voice converter is
+/// language-independent too: it only moves a timbre from one recording onto
+/// another.
+enum ModelKind { recognition, translation, speech, voiceConversion }
 
 /// Whether a voice reads as a man or a woman.
 ///

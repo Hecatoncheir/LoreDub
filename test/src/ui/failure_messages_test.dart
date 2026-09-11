@@ -80,7 +80,15 @@ void main() {
   });
 
   test('writes every startup stage the pipeline reports', () {
-    for (final stage in ['python', 'torch', 'transformers', 'translator', 'speech', 'capture']) {
+    for (final stage in [
+      'python',
+      'torch',
+      'transformers',
+      'translator',
+      'speech',
+      'converter',
+      'capture',
+    ]) {
       expect(describeStartupStage(ru, stage), isNot(stage), reason: stage);
       expect(describeStartupStage(en, stage), isNot(stage), reason: stage);
     }

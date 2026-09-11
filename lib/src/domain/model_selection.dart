@@ -26,6 +26,19 @@ class ModelSelection {
 
   List<ModelInstallState> get speechModels => ofKind(ModelKind.speech);
 
+  List<ModelInstallState> get voiceConverters => ofKind(ModelKind.voiceConversion);
+
+  /// The converter the original voice needs, if the catalogue has one.
+  ModelInstallState? get voiceConverter => voiceConverters.firstOrNull;
+
+  /// The original voice is taken from the original's audio, which subtitle
+  /// mode never has.
+  bool get canUseOriginalVoice => settings.captureMode != CaptureMode.ocr;
+
+  /// Whether each line will be re-voiced in the timbre of the phrase it
+  /// answers.
+  bool get clonesVoice => settings.originalVoice && canUseOriginalVoice;
+
   /// The package for the language being dubbed into, if the catalogue has one.
   ModelInstallState? forTargetLanguage(ModelKind kind) {
     for (final state in models) {
@@ -69,8 +82,10 @@ class ModelSelection {
   bool get canFollowSpeaker =>
       (speechPackage?.canFollowSpeaker ?? false) && settings.captureMode != CaptureMode.ocr;
 
-  /// Whether it actually will, given what the user asked for.
-  bool get followsSpeaker => settings.automaticVoice && canFollowSpeaker;
+  /// Whether it actually will, given what the user asked for. The original
+  /// voice builds on the automatic choice: a base of the right gender leaves
+  /// the converter less to move.
+  bool get followsSpeaker => (settings.automaticVoice || clonesVoice) && canFollowSpeaker;
 
   /// The voice a fixed choice would use, falling back to the catalogue's.
   String get voice {
@@ -87,8 +102,10 @@ class ModelSelection {
     if (models.isEmpty) return false;
     final needsWhisper = settings.captureMode != CaptureMode.ocr;
     if (needsWhisper && !(recognition?.installed ?? false)) return false;
-    return (forTargetLanguage(ModelKind.translation)?.installed ?? false) &&
+    final pairInstalled =
+        (forTargetLanguage(ModelKind.translation)?.installed ?? false) &&
         (forTargetLanguage(ModelKind.speech)?.installed ?? false);
+    return pairInstalled && (!clonesVoice || (voiceConverter?.installed ?? false));
   }
 
   /// Whether both halves of a language's pair are on disk.
