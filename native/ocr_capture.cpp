@@ -11,6 +11,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Globalization.h>
 #include <winrt/Windows.Graphics.Imaging.h>
 #include <winrt/Windows.Media.Ocr.h>
@@ -22,9 +23,6 @@
 #include <vector>
 
 namespace {
-
-constexpr char kEnglishMissing[] =
-    "English OCR language is not installed. Add English in Windows language settings.";
 
 struct WindowSearch {
   DWORD process_id;
@@ -161,6 +159,19 @@ std::string Recognize(const winrt::Windows::Media::Ocr::OcrEngine& engine,
   return NormalizeText(Utf8(engine.RecognizeAsync(bitmap).get().Text()));
 }
 
+// The installed recognizer whose primary subtag is [code] — "en" finds
+// "en-US", "ru" finds "ru-RU" — or null when Windows has none for it.
+winrt::Windows::Globalization::Language FindOcrLanguage(const std::string& code) {
+  for (const auto& language : winrt::Windows::Media::Ocr::OcrEngine::AvailableRecognizerLanguages()) {
+    std::string primary = Utf8(language.LanguageTag());
+    primary = primary.substr(0, primary.find('-'));
+    std::transform(primary.begin(), primary.end(), primary.begin(),
+                   [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    if (primary == code) return language;
+  }
+  return nullptr;
+}
+
 // Keeps the Windows Runtime initialized for as long as it is in scope.
 struct Apartment {
   Apartment() { winrt::init_apartment(winrt::apartment_type::multi_threaded); }
@@ -187,9 +198,11 @@ OcrRegion SanitizeRegion(OcrRegion region) {
 
 }  // namespace
 
-bool RecognizeScreenArea(ScreenArea area, std::string* text, std::string* error) {
+bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::string* text,
+                         std::string* error) {
 #if !defined(_WIN32)
   (void)area;
+  (void)language;
   (void)text;
   *error = "Windows OCR is only available on Windows";
   return false;
@@ -200,12 +213,12 @@ bool RecognizeScreenArea(ScreenArea area, std::string* text, std::string* error)
   if (width < 8 || height < 8) return true;
   try {
     const Apartment apartment;
-    const winrt::Windows::Globalization::Language language(L"en-US");
-    if (!winrt::Windows::Media::Ocr::OcrEngine::IsLanguageSupported(language)) {
-      *error = kEnglishMissing;
+    const auto recognizer = FindOcrLanguage(language);
+    if (!recognizer) {
+      *error = kOcrLanguageMissing;
       return false;
     }
-    const auto engine = winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromLanguage(language);
+    const auto engine = winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromLanguage(recognizer);
     // A small area is enlarged: Windows OCR misses text only a few pixels
     // tall, and a line picked out of a game is often that small.
     const double scale = std::min(2.0, 2400.0 / std::max(width, height));
@@ -231,12 +244,12 @@ bool RecognizeScreenArea(ScreenArea area, std::string* text, std::string* error)
 OcrCapture::OcrCapture() = default;
 OcrCapture::~OcrCapture() { Stop(); }
 
-bool OcrCapture::Start(uint32_t process_id, OcrRegion region,
+bool OcrCapture::Start(uint32_t process_id, OcrRegion region, std::string language,
                        TextCallback on_text, ErrorCallback on_error) {
   if (thread_.joinable()) return false;
   stopping_ = false;
   thread_ = std::thread(&OcrCapture::CaptureThread, this, process_id,
-                        SanitizeRegion(region), std::move(on_text),
+                        SanitizeRegion(region), std::move(language), std::move(on_text),
                         std::move(on_error));
   return true;
 }
@@ -246,23 +259,24 @@ void OcrCapture::Stop() {
   if (thread_.joinable()) thread_.join();
 }
 
-void OcrCapture::CaptureThread(uint32_t process_id, OcrRegion region,
+void OcrCapture::CaptureThread(uint32_t process_id, OcrRegion region, std::string language,
                                TextCallback on_text, ErrorCallback on_error) {
 #if !defined(_WIN32)
   (void)process_id;
   (void)region;
+  (void)language;
   (void)on_text;
   on_error("Windows OCR is only available on Windows");
 #else
   try {
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
-    const winrt::Windows::Globalization::Language language(L"en-US");
-    if (!winrt::Windows::Media::Ocr::OcrEngine::IsLanguageSupported(language)) {
-      on_error(kEnglishMissing);
+    const auto recognizer = FindOcrLanguage(language);
+    if (!recognizer) {
+      on_error(kOcrLanguageMissing);
       return;
     }
     const auto engine =
-        winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromLanguage(language);
+        winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromLanguage(recognizer);
     std::string candidate;
     std::string emitted;
     int stable_scans = 0;

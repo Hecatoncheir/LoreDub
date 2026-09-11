@@ -146,7 +146,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String snapshotNote(String language) {
-    return 'Only the translator and the voice ($language) are loaded, no speech recognition. Windows OCR reads the text in English, and the frame is drawn over other windows — run the game windowed or borderless.';
+    return 'Only the translator and the voice ($language) are loaded, no speech recognition. The frame is drawn over other windows — run the game windowed or borderless.';
   }
 
   @override
@@ -211,6 +211,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String failureHotkeyTaken(String action) {
     return 'Another program already holds the combination for $action — bind a different one in Settings.';
   }
+
+  @override
+  String failureOcrLanguageMissing(String language) {
+    return 'Windows has no text recognition installed for $language. Add the language in Settings → Time & language → Language & region → Add a language.';
+  }
+
+  @override
+  String get textLanguageLabel => 'Text language';
+
+  @override
+  String get textLanguageNote => 'Text in the dubbing language is voiced untranslated';
 
   @override
   String startingProgress(int percent) {

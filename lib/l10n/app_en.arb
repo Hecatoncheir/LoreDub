@@ -73,7 +73,7 @@
   },
   "snapshotNoHotkey": "No snapshot key is bound.",
   "snapshotOpenSettings": "Bind one in Settings",
-  "snapshotNote": "Only the translator and the voice ({language}) are loaded, no speech recognition. Windows OCR reads the text in English, and the frame is drawn over other windows — run the game windowed or borderless.",
+  "snapshotNote": "Only the translator and the voice ({language}) are loaded, no speech recognition. The frame is drawn over other windows — run the game windowed or borderless.",
   "@snapshotNote": {
     "placeholders": {
       "language": {
@@ -114,6 +114,16 @@
       }
     }
   },
+  "failureOcrLanguageMissing": "Windows has no text recognition installed for {language}. Add the language in Settings → Time & language → Language & region → Add a language.",
+  "@failureOcrLanguageMissing": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "textLanguageLabel": "Text language",
+  "textLanguageNote": "Text in the dubbing language is voiced untranslated",
   "startingProgress": "Starting {percent}%",
   "@startingProgress": {
     "placeholders": {

@@ -367,8 +367,13 @@ class LocalInferenceService {
 
   /// [originalWavePath] is the captured phrase, when there is one. The
   /// worker reads its pitch to follow the speaker; OCR mode has no audio and
-  /// passes nothing.
-  Future<InferenceResult> processText(String english, {String? originalWavePath}) async {
+  /// passes nothing. Without [translate] the text is already in the dubbing
+  /// language and is voiced as it is.
+  Future<InferenceResult> processText(
+    String english, {
+    String? originalWavePath,
+    bool translate = true,
+  }) async {
     final normalized = english.trim();
     if (normalized.isEmpty) throw ArgumentError.value(english, 'english', 'is empty');
 
@@ -383,6 +388,7 @@ class LocalInferenceService {
         'id': id,
         'text': normalized,
         'wave': ?originalWavePath,
+        if (!translate) 'translate': false,
       }),
     );
     final response = await completer.future.timeout(

@@ -26,10 +26,16 @@ struct ScreenArea {
   int bottom = 0;
 };
 
-// Reads the English text inside [area] of the screen once, on the calling
-// thread. An area with no text in it is a success with [text] empty; false
-// means OCR could not run, with [error] saying why.
-bool RecognizeScreenArea(ScreenArea area, std::string* text, std::string* error);
+// The error either reader reports, as the whole message, when Windows has no
+// text recognition for the language asked for.
+inline constexpr char kOcrLanguageMissing[] = "ocrLanguageMissing";
+
+// Reads the text inside [area] of the screen once, on the calling thread, in
+// [language] (a primary subtag such as "en" or "ru"). An area with no text in
+// it is a success with [text] empty; false means OCR could not run, with
+// [error] saying why.
+bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::string* text,
+                         std::string* error);
 
 class OcrCapture {
  public:
@@ -42,12 +48,13 @@ class OcrCapture {
   OcrCapture(const OcrCapture&) = delete;
   OcrCapture& operator=(const OcrCapture&) = delete;
 
-  bool Start(uint32_t process_id, OcrRegion region, TextCallback on_text,
-             ErrorCallback on_error);
+  // [language] is the primary subtag of the text to read, "en" or "ru".
+  bool Start(uint32_t process_id, OcrRegion region, std::string language,
+             TextCallback on_text, ErrorCallback on_error);
   void Stop();
 
  private:
-  void CaptureThread(uint32_t process_id, OcrRegion region,
+  void CaptureThread(uint32_t process_id, OcrRegion region, std::string language,
                      TextCallback on_text, ErrorCallback on_error);
 
   std::atomic<bool> stopping_{false};

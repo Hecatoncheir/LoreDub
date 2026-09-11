@@ -225,8 +225,16 @@ class NativeEngineService {
   /// arrive as `hotkey` events, a selection as `snapshotReading` and then
   /// `snapshot`. A combination another program holds comes back as an error
   /// naming the action.
-  void setHotkeys({Hotkey? pause, Hotkey? resume, Hotkey? snapshot}) {
+  ///
+  /// [textLanguage] is the language a selected area is read in.
+  void setHotkeys({
+    Hotkey? pause,
+    Hotkey? resume,
+    Hotkey? snapshot,
+    String textLanguage = 'en',
+  }) {
     final config = jsonEncode({
+      'snapshotLanguage': textLanguage,
       'pauseKey': pause?.keyCode ?? 0,
       'pauseModifiers': pause?.modifiers ?? 0,
       'resumeKey': resume?.keyCode ?? 0,
@@ -302,8 +310,13 @@ class NativeEngineService {
   Future<void> _processOcrText(String recognizedText, {bool snapshot = false}) async {
     final started = Stopwatch()..start();
     try {
-      if (_activeConfig == null) return;
-      final result = await _inference.processText(recognizedText);
+      final config = _activeConfig;
+      if (config == null) return;
+      // Text read in the dubbing language itself is voiced as it is.
+      final result = await _inference.processText(
+        recognizedText,
+        translate: config['textLanguage'] != config['targetLanguage'],
+      );
       await _publishResult(
         result,
         started.elapsedMilliseconds,
@@ -439,6 +452,16 @@ class NativeEngineService {
 /// `failure`. Passed on as it came, the error arrived with no failure and
 /// cleared the banner instead of raising one.
 Map<String, Object?> fromNativeEvent(Map<String, Object?> event) {
+  // Windows has no text recognition for the language the text is read in.
+  if (event['type'] == 'ocrLanguageMissing') {
+    return {
+      'type': 'error',
+      'failure': LoreDubFailure(
+        FailureCode.ocrLanguageMissing,
+        detail: event['language'] as String?,
+      ),
+    };
+  }
   // Windows refused a combination: another program already holds it.
   if (event['type'] == 'hotkeyTaken') {
     return {

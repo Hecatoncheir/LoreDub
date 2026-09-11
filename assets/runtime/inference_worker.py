@@ -438,15 +438,20 @@ def main():
             continue
         try:
             text = request["text"].strip()
-            translated = translate(text)
-            # A capitalised name is occasionally carried over untranslated,
-            # and the speech model cannot read Latin script. Asking again
-            # without the capitals costs one extra pass on the rare line that
-            # needs it, and gives back something that can be spoken.
-            if LATIN_RUN.search(translated):
-                retry = translate(text.lower())
-                if not LATIN_RUN.search(retry):
-                    translated = retry
+            # Text read off the screen in the dubbing language itself has
+            # nothing to be translated and is voiced as it is.
+            if request.get("translate", True):
+                translated = translate(text)
+                # A capitalised name is occasionally carried over untranslated,
+                # and the speech model cannot read Latin script. Asking again
+                # without the capitals costs one extra pass on the rare line
+                # that needs it, and gives back something that can be spoken.
+                if LATIN_RUN.search(translated):
+                    retry = translate(text.lower())
+                    if not LATIN_RUN.search(retry):
+                        translated = retry
+            else:
+                translated = text
             chosen = voice_for(request)
             audio = tts.apply_tts(
                 text=translated,

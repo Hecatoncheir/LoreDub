@@ -142,8 +142,9 @@ or the right mouse button cancels the selection.
 
 The key works during **Live** too, on the models already loaded; starting
 **Live** while the snapshot session runs stops that session first. The
-combination is changed in **Settings** → **Hotkeys**. The text is read in
-English. The frame is drawn over other windows, so the game has to run
+combination is changed in **Settings** → **Hotkeys**. The tab's **Text
+language** is English (translated) or the dubbing language (voiced
+untranslated). The frame is drawn over other windows, so the game has to run
 windowed or borderless: a game in exclusive fullscreen would minimize.
 
 ### Models
@@ -214,8 +215,9 @@ Audio capture can target a selected process tree or the complete default output.
 Complete-output mode excludes the LoreDub process tree so synthesized speech
 does not feed back into recognition. Alternatively, OCR mode captures a
 player-chosen area of the selected game window, recognizes stable
-English subtitle text with Windows OCR, and sends it directly to Marian and
-Silero without running Whisper.
+subtitle text with Windows OCR, and sends it directly to Marian and Silero
+without running Whisper; text already in the dubbing language goes straight to
+Silero.
 
 Models are downloaded by the application on demand and kept in the Windows
 application-support directory.
@@ -423,9 +425,13 @@ nothing to download for it.
 ## Subtitle mode
 
 When the lines of a game are written rather than spoken, LoreDub reads them
-off the screen. Windows OCR recognizes the English text inside a chosen area of
-the game window, and each line goes straight to the translator and the speech
+off the screen. Windows OCR recognizes the text inside a chosen area of the
+game window, and each line goes straight to the translator and the speech
 synthesizer — this mode needs neither Whisper nor a recognition model.
+
+The text language is chosen on **Live** in place of **Detect language**:
+English is translated, while text in the dubbing language — Russian subtitles
+dubbed into Russian, say — is voiced as it is, untranslated.
 
 ### Setting it up
 
@@ -477,11 +483,12 @@ subtitles.
 
 ### Limits
 
-- Only English text is read, and Windows needs its English OCR pack. Without
-  it LoreDub says so. The pack comes with the English language under
-  **Settings → Time & language → Language & region**, or from an elevated
-  PowerShell:
-  `Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0"`.
+- English text is read, or text in the dubbing language: the translators only
+  understand English. Windows needs the OCR pack of that language; without it
+  LoreDub says so. The pack comes with the language under **Settings → Time &
+  language → Language & region**, or from an elevated PowerShell, for English:
+  `Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0"`
+  (`ru-RU` for Russian).
 - Windowed and borderless games work. Exclusive fullscreen and a minimized
   window cannot be read through the lightweight GDI capture — switch the game
   to borderless windowed.

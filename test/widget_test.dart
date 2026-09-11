@@ -1848,6 +1848,19 @@ void main() {
     });
   });
 
+  testWidgets('offers the text language instead of detection for subtitles', (tester) async {
+    final cubits = stage(
+      buildCubits(),
+      settings: const AppSettings(captureMode: CaptureMode.ocr, sourceLanguage: 'ru'),
+      models: catalogue(),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+    expect(find.text('Язык текста'), findsOneWidget);
+    expect(find.text('Определять язык'), findsNothing);
+    expect(find.text('Текст на языке озвучки озвучивается без перевода'), findsOneWidget);
+  });
+
   group('the snapshot screen', () {
     const snippet = TranscriptEntry(
       original: 'Press E to open',
@@ -1881,6 +1894,7 @@ void main() {
       expect(find.text('Фрагмент'), findsOneWidget);
       expect(find.text('Перевод фрагмента'), findsOneWidget);
       expect(find.textContaining('Удерживайте Ctrl + Alt + S'), findsOneWidget);
+      expect(find.text('Язык текста'), findsOneWidget);
       expect(find.text('Выделенные фрагменты появятся здесь'), findsOneWidget);
       expect(startButton(tester).onPressed, isNotNull);
     });

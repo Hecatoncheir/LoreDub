@@ -348,7 +348,7 @@ abstract class AppLocalizations {
   /// No description provided for @snapshotNote.
   ///
   /// In ru, this message translates to:
-  /// **'Загружаются только переводчик и голос ({language}), без распознавания речи. Текст читается распознаванием Windows на английском, а рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.'**
+  /// **'Загружаются только переводчик и голос ({language}), без распознавания речи. Рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.'**
   String snapshotNote(String language);
 
   /// No description provided for @snapshotStart.
@@ -464,6 +464,24 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Сочетание для «{action}» уже занято другой программой — назначьте другое в настройках.'**
   String failureHotkeyTaken(String action);
+
+  /// No description provided for @failureOcrLanguageMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'В Windows не установлено распознавание текста для языка «{language}». Добавьте язык: Параметры → Время и язык → Язык и регион → Добавить язык.'**
+  String failureOcrLanguageMissing(String language);
+
+  /// No description provided for @textLanguageLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Язык текста'**
+  String get textLanguageLabel;
+
+  /// No description provided for @textLanguageNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текст на языке озвучки озвучивается без перевода'**
+  String get textLanguageNote;
 
   /// No description provided for @startingProgress.
   ///

@@ -5,6 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../data/services/local_inference_service.dart';
 import '../data/services/python_discovery.dart';
 import '../domain/failure.dart';
+import 'language_names.dart';
 
 /// Turns what the services raised into a sentence in the interface language.
 ///
@@ -53,6 +54,9 @@ String describeFailure(AppLocalizations l10n, Object error) {
       'snapshot' => l10n.hotkeySnapshot,
       _ => l10n.hotkeyPause,
     }),
+    FailureCode.ocrLanguageMissing => l10n.failureOcrLanguageMissing(
+      spokenLanguageName(l10n, detail),
+    ),
   };
 }
 

@@ -145,7 +145,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String snapshotNote(String language) {
-    return 'Загружаются только переводчик и голос ($language), без распознавания речи. Текст читается распознаванием Windows на английском, а рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.';
+    return 'Загружаются только переводчик и голос ($language), без распознавания речи. Рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.';
   }
 
   @override
@@ -210,6 +210,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String failureHotkeyTaken(String action) {
     return 'Сочетание для «$action» уже занято другой программой — назначьте другое в настройках.';
   }
+
+  @override
+  String failureOcrLanguageMissing(String language) {
+    return 'В Windows не установлено распознавание текста для языка «$language». Добавьте язык: Параметры → Время и язык → Язык и регион → Добавить язык.';
+  }
+
+  @override
+  String get textLanguageLabel => 'Язык текста';
+
+  @override
+  String get textLanguageNote => 'Текст на языке озвучки озвучивается без перевода';
 
   @override
   String startingProgress(int percent) {

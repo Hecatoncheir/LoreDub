@@ -943,7 +943,9 @@ class _SnapshotControls extends StatelessWidget {
             l10n.snapshotHowTo(hotkey.display),
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 14),
+        _TextLanguagePicker(cubits: cubits),
+        const SizedBox(height: 10),
         Text(
           l10n.snapshotNote(spokenLanguageName(l10n, settings.targetLanguage)),
           style: Theme.of(context).textTheme.bodySmall,
@@ -1574,6 +1576,8 @@ class _LanguageControls extends StatelessWidget {
   );
 
   Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
+    // Subtitles are text: there is nothing to detect, only a script to read.
+    if (settings.captureMode == CaptureMode.ocr) return _TextLanguagePicker(cubits: cubits);
     final l10n = AppLocalizations.of(context);
     final locked = pipeline.running;
     final detected = settings.detectSourceLanguage ? pipeline.detectedLanguage : null;
@@ -1623,6 +1627,56 @@ class _LanguageControls extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The language of text read off the screen. Windows OCR detects nothing and
+/// the translators read only English, so the choice is English or the
+/// dubbing language itself, which is then voiced as it is.
+class _TextLanguagePicker extends StatelessWidget {
+  const _TextLanguagePicker({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => _SettingsBuilder(
+    cubits: cubits,
+    builder: (context, state) => _PipelineBuilder(
+      cubits: cubits,
+      watch: (pipeline) => pipeline.running,
+      builder: (context, pipeline) => _build(context, state.settings, locked: pipeline.running),
+    ),
+  );
+
+  Widget _build(BuildContext context, AppSettings settings, {required bool locked}) {
+    final l10n = AppLocalizations.of(context);
+    final languages = {fallbackSpokenLanguage, settings.targetLanguage};
+    return _LanguageRow(
+      field: DropdownButtonFormField<String>(
+        // Keyed by the value: a new dubbing language can change it from
+        // outside the field.
+        key: ValueKey('textLanguage-${settings.textLanguage}'),
+        initialValue: settings.textLanguage,
+        isDense: true,
+        isExpanded: true,
+        decoration: InputDecoration(labelText: l10n.textLanguageLabel, isDense: true),
+        items: [
+          for (final language in languages)
+            DropdownMenuItem(value: language, child: Text(spokenLanguageName(l10n, language))),
+        ],
+        onChanged: locked
+            ? null
+            : (value) {
+                if (value != null) cubits.settings.update(settings.copyWith(sourceLanguage: value));
+              },
+      ),
+      action: Text(
+        l10n.textLanguageNote,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall,
       ),
     );
   }

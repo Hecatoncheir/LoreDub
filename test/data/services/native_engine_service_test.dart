@@ -39,6 +39,17 @@ void main() {
     );
   });
 
+  test('names the language Windows cannot read text in', () {
+    final event = fromNativeEvent({'type': 'ocrLanguageMissing', 'language': 'ru'});
+
+    expect(
+      event['failure'],
+      isA<LoreDubFailure>()
+          .having((failure) => failure.code, 'code', FailureCode.ocrLanguageMissing)
+          .having((failure) => failure.detail, 'detail', 'ru'),
+    );
+  });
+
   test('passes a hotkey press on for the pipeline to act on', () {
     final press = {'type': 'hotkey', 'action': 'pause'};
 

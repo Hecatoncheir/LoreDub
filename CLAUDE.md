@@ -123,6 +123,16 @@ true)`, its `transcript` event carries `snapshot: true` and lands in
 even while a live session is paused. Starting live dubbing over a running
 snapshot session stops that session first, since its worker has no whisper.
 
+Text read off the screen — subtitle mode and snippets — is in
+`AppSettings.textLanguage`: English, or the dubbing language itself when the
+original is named as that (Marian only reads English, and Windows OCR detects
+nothing). It reaches the native side as `ocrLanguage` (ld_start) and
+`snapshotLanguage` (ld_set_hotkeys); `FindOcrLanguage` picks the installed
+recognizer by primary subtag, and a missing one comes back as an
+`ocrLanguageMissing` event (`FailureCode.ocrLanguageMissing`). When it equals
+`targetLanguage`, `processText` sends `"translate": false` and the worker
+voices the text as it is.
+
 The update check (`UpdateService`, `UpdateRepository`) reads the repository's
 latest release at startup and compares only the three version numbers. The
 Windows toast needs a Start Menu shortcut carrying the same `AppUserModelID`

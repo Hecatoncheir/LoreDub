@@ -74,6 +74,8 @@ class AppRepository {
         'audioSource': settings.audioCaptureSource.name,
         'targetLanguage': settings.targetLanguage,
         'sourceLanguage': settings.effectiveSourceLanguage,
+        'textLanguage': settings.textLanguage,
+        'ocrLanguage': settings.textLanguage,
         'ttsSpeed': settings.ttsSpeed,
         'cpuThreads': settings.cpuThreads,
         'ocrRegionLeft': settings.ocrRegion.left,
@@ -101,6 +103,7 @@ class AppRepository {
         pause: settings.pauseHotkey,
         resume: settings.resumeHotkey,
         snapshot: settings.snapshotHotkey,
+        textLanguage: settings.textLanguage,
       );
     } catch (_) {
       await _nativeEngine.stop();
@@ -123,6 +126,7 @@ class AppRepository {
       await _nativeEngine.startSnapshot({
         'speaker': speaker,
         'targetLanguage': settings.targetLanguage,
+        'textLanguage': settings.textLanguage,
         'ttsSpeed': settings.ttsSpeed,
         'cpuThreads': settings.cpuThreads,
         'pythonExecutable': settings.pythonExecutable,
@@ -131,7 +135,10 @@ class AppRepository {
         'translationBackend': translationBackend.name,
         'runtimeDirectory': runtimeDirectory,
       });
-      _nativeEngine.setHotkeys(snapshot: settings.snapshotHotkey);
+      _nativeEngine.setHotkeys(
+        snapshot: settings.snapshotHotkey,
+        textLanguage: settings.textLanguage,
+      );
     } catch (_) {
       await _nativeEngine.stop();
       rethrow;

@@ -73,7 +73,7 @@
   },
   "snapshotNoHotkey": "Клавиша выделения не назначена.",
   "snapshotOpenSettings": "Назначить в настройках",
-  "snapshotNote": "Загружаются только переводчик и голос ({language}), без распознавания речи. Текст читается распознаванием Windows на английском, а рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.",
+  "snapshotNote": "Загружаются только переводчик и голос ({language}), без распознавания речи. Рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.",
   "@snapshotNote": {
     "placeholders": {
       "language": {
@@ -114,6 +114,16 @@
       }
     }
   },
+  "failureOcrLanguageMissing": "В Windows не установлено распознавание текста для языка «{language}». Добавьте язык: Параметры → Время и язык → Язык и регион → Добавить язык.",
+  "@failureOcrLanguageMissing": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "textLanguageLabel": "Язык текста",
+  "textLanguageNote": "Текст на языке озвучки озвучивается без перевода",
   "startingProgress": "Запуск {percent}%",
   "@startingProgress": {
     "placeholders": {

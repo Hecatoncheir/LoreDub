@@ -168,6 +168,13 @@ class AppSettings {
     clearBackendOverrides: true,
   );
 
+  /// The language of text read off the screen, in subtitle mode and from a
+  /// snippet. Windows OCR detects nothing and the translators read only
+  /// English, so it is English unless the original is named as the dubbing
+  /// language itself — which is then voiced as it is, untranslated.
+  String get textLanguage =>
+      sourceLanguage == targetLanguage ? targetLanguage : fallbackSpokenLanguage;
+
   /// What whisper.cpp should be told to expect.
   String get effectiveSourceLanguage => detectSourceLanguage ? autoSpokenLanguage : sourceLanguage;
 

@@ -371,7 +371,20 @@ struct HotkeyConfig {
   uint32_t resume_modifiers = 0;
   uint32_t snapshot_key = 0;
   uint32_t snapshot_modifiers = 0;
+
+  // The primary subtag a selected area is read in.
+  std::string snapshot_language = "en";
 };
+
+// What a reader's error becomes on the event queue: the one Dart can word
+// for itself, or the message as it came.
+void PushOcrError(const std::string& message, const std::string& language) {
+  if (message == kOcrLanguageMissing) {
+    PushEvent("{\"type\":\"ocrLanguageMissing\",\"language\":\"" + EscapeJson(language) + "\"}");
+  } else {
+    PushEvent("{\"type\":\"error\",\"message\":\"" + EscapeJson(message) + "\"}");
+  }
+}
 
 // Registers one combination, or says which action another program holds it
 // for. A zero key leaves the action unbound.
@@ -390,24 +403,24 @@ void PushHotkeyPress(uintptr_t id) {
 // Lets the player select an area while the snapshot key is held, then reads
 // it on a thread of its own, so the hotkeys keep answering meanwhile.
 // Returns false when a WM_QUIT arrived during the selection.
-bool TakeSnapshot(uint32_t key) {
+bool TakeSnapshot(uint32_t key, const std::string& language) {
   ScreenArea area;
   const auto result = SelectScreenArea(key, &area, PushHotkeyPress);
   if (result == SelectionResult::quit) return false;
   if (result == SelectionResult::cancelled) return true;
   if (snapshot_reader.joinable()) snapshot_reader.join();
   PushEvent("{\"type\":\"snapshotReading\"}");
-  snapshot_reader = std::thread([area] {
+  snapshot_reader = std::thread([area, language] {
     // The shade has to leave the screen, and a game that lost the
     // foreground to it has to draw itself again, before the area is copied.
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
     std::string text;
     std::string error;
-    if (RecognizeScreenArea(area, &text, &error)) {
+    if (RecognizeScreenArea(area, language, &text, &error)) {
       PushEvent("{\"type\":\"snapshot\",\"text\":\"" + EscapeJson(text) + "\"}");
     } else {
       PushEvent("{\"type\":\"snapshot\",\"text\":\"\",\"failed\":true}");
-      PushEvent("{\"type\":\"error\",\"message\":\"" + EscapeJson(error) + "\"}");
+      PushOcrError(error, language);
     }
   });
   return true;
@@ -429,7 +442,7 @@ void HotkeyLoop(HotkeyConfig config, std::promise<void>* ready) {
   while (GetMessageW(&message, nullptr, 0, 0) > 0) {
     if (message.message != WM_HOTKEY) continue;
     if (message.wParam == kSnapshotHotkey) {
-      if (!TakeSnapshot(config.snapshot_key)) break;
+      if (!TakeSnapshot(config.snapshot_key, config.snapshot_language)) break;
       continue;
     }
     PushHotkeyPress(static_cast<uintptr_t>(message.wParam));
@@ -461,12 +474,15 @@ int32_t ld_set_hotkeys(const char* config_json) {
   StopHotkeys();
   if (config_json == nullptr || config_json[0] == '\0') return 0;
   const std::string config(config_json);
-  const HotkeyConfig hotkeys{JsonUnsigned(config, "pauseKey"),
-                             JsonUnsigned(config, "pauseModifiers"),
-                             JsonUnsigned(config, "resumeKey"),
-                             JsonUnsigned(config, "resumeModifiers"),
-                             JsonUnsigned(config, "snapshotKey"),
-                             JsonUnsigned(config, "snapshotModifiers")};
+  HotkeyConfig hotkeys{JsonUnsigned(config, "pauseKey"),
+                       JsonUnsigned(config, "pauseModifiers"),
+                       JsonUnsigned(config, "resumeKey"),
+                       JsonUnsigned(config, "resumeModifiers"),
+                       JsonUnsigned(config, "snapshotKey"),
+                       JsonUnsigned(config, "snapshotModifiers")};
+  if (const auto language = JsonString(config, "snapshotLanguage"); !language.empty()) {
+    hotkeys.snapshot_language = language;
+  }
   if (hotkeys.pause_key == 0 && hotkeys.resume_key == 0 && hotkeys.snapshot_key == 0) return 0;
   std::lock_guard<std::mutex> lock(hotkey_mutex);
   std::promise<void> ready;
@@ -595,17 +611,16 @@ int32_t ld_start(const char* config_json) {
                            JsonDouble(config, "ocrRegionTop", 0.55),
                            JsonDouble(config, "ocrRegionRight", 1.0),
                            JsonDouble(config, "ocrRegionBottom", 1.0)};
+    std::string ocr_language = JsonString(config, "ocrLanguage");
+    if (ocr_language.empty()) ocr_language = "en";
     if (!ocr_capture->Start(
-            process_id, region,
+            process_id, region, ocr_language,
             [](const std::string& recognized_text) {
               if (paused) return;
               PushEvent("{\"type\":\"ocrText\",\"text\":\"" +
                         EscapeJson(recognized_text) + "\"}");
             },
-            [](const std::string& message) {
-              PushEvent("{\"type\":\"error\",\"message\":\"" +
-                        EscapeJson(message) + "\"}");
-            })) {
+            [ocr_language](const std::string& message) { PushOcrError(message, ocr_language); })) {
       ocr_capture.reset();
       running = false;
       return -7;

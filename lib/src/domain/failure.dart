@@ -98,6 +98,10 @@ enum FailureCode {
   /// Windows refused a hotkey because another program holds the same
   /// combination; the detail is the action, `pause` or `resume`.
   hotkeyTaken,
+
+  /// Windows has no text recognition installed for the language the screen
+  /// is read in; the detail is its code.
+  ocrLanguageMissing,
 }
 
 class LoreDubFailure implements Exception {
