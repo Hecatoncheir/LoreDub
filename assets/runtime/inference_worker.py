@@ -194,6 +194,78 @@ BANK_MIN_SECONDS = 1.5
 # A long game still fits; past this, new voices are used but not kept.
 BANK_LIMIT = 256
 
+# A segment shorter than this is one person talking: looking for a second
+# voice in it would cost more than it could buy.
+SPLIT_MIN_SECONDS = 3.0
+
+# The stretch a voice is measured over, and how far that window steps.
+SPLIT_WINDOW_SECONDS = 1.5
+SPLIT_HOP_SECONDS = 0.5
+
+# Neighbouring windows this far apart in cosine are two different people.
+# Loose enough that the same voice raised or lowered stays one person.
+SPLIT_DISTANCE = 0.25
+
+# Neither side of a cut may be shorter than this, or recognition is handed
+# half a word.
+SPLIT_MIN_PIECE_SECONDS = 1.0
+
+# How far around a change a quieter place to cut is looked for.
+SPLIT_SNAP_SECONDS = 0.4
+
+
+def speaker_cuts(converter, samples, rate):
+    """The seconds where the voice in a recording changes.
+
+    Windows of the recording are embedded with the same reference encoder
+    that tells the characters apart, and a pair of neighbours far enough
+    apart in cosine marks a change. Each cut is then moved to the quietest
+    moment around it, so that a word is not sliced in half.
+    """
+    seconds = len(samples) / rate
+    if seconds < SPLIT_MIN_SECONDS:
+        return []
+    window = int(rate * SPLIT_WINDOW_SECONDS)
+    hop = int(rate * SPLIT_HOP_SECONDS)
+    starts = list(range(0, max(1, len(samples) - window + 1), hop))
+    if len(starts) < 2:
+        return []
+    vectors = []
+    for start in starts:
+        block = samples[start : start + window]
+        fingerprint = converter.embed(block, rate).flatten().float().cpu().numpy()
+        norm = float(np.linalg.norm(fingerprint)) or 1.0
+        vectors.append(fingerprint / norm)
+    cuts = []
+    for index in range(1, len(vectors)):
+        if 1.0 - float(np.dot(vectors[index - 1], vectors[index])) < SPLIT_DISTANCE:
+            continue
+        # The change happened somewhere in the overlap of the two windows.
+        boundary = (starts[index] + window // 2) / rate
+        cut = quietest_moment(samples, rate, boundary)
+        if cut - (cuts[-1] if cuts else 0.0) < SPLIT_MIN_PIECE_SECONDS:
+            continue
+        if seconds - cut < SPLIT_MIN_PIECE_SECONDS:
+            continue
+        cuts.append(cut)
+    return cuts
+
+
+def quietest_moment(samples, rate, around):
+    """The second nearest [around] where the recording is quietest."""
+    frame = max(1, int(rate * 0.02))
+    first = max(0, int((around - SPLIT_SNAP_SECONDS) * rate))
+    last = min(len(samples) - frame, int((around + SPLIT_SNAP_SECONDS) * rate))
+    if last <= first:
+        return around
+    quietest, lowest = around, None
+    for start in range(first, last, frame):
+        block = samples[start : start + frame]
+        energy = float(np.sqrt(np.mean(block**2)))
+        if lowest is None or energy < lowest:
+            quietest, lowest = (start + frame / 2) / rate, energy
+    return quietest
+
 
 class VoiceBank:
     """The voices of one game's characters, kept between sessions.
@@ -510,6 +582,20 @@ def main():
             reply({"type": "error", "message": f"malformed request: {error}"})
             continue
         try:
+            # Where does the voice change? Asked before recognition, so each
+            # speaker's half is recognized and voiced on its own.
+            listening = request.get("diarize")
+            if listening:
+                cuts = []
+                if converter is not None:
+                    try:
+                        heard, rate = read_wave_mono(listening)
+                    except (OSError, wave.Error, ValueError):
+                        heard, rate = None, 0
+                    if heard is not None and rate > 0 and len(heard):
+                        cuts = speaker_cuts(converter, heard, rate)
+                reply({"id": request_id, "cuts": [round(cut, 3) for cut in cuts]})
+                continue
             text = request["text"].strip()
             # Text read off the screen in the dubbing language itself has
             # nothing to be translated and is voiced as it is.

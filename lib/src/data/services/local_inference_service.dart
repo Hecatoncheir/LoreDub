@@ -376,6 +376,36 @@ class LocalInferenceService {
     return processText(english, originalWavePath: wavePath);
   }
 
+  /// The seconds at which the voice in [wavePath] changes, so the caller can
+  /// cut the recording there and have each speaker recognized and voiced on
+  /// their own. Empty when the worker has no converter to hear them with.
+  Future<List<double>> speakerCuts(String wavePath) async {
+    final worker = _worker;
+    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(jsonEncode({'id': id, 'diarize': wavePath}));
+    final response = await completer.future.timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
+    return [
+      for (final cut in response['cuts'] as List<Object?>? ?? const [])
+        if (cut is num) cut.toDouble(),
+    ];
+  }
+
   /// [originalWavePath] is the captured phrase, when there is one. The
   /// worker reads its pitch to follow the speaker; OCR mode has no audio and
   /// passes nothing. Without [translate] the text is already in the dubbing

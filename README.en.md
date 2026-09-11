@@ -277,16 +277,33 @@ NVIDIA card a line is re-voiced in about 0.1 s; that takes the same CUDA torch
 runtime translation uses, and either row can download it.
 
 The **Remember the characters' voices** switch (off by default) keeps a voice
-bank. Every new character's voice fingerprint is saved, and when they speak
-again the line is voiced with that fingerprint instead of the timbre of the
-current phrase, so a character's voice does not drift from line to line and
-stays the same after a restart. Fingerprints are not averaged: a character is
+bank. It is on offer wherever the converter is downloaded — in Automatic mode
+too, where the converter only listens to who is speaking. Every new character
+is remembered by their voice fingerprint and given a Silero voice of their own
+in the right gender, so two men in a scene no longer sound alike. The gender is
+decided once, from the line that founded the character, and not revisited: a
+whisper or a shout does not flip their voice mid-conversation. With Original
+voice the character keeps their timbre as well — their lines are voiced with
+the saved fingerprint instead of the timbre of the current phrase, so the voice
+does not drift from line to line and stays the same after a restart. Fingerprints are not averaged: a character is
 represented by their first clear line longer than a second and a half. A line
 counts as the same character when the fingerprints meet at a cosine of 0.80
 or more: on the OpenVoice demo voices two noisy lines of one person met at
 0.86 and above, two different people at 0.79 at most. Every game has a bank of
 its own (`voice_bank/<game>.json` in the application data); the switch shows
 how many voices are kept, and **Clear** deletes them all once confirmed.
+
+With the converter downloaded, LoreDub also cuts a segment in which the
+speaker changed. Capture cuts speech on silence, so an exchange without pauses
+— an everyday thing in cutscenes — arrives as one piece and used to be voiced
+by one voice. Now such a segment is searched for the moments the voice
+changes, the recording is cut there at the nearest quiet point, and each piece
+is recognized and voiced on its own. Segments under three seconds and pieces
+under a second are left alone. The threshold is measured on Silero voices:
+across the boundary between two different voices neighbouring windows differ
+by 0.34 in cosine, while within one voice, at the seam of two phrases, they
+differ by at most 0.11; the cut is made at 0.25. On a pair of joined voices
+the cut landed 20 ms from the real boundary.
 
 The **Let different characters overlap** switch (on by default) lets another
 character's new line start at once while the previous one is still sounding,
@@ -297,8 +314,8 @@ differently by mode:
 
 - Original voice: by the voice fingerprint (the kept character with the voice
   bank on, this session's fingerprints without it);
-- Automatic: by the Silero voice, which separates men from women and nothing
-  more;
+- Automatic: by the character when the voice bank is on; without it by the
+  Silero voice, which separates men from women and nothing more;
 - Choose and subtitle mode have one voice, so lines play strictly in turn.
 
 A short line nobody could be matched to plays on its own.

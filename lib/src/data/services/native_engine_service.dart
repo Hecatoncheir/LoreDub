@@ -15,6 +15,7 @@ import '../../domain/game_process.dart';
 import '../../domain/hotkey.dart';
 import '../../domain/ocr_text_delta.dart';
 import '../../domain/sound_captions.dart';
+import '../../domain/wave_slices.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
 import 'phrase_queue.dart';
@@ -299,6 +300,46 @@ class NativeEngineService {
   }
 
   Future<void> _processSegment(String wavePath) async {
+    // Two characters answering each other without a pause land in one
+    // segment; each of their halves earns its own recognition and voice.
+    for (final piece in await _splitBySpeaker(wavePath)) {
+      await _recognizeSegment(piece);
+    }
+  }
+
+  /// [wavePath] cut where the voice in it changes, or the recording itself
+  /// when it holds one speaker — or when nobody can tell.
+  Future<List<String>> _splitBySpeaker(String wavePath) async {
+    final config = _activeConfig;
+    if (config == null) return [wavePath];
+    // The converter is what hears who is speaking; without it the segment
+    // goes on whole.
+    if ((config['models']! as Map<String, String>)['converter'] == null) return [wavePath];
+    try {
+      final cuts = await _inference.speakerCuts(wavePath);
+      if (cuts.isEmpty) return [wavePath];
+      final pieces = sliceWave(await File(wavePath).readAsBytes(), cuts);
+      if (pieces.length < 2) return [wavePath];
+      final stem = wavePath.endsWith('.wav')
+          ? wavePath.substring(0, wavePath.length - 4)
+          : wavePath;
+      final written = <String>[];
+      for (var index = 0; index < pieces.length; index++) {
+        final piece = '$stem-$index.wav';
+        await File(piece).writeAsBytes(pieces[index], flush: true);
+        written.add(piece);
+      }
+      await _deleteIfPresent(wavePath);
+      return written;
+    } catch (error) {
+      // Hearing a second speaker is a courtesy; a phrase nobody could split
+      // is still a phrase, and it is dubbed whole.
+      _reportFailure(error);
+      return [wavePath];
+    }
+  }
+
+  Future<void> _recognizeSegment(String wavePath) async {
     final started = Stopwatch()..start();
     try {
       final config = _activeConfig;

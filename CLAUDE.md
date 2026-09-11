@@ -219,6 +219,20 @@ or a shout no longer flips a character's voice mid-scene (bank format v2;
 v1's bare fingerprints still load). Without the converter nothing hears who
 is speaking and the per-line gender choice stands.
 
+The same encoder splits a segment that holds two speakers. Capture cuts on
+silence, so a cutscene exchange without pauses arrives as one WAV;
+`_splitBySpeaker` asks the worker (`{"diarize": path}` -> `{"cuts": [s]}`,
+`speaker_cuts` in the worker: 1.5 s windows stepping 0.5 s, a cosine
+distance over 0.25 between neighbours, the cut moved to the quietest moment
+within 0.4 s), cuts the recording with `sliceWave`
+(`domain/wave_slices.dart`) and recognizes and voices each piece on its own.
+Segments under 3 s and pieces under 1 s are left alone, and a diarization
+that fails dubs the phrase whole. The 0.25 is measured, like the bank's 0.80:
+two Silero voices joined gave 0.34 across the boundary and at most 0.11 at
+the seam of two phrases by one voice, and the cut landed 20 ms from the real
+boundary. Measure again before moving it — a threshold too low fragments
+every phrase.
+
 Which device each stage runs on is decided in `domain/compute_device.dart`,
 which is pure and unit-tested: `resolveComputeBackend` takes the user's preset,
 an optional per-stage pin, and a `ComputeAvailability` (adapters from the
