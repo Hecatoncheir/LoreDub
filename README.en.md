@@ -166,7 +166,7 @@ Game process (WASAPI process loopback, 16 kHz mono)
 Audio capture can target a selected process tree or the complete default output.
 Complete-output mode excludes the LoreDub process tree so synthesized speech
 does not feed back into recognition. Alternatively, OCR mode captures a
-configurable lower portion of the selected game window, recognizes stable
+player-chosen area of the selected game window, recognizes stable
 English subtitle text with Windows OCR, and sends it directly to Marian and
 Silero without running Whisper.
 
@@ -324,7 +324,10 @@ nothing to download for it.
 ## Subtitle mode
 
 The **Subtitles + OCR** mode works with visible windowed or borderless games.
-Choose how much of the lower game window to scan in Settings. English OCR must
+Settings show a scaled-down, monitor-shaped screen: drag a frame around the
+place where the game prints its subtitles, then move it or pull its corners and
+sides. The frame is kept as a share of the game window, so it fits any
+resolution; by default it is the bottom 45% of the window. English OCR must
 be installed in Windows; the app reports a direct error when that language pack
 is missing. Scanning runs only while the selected game is the foreground window,
 which prevents other windows from being mistaken for subtitles.

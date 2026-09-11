@@ -188,9 +188,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsOcrRegion => 'Область субтитров';
 
   @override
-  String ocrRegionValue(int percent) {
-    return 'Нижние $percent% активного окна игры';
+  String get ocrRegionNote =>
+      'Обведите мышью место, где игра пишет субтитры. Экран ниже — это окно игры в уменьшенном виде; рамка хранится в долях окна, поэтому подходит к любому разрешению.';
+
+  @override
+  String ocrRegionValue(int width, int height, int left, int top) {
+    return 'Рамка $width × $height% окна, отступ $left% слева и $top% сверху';
   }
+
+  @override
+  String get ocrRegionHelp =>
+      'Тяните рамку, чтобы сдвинуть её, а углы и стороны — чтобы изменить размер. С клавиатуры стрелки двигают рамку, Shift со стрелками меняет размер.';
+
+  @override
+  String get ocrRegionReset => 'Сбросить';
 
   @override
   String get settingsOriginalVolume => 'Оригинальный звук';

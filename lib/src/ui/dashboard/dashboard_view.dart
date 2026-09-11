@@ -14,6 +14,7 @@ import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
+import '../../domain/ocr_region.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/runtime_package.dart';
@@ -30,6 +31,7 @@ import 'cubits/downloads_cubit.dart';
 import 'cubits/pipeline_cubit.dart';
 import 'cubits/settings_cubit.dart';
 import 'cubits/shell_cubit.dart';
+import 'ocr_region_picker.dart';
 
 /// Rebuilds only when the shell changes, which is the section, the banner
 /// and the version. Every other part of the screen listens for itself.
@@ -1697,18 +1699,50 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           const SizedBox(height: 12),
           _SettingCard(
             title: l10n.settingsOcrRegion,
-            subtitle: l10n.ocrRegionValue(((1 - settings.ocrRegionTop) * 100).round()),
-            child: Slider(
-              value: settings.ocrRegionTop,
-              min: 0.25,
-              max: 0.8,
-              divisions: 11,
-              label: '${((1 - settings.ocrRegionTop) * 100).round()}%',
-              onChanged: running
-                  ? null
-                  : (value) => cubits.settings.update(
-                      settings.copyWith(ocrRegionTop: value),
+            subtitle: l10n.ocrRegionNote,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                OcrRegionPicker(
+                  key: const ValueKey('ocrRegion'),
+                  region: settings.ocrRegion,
+                  semanticLabel: l10n.ocrRegionHelp,
+                  onChanged: running
+                      ? null
+                      : (region) => cubits.settings.update(settings.copyWith(ocrRegion: region)),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      l10n.ocrRegionValue(
+                        (settings.ocrRegion.width * 100).round(),
+                        (settings.ocrRegion.height * 100).round(),
+                        (settings.ocrRegion.left * 100).round(),
+                        (settings.ocrRegion.top * 100).round(),
+                      ),
+                      style: const TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 12),
                     ),
+                    TextButton.icon(
+                      onPressed: running || settings.ocrRegion == OcrRegion.standard
+                          ? null
+                          : () => cubits.settings.update(
+                              settings.copyWith(ocrRegion: OcrRegion.standard),
+                            ),
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      label: Text(l10n.ocrRegionReset),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l10n.ocrRegionHelp,
+                  style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+                ),
+              ],
             ),
           ),
         ],

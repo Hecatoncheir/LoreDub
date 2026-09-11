@@ -188,9 +188,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsOcrRegion => 'Subtitle area';
 
   @override
-  String ocrRegionValue(int percent) {
-    return 'Bottom $percent% of the active game window';
+  String get ocrRegionNote =>
+      'Drag a frame over the place where the game prints its subtitles. The screen below stands for the game window; the frame is kept as a share of it, so it fits any resolution.';
+
+  @override
+  String ocrRegionValue(int width, int height, int left, int top) {
+    return 'Frame $width × $height% of the window, $left% from the left and $top% from the top';
   }
+
+  @override
+  String get ocrRegionHelp =>
+      'Drag the frame to move it, and its corners and sides to resize it. From the keyboard, the arrows move it and Shift with the arrows resizes it.';
+
+  @override
+  String get ocrRegionReset => 'Reset';
 
   @override
   String get settingsOriginalVolume => 'Original audio';

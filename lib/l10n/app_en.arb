@@ -100,14 +100,26 @@
   "captureAudio": "Game audio",
   "captureOcr": "Subtitles + OCR",
   "settingsOcrRegion": "Subtitle area",
-  "ocrRegionValue": "Bottom {percent}% of the active game window",
+  "ocrRegionNote": "Drag a frame over the place where the game prints its subtitles. The screen below stands for the game window; the frame is kept as a share of it, so it fits any resolution.",
+  "ocrRegionValue": "Frame {width} × {height}% of the window, {left}% from the left and {top}% from the top",
   "@ocrRegionValue": {
     "placeholders": {
-      "percent": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "left": {
+        "type": "int"
+      },
+      "top": {
         "type": "int"
       }
     }
   },
+  "ocrRegionHelp": "Drag the frame to move it, and its corners and sides to resize it. From the keyboard, the arrows move it and Shift with the arrows resizes it.",
+  "ocrRegionReset": "Reset",
   "settingsOriginalVolume": "Original audio",
   "originalVolumeValue": "Volume of the game process while dubbing: {percent}%",
   "@originalVolumeValue": {

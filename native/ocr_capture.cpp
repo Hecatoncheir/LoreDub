@@ -53,21 +53,28 @@ HWND FindProcessWindow(DWORD process_id) {
   return search.best;
 }
 
-bool CaptureBottomRegion(HWND window, double region_top, std::vector<uint8_t>* pixels,
-                         int32_t* output_width, int32_t* output_height) {
+bool CaptureRegion(HWND window, const OcrRegion& region, std::vector<uint8_t>* pixels,
+                   int32_t* output_width, int32_t* output_height) {
   RECT client{};
   if (!GetClientRect(window, &client)) return false;
   POINT origin{};
   if (!ClientToScreen(window, &origin)) return false;
   const int source_width = client.right - client.left;
   const int source_height = client.bottom - client.top;
-  const int source_y = std::clamp(static_cast<int>(source_height * region_top), 0,
+  const int source_x = std::clamp(static_cast<int>(source_width * region.left), 0,
+                                  std::max(0, source_width - 1));
+  const int source_y = std::clamp(static_cast<int>(source_height * region.top), 0,
                                   std::max(0, source_height - 1));
-  const int crop_height = source_height - source_y;
-  if (source_width < 160 || crop_height < 80) return false;
+  const int crop_width =
+      std::clamp(static_cast<int>(source_width * region.right), source_x, source_width) - source_x;
+  const int crop_height =
+      std::clamp(static_cast<int>(source_height * region.bottom), source_y, source_height) -
+      source_y;
+  if (crop_width < 32 || crop_height < 16) return false;
 
-  const double scale = std::min(1.0, 2400.0 / source_width);
-  const int width = std::max(1, static_cast<int>(source_width * scale));
+  // Windows OCR refuses images beyond OcrEngine::MaxImageDimension.
+  const double scale = std::min(1.0, 2400.0 / std::max(crop_width, crop_height));
+  const int width = std::max(1, static_cast<int>(crop_width * scale));
   const int height = std::max(1, static_cast<int>(crop_height * scale));
   HDC screen = GetDC(nullptr);
   HDC memory = CreateCompatibleDC(screen);
@@ -89,8 +96,8 @@ bool CaptureBottomRegion(HWND window, double region_top, std::vector<uint8_t>* p
   }
   const HGDIOBJ previous = SelectObject(memory, bitmap);
   SetStretchBltMode(memory, HALFTONE);
-  const BOOL copied = StretchBlt(memory, 0, 0, width, height, screen, origin.x,
-                                 origin.y + source_y, source_width, crop_height,
+  const BOOL copied = StretchBlt(memory, 0, 0, width, height, screen, origin.x + source_x,
+                                 origin.y + source_y, crop_width, crop_height,
                                  SRCCOPY | CAPTUREBLT);
   if (copied) {
     const auto* begin = static_cast<const uint8_t*>(bitmap_pixels);
@@ -137,15 +144,31 @@ std::string NormalizeText(std::string text) {
 
 #endif
 
+namespace {
+
+// The interface already keeps the frame valid; this guards the ABI against a
+// config written by hand, falling back to the default band rather than
+// scanning a sliver or nothing.
+OcrRegion SanitizeRegion(OcrRegion region) {
+  const double left = std::clamp(std::min(region.left, region.right), 0.0, 1.0);
+  const double right = std::clamp(std::max(region.left, region.right), 0.0, 1.0);
+  const double top = std::clamp(std::min(region.top, region.bottom), 0.0, 1.0);
+  const double bottom = std::clamp(std::max(region.top, region.bottom), 0.0, 1.0);
+  if (right - left < 0.02 || bottom - top < 0.02) return OcrRegion{};
+  return OcrRegion{left, top, right, bottom};
+}
+
+}  // namespace
+
 OcrCapture::OcrCapture() = default;
 OcrCapture::~OcrCapture() { Stop(); }
 
-bool OcrCapture::Start(uint32_t process_id, double region_top,
+bool OcrCapture::Start(uint32_t process_id, OcrRegion region,
                        TextCallback on_text, ErrorCallback on_error) {
   if (thread_.joinable()) return false;
   stopping_ = false;
   thread_ = std::thread(&OcrCapture::CaptureThread, this, process_id,
-                        std::clamp(region_top, 0.15, 0.9), std::move(on_text),
+                        SanitizeRegion(region), std::move(on_text),
                         std::move(on_error));
   return true;
 }
@@ -155,11 +178,11 @@ void OcrCapture::Stop() {
   if (thread_.joinable()) thread_.join();
 }
 
-void OcrCapture::CaptureThread(uint32_t process_id, double region_top,
+void OcrCapture::CaptureThread(uint32_t process_id, OcrRegion region,
                                TextCallback on_text, ErrorCallback on_error) {
 #if !defined(_WIN32)
   (void)process_id;
-  (void)region_top;
+  (void)region;
   (void)on_text;
   on_error("Windows OCR is only available on Windows");
 #else
@@ -183,7 +206,7 @@ void OcrCapture::CaptureThread(uint32_t process_id, double region_top,
       int32_t height = 0;
       std::string text;
       if (window != nullptr && window == GetForegroundWindow() &&
-          CaptureBottomRegion(window, region_top, &pixels, &width, &height)) {
+          CaptureRegion(window, region, &pixels, &width, &height)) {
         const auto buffer =
             winrt::Windows::Security::Cryptography::CryptographicBuffer::CreateFromByteArray(
                 pixels);

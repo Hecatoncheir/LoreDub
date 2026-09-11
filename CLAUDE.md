@@ -73,8 +73,9 @@ than one of them.
    `{"type":"audioSegment"|"ocrText"|"state"|"error"}` events into a Dart
    stream. Native capture runs on its own threads (`ProcessLoopbackCapture`
    WASAPI process loopback + energy VAD writing 16 kHz WAV chunks;
-   `OcrCapture` GDI + Windows OCR over the lower part of the foreground game
-   window).
+   `OcrCapture` GDI + Windows OCR over `AppSettings.ocrRegion`, a frame the
+   player draws in Settings and stored as fractions of the foreground game
+   window's client area).
 3. **whisper.cpp** — invoked per audio segment as a one-shot subprocess with
    `-tr` (translate to English). Which build runs is the compute setting:
    bundled `runtime/whisper/` (CPU) or `runtime/whisper-vulkan/`, or the

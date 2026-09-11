@@ -369,8 +369,12 @@ int32_t ld_start(const char* config_json) {
   }
   if (capture_mode == "ocr") {
     ocr_capture = std::make_unique<OcrCapture>();
+    const OcrRegion region{JsonDouble(config, "ocrRegionLeft", 0.0),
+                           JsonDouble(config, "ocrRegionTop", 0.55),
+                           JsonDouble(config, "ocrRegionRight", 1.0),
+                           JsonDouble(config, "ocrRegionBottom", 1.0)};
     if (!ocr_capture->Start(
-            process_id, JsonDouble(config, "ocrRegionTop", 0.55),
+            process_id, region,
             [](const std::string& recognized_text) {
               PushEvent("{\"type\":\"ocrText\",\"text\":\"" +
                         EscapeJson(recognized_text) + "\"}");

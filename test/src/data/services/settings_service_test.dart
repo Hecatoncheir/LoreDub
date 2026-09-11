@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
+import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -13,7 +14,10 @@ void main() {
   test('loads and persists OCR capture settings', () async {
     SharedPreferences.setMockInitialValues({
       'captureMode': 'ocr',
+      'ocrRegionLeft': 0.1,
       'ocrRegionTop': 0.65,
+      'ocrRegionRight': 0.9,
+      'ocrRegionBottom': 0.95,
       'modelProxyUrl': 'http://127.0.0.1:7890',
       'audioCaptureSource': 'system',
       'pythonExecutable': r'C:\Python311\python.exe',
@@ -23,24 +27,48 @@ void main() {
     final loaded = await service.load();
 
     expect(loaded.captureMode, CaptureMode.ocr);
-    expect(loaded.ocrRegionTop, 0.65);
+    expect(loaded.ocrRegion, const OcrRegion(left: 0.1, top: 0.65, right: 0.9, bottom: 0.95));
     expect(loaded.modelProxyUrl, 'http://127.0.0.1:7890');
     expect(loaded.audioCaptureSource, AudioCaptureSource.system);
     expect(loaded.pythonExecutable, r'C:\Python311\python.exe');
 
+    const drawn = OcrRegion(left: 0.2, top: 0.4, right: 0.7, bottom: 0.6);
     await service.save(
       loaded.copyWith(
-        ocrRegionTop: 0.4,
+        ocrRegion: drawn,
         modelProxyUrl: 'http://proxy.example:8080',
         audioCaptureSource: AudioCaptureSource.process,
         pythonExecutable: 'python.exe',
       ),
     );
     final saved = await service.load();
-    expect(saved.ocrRegionTop, 0.4);
+    expect(saved.ocrRegion, drawn);
     expect(saved.modelProxyUrl, 'http://proxy.example:8080');
     expect(saved.audioCaptureSource, AudioCaptureSource.process);
     expect(saved.pythonExecutable, 'python.exe');
+  });
+
+  test('reads the band an older build stored as a full-width frame', () async {
+    SharedPreferences.setMockInitialValues({'ocrRegionTop': 0.65});
+
+    expect(
+      (await SettingsService().load()).ocrRegion,
+      const OcrRegion(left: 0, top: 0.65, right: 1, bottom: 1),
+    );
+  });
+
+  test('repairs a stored frame that has no area', () async {
+    SharedPreferences.setMockInitialValues({
+      'ocrRegionLeft': 0.5,
+      'ocrRegionRight': 0.5,
+      'ocrRegionTop': 1.4,
+    });
+
+    final region = (await SettingsService().load()).ocrRegion;
+
+    expect(region.width, closeTo(OcrRegion.minimumWidth, 1e-9));
+    expect(region.bottom, 1);
+    expect(region.height, closeTo(OcrRegion.minimumHeight, 1e-9));
   });
 
   test('remembers a source language chosen in advance', () async {

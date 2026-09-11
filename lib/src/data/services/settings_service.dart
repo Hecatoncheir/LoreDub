@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
+import '../../domain/ocr_region.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/spoken_language.dart';
 
@@ -38,6 +39,15 @@ class SettingsService {
     return null;
   }
 
+  /// Builds before the frame could be drawn stored only `ocrRegionTop`, the
+  /// top of a full-width band; the other edges then default to that band.
+  static OcrRegion _readOcrRegion(SharedPreferences preferences) => OcrRegion(
+    left: preferences.getDouble('ocrRegionLeft') ?? OcrRegion.standard.left,
+    top: preferences.getDouble('ocrRegionTop') ?? OcrRegion.standard.top,
+    right: preferences.getDouble('ocrRegionRight') ?? OcrRegion.standard.right,
+    bottom: preferences.getDouble('ocrRegionBottom') ?? OcrRegion.standard.bottom,
+  ).normalized();
+
   static Future<void> _writeBackend(
     SharedPreferences preferences,
     String key,
@@ -56,7 +66,7 @@ class SettingsService {
       ttsSpeed: preferences.getDouble('ttsSpeed') ?? 1.12,
       cpuThreads: preferences.getInt('cpuThreads') ?? defaultCpuThreads(),
       showOverlay: preferences.getBool('showOverlay') ?? true,
-      ocrRegionTop: preferences.getDouble('ocrRegionTop') ?? 0.55,
+      ocrRegion: _readOcrRegion(preferences),
       modelProxyUrl: preferences.getString('modelProxyUrl') ?? '',
       audioCaptureSource: AudioCaptureSource.values.firstWhere(
         (source) => source.name == preferences.getString('audioCaptureSource'),
@@ -88,7 +98,10 @@ class SettingsService {
       preferences.setDouble('ttsSpeed', settings.ttsSpeed),
       preferences.setInt('cpuThreads', settings.cpuThreads),
       preferences.setBool('showOverlay', settings.showOverlay),
-      preferences.setDouble('ocrRegionTop', settings.ocrRegionTop),
+      preferences.setDouble('ocrRegionLeft', settings.ocrRegion.left),
+      preferences.setDouble('ocrRegionTop', settings.ocrRegion.top),
+      preferences.setDouble('ocrRegionRight', settings.ocrRegion.right),
+      preferences.setDouble('ocrRegionBottom', settings.ocrRegion.bottom),
       preferences.setString('modelProxyUrl', settings.modelProxyUrl),
       preferences.setString(
         'audioCaptureSource',

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import 'compute_device.dart';
+import 'ocr_region.dart';
 import 'spoken_language.dart';
 
 enum CaptureMode { audio, ocr }
@@ -16,7 +17,7 @@ class AppSettings {
     this.ttsSpeed = 1.12,
     this.cpuThreads = 4,
     this.showOverlay = true,
-    this.ocrRegionTop = 0.55,
+    this.ocrRegion = OcrRegion.standard,
     this.modelProxyUrl = '',
     this.audioCaptureSource = AudioCaptureSource.process,
     this.pythonExecutable = '',
@@ -46,7 +47,9 @@ class AppSettings {
   /// TODO: draw the translated lines over the game. Persisted, but nothing
   /// reads it yet.
   final bool showOverlay;
-  final double ocrRegionTop;
+
+  /// The part of the game window subtitle mode reads.
+  final OcrRegion ocrRegion;
   final String modelProxyUrl;
   final AudioCaptureSource audioCaptureSource;
   final String pythonExecutable;
@@ -122,7 +125,7 @@ class AppSettings {
     double? ttsSpeed,
     int? cpuThreads,
     bool? showOverlay,
-    double? ocrRegionTop,
+    OcrRegion? ocrRegion,
     String? modelProxyUrl,
     AudioCaptureSource? audioCaptureSource,
     String? pythonExecutable,
@@ -144,7 +147,7 @@ class AppSettings {
     ttsSpeed: ttsSpeed ?? this.ttsSpeed,
     cpuThreads: cpuThreads ?? this.cpuThreads,
     showOverlay: showOverlay ?? this.showOverlay,
-    ocrRegionTop: ocrRegionTop ?? this.ocrRegionTop,
+    ocrRegion: ocrRegion ?? this.ocrRegion,
     modelProxyUrl: modelProxyUrl ?? this.modelProxyUrl,
     audioCaptureSource: audioCaptureSource ?? this.audioCaptureSource,
     pythonExecutable: pythonExecutable ?? this.pythonExecutable,

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -27,6 +28,7 @@ import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
+import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus, TranscriptEntry;
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
@@ -1050,6 +1052,103 @@ void main() {
 
       expect(cubits.selection.canFollowSpeaker, isFalse);
       expect(find.textContaining('одного пола'), findsOneWidget);
+    });
+  });
+
+  group('the subtitle area', () {
+    Future<DashboardCubits> pumpSubtitleArea(
+      WidgetTester tester, {
+      OcrRegion region = OcrRegion.standard,
+      PipelineStatus status = PipelineStatus.idle,
+    }) async {
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.settings,
+        settings: AppSettings(captureMode: CaptureMode.ocr, ocrRegion: region),
+        models: catalogue(),
+        status: status,
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
+      await tester.ensureVisible(find.byKey(const ValueKey('ocrRegionScreen')));
+      await tester.pumpAndSettle();
+      return cubits;
+    }
+
+    /// A point on the scaled-down screen, as a fraction of its sides.
+    Offset onScreen(WidgetTester tester, double x, double y) {
+      final screen = tester.getRect(find.byKey(const ValueKey('ocrRegionScreen')));
+      return Offset(screen.left + screen.width * x, screen.top + screen.height * y);
+    }
+
+    Future<void> dragOnScreen(WidgetTester tester, Offset from, Offset to) async {
+      await tester.dragFrom(from, to - from, kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+    }
+
+    void expectRegion(OcrRegion actual, OcrRegion expected) {
+      expect(actual.left, closeTo(expected.left, 0.01));
+      expect(actual.top, closeTo(expected.top, 0.01));
+      expect(actual.right, closeTo(expected.right, 0.01));
+      expect(actual.bottom, closeTo(expected.bottom, 0.01));
+    }
+
+    testWidgets('draws a new frame dragged across empty screen', (tester) async {
+      final cubits = await pumpSubtitleArea(tester);
+
+      await dragOnScreen(tester, onScreen(tester, 0.1, 0.1), onScreen(tester, 0.6, 0.4));
+
+      const drawn = OcrRegion(left: 0.1, top: 0.1, right: 0.6, bottom: 0.4);
+      expectRegion(cubits.settings.settings.ocrRegion, drawn);
+      expectRegion((await SettingsService().load()).ocrRegion, drawn);
+      expect(find.text('Рамка 50 × 30% окна, отступ 10% слева и 10% сверху'), findsOneWidget);
+    });
+
+    testWidgets('moves the frame it is dragged by without resizing it', (tester) async {
+      final cubits = await pumpSubtitleArea(
+        tester,
+        region: const OcrRegion(left: 0.2, top: 0.6, right: 0.6, bottom: 0.9),
+      );
+
+      await dragOnScreen(tester, onScreen(tester, 0.4, 0.75), onScreen(tester, 0.5, 0.65));
+
+      expectRegion(
+        cubits.settings.settings.ocrRegion,
+        const OcrRegion(left: 0.3, top: 0.5, right: 0.7, bottom: 0.8),
+      );
+    });
+
+    testWidgets('resizes the frame by its corner', (tester) async {
+      final cubits = await pumpSubtitleArea(
+        tester,
+        region: const OcrRegion(left: 0.2, top: 0.6, right: 0.6, bottom: 0.9),
+      );
+
+      await dragOnScreen(tester, onScreen(tester, 0.6, 0.9), onScreen(tester, 0.8, 0.95));
+
+      expectRegion(
+        cubits.settings.settings.ocrRegion,
+        const OcrRegion(left: 0.2, top: 0.6, right: 0.8, bottom: 0.95),
+      );
+    });
+
+    testWidgets('puts the default band back', (tester) async {
+      final cubits = await pumpSubtitleArea(
+        tester,
+        region: const OcrRegion(left: 0.2, top: 0.6, right: 0.6, bottom: 0.9),
+      );
+
+      await tester.tap(find.text('Сбросить'));
+      await tester.pumpAndSettle();
+
+      expect(cubits.settings.settings.ocrRegion, OcrRegion.standard);
+    });
+
+    testWidgets('leaves the frame alone while dubbing', (tester) async {
+      final cubits = await pumpSubtitleArea(tester, status: PipelineStatus.listening);
+
+      await dragOnScreen(tester, onScreen(tester, 0.1, 0.1), onScreen(tester, 0.6, 0.4));
+
+      expect(cubits.settings.settings.ocrRegion, OcrRegion.standard);
     });
   });
 }

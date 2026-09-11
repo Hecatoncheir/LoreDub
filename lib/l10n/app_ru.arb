@@ -100,14 +100,26 @@
   "captureAudio": "Аудио игры",
   "captureOcr": "Субтитры + OCR",
   "settingsOcrRegion": "Область субтитров",
-  "ocrRegionValue": "Нижние {percent}% активного окна игры",
+  "ocrRegionNote": "Обведите мышью место, где игра пишет субтитры. Экран ниже — это окно игры в уменьшенном виде; рамка хранится в долях окна, поэтому подходит к любому разрешению.",
+  "ocrRegionValue": "Рамка {width} × {height}% окна, отступ {left}% слева и {top}% сверху",
   "@ocrRegionValue": {
     "placeholders": {
-      "percent": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "left": {
+        "type": "int"
+      },
+      "top": {
         "type": "int"
       }
     }
   },
+  "ocrRegionHelp": "Тяните рамку, чтобы сдвинуть её, а углы и стороны — чтобы изменить размер. С клавиатуры стрелки двигают рамку, Shift со стрелками меняет размер.",
+  "ocrRegionReset": "Сбросить",
   "settingsOriginalVolume": "Оригинальный звук",
   "originalVolumeValue": "Громкость процесса игры во время перевода: {percent}%",
   "@originalVolumeValue": {

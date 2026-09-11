@@ -423,11 +423,29 @@ abstract class AppLocalizations {
   /// **'Область субтитров'**
   String get settingsOcrRegion;
 
+  /// No description provided for @ocrRegionNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обведите мышью место, где игра пишет субтитры. Экран ниже — это окно игры в уменьшенном виде; рамка хранится в долях окна, поэтому подходит к любому разрешению.'**
+  String get ocrRegionNote;
+
   /// No description provided for @ocrRegionValue.
   ///
   /// In ru, this message translates to:
-  /// **'Нижние {percent}% активного окна игры'**
-  String ocrRegionValue(int percent);
+  /// **'Рамка {width} × {height}% окна, отступ {left}% слева и {top}% сверху'**
+  String ocrRegionValue(int width, int height, int left, int top);
+
+  /// No description provided for @ocrRegionHelp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тяните рамку, чтобы сдвинуть её, а углы и стороны — чтобы изменить размер. С клавиатуры стрелки двигают рамку, Shift со стрелками меняет размер.'**
+  String get ocrRegionHelp;
+
+  /// No description provided for @ocrRegionReset.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить'**
+  String get ocrRegionReset;
 
   /// No description provided for @settingsOriginalVolume.
   ///
