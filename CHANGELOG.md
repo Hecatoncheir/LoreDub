@@ -4,6 +4,8 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-11
+
 - Added installing updates from the application. When a newer release is published, the version
   at the bottom left gives way to "Current version vX → vY" with an update mark; a click
   downloads the new setup with a progress bar, then "Updated" and Restart close LoreDub, run
