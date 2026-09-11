@@ -115,9 +115,13 @@ files it in the notification centre without ever showing it, so a build run
 straight from `build/` shows no banner. `UpdateInstaller` installs a newer
 release: it downloads the release's `-windows-x64-setup.exe` asset through
 `artifact_downloader.dart` into `<app support>/updates/`, and on Restart
-writes `apply_update.ps1` there, starts it detached (wait for this PID, run
-the setup with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
-/CLOSEAPPLICATIONS`, start the new exe, log to `update.log`) and exits. It
+starts that setup detached with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+/CLOSEAPPLICATIONS /RELAUNCH /LOG=<updates>/update.log` and exits; the
+`RelaunchRequested` check in `installer/lore_dub.iss` opens the new exe after
+a silent install only when `/RELAUNCH` is present. Do not put a console
+program (such as a PowerShell script) in between: started detached from the
+app it dies before running a line. A setup already downloaded and verified
+is picked up by the startup check, so the line opens on Restart. It
 only offers this when `unins000.exe` sits beside the executable, i.e. the
 per-user setup put this copy there; otherwise the line opens the release page.
 

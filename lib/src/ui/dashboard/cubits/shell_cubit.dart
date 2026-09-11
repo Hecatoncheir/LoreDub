@@ -104,11 +104,16 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
           : await _updateRepository.currentVersion();
       final release = await _updateRepository.latestRelease(proxyUrl: proxyUrl?.call() ?? '');
       final newer = release != null && isNewerRelease(release.version, version);
+      final installer = newer ? release.installer : null;
+      final installable = installer != null && _updateRepository.canInstall;
       updates = UpdateState(
         status: newer ? UpdateStatus.available : UpdateStatus.current,
         currentVersion: version,
         release: newer ? release : null,
-        installable: newer && release.installer != null && _updateRepository.canInstall,
+        installable: installable,
+        // A setup an earlier run finished downloading goes straight to the
+        // restart rather than asking to be fetched a second time.
+        installerPath: installable ? await _updateRepository.downloadedInstaller(installer) : null,
       );
       if (newer && announce) {
         // The toast is raised outside any widget, so the wording is loaded

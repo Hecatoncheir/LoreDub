@@ -41,3 +41,17 @@ Name: "desktopicon"; Description: "Создать ярлык на рабочем
 
 [Run]
 Filename: "{app}\lore_dub.exe"; Description: "Запустить LoreDub"; Flags: nowait postinstall skipifsilent
+; The application updates itself by closing and running this setup silently
+; with /RELAUNCH; nothing else would open the new version afterwards.
+Filename: "{app}\lore_dub.exe"; Flags: nowait; Check: RelaunchRequested
+
+[Code]
+function RelaunchRequested: Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/RELAUNCH') = 0 then
+      Result := True;
+end;

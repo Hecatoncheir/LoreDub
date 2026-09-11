@@ -1971,6 +1971,9 @@ class _FakeUpdateRepository extends UpdateRepository {
   bool get canInstall => true;
 
   @override
+  Future<String?> downloadedInstaller(ReleaseInstaller installer) async => null;
+
+  @override
   Future<String> downloadInstaller(
     ReleaseInstaller installer, {
     required DownloadProgress onProgress,

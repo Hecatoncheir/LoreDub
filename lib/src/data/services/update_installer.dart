@@ -18,11 +18,14 @@ typedef ProcessStarter = Future<Process> Function(String executable, List<String
 
 /// Downloads a newer release's setup and hands the application over to it.
 ///
-/// A running application cannot overwrite its own files, so the setup does
-/// not run while it is open: [restartInto] leaves a small script behind that
-/// waits for this process to end, runs the setup without a window, and
-/// starts the new version. The setup installs for the current user, so no
-/// administrator prompt interrupts it.
+/// [restartInto] starts the setup itself, silently, and ends this process.
+/// The setup closes whatever still holds the application's files, installs
+/// for the current user — so no administrator prompt interrupts it — and,
+/// asked with `/RELAUNCH`, opens the new version when it is done.
+///
+/// There is no script in between on purpose: a detached `powershell.exe`
+/// started from here never ran a line, which left the application closed
+/// and the old version in place.
 class UpdateInstaller {
   UpdateInstaller({
     this._client,
@@ -41,6 +44,17 @@ class UpdateInstaller {
   final ProcessStarter _start;
   final void Function(int code) _exit;
 
+  /// What the setup is told when it replaces this copy. `/RELAUNCH` is ours:
+  /// `installer/lore_dub.iss` opens the application again only when it sees it.
+  static const setupArguments = [
+    '/VERYSILENT',
+    '/SUPPRESSMSGBOXES',
+    '/NORESTART',
+    '/SP-',
+    '/CLOSEAPPLICATIONS',
+    '/RELAUNCH',
+  ];
+
   static Future<Directory> _defaultRoot() async {
     final support = await getApplicationSupportDirectory();
     return Directory(path.join(support.path, 'updates'));
@@ -57,6 +71,14 @@ class UpdateInstaller {
   /// instead of updating this one.
   bool get canInstall => File(path.join(path.dirname(_executable), 'unins000.exe')).existsSync();
 
+  /// The path of [installer] when an earlier run already downloaded it whole,
+  /// so a restart of the application does not ask for the download again.
+  Future<String?> downloaded(ReleaseInstaller installer) async {
+    final setup = File(path.join((await _root()).path, installer.name));
+    if (!await setup.exists()) return null;
+    return await verifyArtifact(setup, _artifact(installer)) ? setup.path : null;
+  }
+
   /// Fetches [installer] — resuming a part an earlier try left, checked
   /// against its size and, when published, its digest — and returns its path.
   Future<String> download(
@@ -66,10 +88,14 @@ class UpdateInstaller {
   }) async {
     final directory = await _root();
     await directory.create(recursive: true);
-    // The setups of versions already installed are only dead weight.
+    // The setups of versions already installed are only dead weight, and so
+    // is the script earlier versions handed the update to.
     await for (final entry in directory.list(followLinks: false)) {
-      if (entry is! File || path.extension(entry.path) != '.exe') continue;
-      if (path.basename(entry.path) == installer.name) continue;
+      if (entry is! File) continue;
+      final name = path.basename(entry.path);
+      final stale =
+          name == 'apply_update.ps1' || (path.extension(name) == '.exe' && name != installer.name);
+      if (!stale) continue;
       try {
         await entry.delete();
       } on FileSystemException {
@@ -79,14 +105,7 @@ class UpdateInstaller {
     final client = _client ?? await createDownloadClient(proxyUrl);
     try {
       final outcome = await downloadArtifacts(
-        [
-          ModelArtifact(
-            fileName: installer.name,
-            url: installer.url,
-            byteSize: installer.size,
-            hash: installer.sha256,
-          ),
-        ],
+        [_artifact(installer)],
         directory: directory,
         client: client,
         onProgress: onProgress,
@@ -100,44 +119,22 @@ class UpdateInstaller {
     }
   }
 
-  /// Leaves the application to [setup] and ends this process. The script
-  /// the setup runs from writes what happened to `update.log` beside it.
+  /// Starts [setup] and ends this process. The setup writes what it did to
+  /// `update.log` beside it.
   Future<void> restartInto(String setup) async {
-    final script = File(path.join(path.dirname(setup), 'apply_update.ps1'));
-    await script.writeAsString(_applyUpdateScript, flush: true);
+    final log = path.join(path.dirname(setup), 'update.log');
     try {
-      await _start('powershell.exe', [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-WindowStyle',
-        'Hidden',
-        '-File',
-        script.path,
-        '-ProcessId',
-        '$pid',
-        '-Setup',
-        setup,
-        '-Executable',
-        _executable,
-      ]);
+      await _start(setup, [...setupArguments, '/LOG=$log']);
     } on ProcessException catch (error) {
       throw LoreDubFailure(FailureCode.updateInstallFailed, detail: error.message);
     }
     _exit(0);
   }
-}
 
-/// ASCII only: Windows PowerShell reads a script without a byte order mark
-/// in the ANSI code page.
-const _applyUpdateScript = r'''
-param([int]$ProcessId, [string]$Setup, [string]$Executable)
-$log = Join-Path (Split-Path -Parent $Setup) 'update.log'
-function Note([string]$line) { "$(Get-Date -Format o) $line" | Out-File -FilePath $log -Append -Encoding utf8 }
-Note "waiting for LoreDub ($ProcessId) to close"
-Wait-Process -Id $ProcessId -Timeout 60 -ErrorAction SilentlyContinue
-Note "running $Setup"
-$installer = Start-Process -FilePath $Setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/CLOSEAPPLICATIONS' -Wait -PassThru
-Note "setup finished with exit code $($installer.ExitCode)"
-Start-Process -FilePath $Executable
-''';
+  static ModelArtifact _artifact(ReleaseInstaller installer) => ModelArtifact(
+    fileName: installer.name,
+    url: installer.url,
+    byteSize: installer.size,
+    hash: installer.sha256,
+  );
+}

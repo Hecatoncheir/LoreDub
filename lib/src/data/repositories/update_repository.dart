@@ -29,6 +29,10 @@ class UpdateRepository {
   /// Whether this copy can be replaced by a newer setup.
   bool get canInstall => _installer.canInstall;
 
+  /// Where [installer] already lies downloaded whole, if it does.
+  Future<String?> downloadedInstaller(ReleaseInstaller installer) =>
+      _installer.downloaded(installer);
+
   /// Downloads a newer setup and returns where it landed.
   Future<String> downloadInstaller(
     ReleaseInstaller installer, {

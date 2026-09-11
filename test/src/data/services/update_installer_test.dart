@@ -41,10 +41,25 @@ void main() {
     expect(service.canInstall, isTrue);
   });
 
+  test('finds a setup an earlier run downloaded whole', () async {
+    final service = UpdateInstaller(root: () async => updates, executable: executable);
+    expect(await service.downloaded(installer), isNull);
+
+    await updates.create(recursive: true);
+    final setup = File(path.join(updates.path, installer.name));
+    await setup.writeAsBytes(bytes.sublist(0, 100));
+    expect(await service.downloaded(installer), isNull, reason: 'cut short');
+
+    await setup.writeAsBytes(bytes);
+    expect(await service.downloaded(installer), setup.path);
+  });
+
   test('downloads the setup and clears the ones before it', () async {
     await updates.create(recursive: true);
     final stale = File(path.join(updates.path, 'LoreDub-0.8.0-windows-x64-setup.exe'));
     await stale.writeAsString('old');
+    final script = File(path.join(updates.path, 'apply_update.ps1'));
+    await script.writeAsString('old');
     final service = UpdateInstaller(
       client: MockClient((_) async => http.Response.bytes(bytes, 200)),
       root: () async => updates,
@@ -57,6 +72,7 @@ void main() {
     expect(setup, path.join(updates.path, installer.name));
     expect(await File(setup).length(), bytes.length);
     expect(await stale.exists(), isFalse);
+    expect(await script.exists(), isFalse, reason: 'left by earlier versions');
     expect(progress.last, 1);
   });
 
@@ -79,14 +95,11 @@ void main() {
 
     await service.restartInto(setup);
 
-    expect(started, 'powershell.exe');
-    expect(arguments, containsAllInOrder(['-Setup', setup, '-Executable', executable]));
-    expect(arguments, contains('$pid'));
+    // The setup itself, not a script: a detached PowerShell never ran.
+    expect(started, setup);
+    expect(arguments, containsAll(['/VERYSILENT', '/CLOSEAPPLICATIONS', '/RELAUNCH']));
+    expect(arguments, contains('/LOG=${path.join(updates.path, 'update.log')}'));
     expect(exitCode, 0);
-    final script = await File(path.join(updates.path, 'apply_update.ps1')).readAsString();
-    expect(script, contains('/VERYSILENT'));
-    expect(script, contains('Wait-Process'));
-    expect(script.codeUnits.every((unit) => unit < 128), isTrue, reason: 'no BOM, so ASCII');
   });
 }
 
