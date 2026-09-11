@@ -4,6 +4,8 @@ All notable changes to LoreDub are documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-11
+
 - Added optional HTTP and SOCKS5 proxy settings for model downloads, including authentication.
 - Added a searchable process picker and full default-output capture that excludes LoreDub playback.
 - Added configurable bundled/PATH Python runtime selection.
@@ -84,6 +86,12 @@ All notable changes to LoreDub are documented in this file.
 - Added error messages in the interface language. Services now raise an error code instead
   of a Russian sentence, so a failure raised while the app was in one language is rewritten
   the moment the other one is picked.
+- Fixed the game process picker being squeezed to a stub, with its label broken mid-word,
+  in windows too narrow for the one-row layout; below that width the controls now stack.
+- Made the dashboard redraw only what changed. A download used to redraw the whole screen
+  for every chunk it received; it now reports whole percent, and neither a progress tick
+  nor a recognized phrase redraws the screens that do not show it.
+- Rewrote both READMEs around getting started, with screenshots of a real session.
 
 ## [0.2.1] - 2026-09-10
 
