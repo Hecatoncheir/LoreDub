@@ -71,6 +71,8 @@ class SettingsService {
       ),
       targetLanguage: preferences.getString('targetLanguage') ?? 'ru',
       originalVolume: preferences.getDouble('originalVolume') ?? 0.18,
+      duckWhileSpeaking:
+          preferences.getBool('duckWhileSpeaking') ?? const AppSettings().duckWhileSpeaking,
       ttsSpeed: preferences.getDouble('ttsSpeed') ?? 1.12,
       cpuThreads: preferences.getInt('cpuThreads') ?? defaultCpuThreads(),
       showOverlay: preferences.getBool('showOverlay') ?? true,
@@ -110,6 +112,7 @@ class SettingsService {
       preferences.setString('captureMode', settings.captureMode.name),
       preferences.setString('targetLanguage', settings.targetLanguage),
       preferences.setDouble('originalVolume', settings.originalVolume),
+      preferences.setBool('duckWhileSpeaking', settings.duckWhileSpeaking),
       preferences.setDouble('ttsSpeed', settings.ttsSpeed),
       preferences.setInt('cpuThreads', settings.cpuThreads),
       preferences.setBool('showOverlay', settings.showOverlay),

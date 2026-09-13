@@ -621,6 +621,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsOriginalVolume => 'Original audio';
 
   @override
+  String get duckWhileSpeaking => 'Turn the game down only under the translation';
+
+  @override
+  String get duckWhileSpeakingNote =>
+      'The game plays at its own volume while LoreDub is silent and steps aside for the length of every dubbed line. Off, it stays turned down for the whole session. A line the game starts while the dubbing speaks is heard by recognition as quietly as it would be then.';
+
+  @override
   String originalVolumeValue(int percent) {
     return 'Volume of the game process while dubbing: $percent%';
   }

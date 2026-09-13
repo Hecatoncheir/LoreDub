@@ -306,13 +306,25 @@ class PipelineInspector extends StatelessWidget {
     _Field(
       label:
           '${l10n.settingsOriginalVolume} · '
-          '${l10n.originalVolumeValue((_settings.originalVolume * 100).round())}',
+          '${l10n.originalVolumeValue((_settings.duckedVolume * 100).round())}',
+      // The same range as the settings screen: a number set here is one the
+      // other screen can set again.
       child: Slider(
-        value: _settings.originalVolume,
-        divisions: 20,
+        key: const ValueKey('graphOriginalVolume'),
+        value: _settings.duckedVolume,
+        min: _settings.quietestDuck,
+        max: AppSettings.loudestDuck,
+        divisions: _settings.duckDivisions,
         onChanged: _locked ? null : (value) => _update(_settings.copyWith(originalVolume: value)),
       ),
     ),
+    _Toggle(
+      label: l10n.duckWhileSpeaking,
+      value: _settings.duckWhileSpeaking,
+      enabled: !_locked,
+      onChanged: (value) => _update(_settings.copyWith(duckWhileSpeaking: value)),
+    ),
+    _Note(text: l10n.duckWhileSpeakingNote),
     _Note(text: l10n.pipelineOutputNote),
   ];
 

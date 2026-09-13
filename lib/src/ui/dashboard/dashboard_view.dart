@@ -3351,16 +3351,43 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         const SizedBox(height: 12),
         _SettingCard(
           title: l10n.settingsOriginalVolume,
-          subtitle: l10n.originalVolumeValue((settings.originalVolume * 100).round()),
-          child: Slider(
-            value: settings.originalVolume,
-            min: 0,
-            max: 0.5,
-            divisions: 25,
-            label: '${(settings.originalVolume * 100).round()}%',
-            onChanged: running
-                ? null
-                : (value) => cubits.settings.update(settings.copyWith(originalVolume: value)),
+          subtitle: l10n.originalVolumeValue((settings.duckedVolume * 100).round()),
+          // The floor is the capture's: the game is heard through this same
+          // volume, and silenced outright it would never be dubbed at all.
+          // Subtitle mode reads the screen and may silence it.
+          child: Column(
+            children: [
+              Slider(
+                key: const ValueKey('originalVolume'),
+                value: settings.duckedVolume,
+                min: settings.quietestDuck,
+                max: AppSettings.loudestDuck,
+                divisions: settings.duckDivisions,
+                label: '${(settings.duckedVolume * 100).round()}%',
+                onChanged: running
+                    ? null
+                    : (value) => cubits.settings.update(settings.copyWith(originalVolume: value)),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Switch(
+                    value: settings.duckWhileSpeaking,
+                    onChanged: running
+                        ? null
+                        : (value) =>
+                              cubits.settings.update(settings.copyWith(duckWhileSpeaking: value)),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(child: Text(l10n.duckWhileSpeaking)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l10n.duckWhileSpeakingNote,
+                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),

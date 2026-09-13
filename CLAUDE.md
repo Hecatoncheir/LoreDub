@@ -133,6 +133,27 @@ line of unknown speaker plays alone. `ld_play_wave` therefore uses its own
 waveOut stream per call and blocks until the clip ends; do not go back to
 `PlaySound`, which holds one sound per process and cuts off the other.
 
+How far the game is turned down while it is dubbed is `AppSettings`' business
+rather than the slider's, because Windows takes the process-loopback tap
+*after* the session volume `ld_set_process_volume` sets: turning the game
+down turns the capture down with it. Measured against a tone of raw peak
+2614, half volume gave 1308, 18% gave 472, and zero gave nothing at all — not
+one segment in eight seconds. `duckedVolume` therefore holds `originalVolume`
+to `audibleDuck` (0.1) wherever the game's own sound is what the pipeline
+listens to, and lets subtitle mode silence it outright, having no ear in it;
+both volume sliders — the settings screen and the output node — read
+`quietestDuck`/`loudestDuck`/`duckDivisions`, so a number set on one can be
+set again on the other. `AppSettings.duckWhileSpeaking` replaces the
+session-long duck with one that lasts a line: `PlaybackScheduler.onSpeaking`
+reports the edges of the dubbing's own speech — consecutive lines are one
+stretch, so the game is not lifted between two lines of a scene — and
+`NativeEngineService._duckForSpeech` turns the game down and back. It is off
+by default because the capture hears the game through that same volume: a
+line the game starts mid-dubbing is recognized no more quietly than the
+session-long duck would have left it, but the drop now lands inside the
+segment, where the native VAD (`kSpeechRms`) can read it as the end of the
+phrase.
+
 The Graph screen ("Схема", `DashboardSection.pipeline`) draws the pipeline as
 nodes and is the second way to the same settings, not a second set of them.
 `buildPipelineGraph` (`domain/pipeline_graph.dart`) is a pure function of

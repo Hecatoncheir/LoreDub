@@ -25,6 +25,15 @@ class PlaybackScheduler {
   /// One keeps the dubbing strictly sequential.
   int maxVoices;
 
+  /// Told when the first line starts sounding and when the last one has
+  /// stopped, so the caller can turn the game down for exactly as long as
+  /// the dubbing speaks. Lines that follow one another are one stretch: the
+  /// game is not lifted and dropped again between two lines of a scene.
+  void Function({required bool speaking})? onSpeaking;
+
+  /// Whether the dubbing is sounding, so a change is announced once.
+  bool _sounding = false;
+
   final _waiting = <_Line>[];
   final _playing = <_Line>[];
 
@@ -67,13 +76,23 @@ class PlaybackScheduler {
   }
 
   void _start(_Line line) {
+    _tell(speaking: true);
     _playing.add(line);
     unawaited(
       Future.sync(() => play(line.wavePath)).catchError((Object _) {}).whenComplete(() {
         _playing.remove(line);
         _pump();
+        // Only once nothing has taken its place: two lines of a scene are
+        // one stretch of speech rather than two.
+        if (_playing.isEmpty) _tell(speaking: false);
       }),
     );
+  }
+
+  void _tell({required bool speaking}) {
+    if (_sounding == speaking) return;
+    _sounding = speaking;
+    onSpeaking?.call(speaking: speaking);
   }
 }
 

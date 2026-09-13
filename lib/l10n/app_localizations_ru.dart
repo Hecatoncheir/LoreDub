@@ -625,6 +625,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsOriginalVolume => 'Оригинальный звук';
 
   @override
+  String get duckWhileSpeaking => 'Приглушать только под перевод';
+
+  @override
+  String get duckWhileSpeakingNote =>
+      'Игра играет в полную громкость, пока LoreDub молчит, и приглушается на время каждой озвученной реплики. Выключено — игра приглушена весь сеанс. Реплику, которую игра начнёт посреди озвучки, распознавание услышит такой же тихой, как при постоянном приглушении.';
+
+  @override
   String originalVolumeValue(int percent) {
     return 'Громкость процесса игры во время перевода: $percent%';
   }

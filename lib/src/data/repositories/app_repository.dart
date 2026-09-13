@@ -132,6 +132,10 @@ class AppRepository {
         'audioSource': settings.audioCaptureSource.name,
         'targetLanguage': settings.targetLanguage,
         'sourceLanguage': settings.effectiveSourceLanguage,
+        // What the game is turned down to, and whether that happens for the
+        // length of a line rather than for the whole session.
+        'duckVolume': settings.duckedVolume,
+        'duckWhileSpeaking': settings.duckWhileSpeaking,
         'textLanguage': settings.textLanguage,
         'ocrLanguage': settings.textLanguage,
         'ttsSpeed': settings.ttsSpeed,
@@ -290,13 +294,18 @@ class AppRepository {
   AppSettings? _sessionSettings;
 
   /// Turns the captured game down while it is dubbed.
+  ///
+  /// Only for the session as a whole. Asked to step aside for each line
+  /// instead, the engine does it: it is the one that knows when the dubbing
+  /// starts and stops speaking.
   Future<void> _duck(GameProcess? process, AppSettings settings) async {
     if (process == null) return;
     if (settings.captureMode != CaptureMode.ocr &&
         settings.audioCaptureSource != AudioCaptureSource.process) {
       return;
     }
-    await _nativeEngine.setProcessVolume(process.pid, settings.originalVolume);
+    if (settings.duckWhileSpeaking) return;
+    await _nativeEngine.setProcessVolume(process.pid, settings.duckedVolume);
   }
 
   /// Rests the session: capture hands nothing on, what was queued is

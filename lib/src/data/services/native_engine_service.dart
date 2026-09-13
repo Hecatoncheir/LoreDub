@@ -38,6 +38,7 @@ class NativeEngineService {
   NativeEngineService() {
     _inference.onStartupProgress = (value, stage) =>
         _events.add({'type': 'startup', 'value': value, 'stage': stage});
+    _playback.onSpeaking = _duckForSpeech;
   }
 
   final _events = StreamController<Map<String, Object?>>.broadcast();
@@ -618,6 +619,29 @@ class NativeEngineService {
     // The worker says who is speaking, so a different character may start
     // while the last one is still talking — when the settings allow it.
     _playback.add(result.wavePath, speaker: result.speaker);
+  }
+
+  /// Turns the game down for as long as the dubbing speaks, when the session
+  /// asked for that rather than for a session-long duck.
+  ///
+  /// The capture hears the game through this same volume, but a line being
+  /// voiced now was recorded and recognized seconds ago — what is turned
+  /// down is what the player hears, not what the pipeline listens to. A line
+  /// the game starts while the dubbing speaks is captured as quietly as it
+  /// would have been under the session-long duck.
+  ///
+  /// A device that cannot be reached is no reason to drop the line, so the
+  /// result is not checked.
+  void _duckForSpeech({required bool speaking}) {
+    final config = _activeConfig;
+    if (config == null || config['duckWhileSpeaking'] != true) return;
+    final processId = config['processId'] as int? ?? 0;
+    if (processId == 0) return;
+    if (speaking) {
+      ld_set_process_volume(processId, (config['duckVolume'] as num?)?.toDouble() ?? 0.18);
+    } else {
+      ld_restore_process_volumes();
+    }
   }
 
   Future<void> _playQueued(String wavePath) async {

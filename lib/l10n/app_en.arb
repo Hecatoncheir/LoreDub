@@ -405,6 +405,8 @@
   "ocrRegionHelp": "Drag the frame to move it, and its corners and sides to resize it. From the keyboard, the arrows move it and Shift with the arrows resizes it.",
   "ocrRegionReset": "Reset",
   "settingsOriginalVolume": "Original audio",
+  "duckWhileSpeaking": "Turn the game down only under the translation",
+  "duckWhileSpeakingNote": "The game plays at its own volume while LoreDub is silent and steps aside for the length of every dubbed line. Off, it stays turned down for the whole session. A line the game starts while the dubbing speaks is heard by recognition as quietly as it would be then.",
   "originalVolumeValue": "Volume of the game process while dubbing: {percent}%",
   "@originalVolumeValue": {
     "placeholders": {

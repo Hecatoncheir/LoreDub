@@ -295,6 +295,45 @@ void main() {
     );
   });
 
+  testWidgets('never lets the game be silenced while its sound is what we hear', (tester) async {
+    Future<Slider> volumeSlider(AppSettings settings) async {
+      await pumpDashboard(
+        tester,
+        stage(
+          buildCubits(),
+          section: DashboardSection.settings,
+          settings: settings,
+          models: catalogue(),
+        ),
+        const Size(1280, 1000),
+      );
+      await tester.scrollUntilVisible(
+        find.text('Оригинальный звук'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      return tester.widget<Slider>(find.byKey(const ValueKey('originalVolume')));
+    }
+
+    // A zero left over from subtitle mode, now that the game's own sound is
+    // what the pipeline listens to: Windows takes the capture after this
+    // volume, so at zero nothing would ever be heard.
+    final dubbing = await volumeSlider(const AppSettings(originalVolume: 0));
+    expect(dubbing.min, AppSettings.audibleDuck);
+    expect(dubbing.max, AppSettings.loudestDuck);
+    expect(dubbing.value, AppSettings.audibleDuck, reason: 'the stored zero is lifted');
+    expect(dubbing.divisions, 20);
+
+    // Subtitle mode reads the screen and captures no sound of its own.
+    final subtitles = await volumeSlider(
+      const AppSettings(captureMode: CaptureMode.ocr, originalVolume: 0),
+    );
+    expect(subtitles.min, 0);
+    expect(subtitles.value, 0);
+    expect(subtitles.divisions, 25);
+  });
+
   testWidgets('names the audio path while dubbing what the game says', (tester) async {
     final cubits = stage(buildCubits(), settings: const AppSettings());
     await pumpDashboard(tester, cubits, const Size(1280, 720));
@@ -2437,6 +2476,22 @@ void main() {
         isFalse,
         reason: 'the recording listens to the game this would change',
       );
+    });
+
+    testWidgets('sets the volume in the same range the settings screen does', (tester) async {
+      final cubits = await pumpGraph(tester);
+
+      // The node sits at the far edge of the canvas, where the panel that
+      // opens would cover it; selected directly instead of by a tap.
+      cubits.graph.add(const PipelineNodeSelected(PipelineNodeIds.output));
+      await tester.pumpAndSettle();
+
+      final slider = tester.widget<Slider>(find.byKey(const ValueKey('graphOriginalVolume')));
+      const settings = AppSettings();
+      expect(slider.min, settings.quietestDuck);
+      expect(slider.max, AppSettings.loudestDuck);
+      expect(slider.divisions, settings.duckDivisions);
+      expect(find.text('Приглушать только под перевод'), findsOneWidget);
     });
 
     testWidgets('opens what a node is set to when it is clicked', (tester) async {

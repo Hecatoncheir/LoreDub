@@ -249,6 +249,17 @@ void main() {
     expect((await service.load()).snapshotHotkey, isNull);
   });
 
+  test('turns the game down for the whole session until told otherwise', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    expect((await service.load()).duckWhileSpeaking, isFalse);
+
+    await service.save(const AppSettings(duckWhileSpeaking: true));
+
+    expect((await service.load()).duckWhileSpeaking, isTrue);
+  });
+
   test('lets characters overlap until told otherwise', () async {
     SharedPreferences.setMockInitialValues({});
     final service = SettingsService();

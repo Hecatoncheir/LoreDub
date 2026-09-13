@@ -31,6 +31,51 @@ void main() {
     );
   });
 
+  test('says when the dubbing starts speaking and when it has stopped', () async {
+    final spoken = <bool>[];
+    scheduler.onSpeaking = ({required speaking}) => spoken.add(speaking);
+
+    scheduler
+      ..add('a1', speaker: 'timbre:0')
+      ..add('b1', speaker: 'timbre:1');
+    await settle();
+
+    expect(spoken, [true], reason: 'said once, for the first of the two');
+
+    await finish('a1');
+
+    expect(spoken, [true], reason: 'the other is still sounding');
+
+    await finish('b1');
+
+    expect(spoken, [true, false]);
+
+    // A line that follows is a new stretch of speech.
+    scheduler.add('c1', speaker: 'timbre:0');
+    await settle();
+
+    expect(spoken, [true, false, true]);
+  });
+
+  test('keeps two lines of a scene as one stretch of speech', () async {
+    final spoken = <bool>[];
+    scheduler.onSpeaking = ({required speaking}) => spoken.add(speaking);
+
+    scheduler
+      ..add('a1', speaker: 'timbre:0')
+      ..add('a2', speaker: 'timbre:0');
+    await settle();
+    // The second waits for the first: one character never talks over
+    // themselves, and the game must not be lifted between their lines.
+    await finish('a1');
+
+    expect(spoken, [true], reason: 'a2 took over without a gap');
+
+    await finish('a2');
+
+    expect(spoken, [true, false]);
+  });
+
   test('starts another character while the first is still speaking', () async {
     scheduler
       ..add('a1', speaker: 'timbre:0')

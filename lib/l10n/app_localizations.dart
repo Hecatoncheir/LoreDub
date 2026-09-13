@@ -1095,6 +1095,18 @@ abstract class AppLocalizations {
   /// **'Оригинальный звук'**
   String get settingsOriginalVolume;
 
+  /// No description provided for @duckWhileSpeaking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приглушать только под перевод'**
+  String get duckWhileSpeaking;
+
+  /// No description provided for @duckWhileSpeakingNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Игра играет в полную громкость, пока LoreDub молчит, и приглушается на время каждой озвученной реплики. Выключено — игра приглушена весь сеанс. Реплику, которую игра начнёт посреди озвучки, распознавание услышит такой же тихой, как при постоянном приглушении.'**
+  String get duckWhileSpeakingNote;
+
   /// No description provided for @originalVolumeValue.
   ///
   /// In ru, this message translates to:

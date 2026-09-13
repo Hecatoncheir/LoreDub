@@ -21,6 +21,7 @@ class AppSettings {
     this.captureMode = CaptureMode.audio,
     this.targetLanguage = 'ru',
     this.originalVolume = 0.18,
+    this.duckWhileSpeaking = false,
     this.ttsSpeed = 1.12,
     this.cpuThreads = 4,
     this.showOverlay = true,
@@ -53,6 +54,44 @@ class AppSettings {
   /// nothing reads this value yet.
   final String targetLanguage;
   final double originalVolume;
+
+  /// Whether the game is turned down only while the translation speaks,
+  /// rather than from the start of the session to its end. Off, music and
+  /// effects stay under the dubbing the whole evening; on, they play at
+  /// their own volume between lines and step aside for each one.
+  final bool duckWhileSpeaking;
+
+  /// The loudest the game is left while it is dubbed. Past this it talks
+  /// over the translation rather than under it.
+  static const loudestDuck = 0.5;
+
+  /// The quietest the game may be put while its own sound is what the
+  /// pipeline listens to.
+  ///
+  /// Windows takes the process-loopback tap after the session volume, so
+  /// turning the game down turns the capture down with it: measured against
+  /// a tone of raw peak 2614, half volume gave 1308, 18% gave 472, and zero
+  /// gave nothing at all — not one segment in eight seconds. Silenced
+  /// outright the pipeline would listen to silence and never dub a word, and
+  /// since capture decides what is speech from this same ducked signal, the
+  /// quiet lines of a game are lost well before zero.
+  static const audibleDuck = 0.1;
+
+  /// The step both volume sliders move in, so a number set on the graph is
+  /// one the settings screen can set again.
+  static const duckStep = 0.02;
+
+  /// How quiet the game may be put in this capture mode. Subtitle mode reads
+  /// the screen and captures no sound of its own, so there it may be
+  /// silenced outright.
+  double get quietestDuck => captureMode == CaptureMode.ocr ? 0 : audibleDuck;
+
+  /// What the game is actually turned down to: [originalVolume] held to what
+  /// this capture mode can still hear.
+  double get duckedVolume => originalVolume.clamp(quietestDuck, loudestDuck);
+
+  /// The notches of a volume slider, from the range it may cover.
+  int get duckDivisions => ((loudestDuck - quietestDuck) / duckStep).round();
 
   /// Playback rate of the synthesized speech, applied by the inference worker.
   final double ttsSpeed;
@@ -182,6 +221,7 @@ class AppSettings {
     CaptureMode? captureMode,
     String? targetLanguage,
     double? originalVolume,
+    bool? duckWhileSpeaking,
     double? ttsSpeed,
     int? cpuThreads,
     bool? showOverlay,
@@ -214,6 +254,7 @@ class AppSettings {
     captureMode: captureMode ?? this.captureMode,
     targetLanguage: targetLanguage ?? this.targetLanguage,
     originalVolume: originalVolume ?? this.originalVolume,
+    duckWhileSpeaking: duckWhileSpeaking ?? this.duckWhileSpeaking,
     ttsSpeed: ttsSpeed ?? this.ttsSpeed,
     cpuThreads: cpuThreads ?? this.cpuThreads,
     showOverlay: showOverlay ?? this.showOverlay,
