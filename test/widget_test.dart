@@ -40,6 +40,7 @@ import 'package:lore_dub/src/ui/dashboard/character_tiles.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
+import 'package:lore_dub/src/ui/dashboard/pipeline_inspector.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
@@ -2526,6 +2527,33 @@ void main() {
 
       expect(find.text('ВЫБРАНО'), findsOneWidget);
       expect(find.text('Язык перевода'), findsOneWidget);
+    });
+
+    testWidgets('gives the panel buttons room for what they are called', (tester) async {
+      final cubits = await pumpGraph(tester);
+
+      cubits.graph.add(PipelineNodeSelected(PipelineNodeIds.character('guard')));
+      await tester.pumpAndSettle();
+
+      // Side by side in a panel 320 wide, both labels were cut — one of them
+      // across the middle of a word.
+      for (final label in ['Персонажи', 'Убрать со схемы']) {
+        final text = find.descendant(
+          of: find.byType(PipelineInspector),
+          matching: find.text(label),
+        );
+        expect(text, findsOneWidget, reason: label);
+        expect(
+          tester.getSize(text).height,
+          lessThan(24),
+          reason: '$label is written on one line',
+        );
+        expect(
+          tester.getSize(text).width,
+          greaterThan(60),
+          reason: '$label is not squeezed to nothing',
+        );
+      }
     });
 
     testWidgets('offers the cast to read a character with', (tester) async {

@@ -254,15 +254,35 @@ void main() {
     expect(repository.stored.characters.first.voicedBy, 'smith');
   });
 
-  test('a card given away is drawn even when it was never placed', () async {
+  test('takes a card off the canvas even while another is read in its voice', () async {
     await drawLink(voiceOf('smith'), readBy('guard'));
+
     graph.add(const PipelineCharacterRemoved('smith'));
     await pumpEvents();
 
+    expect(graph.state.layout.characters, ['guard']);
     expect(
       graph.state.graph.node(PipelineNodeIds.character('smith')),
-      isNotNull,
-      reason: 'the reader of a card on the canvas is drawn with it',
+      isNull,
+      reason: 'asked to go, it goes, link or no link',
+    );
+    // Nothing is drawn into the reader socket rather than a line out of the
+    // voice node: the card still says whose voice reads it on its own face,
+    // and a line from the pipeline's voice would say nobody did.
+    expect(graph.state.graph.linkInto(readBy('guard')), isNull);
+    expect(
+      cubits.characters.state.characters.firstWhere((value) => value.id == 'guard').voicedBy,
+      'smith',
+      reason: 'taking a card off the canvas is not taking the voice away',
+    );
+
+    graph.add(const PipelineCharacterPlaced('smith'));
+    await pumpEvents();
+
+    expect(
+      graph.state.graph.linkInto(readBy('guard'))?.from,
+      voiceOf('smith'),
+      reason: 'put back, it reads them again',
     );
   });
 }

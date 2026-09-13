@@ -369,24 +369,18 @@ class PipelineInspector extends StatelessWidget {
               ),
       ),
       const SizedBox(height: 6),
-      Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.groups_rounded, size: 18),
-              label: Text(l10n.navCharacters),
-              onPressed: () => cubits.shell.selectSection(DashboardSection.characters),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.close_rounded, size: 18),
-              label: Text(l10n.pipelineRemoveNode, maxLines: 1, overflow: TextOverflow.ellipsis),
-              onPressed: () => cubits.graph.add(PipelineCharacterRemoved(character.id)),
-            ),
-          ),
-        ],
+      // One under the other: side by side in a panel this narrow, both
+      // labels were cut — one of them across the middle of a word.
+      OutlinedButton.icon(
+        icon: const Icon(Icons.groups_rounded, size: 18),
+        label: Text(l10n.navCharacters),
+        onPressed: () => cubits.shell.selectSection(DashboardSection.characters),
+      ),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
+        icon: const Icon(Icons.close_rounded, size: 18),
+        label: Text(l10n.pipelineRemoveNode),
+        onPressed: () => cubits.graph.add(PipelineCharacterRemoved(character.id)),
       ),
     ];
   }

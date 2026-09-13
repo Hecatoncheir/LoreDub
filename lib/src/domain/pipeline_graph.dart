@@ -509,16 +509,8 @@ PipelineGraph buildPipelineGraph({
         const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
       ),
     for (final id in placed)
-      PipelineLink(
-        switch (byId[id]?.voicedBy) {
-          final reader? when placed.contains(reader) => PipelinePort(
-            PipelineNodeIds.character(reader),
-            PipelineSocket.characterVoice,
-          ),
-          _ => const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
-        },
-        PipelinePort(PipelineNodeIds.character(id), PipelineSocket.readBy),
-      ),
+      if (_readerOf(id, byId, placed) case final from?)
+        PipelineLink(from, PipelinePort(PipelineNodeIds.character(id), PipelineSocket.readBy)),
   ];
 
   return PipelineGraph(
@@ -533,18 +525,33 @@ PipelineGraph buildPipelineGraph({
   );
 }
 
-/// The cards the canvas draws: the ones the player put there, plus everyone
-/// a substitution names. A card given away with its reader out of sight
-/// would read as a card nobody replaced.
+/// Where the line into a card's reader socket comes from: the card that
+/// reads it, or the pipeline's own voice when nobody does.
+///
+/// Nothing at all when the reader is one of the player's characters but is
+/// not on the canvas. The card says whose voice it is read in on its own
+/// face, so an empty socket is the truth; a line drawn from the voice node
+/// would say nobody had replaced them.
+PipelinePort? _readerOf(String id, Map<String, Character> byId, List<String> placed) {
+  final reader = byId[id]?.voicedBy;
+  if (reader == null || !byId.containsKey(reader)) {
+    return const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast);
+  }
+  if (placed.contains(reader)) {
+    return PipelinePort(PipelineNodeIds.character(reader), PipelineSocket.characterVoice);
+  }
+  return null;
+}
+
+/// The cards the canvas draws: the ones the player put there, and only
+/// those. A card is taken off the canvas when the player asks, even while
+/// another card on it is read in their voice — that link then comes to
+/// nothing until they are put back, which is what the empty socket says.
 List<String> _placedCharacters(List<String> placed, Map<String, Character> byId) {
   final drawn = [
     for (final id in placed)
       if (byId.containsKey(id)) id,
   ];
-  for (final id in [...drawn]) {
-    final reader = byId[id]?.voicedBy;
-    if (reader != null && byId.containsKey(reader) && !drawn.contains(reader)) drawn.add(reader);
-  }
   // A card is drawn after the voice that reads it, so the link between them
   // runs the way every other one does: out of the right edge, into the left.
   for (final id in [...drawn]) {

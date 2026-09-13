@@ -129,7 +129,7 @@ void main() {
       }
     });
 
-    test('draws the reader even when only the card given away was placed', () {
+    test('leaves the reader socket empty when the reader is off the canvas', () {
       final graph = buildPipelineGraph(
         settings: const AppSettings(),
         characters: const [
@@ -139,11 +139,33 @@ void main() {
         layout: const PipelineLayout(characters: ['guard']),
       );
 
-      expect(graph.node(PipelineNodeIds.character('smith')), isNotNull);
+      // Only what the player put there is drawn, so a card can always be
+      // taken off — even one another card is read in the voice of.
+      expect(graph.node(PipelineNodeIds.character('smith')), isNull);
+      // And nothing runs into the reader socket. A line out of the voice
+      // node would say nobody had replaced them, which is not so: the card
+      // says whose voice reads it on its own face.
+      expect(
+        graph.linkInto(
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.readBy),
+        ),
+        isNull,
+      );
+    });
+
+    test('runs the pipeline voice into a card nobody was given away to', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [
+          Character(id: 'guard', name: 'Стражник', vector: [0.2]),
+        ],
+        layout: const PipelineLayout(characters: ['guard']),
+      );
+
       expect(
         joined(
           graph,
-          PipelinePort(PipelineNodeIds.character('smith'), PipelineSocket.characterVoice),
+          const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
           PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.readBy),
         ),
         isTrue,
