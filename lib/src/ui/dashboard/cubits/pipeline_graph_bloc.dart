@@ -357,7 +357,9 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         state.copyWith(
           layout: state.layout.withPosition(
             event.nodeId,
-            node.position.translate(event.dx, event.dy),
+            // Held inside the world the canvas lays under the nodes: one
+            // dragged out of it would be drawn and never clicked again.
+            GraphWorld.hold(node.position.translate(event.dx, event.dy)),
           ),
         ),
       ),

@@ -290,26 +290,43 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
           onPanEnd: (_) => widget.bloc.add(const PipelineArrangementSettled()),
           child: CustomPaint(
             painter: _DotFieldPainter(view),
-            child: Transform(
+            // The nodes sit on a box of their own rather than on the window:
+            // a child drawn outside its parent is painted but not hit, and
+            // the far end of the pipeline could be seen, dragged, and never
+            // clicked. The overflow box is what lets that box be bigger than
+            // the window; it keeps the window's own size, so every point the
+            // player can see still reaches through it.
+            child: OverflowBox(
               alignment: Alignment.topLeft,
-              transform: Matrix4.identity()
-                ..translateByDouble(view.x, view.y, 0, 1)
-                ..scaleByDouble(view.zoom, view.zoom, 1, 1),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _LinkPainter(
-                        graph: _state.graph,
-                        drag: _state.drag,
-                        over: _over,
+              minWidth: 0,
+              minHeight: 0,
+              maxWidth: GraphWorld.width,
+              maxHeight: GraphWorld.height,
+              child: Transform(
+                alignment: Alignment.topLeft,
+                transform: Matrix4.identity()
+                  ..translateByDouble(view.x, view.y, 0, 1)
+                  ..scaleByDouble(view.zoom, view.zoom, 1, 1),
+                child: SizedBox(
+                  width: GraphWorld.width,
+                  height: GraphWorld.height,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _LinkPainter(
+                            graph: _state.graph,
+                            drag: _state.drag,
+                            over: _over,
+                          ),
+                        ),
                       ),
-                    ),
+                      for (final node in _state.graph.nodes) ..._nodeLayer(context, node),
+                      ..._cutButtons(context),
+                    ],
                   ),
-                  for (final node in _state.graph.nodes) ..._nodeLayer(context, node),
-                  ..._cutButtons(context),
-                ],
+                ),
               ),
             ),
           ),

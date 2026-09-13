@@ -13,6 +13,24 @@ library;
 import 'app_settings.dart';
 import 'character.dart';
 
+/// How far the scheme may spread from the corner it starts in.
+///
+/// The canvas lays a box this size under the nodes, because a widget drawn
+/// outside its parent is painted but not hit: the nodes at the far end of
+/// the pipeline could be seen and dragged and never clicked. Nodes are held
+/// inside it for the same reason — one moved out of it would be lost to the
+/// pointer.
+abstract final class GraphWorld {
+  static const width = 6000.0;
+  static const height = 4000.0;
+
+  /// [point] held inside the world, with room for the node that sits there.
+  static GraphPoint hold(GraphPoint point) => GraphPoint(
+    point.x.clamp(0.0, width - 400),
+    point.y.clamp(0.0, height - 300),
+  );
+}
+
 /// A place on the canvas. The domain keeps its own point so it owes nothing
 /// to Flutter; the canvas converts at its edge.
 class GraphPoint {

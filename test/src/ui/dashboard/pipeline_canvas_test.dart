@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -129,6 +130,34 @@ void main() {
         lessThanOrEqualTo(atWide[index].height + 0.01),
         reason: 'the row it sits in is drawn smaller too',
       );
+    }
+  });
+
+  testWidgets('selects every node it is clicked on, near or far', (tester) async {
+    // A child drawn outside its parent is painted but not hit, and the nodes
+    // are laid out well past the width of the window: «Сведение» and «Поток»
+    // could be seen and dragged and never clicked, while the four before
+    // them answered. The canvas lays a box of its own under them for this.
+    final cubits = await pumpGraph(tester, const Size(1500, 950));
+
+    const titles = {
+      'Оригинальный поток': PipelineNodeIds.source,
+      'Whisper': PipelineNodeIds.recognition,
+      'Перевод': PipelineNodeIds.translation,
+      'Голос': PipelineNodeIds.voice,
+      'Сведение': PipelineNodeIds.mix,
+      'Поток': PipelineNodeIds.output,
+    };
+    for (final entry in titles.entries) {
+      for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
+        cubits.graph.add(const PipelineNodeSelected(null));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(entry.key).first, kind: kind);
+        await tester.pumpAndSettle();
+
+        expect(cubits.graph.state.selected, entry.value, reason: '${entry.key} by $kind');
+      }
     }
   });
 }
