@@ -398,6 +398,15 @@ or a shout no longer flips a character's voice mid-scene (bank format v2;
 v1's bare fingerprints still load). Without the converter nothing hears who
 is speaking and the per-line gender choice stands.
 
+One of the player's own cards is the exception: `voice_for_character` decides
+for it, and the card decides alone. It is read in the voice it names, or in
+one of the gender it was recorded in, or — having neither, being imported or
+recorded in a line that fell between the two — in whichever voice its place
+in the cast lands on, the same one every time. Never in the gender of the
+character it stands in for: that is what lets a man speak for a woman and a
+woman for a man. The rest of `voice_for` falls back to the pitch of the line
+itself, which for a substitution would be the voice being replaced.
+
 The same encoder splits a segment that holds two speakers. Capture cuts on
 silence, so a cutscene exchange without pauses arrives as one WAV;
 `_splitBySpeaker` asks the worker (`{"diarize": path}` -> `{"cuts": [s]}`,

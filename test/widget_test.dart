@@ -2529,6 +2529,27 @@ void main() {
       expect(find.text('Язык перевода'), findsOneWidget);
     });
 
+    testWidgets('says the lender is read by the card that takes the part', (tester) async {
+      // «Стражник» is spoken by «Кузнец»: the line runs out of the card
+      // whose part it is and into the card that will speak it, so it is the
+      // first that is read in another's voice, not the second.
+      await pumpGraph(
+        tester,
+        characters: const [
+          Character(id: 'guard', name: 'Стражник', vector: [0.2], voicedBy: 'smith'),
+          smith,
+        ],
+        placed: const ['guard', 'smith'],
+      );
+
+      expect(find.text('Голосом «Кузнец»'), findsOneWidget);
+      expect(
+        find.text('Своим голосом'),
+        findsOneWidget,
+        reason: 'the card lending its voice speaks for itself as well',
+      );
+    });
+
     testWidgets('renames a character from the node it is drawn as', (tester) async {
       final cubits = await pumpGraph(tester);
 

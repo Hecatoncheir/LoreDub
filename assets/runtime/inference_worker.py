@@ -137,6 +137,23 @@ def median_f0(samples, rate, low=70.0, high=350.0, clarity=0.35):
     return float(np.median(strong or picks))
 
 
+def voice_for_character(kept, gender, index, by_gender):
+    """The voice one of the player's own cards is read in.
+
+    The card decides, and never the character it stands in for: a man speaks
+    for a woman and a woman for a man wherever the player has said so. It
+    names its own voice, or at least the gender it was recorded in; a voice
+    this package does not ship is passed over. With neither — imported, or
+    recorded in a line that fell between the two genders — any voice will
+    serve, so long as the same card always earns the same one. None when the
+    package ships no voices at all.
+    """
+    if kept in by_gender["male"] or kept in by_gender["female"]:
+        return kept
+    candidates = by_gender.get(gender or "", []) or by_gender["male"] + by_gender["female"]
+    return candidates[index % len(candidates)] if candidates else None
+
+
 def request_speed(request, fallback):
     """The pace this one line asks to be read at.
 
@@ -721,24 +738,22 @@ def main():
     def voice_for(request, kind, index):
         """The voice this line is read in.
 
-        A character keeps the voice their first clear line earned, so the same
-        person is never read by two voices; a line belonging to nobody falls
-        back to the gender heard in the line itself.
+        One of the player's cards is read in its own voice, whoever it is
+        standing in for; a character of the game's bank keeps the voice their
+        first clear line earned, so the same person is never read by two
+        voices; and a line belonging to nobody falls back to the gender heard
+        in the line itself.
         """
         nonlocal current_voice
         if not following:
             return speaker
         if kind == "character" and index is not None:
-            # A card names its own voice, or at least the gender it was
-            # recorded in; a voice this package does not ship is passed over.
-            kept = cast.voice_of(index)
-            if kept in by_gender["male"] or kept in by_gender["female"]:
-                current_voice = kept
-                return kept
-            candidates = by_gender.get(cast.gender_of(index) or "", [])
-            if candidates:
-                current_voice = candidates[index % len(candidates)]
-                return current_voice
+            chosen = voice_for_character(
+                cast.voice_of(index), cast.gender_of(index), index, by_gender
+            )
+            if chosen is not None:
+                current_voice = chosen
+                return chosen
         if kind == "voice" and index is not None:
             kept = speakers.voice_of(index)
             # A bank filled for another language package names voices this
