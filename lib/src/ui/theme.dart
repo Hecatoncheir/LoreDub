@@ -50,6 +50,11 @@ ThemeData buildLoreDubTheme() {
     colorScheme: scheme,
     scaffoldBackgroundColor: LoreDubPalette.canvas,
     fontFamily: LoreDubFonts.body,
+    // Nunito Sans carries no arrow, and the pipeline is written with one in
+    // more than one place. The monospaced face is bundled and has it, so the
+    // glyph is drawn from something we ship rather than from whatever font
+    // Windows happens to substitute.
+    fontFamilyFallback: const [LoreDubFonts.mono],
     visualDensity: VisualDensity.standard,
     textTheme: const TextTheme(
       headlineSmall: TextStyle(
