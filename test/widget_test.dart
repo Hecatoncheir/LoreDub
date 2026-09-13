@@ -2529,6 +2529,54 @@ void main() {
       expect(find.text('Язык перевода'), findsOneWidget);
     });
 
+    testWidgets('says what each line parts with when it is cut', (tester) async {
+      // One tooltip served all three, worded for the substitution alone: the
+      // line out of a card into the mix offered to «give the voice back»,
+      // which that card was never lent.
+      await pumpGraph(
+        tester,
+        characters: const [
+          Character(id: 'guard', name: 'Стражник', vector: [0.2], voicedBy: 'smith'),
+          smith,
+        ],
+        placed: const ['guard', 'smith'],
+      );
+
+      expect(find.byTooltip('Отсоединить оригинальный поток'), findsOneWidget);
+      expect(find.byTooltip('Убрать персонажей из сведения'), findsOneWidget);
+      expect(
+        find.byTooltip('Вернуть свой голос'),
+        findsOneWidget,
+        reason: 'only the line that lends a part offers to take it back',
+      );
+    });
+
+    testWidgets('rests and wakes the session from the graph itself', (tester) async {
+      // The cast is rewired here; walking to Live to pause first would be a
+      // walk for nothing.
+      final cubits = await pumpGraph(tester);
+      expect(find.byKey(const ValueKey('graphPause')), findsNothing);
+
+      cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('graphPause')));
+      await tester.pumpAndSettle();
+
+      expect(cubits.pipeline.state.status, PipelineStatus.paused);
+
+      await tester.tap(find.byKey(const ValueKey('graphPause')));
+      await tester.pumpAndSettle();
+
+      expect(cubits.pipeline.state.status, PipelineStatus.listening);
+
+      await tester.tap(find.byKey(const ValueKey('graphStop')));
+      await tester.pumpAndSettle();
+
+      expect(cubits.pipeline.state.status, PipelineStatus.idle);
+      expect(find.byKey(const ValueKey('graphPause')), findsNothing);
+    });
+
     testWidgets('says the lender is read by the card that takes the part', (tester) async {
       // «Стражник» is spoken by «Кузнец»: the line runs out of the card
       // whose part it is and into the card that will speak it, so it is the

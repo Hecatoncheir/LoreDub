@@ -235,6 +235,7 @@ class _GraphMemento {
     required this.layout,
     required this.captureMode,
     required this.routed,
+    required this.castRouted,
     required this.readers,
   });
 
@@ -245,6 +246,10 @@ class _GraphMemento {
   /// step back over a cut route has to put the link there again, not only
   /// remember which one it was.
   final bool routed;
+
+  /// Whether the cast was wired into the mix, which a step back puts back
+  /// the way it puts back the route.
+  final bool castRouted;
   final Map<String, String?> readers;
 }
 
@@ -405,6 +410,12 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
             captureRouted: mode != null,
           ),
         );
+      // The cast into the mix, or out of it. Not locked with the route: a
+      // session keeps its cast loaded either way, and the worker is told.
+      case CastConnection(:final routed):
+        _remember();
+        emit(state.copyWith(clearRefusal: true));
+        await _settings.update(_settings.settings.copyWith(castRouted: routed));
       case ReaderConnection(:final characterId, :final readerId):
         _remember();
         emit(state.copyWith(clearRefusal: true));
@@ -496,6 +507,9 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   Future<void> _restore(_GraphMemento memento, Emitter<PipelineGraphState> emit) async {
     emit(_redrawn(state.copyWith(layout: memento.layout, clearRefusal: true)));
     _persist();
+    if (_settings.settings.castRouted != memento.castRouted) {
+      await _settings.update(_settings.settings.copyWith(castRouted: memento.castRouted));
+    }
     if (!routeLocked &&
         (_settings.settings.captureMode != memento.captureMode ||
             _settings.settings.captureRouted != memento.routed)) {
@@ -522,6 +536,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     layout: state.layout,
     captureMode: _settings.settings.captureMode,
     routed: _settings.settings.captureRouted,
+    castRouted: _settings.settings.castRouted,
     readers: {for (final character in _cast) character.id: character.voicedBy},
   );
 

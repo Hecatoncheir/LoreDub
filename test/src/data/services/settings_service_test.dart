@@ -249,6 +249,21 @@ void main() {
     expect((await service.load()).snapshotHotkey, isNull);
   });
 
+  test('keeps the way in and the cast wired until told otherwise', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    final fresh = await service.load();
+    expect(fresh.captureRouted, isTrue);
+    expect(fresh.castRouted, isTrue);
+
+    await service.save(const AppSettings(captureRouted: false, castRouted: false));
+
+    final stored = await service.load();
+    expect(stored.captureRouted, isFalse);
+    expect(stored.castRouted, isFalse);
+  });
+
   test('steps the game aside for each line, and hurries a queue', () async {
     SharedPreferences.setMockInitialValues({});
     final service = SettingsService();

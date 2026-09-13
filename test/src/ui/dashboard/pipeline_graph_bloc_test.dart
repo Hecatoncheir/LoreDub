@@ -304,6 +304,135 @@ void main() {
       reason: 'put back, it speaks for them again',
     );
   });
+
+  /// What the canvas lets the player do while the dubbing rests.
+  ///
+  /// A paused session keeps its models loaded and its capture open, so the
+  /// way in is as fixed as it is while the dubbing runs — but the cast is
+  /// not: cards may be brought on, taken off and rewired, and the worker is
+  /// told of every one of those without a restart.
+  group('while the dubbing rests', () {
+    setUp(() {
+      cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.paused));
+    });
+
+    test('the way into the pipeline stays shut', () async {
+      await drawLink(screenText, translationIn);
+
+      expect(cubits.settings.settings.captureMode, CaptureMode.audio);
+      expect(graph.state.refusal, ConnectionRefusal.locked);
+      expect(graph.state.graph.linkInto(speechIn)?.from, gameAudio);
+    });
+
+    test('and cannot be taken apart either', () async {
+      graph.add(PipelineLinkCut(graph.state.graph.linkInto(speechIn)!));
+      await pumpEvents();
+
+      expect(cubits.settings.settings.captureRouted, isTrue);
+      expect(graph.state.refusal, ConnectionRefusal.locked);
+    });
+
+    test('a card is brought onto the canvas', () async {
+      graph.add(const PipelineCharacterRemoved('smith'));
+      await pumpEvents();
+      expect(graph.state.layout.characters, ['guard']);
+
+      graph.add(const PipelineCharacterPlaced('smith'));
+      await pumpEvents();
+
+      expect(graph.state.layout.characters, ['guard', 'smith']);
+      expect(graph.state.graph.node(PipelineNodeIds.character('smith')), isNotNull);
+    });
+
+    test('a card is taken off it', () async {
+      graph.add(const PipelineCharacterRemoved('guard'));
+      await pumpEvents();
+
+      expect(graph.state.layout.characters, ['smith']);
+      expect(graph.state.graph.node(PipelineNodeIds.character('guard')), isNull);
+    });
+
+    test('one card is given to another, and the worker is told', () async {
+      await drawLink(voiceOf('guard'), readBy('smith'));
+
+      expect(graph.state.refusal, isNull);
+      expect(repository.stored.characters.first.voicedBy, 'smith');
+      expect(
+        repository.told.last,
+        ('guard', 'smith'),
+        reason: 'the session keeps its cast loaded, so it is told rather than restarted',
+      );
+    });
+
+    test('and the gift is taken back', () async {
+      await drawLink(voiceOf('guard'), readBy('smith'));
+
+      graph.add(PipelineLinkCut(graph.state.graph.linkInto(readBy('smith'))!));
+      await pumpEvents();
+
+      expect(repository.stored.characters.first.voicedBy, isNull);
+      expect(repository.told.last, ('guard', null));
+    });
+
+    test('a voice of the scene is handed to a card', () async {
+      await cubits.pipeline.assignSpeaker('timbre:0', 'guard');
+
+      expect(cubits.pipeline.state.speakerReplacements, {'timbre:0': 'guard'});
+    });
+
+    test('the cast comes out of the mix, and goes back in', () async {
+      const intoTheMix = PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast);
+      await drawLink(voiceOf('guard'), readBy('smith'));
+
+      graph.add(
+        PipelineLinkCut(
+          graph.state.graph.links.firstWhere((link) => link.to == intoTheMix),
+        ),
+      );
+      await pumpEvents();
+
+      expect(cubits.settings.settings.castRouted, isFalse);
+      expect(graph.state.refusal, isNull, reason: 'the cast is not locked with the route');
+      // The cards stay where they were put, dark, and who stands in for whom
+      // waits in them for the link to come back.
+      expect(graph.state.graph.node(PipelineNodeIds.character('guard'))?.unrouted, isTrue);
+      expect(repository.stored.characters.first.voicedBy, 'smith');
+      expect(
+        graph.state.graph.links.any((link) => link.to == intoTheMix),
+        isFalse,
+      );
+
+      await drawLink(voiceOf('smith'), intoTheMix);
+
+      expect(cubits.settings.settings.castRouted, isTrue);
+      expect(graph.state.graph.linkInto(readBy('smith'))?.from, voiceOf('guard'));
+    });
+
+    test('and a step back puts it back too', () async {
+      const intoTheMix = PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast);
+      graph.add(
+        PipelineLinkCut(
+          graph.state.graph.links.firstWhere((link) => link.to == intoTheMix),
+        ),
+      );
+      await pumpEvents();
+      expect(cubits.settings.settings.castRouted, isFalse);
+
+      graph.add(const PipelineGraphUndone());
+      await pumpEvents();
+
+      expect(cubits.settings.settings.castRouted, isTrue);
+    });
+
+    test('one step back still undoes what was done', () async {
+      await drawLink(voiceOf('guard'), readBy('smith'));
+
+      graph.add(const PipelineGraphUndone());
+      await pumpEvents();
+
+      expect(repository.stored.characters.first.voicedBy, isNull);
+    });
+  });
 }
 
 /// Lets the bloc work through what the gestures added. Events are handled
@@ -331,7 +460,10 @@ class _GraphRepository extends AppRepository {
   Future<void> saveGraphLayout(PipelineLayout value) async => layout = value;
 
   @override
-  Future<void> voiceCharacterAs(String id, String? target) async {}
+  Future<void> voiceCharacterAs(String id, String? target) async => told.add((id, target));
+
+  /// What a running worker was told to read anew, without a restart.
+  final told = <(String, String?)>[];
 
   @override
   Future<void> stop() async {}

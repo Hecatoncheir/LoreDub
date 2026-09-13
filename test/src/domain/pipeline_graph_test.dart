@@ -414,7 +414,7 @@ void main() {
       expect((connection as RefusedConnection).reason, ConnectionRefusal.unsupported);
     });
 
-    test('is refused on the voice a card sends to the mix', () {
+    test('takes the whole cast out of the mix, by any of its lines', () {
       final connection = proposeDisconnect(
         PipelineLink(
           PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
@@ -422,10 +422,48 @@ void main() {
         ),
       );
 
+      expect((connection as CastConnection).routed, isFalse);
+    });
+
+    test('and one line drawn back wakes it again', () {
+      final connection = proposeConnection(
+        buildPipelineGraph(
+          settings: const AppSettings(castRouted: false),
+          characters: const [guard],
+          layout: const PipelineLayout(characters: ['guard']),
+        ),
+        PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
+        const PipelinePort(mix, PipelineSocket.mixCast),
+        characters: const [guard],
+      );
+
+      expect((connection as CastConnection).routed, isTrue);
+    });
+
+    test('leaves the cast drawn but dark while it is out', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(castRouted: false),
+        characters: const [
+          Character(id: 'guard', name: 'Стражник', vector: [0.2], voicedBy: 'smith'),
+          smith,
+        ],
+        layout: const PipelineLayout(characters: ['guard', 'smith']),
+      );
+
+      for (final id in ['guard', 'smith']) {
+        final node = graph.node(PipelineNodeIds.character(id));
+        expect(node, isNotNull, reason: 'the cards stay where they were put: $id');
+        expect(node!.unrouted, isTrue, reason: id);
+      }
       expect(
-        (connection as RefusedConnection).reason,
-        ConnectionRefusal.unsupported,
-        reason: 'everything voiced is played; there is nothing to switch off',
+        graph.links.any((link) => link.from.socket.owner == PipelineNodeKind.character),
+        isFalse,
+        reason: 'nothing of the branch runs',
+      );
+      expect(
+        graph.links.any((link) => link.to.socket == PipelineSocket.characterIn),
+        isFalse,
+        reason: 'and the cast does not reach them either',
       );
     });
   });

@@ -70,6 +70,7 @@ class SettingsService {
         orElse: () => CaptureMode.audio,
       ),
       captureRouted: preferences.getBool('captureRouted') ?? const AppSettings().captureRouted,
+      castRouted: preferences.getBool('castRouted') ?? const AppSettings().castRouted,
       targetLanguage: preferences.getString('targetLanguage') ?? 'ru',
       originalVolume: preferences.getDouble('originalVolume') ?? 0.18,
       duckWhileSpeaking:
@@ -114,6 +115,7 @@ class SettingsService {
     await Future.wait([
       preferences.setString('captureMode', settings.captureMode.name),
       preferences.setBool('captureRouted', settings.captureRouted),
+      preferences.setBool('castRouted', settings.castRouted),
       preferences.setString('targetLanguage', settings.targetLanguage),
       preferences.setDouble('originalVolume', settings.originalVolume),
       preferences.setBool('duckWhileSpeaking', settings.duckWhileSpeaking),

@@ -190,7 +190,14 @@ what the link would change (`RouteConnection` -> `captureMode`,
 way in answers `RouteConnection(null)`: `AppSettings.captureRouted` goes
 false, the mode is remembered for whichever link is drawn back, every stage
 is `unrouted` — faded, labelled, still in its place — and `canStart` refuses
-until it is joined again. The pointer picks a socket up through a box held
+until it is joined again. Cutting any of the lines into the mix's `mixCast`
+answers `CastConnection(false)` and takes the player's whole cast out the
+same way: the cards stay where they were put, drawn dark, who stands in for
+whom waits in them, and the worker is started with `--as-heard`, which makes
+`read_as` hand back the speaker it was given. Unlike the route it is not
+locked while a session runs — a paused session keeps its cast loaded, so
+this is the one branch the canvas may rewire mid-session, and the running
+worker is told rather than restarted. The pointer picks a socket up through a box held
 at one size on the screen (`NodeMetrics.grabReach` divided by the zoom, no
 taller than a row): a scheme fitted into a small window draws dots six pixels
 across, which nothing can take hold of. The six

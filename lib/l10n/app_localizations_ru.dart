@@ -1461,6 +1461,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineCutLink => 'Вернуть свой голос';
 
   @override
+  String get pipelineCutRoute => 'Отсоединить оригинальный поток';
+
+  @override
+  String get pipelineCutCast => 'Убрать персонажей из сведения';
+
+  @override
   String get pipelineNodeSource => 'Оригинальный поток';
 
   @override

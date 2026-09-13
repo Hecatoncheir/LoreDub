@@ -2210,6 +2210,7 @@ class _PipelinePanel extends StatelessWidget {
             cubits: cubits,
             watch: (pipeline) => (
               pipeline.running,
+              pipeline.status,
               pipeline.selectedProcess,
               pipeline.processes,
               pipeline.backendSignature,
@@ -2231,6 +2232,7 @@ class _PipelinePanel extends StatelessWidget {
                   characters: characters.characters,
                   activeBackends: pipeline.activeBackends,
                   running: pipeline.running,
+                  paused: pipeline.status == PipelineStatus.paused,
                   recordingVoice: characters.running,
                 ),
               ),
@@ -2337,6 +2339,27 @@ class _GraphToolbar extends StatelessWidget {
                   ),
                 ),
                 _addCharacter(context, l10n),
+                // The session is rested from here as well as from Live: the
+                // cast is rewired on this screen, and walking to another one
+                // to stop the dubbing first is a walk for nothing.
+                if (facts.running) ...[
+                  IconButton(
+                    key: const ValueKey('graphPause'),
+                    tooltip: facts.paused ? l10n.resumeDubbing : l10n.pauseHint,
+                    icon: Icon(
+                      facts.paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      size: 20,
+                      color: facts.paused ? LoreDubPalette.orange : null,
+                    ),
+                    onPressed: facts.paused ? cubits.pipeline.resume : cubits.pipeline.pause,
+                  ),
+                  IconButton(
+                    key: const ValueKey('graphStop'),
+                    tooltip: l10n.stopDubbing,
+                    icon: const Icon(Icons.stop_rounded, size: 20),
+                    onPressed: cubits.pipeline.stop,
+                  ),
+                ],
                 IconButton(
                   tooltip: l10n.pipelineResetLayout,
                   icon: const Icon(Icons.grid_view_rounded, size: 20),

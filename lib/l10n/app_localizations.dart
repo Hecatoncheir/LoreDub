@@ -2505,6 +2505,18 @@ abstract class AppLocalizations {
   /// **'Вернуть свой голос'**
   String get pipelineCutLink;
 
+  /// No description provided for @pipelineCutRoute.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отсоединить оригинальный поток'**
+  String get pipelineCutRoute;
+
+  /// No description provided for @pipelineCutCast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать персонажей из сведения'**
+  String get pipelineCutCast;
+
   /// No description provided for @pipelineNodeSource.
   ///
   /// In ru, this message translates to:

@@ -993,6 +993,8 @@
   "pipelineCloseInspector": "Close the panel",
   "pipelineRemoveNode": "Take off the graph",
   "pipelineCutLink": "Give the voice back",
+  "pipelineCutRoute": "Take the original stream out",
+  "pipelineCutCast": "Take the cast out of the mix",
   "pipelineNodeSource": "Original stream",
   "pipelineNodeRecognition": "Whisper",
   "pipelineNodeTranslation": "Translation",

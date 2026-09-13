@@ -1454,6 +1454,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineCutLink => 'Give the voice back';
 
   @override
+  String get pipelineCutRoute => 'Take the original stream out';
+
+  @override
+  String get pipelineCutCast => 'Take the cast out of the mix';
+
+  @override
   String get pipelineNodeSource => 'Original stream';
 
   @override

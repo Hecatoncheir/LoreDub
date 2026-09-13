@@ -453,6 +453,7 @@ PipelineGraph buildPipelineGraph({
 
   final ocr = settings.captureMode == CaptureMode.ocr;
   final routed = settings.captureRouted;
+  final cast = settings.castRouted;
   final nodes = <PipelineNode>[
     for (final id in PipelineNodeIds.stages)
       PipelineNode(
@@ -475,6 +476,7 @@ PipelineGraph buildPipelineGraph({
         kind: PipelineNodeKind.character,
         characterId: id,
         position: at(PipelineNodeIds.character(id), PipelineLayout.castPlace(index)),
+        unrouted: !cast,
       ),
   ];
 
@@ -511,27 +513,32 @@ PipelineGraph buildPipelineGraph({
       PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixOut),
       PipelinePort(PipelineNodeIds.output, PipelineSocket.streamIn),
     ),
-    // The cast reaches every card that is drawn: this is where a character
-    // joins the pipeline, whoever ends up speaking them.
-    for (final id in placed)
-      PipelineLink(
-        const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
-        PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterIn),
-      ),
-    // A card's lines leave it one way only: into the card that speaks for
-    // it, which carries them on to the mix, or into the mix itself when it
-    // speaks for itself.
-    for (final id in placed)
-      PipelineLink(
-        PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterVoice),
-        switch (_spokenBy(id, byId, placed)) {
-          final reader? => PipelinePort(
-            PipelineNodeIds.character(reader),
-            PipelineSocket.readBy,
-          ),
-          _ => const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
-        },
-      ),
+    // The whole branch goes dark when the cast is taken out of the mix: who
+    // stands in for whom is remembered in the cards and comes back with the
+    // link, but nothing of it runs meanwhile.
+    if (cast) ...[
+      // The cast reaches every card that is drawn: this is where a character
+      // joins the pipeline, whoever ends up speaking them.
+      for (final id in placed)
+        PipelineLink(
+          const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
+          PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterIn),
+        ),
+      // A card's lines leave it one way only: into the card that speaks for
+      // it, which carries them on to the mix, or into the mix itself when it
+      // speaks for itself.
+      for (final id in placed)
+        PipelineLink(
+          PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterVoice),
+          switch (_spokenBy(id, byId, placed)) {
+            final reader? => PipelinePort(
+              PipelineNodeIds.character(reader),
+              PipelineSocket.readBy,
+            ),
+            _ => const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
+          },
+        ),
+    ],
   ];
 
   return PipelineGraph(
@@ -620,6 +627,14 @@ final class RouteConnection extends GraphConnection {
   final CaptureMode? mode;
 }
 
+/// Whether the player's cast is wired into the mix at all. Taken out, every
+/// character is read as themselves.
+final class CastConnection extends GraphConnection {
+  const CastConnection(this.routed);
+
+  final bool routed;
+}
+
 /// Whose voice reads a card: [readerId], or the pipeline's own when null.
 final class ReaderConnection extends GraphConnection {
   const ReaderConnection(this.characterId, this.readerId);
@@ -664,6 +679,8 @@ GraphConnection proposeConnection(
     (PipelineSocket.screenText, PipelineSocket.translationIn) => const RouteConnection(
       CaptureMode.ocr,
     ),
+    // The cast, back into the mix: every card on the canvas speaks again.
+    (PipelineSocket.characterVoice, PipelineSocket.mixCast) => const CastConnection(true),
     // The line runs from the character whose part it is to the card that
     // will speak it: what travels the wire is the part, not the timbre.
     (PipelineSocket.characterVoice, PipelineSocket.readBy) => _readerConnection(
@@ -698,6 +715,9 @@ GraphConnection proposeDisconnect(PipelineLink link) {
       link.from.socket == PipelineSocket.screenText) {
     return const RouteConnection(null);
   }
+  // The cast comes out of the mix whole: the cards stay where they are with
+  // nobody standing in for anybody, and one line drawn back wakes them all.
+  if (link.to.socket == PipelineSocket.mixCast) return const CastConnection(false);
   if (link.to.socket != PipelineSocket.readBy ||
       link.from.socket != PipelineSocket.characterVoice) {
     return const RefusedConnection(ConnectionRefusal.unsupported);

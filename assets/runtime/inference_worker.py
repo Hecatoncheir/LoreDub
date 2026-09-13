@@ -554,6 +554,10 @@ def main():
     parser.add_argument("--voice-bank", default="")
     # Whose voice reads whom in this game, as the player assigned it in Live.
     parser.add_argument("--speaker-map", default="")
+    # Read every character as themselves: the player has taken the cast out
+    # of the mix on the graph. Who stands in for whom is still in the cards
+    # and in the map; none of it is applied while the branch is dark.
+    parser.add_argument("--as-heard", action="store_true")
     args = parser.parse_args()
 
     speed = min(2.0, max(0.5, args.speed))
@@ -681,6 +685,9 @@ def main():
         was heard, so the scene list keeps one row per voice of the game
         rather than gaining the character it is read in.
         """
+        # The cast is out of the mix: everybody speaks for themselves.
+        if args.as_heard:
+            return kind, index
         target = replacements.character_for(speaker_key(kind, index))
         # A card carries its own standing substitution, which holds in every
         # game; this game's own choice answers before it.

@@ -993,6 +993,8 @@
   "pipelineCloseInspector": "Закрыть панель",
   "pipelineRemoveNode": "Убрать со схемы",
   "pipelineCutLink": "Вернуть свой голос",
+  "pipelineCutRoute": "Отсоединить оригинальный поток",
+  "pipelineCutCast": "Убрать персонажей из сведения",
   "pipelineNodeSource": "Оригинальный поток",
   "pipelineNodeRecognition": "Whisper",
   "pipelineNodeTranslation": "Перевод",

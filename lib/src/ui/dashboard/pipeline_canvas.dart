@@ -94,6 +94,7 @@ class PipelineFacts {
     this.characters = const [],
     this.activeBackends = const {},
     this.running = false,
+    this.paused = false,
     this.recordingVoice = false,
   });
 
@@ -105,6 +106,10 @@ class PipelineFacts {
   /// What a running session reported it actually settled on.
   final Map<ComputeStage, ComputeBackend> activeBackends;
   final bool running;
+
+  /// Whether that session is resting. The cast may be rewired either way;
+  /// this is only so the toolbar can offer to wake it.
+  final bool paused;
 
   /// Whether a card is being recorded on the characters screen. That session
   /// listens to the game it started with, and the game is one choice shared
@@ -437,7 +442,9 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
       final reader =
           link.from.socket == PipelineSocket.characterVoice &&
           link.to.socket == PipelineSocket.readBy;
-      if (!route && !reader) continue;
+      // The cast comes out of the mix whole, so any of its lines will do.
+      final cast = link.to.socket == PipelineSocket.mixCast;
+      if (!route && !reader && !cast) continue;
       final from = _state.graph.node(link.from.nodeId);
       final to = _state.graph.node(link.to.nodeId);
       if (from == null || to == null) continue;
@@ -452,7 +459,12 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
           width: 30,
           height: 30,
           child: Tooltip(
-            message: l10n.pipelineCutLink,
+            // Three kinds of line come apart here and they part with
+            // different things: one card takes its own part back, the cast
+            // leaves the mix, the pipeline loses what feeds it.
+            message: route
+                ? l10n.pipelineCutRoute
+                : (cast ? l10n.pipelineCutCast : l10n.pipelineCutLink),
             child: Material(
               shape: const CircleBorder(side: BorderSide(color: LoreDubPalette.graphite)),
               color: LoreDubPalette.raised,
