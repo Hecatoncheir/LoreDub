@@ -70,6 +70,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String get charactersRecord => 'Записать голос';
 
   @override
+  String get charactersPlayClip => 'Прослушать запись';
+
+  @override
+  String get charactersPreviewVoice => 'Послушать голос озвучки';
+
+  @override
+  String get charactersPreviewLoading => 'Готовлю голос…';
+
+  @override
+  String get charactersPreviewNeedsModel => 'Нужна модель озвучки: загрузите её на экране «Модели»';
+
+  @override
+  String get charactersPlayingClip => 'Звучит…';
+
+  @override
+  String get charactersNoClip =>
+      'Записи нет: карточка пришла из файла, в нём только отпечаток голоса';
+
+  @override
   String get charactersRecordStop => 'Остановить';
 
   @override
@@ -235,6 +254,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get statusError => 'Ошибка';
+
+  @override
+  String get routeNeededTitle => 'Путь не собран';
+
+  @override
+  String get routeNeededNote =>
+      'Связь от «Оригинального потока» снята, и конвейеру нечего обрабатывать. Протяните её обратно на «Схеме» — или выберите там пресет.';
+
+  @override
+  String get routeNeededAction => 'К схеме';
 
   @override
   String get modelsNeededTitle => 'Для первого запуска нужны модели';
@@ -1472,6 +1501,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pipelineBypassed => 'в обход';
+
+  @override
+  String get pipelineUnrouted => 'не подключено';
 
   @override
   String get pipelineNoProcess => 'Игра не выбрана';

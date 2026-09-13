@@ -14,7 +14,10 @@ import '../../../domain/app_settings.dart';
 import '../../../domain/progress_ticker.dart';
 
 /// In the order the navigation lists them; the compact bar picks by index.
-enum DashboardSection { live, pipeline, snapshot, models, characters, settings }
+/// The order the sections are listed in, which is the order the work is
+/// done in: what the game says, a piece of it by hand, whose voices read it,
+/// how the signal runs, what it runs on, and everything else.
+enum DashboardSection { live, snapshot, characters, pipeline, models, settings }
 
 /// Where the parts of the dashboard put what went wrong.
 ///

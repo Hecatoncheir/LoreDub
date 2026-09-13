@@ -207,6 +207,42 @@ abstract class AppLocalizations {
   /// **'Записать голос'**
   String get charactersRecord;
 
+  /// No description provided for @charactersPlayClip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прослушать запись'**
+  String get charactersPlayClip;
+
+  /// No description provided for @charactersPreviewVoice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Послушать голос озвучки'**
+  String get charactersPreviewVoice;
+
+  /// No description provided for @charactersPreviewLoading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готовлю голос…'**
+  String get charactersPreviewLoading;
+
+  /// No description provided for @charactersPreviewNeedsModel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужна модель озвучки: загрузите её на экране «Модели»'**
+  String get charactersPreviewNeedsModel;
+
+  /// No description provided for @charactersPlayingClip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Звучит…'**
+  String get charactersPlayingClip;
+
+  /// No description provided for @charactersNoClip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записи нет: карточка пришла из файла, в нём только отпечаток голоса'**
+  String get charactersNoClip;
+
   /// No description provided for @charactersRecordStop.
   ///
   /// In ru, this message translates to:
@@ -446,6 +482,24 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Ошибка'**
   String get statusError;
+
+  /// No description provided for @routeNeededTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Путь не собран'**
+  String get routeNeededTitle;
+
+  /// No description provided for @routeNeededNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связь от «Оригинального потока» снята, и конвейеру нечего обрабатывать. Протяните её обратно на «Схеме» — или выберите там пресет.'**
+  String get routeNeededNote;
+
+  /// No description provided for @routeNeededAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'К схеме'**
+  String get routeNeededAction;
 
   /// No description provided for @modelsNeededTitle.
   ///
@@ -2534,6 +2588,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'в обход'**
   String get pipelineBypassed;
+
+  /// No description provided for @pipelineUnrouted.
+  ///
+  /// In ru, this message translates to:
+  /// **'не подключено'**
+  String get pipelineUnrouted;
 
   /// No description provided for @pipelineNoProcess.
   ///

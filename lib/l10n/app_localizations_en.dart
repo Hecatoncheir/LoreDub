@@ -70,6 +70,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get charactersRecord => 'Record the voice';
 
   @override
+  String get charactersPlayClip => 'Play the recording';
+
+  @override
+  String get charactersPreviewVoice => 'Hear the dubbing voice';
+
+  @override
+  String get charactersPreviewLoading => 'Getting the voice ready…';
+
+  @override
+  String get charactersPreviewNeedsModel =>
+      'The speech model is missing: fetch it on the Models screen';
+
+  @override
+  String get charactersPlayingClip => 'Sounding…';
+
+  @override
+  String get charactersNoClip =>
+      'No recording: the card came from a file, which carries only the fingerprint';
+
+  @override
   String get charactersRecordStop => 'Stop';
 
   @override
@@ -231,6 +251,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusError => 'Error';
+
+  @override
+  String get routeNeededTitle => 'The way in is not drawn';
+
+  @override
+  String get routeNeededNote =>
+      'The link out of the original stream has been taken apart, so the pipeline has nothing to work on. Draw it back on the graph, or pick a preset there.';
+
+  @override
+  String get routeNeededAction => 'To the graph';
 
   @override
   String get modelsNeededTitle => 'The first run needs models';
@@ -1464,6 +1494,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pipelineBypassed => 'bypassed';
+
+  @override
+  String get pipelineUnrouted => 'not routed';
 
   @override
   String get pipelineNoProcess => 'No game selected';

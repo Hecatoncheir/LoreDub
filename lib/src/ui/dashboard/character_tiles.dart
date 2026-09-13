@@ -68,6 +68,10 @@ class CharacterTile extends StatefulWidget {
     required this.onRename,
     required this.onVoiceAs,
     required this.onRecord,
+    required this.onPlay,
+    required this.playing,
+    required this.onPreview,
+    required this.previewing,
     required this.onExport,
     required this.onDelete,
     this.fromPackId,
@@ -96,6 +100,20 @@ class CharacterTile extends StatefulWidget {
 
   /// Null while another card records, or while no session runs.
   final VoidCallback? onRecord;
+
+  /// Plays back what this card was recorded from. Null when the card has no
+  /// clip of its own — an imported one carries the fingerprint and no audio.
+  final VoidCallback? onPlay;
+
+  /// Whether this card's clip is sounding right now.
+  final bool playing;
+
+  /// Speaks a line in the voice the dubbing would read this card in. Null
+  /// while the speech model is missing, or while anything else sounds.
+  final VoidCallback? onPreview;
+
+  /// Whether this card's sample is being got ready or spoken.
+  final bool previewing;
   final VoidCallback? onExport;
   final VoidCallback onDelete;
 
@@ -267,6 +285,38 @@ class _CharacterTileState extends State<CharacterTile> {
                       icon: recording ? Icons.stop_rounded : Icons.mic_rounded,
                       tooltip: recording ? l10n.charactersRecordStop : l10n.charactersRecord,
                       onPressed: widget.onRecord,
+                    ),
+                  ),
+                  // Hear back what the card was taken from: the surest way
+                  // to tell whether the right character was caught.
+                  ModelActionButton(
+                    key: ValueKey('playClip-${character.id}'),
+                    onDark: false,
+                    action: ModelAction(
+                      icon: widget.playing ? Icons.graphic_eq_rounded : Icons.play_arrow_rounded,
+                      tooltip: widget.playing
+                          ? l10n.charactersPlayingClip
+                          : (widget.onPlay == null
+                                ? l10n.charactersNoClip
+                                : l10n.charactersPlayClip),
+                      onPressed: widget.onPlay,
+                    ),
+                  ),
+                  // Not the recording but the dubbing: the Silero voice this
+                  // card will be read in, with its own timbre over it.
+                  ModelActionButton(
+                    key: ValueKey('previewVoice-${character.id}'),
+                    onDark: false,
+                    action: ModelAction(
+                      icon: widget.previewing
+                          ? Icons.hourglass_top_rounded
+                          : Icons.record_voice_over_rounded,
+                      tooltip: widget.previewing
+                          ? l10n.charactersPreviewLoading
+                          : (widget.onPreview == null
+                                ? l10n.charactersPreviewNeedsModel
+                                : l10n.charactersPreviewVoice),
+                      onPressed: widget.onPreview,
                     ),
                   ),
                   // Giving a character away is a choice among the others,

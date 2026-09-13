@@ -390,4 +390,40 @@ void main() {
       expect(const GraphView().zoomedAt(0.01, GraphPoint.zero).zoom, GraphView.smallestZoom);
     });
   });
+
+  test('draws nothing into a pipeline whose way in was taken apart', () {
+    const settings = AppSettings(captureRouted: false);
+    final graph = buildPipelineGraph(settings: settings, characters: const []);
+
+    expect(graph.routed, isFalse);
+    expect(
+      graph.linkInto(const PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn)),
+      isNull,
+    );
+    expect(
+      graph.linkInto(const PipelinePort(PipelineNodeIds.translation, PipelineSocket.translationIn)),
+      isNull,
+    );
+    for (final id in PipelineNodeIds.stages) {
+      expect(graph.node(id)?.unrouted, isTrue, reason: id);
+      expect(graph.node(id)?.bypassed, isFalse, reason: 'unrouted is not passed over: $id');
+    }
+    // What runs between the stages is the pipeline itself and stays drawn.
+    expect(
+      graph.linkInto(const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceIn)),
+      isNotNull,
+    );
+  });
+
+  test('cutting the way in asks for no route rather than for the other one', () {
+    final graph = buildPipelineGraph(settings: const AppSettings(), characters: const []);
+    final route = graph.linkInto(
+      const PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn),
+    )!;
+
+    expect(
+      proposeDisconnect(route),
+      isA<RouteConnection>().having((connection) => connection.mode, 'mode', isNull),
+    );
+  });
 }

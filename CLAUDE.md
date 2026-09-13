@@ -174,6 +174,11 @@ waiting to be spoken, while lines waiting to be recognized are not held up by
 the voice at all, and hurrying for them would rush a dubbing that is late for
 another reason.
 
+The six screens are listed in the order the work is done in — Эфир,
+Фрагмент, Персонажи, Схема, Модели, Настройки — which is the order of
+`DashboardSection` itself: the compact navigation indexes into
+`DashboardSection.values`, and the header numbers each screen by it.
+
 The Graph screen ("Схема", `DashboardSection.pipeline`) draws the pipeline as
 nodes and is the second way to the same settings, not a second set of them.
 `buildPipelineGraph` (`domain/pipeline_graph.dart`) is a pure function of
@@ -181,7 +186,14 @@ nodes and is the second way to the same settings, not a second set of them.
 whenever either changes and can never drift from them; every edit goes the
 other way through `proposeConnection`/`proposeDisconnect`, which answer with
 what the link would change (`RouteConnection` -> `captureMode`,
-`ReaderConnection` -> `Character.voicedBy`) or why it is refused. The six
+`ReaderConnection` -> `Character.voicedBy`) or why it is refused. Cutting the
+way in answers `RouteConnection(null)`: `AppSettings.captureRouted` goes
+false, the mode is remembered for whichever link is drawn back, every stage
+is `unrouted` — faded, labelled, still in its place — and `canStart` refuses
+until it is joined again. The pointer picks a socket up through a box held
+at one size on the screen (`NodeMetrics.grabReach` divided by the zoom, no
+taller than a row): a scheme fitted into a small window draws dots six pixels
+across, which nothing can take hold of. The six
 stage nodes and the character cards carry typed sockets, and only the two
 routes the engine runs can be drawn: game audio through whisper, or screen
 text straight into the translator, which leaves the recognition node
@@ -338,7 +350,16 @@ runs a session for recording them: `ld_start` on the game's audio plus the
 worker under `--embed-only`, which loads the converter and neither Marian nor
 Silero, so the screen is ready in seconds. While a card records, each captured
 segment goes to `{"fingerprint": path}` instead of recognition and comes back
-as a `characterVoice` event; the cubit keeps the longest clear one. Its
+as a `characterVoice` event; the cubit keeps the longest clear one. It keeps
+the audio too: the engine holds every measured clip until the recording ends,
+and the card's own is copied to `<app support>/characters/<id>.wav` before
+that, so the player can hear back what they caught. The other button on a
+card speaks rather than replays — `PipelineSession.preview` loads the speech
+model and the converter under `--speech-only` (no whisper, no Marian, so it
+is seconds rather than a minute), and `{"preview": {...}}` synthesizes one
+line of `voiceSample` in the voice and timbre the dubbing would read that
+card in. The line is in `targetLanguage`, not the interface language: a
+Russian voice handed English says it letter by letter. Its
 worker has neither whisper nor Marian in it, so a dubbing or snapshot session
 takes it over the way live dubbing takes over a snapshot — through
 `PipelineCubit.releaseWorker`, which `DashboardCubits` wires to

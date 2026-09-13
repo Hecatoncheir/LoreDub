@@ -379,10 +379,12 @@ class PipelineInspector extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          IconButton(
-            tooltip: l10n.pipelineRemoveNode,
-            icon: const Icon(Icons.close_fullscreen_rounded, size: 18),
-            onPressed: () => cubits.graph.add(PipelineCharacterRemoved(character.id)),
+          Expanded(
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.close_rounded, size: 18),
+              label: Text(l10n.pipelineRemoveNode, maxLines: 1, overflow: TextOverflow.ellipsis),
+              onPressed: () => cubits.graph.add(PipelineCharacterRemoved(character.id)),
+            ),
           ),
         ],
       ),

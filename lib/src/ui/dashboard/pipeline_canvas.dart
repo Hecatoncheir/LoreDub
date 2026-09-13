@@ -69,8 +69,13 @@ abstract final class NodeMetrics {
   static Offset portAt(PipelineNode node, PipelineSocket socket) =>
       Offset(node.position.x, node.position.y) + anchorOf(socket);
 
-  /// How near the pointer has to be let go for a port to catch the link.
+  /// How near the pointer has to be let go for a port to catch the link,
+  /// and how near it has to be pressed to pick one up. Both are distances on
+  /// the screen rather than on the canvas: the scheme shrinks to fit a small
+  /// window, but the pointer stays the size it was, and a dot drawn six
+  /// pixels across cannot be taken hold of.
   static const double catchRadius = 34;
+  static const double grabReach = dotRadius + 9;
 
   static const double dotRadius = 7;
 }
@@ -167,7 +172,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
   PipelinePort? _portNear(GraphPoint point, {required PipelinePort from}) {
     final at = Offset(point.x, point.y);
     PipelinePort? best;
-    var nearest = NodeMetrics.catchRadius;
+    var nearest = NodeMetrics.catchRadius / _view.zoom;
     for (final node in _state.graph.nodes) {
       for (final socket in PipelineSocket.values) {
         if (socket.owner != node.kind) continue;
@@ -332,6 +337,9 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
             PipelineNodeMoved(node.id, delta.dx / _view.zoom, delta.dy / _view.zoom),
           ),
           onDrop: () => widget.bloc.add(const PipelineArrangementSettled()),
+          onRemove: node.characterId == null
+              ? null
+              : () => widget.bloc.add(PipelineCharacterRemoved(node.characterId!)),
         ),
       ),
       for (final socket in PipelineSocket.values)
@@ -343,12 +351,17 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
     final port = PipelinePort(node.id, socket);
     final at = NodeMetrics.portAt(node, socket);
     final drag = _state.drag;
-    const reach = NodeMetrics.dotRadius + 9;
+    // The dot shrinks with the canvas; the box that catches the pointer does
+    // not. It is as wide on screen whatever the zoom — there is a node's
+    // width of empty canvas either side of a socket — and no taller than
+    // half a row, so that a socket is never covered by the one under it.
+    final wide = NodeMetrics.grabReach / _view.zoom;
+    final tall = math.min(wide, NodeMetrics.rowHeight / 2);
     return Positioned(
-      left: at.dx - reach,
-      top: at.dy - reach,
-      width: reach * 2,
-      height: reach * 2,
+      left: at.dx - wide,
+      top: at.dy - tall,
+      width: wide * 2,
+      height: tall * 2,
       child: GestureDetector(
         onPanStart: (details) => _startLink(port, details.globalPosition),
         onPanUpdate: (details) => _dragLink(details.globalPosition),
@@ -376,8 +389,15 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
     final l10n = AppLocalizations.of(context);
     final buttons = <Widget>[];
     for (final link in _state.graph.links) {
-      if (link.from.socket != PipelineSocket.characterVoice) continue;
-      if (link.to.socket != PipelineSocket.readBy) continue;
+      // The way into the pipeline comes apart the same way a substitution
+      // does, by the button on the line itself.
+      final route =
+          link.from.socket == PipelineSocket.gameAudio ||
+          link.from.socket == PipelineSocket.screenText;
+      final reader =
+          link.from.socket == PipelineSocket.characterVoice &&
+          link.to.socket == PipelineSocket.readBy;
+      if (!route && !reader) continue;
       final from = _state.graph.node(link.from.nodeId);
       final to = _state.graph.node(link.to.nodeId);
       if (from == null || to == null) continue;
@@ -574,6 +594,7 @@ class _NodeCard extends StatelessWidget {
     required this.onGrab,
     required this.onDrag,
     required this.onDrop,
+    this.onRemove,
   });
 
   final PipelineNode node;
@@ -584,6 +605,10 @@ class _NodeCard extends StatelessWidget {
   final VoidCallback onGrab;
   final void Function(Offset delta) onDrag;
   final VoidCallback onDrop;
+
+  /// Takes the node off the canvas. Only a card has one: the stages of the
+  /// pipeline are always drawn, bypassed or unrouted as they may be.
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -596,7 +621,7 @@ class _NodeCard extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.grab,
         child: Opacity(
-          opacity: node.bypassed ? 0.55 : 1,
+          opacity: node.bypassed || node.unrouted ? 0.55 : 1,
           child: Container(
             decoration: BoxDecoration(
               color: LoreDubPalette.raised,
@@ -649,9 +674,24 @@ class _NodeCard extends StatelessWidget {
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           ),
         ),
-        if (node.bypassed)
+        if (onRemove case final remove?)
+          // On the card itself rather than only in the panel: a card is put
+          // on the canvas by hand and taken off the same way.
+          SizedBox(
+            width: 26,
+            height: 26,
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              iconSize: 16,
+              tooltip: l10n.pipelineRemoveNode,
+              color: LoreDubPalette.mutedInk,
+              icon: const Icon(Icons.close_rounded),
+              onPressed: remove,
+            ),
+          ),
+        if (node.bypassed || node.unrouted)
           Text(
-            l10n.pipelineBypassed.toUpperCase(),
+            (node.bypassed ? l10n.pipelineBypassed : l10n.pipelineUnrouted).toUpperCase(),
             style: const TextStyle(
               fontFamily: LoreDubFonts.mono,
               fontSize: 8,

@@ -2005,7 +2005,7 @@ void main() {
     testWidgets('sits under Live and says how to select', (tester) async {
       await pumpDashboard(tester, stageSnapshot(), const Size(1280, 900));
 
-      expect(find.text('03  /  AREA SNAPSHOT'), findsOneWidget);
+      expect(find.text('02  /  AREA SNAPSHOT'), findsOneWidget);
       expect(find.text('Фрагмент'), findsOneWidget);
       expect(find.text('Перевод фрагмента'), findsOneWidget);
       expect(find.textContaining('Удерживайте Ctrl + Alt + S'), findsOneWidget);
@@ -2122,7 +2122,7 @@ void main() {
     testWidgets('sits before Settings and says how a voice is recorded', (tester) async {
       await pumpDashboard(tester, stageCast(), const Size(1280, 900));
 
-      expect(find.text('05  /  CHARACTER CAST'), findsOneWidget);
+      expect(find.text('03  /  CHARACTER CAST'), findsOneWidget);
       expect(find.text('Голоса персонажей'), findsOneWidget);
       expect(find.textContaining('Пока ни одного персонажа'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Запустить запись'), findsOneWidget);
@@ -2434,7 +2434,7 @@ void main() {
     testWidgets('draws the stages of the pipeline as nodes', (tester) async {
       await pumpGraph(tester);
 
-      expect(find.text('02  /  SIGNAL PATH'), findsOneWidget);
+      expect(find.text('04  /  SIGNAL PATH'), findsOneWidget);
       expect(find.text('Оригинальный поток'), findsOneWidget);
       expect(find.text('Whisper'), findsOneWidget);
       expect(find.text('Перевод'), findsOneWidget);

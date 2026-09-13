@@ -501,6 +501,10 @@ def main():
     # Answer fingerprint requests and nothing else: the characters screen
     # records a voice without waiting a minute for Marian and Silero.
     parser.add_argument("--embed-only", action="store_true")
+    # Answer preview requests: the speech model and the converter, without
+    # the translator. The characters screen plays a sample of a voice with
+    # it, which has nothing to translate.
+    parser.add_argument("--speech-only", action="store_true")
     # The player's own characters, kept for every game rather than one.
     parser.add_argument("--characters", default="")
     parser.add_argument("--work-directory", required=True)
@@ -559,14 +563,22 @@ def main():
     # translator and the speech model for it would cost the minute this
     # screen is meant to avoid.
     if not args.embed_only:
-        report_progress(0.35, "transformers")
-        from transformers import MarianMTModel, MarianTokenizer
+        # A voice preview has nothing to translate: it speaks a line the
+        # application already wrote, so the translator is left out and the
+        # screen waits seconds instead of a minute.
+        if not args.speech_only:
+            report_progress(0.35, "transformers")
+            from transformers import MarianMTModel, MarianTokenizer
 
-        report_progress(0.80, "translator")
-        tokenizer = MarianTokenizer.from_pretrained(args.translation_model, local_files_only=True)
-        translator = MarianMTModel.from_pretrained(args.translation_model, local_files_only=True)
-        translator.eval()
-        translator.to(device)
+            report_progress(0.80, "translator")
+            tokenizer = MarianTokenizer.from_pretrained(
+                args.translation_model, local_files_only=True
+            )
+            translator = MarianMTModel.from_pretrained(
+                args.translation_model, local_files_only=True
+            )
+            translator.eval()
+            translator.to(device)
 
         report_progress(0.90, "speech")
         tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
@@ -844,6 +856,44 @@ def main():
                 except (OSError, wave.Error, ValueError):
                     answer["seconds"] = 0
                 reply(answer)
+                continue
+            # A sample of one voice, which the characters screen plays so the
+            # player can hear a card before a word of the game is dubbed.
+            sample = request.get("preview")
+            if sample is not None:
+                if tts is None:
+                    raise RuntimeError("the speech model is not loaded")
+                chosen = str(sample.get("voice") or speaker)
+                if voices and chosen not in voices:
+                    chosen = speaker
+                audio = tts.apply_tts(
+                    text=str(sample.get("text", "")).strip(),
+                    speaker=chosen,
+                    sample_rate=args.sample_rate,
+                    put_accent=True,
+                    put_yo=True,
+                )
+                samples = audio.clamp(-1, 1).to(torch.float32).cpu().numpy()
+                rate = args.sample_rate
+                # The card's own timbre over that voice, which is what the
+                # dubbing will do with it.
+                vector = sample.get("vector")
+                if converter is not None and vector:
+                    timbre = torch.from_numpy(
+                        np.asarray(vector, dtype=np.float32)
+                    ).reshape(1, -1, 1)
+                    samples, rate = converter.convert(
+                        samples, rate, timbre.to(device=converter.device, dtype=torch.float32)
+                    )
+                samples = change_speed(samples, request_speed(request, speed), rate)
+                pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16).tobytes()
+                output = pathlib.Path(args.work_directory) / f"preview-{request_id}.wav"
+                with wave.open(str(output), "wb") as stream:
+                    stream.setnchannels(1)
+                    stream.setsampwidth(2)
+                    stream.setframerate(rate)
+                    stream.writeframes(pcm)
+                reply({"id": request_id, "wave": str(output), "voice": chosen})
                 continue
             # Where does the voice change? Asked before recognition, so each
             # speaker's half is recognized and voiced on its own.

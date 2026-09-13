@@ -38,7 +38,7 @@ class NativeEngineException implements Exception {
 class NativeEngineService {
   NativeEngineService() {
     _inference.onStartupProgress = (value, stage) =>
-        _events.add({'type': 'startup', 'value': value, 'stage': stage});
+        _events.add(_ofSession({'type': 'startup', 'value': value, 'stage': stage}));
     _playback.onSpeaking = _duckForSpeech;
   }
 
@@ -73,6 +73,10 @@ class NativeEngineService {
   /// Whether a card is recording right now. Between recordings what the game
   /// says is thrown away.
   bool _recordingVoice = false;
+
+  /// What the recording has heard so far, kept until it ends: the screen
+  /// picks one of them for the card, and cannot copy a file already gone.
+  final _recordedClips = <String>[];
 
   /// What subtitle mode read last, so a line that grows in place is voiced
   /// only for what it gained, and one that comes back unchanged — even after
@@ -208,6 +212,50 @@ class NativeEngineService {
     _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
   }
 
+  /// Loads the speech model and the converter, and nothing else: the
+  /// characters screen plays a sample of a card's voice with them. Neither
+  /// whisper nor the translator is wanted — the line is one the application
+  /// wrote — so the screen waits seconds rather than a minute.
+  Future<void> startPreview(Map<String, Object?> config) async {
+    _paused = false;
+    _session = PipelineSession.preview;
+    final models = config['models']! as Map<String, String>;
+    await _inference.start(
+      speechOnly: true,
+      ttsModel: models['speech']!,
+      speaker: config['speaker']! as String,
+      threads: config['cpuThreads']! as int,
+      speed: config['ttsSpeed']! as double,
+      pythonExecutable: config['pythonExecutable']! as String,
+      requiresWhisper: false,
+      voiceConverter: models['converter'],
+      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+    );
+    _activeConfig = config;
+    _pollTimer ??= Timer.periodic(
+      const Duration(milliseconds: 80),
+      (_) => _pollEvents(),
+    );
+    // Nothing native starts here to say so itself.
+    _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
+  }
+
+  /// Speaks [text] in [voice], over [timbre] when the converter is loaded,
+  /// and plays it. The file is the worker's and is dropped afterwards.
+  Future<void> previewVoice({
+    required String text,
+    required String voice,
+    List<double> timbre = const [],
+  }) async {
+    final wavePath = await _inference.previewVoice(text: text, voice: voice, timbre: timbre);
+    try {
+      await _playInIsolate(wavePath);
+    } finally {
+      await _deleteIfPresent(wavePath);
+    }
+  }
+
   /// Starts the session the characters screen records through: the game's
   /// audio and the converter that measures a voice, with neither the
   /// translator nor the speech model loaded.
@@ -290,7 +338,24 @@ class NativeEngineService {
   }
 
   /// Whether what the game says is measured for a card, or thrown away.
-  void setRecordingVoice({required bool recording}) => _recordingVoice = recording;
+  ///
+  /// What an ended recording heard is dropped: the screen has had its
+  /// chance to keep the clip that earned the card.
+  void setRecordingVoice({required bool recording}) {
+    _recordingVoice = recording;
+    if (!recording) _dropRecordedClips();
+  }
+
+  void _dropRecordedClips() {
+    for (final clip in _recordedClips) {
+      unawaited(_deleteIfPresent(clip));
+    }
+    _recordedClips.clear();
+  }
+
+  /// Plays a file to its end, outside the dubbing's own queue: a clip the
+  /// player asked to hear is not a line of a scene.
+  Future<void> playWave(String wavePath) => _playInIsolate(wavePath);
 
   /// Reads [speaker] in [character]'s voice from the next line on. The map
   /// is a file the worker also reads at start, so this only spares a restart.
@@ -311,6 +376,7 @@ class NativeEngineService {
     // in particular and puts every screen that was showing one back to rest.
     _session = null;
     _recordingVoice = false;
+    _dropRecordedClips();
     _previousOcrText = null;
     // ld_stop drops the hotkeys too; nothing is left for them to pause.
     _throwIfError(ld_stop());
@@ -426,7 +492,9 @@ class NativeEngineService {
   /// idle `ld_stop` announces — belongs to everyone: one session runs at a
   /// time, and stopping it stops whatever any screen was showing.
   Map<String, Object?> _ofSession(Map<String, Object?> event) =>
-      event['type'] == 'state' && _session != null ? {...event, 'session': _session!.name} : event;
+      (event['type'] == 'state' || event['type'] == 'startup') && _session != null
+      ? {...event, 'session': _session!.name}
+      : event;
 
   Future<void> _processPhrase(PendingPhrase phrase) {
     final wavePath = phrase.wavePath;
@@ -438,19 +506,25 @@ class NativeEngineService {
   /// Measures a recorded voice for a character's card and hands it over; the
   /// characters screen keeps the clearest one it hears.
   Future<void> _measureVoice(String wavePath) async {
+    var kept = false;
     try {
       final heard = await _inference.fingerprint(wavePath);
       if (heard.vector.isEmpty) return;
+      // Kept while the recording runs, so the screen can put the clip that
+      // earned the card beside it and let the player hear it back.
+      kept = _recordingVoice;
+      if (kept) _recordedClips.add(wavePath);
       _events.add({
         'type': 'characterVoice',
         'vector': heard.vector,
         'gender': heard.gender,
         'seconds': heard.seconds,
+        if (kept) 'clip': wavePath,
       });
     } catch (error) {
       _reportFailure(error);
     } finally {
-      await _deleteIfPresent(wavePath);
+      if (!kept) await _deleteIfPresent(wavePath);
     }
   }
 

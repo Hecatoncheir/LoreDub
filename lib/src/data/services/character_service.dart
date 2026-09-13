@@ -29,6 +29,53 @@ class CharacterService {
     return path.join(root.path, 'characters.json');
   }
 
+  /// Where the recorded clips are kept: one per card, named by its id, so
+  /// a card deleted takes its own clip and nobody else's.
+  Future<Directory> _clips() async {
+    final root = await _root();
+    final clips = Directory(path.join(root.path, 'characters'));
+    await clips.create(recursive: true);
+    return clips;
+  }
+
+  /// The clip recorded for [id], or null when the card has none. An import
+  /// carries the fingerprint but no audio, so a card can be voiced and still
+  /// have nothing to play.
+  Future<String?> clipFor(String id) async {
+    final clip = File(path.join((await _clips()).path, '$id.wav'));
+    return await clip.exists() ? clip.path : null;
+  }
+
+  /// The cards that have a clip to play.
+  Future<Set<String>> clips() async {
+    final directory = await _clips();
+    return {
+      await for (final entry in directory.list(followLinks: false))
+        if (entry is File && entry.path.endsWith('.wav')) path.basenameWithoutExtension(entry.path),
+    };
+  }
+
+  /// Keeps [source] as the clip of [id], replacing whatever was there.
+  Future<void> keepClip(String id, String source) async {
+    final clip = File(path.join((await _clips()).path, '$id.wav'));
+    try {
+      await File(source).copy(clip.path);
+    } on FileSystemException catch (error) {
+      throw LoreDubFailure(FailureCode.charactersSaveFailed, detail: error.message);
+    }
+  }
+
+  /// Drops the clip of [id], which a card that is being deleted no longer
+  /// answers for.
+  Future<void> removeClip(String id) async {
+    try {
+      final clip = File(path.join((await _clips()).path, '$id.wav'));
+      if (await clip.exists()) await clip.delete();
+    } on FileSystemException {
+      // A clip left behind costs a few kilobytes and nothing else.
+    }
+  }
+
   /// Every character and pack the player has, or none when the file is
   /// missing or damaged — the screen then starts empty rather than refusing
   /// to open.

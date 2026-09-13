@@ -19,6 +19,7 @@ enum VoiceMode { automatic, chosen, original }
 class AppSettings {
   const AppSettings({
     this.captureMode = CaptureMode.audio,
+    this.captureRouted = true,
     this.targetLanguage = 'ru',
     this.originalVolume = 0.18,
     this.duckWhileSpeaking = true,
@@ -50,6 +51,11 @@ class AppSettings {
   });
 
   final CaptureMode captureMode;
+
+  /// Whether the capture is wired into the pipeline at all. Taken apart on
+  /// the graph, [captureMode] is remembered but nothing is fed to the
+  /// stages: the session cannot start until a link is drawn back.
+  final bool captureRouted;
 
   /// Reserved for future language packs. Only Russian output is packaged, so
   /// nothing reads this value yet.
@@ -239,6 +245,7 @@ class AppSettings {
 
   AppSettings copyWith({
     CaptureMode? captureMode,
+    bool? captureRouted,
     String? targetLanguage,
     double? originalVolume,
     bool? duckWhileSpeaking,
@@ -273,6 +280,7 @@ class AppSettings {
     bool clearBackendOverrides = false,
   }) => AppSettings(
     captureMode: captureMode ?? this.captureMode,
+    captureRouted: captureRouted ?? this.captureRouted,
     targetLanguage: targetLanguage ?? this.targetLanguage,
     originalVolume: originalVolume ?? this.originalVolume,
     duckWhileSpeaking: duckWhileSpeaking ?? this.duckWhileSpeaking,

@@ -44,7 +44,9 @@ class DashboardCubits {
     // Closing for an update must not leave the game turned down, or the
     // worker of either screen still holding the files the setup replaces.
     shell.beforeRestart = () async {
-      if (pipeline.state.running || characters.state.running) await appRepository.stop();
+      if (pipeline.state.running || characters.state.running || characters.state.previewReady) {
+        await appRepository.stop();
+      }
     };
   }
 

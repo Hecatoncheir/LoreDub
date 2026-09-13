@@ -234,11 +234,17 @@ class _GraphMemento {
   const _GraphMemento({
     required this.layout,
     required this.captureMode,
+    required this.routed,
     required this.readers,
   });
 
   final PipelineLayout layout;
   final CaptureMode captureMode;
+
+  /// Whether the way into the pipeline was drawn. Kept beside the mode: a
+  /// step back over a cut route has to put the link there again, not only
+  /// remember which one it was.
+  final bool routed;
   final Map<String, String?> readers;
 }
 
@@ -389,7 +395,14 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         }
         _remember();
         emit(state.copyWith(clearRefusal: true));
-        await _settings.update(_settings.settings.copyWith(captureMode: mode));
+        // A route taken apart keeps the mode it had: drawing any link back
+        // picks it up again rather than asking for it afresh.
+        await _settings.update(
+          _settings.settings.copyWith(
+            captureMode: mode,
+            captureRouted: mode != null,
+          ),
+        );
       case ReaderConnection(:final characterId, :final readerId):
         _remember();
         emit(state.copyWith(clearRefusal: true));
@@ -481,8 +494,15 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   Future<void> _restore(_GraphMemento memento, Emitter<PipelineGraphState> emit) async {
     emit(_redrawn(state.copyWith(layout: memento.layout, clearRefusal: true)));
     _persist();
-    if (!routeLocked && _settings.settings.captureMode != memento.captureMode) {
-      await _settings.update(_settings.settings.copyWith(captureMode: memento.captureMode));
+    if (!routeLocked &&
+        (_settings.settings.captureMode != memento.captureMode ||
+            _settings.settings.captureRouted != memento.routed)) {
+      await _settings.update(
+        _settings.settings.copyWith(
+          captureMode: memento.captureMode,
+          captureRouted: memento.routed,
+        ),
+      );
     }
     for (final entry in memento.readers.entries) {
       final now = _cast.firstWhere(
@@ -499,6 +519,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   _GraphMemento _snapshot() => _GraphMemento(
     layout: state.layout,
     captureMode: _settings.settings.captureMode,
+    routed: _settings.settings.captureRouted,
     readers: {for (final character in _cast) character.id: character.voicedBy},
   );
 

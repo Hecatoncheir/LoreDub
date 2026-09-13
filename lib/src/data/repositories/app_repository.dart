@@ -48,6 +48,21 @@ class AppRepository {
   Future<void> saveCharacters(CharacterLibrary library) => _characters.save(library);
   Future<String> charactersFile() => _characters.file();
 
+  /// The clip recorded for a card, when it kept one. An imported card
+  /// carries a fingerprint but no audio, so it may have none.
+  Future<String?> characterClip(String id) => _characters.clipFor(id);
+
+  /// The cards with a clip to play.
+  Future<Set<String>> characterClips() => _characters.clips();
+
+  Future<void> keepCharacterClip(String id, String source) => _characters.keepClip(id, source);
+
+  Future<void> removeCharacterClip(String id) => _characters.removeClip(id);
+
+  /// Plays a file to its end, outside the dubbing's own queue: a clip the
+  /// player asked to hear does not wait behind a scene.
+  Future<void> playWave(String wavePath) => _nativeEngine.playWave(wavePath);
+
   Future<void> exportCharacters(String destination, CharacterLibrary library) =>
       _characters.exportTo(destination, library);
 
@@ -214,6 +229,40 @@ class AppRepository {
       rethrow;
     }
   }
+
+  /// Loads the speech model and the converter so a card's voice can be
+  /// heard before anything is dubbed. Nothing is captured: the line is the
+  /// application's own, and the converter only lays the card's timbre over
+  /// the voice the way the dubbing will.
+  Future<void> startVoicePreview({
+    required AppSettings settings,
+    required Map<String, String> modelDirectories,
+    required String speaker,
+    required ComputeBackend converterBackend,
+    required String runtimeDirectory,
+  }) async {
+    try {
+      await _nativeEngine.startPreview({
+        'speaker': speaker,
+        'ttsSpeed': settings.chosenSpeed,
+        'cpuThreads': settings.cpuThreads,
+        'pythonExecutable': settings.pythonExecutable,
+        'models': modelDirectories,
+        'voiceConversionBackend': converterBackend.name,
+        'runtimeDirectory': runtimeDirectory,
+      });
+    } catch (_) {
+      await _nativeEngine.stop();
+      rethrow;
+    }
+  }
+
+  /// Speaks one line in a card's voice and plays it.
+  Future<void> previewVoice({
+    required String text,
+    required String voice,
+    List<double> timbre = const [],
+  }) => _nativeEngine.previewVoice(text: text, voice: voice, timbre: timbre);
 
   /// Starts the session the characters screen records with: the game's audio
   /// and the converter that measures a voice, without the translator or the

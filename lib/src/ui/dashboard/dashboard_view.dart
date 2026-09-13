@@ -296,28 +296,28 @@ class _Navigation extends StatelessWidget {
                 onTap: () => cubits.shell.selectSection(DashboardSection.live),
               ),
               _NavigationItem(
-                icon: (color) => Icon(Icons.account_tree_rounded, size: 21, color: color),
-                label: AppLocalizations.of(context).navPipeline,
-                selected: shell.section == DashboardSection.pipeline,
-                onTap: () => cubits.shell.selectSection(DashboardSection.pipeline),
-              ),
-              _NavigationItem(
                 icon: (color) => Icon(Icons.highlight_alt_rounded, size: 21, color: color),
                 label: AppLocalizations.of(context).navSnapshot,
                 selected: shell.section == DashboardSection.snapshot,
                 onTap: () => cubits.shell.selectSection(DashboardSection.snapshot),
               ),
               _NavigationItem(
-                icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
-                label: AppLocalizations.of(context).navModels,
-                selected: shell.section == DashboardSection.models,
-                onTap: () => cubits.shell.selectSection(DashboardSection.models),
-              ),
-              _NavigationItem(
                 icon: (color) => Icon(Icons.groups_rounded, size: 21, color: color),
                 label: AppLocalizations.of(context).navCharacters,
                 selected: shell.section == DashboardSection.characters,
                 onTap: () => cubits.shell.selectSection(DashboardSection.characters),
+              ),
+              _NavigationItem(
+                icon: (color) => Icon(Icons.account_tree_rounded, size: 21, color: color),
+                label: AppLocalizations.of(context).navPipeline,
+                selected: shell.section == DashboardSection.pipeline,
+                onTap: () => cubits.shell.selectSection(DashboardSection.pipeline),
+              ),
+              _NavigationItem(
+                icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
+                label: AppLocalizations.of(context).navModels,
+                selected: shell.section == DashboardSection.models,
+                onTap: () => cubits.shell.selectSection(DashboardSection.models),
               ),
               _NavigationItem(
                 icon: (color) => Icon(Icons.tune_rounded, size: 21, color: color),
@@ -634,20 +634,20 @@ class _BottomNavigation extends StatelessWidget {
           label: AppLocalizations.of(context).navLive,
         ),
         NavigationDestination(
-          icon: const Icon(Icons.account_tree_rounded),
-          label: AppLocalizations.of(context).navPipeline,
-        ),
-        NavigationDestination(
           icon: const Icon(Icons.highlight_alt_rounded),
           label: AppLocalizations.of(context).navSnapshot,
         ),
         NavigationDestination(
-          icon: const Icon(Icons.memory_rounded),
-          label: AppLocalizations.of(context).navModels,
-        ),
-        NavigationDestination(
           icon: const Icon(Icons.groups_rounded),
           label: AppLocalizations.of(context).navCharacters,
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.account_tree_rounded),
+          label: AppLocalizations.of(context).navPipeline,
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.memory_rounded),
+          label: AppLocalizations.of(context).navModels,
         ),
         NavigationDestination(
           icon: const Icon(Icons.tune_rounded),
@@ -677,10 +677,10 @@ class _Header extends StatelessWidget {
                 Text(
                   switch (shell.section) {
                     DashboardSection.live => '01  /  LIVE VOICE',
-                    DashboardSection.pipeline => '02  /  SIGNAL PATH',
-                    DashboardSection.snapshot => '03  /  AREA SNAPSHOT',
-                    DashboardSection.models => '04  /  MODEL BANK',
-                    DashboardSection.characters => '05  /  CHARACTER CAST',
+                    DashboardSection.snapshot => '02  /  AREA SNAPSHOT',
+                    DashboardSection.characters => '03  /  CHARACTER CAST',
+                    DashboardSection.pipeline => '04  /  SIGNAL PATH',
+                    DashboardSection.models => '05  /  MODEL BANK',
                     DashboardSection.settings => '06  /  SIGNAL SETUP',
                   },
                   style: const TextStyle(
@@ -802,6 +802,7 @@ class _LivePanel extends StatelessWidget {
           cubits: cubits,
           ready: (selection) => selection.requiredModelsInstalled,
         ),
+        _RouteNeededNotice(cubits: cubits),
         const SizedBox(height: 16),
         // The transcript and the voices of the scene stand side by side
         // where there is room; a narrow window stacks them, the transcript
@@ -1061,6 +1062,38 @@ class _ModelsNeededNotice extends StatelessWidget {
               ),
             ),
     ),
+  );
+}
+
+/// Says the way into the pipeline has been taken apart on the graph, and
+/// leads back there. Nothing can start meanwhile: the stages have nothing
+/// to work on.
+class _RouteNeededNotice extends StatelessWidget {
+  const _RouteNeededNotice({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => _SettingsBuilder(
+    cubits: cubits,
+    builder: (context, state) {
+      if (state.settings.captureRouted) return const SizedBox.shrink();
+      final l10n = AppLocalizations.of(context);
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Card(
+          child: ListTile(
+            leading: const Icon(Icons.link_off_rounded, color: LoreDubPalette.warning),
+            title: Text(l10n.routeNeededTitle),
+            subtitle: Text(l10n.routeNeededNote),
+            trailing: TextButton(
+              onPressed: () => cubits.shell.selectSection(DashboardSection.pipeline),
+              child: Text(l10n.routeNeededAction),
+            ),
+          ),
+        ),
+      );
+    },
   );
 }
 
@@ -2289,7 +2322,9 @@ class _GraphToolbar extends StatelessWidget {
                             PipelinePreset.audioDub => l10n.pipelinePresetAudio,
                             PipelinePreset.subtitles => l10n.pipelinePresetSubtitles,
                           }),
-                          selected: option == preset,
+                          // Neither route is running while the way in is
+                          // taken apart; picking one draws it back.
+                          selected: state.graph.routed && option == preset,
                           showCheckmark: false,
                           selectedColor: LoreDubPalette.orange,
                           backgroundColor: LoreDubPalette.raised,
@@ -2631,6 +2666,15 @@ class _CharacterCast extends StatelessWidget {
                                 ],
                                 onRename: (name) => cubits.characters.rename(character.id, name),
                                 onVoiceAs: (id) => cubits.characters.voiceAs(character.id, id),
+                                playing: state.playingId == character.id,
+                                onPlay: !state.canPlay(character.id) || state.sounding
+                                    ? null
+                                    : () => cubits.characters.playClip(character.id),
+                                previewing: state.previewingId == character.id,
+                                onPreview:
+                                    state.sounding || state.running || !cubits.characters.canPreview
+                                    ? null
+                                    : () => cubits.characters.preview(character.id),
                                 onRecord:
                                     !state.running ||
                                         (state.recording && state.recordingId != character.id)

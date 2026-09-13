@@ -119,6 +119,8 @@ class LivePipelineState {
       !initializing &&
       (status == PipelineStatus.idle || snapshotRunning || sceneRunning) &&
       (!selection.requiresProcess || selectedProcess != null) &&
+      // Taken apart on the graph, the pipeline has nothing to work on.
+      selection.settings.captureRouted &&
       selection.requiredModelsInstalled;
 
   /// The scene session needs the converter, a bank to keep the voices it

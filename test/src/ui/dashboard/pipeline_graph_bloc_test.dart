@@ -101,6 +101,45 @@ void main() {
     expect(graph.state.graph.node(PipelineNodeIds.recognition)?.bypassed, isFalse);
   });
 
+  test('takes the way into the pipeline apart, and draws it back', () async {
+    final route = graph.state.graph.linkInto(speechIn)!;
+
+    graph.add(PipelineLinkCut(route));
+    await pumpEvents();
+
+    expect(cubits.settings.settings.captureRouted, isFalse);
+    expect(
+      cubits.settings.settings.captureMode,
+      CaptureMode.audio,
+      reason: 'the mode is remembered, so drawing any link back picks it up',
+    );
+    expect(graph.state.graph.routed, isFalse);
+    expect(graph.state.graph.linkInto(speechIn), isNull);
+    for (final node in graph.state.graph.nodes) {
+      if (node.kind == PipelineNodeKind.character) continue;
+      expect(node.unrouted, isTrue, reason: '${node.id} has nothing reaching it');
+      expect(node.bypassed, isFalse, reason: 'unrouted is not the same as passed over');
+    }
+
+    await drawLink(gameAudio, speechIn);
+
+    expect(cubits.settings.settings.captureRouted, isTrue);
+    expect(graph.state.graph.linkInto(speechIn)?.from, gameAudio);
+    expect(graph.state.graph.nodes.every((node) => !node.unrouted), isTrue);
+  });
+
+  test('one step back puts a cut route together again', () async {
+    graph.add(PipelineLinkCut(graph.state.graph.linkInto(speechIn)!));
+    await pumpEvents();
+    expect(cubits.settings.settings.captureRouted, isFalse);
+
+    graph.add(const PipelineGraphUndone());
+    await pumpEvents();
+
+    expect(cubits.settings.settings.captureRouted, isTrue);
+    expect(graph.state.graph.linkInto(speechIn)?.from, gameAudio);
+  });
+
   test('taking the screen text to the translator puts the pipeline in subtitle mode', () async {
     await drawLink(screenText, translationIn);
 

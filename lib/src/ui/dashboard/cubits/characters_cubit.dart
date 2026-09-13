@@ -5,14 +5,17 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart' as path;
 
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../domain/character.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/game_process.dart';
+import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
+import '../../../domain/voice_sample.dart';
 import 'downloads_cubit.dart';
 import 'settings_cubit.dart';
 import 'shell_cubit.dart';
@@ -27,6 +30,10 @@ class CharactersState {
     this.status = PipelineStatus.idle,
     this.recordingId,
     this.heardSeconds = 0,
+    this.clips = const {},
+    this.playingId,
+    this.previewingId,
+    this.previewReady = false,
   });
 
   final List<Character> characters;
@@ -51,9 +58,30 @@ class CharactersState {
   /// there is enough of it yet.
   final double heardSeconds;
 
+  /// The cards that kept the clip their voice was taken from, so it can be
+  /// played back. A card imported from someone else's file has the
+  /// fingerprint without the audio and is not in here.
+  final Set<String> clips;
+
+  /// The card whose clip is sounding right now.
+  final String? playingId;
+
+  /// The card whose sample is being spoken — from the moment it is asked
+  /// for, which on the first one means waiting for the speech model.
+  final String? previewingId;
+
+  /// Whether the speech model is loaded and a sample costs no waiting.
+  final bool previewReady;
+
   bool get running => status == PipelineStatus.starting || status == PipelineStatus.listening;
 
   bool get recording => recordingId != null;
+
+  /// Whether [id] has a clip of its own to play.
+  bool canPlay(String id) => clips.contains(id);
+
+  /// Nothing is played over anything else: one clip or one sample at a time.
+  bool get sounding => playingId != null || previewingId != null;
 
   /// The cards [pack] holds, in the order they were dropped into it. An id
   /// no card answers to is passed over rather than drawn as a gap.
@@ -71,6 +99,12 @@ class CharactersState {
     String? recordingId,
     bool clearRecordingId = false,
     double? heardSeconds,
+    Set<String>? clips,
+    String? playingId,
+    bool clearPlayingId = false,
+    String? previewingId,
+    bool clearPreviewingId = false,
+    bool? previewReady,
   }) => CharactersState(
     characters: characters ?? this.characters,
     packs: packs ?? this.packs,
@@ -78,6 +112,10 @@ class CharactersState {
     status: status ?? this.status,
     recordingId: clearRecordingId ? null : recordingId ?? this.recordingId,
     heardSeconds: heardSeconds ?? this.heardSeconds,
+    clips: clips ?? this.clips,
+    playingId: clearPlayingId ? null : playingId ?? this.playingId,
+    previewingId: clearPreviewingId ? null : previewingId ?? this.previewingId,
+    previewReady: previewReady ?? this.previewReady,
   );
 }
 
@@ -104,6 +142,10 @@ class CharactersCubit extends Cubit<CharactersState> {
   List<double>? _heard;
   String? _heardGender;
 
+  /// The file the clearest line was heard in, which is kept beside the card
+  /// so the player can hear back what they recorded.
+  String? _heardClip;
+
   ModelSelection get _selection =>
       ModelSelection(models: _downloads.state.models, settings: _settings.settings);
 
@@ -111,14 +153,20 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// one, and it is downloaded on the models screen.
   bool get canRecord => _selection.voiceConverter?.installed ?? false;
 
+  /// Whether a sample can be spoken: the speech model of the dubbing
+  /// language is what says it.
+  bool get canPreview => _selection.forTargetLanguage(ModelKind.speech)?.installed ?? false;
+
   Future<void> load() async {
     try {
       final library = await _appRepository.loadCharacters();
+      final clips = await _listClips();
       if (isClosed) return;
       emit(
         state.copyWith(
           characters: library.characters,
           packs: library.packs,
+          clips: clips,
           loading: false,
         ),
       );
@@ -173,6 +221,9 @@ class CharactersCubit extends Cubit<CharactersState> {
 
   Future<void> remove(String id) async {
     if (state.recordingId == id) await stopRecording();
+    await _dropClip(id);
+    if (isClosed) return;
+    emit(state.copyWith(clips: {...state.clips}..remove(id)));
     await _write(
       characters: [
         for (final character in state.characters)
@@ -298,7 +349,7 @@ class CharactersCubit extends Cubit<CharactersState> {
     // Live calls this too, to take the worker over. Without a session of
     // this screen's there is nothing to end, and stopping the engine would
     // take down the one that is about to start.
-    if (!state.running) return;
+    if (!state.running && !state.previewReady) return;
     if (state.recording) await stopRecording();
     try {
       await _appRepository.stop();
@@ -306,7 +357,7 @@ class CharactersCubit extends Cubit<CharactersState> {
       _errors.report(exception);
     }
     if (isClosed) return;
-    emit(state.copyWith(status: PipelineStatus.idle));
+    emit(state.copyWith(status: PipelineStatus.idle, previewReady: false));
   }
 
   /// Begins measuring what the game says for [id].
@@ -314,6 +365,7 @@ class CharactersCubit extends Cubit<CharactersState> {
     if (!state.running || state.recording) return;
     _heard = null;
     _heardGender = null;
+    _heardClip = null;
     _appRepository.recordCharacterVoice(recording: true);
     emit(state.copyWith(recordingId: id, heardSeconds: 0));
   }
@@ -322,9 +374,24 @@ class CharactersCubit extends Cubit<CharactersState> {
   Future<void> stopRecording() async {
     final id = state.recordingId;
     if (id == null) return;
-    _appRepository.recordCharacterVoice(recording: false);
     final heard = _heard;
-    emit(state.copyWith(clearRecordingId: true));
+    final clip = _heardClip;
+    // Kept before the engine is told to stop: what a recording heard is
+    // dropped the moment it ends, and this is the last chance at the file.
+    var kept = state.clips;
+    if (heard != null && clip != null) {
+      try {
+        await _appRepository.keepCharacterClip(id, clip);
+        kept = {...kept, id};
+      } catch (exception) {
+        // A card without its clip is still a card: only the play button goes.
+        kept = {...kept}..remove(id);
+        _errors.report(exception);
+      }
+    }
+    _appRepository.recordCharacterVoice(recording: false);
+    if (isClosed) return;
+    emit(state.copyWith(clearRecordingId: true, clips: kept));
     if (heard == null) return;
     await _write(
       characters: [
@@ -371,7 +438,104 @@ class CharactersCubit extends Cubit<CharactersState> {
             if (value is num) value.toDouble(),
         ];
         _heardGender = event['gender'] as String?;
+        _heardClip = event['clip'] as String?;
         emit(state.copyWith(heardSeconds: seconds));
+    }
+  }
+
+  /// Throws away the clip of a card that is going. A clip left behind costs
+  /// a few kilobytes; failing to remove it must not keep the card.
+  Future<void> _dropClip(String id) async {
+    try {
+      await _appRepository.removeCharacterClip(id);
+    } on Object {
+      // Nothing to tell the player: the card goes either way.
+    }
+  }
+
+  /// Speaks [text] in the voice the dubbing would read [id] in, and plays
+  /// it, so the player can hear a card before a word of the game is dubbed.
+  ///
+  /// The speech model is loaded for it, which the recording session does
+  /// without — the first sample waits for that, the ones after it do not.
+  /// Recording is the other way round, so the two do not run together.
+  Future<void> preview(String id) async {
+    if (state.sounding || state.running || !canPreview) return;
+    final character = state.characters.where((value) => value.id == id).firstOrNull;
+    if (character == null) return;
+    emit(state.copyWith(previewingId: id));
+    try {
+      final selection = _selection;
+      final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
+      // A card read in another's voice is heard as that other: the sample
+      // answers what the dubbing will do, not what the card holds.
+      // One hop only, as the worker reads it: a card read by a card that is
+      // itself read by a third keeps its own reader.
+      final read =
+          state.characters.where((value) => value.id == character.voicedBy).firstOrNull ??
+          character;
+      if (!state.previewReady) {
+        await _appRepository.startVoicePreview(
+          settings: _settings.settings,
+          modelDirectories: {
+            'speech': path.join(
+              await _modelRepository.directoryFor(speech),
+              speech.primaryFileName,
+            ),
+            if (selection.needsVoiceConverter)
+              'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
+          },
+          speaker: selection.voice,
+          converterBackend: _settings.settings.backendFor(
+            ComputeStage.voiceConversion,
+            _downloads.state.availability,
+          ),
+          runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+        );
+        if (isClosed) return;
+        emit(state.copyWith(previewReady: true));
+      }
+      await _appRepository.previewVoice(
+        // The line is in the language the voice speaks, which is the one
+        // being dubbed into — not the one the interface is in.
+        text: voiceSample(_settings.settings.targetLanguage, character.name),
+        voice: read.voice ?? selection.voice,
+        timbre: selection.clonesVoice ? read.vector : const [],
+      );
+    } catch (exception) {
+      _errors.report(exception);
+    } finally {
+      if (!isClosed) emit(state.copyWith(clearPreviewingId: true));
+    }
+  }
+
+  /// The cards with a clip beside them. A directory that cannot be read
+  /// costs a play button, not the cast: the cards themselves are elsewhere.
+  Future<Set<String>> _listClips() async {
+    try {
+      return await _appRepository.characterClips();
+    } on Object {
+      return const {};
+    }
+  }
+
+  /// Plays back what the card was recorded from, so the player can hear
+  /// whether they caught the right character.
+  Future<void> playClip(String id) async {
+    if (state.sounding) return;
+    try {
+      final clip = await _appRepository.characterClip(id);
+      if (clip == null) {
+        // The file went missing under us; the button goes with it.
+        if (!isClosed) emit(state.copyWith(clips: {...state.clips}..remove(id)));
+        return;
+      }
+      if (!isClosed) emit(state.copyWith(playingId: id));
+      await _appRepository.playWave(clip);
+    } catch (exception) {
+      _errors.report(exception);
+    } finally {
+      if (!isClosed) emit(state.copyWith(clearPlayingId: true));
     }
   }
 

@@ -162,6 +162,7 @@ class PipelineNode {
     required this.position,
     this.characterId,
     this.bypassed = false,
+    this.unrouted = false,
   });
 
   final String id;
@@ -175,6 +176,13 @@ class PipelineNode {
   /// the subtitles are being read off the screen. It is still drawn, so the
   /// route can be put back by dragging one link.
   final bool bypassed;
+
+  /// Whether nothing reaches this node at all, the way into the pipeline
+  /// having been taken apart. A bypassed node is one the running route goes
+  /// past; an unrouted one belongs to a pipeline that runs nothing. It is
+  /// still drawn where it stood, and a link dragged back to the source puts
+  /// the route together again.
+  final bool unrouted;
 }
 
 /// The whole scheme: the nodes, the links between them, and the route the
@@ -184,6 +192,7 @@ class PipelineGraph {
     this.nodes = const [],
     this.links = const [],
     this.route = CaptureMode.audio,
+    this.routed = true,
     this.chained = const {},
   });
 
@@ -191,8 +200,13 @@ class PipelineGraph {
   final List<PipelineLink> links;
 
   /// Which of the two routes the links describe — the same value the engine
-  /// is started with.
+  /// is started with. Meaningless while [routed] is false: it is only what
+  /// the route would be if it were drawn back.
   final CaptureMode route;
+
+  /// Whether the way into the pipeline is drawn at all. Taken apart, every
+  /// stage is unrouted and the session cannot start.
+  final bool routed;
 
   /// Cards read by a card that is itself read by a third. The substitution
   /// is followed one hop only, so these keep their reader's own voice and
@@ -409,6 +423,7 @@ PipelineGraph buildPipelineGraph({
   GraphPoint at(String nodeId, GraphPoint fallback) => layout.positions[nodeId] ?? fallback;
 
   final ocr = settings.captureMode == CaptureMode.ocr;
+  final routed = settings.captureRouted;
   final nodes = <PipelineNode>[
     for (final id in PipelineNodeIds.stages)
       PipelineNode(
@@ -422,7 +437,8 @@ PipelineGraph buildPipelineGraph({
           _ => PipelineNodeKind.output,
         },
         position: at(id, PipelineLayout.standardPositions[id] ?? GraphPoint.zero),
-        bypassed: ocr && id == PipelineNodeIds.recognition,
+        bypassed: routed && ocr && id == PipelineNodeIds.recognition,
+        unrouted: !routed,
       ),
     for (final (index, id) in placed.indexed)
       PipelineNode(
@@ -435,7 +451,11 @@ PipelineGraph buildPipelineGraph({
 
   const translation = PipelinePort(PipelineNodeIds.translation, PipelineSocket.translationIn);
   final links = <PipelineLink>[
-    if (ocr)
+    // Nothing feeds the stages while the way in is taken apart. What runs
+    // between them is the pipeline itself and stays drawn, faded with them.
+    if (!routed)
+      ...const <PipelineLink>[]
+    else if (ocr)
       const PipelineLink(
         PipelinePort(PipelineNodeIds.source, PipelineSocket.screenText),
         translation,
@@ -487,6 +507,7 @@ PipelineGraph buildPipelineGraph({
     nodes: nodes,
     links: links,
     route: settings.captureMode,
+    routed: routed,
     chained: {
       for (final id in placed)
         if (byId[byId[id]?.voicedBy]?.voicedBy != null) id,
@@ -552,7 +573,10 @@ sealed class GraphConnection {
 final class RouteConnection extends GraphConnection {
   const RouteConnection(this.mode);
 
-  final CaptureMode mode;
+  /// Which way the pipeline is fed, or null when the way in has been taken
+  /// apart: the mode last used is remembered, and drawing a link back is
+  /// what picks it up again.
+  final CaptureMode? mode;
 }
 
 /// Whose voice reads a card: [readerId], or the pipeline's own when null.
@@ -629,6 +653,12 @@ GraphConnection _readerConnection({
 /// What cutting [link] would mean. Only a substitution can be cut: the route
 /// is always whole, and is changed by drawing the other one instead.
 GraphConnection proposeDisconnect(PipelineLink link) {
+  // The way into the pipeline comes apart: the stages stay where they are
+  // with nothing reaching them, and the route is put back by drawing it.
+  if (link.from.socket == PipelineSocket.gameAudio ||
+      link.from.socket == PipelineSocket.screenText) {
+    return const RouteConnection(null);
+  }
   if (link.to.socket != PipelineSocket.readBy ||
       link.from.socket != PipelineSocket.characterVoice) {
     return const RefusedConnection(ConnectionRefusal.unsupported);

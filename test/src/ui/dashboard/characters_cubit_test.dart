@@ -9,16 +9,21 @@ import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
+import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/data/services/update_service.dart';
+import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/character.dart';
+import 'package:lore_dub/src/domain/model_package.dart';
+import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
@@ -50,9 +55,20 @@ void main() {
         NotificationService(plugin: FlutterLocalNotificationsPlugin()),
       ),
     );
+    // Every package in place: a sample needs the speech model, and a
+    // recording needs the converter.
+    cubits.downloads.seed(
+      DownloadsState(
+        models: [
+          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
+        ],
+      ),
+    );
     characters = CharactersCubit(
       repository,
-      ModelRepository(ModelStorageService()),
+      // The real one goes looking for the application directory, which a
+      // unit test does not have.
+      _FixedModelRepository(),
       cubits.settings,
       cubits.downloads,
       cubits.shell,
@@ -135,6 +151,83 @@ void main() {
     expect(kept.vector, [0.7, 0.1]);
     expect(kept.gender, 'male');
     expect(kept.seconds, 2.4);
+  });
+
+  test('keeps the clip the card was recorded from, and plays it back', () async {
+    characters.seed(
+      const CharactersState(
+        loading: false,
+        status: PipelineStatus.listening,
+        characters: [guard],
+      ),
+    );
+
+    characters.startRecording('a1');
+    characters.handleEvent({
+      'type': 'characterVoice',
+      'vector': [0.7, 0.1],
+      'seconds': 2.4,
+      'clip': r'C:\work\capture\segment-2.wav',
+    });
+    await characters.stopRecording();
+
+    expect(repository.kept['a1'], r'C:\work\capture\segment-2.wav');
+    expect(characters.state.canPlay('a1'), isTrue);
+
+    await characters.playClip('a1');
+
+    expect(repository.played, [r'C:\work\capture\segment-2.wav']);
+    expect(characters.state.playingId, isNull, reason: 'it has finished sounding');
+  });
+
+  test('offers nothing to play for a card that came from a file', () async {
+    characters.seed(const CharactersState(loading: false, characters: [guard]));
+
+    expect(characters.state.canPlay('a1'), isFalse);
+
+    await characters.playClip('a1');
+
+    expect(repository.played, isEmpty);
+  });
+
+  test('takes the clip away with the card', () async {
+    characters.seed(const CharactersState(loading: false, characters: [guard], clips: {'a1'}));
+    repository.kept['a1'] = 'clip.wav';
+
+    await characters.remove('a1');
+
+    expect(repository.kept, isEmpty);
+    expect(characters.state.clips, isEmpty);
+  });
+
+  test('speaks a sample in the voice the dubbing would read the card in', () async {
+    characters.seed(const CharactersState(loading: false, characters: [guard]));
+
+    await characters.preview('a1');
+
+    expect(repository.previewStarts, 1, reason: 'the speech model is loaded once');
+    expect(repository.spoken.single, contains('Стражник'));
+    expect(characters.state.previewReady, isTrue);
+    expect(characters.state.previewingId, isNull);
+
+    await characters.preview('a1');
+
+    expect(repository.previewStarts, 1, reason: 'the one after it waits for nothing');
+    expect(repository.spoken.length, 2);
+  });
+
+  test('leaves the sample alone while the game is being listened to', () async {
+    characters.seed(
+      const CharactersState(
+        loading: false,
+        status: PipelineStatus.listening,
+        characters: [guard],
+      ),
+    );
+
+    await characters.preview('a1');
+
+    expect(repository.spoken, isEmpty, reason: 'that worker has no speech model in it');
   });
 
   test('leaves the card alone when the recording heard nothing usable', () async {
@@ -306,12 +399,56 @@ void main() {
 }
 
 /// The characters on disk, without a disk.
+class _FixedModelRepository extends ModelRepository {
+  _FixedModelRepository() : super(ModelStorageService());
+
+  @override
+  Future<String> directoryFor(ModelPackage model) async => 'models';
+}
+
 class _CastRepository extends AppRepository {
   _CastRepository() : super(NativeEngineService(), SettingsService());
 
   CharacterLibrary stored = CharacterLibrary.empty;
   CharacterLibrary incoming = CharacterLibrary.empty;
   final recordings = <bool>[];
+
+  /// The clips kept beside the cards, by card, and what was played.
+  final kept = <String, String>{};
+  final played = <String>[];
+  final spoken = <String>[];
+  int previewStarts = 0;
+
+  @override
+  Future<Set<String>> characterClips() async => kept.keys.toSet();
+
+  @override
+  Future<String?> characterClip(String id) async => kept[id];
+
+  @override
+  Future<void> keepCharacterClip(String id, String source) async => kept[id] = source;
+
+  @override
+  Future<void> removeCharacterClip(String id) async => kept.remove(id);
+
+  @override
+  Future<void> playWave(String wavePath) async => played.add(wavePath);
+
+  @override
+  Future<void> startVoicePreview({
+    required AppSettings settings,
+    required Map<String, String> modelDirectories,
+    required String speaker,
+    required ComputeBackend converterBackend,
+    required String runtimeDirectory,
+  }) async => previewStarts++;
+
+  @override
+  Future<void> previewVoice({
+    required String text,
+    required String voice,
+    List<double> timbre = const [],
+  }) async => spoken.add(text);
 
   @override
   Future<CharacterLibrary> loadCharacters() async => stored;

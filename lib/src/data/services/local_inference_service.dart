@@ -169,6 +169,10 @@ class LocalInferenceService {
     /// Load the voice converter and nothing else: the characters screen
     /// measures a voice without waiting a minute for Marian and Silero.
     bool embedOnly = false,
+
+    /// Load the speech model and the converter without the translator: a
+    /// sample of a voice speaks a line the application already wrote.
+    bool speechOnly = false,
     String speaker = '',
     required int threads,
     required double speed,
@@ -250,6 +254,7 @@ class LocalInferenceService {
         '-u',
         workerFile.path,
         if (embedOnly) '--embed-only',
+        if (speechOnly) '--speech-only',
         if (translationModel.isNotEmpty) ...['--translation-model', translationModel],
         if (ttsModel.isNotEmpty) ...['--tts-model', ttsModel],
         '--speaker',
@@ -430,6 +435,41 @@ class LocalInferenceService {
       gender: response['gender'] as String?,
       seconds: (response['seconds'] as num?)?.toDouble() ?? 0,
     );
+  }
+
+  /// A sample of [voice], in [timbre] when one is given and the converter
+  /// is loaded. Answers with the file it wrote, for the caller to play.
+  Future<String> previewVoice({
+    required String text,
+    required String voice,
+    List<double> timbre = const [],
+  }) async {
+    final worker = _worker;
+    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(
+      jsonEncode({
+        'id': id,
+        'preview': {'text': text, 'voice': voice, if (timbre.isNotEmpty) 'vector': timbre},
+      }),
+    );
+    final response = await completer.future.timeout(
+      const Duration(minutes: 2),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
+    return response['wave']! as String;
   }
 
   /// The seconds at which the voice in [wavePath] changes, so the caller can
