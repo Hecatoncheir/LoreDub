@@ -2401,6 +2401,53 @@ void main() {
       expect(find.text('Кузнец'), findsWidgets, reason: 'the reader joins the canvas');
     });
 
+    testWidgets('picks the game in a field that filters as it is typed', (tester) async {
+      final cubits = await pumpGraph(tester);
+      cubits.pipeline.seed(
+        LivePipelineState(
+          processes: [
+            for (var index = 0; index < 30; index++)
+              GameProcess(
+                pid: 1000 + index,
+                name: 'conhost.exe',
+                path: 'C:/conhost$index.exe',
+              ),
+          ],
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Оригинальный поток').first);
+      await tester.pumpAndSettle();
+
+      final picker = tester.widget<DropdownMenu<GameProcess>>(
+        find.byType(DropdownMenu<GameProcess>),
+      );
+      expect(picker.enableFilter, isTrue);
+      expect(picker.requestFocusOnTap, isTrue);
+      expect(
+        picker.dropdownMenuEntries.first.label,
+        contains('PID 1000'),
+        reason: 'two processes of one name are told apart by their pid',
+      );
+      expect(find.byTooltip('Обновить список процессов'), findsOneWidget);
+
+      final field = find.descendant(
+        of: find.byType(DropdownMenu<GameProcess>),
+        matching: find.byType(TextField),
+      );
+      await tester.tap(field);
+      await tester.pumpAndSettle();
+
+      final entry = find.text('conhost.exe  ·  PID 1000').hitTestable();
+      expect(entry, findsOneWidget);
+      expect(
+        tester.getTopLeft(entry).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(field).dy),
+        reason: 'the list must not slide up over the field it is typed into',
+      );
+    });
+
     testWidgets('puts a card on the canvas from the toolbar', (tester) async {
       final cubits = await pumpGraph(tester, placed: const []);
 

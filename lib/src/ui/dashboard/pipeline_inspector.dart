@@ -8,7 +8,6 @@ import '../../data/services/playback_scheduler.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
-import '../../domain/game_process.dart';
 import '../../domain/pipeline_graph.dart';
 import '../compute_names.dart';
 import '../language_names.dart';
@@ -18,6 +17,7 @@ import 'cubits/dashboard_cubits.dart';
 import 'cubits/pipeline_graph_bloc.dart';
 import 'cubits/shell_cubit.dart';
 import 'pipeline_canvas.dart';
+import 'process_picker.dart';
 
 /// What the node the player clicked is set to, and the controls that change
 /// it.
@@ -139,18 +139,14 @@ class PipelineInspector extends StatelessWidget {
   Future<void> _update(AppSettings value) => cubits.settings.update(value);
 
   List<Widget> _source(AppLocalizations l10n) => [
-    _Field(
-      label: l10n.processLabel,
-      child: DropdownButtonFormField<GameProcess?>(
-        key: ValueKey('graph-process-${facts.process?.pid}'),
-        initialValue: facts.process,
-        isExpanded: true,
-        items: [
-          DropdownMenuItem(value: null, child: Text(l10n.processHint)),
-          for (final process in cubits.pipeline.state.processes)
-            DropdownMenuItem(value: process, child: Text(process.name, maxLines: 1)),
-        ],
-        onChanged: _locked ? null : cubits.pipeline.selectProcess,
+    Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: ProcessPicker(
+        processes: cubits.pipeline.state.processes,
+        selected: facts.process,
+        enabled: !_locked,
+        onSelected: cubits.pipeline.selectProcess,
+        onRefresh: cubits.pipeline.refreshProcesses,
       ),
     ),
     _Field(
