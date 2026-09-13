@@ -341,7 +341,17 @@ class _CharacterTileState extends State<CharacterTile> {
                     ),
                     iconSize: 19,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+                    // Sized like the buttons beside it. Not with
+                    // `constraints`: on a popup button that is the size of
+                    // the menu that opens, not of the button, and it left
+                    // the list of characters squeezed into 34 by 34 — a box
+                    // with one letter of one name in it.
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(34, 34),
+                      fixedSize: const Size(34, 34),
+                      padding: EdgeInsets.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                   ),
                   ModelActionButton(
                     onDark: false,

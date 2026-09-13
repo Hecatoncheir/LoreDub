@@ -2204,6 +2204,15 @@ void main() {
         findsNothing,
         reason: 'a card cannot be read by itself',
       );
+      // The list that opens is a list of names. `constraints` on a popup
+      // button is the size of the menu rather than of the button, and it was
+      // handed the button's 34 by 34: the cast came out as a box with one
+      // letter of one name in it.
+      expect(
+        tester.getSize(find.widgetWithText(PopupMenuItem<String>, 'Кузнец')).width,
+        greaterThan(100),
+        reason: 'the menu is not squeezed to the size of the button',
+      );
     });
 
     testWidgets('drops a card into a pack and takes it back out', (tester) async {
