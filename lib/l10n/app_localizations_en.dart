@@ -1362,4 +1362,153 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stageCapture => 'Starting capture';
+
+  @override
+  String get navPipeline => 'Graph';
+
+  @override
+  String get titlePipeline => 'Pipeline graph';
+
+  @override
+  String get pipelineGraphHint =>
+      'Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas.';
+
+  @override
+  String get pipelinePresetAudio => 'Dub from audio';
+
+  @override
+  String get pipelinePresetSubtitles => 'Subtitles on screen';
+
+  @override
+  String get pipelineResetLayout => 'Lay out again';
+
+  @override
+  String get pipelineUndo => 'Undo';
+
+  @override
+  String get pipelineRedo => 'Redo';
+
+  @override
+  String get pipelineAddCharacter => 'Put a character on the graph';
+
+  @override
+  String get pipelineAllPlaced => 'Every character is already on the graph';
+
+  @override
+  String get pipelineNoCharacters => 'No characters yet — record them on the Characters screen';
+
+  @override
+  String get pipelineSelected => 'Selected';
+
+  @override
+  String get pipelineCloseInspector => 'Close the panel';
+
+  @override
+  String get pipelineRemoveNode => 'Take off the graph';
+
+  @override
+  String get pipelineCutLink => 'Give the voice back';
+
+  @override
+  String get pipelineNodeSource => 'Original stream';
+
+  @override
+  String get pipelineNodeRecognition => 'Whisper';
+
+  @override
+  String get pipelineNodeTranslation => 'Translation';
+
+  @override
+  String get pipelineNodeVoice => 'Voice';
+
+  @override
+  String get pipelineNodeOutput => 'Stream';
+
+  @override
+  String get pipelineSocketGameAudio => 'Audio';
+
+  @override
+  String get pipelineSocketScreenText => 'Screen text';
+
+  @override
+  String get pipelineSocketSpeech => 'Speech';
+
+  @override
+  String get pipelineSocketText => 'Text';
+
+  @override
+  String get pipelineSocketAudio => 'Audio';
+
+  @override
+  String get pipelineSocketCast => 'Characters';
+
+  @override
+  String get pipelineSocketReadBy => 'Read by';
+
+  @override
+  String get pipelineSocketVoice => 'Voice';
+
+  @override
+  String get pipelineBypassed => 'bypassed';
+
+  @override
+  String get pipelineNoProcess => 'No game selected';
+
+  @override
+  String get pipelineNoModel => 'No model selected';
+
+  @override
+  String get pipelineOutputDefault => 'Default device';
+
+  @override
+  String get pipelineOutputOverlapping => 'overlapping';
+
+  @override
+  String get pipelineOutputInTurn => 'in turn';
+
+  @override
+  String pipelineReadBy(String name) {
+    return 'In $name\'s voice';
+  }
+
+  @override
+  String get pipelineChained =>
+      'This voice is given away in turn: a substitution is followed one hop only.';
+
+  @override
+  String get pipelineCharacterNeedsOriginal => 'needs the original voice';
+
+  @override
+  String get pipelineLockedNote =>
+      'A session is running: the route and the models are settled until it stops.';
+
+  @override
+  String get pipelineRecognitionBypassed =>
+      'Text is being read off the screen — recognition takes no part in this route.';
+
+  @override
+  String get pipelineModelLabel => 'Recognition model';
+
+  @override
+  String get pipelineRefusalSignal => 'A different signal arrives here.';
+
+  @override
+  String get pipelineRefusalDirection => 'A link runs from an output to an input.';
+
+  @override
+  String get pipelineRefusalSameNode => 'A node does not join itself.';
+
+  @override
+  String get pipelineRefusalUnsupported => 'The engine has no such route.';
+
+  @override
+  String get pipelineRefusalLoop => 'The characters would then voice each other.';
+
+  @override
+  String get pipelineRefusalLocked => 'The route cannot change while a session is running.';
+
+  @override
+  String failurePipelineLayoutSaveFailed(String detail) {
+    return 'The graph could not be saved: $detail';
+  }
 }

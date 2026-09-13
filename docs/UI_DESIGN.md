@@ -39,7 +39,17 @@ radius.
 1. **Live voice** is the default workspace. Game selection and the single main
    start/stop action are grouped as `01 / GAME INPUT`; translated dialogue is
    grouped as `02 / LIVE TRANSCRIPT`.
-2. **Model bank** shows installation state, download progress, and recovery
+2. **Signal path** is the same pipeline drawn as nodes on a dotted field: the
+   five stages as cards in the model tiles' vocabulary, the route between
+   them in orange, and the cards of the cast that take a voice from one
+   another joined by dashed graphite. A socket is hollow until something is
+   attached and rings orange while a link that would land on it is being
+   pulled; a stage the route goes past keeps its card, dimmed and marked. The
+   canvas carries no settings of its own — a node's own panel floats over it
+   and writes into the same places the other screens do — and the panel is
+   floated rather than docked so opening it never moves the scheme out from
+   under the pointer that opened it.
+3. **Model bank** shows installation state, download progress, and recovery
    errors without mixing them into the live controls. The Whisper builds are a
    size-against-quality chart (`whisper_model_chart.dart`): bar height is the
    download to scale, and a bar is light when missing, ticked when downloaded,
@@ -54,7 +64,7 @@ radius.
    `model_visuals.dart`. The Compute device card in Settings uses the same
    states for its stage-by-device table and GPU package tiles
    (`compute_matrix.dart`).
-3. **Signal setup** contains capture mode, OCR region, original volume, speech
+4. **Signal setup** contains capture mode, OCR region, original volume, speech
    speed, and CPU budget. Settings are disabled while the pipeline is active.
 
 ## Interaction rules

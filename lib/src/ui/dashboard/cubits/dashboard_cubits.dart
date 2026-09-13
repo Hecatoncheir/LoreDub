@@ -12,10 +12,11 @@ import '../../../domain/model_selection.dart';
 import 'characters_cubit.dart';
 import 'downloads_cubit.dart';
 import 'pipeline_cubit.dart';
+import 'pipeline_graph_bloc.dart';
 import 'settings_cubit.dart';
 import 'shell_cubit.dart';
 
-/// The four parts of the dashboard, wired together.
+/// The parts of the dashboard, wired together.
 ///
 /// They are separate so a widget listens only to the part it draws — a
 /// download ticking must not redraw the transcript — but they are created
@@ -32,6 +33,7 @@ class DashboardCubits {
     downloads = DownloadsCubit(modelRepository, runtimeRepository, settings, shell);
     pipeline = PipelineCubit(appRepository, modelRepository, settings, downloads, shell);
     characters = CharactersCubit(appRepository, modelRepository, settings, downloads, shell);
+    graph = PipelineGraphBloc(appRepository, settings, characters, pipeline, shell);
     shell.interfaceLanguage = () => settings.settings.interfaceLanguage;
     shell.proxyUrl = () => settings.settings.modelProxyUrl;
     // Closing for an update must not leave the game turned down.
@@ -46,6 +48,11 @@ class DashboardCubits {
   late final DownloadsCubit downloads;
   late final PipelineCubit pipeline;
   late final CharactersCubit characters;
+
+  /// The pipeline drawn as nodes. A Bloc rather than a Cubit: the canvas is
+  /// worked by sequences of gestures, and each one is an event that can be
+  /// replayed and undone.
+  late final PipelineGraphBloc graph;
 
   /// The session events reach both the pipeline and the characters screen:
   /// each holds the worker in its turn, and only one of them at a time.
@@ -67,6 +74,9 @@ class DashboardCubits {
         characters.load(),
       ]);
       await downloads.refreshAvailability(probe: await graphics);
+      // After the settings and the cast: the canvas is drawn from them, and
+      // only the arrangement of the nodes is its own.
+      graph.add(const PipelineGraphOpened());
     } catch (exception) {
       shell.report(LoreDubFailure(FailureCode.initializationFailed, detail: '$exception'));
     } finally {
@@ -79,6 +89,7 @@ class DashboardCubits {
 
   Future<void> dispose() async {
     await _events?.cancel();
+    await graph.close();
     await characters.close();
     await pipeline.close();
     await downloads.close();

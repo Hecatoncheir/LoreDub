@@ -791,7 +791,7 @@
   },
   "modelRemoveConfirm": "Удалить",
   "modelRemoveCancel": "Оставить",
-  "failureVoiceBankClearFailed":"Не удалось очистить банк голосов: {detail}",
+  "failureVoiceBankClearFailed": "Не удалось очистить банк голосов: {detail}",
   "@failureVoiceBankClearFailed": {
     "placeholders": {
       "detail": {
@@ -880,7 +880,7 @@
   "computeCellSelect": "Нажмите, чтобы считать эту стадию здесь",
   "computeCellSelected": "Стадия считается здесь",
   "computeCellLocked": "Устройство можно сменить, когда озвучка остановлена",
-  "computeSpeechCpuOnly":"Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.",
+  "computeSpeechCpuOnly": "Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.",
   "failureRuntimeIncomplete": "В скачанном пакете нет {detail}",
   "@failureRuntimeIncomplete": {
     "placeholders": {
@@ -964,5 +964,66 @@
   "stageTransformers": "Загрузка Transformers",
   "stageTranslator": "Загрузка переводчика",
   "stageSpeech": "Загрузка синтеза речи",
-  "stageCapture": "Запуск захвата"
+  "stageCapture": "Запуск захвата",
+  "navPipeline": "Схема",
+  "titlePipeline": "Схема конвейера",
+  "pipelineGraphHint": "Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст.",
+  "pipelinePresetAudio": "Дубляж со звука",
+  "pipelinePresetSubtitles": "Субтитры с экрана",
+  "pipelineResetLayout": "Разложить заново",
+  "pipelineUndo": "Отменить",
+  "pipelineRedo": "Вернуть",
+  "pipelineAddCharacter": "Добавить персонажа на схему",
+  "pipelineAllPlaced": "Все персонажи уже на схеме",
+  "pipelineNoCharacters": "Персонажей пока нет — запишите их на экране «Персонажи»",
+  "pipelineSelected": "Выбрано",
+  "pipelineCloseInspector": "Закрыть панель",
+  "pipelineRemoveNode": "Убрать со схемы",
+  "pipelineCutLink": "Вернуть свой голос",
+  "pipelineNodeSource": "Оригинальный поток",
+  "pipelineNodeRecognition": "Whisper",
+  "pipelineNodeTranslation": "Перевод",
+  "pipelineNodeVoice": "Голос",
+  "pipelineNodeOutput": "Поток",
+  "pipelineSocketGameAudio": "Звук",
+  "pipelineSocketScreenText": "Текст с экрана",
+  "pipelineSocketSpeech": "Речь",
+  "pipelineSocketText": "Текст",
+  "pipelineSocketAudio": "Аудио",
+  "pipelineSocketCast": "Персонажи",
+  "pipelineSocketReadBy": "Читает",
+  "pipelineSocketVoice": "Голос",
+  "pipelineBypassed": "в обход",
+  "pipelineNoProcess": "Игра не выбрана",
+  "pipelineNoModel": "Модель не выбрана",
+  "pipelineOutputDefault": "Устройство по умолчанию",
+  "pipelineOutputOverlapping": "внахлёст",
+  "pipelineOutputInTurn": "по очереди",
+  "pipelineReadBy": "Голосом «{name}»",
+  "@pipelineReadBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pipelineChained": "Этот голос сам отдан другому: замена идёт на один шаг и дальше не передаётся.",
+  "pipelineCharacterNeedsOriginal": "нужен голос оригинала",
+  "pipelineLockedNote": "Сессия запущена: маршрут и модели закреплены до остановки.",
+  "pipelineRecognitionBypassed": "Сейчас читается текст с экрана — распознавание в этом маршруте не участвует.",
+  "pipelineModelLabel": "Модель распознавания",
+  "pipelineRefusalSignal": "Сюда идёт другой сигнал.",
+  "pipelineRefusalDirection": "Связь идёт от выхода ко входу.",
+  "pipelineRefusalSameNode": "Нода не соединяется сама с собой.",
+  "pipelineRefusalUnsupported": "Такого маршрута у движка нет.",
+  "pipelineRefusalLoop": "Тогда персонажи озвучивали бы друг друга.",
+  "pipelineRefusalLocked": "Пока идёт сессия, маршрут менять нельзя.",
+  "failurePipelineLayoutSaveFailed": "Не удалось сохранить схему: {detail}",
+  "@failurePipelineLayoutSaveFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  }
 }

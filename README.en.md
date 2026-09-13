@@ -151,6 +151,42 @@ system-wide while the game is open. A bare letter cannot be bound without Ctrl,
 Alt or Win: Windows hands a registered combination to LoreDub alone, so the key
 would stop reaching the game.
 
+### Graph
+
+<p align="center">
+  <img src="docs/screenshots/pipeline-en.png" width="900" alt="The Graph screen: the pipeline as nodes, the links between them and two character cards">
+</p>
+
+The same pipeline drawn as nodes on a dotted canvas: **Original stream**,
+**Whisper**, **Translation**, **Voice** and **Stream**, joined by links. Empty
+space drags the canvas, the wheel zooms, and the scheme is fitted into the
+window the first time it is opened.
+
+A link is the setting. Drag **Audio** out of the original stream into
+**Whisper** and the pipeline dubs from sound; drag **Screen text** straight
+into **Translation** and it reads the subtitles instead, which leaves Whisper
+marked as bypassed but still in place, so one link brings the route back. A
+route the engine has no answer for cannot be drawn: the link is not made, and
+a line under the toolbar says why. Two ready arrangements — **Dub from audio**
+and **Subtitles on screen** — set the route and lay the nodes out again.
+
+Clicking a node opens its own settings in a panel over the canvas: the game
+and where its sound is taken from, the recognition model, the dubbing
+language, the voice and its speed, how loud the original stays, whether lines
+overlap, and which device the stage runs on. These are the same settings the
+other screens hold — the graph keeps nothing of its own — so the two can never
+disagree. While a session runs the route and the models stay as it started.
+
+The person button puts a character card on the canvas. A link from one card to
+another says whose voice reads whom — the same substitution the card carries
+on the **Characters** screen: it holds in every game, and a choice in **Scene
+voices** overrides it for the game at hand. The button on the link itself cuts
+it, and the character is read in their own voice again; two cards that would
+read each other cannot be joined. The substitution can be changed while a
+session runs, and the next line is already read anew. The graph remembers
+where the nodes were left, and undo and redo take back the route, the
+substitution and the arrangement alike.
+
 ### Snippet
 
 One-off translation of text on screen — notes, hints, menu lines, anything

@@ -2336,6 +2336,288 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Запуск захвата'**
   String get stageCapture;
+
+  /// No description provided for @navPipeline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Схема'**
+  String get navPipeline;
+
+  /// No description provided for @titlePipeline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Схема конвейера'**
+  String get titlePipeline;
+
+  /// No description provided for @pipelineGraphHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст.'**
+  String get pipelineGraphHint;
+
+  /// No description provided for @pipelinePresetAudio.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дубляж со звука'**
+  String get pipelinePresetAudio;
+
+  /// No description provided for @pipelinePresetSubtitles.
+  ///
+  /// In ru, this message translates to:
+  /// **'Субтитры с экрана'**
+  String get pipelinePresetSubtitles;
+
+  /// No description provided for @pipelineResetLayout.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разложить заново'**
+  String get pipelineResetLayout;
+
+  /// No description provided for @pipelineUndo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отменить'**
+  String get pipelineUndo;
+
+  /// No description provided for @pipelineRedo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вернуть'**
+  String get pipelineRedo;
+
+  /// No description provided for @pipelineAddCharacter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить персонажа на схему'**
+  String get pipelineAddCharacter;
+
+  /// No description provided for @pipelineAllPlaced.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все персонажи уже на схеме'**
+  String get pipelineAllPlaced;
+
+  /// No description provided for @pipelineNoCharacters.
+  ///
+  /// In ru, this message translates to:
+  /// **'Персонажей пока нет — запишите их на экране «Персонажи»'**
+  String get pipelineNoCharacters;
+
+  /// No description provided for @pipelineSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрано'**
+  String get pipelineSelected;
+
+  /// No description provided for @pipelineCloseInspector.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закрыть панель'**
+  String get pipelineCloseInspector;
+
+  /// No description provided for @pipelineRemoveNode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать со схемы'**
+  String get pipelineRemoveNode;
+
+  /// No description provided for @pipelineCutLink.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вернуть свой голос'**
+  String get pipelineCutLink;
+
+  /// No description provided for @pipelineNodeSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оригинальный поток'**
+  String get pipelineNodeSource;
+
+  /// No description provided for @pipelineNodeRecognition.
+  ///
+  /// In ru, this message translates to:
+  /// **'Whisper'**
+  String get pipelineNodeRecognition;
+
+  /// No description provided for @pipelineNodeTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перевод'**
+  String get pipelineNodeTranslation;
+
+  /// No description provided for @pipelineNodeVoice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос'**
+  String get pipelineNodeVoice;
+
+  /// No description provided for @pipelineNodeOutput.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поток'**
+  String get pipelineNodeOutput;
+
+  /// No description provided for @pipelineSocketGameAudio.
+  ///
+  /// In ru, this message translates to:
+  /// **'Звук'**
+  String get pipelineSocketGameAudio;
+
+  /// No description provided for @pipelineSocketScreenText.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текст с экрана'**
+  String get pipelineSocketScreenText;
+
+  /// No description provided for @pipelineSocketSpeech.
+  ///
+  /// In ru, this message translates to:
+  /// **'Речь'**
+  String get pipelineSocketSpeech;
+
+  /// No description provided for @pipelineSocketText.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текст'**
+  String get pipelineSocketText;
+
+  /// No description provided for @pipelineSocketAudio.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аудио'**
+  String get pipelineSocketAudio;
+
+  /// No description provided for @pipelineSocketCast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Персонажи'**
+  String get pipelineSocketCast;
+
+  /// No description provided for @pipelineSocketReadBy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Читает'**
+  String get pipelineSocketReadBy;
+
+  /// No description provided for @pipelineSocketVoice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос'**
+  String get pipelineSocketVoice;
+
+  /// No description provided for @pipelineBypassed.
+  ///
+  /// In ru, this message translates to:
+  /// **'в обход'**
+  String get pipelineBypassed;
+
+  /// No description provided for @pipelineNoProcess.
+  ///
+  /// In ru, this message translates to:
+  /// **'Игра не выбрана'**
+  String get pipelineNoProcess;
+
+  /// No description provided for @pipelineNoModel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Модель не выбрана'**
+  String get pipelineNoModel;
+
+  /// No description provided for @pipelineOutputDefault.
+  ///
+  /// In ru, this message translates to:
+  /// **'Устройство по умолчанию'**
+  String get pipelineOutputDefault;
+
+  /// No description provided for @pipelineOutputOverlapping.
+  ///
+  /// In ru, this message translates to:
+  /// **'внахлёст'**
+  String get pipelineOutputOverlapping;
+
+  /// No description provided for @pipelineOutputInTurn.
+  ///
+  /// In ru, this message translates to:
+  /// **'по очереди'**
+  String get pipelineOutputInTurn;
+
+  /// No description provided for @pipelineReadBy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голосом «{name}»'**
+  String pipelineReadBy(String name);
+
+  /// No description provided for @pipelineChained.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот голос сам отдан другому: замена идёт на один шаг и дальше не передаётся.'**
+  String get pipelineChained;
+
+  /// No description provided for @pipelineCharacterNeedsOriginal.
+  ///
+  /// In ru, this message translates to:
+  /// **'нужен голос оригинала'**
+  String get pipelineCharacterNeedsOriginal;
+
+  /// No description provided for @pipelineLockedNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сессия запущена: маршрут и модели закреплены до остановки.'**
+  String get pipelineLockedNote;
+
+  /// No description provided for @pipelineRecognitionBypassed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сейчас читается текст с экрана — распознавание в этом маршруте не участвует.'**
+  String get pipelineRecognitionBypassed;
+
+  /// No description provided for @pipelineModelLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Модель распознавания'**
+  String get pipelineModelLabel;
+
+  /// No description provided for @pipelineRefusalSignal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сюда идёт другой сигнал.'**
+  String get pipelineRefusalSignal;
+
+  /// No description provided for @pipelineRefusalDirection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связь идёт от выхода ко входу.'**
+  String get pipelineRefusalDirection;
+
+  /// No description provided for @pipelineRefusalSameNode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нода не соединяется сама с собой.'**
+  String get pipelineRefusalSameNode;
+
+  /// No description provided for @pipelineRefusalUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Такого маршрута у движка нет.'**
+  String get pipelineRefusalUnsupported;
+
+  /// No description provided for @pipelineRefusalLoop.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тогда персонажи озвучивали бы друг друга.'**
+  String get pipelineRefusalLoop;
+
+  /// No description provided for @pipelineRefusalLocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока идёт сессия, маршрут менять нельзя.'**
+  String get pipelineRefusalLocked;
+
+  /// No description provided for @failurePipelineLayoutSaveFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить схему: {detail}'**
+  String failurePipelineLayoutSaveFailed(String detail);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -458,7 +458,7 @@
   "voiceBankClearMessage": "The saved voices of every game will be deleted. Characters will take their timbre afresh from their next lines.",
   "voiceBankClearCancel": "Cancel",
   "voiceBankClearConfirm": "Clear",
-  "sectionVoiceConversion":"ORIGINAL VOICE",
+  "sectionVoiceConversion": "ORIGINAL VOICE",
   "sectionVoiceConversionNote": "Only needed for the Original voice mode: it carries the speaker's timbre over into the dubbing. One converter serves every language.",
   "modelConverterTitle": "OpenVoice {version} voice converter",
   "@modelConverterTitle": {
@@ -791,7 +791,7 @@
   },
   "modelRemoveConfirm": "Delete",
   "modelRemoveCancel": "Keep",
-  "failureVoiceBankClearFailed":"The voice bank could not be cleared: {detail}",
+  "failureVoiceBankClearFailed": "The voice bank could not be cleared: {detail}",
   "@failureVoiceBankClearFailed": {
     "placeholders": {
       "detail": {
@@ -880,7 +880,7 @@
   "computeCellSelect": "Click to run this stage here",
   "computeCellSelected": "This stage runs here",
   "computeCellLocked": "The device can be changed once dubbing is stopped",
-  "computeSpeechCpuOnly":"Silero runs on the processor: moving it to the card costs more than the work itself.",
+  "computeSpeechCpuOnly": "Silero runs on the processor: moving it to the card costs more than the work itself.",
   "failureRuntimeIncomplete": "The downloaded package has no {detail}",
   "@failureRuntimeIncomplete": {
     "placeholders": {
@@ -964,5 +964,66 @@
   "stageTransformers": "Loading Transformers",
   "stageTranslator": "Loading the translator",
   "stageSpeech": "Loading speech synthesis",
-  "stageCapture": "Starting capture"
+  "stageCapture": "Starting capture",
+  "navPipeline": "Graph",
+  "titlePipeline": "Pipeline graph",
+  "pipelineGraphHint": "Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas.",
+  "pipelinePresetAudio": "Dub from audio",
+  "pipelinePresetSubtitles": "Subtitles on screen",
+  "pipelineResetLayout": "Lay out again",
+  "pipelineUndo": "Undo",
+  "pipelineRedo": "Redo",
+  "pipelineAddCharacter": "Put a character on the graph",
+  "pipelineAllPlaced": "Every character is already on the graph",
+  "pipelineNoCharacters": "No characters yet — record them on the Characters screen",
+  "pipelineSelected": "Selected",
+  "pipelineCloseInspector": "Close the panel",
+  "pipelineRemoveNode": "Take off the graph",
+  "pipelineCutLink": "Give the voice back",
+  "pipelineNodeSource": "Original stream",
+  "pipelineNodeRecognition": "Whisper",
+  "pipelineNodeTranslation": "Translation",
+  "pipelineNodeVoice": "Voice",
+  "pipelineNodeOutput": "Stream",
+  "pipelineSocketGameAudio": "Audio",
+  "pipelineSocketScreenText": "Screen text",
+  "pipelineSocketSpeech": "Speech",
+  "pipelineSocketText": "Text",
+  "pipelineSocketAudio": "Audio",
+  "pipelineSocketCast": "Characters",
+  "pipelineSocketReadBy": "Read by",
+  "pipelineSocketVoice": "Voice",
+  "pipelineBypassed": "bypassed",
+  "pipelineNoProcess": "No game selected",
+  "pipelineNoModel": "No model selected",
+  "pipelineOutputDefault": "Default device",
+  "pipelineOutputOverlapping": "overlapping",
+  "pipelineOutputInTurn": "in turn",
+  "pipelineReadBy": "In {name}'s voice",
+  "@pipelineReadBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pipelineChained": "This voice is given away in turn: a substitution is followed one hop only.",
+  "pipelineCharacterNeedsOriginal": "needs the original voice",
+  "pipelineLockedNote": "A session is running: the route and the models are settled until it stops.",
+  "pipelineRecognitionBypassed": "Text is being read off the screen — recognition takes no part in this route.",
+  "pipelineModelLabel": "Recognition model",
+  "pipelineRefusalSignal": "A different signal arrives here.",
+  "pipelineRefusalDirection": "A link runs from an output to an input.",
+  "pipelineRefusalSameNode": "A node does not join itself.",
+  "pipelineRefusalUnsupported": "The engine has no such route.",
+  "pipelineRefusalLoop": "The characters would then voice each other.",
+  "pipelineRefusalLocked": "The route cannot change while a session is running.",
+  "failurePipelineLayoutSaveFailed": "The graph could not be saved: {detail}",
+  "@failurePipelineLayoutSaveFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  }
 }

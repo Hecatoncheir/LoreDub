@@ -32,6 +32,7 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
+import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart'
     show PipelineSession, PipelineStatus, SceneSpeaker, TranscriptEntry;
@@ -42,6 +43,7 @@ import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/theme.dart';
@@ -1922,7 +1924,7 @@ void main() {
     testWidgets('sits under Live and says how to select', (tester) async {
       await pumpDashboard(tester, stageSnapshot(), const Size(1280, 900));
 
-      expect(find.text('02  /  AREA SNAPSHOT'), findsOneWidget);
+      expect(find.text('03  /  AREA SNAPSHOT'), findsOneWidget);
       expect(find.text('Фрагмент'), findsOneWidget);
       expect(find.text('Перевод фрагмента'), findsOneWidget);
       expect(find.textContaining('Удерживайте Ctrl + Alt + S'), findsOneWidget);
@@ -2039,7 +2041,7 @@ void main() {
     testWidgets('sits before Settings and says how a voice is recorded', (tester) async {
       await pumpDashboard(tester, stageCast(), const Size(1280, 900));
 
-      expect(find.text('04  /  CHARACTER CAST'), findsOneWidget);
+      expect(find.text('05  /  CHARACTER CAST'), findsOneWidget);
       expect(find.text('Голоса персонажей'), findsOneWidget);
       expect(find.textContaining('Пока ни одного персонажа'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Запустить запись'), findsOneWidget);
@@ -2321,6 +2323,101 @@ void main() {
       expect(find.text('Звучит как «Стражник»'), findsOneWidget);
     });
   });
+  group('the pipeline graph', () {
+    const guard = Character(id: 'guard', name: 'Стражник', vector: [0.2, 0.4], seconds: 2.5);
+    const smith = Character(id: 'smith', name: 'Кузнец', vector: [0.1, 0.9], seconds: 3.5);
+
+    /// The canvas with the two cards on it, drawn from settings the test
+    /// stages rather than from a disk it does not have.
+    Future<DashboardCubits> pumpGraph(
+      WidgetTester tester, {
+      AppSettings settings = const AppSettings(),
+      List<Character> characters = const [guard, smith],
+      List<String> placed = const ['guard'],
+    }) async {
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.pipeline,
+        settings: settings,
+        models: catalogue(),
+      );
+      cubits.characters.seed(CharactersState(characters: characters, loading: false));
+      cubits.graph.seed(
+        PipelineGraphState(loading: false, layout: PipelineLayout(characters: placed)),
+      );
+      await pumpDashboard(tester, cubits, const Size(1500, 950));
+      await tester.pump();
+      return cubits;
+    }
+
+    testWidgets('draws the stages of the pipeline as nodes', (tester) async {
+      await pumpGraph(tester);
+
+      expect(find.text('02  /  SIGNAL PATH'), findsOneWidget);
+      expect(find.text('Оригинальный поток'), findsOneWidget);
+      expect(find.text('Whisper'), findsOneWidget);
+      expect(find.text('Перевод'), findsOneWidget);
+      expect(find.text('Поток'), findsOneWidget);
+      expect(find.text('Стражник'), findsOneWidget);
+      expect(
+        find.text('Кузнец'),
+        findsNothing,
+        reason: 'only the cards put on the canvas are drawn',
+      );
+      expect(find.widgetWithText(ChoiceChip, 'Дубляж со звука'), findsOneWidget);
+    });
+
+    testWidgets('marks recognition as bypassed while the screen is read', (tester) async {
+      await pumpGraph(tester, settings: const AppSettings(captureMode: CaptureMode.ocr));
+
+      expect(find.text('В ОБХОД'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Субтитры с экрана'), findsOneWidget);
+    });
+
+    testWidgets('opens what a node is set to when it is clicked', (tester) async {
+      await pumpGraph(tester);
+
+      await tester.tap(find.text('Перевод').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('ВЫБРАНО'), findsOneWidget);
+      expect(find.text('Язык перевода'), findsOneWidget);
+    });
+
+    testWidgets('offers the cast to read a character with', (tester) async {
+      final cubits = await pumpGraph(tester);
+
+      await tester.tap(find.text('Стражник').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Озвучивать как'), findsOneWidget);
+      await tester.tap(find.byType(DropdownButtonFormField<String?>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Кузнец').last);
+      await tester.pumpAndSettle();
+
+      expect(cubits.characters.state.characters.first.voicedBy, 'smith');
+      expect(find.text('Кузнец'), findsWidgets, reason: 'the reader joins the canvas');
+    });
+
+    testWidgets('puts a card on the canvas from the toolbar', (tester) async {
+      final cubits = await pumpGraph(tester, placed: const []);
+
+      expect(find.text('Стражник'), findsNothing);
+      await tester.tap(find.byIcon(Icons.person_add_alt_rounded));
+      // The menu is pushed in the microtask after the tap, so its own frames
+      // start only once the first pump has run.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Стражник'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(cubits.graph.state.layout.characters, ['guard']);
+      expect(find.text('Стражник'), findsWidgets);
+    });
+  });
+
   group('the subtitle area', () {
     Future<DashboardCubits> pumpSubtitleArea(
       WidgetTester tester, {

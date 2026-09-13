@@ -4,7 +4,7 @@
 
 LoreDub is a Windows-only Flutter desktop application. Dart code lives in `lib/`: domain
 models and pure decisions are under `lib/src/domain`, persistence and platform services under
-`lib/src/data`, and widgets plus Cubits under `lib/src/ui`. Native Windows capture, playback,
+`lib/src/data`, and widgets plus Cubits (and the node canvas's Bloc) under `lib/src/ui`. Native Windows capture, playback,
 OCR, and hotkey code is in `native/`, compiled through `hook/build.dart`. Python inference
 workers ship from `assets/runtime/`; fonts, icons, and branding are also under `assets/`.
 Tests mirror production paths in `test/`, with shared helpers in `test/support`. Build and

@@ -19,6 +19,7 @@ import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
 import '../../domain/model_selection.dart';
 import '../../domain/ocr_region.dart';
+import '../../domain/pipeline_graph.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/speaker_map.dart';
 import '../../domain/pipeline_state.dart';
@@ -35,6 +36,7 @@ import 'cubits/characters_cubit.dart';
 import 'cubits/dashboard_cubits.dart';
 import 'cubits/downloads_cubit.dart';
 import 'cubits/pipeline_cubit.dart';
+import 'cubits/pipeline_graph_bloc.dart';
 import 'cubits/settings_cubit.dart';
 import 'cubits/shell_cubit.dart';
 import 'character_tiles.dart';
@@ -43,6 +45,8 @@ import 'hotkey_field.dart';
 import 'model_tiles.dart';
 import 'model_visuals.dart';
 import 'ocr_region_picker.dart';
+import 'pipeline_canvas.dart';
+import 'pipeline_inspector.dart';
 import 'whisper_model_chart.dart';
 
 /// Rebuilds only when the shell changes, which is the section, the banner
@@ -102,6 +106,7 @@ class _DownloadsBuilder extends StatelessWidget {
     required this.cubits,
     required this.builder,
     this.onlyWhatIsInstalled = false,
+    this.watch,
   });
 
   final DashboardCubits cubits;
@@ -111,12 +116,21 @@ class _DownloadsBuilder extends StatelessWidget {
   /// download has got: it holds them still through the hundred ticks of one.
   final bool onlyWhatIsInstalled;
 
+  /// A narrower reading still, for a part that draws something else as well
+  /// — which GPU runtimes are on disk, say. Compared as a value.
+  final Object? Function(DownloadsState downloads)? watch;
+
   @override
   Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
     bloc: cubits.downloads,
-    buildWhen: onlyWhatIsInstalled
-        ? (previous, current) => !setEquals(previous.installedModelIds, current.installedModelIds)
-        : null,
+    buildWhen: switch ((watch, onlyWhatIsInstalled)) {
+      (final watch?, _) => (previous, current) => watch(previous) != watch(current),
+      (_, true) => (previous, current) => !setEquals(
+        previous.installedModelIds,
+        current.installedModelIds,
+      ),
+      _ => null,
+    },
     builder: builder,
   );
 }
@@ -171,6 +185,10 @@ class DashboardView extends StatelessWidget {
                     child: switch (shell.section) {
                       DashboardSection.live => _LivePanel(
                         key: const ValueKey('live'),
+                        cubits: cubits,
+                      ),
+                      DashboardSection.pipeline => _PipelinePanel(
+                        key: const ValueKey('pipeline'),
                         cubits: cubits,
                       ),
                       DashboardSection.snapshot => _SnapshotPanel(
@@ -276,6 +294,12 @@ class _Navigation extends StatelessWidget {
                 label: AppLocalizations.of(context).navLive,
                 selected: shell.section == DashboardSection.live,
                 onTap: () => cubits.shell.selectSection(DashboardSection.live),
+              ),
+              _NavigationItem(
+                icon: (color) => Icon(Icons.account_tree_rounded, size: 21, color: color),
+                label: AppLocalizations.of(context).navPipeline,
+                selected: shell.section == DashboardSection.pipeline,
+                onTap: () => cubits.shell.selectSection(DashboardSection.pipeline),
               ),
               _NavigationItem(
                 icon: (color) => Icon(Icons.highlight_alt_rounded, size: 21, color: color),
@@ -610,6 +634,10 @@ class _BottomNavigation extends StatelessWidget {
           label: AppLocalizations.of(context).navLive,
         ),
         NavigationDestination(
+          icon: const Icon(Icons.account_tree_rounded),
+          label: AppLocalizations.of(context).navPipeline,
+        ),
+        NavigationDestination(
           icon: const Icon(Icons.highlight_alt_rounded),
           label: AppLocalizations.of(context).navSnapshot,
         ),
@@ -649,10 +677,11 @@ class _Header extends StatelessWidget {
                 Text(
                   switch (shell.section) {
                     DashboardSection.live => '01  /  LIVE VOICE',
-                    DashboardSection.snapshot => '02  /  AREA SNAPSHOT',
-                    DashboardSection.models => '03  /  MODEL BANK',
-                    DashboardSection.characters => '04  /  CHARACTER CAST',
-                    DashboardSection.settings => '05  /  SIGNAL SETUP',
+                    DashboardSection.pipeline => '02  /  SIGNAL PATH',
+                    DashboardSection.snapshot => '03  /  AREA SNAPSHOT',
+                    DashboardSection.models => '04  /  MODEL BANK',
+                    DashboardSection.characters => '05  /  CHARACTER CAST',
+                    DashboardSection.settings => '06  /  SIGNAL SETUP',
                   },
                   style: const TextStyle(
                     fontFamily: LoreDubFonts.mono,
@@ -666,6 +695,7 @@ class _Header extends StatelessWidget {
                 Text(
                   switch (shell.section) {
                     DashboardSection.live => AppLocalizations.of(context).titleLive,
+                    DashboardSection.pipeline => AppLocalizations.of(context).titlePipeline,
                     DashboardSection.snapshot => AppLocalizations.of(context).titleSnapshot,
                     DashboardSection.models => AppLocalizations.of(context).titleModels,
                     DashboardSection.characters => AppLocalizations.of(context).titleCharacters,
@@ -2182,6 +2212,223 @@ class _EmptyTranscript extends StatelessWidget {
 
 /// The characters screen: the player's cast, and the session their voices
 /// are recorded through.
+/// The pipeline as a scheme: the stages as nodes, the route between them,
+/// and the cards of the cast that take a voice from one another.
+///
+/// Nothing is configured here that is not configured elsewhere. The canvas
+/// is drawn from the settings and the cast, and every link the player draws
+/// is turned straight back into one of them, so the scheme and the screens
+/// can never say different things.
+class _PipelinePanel extends StatelessWidget {
+  const _PipelinePanel({super.key, required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
+    child: BlocBuilder<PipelineGraphBloc, PipelineGraphState>(
+      bloc: cubits.graph,
+      builder: (context, graph) => _SettingsBuilder(
+        cubits: cubits,
+        builder: (context, settings) => _DownloadsBuilder(
+          cubits: cubits,
+          // What is on disk and what the machine can run it on. A download
+          // ticking must not redraw the scheme.
+          watch: (downloads) =>
+              '${downloads.installedModelIds.join()}'
+              '|${downloads.availability.installedRuntimes.join()}',
+          builder: (context, downloads) => _PipelineBuilder(
+            cubits: cubits,
+            watch: (pipeline) => (
+              pipeline.running,
+              pipeline.selectedProcess,
+              pipeline.processes,
+              pipeline.backendSignature,
+            ),
+            builder: (context, pipeline) => _CharactersBuilder(
+              cubits: cubits,
+              watch: (characters) => characters.characters,
+              builder: (context, characters) => _build(
+                context,
+                graph: graph,
+                availability: downloads.availability,
+                facts: PipelineFacts(
+                  settings: settings.settings,
+                  selection: ModelSelection(
+                    models: downloads.models,
+                    settings: settings.settings,
+                  ),
+                  process: pipeline.selectedProcess,
+                  characters: characters.characters,
+                  activeBackends: pipeline.activeBackends,
+                  running: pipeline.running,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _build(
+    BuildContext context, {
+    required PipelineGraphState graph,
+    required PipelineFacts facts,
+    required ComputeAvailability availability,
+  }) {
+    final selected = graph.selectedNode;
+    return Column(
+      children: [
+        _GraphToolbar(cubits: cubits, state: graph, facts: facts),
+        const SizedBox(height: 12),
+        // The panel floats over the canvas rather than beside it: opening it
+        // must not move the scheme out from under the pointer that opened it.
+        Expanded(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: PipelineCanvas(
+                    bloc: cubits.graph,
+                    state: graph,
+                    facts: facts,
+                    availability: availability,
+                  ),
+                ),
+              ),
+              if (selected != null)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  bottom: 12,
+                  child: PipelineInspector(
+                    cubits: cubits,
+                    node: selected,
+                    facts: facts,
+                    availability: availability,
+                    chained: graph.graph.chained,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The presets, the steps back, and the cards waiting to be put on the
+/// canvas. Under them, whatever the last attempt at a link came to.
+class _GraphToolbar extends StatelessWidget {
+  const _GraphToolbar({required this.cubits, required this.state, required this.facts});
+
+  final DashboardCubits cubits;
+  final PipelineGraphState state;
+  final PipelineFacts facts;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final preset = PipelinePreset.of(state.graph.route);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      for (final option in PipelinePreset.values)
+                        ChoiceChip(
+                          label: Text(switch (option) {
+                            PipelinePreset.audioDub => l10n.pipelinePresetAudio,
+                            PipelinePreset.subtitles => l10n.pipelinePresetSubtitles,
+                          }),
+                          selected: option == preset,
+                          showCheckmark: false,
+                          selectedColor: LoreDubPalette.orange,
+                          backgroundColor: LoreDubPalette.raised,
+                          side: const BorderSide(color: LoreDubPalette.outline),
+                          onSelected: facts.running
+                              ? null
+                              : (_) => cubits.graph.add(PipelinePresetChosen(option)),
+                        ),
+                    ],
+                  ),
+                ),
+                _addCharacter(context, l10n),
+                IconButton(
+                  tooltip: l10n.pipelineResetLayout,
+                  icon: const Icon(Icons.grid_view_rounded, size: 20),
+                  onPressed: () => cubits.graph.add(const PipelineLayoutReset()),
+                ),
+                IconButton(
+                  tooltip: l10n.pipelineUndo,
+                  icon: const Icon(Icons.undo_rounded, size: 20),
+                  onPressed: state.canUndo
+                      ? () => cubits.graph.add(const PipelineGraphUndone())
+                      : null,
+                ),
+                IconButton(
+                  tooltip: l10n.pipelineRedo,
+                  icon: const Icon(Icons.redo_rounded, size: 20),
+                  onPressed: state.canRedo
+                      ? () => cubits.graph.add(const PipelineGraphRedone())
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            switch (state.refusal) {
+              final refusal? => Text(
+                describeConnectionRefusal(l10n, refusal),
+                style: const TextStyle(fontSize: 12, color: LoreDubPalette.error),
+              ),
+              _ => Text(
+                l10n.pipelineGraphHint,
+                style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+              ),
+            },
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The cards not yet on the canvas. A card already drawn is left out
+  /// rather than greyed: the menu is a list of what can still be added.
+  Widget _addCharacter(BuildContext context, AppLocalizations l10n) {
+    final drawn = {
+      for (final node in state.graph.ofKind(PipelineNodeKind.character)) node.characterId,
+    };
+    final waiting = [
+      for (final character in facts.characters)
+        if (!drawn.contains(character.id)) character,
+    ];
+    return PopupMenuButton<String>(
+      tooltip: facts.characters.isEmpty
+          ? l10n.pipelineNoCharacters
+          : (waiting.isEmpty ? l10n.pipelineAllPlaced : l10n.pipelineAddCharacter),
+      enabled: waiting.isNotEmpty,
+      icon: const Icon(Icons.person_add_alt_rounded, size: 20),
+      onSelected: (id) => cubits.graph.add(PipelineCharacterPlaced(id)),
+      itemBuilder: (context) => [
+        for (final character in waiting)
+          PopupMenuItem(value: character.id, child: Text(character.name)),
+      ],
+    );
+  }
+}
+
 class _CharactersPanel extends StatelessWidget {
   const _CharactersPanel({super.key, required this.cubits});
 

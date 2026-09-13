@@ -5,8 +5,10 @@ import '../../domain/app_settings.dart';
 import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
+import '../../domain/pipeline_graph.dart';
 import '../services/character_service.dart';
 import '../services/native_engine_service.dart';
+import '../services/pipeline_graph_service.dart';
 import '../services/python_discovery.dart';
 import '../services/settings_service.dart';
 import '../services/speaker_map_service.dart';
@@ -20,10 +22,12 @@ class AppRepository {
     VoiceBankService? voiceBank,
     CharacterService? characters,
     SpeakerMapService? speakerMap,
+    PipelineGraphService? graph,
   ]) : _pythonDiscovery = pythonDiscovery ?? PythonDiscovery(),
        _voiceBank = voiceBank ?? VoiceBankService(),
        _characters = characters ?? CharacterService(),
-       _speakerMap = speakerMap ?? SpeakerMapService();
+       _speakerMap = speakerMap ?? SpeakerMapService(),
+       _graph = graph ?? PipelineGraphService();
 
   final NativeEngineService _nativeEngine;
   final SettingsService _settingsService;
@@ -31,6 +35,12 @@ class AppRepository {
   final VoiceBankService _voiceBank;
   final CharacterService _characters;
   final SpeakerMapService _speakerMap;
+  final PipelineGraphService _graph;
+
+  /// Where the pipeline canvas was left. Only the arrangement: what the
+  /// pipeline does is the settings and the cast.
+  Future<PipelineLayout> loadGraphLayout() => _graph.load();
+  Future<void> saveGraphLayout(PipelineLayout layout) => _graph.save(layout);
 
   /// The characters the player recorded and named. They belong to the player
   /// rather than to one game, so every session is handed the same file.

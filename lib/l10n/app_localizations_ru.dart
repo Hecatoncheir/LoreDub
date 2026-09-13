@@ -1370,4 +1370,152 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get stageCapture => 'Запуск захвата';
+
+  @override
+  String get navPipeline => 'Схема';
+
+  @override
+  String get titlePipeline => 'Схема конвейера';
+
+  @override
+  String get pipelineGraphHint =>
+      'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст.';
+
+  @override
+  String get pipelinePresetAudio => 'Дубляж со звука';
+
+  @override
+  String get pipelinePresetSubtitles => 'Субтитры с экрана';
+
+  @override
+  String get pipelineResetLayout => 'Разложить заново';
+
+  @override
+  String get pipelineUndo => 'Отменить';
+
+  @override
+  String get pipelineRedo => 'Вернуть';
+
+  @override
+  String get pipelineAddCharacter => 'Добавить персонажа на схему';
+
+  @override
+  String get pipelineAllPlaced => 'Все персонажи уже на схеме';
+
+  @override
+  String get pipelineNoCharacters => 'Персонажей пока нет — запишите их на экране «Персонажи»';
+
+  @override
+  String get pipelineSelected => 'Выбрано';
+
+  @override
+  String get pipelineCloseInspector => 'Закрыть панель';
+
+  @override
+  String get pipelineRemoveNode => 'Убрать со схемы';
+
+  @override
+  String get pipelineCutLink => 'Вернуть свой голос';
+
+  @override
+  String get pipelineNodeSource => 'Оригинальный поток';
+
+  @override
+  String get pipelineNodeRecognition => 'Whisper';
+
+  @override
+  String get pipelineNodeTranslation => 'Перевод';
+
+  @override
+  String get pipelineNodeVoice => 'Голос';
+
+  @override
+  String get pipelineNodeOutput => 'Поток';
+
+  @override
+  String get pipelineSocketGameAudio => 'Звук';
+
+  @override
+  String get pipelineSocketScreenText => 'Текст с экрана';
+
+  @override
+  String get pipelineSocketSpeech => 'Речь';
+
+  @override
+  String get pipelineSocketText => 'Текст';
+
+  @override
+  String get pipelineSocketAudio => 'Аудио';
+
+  @override
+  String get pipelineSocketCast => 'Персонажи';
+
+  @override
+  String get pipelineSocketReadBy => 'Читает';
+
+  @override
+  String get pipelineSocketVoice => 'Голос';
+
+  @override
+  String get pipelineBypassed => 'в обход';
+
+  @override
+  String get pipelineNoProcess => 'Игра не выбрана';
+
+  @override
+  String get pipelineNoModel => 'Модель не выбрана';
+
+  @override
+  String get pipelineOutputDefault => 'Устройство по умолчанию';
+
+  @override
+  String get pipelineOutputOverlapping => 'внахлёст';
+
+  @override
+  String get pipelineOutputInTurn => 'по очереди';
+
+  @override
+  String pipelineReadBy(String name) {
+    return 'Голосом «$name»';
+  }
+
+  @override
+  String get pipelineChained =>
+      'Этот голос сам отдан другому: замена идёт на один шаг и дальше не передаётся.';
+
+  @override
+  String get pipelineCharacterNeedsOriginal => 'нужен голос оригинала';
+
+  @override
+  String get pipelineLockedNote => 'Сессия запущена: маршрут и модели закреплены до остановки.';
+
+  @override
+  String get pipelineRecognitionBypassed =>
+      'Сейчас читается текст с экрана — распознавание в этом маршруте не участвует.';
+
+  @override
+  String get pipelineModelLabel => 'Модель распознавания';
+
+  @override
+  String get pipelineRefusalSignal => 'Сюда идёт другой сигнал.';
+
+  @override
+  String get pipelineRefusalDirection => 'Связь идёт от выхода ко входу.';
+
+  @override
+  String get pipelineRefusalSameNode => 'Нода не соединяется сама с собой.';
+
+  @override
+  String get pipelineRefusalUnsupported => 'Такого маршрута у движка нет.';
+
+  @override
+  String get pipelineRefusalLoop => 'Тогда персонажи озвучивали бы друг друга.';
+
+  @override
+  String get pipelineRefusalLocked => 'Пока идёт сессия, маршрут менять нельзя.';
+
+  @override
+  String failurePipelineLayoutSaveFailed(String detail) {
+    return 'Не удалось сохранить схему: $detail';
+  }
 }

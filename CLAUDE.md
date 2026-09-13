@@ -60,7 +60,10 @@ than one of them.
    update check), `SettingsCubit`, `DownloadsCubit` (models, GPU runtimes,
    what the machine can run), `PipelineCubit` (status, transcript,
    processes) and `CharactersCubit` (the player's cast and the session that
-   records a voice for a card). `DashboardCubits` wires them together and runs `initialize()`;
+   records a voice for a card), plus one Bloc — `PipelineGraphBloc`, the
+   node canvas, which is event-driven because a gesture there is a sequence
+   (grab, move, drop) rather than a call.
+   `DashboardCubits` wires them together and runs `initialize()`;
    errors from any of them go to the shell through `FailureSink`. Anything
    derived from settings *and* packages together is `ModelSelection`
    (`domain/model_selection.dart`), so neither cubit owns it. `DashboardView`
@@ -123,6 +126,29 @@ different speakers side by side, up to `overlappingVoices` (2) with
 line of unknown speaker plays alone. `ld_play_wave` therefore uses its own
 waveOut stream per call and blocks until the clip ends; do not go back to
 `PlaySound`, which holds one sound per process and cuts off the other.
+
+The Graph screen ("Схема", `DashboardSection.pipeline`) draws the pipeline as
+nodes and is the second way to the same settings, not a second set of them.
+`buildPipelineGraph` (`domain/pipeline_graph.dart`) is a pure function of
+`AppSettings`, the cast and a `PipelineLayout`, so the canvas is rebuilt
+whenever either changes and can never drift from them; every edit goes the
+other way through `proposeConnection`/`proposeDisconnect`, which answer with
+what the link would change (`RouteConnection` -> `captureMode`,
+`ReaderConnection` -> `Character.voicedBy`) or why it is refused. The five
+stage nodes and the character cards carry typed sockets, and only the two
+routes the engine runs can be drawn: game audio through whisper, or screen
+text straight into the translator, which leaves the recognition node
+`bypassed` rather than gone. `PipelineGraphBloc` applies the answer through
+`SettingsCubit` and `CharactersCubit` — so a route change is locked while a
+session runs, while a substitution is not, the running worker being told of
+it the way a scene assignment is — and keeps an undo history of layout,
+capture mode and readers. Only the arrangement is its own: node positions,
+which cards were placed and where the canvas is looked at from, written to
+`<app support>/pipeline_graph.json` by `PipelineGraphService` without holding
+the event queue. `pipeline_canvas.dart` owns the geometry (`NodeMetrics`, one
+place for card sizes and socket anchors, which the curves, the dots and the
+hit-testing all read) and fits the scheme into the window the first time it
+is drawn; `pipeline_inspector.dart` is the panel that floats over it.
 
 The Snippet screen ("Фрагмент", `DashboardSection.snapshot`) runs a second kind of
 session, `PipelineSession.snapshot`: `AppRepository.startSnapshot` ->

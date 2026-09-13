@@ -38,7 +38,7 @@ jobs:
           cp assets/fonts/Nunito-700.ttf _site/assets/fonts/
           cp assets/fonts/NunitoSans-400.ttf assets/fonts/NunitoSans-600.ttf _site/assets/fonts/
           cp assets/fonts/JetBrainsMono-500.ttf _site/assets/fonts/
-          cp docs/screenshots/live-ru.png _site/assets/screenshots/
+          cp docs/screenshots/live-ru.png docs/screenshots/pipeline-ru.png _site/assets/screenshots/
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v4
         with:

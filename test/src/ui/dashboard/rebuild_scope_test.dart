@@ -24,6 +24,7 @@ import 'package:lore_dub/src/domain/spoken_language.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/theme.dart';
@@ -124,6 +125,27 @@ void main() {
     );
 
     expect(find.text('11%'), findsOneWidget, reason: 'the bar has to move');
+  });
+
+  testWidgets('a download tick leaves the pipeline scheme untouched', (tester) async {
+    final cubits = await pumpAt(tester, DashboardSection.pipeline);
+    cubits.graph.seed(const PipelineGraphState(loading: false));
+    // The canvas fits the scheme into the window after the frame that
+    // measured it, so the screen settles a few frames after it is seeded.
+    for (var frame = 0; frame < 4; frame++) {
+      await tester.pump();
+    }
+
+    final rebuilt = await rebuiltBy(
+      tester,
+      () => cubits.downloads.seed(DownloadsState(models: modelsAt(0.11))),
+    );
+
+    expect(
+      rebuilt,
+      0,
+      reason: 'the scheme draws what is installed, not how far a download got',
+    );
   });
 
   testWidgets('a recognized phrase leaves the settings screen untouched', (tester) async {
