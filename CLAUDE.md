@@ -86,7 +86,13 @@ than one of them.
    `EscapeJson`) — keep config keys flat and string/number valued.
    `NativeEngineService` polls `ld_poll_event_json` every 80 ms and turns
    `{"type":"audioSegment"|"ocrText"|"state"|"error"}` events into a Dart
-   stream. Native capture runs on its own threads (`ProcessLoopbackCapture`
+   stream. Which session it started is one `PipelineSession` field rather
+   than a flag per session, and it is written onto every `state` event on the
+   way out: one engine serves the dubbing screens and the characters screen
+   in turn, and the same stream reaches `PipelineCubit` and `CharactersCubit`
+   both, so unnamed, a start on one screen was read as a start on the other.
+   A `state` event carrying no session is `ld_stop` coming to rest and ends
+   what every screen was showing. Native capture runs on its own threads (`ProcessLoopbackCapture`
    WASAPI process loopback + energy VAD writing 16 kHz WAV chunks;
    `OcrCapture` GDI + Windows OCR over `AppSettings.ocrRegion`, a frame the
    player draws in Settings and stored as fractions of the foreground game
@@ -291,7 +297,16 @@ runs a session for recording them: `ld_start` on the game's audio plus the
 worker under `--embed-only`, which loads the converter and neither Marian nor
 Silero, so the screen is ready in seconds. While a card records, each captured
 segment goes to `{"fingerprint": path}` instead of recognition and comes back
-as a `characterVoice` event; the cubit keeps the longest clear one. Every
+as a `characterVoice` event; the cubit keeps the longest clear one. Its
+worker has neither whisper nor Marian in it, so a dubbing or snapshot session
+takes it over the way live dubbing takes over a snapshot — through
+`PipelineCubit.releaseWorker`, which `DashboardCubits` wires to
+`CharactersCubit.stopSession` so that neither cubit has to know the other;
+the screen refuses the other direction itself, its button being out while the
+pipeline runs. Which game to listen to is one choice for every screen
+(`PipelineCubit.selectedProcess`, asked for by the shared `ProcessPicker`), so
+while a card records the picker is closed on Live and in the node panel as
+well — the recording session holds the game it started with. Every
 session is handed `--characters`, and the worker matches a line against the
 named cast before the game's bank (`CharacterCast`), answering
 `speaker: character:<id>` and reading them in the voice their card carries.

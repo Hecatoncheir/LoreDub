@@ -7,9 +7,15 @@ enum PipelineStatus { idle, starting, listening, paused, stopping, error }
 
 /// Which session holds the worker: live dubbing of the game; the snapshot
 /// session, which loads only the translator and the voice and waits for the
-/// player to select an area of the screen; or the scene session, which loads
-/// only the converter and places the voices of a game without dubbing them.
-enum PipelineSession { live, snapshot, scene }
+/// player to select an area of the screen; the scene session, which loads
+/// only the converter and places the voices of a game without dubbing them;
+/// or the characters session, which the characters screen records a card's
+/// voice through.
+///
+/// The engine runs one of them at a time and says on every state event which
+/// one it is running, so that a screen never reads another's session as its
+/// own.
+enum PipelineSession { live, snapshot, scene, characters }
 
 class TranscriptEntry {
   const TranscriptEntry({

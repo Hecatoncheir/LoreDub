@@ -259,6 +259,42 @@ void main() {
     );
   });
 
+  testWidgets('holds the game while a card is being recorded', (tester) async {
+    final cubits = stage(buildCubits(), settings: const AppSettings(), models: catalogue());
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
+
+    final picker = find.byType(DropdownMenu<GameProcess>);
+    expect(tester.widget<DropdownMenu<GameProcess>>(picker).enabled, isTrue);
+
+    // The characters screen records through the game it started with, and
+    // this is the same choice under another window.
+    cubits.characters.seed(
+      const CharactersState(loading: false, status: PipelineStatus.listening),
+    );
+    // Twice: a cubit hands its state to listeners a microtask later, and the
+    // frame that draws it is the one after that.
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      tester.widget<DropdownMenu<GameProcess>>(picker).enabled,
+      isFalse,
+      reason: 'the recording listens to the game this would change',
+    );
+    expect(
+      tester
+          .widget<IconButton>(
+            find.ancestor(
+              of: find.byTooltip('Обновить список процессов'),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .onPressed,
+      isNull,
+      reason: 'and a refresh beside it can drop the selection',
+    );
+  });
+
   testWidgets('names the audio path while dubbing what the game says', (tester) async {
     final cubits = stage(buildCubits(), settings: const AppSettings());
     await pumpDashboard(tester, cubits, const Size(1280, 720));
@@ -2373,6 +2409,34 @@ void main() {
 
       expect(find.text('В ОБХОД'), findsOneWidget);
       expect(find.widgetWithText(ChoiceChip, 'Субтитры с экрана'), findsOneWidget);
+    });
+
+    testWidgets('holds the game while a card is being recorded', (tester) async {
+      final cubits = await pumpGraph(tester);
+
+      await tester.tap(find.text('Оригинальный поток').first);
+      await tester.pumpAndSettle();
+
+      final picker = find.byType(DropdownMenu<GameProcess>);
+      expect(tester.widget<DropdownMenu<GameProcess>>(picker).enabled, isTrue);
+
+      // The node is a second window onto the same choice, and the characters
+      // screen is recording through the game it names.
+      cubits.characters.seed(
+        const CharactersState(
+          loading: false,
+          characters: [guard, smith],
+          status: PipelineStatus.listening,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        tester.widget<DropdownMenu<GameProcess>>(picker).enabled,
+        isFalse,
+        reason: 'the recording listens to the game this would change',
+      );
     });
 
     testWidgets('opens what a node is set to when it is clicked', (tester) async {

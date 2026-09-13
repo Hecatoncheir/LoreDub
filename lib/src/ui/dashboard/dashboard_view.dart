@@ -1419,11 +1419,23 @@ class _SourceControls extends StatelessWidget {
     builder: (context, state) => _PipelineBuilder(
       cubits: cubits,
       watch: (pipeline) => (pipeline.running, pipeline.processes, pipeline.selectedProcess),
-      builder: (context, pipeline) => _build(context, state.settings, pipeline),
+      // Only whether a card is being recorded: the seconds it has heard tick
+      // as it goes, and this screen must not be redrawn for them.
+      builder: (context, pipeline) => _CharactersBuilder(
+        cubits: cubits,
+        watch: (characters) => characters.running,
+        builder: (context, characters) =>
+            _build(context, state.settings, pipeline, recording: characters.running),
+      ),
     ),
   );
 
-  Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
+  Widget _build(
+    BuildContext context,
+    AppSettings settings,
+    LivePipelineState pipeline, {
+    required bool recording,
+  }) {
     final l10n = AppLocalizations.of(context);
     final running = pipeline.running;
     final requiresProcess =
@@ -1432,7 +1444,9 @@ class _SourceControls extends StatelessWidget {
     final selector = ProcessPicker(
       processes: pipeline.processes,
       selected: pipeline.selectedProcess,
-      enabled: !running && requiresProcess,
+      // A card recording on the characters screen listens to the game it
+      // started with; the choice is shared, so it is held there.
+      enabled: !running && requiresProcess && !recording,
       onSelected: cubits.pipeline.selectProcess,
       onRefresh: cubits.pipeline.refreshProcesses,
     );
@@ -2169,7 +2183,7 @@ class _PipelinePanel extends StatelessWidget {
             ),
             builder: (context, pipeline) => _CharactersBuilder(
               cubits: cubits,
-              watch: (characters) => characters.characters,
+              watch: (characters) => (characters.characters, characters.running),
               builder: (context, characters) => _build(
                 context,
                 graph: graph,
@@ -2184,6 +2198,7 @@ class _PipelinePanel extends StatelessWidget {
                   characters: characters.characters,
                   activeBackends: pipeline.activeBackends,
                   running: pipeline.running,
+                  recordingVoice: characters.running,
                 ),
               ),
             ),

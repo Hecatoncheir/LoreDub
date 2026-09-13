@@ -85,6 +85,7 @@ class PipelineFacts {
     this.characters = const [],
     this.activeBackends = const {},
     this.running = false,
+    this.recordingVoice = false,
   });
 
   final AppSettings settings;
@@ -95,6 +96,12 @@ class PipelineFacts {
   /// What a running session reported it actually settled on.
   final Map<ComputeStage, ComputeBackend> activeBackends;
   final bool running;
+
+  /// Whether a card is being recorded on the characters screen. That session
+  /// listens to the game it started with, and the game is one choice shared
+  /// by every screen — so it is not to be changed from here either, idle as
+  /// the pipeline itself is.
+  final bool recordingVoice;
 
   Character? character(String? id) {
     if (id == null) return null;

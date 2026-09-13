@@ -198,6 +198,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   final DateTime Function() _clock;
   StreamSubscription<Map<String, Object?>>? _events;
 
+  /// Ends the session another screen holds, so that starting one here takes
+  /// the worker over rather than colliding with it. The characters screen is
+  /// the one screen that keeps a session of its own; [DashboardCubits] wires
+  /// this up, so neither cubit has to know the other.
+  Future<void> Function()? releaseWorker;
+
   /// When the last start was asked for. The button that starts the pipeline
   /// also cancels a start in progress, so without this a double-click would
   /// start and cancel at once and leave "Stopped" with nothing to explain it.
@@ -248,6 +254,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       if (isClosed || state.status != PipelineStatus.idle) return;
     }
     _startRequestedAt = _clock();
+    // The characters screen holds the worker with no whisper in it, the way
+    // a snapshot session does; starting here takes it over.
+    await releaseWorker?.call();
     // What this game was told to replace outlives a session; whoever spoke
     // in the last one does not.
     final replacements = await _appRepository.loadSpeakerMap(_game);
@@ -337,6 +346,10 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     final selection = _selection;
     if (!state.canStartSnapshot(selection, initializing: initializing)) return;
     _startRequestedAt = _clock();
+    // The worker the characters screen holds has neither the translator nor
+    // the voice loaded, so this session starts afresh over it.
+    await releaseWorker?.call();
+    if (isClosed) return;
     emit(
       state.copyWith(
         status: PipelineStatus.starting,
@@ -398,6 +411,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     final selection = _selection;
     if (!state.canStartScene(selection, initializing: initializing)) return;
     _startRequestedAt = _clock();
+    // Both sessions listen through the converter, but only one may hold the
+    // worker; the one the characters screen started gives way.
+    await releaseWorker?.call();
     final replacements = await _appRepository.loadSpeakerMap(_game);
     if (isClosed) return;
     emit(
@@ -539,6 +555,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   void _handleEvent(Map<String, Object?> event) {
     switch (event['type']) {
       case 'state':
+        // The engine serves the characters screen in its turn, and that
+        // session is not this screen's to show. An event naming no session
+        // is the engine coming to rest, which ends whatever was running.
+        if (event['session'] case final String session when session != state.session.name) {
+          return;
+        }
         final status = switch (event['state']) {
           'ready' || 'listening' => PipelineStatus.listening,
           'starting' => PipelineStatus.starting,

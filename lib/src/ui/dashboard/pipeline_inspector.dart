@@ -144,7 +144,9 @@ class PipelineInspector extends StatelessWidget {
       child: ProcessPicker(
         processes: cubits.pipeline.state.processes,
         selected: facts.process,
-        enabled: !_locked,
+        // The characters screen holds the game it records through, and this
+        // is the same choice under another window.
+        enabled: !_locked && !facts.recordingVoice,
         onSelected: cubits.pipeline.selectProcess,
         onRefresh: cubits.pipeline.refreshProcesses,
       ),

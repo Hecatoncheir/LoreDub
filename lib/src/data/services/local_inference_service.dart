@@ -210,6 +210,10 @@ class LocalInferenceService {
     /// Whose voice reads whom in this game, as the player assigned it.
     String? speakerMap,
   }) async {
+    // A worker left over from a session that was not stopped would go on
+    // holding its models — and its share of a graphics card — with the
+    // handle to it about to be overwritten and nobody left to end it.
+    if (_worker != null) await stop();
     _workerReady = Completer<void>();
     _converterDevice = null;
     _diagnostics.clear();

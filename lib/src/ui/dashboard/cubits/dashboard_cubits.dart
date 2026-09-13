@@ -34,11 +34,17 @@ class DashboardCubits {
     pipeline = PipelineCubit(appRepository, modelRepository, settings, downloads, shell);
     characters = CharactersCubit(appRepository, modelRepository, settings, downloads, shell);
     graph = PipelineGraphBloc(appRepository, settings, characters, pipeline, shell);
+    // One engine holds one session: a dubbing session starting takes the
+    // worker over from the characters screen, which keeps it while it
+    // records. The other way round is the screen's own to refuse, and its
+    // button is out while the pipeline runs.
+    pipeline.releaseWorker = characters.stopSession;
     shell.interfaceLanguage = () => settings.settings.interfaceLanguage;
     shell.proxyUrl = () => settings.settings.modelProxyUrl;
-    // Closing for an update must not leave the game turned down.
+    // Closing for an update must not leave the game turned down, or the
+    // worker of either screen still holding the files the setup replaces.
     shell.beforeRestart = () async {
-      if (pipeline.state.running) await appRepository.stop();
+      if (pipeline.state.running || characters.state.running) await appRepository.stop();
     };
   }
 

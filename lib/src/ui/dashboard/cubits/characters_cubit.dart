@@ -295,6 +295,10 @@ class CharactersCubit extends Cubit<CharactersState> {
   }
 
   Future<void> stopSession() async {
+    // Live calls this too, to take the worker over. Without a session of
+    // this screen's there is nothing to end, and stopping the engine would
+    // take down the one that is about to start.
+    if (!state.running) return;
     if (state.recording) await stopRecording();
     try {
       await _appRepository.stop();
@@ -343,6 +347,13 @@ class CharactersCubit extends Cubit<CharactersState> {
   void handleEvent(Map<String, Object?> event) {
     switch (event['type']) {
       case 'state':
+        // The dubbing screens hold the worker in their turn, and a session
+        // of theirs is not this screen's to show. An event naming no session
+        // is the engine coming to rest, which ends this one as well.
+        if (event['session'] case final String session
+            when session != PipelineSession.characters.name) {
+          return;
+        }
         final status = switch (event['state']) {
           'ready' || 'listening' => PipelineStatus.listening,
           'starting' => PipelineStatus.starting,

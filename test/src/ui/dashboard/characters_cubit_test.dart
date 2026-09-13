@@ -79,6 +79,25 @@ void main() {
     expect(repository.stored.characters, isEmpty);
   });
 
+  test('leaves a session the dubbing screens hold off this screen', () async {
+    characters.seed(const CharactersState(loading: false));
+
+    // One engine serves both screens; a live session is not this screen's to
+    // show, and its record buttons open on nothing but a session of its own.
+    characters.handleEvent({'type': 'state', 'state': 'listening', 'session': 'live'});
+
+    expect(characters.state.running, isFalse);
+
+    characters.handleEvent({'type': 'state', 'state': 'listening', 'session': 'characters'});
+
+    expect(characters.state.running, isTrue);
+
+    // The engine coming to rest names no session: it ends this one as well.
+    characters.handleEvent({'type': 'state', 'state': 'idle'});
+
+    expect(characters.state.running, isFalse);
+  });
+
   test('keeps the longest clear voice a recording heard', () async {
     characters.seed(
       const CharactersState(

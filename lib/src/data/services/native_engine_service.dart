@@ -14,6 +14,7 @@ import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
 import '../../domain/hotkey.dart';
 import '../../domain/ocr_text_delta.dart';
+import '../../domain/pipeline_state.dart';
 import '../../domain/sound_captions.dart';
 import '../../domain/wave_slices.dart';
 import '../../native/lore_dub_native.g.dart';
@@ -57,13 +58,15 @@ class NativeEngineService {
   /// finishing its translation meanwhile is shown but not voiced.
   bool _paused = false;
 
-  /// Set while the characters screen holds the session: captured audio is
-  /// measured for a card rather than recognized and voiced.
-  bool _charactersSession = false;
-
-  /// Set while only the voices of the scene are being placed: every phrase
-  /// is identified and none is dubbed.
-  bool _sceneSession = false;
+  /// Which session is running, or null while the engine rests.
+  ///
+  /// The engine serves the dubbing screens and the characters screen in
+  /// turn, and what a captured segment is for depends on which of them holds
+  /// it: recognized and voiced for live dubbing, measured for a card on the
+  /// characters screen, only placed among the voices of a scene. One field
+  /// rather than a flag per session, so that a start can never leave the
+  /// session before it set.
+  PipelineSession? _session;
 
   /// Whether a card is recording right now. Between recordings what the game
   /// says is thrown away.
@@ -109,6 +112,7 @@ class NativeEngineService {
     _reportedVoice = null;
     _reportedBankSize = null;
     _paused = false;
+    _session = PipelineSession.live;
     _playback.maxVoices = config['overlapVoices'] == true ? overlappingVoices : 1;
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
@@ -170,6 +174,7 @@ class NativeEngineService {
     _reportedVoice = null;
     _reportedBankSize = null;
     _paused = false;
+    _session = PipelineSession.snapshot;
     // One selection at a time is read, so there is no one to talk over.
     _playback.maxVoices = 1;
     await LocalInferenceService.removeStaleAudio();
@@ -198,7 +203,7 @@ class NativeEngineService {
       (_) => _pollEvents(),
     );
     // Nothing native starts here to say so itself.
-    _events.add({'type': 'state', 'state': 'listening'});
+    _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
   }
 
   /// Starts the session the characters screen records through: the game's
@@ -206,7 +211,7 @@ class NativeEngineService {
   /// translator nor the speech model loaded.
   Future<void> startCharacters(Map<String, Object?> config) async {
     _paused = false;
-    _charactersSession = true;
+    _session = PipelineSession.characters;
     _recordingVoice = false;
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
@@ -247,7 +252,7 @@ class NativeEngineService {
   /// recording gate left open: every phrase is placed, none is dubbed.
   Future<void> startScene(Map<String, Object?> config) async {
     _paused = false;
-    _sceneSession = true;
+    _session = PipelineSession.scene;
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
     await _inference.start(
@@ -300,8 +305,9 @@ class NativeEngineService {
     // through the queue, and failing them is expected once the user stops.
     _activeConfig = null;
     _paused = false;
-    _charactersSession = false;
-    _sceneSession = false;
+    // Cleared before ld_stop, so the idle it announces belongs to no session
+    // in particular and puts every screen that was showing one back to rest.
+    _session = null;
     _recordingVoice = false;
     _previousOcrText = null;
     // ld_stop drops the hotkeys too; nothing is left for them to pause.
@@ -382,7 +388,9 @@ class NativeEngineService {
         final wavePath = event['path']! as String;
         // A segment queued a moment before the pause is dropped like one
         // captured during it, and so is everything heard between recordings.
-        if (_activeConfig == null || _paused || (_charactersSession && !_recordingVoice)) {
+        if (_activeConfig == null ||
+            _paused ||
+            (_session == PipelineSession.characters && !_recordingVoice)) {
           unawaited(_deleteIfPresent(wavePath));
           continue;
         }
@@ -401,10 +409,22 @@ class NativeEngineService {
         if (text.isNotEmpty) _phrases.add(PendingPhrase.text(text, snapshot: true));
         _events.add(event);
       } else {
-        _events.add(fromNativeEvent(event));
+        _events.add(_ofSession(fromNativeEvent(event)));
       }
     }
   }
+
+  /// [event] with the session it belongs to written on it.
+  ///
+  /// The native side reports what the capture is doing and nothing about who
+  /// asked for it, so the same `state` event served whichever screen was
+  /// listening: the characters screen holding the worker showed a dubbing
+  /// session on Live, and a live session turned on the recording buttons of
+  /// a card that could record nothing. A state event with no session — the
+  /// idle `ld_stop` announces — belongs to everyone: one session runs at a
+  /// time, and stopping it stops whatever any screen was showing.
+  Map<String, Object?> _ofSession(Map<String, Object?> event) =>
+      event['type'] == 'state' && _session != null ? {...event, 'session': _session!.name} : event;
 
   Future<void> _processPhrase(PendingPhrase phrase) {
     final wavePath = phrase.wavePath;
@@ -453,9 +473,9 @@ class NativeEngineService {
 
   Future<void> _processSegment(String wavePath) async {
     // The characters screen listens for a voice, not for a phrase.
-    if (_charactersSession) return _measureVoice(wavePath);
+    if (_session == PipelineSession.characters) return _measureVoice(wavePath);
     // Live before it dubs: who is speaking, and nothing more.
-    if (_sceneSession) return _listenForSpeaker(wavePath);
+    if (_session == PipelineSession.scene) return _listenForSpeaker(wavePath);
     // Two characters answering each other without a pause land in one
     // segment; each of their halves earns its own recognition and voice.
     for (final piece in await _splitBySpeaker(wavePath)) {

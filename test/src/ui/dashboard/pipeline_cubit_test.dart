@@ -25,6 +25,7 @@ import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/model_selection.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
@@ -91,6 +92,46 @@ void main() {
   tearDown(() async {
     await pipeline.close();
     await cubits.dispose();
+  });
+
+  test('leaves a session another screen holds off this screen', () async {
+    pipeline.listen();
+
+    // One engine serves both screens, and this is what the characters screen
+    // starting its recording session announces. It is not this screen's.
+    repository.push({'type': 'state', 'state': 'listening', 'session': 'characters'});
+    await settle();
+
+    expect(pipeline.state.status, PipelineStatus.idle);
+    expect(pipeline.state.liveRunning, isFalse);
+
+    // Its own session still arrives.
+    repository.push({'type': 'state', 'state': 'listening', 'session': 'live'});
+    await settle();
+
+    expect(pipeline.state.liveRunning, isTrue);
+
+    // The engine coming to rest names no session: it ends every screen's.
+    repository.push({'type': 'state', 'state': 'idle'});
+    await settle();
+
+    expect(pipeline.state.status, PipelineStatus.idle);
+  });
+
+  test('takes the worker over from the characters screen', () async {
+    // The recording session holds the worker with no whisper in it, so live
+    // dubbing cannot share it: it starts afresh, as it does over a snapshot.
+    cubits.characters.seed(
+      const CharactersState(loading: false, status: PipelineStatus.listening),
+    );
+
+    unawaited(cubits.pipeline.toggle(initializing: false));
+    await settle();
+
+    expect(cubits.characters.state.running, isFalse, reason: 'the recording gave way');
+    expect(repository.stops, 1);
+    expect(repository.starts, 1);
+    expect(cubits.pipeline.state.session, PipelineSession.live);
   });
 
   test('takes a second press straight after Start for the rest of a double-click', () async {
