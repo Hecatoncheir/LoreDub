@@ -15,6 +15,7 @@ and `docs/UI_DESIGN.md` for the UI tokens and information architecture.
 ```powershell
 flutter pub get
 dart run tool/ffigen.dart          # regenerate lib/src/native/*.g.dart (committed)
+flutter gen-l10n                   # after editing lib/l10n/*.arb (output is committed)
 dart format --output=none --set-exit-if-changed lib test tool hook
 flutter analyze --fatal-infos      # CI is --fatal-infos; infos must be zero
 flutter test
@@ -41,6 +42,13 @@ ffigen, analyze, and tests itself:
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/build_setup.ps1
 ```
+
+Subtitle mode can be tried without a game: `scripts/ocr_test_window.ps1` opens
+`LoreDubOcrTest.exe`, a window drawing dialogue and a quest objective the way
+a game does — its own executable, so it shows up in the process list under a
+name of its own — and `scripts/check_ocr_region.ps1` drives the native OCR
+capture against it and compares what Windows OCR read with what each frame
+covers. Build the native library first, and leave the test window in front.
 
 ## Architecture
 
@@ -280,6 +288,9 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   with the technical detail attached, and `ui/failure_messages.dart` turns it
   into text at the interface boundary. Add a code to `domain/failure.dart`, a
   case to `describeFailure`, and the wording to both ARB files together.
+  `lib/l10n/app_localizations*.dart` is generated from the ARB files and
+  committed; run `flutter gen-l10n` after adding a key, or the analyzer
+  reports a missing getter on `AppLocalizations`.
 - Comments, identifiers, docs, and commit messages are English. `README.md` is
   Russian and is the primary one; `README.en.md` follows it. `CHANGELOG.md` is
   Russian too — it becomes the GitHub release notes the players read — with
@@ -295,9 +306,29 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   seams (`ModelStorageService({http.Client?, ModelRootProvider?})`,
   `SharedPreferences.setMockInitialValues`, the exported
   `readNativeUtf8String` helper).
+- Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`) with an
+  imperative summary, and a native change carries its regenerated bindings in
+  the same commit. `AGENTS.md` holds the same guidance in shorter, more
+  general form for other agents — keep the two from drifting apart.
 
-## Releasing
+## CI and releasing
 
-`pubspec.yaml` version, the `v<major>.<minor>.<patch>` git tag, and a matching
-`## [x.y.z] - date` section in `CHANGELOG.md` must agree, or
-`tool/prepare_release.dart` fails the GitHub release workflow.
+`.github/workflows/windows.yml` runs on every branch and pull request: `pub
+get`, `dart run tool/ffigen.dart`, `analyze --fatal-infos`, `flutter test`,
+`flutter build windows --release`. It regenerates the bindings itself, so a
+`lib/src/native/*.g.dart` left behind by a header change fails there. It does
+not check formatting — `.gitlab-ci.yml` is the one that runs `dart format
+--set-exit-if-changed`, so run the formatter before pushing rather than
+trusting the GitHub build to catch it.
+
+A `v*` tag starts `.github/workflows/release.yml`: `tool/prepare_release.dart`
+validates the tag against `pubspec.yaml` and cuts the release notes out of
+`CHANGELOG.md`, `scripts/build_setup.ps1` builds the installer, and `gh`
+publishes the release with that single `.exe`. `pubspec.yaml` version, the
+`v<major>.<minor>.<patch>` git tag, and a matching `## [x.y.z] - date` section
+in `CHANGELOG.md` must agree, or `prepare_release.dart` fails the workflow.
+
+The landing page in `site/` deploys to GitHub Pages from `main`
+(`.github/workflows/pages.yml`), triggered by `site/**`, `assets/branding/**`,
+`assets/fonts/**` and `docs/screenshots/**`. That workflow copies named files
+one by one, so a new image or font needs a line there as well.

@@ -16,6 +16,8 @@ notes live in `docs/`.
 - `flutter pub get` installs Dart and Flutter dependencies.
 - `dart run tool/ffigen.dart` regenerates the committed bindings in `lib/src/native/` after C
   ABI changes.
+- `flutter gen-l10n` regenerates the committed `lib/l10n/app_localizations*.dart` after an ARB
+  file changes.
 - `dart format --output=none --set-exit-if-changed lib test tool hook` checks formatting.
 - `flutter analyze --fatal-infos` runs the same strict analysis enforced by CI.
 - `flutter test` runs the complete test suite; add a path and `--plain-name "substring"` for a
