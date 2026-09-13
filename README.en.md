@@ -130,7 +130,8 @@ line, it is read in their voice — and, with **Original voice**, in their
 timbre. Both a voice LoreDub founded itself and a card it recognized can be
 replaced, so a nameless guard can be given the voice of your own Guard. The
 choice is kept for that game and holds after a restart; **As heard** gives a
-voice back to itself.
+voice back to itself, and a substitution that came from the character's own
+card is marked "By the card".
 
 The voices can also be sorted out **before** any dubbing: **Place the voices**
 starts listening — only the voice converter is loaded, with neither whisper
@@ -207,7 +208,13 @@ longest clear line of the recording stands for them — a fingerprint taken from
 half a word would answer for the character ever after.
 
 The cards are laid out as tiles, the way the models are, and each carries its
-own row of buttons: record, export, delete. Characters are shared by every
+own row of buttons: record, export, delete. There is also **Read in another character's
+voice**: pick any of your own, and this character speaks in their voice
+wherever they are recognized, in any game. The choice is made in advance,
+before the character has ever spoken, and holds from their very first line. A
+choice made in **Voices of the scene** is stronger and belongs to that game
+alone, and chains are not followed: if the smith is in turn read by the bard,
+the guard still gets the smith's voice. Characters are shared by every
 game, unlike the voices Live founds by itself, and a card brought back after
 an edit lands on the one it came from.
 

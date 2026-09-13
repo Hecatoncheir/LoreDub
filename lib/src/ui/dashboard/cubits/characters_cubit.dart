@@ -145,6 +145,32 @@ class CharactersCubit extends Cubit<CharactersState> {
     );
   }
 
+  /// Reads [id] in [target]'s voice wherever they are recognized, or in
+  /// their own again when [target] is null.
+  ///
+  /// This is the standing choice the card carries into every game; a game's
+  /// own choice in Live overrides it. A card cannot be given its own voice,
+  /// which would say nothing.
+  Future<void> voiceAs(String id, String? target) async {
+    if (id == target) return;
+    await _write(
+      characters: [
+        for (final character in state.characters)
+          if (character.id == id)
+            character.copyWith(voicedBy: target, clearVoicedBy: target == null)
+          else
+            character,
+      ],
+    );
+    // A session already running holds the cast it started with, so it is
+    // told as well and the next line of this character is read anew.
+    try {
+      await _appRepository.voiceCharacterAs(id, target);
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
   Future<void> remove(String id) async {
     if (state.recordingId == id) await stopRecording();
     await _write(

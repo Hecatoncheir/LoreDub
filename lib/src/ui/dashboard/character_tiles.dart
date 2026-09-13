@@ -64,7 +64,9 @@ class CharacterTile extends StatefulWidget {
     required this.recording,
     required this.heardSeconds,
     required this.packNames,
+    required this.cast,
     required this.onRename,
+    required this.onVoiceAs,
     required this.onRecord,
     required this.onExport,
     required this.onDelete,
@@ -83,7 +85,14 @@ class CharacterTile extends StatefulWidget {
   /// a card already belongs without opening every pack.
   final List<String> packNames;
 
+  /// The other cards, to give this one's lines away to.
+  final List<Character> cast;
+
   final ValueChanged<String> onRename;
+
+  /// Reads this character in another's voice wherever they are recognized,
+  /// or in their own again when the id is null.
+  final ValueChanged<String?> onVoiceAs;
 
   /// Null while another card records, or while no session runs.
   final VoidCallback? onRecord;
@@ -133,6 +142,15 @@ class _CharacterTileState extends State<CharacterTile> {
       childWhenDragging: Opacity(opacity: 0.4, child: tile),
       child: tile,
     );
+  }
+
+  /// The name of the card standing in for this one; a card deleted since
+  /// leaves the substitution showing as nobody in particular.
+  String _nameOf(String id, AppLocalizations l10n) {
+    for (final other in widget.cast) {
+      if (other.id == id) return other.name;
+    }
+    return l10n.sceneVoiceAnonymous;
   }
 
   Widget _tile(BuildContext context) {
@@ -206,6 +224,21 @@ class _CharacterTileState extends State<CharacterTile> {
                         fontWeight: recording ? FontWeight.w600 : null,
                       ),
                     ),
+                    if (widget.character.voicedBy case final id?)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          l10n.sceneVoiceReplaced(_nameOf(id, l10n)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: LoreDubFonts.mono,
+                            fontSize: 11,
+                            color: LoreDubPalette.orange,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     if (widget.packNames.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
@@ -235,6 +268,30 @@ class _CharacterTileState extends State<CharacterTile> {
                       tooltip: recording ? l10n.charactersRecordStop : l10n.charactersRecord,
                       onPressed: widget.onRecord,
                     ),
+                  ),
+                  // Giving a character away is a choice among the others,
+                  // so the button opens the cast rather than toggling.
+                  PopupMenuButton<String>(
+                    key: ValueKey('voiceAs-${character.id}'),
+                    tooltip: l10n.charactersVoicedByHint,
+                    enabled: widget.cast.isNotEmpty,
+                    // The empty value is their own voice back.
+                    onSelected: (id) => widget.onVoiceAs(id.isEmpty ? null : id),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(value: '', child: Text(l10n.charactersOwnVoice)),
+                      for (final other in widget.cast)
+                        PopupMenuItem(value: other.id, child: Text(other.name)),
+                    ],
+                    icon: Icon(
+                      Icons.published_with_changes_rounded,
+                      size: 19,
+                      color: character.voicedBy == null
+                          ? LoreDubPalette.ink
+                          : LoreDubPalette.orange,
+                    ),
+                    iconSize: 19,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(width: 34, height: 34),
                   ),
                   ModelActionButton(
                     onDark: false,
@@ -528,6 +585,7 @@ class SceneVoiceRow extends StatelessWidget {
     required this.name,
     required this.characters,
     required this.assignedId,
+    required this.standingName,
     required this.onAssign,
   });
 
@@ -539,8 +597,13 @@ class SceneVoiceRow extends StatelessWidget {
   /// The cast to choose from; empty until the player has recorded one.
   final List<Character> characters;
 
-  /// The character reading this voice, when one was chosen.
+  /// The character reading this voice, when this game was given one.
   final String? assignedId;
+
+  /// The card standing in for this voice by its own card rather than by this
+  /// game's choice, named so the row can say where the substitution comes
+  /// from. Null when there is none, or when this game has its own.
+  final String? standingName;
 
   /// Null when this voice cannot be replaced at all.
   final ValueChanged<String?>? onAssign;
@@ -595,6 +658,19 @@ class SceneVoiceRow extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
           ),
+          if (standingName case final name?) ...[
+            const SizedBox(height: 4),
+            Text(
+              l10n.sceneVoiceStanding(name),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: LoreDubFonts.mono,
+                fontSize: 11,
+                color: LoreDubPalette.orange,
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           if (onAssign == null)
             Text(

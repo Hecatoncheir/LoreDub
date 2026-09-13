@@ -261,6 +261,14 @@ class AppRepository {
     }
   }
 
+  /// Tells a running session that [character] is read in [target]'s voice
+  /// from the next line on, as their card now says.
+  ///
+  /// The cast is read from the file when a session starts, so without this a
+  /// card edited mid-session would only be heard after a restart.
+  Future<void> voiceCharacterAs(String character, String? target) =>
+      _nativeEngine.voiceCharacterAs(character, target);
+
   /// Whether what the game says is being measured for a character's card.
   /// Between recordings the captured audio is thrown away.
   void recordCharacterVoice({required bool recording}) =>

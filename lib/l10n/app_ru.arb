@@ -43,6 +43,8 @@
   },
   "charactersGenderUnknown": "пол не определён",
   "charactersDelete": "Удалить персонажа",
+  "charactersVoicedByHint": "Озвучивать голосом другого персонажа",
+  "charactersOwnVoice": "Своим голосом",
   "charactersDeleteTitle": "Удалить персонажа?",
   "charactersDeleteMessage": "Карточка «{name}» и записанный голос будут удалены.",
   "@charactersDeleteMessage": {
@@ -282,6 +284,14 @@
     }
   },
   "sceneVoiceReadAs": "Озвучивать как",
+  "sceneVoiceStanding": "По карточке: «{name}»",
+  "@sceneVoiceStanding": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "sceneVoiceAsHeard": "Как услышано",
   "sceneVoiceNoCharacters": "Запишите персонажей на экране «Персонажи», чтобы назначать их голоса.",
   "sceneVoiceReplaced": "Звучит как «{name}»",

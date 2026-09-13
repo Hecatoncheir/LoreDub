@@ -157,6 +157,36 @@ void main() {
     ]);
   });
 
+  test('gives a card another character to be read by, and takes it back', () async {
+    characters.seed(
+      const CharactersState(
+        loading: false,
+        characters: [
+          guard,
+          Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
+        ],
+      ),
+    );
+
+    await characters.voiceAs('a1', 'b2');
+
+    expect(characters.state.characters.first.voicedBy, 'b2');
+    expect(repository.stored.characters.first.voicedBy, 'b2', reason: 'written, not only shown');
+
+    await characters.voiceAs('a1', null);
+
+    expect(characters.state.characters.first.voicedBy, isNull);
+    expect(repository.stored.characters.first.voicedBy, isNull);
+  });
+
+  test('refuses to read a card by itself, which would say nothing', () async {
+    characters.seed(const CharactersState(loading: false, characters: [guard]));
+
+    await characters.voiceAs('a1', 'a1');
+
+    expect(characters.state.characters.single.voicedBy, isNull);
+  });
+
   test('collects cards into a pack and lets them out again', () async {
     characters.seed(
       const CharactersState(

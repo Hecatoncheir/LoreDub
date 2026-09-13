@@ -249,6 +249,18 @@ abstract class AppLocalizations {
   /// **'Удалить персонажа'**
   String get charactersDelete;
 
+  /// No description provided for @charactersVoicedByHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Озвучивать голосом другого персонажа'**
+  String get charactersVoicedByHint;
+
+  /// No description provided for @charactersOwnVoice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Своим голосом'**
+  String get charactersOwnVoice;
+
   /// No description provided for @charactersDeleteTitle.
   ///
   /// In ru, this message translates to:
@@ -806,6 +818,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Озвучивать как'**
   String get sceneVoiceReadAs;
+
+  /// No description provided for @sceneVoiceStanding.
+  ///
+  /// In ru, this message translates to:
+  /// **'По карточке: «{name}»'**
+  String sceneVoiceStanding(String name);
 
   /// No description provided for @sceneVoiceAsHeard.
   ///

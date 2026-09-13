@@ -95,6 +95,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get charactersDelete => 'Delete the character';
 
   @override
+  String get charactersVoicedByHint => 'Read in another character’s voice';
+
+  @override
+  String get charactersOwnVoice => 'Their own voice';
+
+  @override
   String get charactersDeleteTitle => 'Delete the character?';
 
   @override
@@ -452,6 +458,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sceneVoiceReadAs => 'Read as';
+
+  @override
+  String sceneVoiceStanding(String name) {
+    return 'By the card: “$name”';
+  }
 
   @override
   String get sceneVoiceAsHeard => 'As heard';

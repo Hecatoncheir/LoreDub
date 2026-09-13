@@ -15,6 +15,7 @@ class Character {
     this.gender,
     this.voice,
     this.seconds = 0,
+    this.voicedBy,
   });
 
   factory Character.fromJson(Map<String, Object?> json) => Character(
@@ -27,6 +28,7 @@ class Character {
     gender: json['gender'] as String?,
     voice: json['voice'] as String?,
     seconds: (json['seconds'] as num?)?.toDouble() ?? 0,
+    voicedBy: json['voicedBy'] as String?,
   );
 
   /// What the file keeps; the id is written so a card brought back after an
@@ -46,6 +48,15 @@ class Character {
   /// How long the recording their fingerprint was taken from ran.
   final double seconds;
 
+  /// The character whose voice reads this one, when the player asked for a
+  /// substitution. It holds wherever this card is recognized, in every game,
+  /// and one game's own choice in Live overrides it.
+  ///
+  /// One hop only: if that character is in turn read by a third, this card
+  /// still gets the second one's voice. A chain would be a riddle, and two
+  /// cards pointing at each other a loop.
+  final String? voicedBy;
+
   /// Whether the card can be used at all: a name and a fingerprint.
   bool get isReady => name.trim().isNotEmpty && vector.isNotEmpty;
 
@@ -57,6 +68,8 @@ class Character {
     String? voice,
     bool clearVoice = false,
     double? seconds,
+    String? voicedBy,
+    bool clearVoicedBy = false,
   }) => Character(
     id: id,
     name: name ?? this.name,
@@ -64,6 +77,7 @@ class Character {
     gender: clearGender ? null : gender ?? this.gender,
     voice: clearVoice ? null : voice ?? this.voice,
     seconds: seconds ?? this.seconds,
+    voicedBy: clearVoicedBy ? null : voicedBy ?? this.voicedBy,
   );
 
   Map<String, Object?> toJson() => {
@@ -73,6 +87,7 @@ class Character {
     if (gender != null) 'gender': gender,
     if (voice != null) 'voice': voice,
     'seconds': seconds,
+    if (voicedBy != null) 'voicedBy': voicedBy,
   };
 }
 

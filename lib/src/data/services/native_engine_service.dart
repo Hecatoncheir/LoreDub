@@ -290,6 +290,11 @@ class NativeEngineService {
   Future<void> assignSpeaker(String speaker, String? character) =>
       _inference.assignSpeaker(speaker, character);
 
+  /// Carries a card's standing substitution into the running session, which
+  /// read the cast when it started.
+  Future<void> voiceCharacterAs(String character, String? target) =>
+      _inference.voiceCharacterAs(character, target);
+
   Future<void> stop() async {
     // Cleared first: segments captured moments ago are still travelling
     // through the queue, and failing them is expected once the user stops.

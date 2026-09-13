@@ -11,6 +11,8 @@
 /// bank; a card assigned in one game keeps its own voice in another.
 library;
 
+import 'character.dart';
+
 /// The prefix a speaker key carries when the line was matched to one of the
 /// player's cards.
 const characterSpeakerPrefix = 'character:';
@@ -52,6 +54,28 @@ Map<String, String> speakerMapFromJson(Object? json) {
         if (entry.value case final String character)
           if (isReplaceableSpeaker(speaker) && character.isNotEmpty) speaker: character,
   };
+}
+
+/// The character whose voice reads [speaker], or null when the voice reads
+/// itself.
+///
+/// This game's own choice answers first; a card that carries a standing
+/// substitution ([Character.voicedBy]) answers after it, which is what lets
+/// a character be given away before they have ever been heard. The
+/// substitution is followed one hop only, so two cards pointing at each
+/// other cannot spin.
+String? readerOfSpeaker(
+  String speaker,
+  Map<String, String> replacements,
+  List<Character> characters,
+) {
+  if (replacements[speaker] case final assigned?) return assigned;
+  final id = characterOfSpeaker(speaker);
+  if (id == null) return null;
+  for (final character in characters) {
+    if (character.id == id) return character.voicedBy;
+  }
+  return null;
 }
 
 /// [replacements] with [speaker] read in [character], or with the

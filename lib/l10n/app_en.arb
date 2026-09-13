@@ -43,6 +43,8 @@
   },
   "charactersGenderUnknown": "gender undecided",
   "charactersDelete": "Delete the character",
+  "charactersVoicedByHint": "Read in another character’s voice",
+  "charactersOwnVoice": "Their own voice",
   "charactersDeleteTitle": "Delete the character?",
   "charactersDeleteMessage": "The card {name} and the voice recorded for it will be deleted.",
   "@charactersDeleteMessage": {
@@ -282,6 +284,14 @@
     }
   },
   "sceneVoiceReadAs": "Read as",
+  "sceneVoiceStanding": "By the card: “{name}”",
+  "@sceneVoiceStanding": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "sceneVoiceAsHeard": "As heard",
   "sceneVoiceNoCharacters": "Record characters on the Characters screen to give their voices away.",
   "sceneVoiceReplaced": "Read as “{name}”",

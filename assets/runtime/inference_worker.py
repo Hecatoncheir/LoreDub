@@ -391,6 +391,9 @@ class CharacterCast:
                     "id": str(entry.get("id", "")),
                     "gender": entry.get("gender") or None,
                     "voice": entry.get("voice") or None,
+                    # The card the player asked to be read in place of this
+                    # one, wherever it is recognized.
+                    "voicedBy": entry.get("voicedBy") or None,
                     "vector": vector,
                 }
             )
@@ -422,6 +425,16 @@ class CharacterCast:
 
     def vector_of(self, index):
         return self.entries[index]["vector"]
+
+    def voiced_by(self, index):
+        """The card standing in for this one, if the player named one."""
+        return self.entries[index]["voicedBy"] if 0 <= index < len(self.entries) else None
+
+    def voice_instead(self, identifier, target):
+        """Keeps a substitution the player made while this session runs."""
+        for entry in self.entries:
+            if entry["id"] == identifier:
+                entry["voicedBy"] = target or None
 
     def index_of(self, identifier):
         """Where the card with this id sits, or None when it is not in the cast."""
@@ -627,6 +640,10 @@ def main():
         rather than gaining the character it is read in.
         """
         target = replacements.character_for(speaker_key(kind, index))
+        # A card carries its own standing substitution, which holds in every
+        # game; this game's own choice answers before it.
+        if target is None and kind == "character" and index is not None:
+            target = cast.voiced_by(index)
         if target is None:
             return kind, index
         at = cast.index_of(target)
@@ -783,6 +800,17 @@ def main():
                     str(assignment.get("character", "")),
                 )
                 reply({"id": request_id, "assigned": True})
+                continue
+            # A card read in another's voice from now on, as the characters
+            # screen has just been told. The cast was read at start, so a
+            # session already running is told rather than left behind.
+            substitution = request.get("voicedBy")
+            if substitution is not None:
+                cast.voice_instead(
+                    str(substitution.get("character", "")),
+                    str(substitution.get("target", "")),
+                )
+                reply({"id": request_id, "voiced": True})
                 continue
             # Who is speaking, and nothing else. Live asks this before the
             # dubbing itself runs, so the player can hand out the voices of

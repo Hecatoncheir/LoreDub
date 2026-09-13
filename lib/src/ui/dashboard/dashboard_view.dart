@@ -979,6 +979,11 @@ class _SceneVoicesCard extends StatelessWidget {
                           name: speakerName(l10n, speaker.key, characters),
                           characters: characters,
                           assignedId: pipeline.speakerReplacements[speaker.key],
+                          standingName: standingReplacementName(
+                            speaker.key,
+                            pipeline.speakerReplacements,
+                            characters,
+                          ),
                           onAssign: characters.isEmpty || !isReplaceableSpeaker(speaker.key)
                               ? null
                               : (id) => cubits.pipeline.assignSpeaker(speaker.key, id),
@@ -2464,7 +2469,12 @@ class _CharacterCast extends StatelessWidget {
                                   for (final pack in state.packs)
                                     if (pack.holds(character.id)) pack.name,
                                 ],
+                                cast: [
+                                  for (final other in state.characters)
+                                    if (other.id != character.id) other,
+                                ],
                                 onRename: (name) => cubits.characters.rename(character.id, name),
+                                onVoiceAs: (id) => cubits.characters.voiceAs(character.id, id),
                                 onRecord:
                                     !state.running ||
                                         (state.recording && state.recordingId != character.id)

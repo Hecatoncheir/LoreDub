@@ -486,6 +486,39 @@ class LocalInferenceService {
     );
   }
 
+  /// Reads [character] in [target]'s voice wherever they are recognized, as
+  /// their card now says, or in their own again when [target] is null.
+  ///
+  /// The cast is read from its file when a session starts, so this is what
+  /// carries an edit made meanwhile into the session already running.
+  Future<void> voiceCharacterAs(String character, String? target) async {
+    final worker = _worker;
+    if (worker == null) return;
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(
+      jsonEncode({
+        'id': id,
+        'voicedBy': {'character': character, 'target': target ?? ''},
+      }),
+    );
+    final response = await completer.future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
+  }
+
   /// Reads [speaker] in the voice of [character] from the next line on, or
   /// in their own again when [character] is null.
   ///

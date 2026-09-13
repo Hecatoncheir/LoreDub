@@ -2096,6 +2096,33 @@ void main() {
       expect(find.textContaining('Перетащите сюда'), findsOneWidget);
     });
 
+    testWidgets('says who reads a card and offers the cast to change it', (tester) async {
+      final cubits = stageCast(
+        characters: const CharactersState(
+          loading: false,
+          characters: [
+            Character(id: 'a1', name: 'Стражник', vector: [0.2], voicedBy: 'b2'),
+            Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
+          ],
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      expect(find.text('Звучит как «Кузнец»'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('voiceAs-a1')));
+      await tester.pumpAndSettle();
+
+      // The cast to give the card away to, and their own voice back.
+      expect(find.text('Своим голосом'), findsOneWidget);
+      expect(find.widgetWithText(PopupMenuItem<String>, 'Кузнец'), findsOneWidget);
+      expect(
+        find.widgetWithText(PopupMenuItem<String>, 'Стражник'),
+        findsNothing,
+        reason: 'a card cannot be read by itself',
+      );
+    });
+
     testWidgets('drops a card into a pack and takes it back out', (tester) async {
       final cubits = stageCast(
         characters: const CharactersState(
@@ -2246,6 +2273,22 @@ void main() {
 
       expect(find.text('Без опознания'), findsOneWidget);
       expect(find.byKey(const ValueKey('assign-voice:eugene')), findsNothing);
+    });
+
+    testWidgets('says a voice is read by the card rather than by this game', (tester) async {
+      await pumpDashboard(
+        tester,
+        stageScene(
+          speakers: const [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
+          characters: const [
+            Character(id: 'a1', name: 'Стражник', vector: [0.2], voicedBy: 'b2'),
+            Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
+          ],
+        ),
+        const Size(1400, 900),
+      );
+
+      expect(find.text('По карточке: «Кузнец»'), findsOneWidget);
     });
 
     testWidgets('says in the transcript who was heard and who reads them', (tester) async {

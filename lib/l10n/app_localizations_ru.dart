@@ -95,6 +95,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get charactersDelete => 'Удалить персонажа';
 
   @override
+  String get charactersVoicedByHint => 'Озвучивать голосом другого персонажа';
+
+  @override
+  String get charactersOwnVoice => 'Своим голосом';
+
+  @override
   String get charactersDeleteTitle => 'Удалить персонажа?';
 
   @override
@@ -456,6 +462,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sceneVoiceReadAs => 'Озвучивать как';
+
+  @override
+  String sceneVoiceStanding(String name) {
+    return 'По карточке: «$name»';
+  }
 
   @override
   String get sceneVoiceAsHeard => 'Как услышано';

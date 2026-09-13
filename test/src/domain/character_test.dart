@@ -161,4 +161,33 @@ void main() {
 
     expect(pruned.single.characterIds, ['a', 'b']);
   });
+
+  test('keeps the card a character is read by', () {
+    const guard = Character(
+      id: 'a1',
+      name: 'Стражник',
+      vector: [0.5],
+      voicedBy: 'b2',
+    );
+
+    final read = charactersFromJson(jsonDecode(jsonEncode(charactersToJson([guard]))));
+
+    expect(read.single.voicedBy, 'b2');
+    expect(read.single.copyWith(clearVoicedBy: true).voicedBy, isNull);
+    expect(read.single.copyWith(voicedBy: 'c3').voicedBy, 'c3');
+  });
+
+  test('a card written before substitutions existed is read by nobody', () {
+    final read = charactersFromJson({
+      'characters': [
+        {
+          'id': 'a1',
+          'name': 'Стражник',
+          'vector': [0.5],
+        },
+      ],
+    });
+
+    expect(read.single.voicedBy, isNull);
+  });
 }

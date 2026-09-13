@@ -232,6 +232,14 @@ voice of the game, and `PlaybackScheduler` keeps ordering lines by who spoke.
 A `voice:<name>` speaker means nothing heard who was talking, so it is the one
 kind that cannot be replaced.
 
+A substitution can also be set before anyone has spoken: `Character.voicedBy`
+names the card that reads this one, holds in every game, and is applied by the
+same `read_as` — the per-game map answers first, the card after it, one hop
+only (`readerOfSpeaker` in `domain/speaker_map.dart` is the same rule for the
+interface, and is what names the reader in the transcript). The cast file is
+read when a session starts, so `CharactersCubit.voiceAs` also sends
+`{"voicedBy": {...}}` to a running worker, the way a scene assignment does.
+
 The voices can be placed before anything is dubbed. `PipelineSession.scene`
 (`toggleSceneVoices` -> `AppRepository.startSceneVoices` ->
 `NativeEngineService.startScene`) is the characters session with the bank, the
