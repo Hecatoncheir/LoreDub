@@ -2129,6 +2129,65 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'Запустить запись'), findsOneWidget);
     });
 
+    testWidgets('keeps a full card inside its tile', (tester) async {
+      // Name, what was recorded, whose voice reads it, and the packs it is
+      // in — all at once, in a window narrow enough for the lines to wrap.
+      await pumpDashboard(
+        tester,
+        stageCast(
+          characters: const CharactersState(
+            loading: false,
+            characters: [
+              Character(
+                id: 'a1',
+                name: 'Скарн',
+                vector: [0.2, 0.4],
+                gender: 'male',
+                seconds: 6,
+                voicedBy: 'b2',
+              ),
+              Character(id: 'b2', name: 'Кайра', vector: [0.3], gender: 'female', seconds: 4.8),
+            ],
+            packs: [
+              CharacterPack(id: 'p1', name: 'Старый порт', characterIds: ['a1', 'b2']),
+            ],
+          ),
+        ),
+        const Size(1000, 900),
+      );
+
+      expect(tester.takeException(), isNull, reason: 'the tile holds its own content');
+    });
+
+    testWidgets('holds it at the narrowest window the app opens in', (tester) async {
+      await pumpDashboard(
+        tester,
+        stageCast(
+          characters: const CharactersState(
+            loading: false,
+            characters: [
+              Character(
+                id: 'a1',
+                name: 'Персонаж с очень длинным именем',
+                vector: [0.2, 0.4],
+                gender: 'female',
+                seconds: 12,
+                voicedBy: 'b2',
+              ),
+              Character(id: 'b2', name: 'Кузнец', vector: [0.3], gender: 'male', seconds: 4),
+            ],
+            packs: [
+              CharacterPack(id: 'p1', name: 'Таверна', characterIds: ['a1']),
+              CharacterPack(id: 'p2', name: 'Рынок', characterIds: ['a1']),
+            ],
+          ),
+        ),
+        const Size(960, 640),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('shows what a card holds and waits for the session', (tester) async {
       await pumpDashboard(
         tester,

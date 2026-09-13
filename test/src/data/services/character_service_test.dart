@@ -107,6 +107,52 @@ void main() {
     expect(read.characters.map((character) => character.name), ['Стражник', 'Торговец']);
   });
 
+  test('takes a pack of five in, and gives the same five back', () async {
+    // A file of the shape the application writes, five cards deep and with a
+    // pack over them, so the way in and the way out are walked whole rather
+    // than over the two-card libraries the tests above build by hand.
+    final incoming = await service.readFiles(['test/fixtures/cast_with_pack.json']);
+
+    expect(incoming.characters.map((character) => character.name), [
+      'Кайра',
+      'Невея',
+      'Одрис',
+      'Талрен',
+      'Скарн',
+    ]);
+    expect(incoming.packs.single.name, 'Старый порт');
+    expect(incoming.packs.single.characterIds.length, 5);
+    // The fingerprints are the shape the converter's encoder makes, so the
+    // worker weighs them like any other rather than passing them over.
+    expect(incoming.characters.first.vector.length, 256);
+    expect(
+      incoming.characters.firstWhere((character) => character.id == 'skarn').voicedBy,
+      'kaira',
+      reason: 'a part handed across the genders survives the file',
+    );
+
+    await service.save(incoming);
+    final kept = await service.load();
+    expect(kept.characters.length, 5);
+    expect(kept.packs.single.characterIds, incoming.packs.single.characterIds);
+
+    // And out again: the pack is exported with the cards it holds, and reads
+    // back as what went in.
+    final file = path.join(temp.path, 'harbour.json');
+    await service.exportTo(
+      file,
+      CharacterLibrary(characters: kept.characters, packs: kept.packs),
+    );
+    final again = await service.readFiles([file]);
+
+    expect(again.characters.map((character) => character.id), [
+      for (final character in incoming.characters) character.id,
+    ]);
+    expect(again.characters.first.vector, incoming.characters.first.vector);
+    expect(again.characters.first.gender, 'female');
+    expect(again.packs.single.id, 'old-harbour');
+  });
+
   test('says which file held no characters', () async {
     final wrong = path.join(temp.path, 'screenshot.json');
     await File(wrong).writeAsString(jsonEncode({'settings': 'something else'}));

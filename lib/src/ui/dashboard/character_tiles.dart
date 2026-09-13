@@ -27,7 +27,7 @@ class CharacterDrag {
 /// use — wider, because a card carries a name to type in as well as its
 /// buttons.
 class CharacterTileGrid extends StatelessWidget {
-  const CharacterTileGrid({super.key, required this.children, this.height = 170});
+  const CharacterTileGrid({super.key, required this.children, this.height = 182});
 
   static const _minWidth = 248.0;
   static const _gap = 14.0;
@@ -215,58 +215,67 @@ class _CharacterTileState extends State<CharacterTile> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                // Every line gives way rather than spilling: a card may
+                // carry what was recorded, whose voice reads it and the packs
+                // it belongs to at once, and a narrow window wraps them.
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      recording
-                          ? (widget.heardSeconds > 0
-                                ? l10n.charactersHeard(widget.heardSeconds.toStringAsFixed(1))
-                                : l10n.charactersRecording)
-                          : character.vector.isEmpty
-                          ? l10n.charactersNoVoice
-                          : l10n.charactersVoiceKept(
-                              character.seconds.toStringAsFixed(1),
-                              switch (character.gender) {
-                                'male' => l10n.voiceGenderMale,
-                                'female' => l10n.voiceGenderFemale,
-                                _ => l10n.charactersGenderUnknown,
-                              },
-                            ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: LoreDubFonts.mono,
-                        fontSize: 11,
-                        color: recording ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
-                        fontWeight: recording ? FontWeight.w600 : null,
+                    Flexible(
+                      child: Text(
+                        recording
+                            ? (widget.heardSeconds > 0
+                                  ? l10n.charactersHeard(widget.heardSeconds.toStringAsFixed(1))
+                                  : l10n.charactersRecording)
+                            : character.vector.isEmpty
+                            ? l10n.charactersNoVoice
+                            : l10n.charactersVoiceKept(
+                                character.seconds.toStringAsFixed(1),
+                                switch (character.gender) {
+                                  'male' => l10n.voiceGenderMale,
+                                  'female' => l10n.voiceGenderFemale,
+                                  _ => l10n.charactersGenderUnknown,
+                                },
+                              ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: LoreDubFonts.mono,
+                          fontSize: 11,
+                          color: recording ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
+                          fontWeight: recording ? FontWeight.w600 : null,
+                        ),
                       ),
                     ),
                     if (widget.character.voicedBy case final id?)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          l10n.sceneVoiceReplaced(_nameOf(id, l10n)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: LoreDubFonts.mono,
-                            fontSize: 11,
-                            color: LoreDubPalette.orange,
-                            fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            l10n.sceneVoiceReplaced(_nameOf(id, l10n)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: LoreDubFonts.mono,
+                              fontSize: 11,
+                              color: LoreDubPalette.orange,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
                     if (widget.packNames.isNotEmpty) ...[
                       const SizedBox(height: 6),
-                      Text(
-                        l10n.charactersInPacks(widget.packNames.join(', ')),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: LoreDubFonts.mono,
-                          fontSize: 11,
-                          color: LoreDubPalette.mutedInk,
+                      Flexible(
+                        child: Text(
+                          l10n.charactersInPacks(widget.packNames.join(', ')),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: LoreDubFonts.mono,
+                            fontSize: 11,
+                            color: LoreDubPalette.mutedInk,
+                          ),
                         ),
                       ),
                     ],
