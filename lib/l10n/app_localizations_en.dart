@@ -1487,7 +1487,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineSocketCast => 'Characters';
 
   @override
-  String get pipelineSocketReadBy => 'Read by';
+  String get pipelineSocketCharacter => 'Character';
 
   @override
   String get pipelineSocketVoice => 'Voice';

@@ -44,7 +44,6 @@ void main() {
     PipelineNodeIds.translation,
     PipelineSocket.translationIn,
   );
-  const cast = PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast);
 
   PipelinePort voiceOf(String id) =>
       PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterVoice);
@@ -156,20 +155,34 @@ void main() {
   });
 
   test('a link between two cards is who reads whom, and is written to the cast', () async {
-    await drawLink(voiceOf('smith'), readBy('guard'));
+    // Out of the card whose part it is, into the card that will speak it.
+    await drawLink(voiceOf('guard'), readBy('smith'));
 
     expect(repository.stored.characters.first.voicedBy, 'smith');
-    expect(graph.state.graph.linkInto(readBy('guard'))?.from, voiceOf('smith'));
+    expect(graph.state.graph.linkInto(readBy('smith'))?.from, voiceOf('guard'));
   });
 
   test('cutting that link gives the card its own voice back', () async {
-    await drawLink(voiceOf('smith'), readBy('guard'));
+    await drawLink(voiceOf('guard'), readBy('smith'));
 
-    graph.add(PipelineLinkCut(graph.state.graph.linkInto(readBy('guard'))!));
+    graph.add(PipelineLinkCut(graph.state.graph.linkInto(readBy('smith'))!));
     await pumpEvents();
 
     expect(repository.stored.characters.first.voicedBy, isNull);
-    expect(graph.state.graph.linkInto(readBy('guard'))?.from, cast);
+    expect(
+      graph.state.graph.linkInto(readBy('smith')),
+      isNull,
+      reason: 'nobody speaks for anybody now',
+    );
+    expect(
+      graph.state.graph.links.any(
+        (link) =>
+            link.from == voiceOf('guard') &&
+            link.to == const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
+      ),
+      isTrue,
+      reason: 'it speaks for itself again, straight into the mix',
+    );
   });
 
   test('the route cannot be changed while a session is running', () async {
@@ -184,7 +197,7 @@ void main() {
   test('a card is still given away while a session is running', () async {
     cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
 
-    await drawLink(voiceOf('smith'), readBy('guard'));
+    await drawLink(voiceOf('guard'), readBy('smith'));
 
     expect(repository.stored.characters.first.voicedBy, 'smith');
   });
@@ -245,7 +258,7 @@ void main() {
   });
 
   test('a card taken off the canvas keeps the voice that reads it', () async {
-    await drawLink(voiceOf('smith'), readBy('guard'));
+    await drawLink(voiceOf('guard'), readBy('smith'));
 
     graph.add(const PipelineCharacterRemoved('guard'));
     await pumpEvents();
@@ -254,8 +267,8 @@ void main() {
     expect(repository.stored.characters.first.voicedBy, 'smith');
   });
 
-  test('takes a card off the canvas even while another is read in its voice', () async {
-    await drawLink(voiceOf('smith'), readBy('guard'));
+  test('takes a card off the canvas even while it speaks for another', () async {
+    await drawLink(voiceOf('guard'), readBy('smith'));
 
     graph.add(const PipelineCharacterRemoved('smith'));
     await pumpEvents();
@@ -266,23 +279,29 @@ void main() {
       isNull,
       reason: 'asked to go, it goes, link or no link',
     );
-    // Nothing is drawn into the reader socket rather than a line out of the
-    // voice node: the card still says whose voice reads it on its own face,
-    // and a line from the pipeline's voice would say nobody did.
-    expect(graph.state.graph.linkInto(readBy('guard')), isNull);
     expect(
       cubits.characters.state.characters.firstWhere((value) => value.id == 'guard').voicedBy,
       'smith',
       reason: 'taking a card off the canvas is not taking the voice away',
+    );
+    // With nowhere on the canvas for the part to go, it goes to the mix, and
+    // the card says whose voice reads it on its own face.
+    expect(
+      graph.state.graph.links.any(
+        (link) =>
+            link.from == voiceOf('guard') &&
+            link.to == const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
+      ),
+      isTrue,
     );
 
     graph.add(const PipelineCharacterPlaced('smith'));
     await pumpEvents();
 
     expect(
-      graph.state.graph.linkInto(readBy('guard'))?.from,
-      voiceOf('smith'),
-      reason: 'put back, it reads them again',
+      graph.state.graph.linkInto(readBy('smith'))?.from,
+      voiceOf('guard'),
+      reason: 'put back, it speaks for them again',
     );
   });
 }

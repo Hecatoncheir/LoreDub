@@ -2529,6 +2529,31 @@ void main() {
       expect(find.text('Язык перевода'), findsOneWidget);
     });
 
+    testWidgets('renames a character from the node it is drawn as', (tester) async {
+      final cubits = await pumpGraph(tester);
+
+      cubits.graph.add(PipelineNodeSelected(PipelineNodeIds.character('guard')));
+      await tester.pumpAndSettle();
+
+      final field = find.descendant(
+        of: find.byType(PipelineInspector),
+        matching: find.byKey(const ValueKey('graph-name-guard')),
+      );
+      expect(field, findsOneWidget);
+
+      await tester.enterText(field, 'Часовой');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(
+        cubits.characters.state.characters.firstWhere((value) => value.id == 'guard').name,
+        'Часовой',
+      );
+      // The node is drawn from the cast, so its own header follows at once.
+      expect(find.text('Часовой'), findsWidgets);
+      expect(find.text('Стражник'), findsNothing);
+    });
+
     testWidgets('gives the panel buttons room for what they are called', (tester) async {
       final cubits = await pumpGraph(tester);
 

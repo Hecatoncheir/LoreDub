@@ -37,7 +37,10 @@ abstract final class NodeMetrics {
 
   /// How many port rows a node of this kind has.
   static int rowsOf(PipelineNodeKind kind) => switch (kind) {
-    PipelineNodeKind.source || PipelineNodeKind.voice || PipelineNodeKind.mix => 2,
+    PipelineNodeKind.source ||
+    PipelineNodeKind.voice ||
+    PipelineNodeKind.mix ||
+    PipelineNodeKind.character => 2,
     _ => 1,
   };
 
@@ -61,7 +64,8 @@ abstract final class NodeMetrics {
     PipelineSocket.mixOut => Offset(width, rowCentre(0)),
     PipelineSocket.mixCast => Offset(0, rowCentre(1)),
     PipelineSocket.streamIn => Offset(0, rowCentre(0)),
-    PipelineSocket.readBy => Offset(0, rowCentre(0)),
+    PipelineSocket.characterIn => Offset(0, rowCentre(0)),
+    PipelineSocket.readBy => Offset(0, rowCentre(1)),
     PipelineSocket.characterVoice => Offset(characterWidth, rowCentre(0)),
   };
 
@@ -768,7 +772,8 @@ class _NodeCard extends StatelessWidget {
     ],
     PipelineNodeKind.output => [_PortRow(left: l10n.pipelineSocketAudio)],
     PipelineNodeKind.character => [
-      _PortRow(left: l10n.pipelineSocketReadBy, right: l10n.pipelineSocketVoice),
+      _PortRow(left: l10n.pipelineSocketCharacter, right: l10n.pipelineSocketVoice),
+      _PortRow(left: l10n.pipelineSocketVoice),
     ],
   };
 

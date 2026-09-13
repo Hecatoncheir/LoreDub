@@ -1004,7 +1004,7 @@
   "pipelineSocketText": "Text",
   "pipelineSocketAudio": "Audio",
   "pipelineSocketCast": "Characters",
-  "pipelineSocketReadBy": "Read by",
+  "pipelineSocketCharacter": "Character",
   "pipelineSocketVoice": "Voice",
   "pipelineBypassed": "bypassed",
   "pipelineUnrouted": "not routed",

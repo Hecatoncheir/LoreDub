@@ -1004,7 +1004,7 @@
   "pipelineSocketText": "Текст",
   "pipelineSocketAudio": "Аудио",
   "pipelineSocketCast": "Персонажи",
-  "pipelineSocketReadBy": "Читает",
+  "pipelineSocketCharacter": "Персонаж",
   "pipelineSocketVoice": "Голос",
   "pipelineBypassed": "в обход",
   "pipelineUnrouted": "не подключено",

@@ -86,8 +86,10 @@ enum PipelineSocket {
   voiceIn(PipelineNodeKind.voice, PipelineSignal.text, true),
   voiceAudio(PipelineNodeKind.voice, PipelineSignal.audio, false),
 
-  /// The voice the pipeline reads a character in while nobody replaces them.
+  /// The cast the dubbing reads: it reaches every card on the canvas, which
+  /// is the one socket of theirs that is never empty.
   voiceCast(PipelineNodeKind.voice, PipelineSignal.voice, false),
+
   mixIn(PipelineNodeKind.mix, PipelineSignal.audio, true),
 
   /// Every voice the scheduler puts in order, the cast's included. It takes
@@ -96,9 +98,18 @@ enum PipelineSocket {
   mixOut(PipelineNodeKind.mix, PipelineSignal.audio, false),
   streamIn(PipelineNodeKind.output, PipelineSignal.audio, true),
 
-  /// Whose voice this character is read in. One link only: a card is read
-  /// by the pipeline or by one other card, never by two.
+  /// The card itself, as the dubbing knows it. Filled for every card drawn:
+  /// this is where it joins the pipeline.
+  characterIn(PipelineNodeKind.character, PipelineSignal.voice, true),
+
+  /// The parts this card speaks besides its own: a line arriving here is
+  /// another character whose lines this one takes over. Nothing has to
+  /// arrive — a card that stands in for nobody speaks only itself — and
+  /// several may, one voice being able to take more than one part.
   readBy(PipelineNodeKind.character, PipelineSignal.voice, true),
+
+  /// Where this character's lines leave for: into the mix, spoken by this
+  /// card itself, or into another card, which speaks them in its place.
   characterVoice(PipelineNodeKind.character, PipelineSignal.voice, false);
 
   const PipelineSocket(this.owner, this.signal, this.isInput);
@@ -500,17 +511,27 @@ PipelineGraph buildPipelineGraph({
       PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixOut),
       PipelinePort(PipelineNodeIds.output, PipelineSocket.streamIn),
     ),
-    // Every card sends its lines on to be put in order with the rest, which
-    // is why a character on the canvas is part of the path rather than an
-    // island beside it.
+    // The cast reaches every card that is drawn: this is where a character
+    // joins the pipeline, whoever ends up speaking them.
+    for (final id in placed)
+      PipelineLink(
+        const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
+        PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterIn),
+      ),
+    // A card's lines leave it one way only: into the card that speaks for
+    // it, which carries them on to the mix, or into the mix itself when it
+    // speaks for itself.
     for (final id in placed)
       PipelineLink(
         PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterVoice),
-        const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
+        switch (_spokenBy(id, byId, placed)) {
+          final reader? => PipelinePort(
+            PipelineNodeIds.character(reader),
+            PipelineSocket.readBy,
+          ),
+          _ => const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
+        },
       ),
-    for (final id in placed)
-      if (_readerOf(id, byId, placed) case final from?)
-        PipelineLink(from, PipelinePort(PipelineNodeIds.character(id), PipelineSocket.readBy)),
   ];
 
   return PipelineGraph(
@@ -525,22 +546,16 @@ PipelineGraph buildPipelineGraph({
   );
 }
 
-/// Where the line into a card's reader socket comes from: the card that
-/// reads it, or the pipeline's own voice when nobody does.
+/// The card that speaks [id]'s lines in its place, when that card is drawn
+/// beside it.
 ///
-/// Nothing at all when the reader is one of the player's characters but is
-/// not on the canvas. The card says whose voice it is read in on its own
-/// face, so an empty socket is the truth; a line drawn from the voice node
-/// would say nobody had replaced them.
-PipelinePort? _readerOf(String id, Map<String, Character> byId, List<String> placed) {
+/// Nothing when [id] speaks for itself, and nothing when the card standing
+/// in for it is off the canvas: there is nowhere on the canvas for the line
+/// to run, so it runs to the mix, and the card says whose voice reads it on
+/// its own face.
+String? _spokenBy(String id, Map<String, Character> byId, List<String> placed) {
   final reader = byId[id]?.voicedBy;
-  if (reader == null || !byId.containsKey(reader)) {
-    return const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast);
-  }
-  if (placed.contains(reader)) {
-    return PipelinePort(PipelineNodeIds.character(reader), PipelineSocket.characterVoice);
-  }
-  return null;
+  return reader != null && placed.contains(reader) ? reader : null;
 }
 
 /// The cards the canvas draws: the ones the player put there, and only
@@ -552,15 +567,16 @@ List<String> _placedCharacters(List<String> placed, Map<String, Character> byId)
     for (final id in placed)
       if (byId.containsKey(id)) id,
   ];
-  // A card is drawn after the voice that reads it, so the link between them
-  // runs the way every other one does: out of the right edge, into the left.
+  // The card that speaks for another is drawn after it, so the line between
+  // them runs the way every other one does: out of the right edge of the
+  // part, into the left of whoever takes it over.
   for (final id in [...drawn]) {
     final reader = byId[id]?.voicedBy;
     if (reader == null) continue;
     final at = drawn.indexOf(reader);
-    if (at < 0 || at < drawn.indexOf(id)) continue;
+    if (at < 0 || at > drawn.indexOf(id)) continue;
     drawn.removeAt(at);
-    drawn.insert(drawn.indexOf(id), reader);
+    drawn.insert(drawn.indexOf(id) + 1, reader);
   }
   return drawn;
 }
@@ -648,13 +664,11 @@ GraphConnection proposeConnection(
     (PipelineSocket.screenText, PipelineSocket.translationIn) => const RouteConnection(
       CaptureMode.ocr,
     ),
-    (PipelineSocket.voiceCast, PipelineSocket.readBy) => ReaderConnection(
-      PipelineNodeIds.characterOf(to.nodeId) ?? '',
-      null,
-    ),
+    // The line runs from the character whose part it is to the card that
+    // will speak it: what travels the wire is the part, not the timbre.
     (PipelineSocket.characterVoice, PipelineSocket.readBy) => _readerConnection(
-      reader: PipelineNodeIds.characterOf(from.nodeId) ?? '',
-      character: PipelineNodeIds.characterOf(to.nodeId) ?? '',
+      character: PipelineNodeIds.characterOf(from.nodeId) ?? '',
+      reader: PipelineNodeIds.characterOf(to.nodeId) ?? '',
       characters: characters,
     ),
     _ => const RefusedConnection(ConnectionRefusal.unsupported),
@@ -688,5 +702,6 @@ GraphConnection proposeDisconnect(PipelineLink link) {
       link.from.socket != PipelineSocket.characterVoice) {
     return const RefusedConnection(ConnectionRefusal.unsupported);
   }
-  return ReaderConnection(PipelineNodeIds.characterOf(link.to.nodeId) ?? '', null);
+  // The card whose part it was takes it back and speaks for itself again.
+  return ReaderConnection(PipelineNodeIds.characterOf(link.from.nodeId) ?? '', null);
 }

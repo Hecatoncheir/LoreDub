@@ -1494,7 +1494,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineSocketCast => 'Персонажи';
 
   @override
-  String get pipelineSocketReadBy => 'Читает';
+  String get pipelineSocketCharacter => 'Персонаж';
 
   @override
   String get pipelineSocketVoice => 'Голос';

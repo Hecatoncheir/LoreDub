@@ -92,18 +92,38 @@ void main() {
   });
 
   group('the cast on the canvas', () {
-    test('reads a card in the pipeline voice while nobody replaces it', () {
+    test('takes nothing in while nobody lends the card a voice', () {
       final graph = buildPipelineGraph(
         settings: const AppSettings(),
         characters: const [guard],
         layout: const PipelineLayout(characters: ['guard']),
       );
 
+      // The cast reaches every card that is drawn: that socket is the one
+      // that is never empty.
+      expect(
+        graph
+            .linkInto(
+              PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+            )
+            ?.from,
+        const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
+      );
+
+      // The socket takes a voice but does not ask for one: read in its own,
+      // a card has nothing arriving, and that is what says so.
+      expect(
+        graph.linkInto(
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.readBy),
+        ),
+        isNull,
+      );
+      // Its own voice goes on to the mix, which is its one way out.
       expect(
         joined(
           graph,
-          const PipelinePort(voice, PipelineSocket.voiceCast),
-          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.readBy),
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
+          const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
         ),
         isTrue,
       );
@@ -151,22 +171,66 @@ void main() {
         ),
         isNull,
       );
-    });
-
-    test('runs the pipeline voice into a card nobody was given away to', () {
-      final graph = buildPipelineGraph(
-        settings: const AppSettings(),
-        characters: const [
-          Character(id: 'guard', name: 'Стражник', vector: [0.2]),
-        ],
-        layout: const PipelineLayout(characters: ['guard']),
-      );
-
+      // It lends its voice to nobody who is drawn, so its own way out is
+      // the mix, as it would be for a card nobody replaced.
       expect(
         joined(
           graph,
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
+          const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
+        ),
+        isTrue,
+      );
+    });
+
+    test('lets a lent voice out one way only', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [
+          Character(id: 'guard', name: 'Стражник', vector: [0.2], voicedBy: 'smith'),
+          smith,
+        ],
+        layout: const PipelineLayout(characters: ['guard', 'smith']),
+      );
+
+      // Both cards are in the cast whoever reads whom.
+      for (final id in ['guard', 'smith']) {
+        expect(
+          graph
+              .linkInto(
+                PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterIn),
+              )
+              ?.from,
           const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
-          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.readBy),
+          reason: id,
+        );
+      }
+
+      final part = PipelinePort(
+        PipelineNodeIds.character('guard'),
+        PipelineSocket.characterVoice,
+      );
+      // Into the card it reads, and nowhere else: that card carries it on.
+      expect(graph.links.where((link) => link.from == part).length, 1);
+      expect(
+        joined(
+          graph,
+          part,
+          PipelinePort(PipelineNodeIds.character('smith'), PipelineSocket.readBy),
+        ),
+        isTrue,
+      );
+      expect(
+        joined(graph, part, const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast)),
+        isFalse,
+        reason: 'it is spoken by the other card, which carries it on',
+      );
+      // And that card is the one the mix hears.
+      expect(
+        joined(
+          graph,
+          PipelinePort(PipelineNodeIds.character('smith'), PipelineSocket.characterVoice),
+          const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
         ),
         isTrue,
       );
@@ -239,7 +303,7 @@ void main() {
       expect(
         (proposeConnection(
           graph,
-          const PipelinePort(voice, PipelineSocket.voiceCast),
+          const PipelinePort(voice, PipelineSocket.voiceAudio),
           const PipelinePort(voice, PipelineSocket.voiceIn),
         ) as RefusedConnection).reason,
         ConnectionRefusal.sameNode,
@@ -265,8 +329,10 @@ void main() {
       );
 
       expect(connection, isA<ReaderConnection>());
-      expect((connection as ReaderConnection).characterId, 'guard');
-      expect(connection.readerId, 'smith');
+      // The line runs out of the card whose part it is and into the card
+      // that will speak it: «Кузнец» is read by «Стражник», not the reverse.
+      expect((connection as ReaderConnection).characterId, 'smith');
+      expect(connection.readerId, 'guard');
     });
 
     test('is refused when two cards would read each other', () {
@@ -279,8 +345,8 @@ void main() {
 
       final connection = proposeConnection(
         graph,
-        PipelinePort(PipelineNodeIds.character('smith'), PipelineSocket.characterVoice),
-        PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.readBy),
+        PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
+        PipelinePort(PipelineNodeIds.character('smith'), PipelineSocket.readBy),
         characters: const [guard, given],
       );
 
@@ -295,11 +361,15 @@ void main() {
         layout: const PipelineLayout(characters: ['guard', 'smith']),
       );
 
-      final connection = proposeConnection(
-        graph,
-        const PipelinePort(voice, PipelineSocket.voiceCast),
-        PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.readBy),
-        characters: const [given, smith],
+      // The voice comes back by cutting the line that lent it, there being
+      // nothing to draw from: a card reads in its own voice when its socket
+      // is empty.
+      final connection = proposeDisconnect(
+        graph.links.firstWhere(
+          (link) =>
+              link.from ==
+              PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
+        ),
       );
 
       expect((connection as ReaderConnection).characterId, 'guard');
@@ -329,7 +399,7 @@ void main() {
         ),
       );
 
-      expect((connection as ReaderConnection).characterId, 'guard');
+      expect((connection as ReaderConnection).characterId, 'smith');
       expect(connection.readerId, isNull);
     });
 

@@ -2571,11 +2571,11 @@ abstract class AppLocalizations {
   /// **'Персонажи'**
   String get pipelineSocketCast;
 
-  /// No description provided for @pipelineSocketReadBy.
+  /// No description provided for @pipelineSocketCharacter.
   ///
   /// In ru, this message translates to:
-  /// **'Читает'**
-  String get pipelineSocketReadBy;
+  /// **'Персонаж'**
+  String get pipelineSocketCharacter;
 
   /// No description provided for @pipelineSocketVoice.
   ///
