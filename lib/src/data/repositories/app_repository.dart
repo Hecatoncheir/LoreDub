@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import '../../domain/app_settings.dart';
+import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
+import '../services/character_service.dart';
 import '../services/native_engine_service.dart';
 import '../services/python_discovery.dart';
 import '../services/settings_service.dart';
@@ -15,13 +17,28 @@ class AppRepository {
     this._settingsService, [
     PythonDiscovery? pythonDiscovery,
     VoiceBankService? voiceBank,
+    CharacterService? characters,
   ]) : _pythonDiscovery = pythonDiscovery ?? PythonDiscovery(),
-       _voiceBank = voiceBank ?? VoiceBankService();
+       _voiceBank = voiceBank ?? VoiceBankService(),
+       _characters = characters ?? CharacterService();
 
   final NativeEngineService _nativeEngine;
   final SettingsService _settingsService;
   final PythonDiscovery _pythonDiscovery;
   final VoiceBankService _voiceBank;
+  final CharacterService _characters;
+
+  /// The characters the player recorded and named. They belong to the player
+  /// rather than to one game, so every session is handed the same file.
+  Future<CharacterLibrary> loadCharacters() => _characters.load();
+  Future<void> saveCharacters(CharacterLibrary library) => _characters.save(library);
+  Future<String> charactersFile() => _characters.file();
+
+  Future<void> exportCharacters(String destination, CharacterLibrary library) =>
+      _characters.exportTo(destination, library);
+
+  Future<CharacterLibrary> readCharacterFiles(List<String> sources) =>
+      _characters.readFiles(sources);
 
   Future<PythonDiscoveryResult> findPythonExecutable() => _pythonDiscovery.find();
 
@@ -100,6 +117,8 @@ class AppRepository {
         'voiceConversionBackend': voiceConversionBackend.name,
         'runtimeDirectory': runtimeDirectory,
         'voiceBank': ?voiceBank,
+        // The player's own characters speak in every game.
+        'characters': await _characters.file(),
       });
       await _duck(process, settings);
       _sessionProcess = process;
@@ -139,6 +158,7 @@ class AppRepository {
         'translationPrefix': translationPrefix,
         'translationBackend': translationBackend.name,
         'runtimeDirectory': runtimeDirectory,
+        'characters': await _characters.file(),
       });
       _nativeEngine.setHotkeys(
         snapshot: settings.snapshotHotkey,
@@ -149,6 +169,38 @@ class AppRepository {
       rethrow;
     }
   }
+
+  /// Starts the session the characters screen records with: the game's audio
+  /// and the converter that measures a voice, without the translator or the
+  /// speech model, which would cost a minute this screen does not need.
+  Future<void> startCharacterVoices({
+    required GameProcess? process,
+    required AppSettings settings,
+    required String converterDirectory,
+    required ComputeBackend converterBackend,
+    required String runtimeDirectory,
+  }) async {
+    try {
+      await _nativeEngine.startCharacters({
+        'processId': process?.pid ?? 0,
+        'captureMode': CaptureMode.audio.name,
+        'audioSource': settings.audioCaptureSource.name,
+        'cpuThreads': settings.cpuThreads,
+        'pythonExecutable': settings.pythonExecutable,
+        'models': {'converter': converterDirectory},
+        'voiceConversionBackend': converterBackend.name,
+        'runtimeDirectory': runtimeDirectory,
+      });
+    } catch (_) {
+      await _nativeEngine.stop();
+      rethrow;
+    }
+  }
+
+  /// Whether what the game says is being measured for a character's card.
+  /// Between recordings the captured audio is thrown away.
+  void recordCharacterVoice({required bool recording}) =>
+      _nativeEngine.setRecordingVoice(recording: recording);
 
   /// What the running session was started with, so a resume can turn the
   /// game down again exactly as the start did.

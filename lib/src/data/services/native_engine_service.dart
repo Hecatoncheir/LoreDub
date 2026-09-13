@@ -57,6 +57,14 @@ class NativeEngineService {
   /// finishing its translation meanwhile is shown but not voiced.
   bool _paused = false;
 
+  /// Set while the characters screen holds the session: captured audio is
+  /// measured for a card rather than recognized and voiced.
+  bool _charactersSession = false;
+
+  /// Whether a card is recording right now. Between recordings what the game
+  /// says is thrown away.
+  bool _recordingVoice = false;
+
   /// What subtitle mode read last, so a line that grows in place is voiced
   /// only for what it gained, and one that comes back unchanged — even after
   /// leaving the screen — is not voiced again.
@@ -120,6 +128,7 @@ class NativeEngineService {
       voiceConverter: models['converter'],
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
       voiceBank: config['voiceBank'] as String?,
+      characters: config['characters'] as String?,
     );
     // What the worker settled on, which is not always what it was asked for.
     if (_inference.translationBackend case final actual?) {
@@ -171,6 +180,9 @@ class NativeEngineService {
       translationPrefix: config['translationPrefix'] as String? ?? '',
       translationBackend: _backendFrom(config['translationBackend']),
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+      voiceConverter: (config['models']! as Map<String, String>)['converter'],
+      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+      characters: config['characters'] as String?,
     );
     if (_inference.translationBackend case final actual?) {
       _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
@@ -184,11 +196,54 @@ class NativeEngineService {
     _events.add({'type': 'state', 'state': 'listening'});
   }
 
+  /// Starts the session the characters screen records through: the game's
+  /// audio and the converter that measures a voice, with neither the
+  /// translator nor the speech model loaded.
+  Future<void> startCharacters(Map<String, Object?> config) async {
+    _paused = false;
+    _charactersSession = true;
+    _recordingVoice = false;
+    await LocalInferenceService.removeStaleAudio();
+    final models = config['models']! as Map<String, String>;
+    await _inference.start(
+      embedOnly: true,
+      threads: config['cpuThreads']! as int,
+      speed: 1,
+      pythonExecutable: config['pythonExecutable']! as String,
+      requiresWhisper: false,
+      voiceConverter: models['converter'],
+      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+    );
+    final work = await LocalInferenceService.createWorkDirectory();
+    final capture = Directory('${work.path}${Platform.pathSeparator}capture');
+    await capture.create(recursive: true);
+    _activeConfig = {...config, 'captureDirectory': capture.path};
+    final pointer = jsonEncode(_activeConfig).toNativeUtf8();
+    try {
+      _throwIfError(ld_start(pointer.cast()));
+    } catch (_) {
+      await _inference.stop();
+      rethrow;
+    } finally {
+      malloc.free(pointer);
+    }
+    _pollTimer ??= Timer.periodic(
+      const Duration(milliseconds: 80),
+      (_) => _pollEvents(),
+    );
+  }
+
+  /// Whether what the game says is measured for a card, or thrown away.
+  void setRecordingVoice({required bool recording}) => _recordingVoice = recording;
+
   Future<void> stop() async {
     // Cleared first: segments captured moments ago are still travelling
     // through the queue, and failing them is expected once the user stops.
     _activeConfig = null;
     _paused = false;
+    _charactersSession = false;
+    _recordingVoice = false;
     _previousOcrText = null;
     // ld_stop drops the hotkeys too; nothing is left for them to pause.
     _throwIfError(ld_stop());
@@ -267,8 +322,8 @@ class NativeEngineService {
       if (event['type'] == 'audioSegment') {
         final wavePath = event['path']! as String;
         // A segment queued a moment before the pause is dropped like one
-        // captured during it.
-        if (_activeConfig == null || _paused) {
+        // captured during it, and so is everything heard between recordings.
+        if (_activeConfig == null || _paused || (_charactersSession && !_recordingVoice)) {
           unawaited(_deleteIfPresent(wavePath));
           continue;
         }
@@ -299,7 +354,28 @@ class NativeEngineService {
         : _processOcrText(phrase.text!, snapshot: phrase.snapshot);
   }
 
+  /// Measures a recorded voice for a character's card and hands it over; the
+  /// characters screen keeps the clearest one it hears.
+  Future<void> _measureVoice(String wavePath) async {
+    try {
+      final heard = await _inference.fingerprint(wavePath);
+      if (heard.vector.isEmpty) return;
+      _events.add({
+        'type': 'characterVoice',
+        'vector': heard.vector,
+        'gender': heard.gender,
+        'seconds': heard.seconds,
+      });
+    } catch (error) {
+      _reportFailure(error);
+    } finally {
+      await _deleteIfPresent(wavePath);
+    }
+  }
+
   Future<void> _processSegment(String wavePath) async {
+    // The characters screen listens for a voice, not for a phrase.
+    if (_charactersSession) return _measureVoice(wavePath);
     // Two characters answering each other without a pause land in one
     // segment; each of their halves earns its own recognition and voice.
     for (final piece in await _splitBySpeaker(wavePath)) {

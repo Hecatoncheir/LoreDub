@@ -19,6 +19,179 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navSnapshot => 'Фрагмент';
 
   @override
+  String get navCharacters => 'Персонажи';
+
+  @override
+  String get titleCharacters => 'Голоса персонажей';
+
+  @override
+  String get charactersNote =>
+      'Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом.';
+
+  @override
+  String get charactersHowTo =>
+      'Запустите запись, выберите процесс игры — и записывайте голоса по очереди.';
+
+  @override
+  String get charactersNeedsConverter =>
+      'Нужен конвертер голоса: скачайте его в разделе «Голос оригинала» на экране «Модели».';
+
+  @override
+  String get charactersSessionStart => 'Запустить запись';
+
+  @override
+  String get charactersSessionStop => 'Остановить запись';
+
+  @override
+  String get charactersAdd => 'Добавить';
+
+  @override
+  String get charactersImport => 'Импорт';
+
+  @override
+  String get charactersExport => 'Экспорт';
+
+  @override
+  String get charactersExportHint => 'Сохранить карточку в файл';
+
+  @override
+  String get charactersExportAll => 'Выгрузить всех';
+
+  @override
+  String get charactersNewName => 'Новый персонаж';
+
+  @override
+  String get charactersNameLabel => 'Имя персонажа';
+
+  @override
+  String get charactersEmpty => 'Пока ни одного персонажа. Нажмите «Добавить» и запишите голос.';
+
+  @override
+  String get charactersRecord => 'Записать голос';
+
+  @override
+  String get charactersRecordStop => 'Остановить';
+
+  @override
+  String get charactersRecording => 'Идёт запись — пусть персонаж говорит';
+
+  @override
+  String charactersHeard(String seconds) {
+    return 'Записано $seconds с';
+  }
+
+  @override
+  String get charactersNoVoice => 'Голос ещё не записан';
+
+  @override
+  String charactersVoiceKept(String seconds, String gender) {
+    return 'Голос записан · $seconds с · $gender';
+  }
+
+  @override
+  String get charactersGenderUnknown => 'пол не определён';
+
+  @override
+  String get charactersDelete => 'Удалить персонажа';
+
+  @override
+  String get charactersDeleteTitle => 'Удалить персонажа?';
+
+  @override
+  String charactersDeleteMessage(String name) {
+    return 'Карточка «$name» и записанный голос будут удалены.';
+  }
+
+  @override
+  String get charactersDeleteConfirm => 'Удалить';
+
+  @override
+  String get charactersDeleteCancel => 'Отмена';
+
+  @override
+  String charactersImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Добавлено $count персонажей',
+      few: 'Добавлено $count персонажа',
+      one: 'Добавлен $count персонаж',
+      zero: 'Ни одного персонажа не добавлено',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String charactersInPacks(String packs) {
+    return 'В пакетах: $packs';
+  }
+
+  @override
+  String get packsAdd => 'Создать пакет';
+
+  @override
+  String get packsNewName => 'Новый пакет';
+
+  @override
+  String get packsNameLabel => 'Название пакета';
+
+  @override
+  String get packsEmpty =>
+      'Пакетов пока нет. Создайте пакет и перетащите в него карточки — так набор персонажей можно передать одним файлом.';
+
+  @override
+  String get packsDropHint => 'Перетащите сюда карточки персонажей.';
+
+  @override
+  String get packsExportHint => 'Сохранить пакет в файл';
+
+  @override
+  String get packsDelete => 'Удалить пакет';
+
+  @override
+  String get packsRemoveMember => 'Убрать из пакета';
+
+  @override
+  String packsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count персонажей',
+      few: '$count персонажа',
+      one: '$count персонаж',
+      zero: 'пусто',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get packsDeleteTitle => 'Удалить пакет?';
+
+  @override
+  String packsDeleteMessage(String name) {
+    return 'Пакет «$name» будет удалён. Персонажи останутся в общем списке.';
+  }
+
+  @override
+  String packsImported(int packs, int characters) {
+    String _temp0 = intl.Intl.pluralLogic(
+      packs,
+      locale: localeName,
+      other: 'Добавлено $packs пакетов',
+      few: 'Добавлено $packs пакета',
+      one: 'Добавлен $packs пакет',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      characters,
+      locale: localeName,
+      other: '$characters персонажей',
+      few: '$characters персонажа',
+      one: '$characters персонаж',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
   String get navModels => 'Модели';
 
   @override
@@ -209,6 +382,21 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String failureHotkeyTaken(String action) {
     return 'Сочетание для «$action» уже занято другой программой — назначьте другое в настройках.';
+  }
+
+  @override
+  String failureCharactersSaveFailed(String detail) {
+    return 'Не удалось сохранить персонажей: $detail';
+  }
+
+  @override
+  String failureCharactersExportFailed(String detail) {
+    return 'Не удалось выгрузить карточку: $detail';
+  }
+
+  @override
+  String failureCharactersImportFailed(String detail) {
+    return 'В файле «$detail» нет персонажей LoreDub.';
   }
 
   @override

@@ -9,6 +9,7 @@ import '../../../data/repositories/runtime_repository.dart';
 import '../../../data/repositories/update_repository.dart';
 import '../../../domain/failure.dart';
 import '../../../domain/model_selection.dart';
+import 'characters_cubit.dart';
 import 'downloads_cubit.dart';
 import 'pipeline_cubit.dart';
 import 'settings_cubit.dart';
@@ -30,6 +31,7 @@ class DashboardCubits {
     settings = SettingsCubit(appRepository, shell);
     downloads = DownloadsCubit(modelRepository, runtimeRepository, settings, shell);
     pipeline = PipelineCubit(appRepository, modelRepository, settings, downloads, shell);
+    characters = CharactersCubit(appRepository, modelRepository, settings, downloads, shell);
     shell.interfaceLanguage = () => settings.settings.interfaceLanguage;
     shell.proxyUrl = () => settings.settings.modelProxyUrl;
     // Closing for an update must not leave the game turned down.
@@ -43,6 +45,11 @@ class DashboardCubits {
   late final SettingsCubit settings;
   late final DownloadsCubit downloads;
   late final PipelineCubit pipeline;
+  late final CharactersCubit characters;
+
+  /// The session events reach both the pipeline and the characters screen:
+  /// each holds the worker in its turn, and only one of them at a time.
+  StreamSubscription<Map<String, Object?>>? _events;
 
   /// What the settings and the installed packages together decided.
   ModelSelection get selection =>
@@ -50,9 +57,15 @@ class DashboardCubits {
 
   Future<void> initialize() async {
     pipeline.listen();
+    _events = _appRepository.events.listen(characters.handleEvent);
     try {
       final graphics = _appRepository.probeGraphics();
-      await Future.wait([settings.load(), pipeline.loadProcesses(), downloads.load()]);
+      await Future.wait([
+        settings.load(),
+        pipeline.loadProcesses(),
+        downloads.load(),
+        characters.load(),
+      ]);
       await downloads.refreshAvailability(probe: await graphics);
     } catch (exception) {
       shell.report(LoreDubFailure(FailureCode.initializationFailed, detail: '$exception'));
@@ -65,6 +78,8 @@ class DashboardCubits {
   }
 
   Future<void> dispose() async {
+    await _events?.cancel();
+    await characters.close();
     await pipeline.close();
     await downloads.close();
     await settings.close();

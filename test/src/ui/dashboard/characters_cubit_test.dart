@@ -1,0 +1,284 @@
+// Copyright (c) 2026 LoreDub contributors.
+// SPDX-License-Identifier: MIT
+
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/model_repository.dart';
+import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
+import 'package:lore_dub/src/data/repositories/update_repository.dart';
+import 'package:lore_dub/src/data/services/model_storage_service.dart';
+import 'package:lore_dub/src/data/services/native_engine_service.dart';
+import 'package:lore_dub/src/data/services/notification_service.dart';
+import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
+import 'package:lore_dub/src/data/services/settings_service.dart';
+import 'package:lore_dub/src/data/services/update_service.dart';
+import 'package:lore_dub/src/domain/character.dart';
+import 'package:lore_dub/src/domain/pipeline_state.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late _CastRepository repository;
+  late DashboardCubits cubits;
+  late CharactersCubit characters;
+
+  setUp(() {
+    repository = _CastRepository();
+    cubits = DashboardCubits(
+      repository,
+      ModelRepository(ModelStorageService()),
+      RuntimeRepository(RuntimeStorageService()),
+      UpdateRepository(
+        UpdateService(
+          client: MockClient((_) async => http.Response('offline', 503)),
+          // Read from the platform otherwise, which a unit test does not have.
+          packageInfo: Future.value(
+            PackageInfo(
+              appName: 'LoreDub',
+              packageName: 'lore_dub',
+              version: '0.15.0',
+              buildNumber: '20',
+            ),
+          ),
+        ),
+        NotificationService(plugin: FlutterLocalNotificationsPlugin()),
+      ),
+    );
+    characters = CharactersCubit(
+      repository,
+      ModelRepository(ModelStorageService()),
+      cubits.settings,
+      cubits.downloads,
+      cubits.shell,
+    );
+  });
+
+  tearDown(() async {
+    await characters.close();
+    await cubits.dispose();
+  });
+
+  const guard = Character(id: 'a1', name: 'Стражник', vector: [0.2, 0.4]);
+
+  test('adds a card, names it and throws it away again', () async {
+    final added = await characters.add('Новый персонаж');
+    expect(characters.state.characters.single.name, 'Новый персонаж');
+    expect(repository.stored.characters.single.id, added.id, reason: 'written, not only shown');
+
+    await characters.rename(added.id, 'Кузнец');
+    expect(repository.stored.characters.single.name, 'Кузнец');
+
+    await characters.remove(added.id);
+    expect(characters.state.characters, isEmpty);
+    expect(repository.stored.characters, isEmpty);
+  });
+
+  test('keeps the longest clear voice a recording heard', () async {
+    characters.seed(
+      const CharactersState(
+        loading: false,
+        status: PipelineStatus.listening,
+        characters: [guard],
+      ),
+    );
+
+    characters.startRecording('a1');
+    expect(repository.recordings, [true]);
+
+    // Too short to stand for anyone, then a clear line, then a shorter one.
+    characters.handleEvent({
+      'type': 'characterVoice',
+      'vector': [9.0],
+      'seconds': 0.8,
+    });
+    characters.handleEvent({
+      'type': 'characterVoice',
+      'vector': [0.7, 0.1],
+      'gender': 'male',
+      'seconds': 2.4,
+    });
+    characters.handleEvent({
+      'type': 'characterVoice',
+      'vector': [5.0],
+      'seconds': 1.9,
+    });
+
+    await characters.stopRecording();
+
+    expect(repository.recordings, [true, false]);
+    final kept = characters.state.characters.single;
+    expect(kept.vector, [0.7, 0.1]);
+    expect(kept.gender, 'male');
+    expect(kept.seconds, 2.4);
+  });
+
+  test('leaves the card alone when the recording heard nothing usable', () async {
+    characters.seed(
+      const CharactersState(
+        loading: false,
+        status: PipelineStatus.listening,
+        characters: [guard],
+      ),
+    );
+
+    characters.startRecording('a1');
+    characters.handleEvent({
+      'type': 'characterVoice',
+      'vector': [9.0],
+      'seconds': 0.5,
+    });
+    await characters.stopRecording();
+
+    expect(characters.state.characters.single.vector, [0.2, 0.4], reason: 'as it was');
+    expect(characters.state.recording, isFalse);
+  });
+
+  test('lays imported cards over the ones they came from', () async {
+    characters.seed(const CharactersState(loading: false, characters: [guard]));
+    repository.incoming = const CharacterLibrary(
+      characters: [
+        Character(id: 'a1', name: 'Стражник у ворот', vector: [0.9]),
+        Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
+      ],
+    );
+
+    final added = await characters.import(['cast.json']);
+
+    expect(added.characters, 2);
+    expect(characters.state.characters.map((character) => character.name), [
+      'Стражник у ворот',
+      'Кузнец',
+    ]);
+  });
+
+  test('collects cards into a pack and lets them out again', () async {
+    characters.seed(
+      const CharactersState(
+        loading: false,
+        characters: [
+          guard,
+          Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
+        ],
+      ),
+    );
+
+    final pack = await characters.addPack('Таверна');
+    await characters.addToPack(pack.id, 'a1');
+    await characters.addToPack(pack.id, 'b2');
+    // The same card dropped twice is in the pack once.
+    await characters.addToPack(pack.id, 'a1');
+
+    expect(characters.state.packs.single.characterIds, ['a1', 'b2']);
+    expect(repository.stored.packs.single.name, 'Таверна', reason: 'written, not only shown');
+
+    await characters.removeFromPack(pack.id, 'a1');
+
+    expect(characters.state.packs.single.characterIds, ['b2']);
+    expect(characters.state.characters.length, 2, reason: 'taken out of the pack, not the cast');
+  });
+
+  test('holds one card in as many packs as it was dropped into', () async {
+    characters.seed(const CharactersState(loading: false, characters: [guard]));
+
+    final tavern = await characters.addPack('Таверна');
+    final prologue = await characters.addPack('Пролог');
+    await characters.addToPack(tavern.id, 'a1');
+    await characters.addToPack(prologue.id, 'a1');
+
+    expect(characters.state.packs.map((pack) => pack.holds('a1')), [true, true]);
+  });
+
+  test('throwing a pack away leaves the cards it held', () async {
+    characters.seed(const CharactersState(loading: false, characters: [guard]));
+    final pack = await characters.addPack('Таверна');
+    await characters.addToPack(pack.id, 'a1');
+
+    await characters.removePack(pack.id);
+
+    expect(characters.state.packs, isEmpty);
+    expect(characters.state.characters.single.name, 'Стражник');
+    expect(repository.stored.characters, hasLength(1));
+  });
+
+  test('a deleted card leaves the packs that held it', () async {
+    characters.seed(const CharactersState(loading: false, characters: [guard]));
+    final pack = await characters.addPack('Таверна');
+    await characters.addToPack(pack.id, 'a1');
+
+    await characters.remove('a1');
+
+    expect(characters.state.packs.single.characterIds, isEmpty);
+  });
+
+  test('an imported pack brings its cards into the cast', () async {
+    characters.seed(const CharactersState(loading: false));
+    repository.incoming = const CharacterLibrary(
+      characters: [
+        Character(id: 'c3', name: 'Трактирщик', vector: [0.4]),
+        Character(id: 'd4', name: 'Бард', vector: [0.6]),
+      ],
+      packs: [
+        CharacterPack(id: 'p1', name: 'Таверна', characterIds: ['c3', 'd4']),
+      ],
+    );
+
+    final added = await characters.import(['tavern.json']);
+
+    expect((added.packs, added.characters), (1, 2));
+    expect(characters.state.characters.map((character) => character.name), [
+      'Трактирщик',
+      'Бард',
+    ]);
+    expect(characters.state.packs.single.characterIds, ['c3', 'd4']);
+  });
+
+  test('names the cards a pack holds, in the order they were dropped in', () {
+    const smith = Character(id: 'b2', name: 'Кузнец', vector: [0.3]);
+    const state = CharactersState(
+      loading: false,
+      characters: [guard, smith],
+      packs: [
+        CharacterPack(id: 'p1', name: 'Таверна', characterIds: ['b2', 'gone', 'a1']),
+      ],
+    );
+
+    expect(
+      state.membersOf(state.packs.single).map((character) => character.name),
+      ['Кузнец', 'Стражник'],
+      reason: 'an id no card answers to is passed over',
+    );
+  });
+}
+
+/// The characters on disk, without a disk.
+class _CastRepository extends AppRepository {
+  _CastRepository() : super(NativeEngineService(), SettingsService());
+
+  CharacterLibrary stored = CharacterLibrary.empty;
+  CharacterLibrary incoming = CharacterLibrary.empty;
+  final recordings = <bool>[];
+
+  @override
+  Future<CharacterLibrary> loadCharacters() async => stored;
+
+  @override
+  Future<void> saveCharacters(CharacterLibrary library) async => stored = library;
+
+  @override
+  Future<CharacterLibrary> readCharacterFiles(List<String> sources) async => incoming;
+
+  @override
+  void recordCharacterVoice({required bool recording}) => recordings.add(recording);
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  void dispose() {}
+}

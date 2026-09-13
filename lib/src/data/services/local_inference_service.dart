@@ -160,11 +160,16 @@ class LocalInferenceService {
   }
 
   Future<void> start({
-    required String translationModel,
+    /// Empty with [embedOnly], which loads neither.
+    String translationModel = '',
 
     /// Full path to the Silero model file: its name differs per language.
-    required String ttsModel,
-    required String speaker,
+    String ttsModel = '',
+
+    /// Load the voice converter and nothing else: the characters screen
+    /// measures a voice without waiting a minute for Marian and Silero.
+    bool embedOnly = false,
+    String speaker = '',
     required int threads,
     required double speed,
     required String pythonExecutable,
@@ -197,6 +202,10 @@ class LocalInferenceService {
     /// The game's voice bank file, when the converter is to remember the
     /// characters it meets rather than take each line's timbre afresh.
     String? voiceBank,
+
+    /// The characters the player recorded and named, which belong to every
+    /// game rather than one.
+    String? characters,
   }) async {
     _workerReady = Completer<void>();
     _converterDevice = null;
@@ -233,10 +242,9 @@ class LocalInferenceService {
       [
         '-u',
         workerFile.path,
-        '--translation-model',
-        translationModel,
-        '--tts-model',
-        ttsModel,
+        if (embedOnly) '--embed-only',
+        if (translationModel.isNotEmpty) ...['--translation-model', translationModel],
+        if (ttsModel.isNotEmpty) ...['--tts-model', ttsModel],
         '--speaker',
         speaker,
         '--work-directory',
@@ -268,6 +276,7 @@ class LocalInferenceService {
           voiceConversionBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
           if (revoice) '--revoice',
           if (voiceBank != null) ...['--voice-bank', voiceBank],
+          if (characters != null) ...['--characters', characters],
         ],
       ],
       environment: const {'PYTHONIOENCODING': 'utf-8'},
@@ -374,6 +383,41 @@ class LocalInferenceService {
     // The captured audio is still on disk here: the worker reads its pitch to
     // decide whose voice to answer in.
     return processText(english, originalWavePath: wavePath);
+  }
+
+  /// The voice in [wavePath], as a character's card keeps it: the
+  /// fingerprint, the gender it was heard as, and how long it ran.
+  Future<({List<double> vector, String? gender, double seconds})> fingerprint(
+    String wavePath,
+  ) async {
+    final worker = _worker;
+    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(jsonEncode({'id': id, 'fingerprint': wavePath}));
+    final response = await completer.future.timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
+    return (
+      vector: [
+        for (final value in response['vector'] as List<Object?>? ?? const [])
+          if (value is num) value.toDouble(),
+      ],
+      gender: response['gender'] as String?,
+      seconds: (response['seconds'] as num?)?.toDouble() ?? 0,
+    );
   }
 
   /// The seconds at which the voice in [wavePath] changes, so the caller can

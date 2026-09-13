@@ -3,6 +3,109 @@
   "appTitle": "LoreDub",
   "navLive": "Live",
   "navSnapshot": "Snippet",
+  "navCharacters": "Characters",
+  "titleCharacters": "Character voices",
+  "charactersNote": "A card remembers a character's voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them.",
+  "charactersHowTo": "Start the recording session, choose the game process, and record the voices one by one.",
+  "charactersNeedsConverter": "The voice converter is needed: download it in the Original voice section of the Models screen.",
+  "charactersSessionStart": "Start recording",
+  "charactersSessionStop": "Stop recording",
+  "charactersAdd": "Add",
+  "charactersImport": "Import",
+  "charactersExport": "Export",
+  "charactersExportHint": "Save the card to a file",
+  "charactersExportAll": "Export all",
+  "charactersNewName": "New character",
+  "charactersNameLabel": "Character name",
+  "charactersEmpty": "No characters yet. Press Add and record a voice.",
+  "charactersRecord": "Record the voice",
+  "charactersRecordStop": "Stop",
+  "charactersRecording": "Recording — let the character talk",
+  "charactersHeard": "{seconds} s recorded",
+  "@charactersHeard": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "charactersNoVoice": "No voice recorded yet",
+  "charactersVoiceKept": "Voice recorded · {seconds} s · {gender}",
+  "@charactersVoiceKept": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      },
+      "gender": {
+        "type": "String"
+      }
+    }
+  },
+  "charactersGenderUnknown": "gender undecided",
+  "charactersDelete": "Delete the character",
+  "charactersDeleteTitle": "Delete the character?",
+  "charactersDeleteMessage": "The card {name} and the voice recorded for it will be deleted.",
+  "@charactersDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "charactersDeleteConfirm": "Delete",
+  "charactersDeleteCancel": "Cancel",
+  "charactersImported": "{count, plural, =0{No characters added} one{{count} character added} other{{count} characters added}}",
+  "@charactersImported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "charactersInPacks": "In packs: {packs}",
+  "@charactersInPacks": {
+    "placeholders": {
+      "packs": {
+        "type": "String"
+      }
+    }
+  },
+  "packsAdd": "New pack",
+  "packsNewName": "New pack",
+  "packsNameLabel": "Pack name",
+  "packsEmpty": "No packs yet. Make one and drag cards into it — a cast collected that way is handed on as a single file.",
+  "packsDropHint": "Drag character cards here.",
+  "packsExportHint": "Save the pack to a file",
+  "packsDelete": "Delete the pack",
+  "packsRemoveMember": "Take out of the pack",
+  "packsCount": "{count, plural, =0{empty} one{{count} character} other{{count} characters}}",
+  "@packsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsDeleteTitle": "Delete the pack?",
+  "packsDeleteMessage": "The pack “{name}” will be deleted. Its characters stay in the cast.",
+  "@packsDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "packsImported": "{packs, plural, one{{packs} pack} other{{packs} packs}} · {characters, plural, one{{characters} character} other{{characters} characters}}",
+  "@packsImported": {
+    "placeholders": {
+      "packs": {
+        "type": "int"
+      },
+      "characters": {
+        "type": "int"
+      }
+    }
+  },
   "navModels": "Models",
   "navSettings": "Settings",
   "titleLive": "Game dubbing",
@@ -110,6 +213,30 @@
   "@failureHotkeyTaken": {
     "placeholders": {
       "action": {
+        "type": "String"
+      }
+    }
+  },
+  "failureCharactersSaveFailed": "The characters could not be saved: {detail}",
+  "@failureCharactersSaveFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureCharactersExportFailed": "The card could not be exported: {detail}",
+  "@failureCharactersExportFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureCharactersImportFailed": "The file {detail} holds no LoreDub characters.",
+  "@failureCharactersImportFailed": {
+    "placeholders": {
+      "detail": {
         "type": "String"
       }
     }

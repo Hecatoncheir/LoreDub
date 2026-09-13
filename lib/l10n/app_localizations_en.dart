@@ -19,6 +19,175 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSnapshot => 'Snippet';
 
   @override
+  String get navCharacters => 'Characters';
+
+  @override
+  String get titleCharacters => 'Character voices';
+
+  @override
+  String get charactersNote =>
+      'A card remembers a character\'s voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them.';
+
+  @override
+  String get charactersHowTo =>
+      'Start the recording session, choose the game process, and record the voices one by one.';
+
+  @override
+  String get charactersNeedsConverter =>
+      'The voice converter is needed: download it in the Original voice section of the Models screen.';
+
+  @override
+  String get charactersSessionStart => 'Start recording';
+
+  @override
+  String get charactersSessionStop => 'Stop recording';
+
+  @override
+  String get charactersAdd => 'Add';
+
+  @override
+  String get charactersImport => 'Import';
+
+  @override
+  String get charactersExport => 'Export';
+
+  @override
+  String get charactersExportHint => 'Save the card to a file';
+
+  @override
+  String get charactersExportAll => 'Export all';
+
+  @override
+  String get charactersNewName => 'New character';
+
+  @override
+  String get charactersNameLabel => 'Character name';
+
+  @override
+  String get charactersEmpty => 'No characters yet. Press Add and record a voice.';
+
+  @override
+  String get charactersRecord => 'Record the voice';
+
+  @override
+  String get charactersRecordStop => 'Stop';
+
+  @override
+  String get charactersRecording => 'Recording — let the character talk';
+
+  @override
+  String charactersHeard(String seconds) {
+    return '$seconds s recorded';
+  }
+
+  @override
+  String get charactersNoVoice => 'No voice recorded yet';
+
+  @override
+  String charactersVoiceKept(String seconds, String gender) {
+    return 'Voice recorded · $seconds s · $gender';
+  }
+
+  @override
+  String get charactersGenderUnknown => 'gender undecided';
+
+  @override
+  String get charactersDelete => 'Delete the character';
+
+  @override
+  String get charactersDeleteTitle => 'Delete the character?';
+
+  @override
+  String charactersDeleteMessage(String name) {
+    return 'The card $name and the voice recorded for it will be deleted.';
+  }
+
+  @override
+  String get charactersDeleteConfirm => 'Delete';
+
+  @override
+  String get charactersDeleteCancel => 'Cancel';
+
+  @override
+  String charactersImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count characters added',
+      one: '$count character added',
+      zero: 'No characters added',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String charactersInPacks(String packs) {
+    return 'In packs: $packs';
+  }
+
+  @override
+  String get packsAdd => 'New pack';
+
+  @override
+  String get packsNewName => 'New pack';
+
+  @override
+  String get packsNameLabel => 'Pack name';
+
+  @override
+  String get packsEmpty =>
+      'No packs yet. Make one and drag cards into it — a cast collected that way is handed on as a single file.';
+
+  @override
+  String get packsDropHint => 'Drag character cards here.';
+
+  @override
+  String get packsExportHint => 'Save the pack to a file';
+
+  @override
+  String get packsDelete => 'Delete the pack';
+
+  @override
+  String get packsRemoveMember => 'Take out of the pack';
+
+  @override
+  String packsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count characters',
+      one: '$count character',
+      zero: 'empty',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get packsDeleteTitle => 'Delete the pack?';
+
+  @override
+  String packsDeleteMessage(String name) {
+    return 'The pack “$name” will be deleted. Its characters stay in the cast.';
+  }
+
+  @override
+  String packsImported(int packs, int characters) {
+    String _temp0 = intl.Intl.pluralLogic(
+      packs,
+      locale: localeName,
+      other: '$packs packs',
+      one: '$packs pack',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      characters,
+      locale: localeName,
+      other: '$characters characters',
+      one: '$characters character',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
   String get navModels => 'Models';
 
   @override
@@ -210,6 +379,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String failureHotkeyTaken(String action) {
     return 'Another program already holds the combination for $action — bind a different one in Settings.';
+  }
+
+  @override
+  String failureCharactersSaveFailed(String detail) {
+    return 'The characters could not be saved: $detail';
+  }
+
+  @override
+  String failureCharactersExportFailed(String detail) {
+    return 'The card could not be exported: $detail';
+  }
+
+  @override
+  String failureCharactersImportFailed(String detail) {
+    return 'The file $detail holds no LoreDub characters.';
   }
 
   @override

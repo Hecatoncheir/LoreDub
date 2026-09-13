@@ -32,8 +32,11 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
+import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart'
     show PipelineSession, PipelineStatus, TranscriptEntry;
+import 'package:lore_dub/src/ui/dashboard/character_tiles.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
@@ -2004,6 +2007,119 @@ void main() {
         find.widgetWithText(FilledButton, 'Начать перевод'),
       );
       expect(start.onPressed, isNotNull);
+    });
+  });
+
+  group('the characters screen', () {
+    const guard = Character(
+      id: 'a1',
+      name: 'Стражник',
+      vector: [0.2, 0.4],
+      gender: 'male',
+      seconds: 2.5,
+    );
+
+    DashboardCubits stageCast({
+      CharactersState characters = const CharactersState(loading: false),
+    }) {
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.characters,
+        settings: const AppSettings(),
+        models: catalogue(),
+      );
+      cubits.characters.seed(characters);
+      return cubits;
+    }
+
+    testWidgets('sits before Settings and says how a voice is recorded', (tester) async {
+      await pumpDashboard(tester, stageCast(), const Size(1280, 900));
+
+      expect(find.text('04  /  CHARACTER CAST'), findsOneWidget);
+      expect(find.text('Голоса персонажей'), findsOneWidget);
+      expect(find.textContaining('Пока ни одного персонажа'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Запустить запись'), findsOneWidget);
+    });
+
+    testWidgets('shows what a card holds and waits for the session', (tester) async {
+      await pumpDashboard(
+        tester,
+        stageCast(characters: const CharactersState(loading: false, characters: [guard])),
+        const Size(1280, 900),
+      );
+
+      expect(find.text('Стражник'), findsOneWidget);
+      expect(find.textContaining('Голос записан'), findsOneWidget);
+      expect(
+        tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.mic_rounded)).onPressed,
+        isNull,
+        reason: 'nothing is listening yet',
+      );
+    });
+
+    testWidgets('records into a card once the session runs', (tester) async {
+      final cubits = stageCast(
+        characters: const CharactersState(
+          loading: false,
+          status: PipelineStatus.listening,
+          characters: [guard],
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      final record = find.widgetWithIcon(IconButton, Icons.mic_rounded);
+      expect(tester.widget<IconButton>(record).onPressed, isNotNull);
+
+      await tester.tap(record);
+      await tester.pumpAndSettle();
+
+      expect(cubits.characters.state.recordingId, 'a1');
+      expect(find.textContaining('Идёт запись'), findsOneWidget);
+    });
+
+    testWidgets('makes a pack and says a card can be dropped into it', (tester) async {
+      final cubits = stageCast(
+        characters: const CharactersState(loading: false, characters: [guard]),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      expect(find.textContaining('Пакетов пока нет'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('packsAdd')));
+      await tester.pumpAndSettle();
+
+      expect(cubits.characters.state.packs.single.name, 'Новый пакет');
+      expect(find.textContaining('Перетащите сюда'), findsOneWidget);
+    });
+
+    testWidgets('drops a card into a pack and takes it back out', (tester) async {
+      final cubits = stageCast(
+        characters: const CharactersState(
+          loading: false,
+          characters: [guard],
+          packs: [CharacterPack(id: 'p1', name: 'Таверна')],
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      final card = find.byType(CharacterTile);
+      final pack = find.byType(CharacterPackArea);
+      final distance = tester.getCenter(pack) - tester.getCenter(card);
+      await tester.timedDrag(card, distance, const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      expect(cubits.characters.state.packs.single.characterIds, ['a1']);
+      expect(
+        cubits.characters.state.characters.single.name,
+        'Стражник',
+        reason: 'dropped into the pack, not moved out of the cast',
+      );
+
+      // The cross on the card inside the pack takes it out again.
+      await tester.tap(find.byTooltip('Убрать из пакета'));
+      await tester.pumpAndSettle();
+
+      expect(cubits.characters.state.packs.single.characterIds, isEmpty);
     });
   });
 

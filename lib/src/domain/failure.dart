@@ -102,6 +102,15 @@ enum FailureCode {
   /// Windows has no text recognition installed for the language the screen
   /// is read in; the detail is its code.
   ocrLanguageMissing,
+
+  /// The player's characters could not be written back.
+  charactersSaveFailed,
+
+  /// A character could not be written where the player asked.
+  charactersExportFailed,
+
+  /// A file the player chose holds no characters; the detail is its name.
+  charactersImportFailed,
 }
 
 class LoreDubFailure implements Exception {

@@ -57,6 +57,9 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.ocrLanguageMissing => l10n.failureOcrLanguageMissing(
       spokenLanguageName(l10n, detail),
     ),
+    FailureCode.charactersSaveFailed => l10n.failureCharactersSaveFailed(detail),
+    FailureCode.charactersExportFailed => l10n.failureCharactersExportFailed(detail),
+    FailureCode.charactersImportFailed => l10n.failureCharactersImportFailed(detail),
   };
 }
 

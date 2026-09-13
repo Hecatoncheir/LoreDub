@@ -364,11 +364,77 @@ class VoiceBank:
             sys.stderr.write(f"voice bank not saved: {error}\n")
 
 
+class CharacterCast:
+    """The characters the player recorded and named on the characters screen.
+
+    They are shared by every game and matched before the game's own bank, and
+    nothing here ever changes them: the player owns these cards, and a card
+    the worker rewrote would drift away from what was recorded.
+    """
+
+    def __init__(self, path):
+        self.entries = []
+        if not path:
+            return
+        try:
+            data = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        for entry in data.get("characters", []) if isinstance(data, dict) else []:
+            if not isinstance(entry, dict):
+                continue
+            vector = np.asarray(entry.get("vector", []), dtype=np.float32)
+            if vector.ndim != 1 or not vector.size or not np.all(np.isfinite(vector)):
+                continue
+            self.entries.append(
+                {
+                    "id": str(entry.get("id", "")),
+                    "gender": entry.get("gender") or None,
+                    "voice": entry.get("voice") or None,
+                    "vector": vector,
+                }
+            )
+
+    def __len__(self):
+        return len(self.entries)
+
+    def nearest(self, vector):
+        """The character closest to [vector] and their cosine."""
+        best, score = None, -1.0
+        norm = float(np.linalg.norm(vector)) or 1.0
+        for index, entry in enumerate(self.entries):
+            kept = entry["vector"]
+            if kept.shape != vector.shape:
+                continue
+            value = float(np.dot(kept, vector)) / ((float(np.linalg.norm(kept)) or 1.0) * norm)
+            if value > score:
+                best, score = index, value
+        return best, score
+
+    def identifier(self, index):
+        return self.entries[index]["id"]
+
+    def voice_of(self, index):
+        return self.entries[index]["voice"]
+
+    def gender_of(self, index):
+        return self.entries[index]["gender"]
+
+    def vector_of(self, index):
+        return self.entries[index]["vector"]
+
+
 def main():
     use_utf8_streams()
     parser = argparse.ArgumentParser()
-    parser.add_argument("--translation-model", required=True)
-    parser.add_argument("--tts-model", required=True)
+    # Not needed by --embed-only, which loads the converter and nothing else.
+    parser.add_argument("--translation-model", default="")
+    parser.add_argument("--tts-model", default="")
+    # Answer fingerprint requests and nothing else: the characters screen
+    # records a voice without waiting a minute for Marian and Silero.
+    parser.add_argument("--embed-only", action="store_true")
+    # The player's own characters, kept for every game rather than one.
+    parser.add_argument("--characters", default="")
     parser.add_argument("--work-directory", required=True)
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--speed", type=float, default=1.0)
@@ -409,30 +475,40 @@ def main():
     report_progress(0.10, "torch")
     import torch
 
-    report_progress(0.35, "transformers")
-    from transformers import MarianMTModel, MarianTokenizer
-
-    report_progress(0.80, "translator")
     torch.set_num_threads(max(1, args.threads))
     # A CUDA build that cannot see the card is a working CPU build. Falling
     # back beats refusing to start over a driver the user cannot fix here.
     device = torch.device("cuda" if args.device == "cuda" and torch.cuda.is_available() else "cpu")
-    tokenizer = MarianTokenizer.from_pretrained(args.translation_model, local_files_only=True)
-    translator = MarianMTModel.from_pretrained(args.translation_model, local_files_only=True)
-    translator.eval()
-    translator.to(device)
+    tokenizer = None
+    translator = None
+    tts = None
+    voices = []
+    speaker = args.speaker
 
-    report_progress(0.90, "speech")
-    tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
-    tts.to(torch.device("cpu"))
-    # Loading the Silero package drops torch to a single thread, and that
-    # holds for everything after it: the translator ran on one core, and the
-    # voice converter took three times as long. The requested count goes back.
-    torch.set_num_threads(max(1, args.threads))
-    # Every Silero language ships its own voices. Falling back keeps an
-    # unknown name from turning the whole language into a runtime error.
-    voices = list(getattr(tts, "speakers", None) or [])
-    speaker = args.speaker if args.speaker in voices else (voices[0] if voices else args.speaker)
+    # Recording a character's voice needs the converter alone; loading the
+    # translator and the speech model for it would cost the minute this
+    # screen is meant to avoid.
+    if not args.embed_only:
+        report_progress(0.35, "transformers")
+        from transformers import MarianMTModel, MarianTokenizer
+
+        report_progress(0.80, "translator")
+        tokenizer = MarianTokenizer.from_pretrained(args.translation_model, local_files_only=True)
+        translator = MarianMTModel.from_pretrained(args.translation_model, local_files_only=True)
+        translator.eval()
+        translator.to(device)
+
+        report_progress(0.90, "speech")
+        tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
+        tts.to(torch.device("cpu"))
+        # Loading the Silero package drops torch to a single thread, and that
+        # holds for everything after it: the translator ran on one core, and
+        # the voice converter took three times as long. The count goes back.
+        torch.set_num_threads(max(1, args.threads))
+        # Every Silero language ships its own voices. Falling back keeps an
+        # unknown name from turning the whole language into a runtime error.
+        voices = list(getattr(tts, "speakers", None) or [])
+        speaker = args.speaker if args.speaker in voices else (voices[0] if voices else args.speaker)
 
     # The Silero voice picked below stays the base: the converter only moves
     # the original speaker's timbre onto it.
@@ -481,30 +557,39 @@ def main():
     # or in one that lasts only this session.
     speakers = bank if bank is not None else VoiceBank(None)
 
+    # The player's own characters, recognized in whichever game they speak.
+    cast = CharacterCast(args.characters)
     def identify(request):
         """The character this line belongs to and the fingerprint read from
         it, as (index, fingerprint).
 
-        Both are None without the converter, which is what hears who is
-        speaking, and for a line too short or too unvoiced to place.
+        The kind is "character" for one of the player's own cards, "voice"
+        for a speaker of this game's bank. All three are None without the
+        converter, which is what hears who is speaking, and for a line too
+        short or too unvoiced to place.
         """
         source = request.get("wave")
         if converter is None or not source:
-            return None, None
+            return None, None, None
         try:
             samples, rate = read_wave_mono(source)
         except (OSError, wave.Error, ValueError):
-            return None, None
+            return None, None, None
         if (
             samples is None
             or rate <= 0
             or len(samples) < rate // 2
             or median_f0(samples, rate) is None
         ):
-            return None, None
+            return None, None, None
         fingerprint = converter.embed(samples, rate)
+        # A character the player recorded answers before the game's own bank:
+        # they named this voice, so it is theirs whichever game it speaks in.
+        named, score = cast.nearest(fingerprint.flatten().float().cpu().numpy())
+        if named is not None and score >= BANK_MATCH:
+            return "character", named, fingerprint
         # A short line nobody matched could be anyone.
-        return speaker_of(fingerprint, len(samples) / rate), fingerprint
+        return "voice", speaker_of(fingerprint, len(samples) / rate), fingerprint
 
     def speaker_of(fingerprint, seconds):
         """The index of the voice this line belongs to; a new one is kept first."""
@@ -517,7 +602,7 @@ def main():
             return len(speakers) - 1
         return None
 
-    def voice_for(request, index):
+    def voice_for(request, kind, index):
         """The voice this line is read in.
 
         A character keeps the voice their first clear line earned, so the same
@@ -527,7 +612,18 @@ def main():
         nonlocal current_voice
         if not following:
             return speaker
-        if index is not None:
+        if kind == "character" and index is not None:
+            # A card names its own voice, or at least the gender it was
+            # recorded in; a voice this package does not ship is passed over.
+            kept = cast.voice_of(index)
+            if kept in by_gender["male"] or kept in by_gender["female"]:
+                current_voice = kept
+                return kept
+            candidates = by_gender.get(cast.gender_of(index) or "", [])
+            if candidates:
+                current_voice = candidates[index % len(candidates)]
+                return current_voice
+        if kind == "voice" and index is not None:
             kept = speakers.voice_of(index)
             # A bank filled for another language package names voices this
             # one does not ship.
@@ -539,7 +635,7 @@ def main():
         if gender is None:
             return current_voice
         candidates = by_gender[gender]
-        if index is None:
+        if index is None or kind != "voice":
             # Keep the configured voice when it already matches the gender.
             current_voice = speaker if speaker in candidates else candidates[0]
             return current_voice
@@ -549,14 +645,18 @@ def main():
         speakers.remember(index, gender, current_voice)
         return current_voice
 
-    def timbre_for(fingerprint, index):
+    def timbre_for(fingerprint, kind, index):
         """The timbre to re-voice a line in: the character's kept one, or the
         fingerprint of the line itself."""
         nonlocal current_timbre
         if fingerprint is None:
             return current_timbre
         current_timbre = fingerprint
-        if bank is not None and index is not None:
+        if kind == "character" and index is not None:
+            kept = torch.from_numpy(cast.vector_of(index)).reshape(fingerprint.shape)
+            current_timbre = kept.to(device=fingerprint.device, dtype=fingerprint.dtype)
+            return current_timbre
+        if kind == "voice" and bank is not None and index is not None:
             kept = torch.from_numpy(bank.voices[index]).reshape(fingerprint.shape)
             current_timbre = kept.to(device=fingerprint.device, dtype=fingerprint.dtype)
         return current_timbre
@@ -582,6 +682,24 @@ def main():
             reply({"type": "error", "message": f"malformed request: {error}"})
             continue
         try:
+            # The voice in a recording, as the characters screen keeps it.
+            recorded = request.get("fingerprint")
+            if recorded:
+                if converter is None:
+                    raise RuntimeError("the voice converter is not loaded")
+                heard, rate = read_wave_mono(recorded)
+                if heard is None or rate <= 0 or not len(heard):
+                    raise RuntimeError(f"unreadable recording: {recorded}")
+                vector = converter.embed(heard, rate).flatten().float().cpu().numpy()
+                reply(
+                    {
+                        "id": request_id,
+                        "vector": [round(float(value), 6) for value in vector],
+                        "gender": speaker_gender(recorded),
+                        "seconds": round(len(heard) / rate, 2),
+                    }
+                )
+                continue
             # Where does the voice change? Asked before recognition, so each
             # speaker's half is recognized and voiced on its own.
             listening = request.get("diarize")
@@ -613,8 +731,8 @@ def main():
                 translated = text
             # Who is speaking is settled first: the character decides both the
             # voice they are read in and the timbre laid over it.
-            index, fingerprint = identify(request)
-            chosen = voice_for(request, index)
+            kind, index, fingerprint = identify(request)
+            chosen = voice_for(request, kind, index)
             audio = tts.apply_tts(
                 text=translated,
                 speaker=chosen,
@@ -624,7 +742,7 @@ def main():
             )
             samples = audio.clamp(-1, 1).to(torch.float32).cpu().numpy()
             rate = args.sample_rate
-            timbre = timbre_for(fingerprint, index) if args.revoice else None
+            timbre = timbre_for(fingerprint, kind, index) if args.revoice else None
             if timbre is not None:
                 # The converter answers at its own rate; the file is written at it.
                 samples, rate = converter.convert(samples, rate, timbre)
@@ -643,7 +761,9 @@ def main():
                 "voice": chosen,
                 "cloned": timbre is not None,
             }
-            if index is not None:
+            if kind == "character" and index is not None:
+                answer["speaker"] = f"character:{cast.identifier(index)}"
+            elif index is not None:
                 answer["speaker"] = f"timbre:{index}"
             elif converter is None:
                 # Nothing heard who is speaking, so the Silero voice is all

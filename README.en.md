@@ -173,6 +173,39 @@ Any download can be paused, resumed and cancelled. Closing the application
 mid-download is not a loss: the next attempt fetches the rest rather than
 starting over.
 
+### Characters
+
+This is where character cards are kept: **Add** creates an empty one, the name
+is typed in the card itself, and **Delete** removes it once confirmed.
+
+To record a voice, press **Start recording** and choose the game process —
+only the voice converter is loaded, with neither translator nor speech model,
+so the screen is ready in seconds. Walk up to the character in the game, press
+**Record the voice** on their card and let them talk; the card shows how many
+seconds of speech it has heard. Press **Stop** and the fingerprint is kept: in
+**Live** that character's lines are then read in the voice given to them. The
+longest clear line of the recording stands for them — a fingerprint taken from
+half a word would answer for the character ever after.
+
+The cards are laid out as tiles, the way the models are, and each carries its
+own row of buttons: record, export, delete. Characters are shared by every
+game, unlike the voices Live founds by itself, and a card brought back after
+an edit lands on the one it came from.
+
+Below the cards are the **packs**. **New pack** opens an area whose name is
+typed in place, and cards go into it by being dragged: pick a card up with the
+mouse and drop it on the pack. One character may be in several packs at once —
+the card says which. A card leaves a pack by the cross on it or by being
+dragged back to the cast, and deleting a pack leaves the characters in the
+cast: only the grouping goes.
+
+A pack is exported whole, along with the characters it holds, so someone
+else's pack only has to be read with **Import** for its characters to appear
+both in the pack and in the cast. The same button reads a file of plain cards,
+and **Export all** writes the whole cast at once.
+
+Recording and dubbing never run at once: one worker serves both.
+
 ### Settings
 
 <p align="center">

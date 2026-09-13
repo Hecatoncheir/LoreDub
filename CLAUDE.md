@@ -55,11 +55,12 @@ covers. Build the native library first, and leave the test window in front.
 Four processes cooperate; changing the pipeline usually means touching more
 than one of them.
 
-1. **Flutter/Dart UI** — `lib/src/ui/dashboard/`. State lives in four cubits
+1. **Flutter/Dart UI** — `lib/src/ui/dashboard/`. State lives in five cubits
    (`cubits/`): `ShellCubit` (section, first load, the failure banner, the
    update check), `SettingsCubit`, `DownloadsCubit` (models, GPU runtimes,
-   what the machine can run) and `PipelineCubit` (status, transcript,
-   processes). `DashboardCubits` wires them together and runs `initialize()`;
+   what the machine can run), `PipelineCubit` (status, transcript,
+   processes) and `CharactersCubit` (the player's cast and the session that
+   records a voice for a card). `DashboardCubits` wires them together and runs `initialize()`;
    errors from any of them go to the shell through `FailureSink`. Anything
    derived from settings *and* packages together is `ModelSelection`
    (`domain/model_selection.dart`), so neither cubit owns it. `DashboardView`
@@ -216,6 +217,34 @@ whose fingerprint meets a kept one at cosine >= 0.80 belongs to that
 character, otherwise a line of 1.5 s or more founds a new one. Kept voices are
 never averaged — the user asked for that explicitly — and replies carry
 `bankSize` so the settings count can be refreshed.
+
+The Characters screen (`DashboardSection.characters`, `CharactersCubit`) is
+where the player records their own cast. `CharacterService` keeps them in one
+`<app support>/characters.json` for every game — unlike the per-game bank,
+because the player owns these cards — and `AppRepository.startCharacterVoices`
+runs a session for recording them: `ld_start` on the game's audio plus the
+worker under `--embed-only`, which loads the converter and neither Marian nor
+Silero, so the screen is ready in seconds. While a card records, each captured
+segment goes to `{"fingerprint": path}` instead of recognition and comes back
+as a `characterVoice` event; the cubit keeps the longest clear one. Every
+session is handed `--characters`, and the worker matches a line against the
+named cast before the game's bank (`CharacterCast`), answering
+`speaker: character:<id>` and reading them in the voice their card carries.
+Export and import are `file_selector` dialogs over the same JSON shape, so a
+file with one card and a file with twenty read the same way.
+
+The cards are drawn as tiles in the models' vocabulary (`character_tiles.dart`:
+`CharacterTile` over `ModelTile`'s grid and action band), and under them sit
+the packs — `CharacterPack`, a name and a list of character ids, that the
+player fills by dragging cards into it (`Draggable`/`DragTarget` over a
+`CharacterDrag` carrying the card and the pack it came from, if any). A
+character may be in several packs; dropping a card on the cast takes it out of
+the pack it came from, and deleting a pack leaves the cards. Both live in the
+same `characters.json` (`CharacterLibrary`, file version 2 — a version 1 file
+has no `packs` key and reads as a cast in none), and the worker takes only
+`characters` from it, so packs never reach the pipeline. Exporting a pack
+writes the pack together with its members, which is why an import merges
+cards and packs by id in one step.
 
 Telling the characters apart is not the same switch as re-voicing them.
 `ModelSelection.tracksSpeakers` loads the converter whenever the package is

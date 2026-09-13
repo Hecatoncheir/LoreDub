@@ -111,6 +111,252 @@ abstract class AppLocalizations {
   /// **'Фрагмент'**
   String get navSnapshot;
 
+  /// No description provided for @navCharacters.
+  ///
+  /// In ru, this message translates to:
+  /// **'Персонажи'**
+  String get navCharacters;
+
+  /// No description provided for @titleCharacters.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голоса персонажей'**
+  String get titleCharacters;
+
+  /// No description provided for @charactersNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом.'**
+  String get charactersNote;
+
+  /// No description provided for @charactersHowTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запустите запись, выберите процесс игры — и записывайте голоса по очереди.'**
+  String get charactersHowTo;
+
+  /// No description provided for @charactersNeedsConverter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужен конвертер голоса: скачайте его в разделе «Голос оригинала» на экране «Модели».'**
+  String get charactersNeedsConverter;
+
+  /// No description provided for @charactersSessionStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запустить запись'**
+  String get charactersSessionStart;
+
+  /// No description provided for @charactersSessionStop.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановить запись'**
+  String get charactersSessionStop;
+
+  /// No description provided for @charactersAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить'**
+  String get charactersAdd;
+
+  /// No description provided for @charactersImport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт'**
+  String get charactersImport;
+
+  /// No description provided for @charactersExport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Экспорт'**
+  String get charactersExport;
+
+  /// No description provided for @charactersExportHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить карточку в файл'**
+  String get charactersExportHint;
+
+  /// No description provided for @charactersExportAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выгрузить всех'**
+  String get charactersExportAll;
+
+  /// No description provided for @charactersNewName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новый персонаж'**
+  String get charactersNewName;
+
+  /// No description provided for @charactersNameLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Имя персонажа'**
+  String get charactersNameLabel;
+
+  /// No description provided for @charactersEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока ни одного персонажа. Нажмите «Добавить» и запишите голос.'**
+  String get charactersEmpty;
+
+  /// No description provided for @charactersRecord.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записать голос'**
+  String get charactersRecord;
+
+  /// No description provided for @charactersRecordStop.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановить'**
+  String get charactersRecordStop;
+
+  /// No description provided for @charactersRecording.
+  ///
+  /// In ru, this message translates to:
+  /// **'Идёт запись — пусть персонаж говорит'**
+  String get charactersRecording;
+
+  /// No description provided for @charactersHeard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записано {seconds} с'**
+  String charactersHeard(String seconds);
+
+  /// No description provided for @charactersNoVoice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос ещё не записан'**
+  String get charactersNoVoice;
+
+  /// No description provided for @charactersVoiceKept.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос записан · {seconds} с · {gender}'**
+  String charactersVoiceKept(String seconds, String gender);
+
+  /// No description provided for @charactersGenderUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'пол не определён'**
+  String get charactersGenderUnknown;
+
+  /// No description provided for @charactersDelete.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить персонажа'**
+  String get charactersDelete;
+
+  /// No description provided for @charactersDeleteTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить персонажа?'**
+  String get charactersDeleteTitle;
+
+  /// No description provided for @charactersDeleteMessage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Карточка «{name}» и записанный голос будут удалены.'**
+  String charactersDeleteMessage(String name);
+
+  /// No description provided for @charactersDeleteConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить'**
+  String get charactersDeleteConfirm;
+
+  /// No description provided for @charactersDeleteCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмена'**
+  String get charactersDeleteCancel;
+
+  /// No description provided for @charactersImported.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, =0{Ни одного персонажа не добавлено} one{Добавлен {count} персонаж} few{Добавлено {count} персонажа} other{Добавлено {count} персонажей}}'**
+  String charactersImported(int count);
+
+  /// No description provided for @charactersInPacks.
+  ///
+  /// In ru, this message translates to:
+  /// **'В пакетах: {packs}'**
+  String charactersInPacks(String packs);
+
+  /// No description provided for @packsAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Создать пакет'**
+  String get packsAdd;
+
+  /// No description provided for @packsNewName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новый пакет'**
+  String get packsNewName;
+
+  /// No description provided for @packsNameLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Название пакета'**
+  String get packsNameLabel;
+
+  /// No description provided for @packsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакетов пока нет. Создайте пакет и перетащите в него карточки — так набор персонажей можно передать одним файлом.'**
+  String get packsEmpty;
+
+  /// No description provided for @packsDropHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перетащите сюда карточки персонажей.'**
+  String get packsDropHint;
+
+  /// No description provided for @packsExportHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить пакет в файл'**
+  String get packsExportHint;
+
+  /// No description provided for @packsDelete.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить пакет'**
+  String get packsDelete;
+
+  /// No description provided for @packsRemoveMember.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать из пакета'**
+  String get packsRemoveMember;
+
+  /// No description provided for @packsCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, =0{пусто} one{{count} персонаж} few{{count} персонажа} other{{count} персонажей}}'**
+  String packsCount(int count);
+
+  /// No description provided for @packsDeleteTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить пакет?'**
+  String get packsDeleteTitle;
+
+  /// No description provided for @packsDeleteMessage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакет «{name}» будет удалён. Персонажи останутся в общем списке.'**
+  String packsDeleteMessage(String name);
+
+  /// No description provided for @packsImported.
+  ///
+  /// In ru, this message translates to:
+  /// **'{packs, plural, one{Добавлен {packs} пакет} few{Добавлено {packs} пакета} other{Добавлено {packs} пакетов}} · {characters, plural, one{{characters} персонаж} few{{characters} персонажа} other{{characters} персонажей}}'**
+  String packsImported(int packs, int characters);
+
   /// No description provided for @navModels.
   ///
   /// In ru, this message translates to:
@@ -464,6 +710,24 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Сочетание для «{action}» уже занято другой программой — назначьте другое в настройках.'**
   String failureHotkeyTaken(String action);
+
+  /// No description provided for @failureCharactersSaveFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить персонажей: {detail}'**
+  String failureCharactersSaveFailed(String detail);
+
+  /// No description provided for @failureCharactersExportFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось выгрузить карточку: {detail}'**
+  String failureCharactersExportFailed(String detail);
+
+  /// No description provided for @failureCharactersImportFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'В файле «{detail}» нет персонажей LoreDub.'**
+  String failureCharactersImportFailed(String detail);
 
   /// No description provided for @failureOcrLanguageMissing.
   ///

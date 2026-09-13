@@ -3,6 +3,109 @@
   "appTitle": "LoreDub",
   "navLive": "Эфир",
   "navSnapshot": "Фрагмент",
+  "navCharacters": "Персонажи",
+  "titleCharacters": "Голоса персонажей",
+  "charactersNote": "Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом.",
+  "charactersHowTo": "Запустите запись, выберите процесс игры — и записывайте голоса по очереди.",
+  "charactersNeedsConverter": "Нужен конвертер голоса: скачайте его в разделе «Голос оригинала» на экране «Модели».",
+  "charactersSessionStart": "Запустить запись",
+  "charactersSessionStop": "Остановить запись",
+  "charactersAdd": "Добавить",
+  "charactersImport": "Импорт",
+  "charactersExport": "Экспорт",
+  "charactersExportHint": "Сохранить карточку в файл",
+  "charactersExportAll": "Выгрузить всех",
+  "charactersNewName": "Новый персонаж",
+  "charactersNameLabel": "Имя персонажа",
+  "charactersEmpty": "Пока ни одного персонажа. Нажмите «Добавить» и запишите голос.",
+  "charactersRecord": "Записать голос",
+  "charactersRecordStop": "Остановить",
+  "charactersRecording": "Идёт запись — пусть персонаж говорит",
+  "charactersHeard": "Записано {seconds} с",
+  "@charactersHeard": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "charactersNoVoice": "Голос ещё не записан",
+  "charactersVoiceKept": "Голос записан · {seconds} с · {gender}",
+  "@charactersVoiceKept": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      },
+      "gender": {
+        "type": "String"
+      }
+    }
+  },
+  "charactersGenderUnknown": "пол не определён",
+  "charactersDelete": "Удалить персонажа",
+  "charactersDeleteTitle": "Удалить персонажа?",
+  "charactersDeleteMessage": "Карточка «{name}» и записанный голос будут удалены.",
+  "@charactersDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "charactersDeleteConfirm": "Удалить",
+  "charactersDeleteCancel": "Отмена",
+  "charactersImported": "{count, plural, =0{Ни одного персонажа не добавлено} one{Добавлен {count} персонаж} few{Добавлено {count} персонажа} other{Добавлено {count} персонажей}}",
+  "@charactersImported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "charactersInPacks": "В пакетах: {packs}",
+  "@charactersInPacks": {
+    "placeholders": {
+      "packs": {
+        "type": "String"
+      }
+    }
+  },
+  "packsAdd": "Создать пакет",
+  "packsNewName": "Новый пакет",
+  "packsNameLabel": "Название пакета",
+  "packsEmpty": "Пакетов пока нет. Создайте пакет и перетащите в него карточки — так набор персонажей можно передать одним файлом.",
+  "packsDropHint": "Перетащите сюда карточки персонажей.",
+  "packsExportHint": "Сохранить пакет в файл",
+  "packsDelete": "Удалить пакет",
+  "packsRemoveMember": "Убрать из пакета",
+  "packsCount": "{count, plural, =0{пусто} one{{count} персонаж} few{{count} персонажа} other{{count} персонажей}}",
+  "@packsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsDeleteTitle": "Удалить пакет?",
+  "packsDeleteMessage": "Пакет «{name}» будет удалён. Персонажи останутся в общем списке.",
+  "@packsDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "packsImported": "{packs, plural, one{Добавлен {packs} пакет} few{Добавлено {packs} пакета} other{Добавлено {packs} пакетов}} · {characters, plural, one{{characters} персонаж} few{{characters} персонажа} other{{characters} персонажей}}",
+  "@packsImported": {
+    "placeholders": {
+      "packs": {
+        "type": "int"
+      },
+      "characters": {
+        "type": "int"
+      }
+    }
+  },
   "navModels": "Модели",
   "navSettings": "Настройки",
   "titleLive": "Перевод игры",
@@ -110,6 +213,30 @@
   "@failureHotkeyTaken": {
     "placeholders": {
       "action": {
+        "type": "String"
+      }
+    }
+  },
+  "failureCharactersSaveFailed": "Не удалось сохранить персонажей: {detail}",
+  "@failureCharactersSaveFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureCharactersExportFailed": "Не удалось выгрузить карточку: {detail}",
+  "@failureCharactersExportFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureCharactersImportFailed": "В файле «{detail}» нет персонажей LoreDub.",
+  "@failureCharactersImportFailed": {
+    "placeholders": {
+      "detail": {
         "type": "String"
       }
     }

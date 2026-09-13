@@ -1,8 +1,10 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
 import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/services/model_catalog.dart';
 import '../../domain/app_release.dart';
 import '../../domain/app_settings.dart';
+import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
 import '../../domain/model_package.dart';
@@ -26,11 +29,13 @@ import '../failure_messages.dart';
 import '../language_names.dart';
 import '../model_names.dart';
 import '../theme.dart';
+import 'cubits/characters_cubit.dart';
 import 'cubits/dashboard_cubits.dart';
 import 'cubits/downloads_cubit.dart';
 import 'cubits/pipeline_cubit.dart';
 import 'cubits/settings_cubit.dart';
 import 'cubits/shell_cubit.dart';
+import 'character_tiles.dart';
 import 'compute_matrix.dart';
 import 'hotkey_field.dart';
 import 'model_tiles.dart';
@@ -114,6 +119,25 @@ class _DownloadsBuilder extends StatelessWidget {
   );
 }
 
+/// Rebuilds with the player's cast and the session that records a voice.
+class _CharactersBuilder extends StatelessWidget {
+  const _CharactersBuilder({required this.cubits, required this.builder, this.watch});
+
+  final DashboardCubits cubits;
+  final Widget Function(BuildContext context, CharactersState characters) builder;
+
+  /// The part of the screen this widget draws; a recording ticking must not
+  /// redraw every card.
+  final Object? Function(CharactersState characters)? watch;
+
+  @override
+  Widget build(BuildContext context) => BlocBuilder<CharactersCubit, CharactersState>(
+    bloc: cubits.characters,
+    buildWhen: watch == null ? null : (previous, current) => watch!(previous) != watch!(current),
+    builder: builder,
+  );
+}
+
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key, required this.cubits});
 
@@ -153,6 +177,10 @@ class DashboardView extends StatelessWidget {
                       ),
                       DashboardSection.models => _ModelsPanel(
                         key: const ValueKey('models'),
+                        cubits: cubits,
+                      ),
+                      DashboardSection.characters => _CharactersPanel(
+                        key: const ValueKey('characters'),
                         cubits: cubits,
                       ),
                       DashboardSection.settings => _SettingsPanel(
@@ -258,6 +286,12 @@ class _Navigation extends StatelessWidget {
                 label: AppLocalizations.of(context).navModels,
                 selected: shell.section == DashboardSection.models,
                 onTap: () => cubits.shell.selectSection(DashboardSection.models),
+              ),
+              _NavigationItem(
+                icon: (color) => Icon(Icons.groups_rounded, size: 21, color: color),
+                label: AppLocalizations.of(context).navCharacters,
+                selected: shell.section == DashboardSection.characters,
+                onTap: () => cubits.shell.selectSection(DashboardSection.characters),
               ),
               _NavigationItem(
                 icon: (color) => Icon(Icons.tune_rounded, size: 21, color: color),
@@ -582,6 +616,10 @@ class _BottomNavigation extends StatelessWidget {
           label: AppLocalizations.of(context).navModels,
         ),
         NavigationDestination(
+          icon: const Icon(Icons.groups_rounded),
+          label: AppLocalizations.of(context).navCharacters,
+        ),
+        NavigationDestination(
           icon: const Icon(Icons.tune_rounded),
           label: AppLocalizations.of(context).navSettings,
         ),
@@ -611,7 +649,8 @@ class _Header extends StatelessWidget {
                     DashboardSection.live => '01  /  LIVE VOICE',
                     DashboardSection.snapshot => '02  /  AREA SNAPSHOT',
                     DashboardSection.models => '03  /  MODEL BANK',
-                    DashboardSection.settings => '04  /  SIGNAL SETUP',
+                    DashboardSection.characters => '04  /  CHARACTER CAST',
+                    DashboardSection.settings => '05  /  SIGNAL SETUP',
                   },
                   style: const TextStyle(
                     fontFamily: LoreDubFonts.mono,
@@ -627,6 +666,7 @@ class _Header extends StatelessWidget {
                     DashboardSection.live => AppLocalizations.of(context).titleLive,
                     DashboardSection.snapshot => AppLocalizations.of(context).titleSnapshot,
                     DashboardSection.models => AppLocalizations.of(context).titleModels,
+                    DashboardSection.characters => AppLocalizations.of(context).titleCharacters,
                     DashboardSection.settings => AppLocalizations.of(context).titleSettings,
                   },
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -1911,6 +1951,492 @@ class _EmptyTranscript extends StatelessWidget {
         ),
       ),
     ),
+  );
+}
+
+/// The characters screen: the player's cast, and the session their voices
+/// are recorded through.
+class _CharactersPanel extends StatelessWidget {
+  const _CharactersPanel({super.key, required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
+    child: Column(
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _ModuleLabel(number: '01', label: 'VOICE RECORDING'),
+                const SizedBox(height: 14),
+                _CharacterSessionControls(cubits: cubits),
+              ],
+            ),
+          ),
+        ),
+        _ModelsNeededNotice(
+          cubits: cubits,
+          ready: (selection) => selection.voiceConverter?.installed ?? false,
+        ),
+        const SizedBox(height: 16),
+        // Two areas, one under the other: the cast, and the packs it is
+        // grouped into. They scroll together, so a card can be dragged from
+        // one into the other without the screen moving under the pointer.
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _CharacterCast(cubits: cubits),
+              const SizedBox(height: 16),
+              _CharacterPacks(cubits: cubits),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Which game to listen to, and whether the session that measures voices is
+/// running. Live dubbing holds the same worker, so the two never run at once.
+class _CharacterSessionControls extends StatelessWidget {
+  const _CharacterSessionControls({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => _ShellBuilder(
+    cubits: cubits,
+    builder: (context, shell) => _DownloadsBuilder(
+      onlyWhatIsInstalled: true,
+      cubits: cubits,
+      builder: (context, _) => _PipelineBuilder(
+        cubits: cubits,
+        watch: (pipeline) => (pipeline.processes, pipeline.selectedProcess, pipeline.running),
+        builder: (context, pipeline) => _CharactersBuilder(
+          cubits: cubits,
+          watch: (characters) => (characters.status, characters.recordingId),
+          builder: (context, characters) =>
+              _build(context, pipeline, characters, initializing: shell.initializing),
+        ),
+      ),
+    ),
+  );
+
+  Widget _build(
+    BuildContext context,
+    LivePipelineState pipeline,
+    CharactersState characters, {
+    required bool initializing,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    final canRecord = cubits.characters.canRecord;
+    final locked = characters.running || pipeline.running;
+    final picker = _MenuRoom(
+      builder: (menuHeight) => DropdownMenu<GameProcess>(
+        key: ValueKey('characters-${pipeline.selectedProcess?.pid}'),
+        initialSelection: pipeline.selectedProcess,
+        expandedInsets: EdgeInsets.zero,
+        menuHeight: menuHeight,
+        enabled: !locked,
+        enableFilter: true,
+        enableSearch: true,
+        requestFocusOnTap: true,
+        label: Text(
+          l10n.processLabel,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.ellipsis,
+        ),
+        hintText: l10n.processHint,
+        dropdownMenuEntries: pipeline.processes
+            .map(
+              (process) => DropdownMenuEntry(
+                value: process,
+                label: l10n.processEntry(process.name, process.pid),
+              ),
+            )
+            .toList(),
+        onSelected: locked ? null : cubits.pipeline.selectProcess,
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.charactersNote, style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(child: picker),
+            const SizedBox(width: 12),
+            IconButton.outlined(
+              tooltip: l10n.refreshProcesses,
+              onPressed: locked ? null : cubits.pipeline.refreshProcesses,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+            const SizedBox(width: 16),
+            SizedBox(
+              width: _LanguageRow.actionWidth,
+              child: FilledButton.icon(
+                key: const ValueKey('charactersSession'),
+                onPressed: !canRecord || initializing || pipeline.running
+                    ? null
+                    : () => cubits.characters.toggleSession(
+                        initializing: initializing,
+                        process: pipeline.selectedProcess,
+                      ),
+                icon: characters.status == PipelineStatus.starting
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      )
+                    : Icon(
+                        characters.running ? Icons.stop_rounded : Icons.fiber_manual_record_rounded,
+                      ),
+                label: Text(
+                  characters.running ? l10n.charactersSessionStop : l10n.charactersSessionStart,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          !canRecord
+              ? l10n.charactersNeedsConverter
+              : pipeline.running
+              ? l10n.snapshotInLive
+              : l10n.charactersHowTo,
+          style: TextStyle(
+            color: canRecord ? LoreDubPalette.mutedInk : LoreDubPalette.warning,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The cards themselves, with what it takes to add them and hand them on.
+///
+/// A card dropped here from a pack leaves that pack: the cast holds every
+/// character whether a pack names them or not, so this is where a card goes
+/// back to being in none.
+class _CharacterCast extends StatelessWidget {
+  const _CharacterCast({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  Future<void> _exportAll(BuildContext context, List<Character> characters) async {
+    final location = await getSaveLocation(suggestedName: 'loredub-characters.json');
+    if (location == null) return;
+    await cubits.characters.export(location.path, characters);
+  }
+
+  Future<void> _export(BuildContext context, Character character) async {
+    final location = await getSaveLocation(
+      suggestedName: '${character.name.trim().isEmpty ? 'character' : character.name}.json',
+    );
+    if (location == null) return;
+    await cubits.characters.export(location.path, [character]);
+  }
+
+  Future<void> _confirmDelete(BuildContext context, Character character) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(l10n.charactersDeleteTitle),
+        content: Text(
+          l10n.charactersDeleteMessage(character.name),
+          style: const TextStyle(fontSize: 16, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.charactersDeleteCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.charactersDeleteConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) await cubits.characters.remove(character.id);
+  }
+
+  @override
+  Widget build(BuildContext context) => _CharactersBuilder(
+    cubits: cubits,
+    builder: (context, state) {
+      final l10n = AppLocalizations.of(context);
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+              child: Row(
+                children: [
+                  const _ModuleLabel(number: '02', label: 'CAST'),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: state.characters.isEmpty
+                        ? null
+                        : () => _exportAll(context, state.characters),
+                    icon: const Icon(Icons.file_upload_outlined, size: 18),
+                    label: Text(l10n.charactersExportAll),
+                    style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    key: const ValueKey('charactersAdd'),
+                    onPressed: () => cubits.characters.add(l10n.charactersNewName),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text(l10n.charactersAdd),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            DragTarget<CharacterDrag>(
+              // Only a card that came out of a pack has anywhere to land
+              // here; one dragged from the cast is already where it is.
+              onWillAcceptWithDetails: (details) => details.data.fromPackId != null,
+              onAcceptWithDetails: (details) => cubits.characters.removeFromPack(
+                details.data.fromPackId!,
+                details.data.character.id,
+              ),
+              builder: (context, candidate, _) => ColoredBox(
+                color: candidate.isEmpty
+                    ? Colors.transparent
+                    : LoreDubPalette.orange.withValues(alpha: 0.08),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+                  child: state.characters.isEmpty
+                      ? _EmptyCast(loading: state.loading)
+                      : CharacterTileGrid(
+                          children: [
+                            for (final character in state.characters)
+                              CharacterTile(
+                                key: ValueKey(character.id),
+                                character: character,
+                                recording: state.recordingId == character.id,
+                                heardSeconds: state.heardSeconds,
+                                packNames: [
+                                  for (final pack in state.packs)
+                                    if (pack.holds(character.id)) pack.name,
+                                ],
+                                onRename: (name) => cubits.characters.rename(character.id, name),
+                                onRecord:
+                                    !state.running ||
+                                        (state.recording && state.recordingId != character.id)
+                                    ? null
+                                    : () => state.recordingId == character.id
+                                          ? cubits.characters.stopRecording()
+                                          : cubits.characters.startRecording(character.id),
+                                onExport: character.vector.isEmpty
+                                    ? null
+                                    : () => _export(context, character),
+                                onDelete: () => _confirmDelete(context, character),
+                              ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+/// The packs: named areas cards are dropped into, handed on and thrown away
+/// as a group. Throwing one away leaves the cards in the cast — the player
+/// recorded them, and only the grouping was ever the pack's.
+class _CharacterPacks extends StatelessWidget {
+  const _CharacterPacks({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  Future<void> _import(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final chosen = await openFiles(
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'LoreDub', extensions: ['json']),
+      ],
+    );
+    if (chosen.isEmpty) return;
+    final added = await cubits.characters.import([for (final file in chosen) file.path]);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          added.packs == 0
+              ? l10n.charactersImported(added.characters)
+              : l10n.packsImported(added.packs, added.characters),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _export(BuildContext context, CharacterPack pack, List<Character> members) async {
+    final location = await getSaveLocation(
+      suggestedName: '${pack.name.trim().isEmpty ? 'pack' : pack.name}.json',
+    );
+    if (location == null) return;
+    await cubits.characters.export(location.path, members, pack: pack);
+  }
+
+  Future<void> _confirmDelete(BuildContext context, CharacterPack pack) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(l10n.packsDeleteTitle),
+        content: Text(
+          l10n.packsDeleteMessage(pack.name),
+          style: const TextStyle(fontSize: 16, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.charactersDeleteCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.charactersDeleteConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) await cubits.characters.removePack(pack.id);
+  }
+
+  @override
+  Widget build(BuildContext context) => _CharactersBuilder(
+    cubits: cubits,
+    watch: (characters) => (characters.characters, characters.packs, characters.loading),
+    builder: (context, state) {
+      final l10n = AppLocalizations.of(context);
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+              child: Row(
+                children: [
+                  const _ModuleLabel(number: '03', label: 'PACKS'),
+                  const Spacer(),
+                  TextButton.icon(
+                    key: const ValueKey('charactersImport'),
+                    onPressed: () => _import(context),
+                    icon: const Icon(Icons.file_download_outlined, size: 18),
+                    label: Text(l10n.charactersImport),
+                    style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    key: const ValueKey('packsAdd'),
+                    onPressed: () => cubits.characters.addPack(l10n.packsNewName),
+                    icon: const Icon(Icons.create_new_folder_outlined, size: 18),
+                    label: Text(l10n.packsAdd),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
+              child: state.packs.isEmpty
+                  ? Row(
+                      children: [
+                        const Icon(
+                          Icons.inventory_2_outlined,
+                          size: 20,
+                          color: LoreDubPalette.mutedInk,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(l10n.packsEmpty)),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final pack in state.packs) ...[
+                          CharacterPackArea(
+                            key: ValueKey(pack.id),
+                            pack: pack,
+                            members: state.membersOf(pack),
+                            onRename: (name) => cubits.characters.renamePack(pack.id, name),
+                            onExport: pack.characterIds.isEmpty
+                                ? null
+                                : () => _export(context, pack, state.membersOf(pack)),
+                            onDelete: () => _confirmDelete(context, pack),
+                            onDrop: (drag) =>
+                                cubits.characters.addToPack(pack.id, drag.character.id),
+                            onRemoveMember: (character) =>
+                                cubits.characters.removeFromPack(pack.id, character.id),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _EmptyCast extends StatelessWidget {
+  const _EmptyCast({required this.loading});
+
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: loading
+        ? const SizedBox.shrink()
+        : Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.groups_rounded, size: 42, color: LoreDubPalette.mutedInk),
+                const SizedBox(height: 14),
+                Text(
+                  AppLocalizations.of(context).charactersEmpty,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
   );
 }
 
