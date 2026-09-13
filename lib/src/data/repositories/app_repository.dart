@@ -9,6 +9,7 @@ import '../services/character_service.dart';
 import '../services/native_engine_service.dart';
 import '../services/python_discovery.dart';
 import '../services/settings_service.dart';
+import '../services/speaker_map_service.dart';
 import '../services/voice_bank_service.dart';
 
 class AppRepository {
@@ -18,15 +19,18 @@ class AppRepository {
     PythonDiscovery? pythonDiscovery,
     VoiceBankService? voiceBank,
     CharacterService? characters,
+    SpeakerMapService? speakerMap,
   ]) : _pythonDiscovery = pythonDiscovery ?? PythonDiscovery(),
        _voiceBank = voiceBank ?? VoiceBankService(),
-       _characters = characters ?? CharacterService();
+       _characters = characters ?? CharacterService(),
+       _speakerMap = speakerMap ?? SpeakerMapService();
 
   final NativeEngineService _nativeEngine;
   final SettingsService _settingsService;
   final PythonDiscovery _pythonDiscovery;
   final VoiceBankService _voiceBank;
   final CharacterService _characters;
+  final SpeakerMapService _speakerMap;
 
   /// The characters the player recorded and named. They belong to the player
   /// rather than to one game, so every session is handed the same file.
@@ -57,6 +61,28 @@ class AppRepository {
   Future<int> voiceBankSize() => _voiceBank.count();
   Future<void> clearVoiceBank() => _voiceBank.clear();
 
+  /// The file whose voice reads whom is kept in for [game].
+  Future<String> speakerMapFileFor(String game) => _speakerMap.fileFor(game);
+
+  /// Whose voice reads whom in [game], as the player assigned it.
+  Future<Map<String, String>> loadSpeakerMap(String game) => _speakerMap.load(game);
+
+  /// Keeps [replacements] for [game] and tells the running worker that
+  /// [speaker] is read in [character]'s voice from now on — or in their own
+  /// again, when [character] is null.
+  ///
+  /// Written for the next session and told to the one running, so the change
+  /// is heard on the next line rather than on the next launch.
+  Future<void> assignSpeaker({
+    required String game,
+    required Map<String, String> replacements,
+    required String speaker,
+    String? character,
+  }) async {
+    await _speakerMap.save(game, replacements);
+    await _nativeEngine.assignSpeaker(speaker, character);
+  }
+
   /// What the machine's adapters and drivers offer, before the download
   /// state of the GPU runtimes is taken into account.
   Future<ComputeAvailability> probeGraphics() => _nativeEngine.probeGraphics();
@@ -85,6 +111,7 @@ class AppRepository {
     required ComputeBackend translationBackend,
     required ComputeBackend voiceConversionBackend,
     required String runtimeDirectory,
+    String? speakerMap,
     String? voiceBank,
   }) async {
     try {
@@ -117,6 +144,8 @@ class AppRepository {
         'voiceConversionBackend': voiceConversionBackend.name,
         'runtimeDirectory': runtimeDirectory,
         'voiceBank': ?voiceBank,
+        // Whose voice reads whom in this game, as the player assigned it.
+        'speakerMap': ?speakerMap,
         // The player's own characters speak in every game.
         'characters': await _characters.file(),
       });
@@ -190,6 +219,41 @@ class AppRepository {
         'models': {'converter': converterDirectory},
         'voiceConversionBackend': converterBackend.name,
         'runtimeDirectory': runtimeDirectory,
+      });
+    } catch (_) {
+      await _nativeEngine.stop();
+      rethrow;
+    }
+  }
+
+  /// Starts the session Live gathers the voices of a scene through: the
+  /// game's audio and the converter that hears who is speaking, with neither
+  /// whisper nor the translator loaded, so it is ready in seconds.
+  ///
+  /// A voice met here joins the game's bank under the same number a dubbing
+  /// session would give it, which is what lets the replacements made now
+  /// hold once the dubbing runs.
+  Future<void> startSceneVoices({
+    required GameProcess? process,
+    required AppSettings settings,
+    required String converterDirectory,
+    required ComputeBackend converterBackend,
+    required String runtimeDirectory,
+    String? voiceBank,
+  }) async {
+    try {
+      await _nativeEngine.startScene({
+        'processId': process?.pid ?? 0,
+        'captureMode': CaptureMode.audio.name,
+        'audioSource': settings.audioCaptureSource.name,
+        'cpuThreads': settings.cpuThreads,
+        'pythonExecutable': settings.pythonExecutable,
+        'models': {'converter': converterDirectory},
+        'voiceConversionBackend': converterBackend.name,
+        'runtimeDirectory': runtimeDirectory,
+        'voiceBank': ?voiceBank,
+        'speakerMap': await _speakerMap.fileFor(process?.name ?? ''),
+        'characters': await _characters.file(),
       });
     } catch (_) {
       await _nativeEngine.stop();

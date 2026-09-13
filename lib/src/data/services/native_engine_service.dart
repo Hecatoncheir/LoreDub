@@ -61,6 +61,10 @@ class NativeEngineService {
   /// measured for a card rather than recognized and voiced.
   bool _charactersSession = false;
 
+  /// Set while only the voices of the scene are being placed: every phrase
+  /// is identified and none is dubbed.
+  bool _sceneSession = false;
+
   /// Whether a card is recording right now. Between recordings what the game
   /// says is thrown away.
   bool _recordingVoice = false;
@@ -129,6 +133,7 @@ class NativeEngineService {
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
       voiceBank: config['voiceBank'] as String?,
       characters: config['characters'] as String?,
+      speakerMap: config['speakerMap'] as String?,
     );
     // What the worker settled on, which is not always what it was asked for.
     if (_inference.translationBackend case final actual?) {
@@ -234,8 +239,56 @@ class NativeEngineService {
     );
   }
 
+  /// Starts the session the voices of a scene are gathered through: the
+  /// game's audio and the converter that hears who is speaking, with neither
+  /// whisper nor the translator loaded.
+  ///
+  /// It is the characters session with the bank and the cast added and the
+  /// recording gate left open: every phrase is placed, none is dubbed.
+  Future<void> startScene(Map<String, Object?> config) async {
+    _paused = false;
+    _sceneSession = true;
+    await LocalInferenceService.removeStaleAudio();
+    final models = config['models']! as Map<String, String>;
+    await _inference.start(
+      embedOnly: true,
+      threads: config['cpuThreads']! as int,
+      speed: 1,
+      pythonExecutable: config['pythonExecutable']! as String,
+      requiresWhisper: false,
+      voiceConverter: models['converter'],
+      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+      voiceBank: config['voiceBank'] as String?,
+      characters: config['characters'] as String?,
+      speakerMap: config['speakerMap'] as String?,
+    );
+    final work = await LocalInferenceService.createWorkDirectory();
+    final capture = Directory('${work.path}${Platform.pathSeparator}capture');
+    await capture.create(recursive: true);
+    _activeConfig = {...config, 'captureDirectory': capture.path};
+    final pointer = jsonEncode(_activeConfig).toNativeUtf8();
+    try {
+      _throwIfError(ld_start(pointer.cast()));
+    } catch (_) {
+      await _inference.stop();
+      rethrow;
+    } finally {
+      malloc.free(pointer);
+    }
+    _pollTimer ??= Timer.periodic(
+      const Duration(milliseconds: 80),
+      (_) => _pollEvents(),
+    );
+  }
+
   /// Whether what the game says is measured for a card, or thrown away.
   void setRecordingVoice({required bool recording}) => _recordingVoice = recording;
+
+  /// Reads [speaker] in [character]'s voice from the next line on. The map
+  /// is a file the worker also reads at start, so this only spares a restart.
+  Future<void> assignSpeaker(String speaker, String? character) =>
+      _inference.assignSpeaker(speaker, character);
 
   Future<void> stop() async {
     // Cleared first: segments captured moments ago are still travelling
@@ -243,6 +296,7 @@ class NativeEngineService {
     _activeConfig = null;
     _paused = false;
     _charactersSession = false;
+    _sceneSession = false;
     _recordingVoice = false;
     _previousOcrText = null;
     // ld_stop drops the hotkeys too; nothing is left for them to pause.
@@ -373,9 +427,30 @@ class NativeEngineService {
     }
   }
 
+  /// Places a phrase among the voices of the scene without dubbing it, which
+  /// is what Live does before the pipeline itself runs.
+  Future<void> _listenForSpeaker(String wavePath) async {
+    try {
+      final heard = await _inference.listenSpeaker(wavePath);
+      // Too short or too unvoiced to belong to anyone.
+      if (heard.speaker == null) return;
+      _events.add({
+        'type': 'sceneVoice',
+        'speaker': heard.speaker,
+        'seconds': heard.seconds,
+      });
+    } catch (error) {
+      _reportFailure(error);
+    } finally {
+      await _deleteIfPresent(wavePath);
+    }
+  }
+
   Future<void> _processSegment(String wavePath) async {
     // The characters screen listens for a voice, not for a phrase.
     if (_charactersSession) return _measureVoice(wavePath);
+    // Live before it dubs: who is speaking, and nothing more.
+    if (_sceneSession) return _listenForSpeaker(wavePath);
     // Two characters answering each other without a pause land in one
     // segment; each of their halves earns its own recognition and voice.
     for (final piece in await _splitBySpeaker(wavePath)) {
@@ -494,6 +569,8 @@ class NativeEngineService {
       'translated': result.translated,
       'latencyMs': latencyMs,
       if (snapshot) 'snapshot': true,
+      // Who said it, so the scene list can offer the voice a replacement.
+      'speaker': ?result.speaker,
     });
     // Which voice read it: the automatic choice can change it per phrase, so
     // the interface should not have to guess.

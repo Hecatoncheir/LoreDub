@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/character.dart';
+import '../../domain/pipeline_state.dart';
 import '../theme.dart';
 import 'model_visuals.dart';
 
@@ -510,6 +511,137 @@ class _PackMember extends StatelessWidget {
       feedback: _DragCard(name: character.name),
       childWhenDragging: Opacity(opacity: 0.4, child: chip),
       child: chip,
+    );
+  }
+}
+
+/// One voice of the running scene: who was heard, what they last said, and
+/// the character whose voice reads them from now on.
+///
+/// The replacement is the whole point of the row: a game's own voice, or a
+/// card recognized in it, can be handed another character's voice without
+/// waiting for the next session.
+class SceneVoiceRow extends StatelessWidget {
+  const SceneVoiceRow({
+    super.key,
+    required this.speaker,
+    required this.name,
+    required this.characters,
+    required this.assignedId,
+    required this.onAssign,
+  });
+
+  final SceneSpeaker speaker;
+
+  /// What to call the voice itself, already resolved to wording.
+  final String name;
+
+  /// The cast to choose from; empty until the player has recorded one.
+  final List<Character> characters;
+
+  /// The character reading this voice, when one was chosen.
+  final String? assignedId;
+
+  /// Null when this voice cannot be replaced at all.
+  final ValueChanged<String?>? onAssign;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final assigned = characters.where((character) => character.id == assignedId).firstOrNull;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                assigned == null ? Icons.graphic_eq_rounded : Icons.published_with_changes_rounded,
+                size: 16,
+                color: assigned == null ? LoreDubPalette.mutedInk : LoreDubPalette.orange,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: LoreDubFonts.display,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                l10n.sceneVoiceLines(speaker.lines),
+                style: const TextStyle(
+                  fontFamily: LoreDubFonts.mono,
+                  fontSize: 11,
+                  color: LoreDubPalette.mutedInk,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            // Placing the voices needs no words, so a row gathered before
+            // the dubbing says how much of the voice was heard instead.
+            speaker.line.isNotEmpty
+                ? speaker.line
+                : l10n.sceneVoiceHeardFor(speaker.seconds.toStringAsFixed(1)),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+          ),
+          const SizedBox(height: 8),
+          if (onAssign == null)
+            Text(
+              l10n.sceneVoiceAsHeard,
+              style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+            )
+          else
+            Align(
+              alignment: Alignment.centerLeft,
+              child: PopupMenuButton<String>(
+                key: ValueKey('assign-${speaker.key}'),
+                tooltip: l10n.sceneVoiceReadAs,
+                // The empty value stands for the voice as it was heard, so
+                // the menu can offer taking a replacement back.
+                onSelected: (id) => onAssign!(id.isEmpty ? null : id),
+                itemBuilder: (context) => [
+                  PopupMenuItem(value: '', child: Text(l10n.sceneVoiceAsHeard)),
+                  for (final character in characters)
+                    PopupMenuItem(value: character.id, child: Text(character.name)),
+                ],
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
+                  decoration: BoxDecoration(
+                    color: LoreDubPalette.raised,
+                    borderRadius: const BorderRadius.all(Radius.circular(8)),
+                    border: Border.all(
+                      color: assigned == null ? LoreDubPalette.outline : LoreDubPalette.orange,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        assigned?.name ?? l10n.sceneVoiceAsHeard,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: assigned == null ? null : FontWeight.w600,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down_rounded, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

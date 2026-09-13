@@ -206,6 +206,9 @@ class LocalInferenceService {
     /// The characters the player recorded and named, which belong to every
     /// game rather than one.
     String? characters,
+
+    /// Whose voice reads whom in this game, as the player assigned it.
+    String? speakerMap,
   }) async {
     _workerReady = Completer<void>();
     _converterDevice = null;
@@ -277,6 +280,7 @@ class LocalInferenceService {
           if (revoice) '--revoice',
           if (voiceBank != null) ...['--voice-bank', voiceBank],
           if (characters != null) ...['--characters', characters],
+          if (speakerMap != null) ...['--speaker-map', speakerMap],
         ],
       ],
       environment: const {'PYTHONIOENCODING': 'utf-8'},
@@ -448,6 +452,72 @@ class LocalInferenceService {
       for (final cut in response['cuts'] as List<Object?>? ?? const [])
         if (cut is num) cut.toDouble(),
     ];
+  }
+
+  /// Who is speaking in [wavePath], without recognizing or voicing a word.
+  ///
+  /// This is what the voices of a scene are gathered with before dubbing
+  /// starts: only the converter is loaded, and a voice it has not met joins
+  /// the game's bank here exactly as it would during a session.
+  Future<({String? speaker, double seconds})> listenSpeaker(String wavePath) async {
+    final worker = _worker;
+    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(jsonEncode({'id': id, 'listen': wavePath}));
+    final response = await completer.future.timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
+    return (
+      speaker: response['speaker'] as String?,
+      seconds: (response['seconds'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  /// Reads [speaker] in the voice of [character] from the next line on, or
+  /// in their own again when [character] is null.
+  ///
+  /// The file is the interface's to write; this only spares the player a
+  /// restart, so a worker that is not running is no failure — the map is
+  /// read again when one starts.
+  Future<void> assignSpeaker(String speaker, String? character) async {
+    final worker = _worker;
+    if (worker == null) return;
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(
+      jsonEncode({
+        'id': id,
+        'assign': {'speaker': speaker, 'character': character ?? ''},
+      }),
+    );
+    final response = await completer.future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
   }
 
   /// [originalWavePath] is the captured phrase, when there is one. The

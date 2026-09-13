@@ -20,6 +20,7 @@ import '../../domain/model_proxy.dart';
 import '../../domain/model_selection.dart';
 import '../../domain/ocr_region.dart';
 import '../../domain/runtime_paths.dart';
+import '../../domain/speaker_map.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
@@ -28,6 +29,7 @@ import '../compute_names.dart';
 import '../failure_messages.dart';
 import '../language_names.dart';
 import '../model_names.dart';
+import '../speaker_names.dart';
 import '../theme.dart';
 import 'cubits/characters_cubit.dart';
 import 'cubits/dashboard_cubits.dart';
@@ -771,57 +773,223 @@ class _LivePanel extends StatelessWidget {
           ready: (selection) => selection.requiredModelsInstalled,
         ),
         const SizedBox(height: 16),
+        // The transcript and the voices of the scene stand side by side
+        // where there is room; a narrow window stacks them, the transcript
+        // keeping whatever height is left.
         Expanded(
-          child: _PipelineBuilder(
-            cubits: cubits,
-            watch: (pipeline) => pipeline.transcript,
-            builder: (context, pipeline) => Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  Padding(
-                    // Tighter than a bare label row would need: the button has
-                    // to fit without making the header taller than it was.
-                    padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-                    child: Row(
-                      children: [
-                        const _ModuleLabel(number: '02', label: 'LIVE TRANSCRIPT'),
-                        const Spacer(),
-                        _ClearListButton(
-                          tooltip: AppLocalizations.of(context).transcriptClearTooltip,
-                          onPressed: pipeline.transcript.isEmpty
-                              ? null
-                              : cubits.pipeline.clearTranscript,
-                        ),
-                      ],
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) => constraints.maxWidth >= _sceneBesideTranscriptWidth
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: _TranscriptCard(cubits: cubits)),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: _sceneVoicesWidth,
+                        child: _SceneVoicesCard(cubits: cubits),
+                      ),
+                    ],
+                  )
+                // Shares of what is left rather than a fixed height. Under a
+                // card's worth of room the transcript takes it all: two
+                // headers and nothing under them would serve nobody.
+                : constraints.maxHeight < _sceneStackedMinHeight
+                ? _TranscriptCard(cubits: cubits)
+                : Column(
+                    children: [
+                      Expanded(flex: 3, child: _TranscriptCard(cubits: cubits)),
+                      const SizedBox(height: 16),
+                      Expanded(flex: 2, child: _SceneVoicesCard(cubits: cubits)),
+                    ],
                   ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: pipeline.transcript.isEmpty
-                        ? _SettingsBuilder(
-                            cubits: cubits,
-                            builder: (context, settings) => _EmptyTranscript(
-                              targetLanguage: settings.settings.targetLanguage,
-                              captureMode: settings.settings.captureMode,
-                            ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                            itemCount: pipeline.transcript.length,
-                            separatorBuilder: (_, _) => const SizedBox(height: 14),
-                            itemBuilder: (context, index) =>
-                                _TranscriptBubble(entry: pipeline.transcript[index]),
-                          ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
       ],
     ),
   );
+}
+
+/// Beyond this the scene voices sit beside the transcript rather than under
+/// it; below it the transcript would be left too narrow to read.
+const _sceneBesideTranscriptWidth = 1000.0;
+const _sceneVoicesWidth = 340.0;
+
+/// Under this the stacked layout shows the transcript alone.
+const _sceneStackedMinHeight = 360.0;
+
+/// What the running session heard, newest first.
+class _TranscriptCard extends StatelessWidget {
+  const _TranscriptCard({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => _PipelineBuilder(
+    cubits: cubits,
+    watch: (pipeline) => pipeline.transcript,
+    builder: (context, pipeline) => _CharactersBuilder(
+      cubits: cubits,
+      watch: (characters) => characters.characters,
+      builder: (context, characters) => Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Padding(
+              // Tighter than a bare label row would need: the button has
+              // to fit without making the header taller than it was.
+              padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+              child: Row(
+                children: [
+                  const _ModuleLabel(number: '02', label: 'LIVE TRANSCRIPT'),
+                  const Spacer(),
+                  _ClearListButton(
+                    tooltip: AppLocalizations.of(context).transcriptClearTooltip,
+                    onPressed: pipeline.transcript.isEmpty ? null : cubits.pipeline.clearTranscript,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: pipeline.transcript.isEmpty
+                  ? _SettingsBuilder(
+                      cubits: cubits,
+                      builder: (context, settings) => _EmptyTranscript(
+                        targetLanguage: settings.settings.targetLanguage,
+                        captureMode: settings.settings.captureMode,
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                      itemCount: pipeline.transcript.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) => _TranscriptBubble(
+                        entry: pipeline.transcript[index],
+                        characters: characters.characters,
+                        replacements: pipeline.speakerReplacements,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Who the session has heard, and whose voice reads them.
+///
+/// A voice of the game and a card recognized in it are both here: the row
+/// offers either of them a character from the cast, and the choice is kept
+/// for this game.
+class _SceneVoicesCard extends StatelessWidget {
+  const _SceneVoicesCard({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => _ShellBuilder(
+    cubits: cubits,
+    builder: (context, shell) => _PipelineBuilder(
+      cubits: cubits,
+      watch: (pipeline) => (
+        pipeline.speakers,
+        pipeline.speakerReplacements,
+        pipeline.status,
+        pipeline.session,
+      ),
+      builder: (context, pipeline) => _CharactersBuilder(
+        cubits: cubits,
+        watch: (characters) => characters.characters,
+        builder: (context, cast) =>
+            _build(context, pipeline, cast.characters, initializing: shell.initializing),
+      ),
+    ),
+  );
+
+  Widget _build(
+    BuildContext context,
+    LivePipelineState pipeline,
+    List<Character> characters, {
+    required bool initializing,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    final listening = pipeline.sceneRunning;
+    // Placing the voices needs the converter and a bank to keep them in;
+    // while dubbing or a selection holds the worker, it cannot run at all.
+    final canListen =
+        listening ||
+        cubits.pipeline.state.canStartScene(cubits.selection, initializing: initializing);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 9, 12, 8),
+            child: _ModuleLabel(number: '03', label: 'SCENE VOICES'),
+          ),
+          const Divider(height: 1),
+          // On its own line rather than beside the label: this column is
+          // narrow, and the two would not fit across it.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const ValueKey('sceneListen'),
+                onPressed: canListen
+                    ? () => cubits.pipeline.toggleSceneVoices(initializing: initializing)
+                    : null,
+                icon: Icon(listening ? Icons.stop_rounded : Icons.hearing_rounded, size: 18),
+                label: Text(listening ? l10n.sceneVoicesListenStop : l10n.sceneVoicesListen),
+                style: TextButton.styleFrom(
+                  foregroundColor: listening ? LoreDubPalette.orange : LoreDubPalette.ink,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: pipeline.speakers.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                    child: Text(
+                      !cubits.selection.tracksSpeakers
+                          ? l10n.sceneVoicesNeedsConverter
+                          : listening
+                          ? l10n.sceneVoicesListening
+                          : l10n.sceneVoicesEmpty,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: listening ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
+                      ),
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+                    children: [
+                      Text(
+                        characters.isEmpty ? l10n.sceneVoiceNoCharacters : l10n.sceneVoicesNote,
+                        style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+                      ),
+                      const SizedBox(height: 6),
+                      for (final speaker in pipeline.speakers)
+                        SceneVoiceRow(
+                          speaker: speaker,
+                          name: speakerName(l10n, speaker.key, characters),
+                          characters: characters,
+                          assignedId: pipeline.speakerReplacements[speaker.key],
+                          onAssign: characters.isEmpty || !isReplaceableSpeaker(speaker.key)
+                              ? null
+                              : (id) => cubits.pipeline.assignSpeaker(speaker.key, id),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Says the packages a screen needs are missing, and leads to them. What
@@ -1795,19 +1963,72 @@ class _ModuleLabel extends StatelessWidget {
 /// icon: the text on the dark signal surface, and the time it took beside the
 /// tail on the orange accent.
 class _TranscriptBubble extends StatelessWidget {
-  const _TranscriptBubble({required this.entry});
+  const _TranscriptBubble({
+    required this.entry,
+    this.characters = const [],
+    this.replacements = const {},
+  });
 
   static const double _tailInset = 28;
   static const Size _tailSize = Size(26, 14);
 
   final TranscriptEntry entry;
 
+  /// The cast, so a line matched to a card is named rather than numbered.
+  final List<Character> characters;
+
+  /// Whose voice reads whom, so a line says when it was read as somebody
+  /// else.
+  final Map<String, String> replacements;
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final original = entry.original.isEmpty ? entry.english : entry.original;
+    final speaker = entry.speaker;
+    final readAs = speaker == null
+        ? null
+        : replacementName(l10n, speaker, replacements, characters);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (speaker != null) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 5),
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    speakerName(l10n, speaker, characters),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: LoreDubFonts.mono,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: LoreDubPalette.mutedInk,
+                    ),
+                  ),
+                ),
+                if (readAs != null) ...[
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      l10n.sceneVoiceReplaced(readAs),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: LoreDubFonts.mono,
+                        fontSize: 11,
+                        color: LoreDubPalette.orange,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
         Container(
           // Sized by its text, with enough width left for the tail to stay
           // under the bubble even for a two-word reply.

@@ -400,6 +400,76 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String failureSpeakerMapSaveFailed(String detail) {
+    return 'Не удалось сохранить замену голосов: $detail';
+  }
+
+  @override
+  String get sceneVoices => 'Голоса сцены';
+
+  @override
+  String get sceneVoicesNote =>
+      'Кого LoreDub услышал в этом сеансе. Выберите персонажа — и реплики этого голоса будут озвучиваться его голосом.';
+
+  @override
+  String get sceneVoicesEmpty =>
+      'Пока никто не заговорил. Нажмите «Определить голоса» — или запустите перевод, и голоса появятся сами.';
+
+  @override
+  String get sceneVoicesListen => 'Определить голоса';
+
+  @override
+  String get sceneVoicesListenStop => 'Остановить';
+
+  @override
+  String get sceneVoicesListening =>
+      'Слушаю игру. Голоса появляются здесь, как только персонажи заговорят, — перевод при этом не идёт.';
+
+  @override
+  String sceneVoiceHeardFor(String seconds) {
+    return 'Услышано $seconds с';
+  }
+
+  @override
+  String get sceneVoicesNeedsConverter =>
+      'Голоса различаются конвертером голоса: скачайте его на экране «Модели» и включите запоминание персонажей.';
+
+  @override
+  String sceneVoiceUnknown(int number) {
+    return 'Голос $number';
+  }
+
+  @override
+  String get sceneVoiceAnonymous => 'Без опознания';
+
+  @override
+  String sceneVoiceLines(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count реплик',
+      few: '$count реплики',
+      one: '$count реплика',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sceneVoiceReadAs => 'Озвучивать как';
+
+  @override
+  String get sceneVoiceAsHeard => 'Как услышано';
+
+  @override
+  String get sceneVoiceNoCharacters =>
+      'Запишите персонажей на экране «Персонажи», чтобы назначать их голоса.';
+
+  @override
+  String sceneVoiceReplaced(String name) {
+    return 'Звучит как «$name»';
+  }
+
+  @override
   String failureOcrLanguageMissing(String language) {
     return 'В Windows не установлено распознавание текста для языка «$language». Добавьте язык: Параметры → Время и язык → Язык и регион → Добавить язык.';
   }

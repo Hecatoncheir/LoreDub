@@ -241,6 +241,57 @@
       }
     }
   },
+  "failureSpeakerMapSaveFailed": "The voice replacements could not be saved: {detail}",
+  "@failureSpeakerMapSaveFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "sceneVoices": "Voices of the scene",
+  "sceneVoicesNote": "Who LoreDub has heard this session. Pick a character and this voice's lines are read in theirs.",
+  "sceneVoicesEmpty": "Nobody has spoken yet. Press “Place the voices” — or start dubbing, and they gather by themselves.",
+  "sceneVoicesListen": "Place the voices",
+  "sceneVoicesListenStop": "Stop",
+  "sceneVoicesListening": "Listening to the game. Voices appear here as characters speak; nothing is dubbed meanwhile.",
+  "sceneVoiceHeardFor": "Heard for {seconds} s",
+  "@sceneVoiceHeardFor": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "sceneVoicesNeedsConverter": "Voices are told apart by the voice converter: download it on the Models screen and turn character memory on.",
+  "sceneVoiceUnknown": "Voice {number}",
+  "@sceneVoiceUnknown": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "sceneVoiceAnonymous": "Nobody in particular",
+  "sceneVoiceLines": "{count, plural, one{{count} line} other{{count} lines}}",
+  "@sceneVoiceLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sceneVoiceReadAs": "Read as",
+  "sceneVoiceAsHeard": "As heard",
+  "sceneVoiceNoCharacters": "Record characters on the Characters screen to give their voices away.",
+  "sceneVoiceReplaced": "Read as “{name}”",
+  "@sceneVoiceReplaced": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "failureOcrLanguageMissing": "Windows has no text recognition installed for {language}. Add the language in Settings → Time & language → Language & region → Add a language.",
   "@failureOcrLanguageMissing": {
     "placeholders": {

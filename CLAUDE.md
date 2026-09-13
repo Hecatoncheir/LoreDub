@@ -218,6 +218,34 @@ character, otherwise a line of 1.5 s or more founds a new one. Kept voices are
 never averaged — the user asked for that explicitly — and replies carry
 `bankSize` so the settings count can be refreshed.
 
+Who a line is read in can be overridden per game. Every worker reply carries
+the speaker it *heard* (`speaker`), and `PipelineCubit` collects those into
+`LivePipelineState.speakers` — the "Scene voices" area beside the transcript.
+Assigning a character there writes `<app support>/speaker_map/<exe>.json`
+(`SpeakerMapService`, named like the bank) and sends `{"assign": {...}}` to the
+running worker, so the next line is already read anew; `--speaker-map` hands
+the same file to the next session. In the worker `read_as` swaps the heard
+`(kind, index)` for the assigned character before `voice_for`/`timbre_for`,
+which is why the replacement carries both the Silero voice and the timbre,
+while `speaker` is still reported as heard — the scene list keeps one row per
+voice of the game, and `PlaybackScheduler` keeps ordering lines by who spoke.
+A `voice:<name>` speaker means nothing heard who was talking, so it is the one
+kind that cannot be replaced.
+
+The voices can be placed before anything is dubbed. `PipelineSession.scene`
+(`toggleSceneVoices` -> `AppRepository.startSceneVoices` ->
+`NativeEngineService.startScene`) is the characters session with the bank, the
+cast and the map added and the recording gate left open: `ld_start` on the
+game's audio plus the worker under `--embed-only`, so it is ready in seconds.
+Each captured segment goes to `{"listen": path}` instead of recognition, the
+worker answers with the speaker `identify` placed it as, and the segment is
+dropped — the reply becomes a `sceneVoice` event and a row with no words, only
+the seconds heard. The bank is the point: a voice founded while listening is
+written to `<app support>/voice_bank/<exe>.json` there and then, so the
+dubbing session knows it under the same `timbre:<n>` and the replacements made
+beforehand still name the same speaker. Starting live dubbing over it stops it
+first, as with the snapshot session.
+
 The Characters screen (`DashboardSection.characters`, `CharactersCubit`) is
 where the player records their own cast. `CharacterService` keeps them in one
 `<app support>/characters.json` for every game — unlike the per-game bank,

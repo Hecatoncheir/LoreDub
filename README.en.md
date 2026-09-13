@@ -120,7 +120,26 @@ recognition pass and one common mistake — a wrong guess made from a short firs
 phrase.
 
 Every line is shown as the original, the translation, and the time it took to
-travel the whole pipeline.
+travel the whole pipeline. Above each line stands whose voice it was: a
+character card by name, a voice LoreDub founded itself as "Voice 2".
+
+Beside the transcript are the **voices of the scene**: everyone heard this
+session, with the last thing they said. Each of them carries a **Read as**
+choice: give a voice one of your recorded characters and, from the very next
+line, it is read in their voice — and, with **Original voice**, in their
+timbre. Both a voice LoreDub founded itself and a card it recognized can be
+replaced, so a nameless guard can be given the voice of your own Guard. The
+choice is kept for that game and holds after a restart; **As heard** gives a
+voice back to itself.
+
+The voices can also be sorted out **before** any dubbing: **Place the voices**
+starts listening — only the voice converter is loaded, with neither whisper
+nor the translator, so it is ready in seconds. Walk through the scene, let the
+characters talk, hand out their voices, and only then start dubbing: a voice
+founded while listening joins the game's bank under the very number the
+dubbing session will know it by, so the assignments hold. Starting the dubbing
+over a listening session takes the worker from it. A narrow or low window puts
+the area under the transcript.
 
 While dubbing, a pause sits beside **Stop**. A pause keeps the models loaded:
 capture stops handing lines on, the queue of lines to voice is cleared, the

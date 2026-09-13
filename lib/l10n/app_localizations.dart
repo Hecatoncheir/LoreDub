@@ -729,6 +729,102 @@ abstract class AppLocalizations {
   /// **'В файле «{detail}» нет персонажей LoreDub.'**
   String failureCharactersImportFailed(String detail);
 
+  /// No description provided for @failureSpeakerMapSaveFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить замену голосов: {detail}'**
+  String failureSpeakerMapSaveFailed(String detail);
+
+  /// No description provided for @sceneVoices.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голоса сцены'**
+  String get sceneVoices;
+
+  /// No description provided for @sceneVoicesNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кого LoreDub услышал в этом сеансе. Выберите персонажа — и реплики этого голоса будут озвучиваться его голосом.'**
+  String get sceneVoicesNote;
+
+  /// No description provided for @sceneVoicesEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока никто не заговорил. Нажмите «Определить голоса» — или запустите перевод, и голоса появятся сами.'**
+  String get sceneVoicesEmpty;
+
+  /// No description provided for @sceneVoicesListen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Определить голоса'**
+  String get sceneVoicesListen;
+
+  /// No description provided for @sceneVoicesListenStop.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановить'**
+  String get sceneVoicesListenStop;
+
+  /// No description provided for @sceneVoicesListening.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слушаю игру. Голоса появляются здесь, как только персонажи заговорят, — перевод при этом не идёт.'**
+  String get sceneVoicesListening;
+
+  /// No description provided for @sceneVoiceHeardFor.
+  ///
+  /// In ru, this message translates to:
+  /// **'Услышано {seconds} с'**
+  String sceneVoiceHeardFor(String seconds);
+
+  /// No description provided for @sceneVoicesNeedsConverter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голоса различаются конвертером голоса: скачайте его на экране «Модели» и включите запоминание персонажей.'**
+  String get sceneVoicesNeedsConverter;
+
+  /// No description provided for @sceneVoiceUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос {number}'**
+  String sceneVoiceUnknown(int number);
+
+  /// No description provided for @sceneVoiceAnonymous.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без опознания'**
+  String get sceneVoiceAnonymous;
+
+  /// No description provided for @sceneVoiceLines.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} реплика} few{{count} реплики} other{{count} реплик}}'**
+  String sceneVoiceLines(int count);
+
+  /// No description provided for @sceneVoiceReadAs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Озвучивать как'**
+  String get sceneVoiceReadAs;
+
+  /// No description provided for @sceneVoiceAsHeard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как услышано'**
+  String get sceneVoiceAsHeard;
+
+  /// No description provided for @sceneVoiceNoCharacters.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запишите персонажей на экране «Персонажи», чтобы назначать их голоса.'**
+  String get sceneVoiceNoCharacters;
+
+  /// No description provided for @sceneVoiceReplaced.
+  ///
+  /// In ru, this message translates to:
+  /// **'Звучит как «{name}»'**
+  String sceneVoiceReplaced(String name);
+
   /// No description provided for @failureOcrLanguageMissing.
   ///
   /// In ru, this message translates to:

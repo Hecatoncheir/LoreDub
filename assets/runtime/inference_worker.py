@@ -423,6 +423,48 @@ class CharacterCast:
     def vector_of(self, index):
         return self.entries[index]["vector"]
 
+    def index_of(self, identifier):
+        """Where the card with this id sits, or None when it is not in the cast."""
+        for index, entry in enumerate(self.entries):
+            if entry["id"] == identifier:
+                return index
+        return None
+
+
+class SpeakerReplacements:
+    """Whose voice reads whom, as the player assigned it in Live.
+
+    The keys are the speakers the worker itself reports — "character:<id>"
+    for one of the player's cards, "timbre:<n>" for a voice this game's bank
+    founded — and the values name the character to read them in. The file
+    belongs to the interface: it is read here and never written, so an
+    assignment made while a session runs is sent in as well.
+    """
+
+    def __init__(self, path):
+        self.replacements = {}
+        if not path:
+            return
+        try:
+            data = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        entries = data.get("replacements") if isinstance(data, dict) else None
+        if not isinstance(entries, dict):
+            return
+        for speaker, character in entries.items():
+            if isinstance(speaker, str) and isinstance(character, str) and character:
+                self.replacements[speaker] = character
+
+    def assign(self, speaker, character):
+        if character:
+            self.replacements[speaker] = character
+        else:
+            self.replacements.pop(speaker, None)
+
+    def character_for(self, speaker):
+        return self.replacements.get(speaker) if speaker else None
+
 
 def main():
     use_utf8_streams()
@@ -463,6 +505,8 @@ def main():
     # The game's voice bank. With it, a character met before is voiced with
     # the fingerprint kept for them instead of the one of the current line.
     parser.add_argument("--voice-bank", default="")
+    # Whose voice reads whom in this game, as the player assigned it in Live.
+    parser.add_argument("--speaker-map", default="")
     args = parser.parse_args()
 
     speed = min(2.0, max(0.5, args.speed))
@@ -559,6 +603,36 @@ def main():
 
     # The player's own characters, recognized in whichever game they speak.
     cast = CharacterCast(args.characters)
+
+    # Whose voice reads whom, as the player assigned it for this game.
+    replacements = SpeakerReplacements(args.speaker_map)
+
+    def speaker_key(kind, index):
+        """What a line of this speaker is reported as, which is also what a
+        replacement is made against."""
+        if index is None:
+            return None
+        if kind == "character":
+            return f"character:{cast.identifier(index)}"
+        if kind == "voice":
+            return f"timbre:{index}"
+        return None
+
+    def read_as(kind, index):
+        """The character who reads this speaker: the one the player assigned,
+        or the speaker themselves.
+
+        Only the voice and the timbre change. Who was heard is reported as it
+        was heard, so the scene list keeps one row per voice of the game
+        rather than gaining the character it is read in.
+        """
+        target = replacements.character_for(speaker_key(kind, index))
+        if target is None:
+            return kind, index
+        at = cast.index_of(target)
+        # A card deleted since the assignment leaves the voice as itself.
+        return ("character", at) if at is not None else (kind, index)
+
     def identify(request):
         """The character this line belongs to and the fingerprint read from
         it, as (index, fingerprint).
@@ -700,6 +774,36 @@ def main():
                     }
                 )
                 continue
+            # Read this speaker in another character's voice from now on.
+            # The interface keeps the file; this spares the player a restart.
+            assignment = request.get("assign")
+            if assignment is not None:
+                replacements.assign(
+                    str(assignment.get("speaker", "")),
+                    str(assignment.get("character", "")),
+                )
+                reply({"id": request_id, "assigned": True})
+                continue
+            # Who is speaking, and nothing else. Live asks this before the
+            # dubbing itself runs, so the player can hand out the voices of
+            # a scene while only the converter is loaded.
+            heard_line = request.get("listen")
+            if heard_line:
+                if converter is None:
+                    raise RuntimeError("the voice converter is not loaded")
+                kind, index, _ = identify({"wave": heard_line})
+                answer = {"id": request_id, "speaker": speaker_key(kind, index)}
+                if answer["speaker"] is not None:
+                    target = replacements.character_for(answer["speaker"])
+                    if target is not None and cast.index_of(target) is not None:
+                        answer["readAs"] = f"character:{target}"
+                try:
+                    samples, rate = read_wave_mono(heard_line)
+                    answer["seconds"] = round(len(samples) / rate, 2) if rate else 0
+                except (OSError, wave.Error, ValueError):
+                    answer["seconds"] = 0
+                reply(answer)
+                continue
             # Where does the voice change? Asked before recognition, so each
             # speaker's half is recognized and voiced on its own.
             listening = request.get("diarize")
@@ -731,7 +835,8 @@ def main():
                 translated = text
             # Who is speaking is settled first: the character decides both the
             # voice they are read in and the timbre laid over it.
-            kind, index, fingerprint = identify(request)
+            heard_kind, heard_index, fingerprint = identify(request)
+            kind, index = read_as(heard_kind, heard_index)
             chosen = voice_for(request, kind, index)
             audio = tts.apply_tts(
                 text=translated,
@@ -761,10 +866,13 @@ def main():
                 "voice": chosen,
                 "cloned": timbre is not None,
             }
-            if kind == "character" and index is not None:
-                answer["speaker"] = f"character:{cast.identifier(index)}"
-            elif index is not None:
-                answer["speaker"] = f"timbre:{index}"
+            # Reported as it was heard, not as it was read: the scene list
+            # offers a replacement against the voice of the game.
+            heard = speaker_key(heard_kind, heard_index)
+            if heard is not None:
+                answer["speaker"] = heard
+                if (kind, index) != (heard_kind, heard_index) and index is not None:
+                    answer["readAs"] = f"character:{cast.identifier(index)}"
             elif converter is None:
                 # Nothing heard who is speaking, so the Silero voice is all
                 # that tells lines apart: men from women and nothing more.

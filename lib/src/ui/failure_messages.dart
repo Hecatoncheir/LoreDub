@@ -60,6 +60,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.charactersSaveFailed => l10n.failureCharactersSaveFailed(detail),
     FailureCode.charactersExportFailed => l10n.failureCharactersExportFailed(detail),
     FailureCode.charactersImportFailed => l10n.failureCharactersImportFailed(detail),
+    FailureCode.speakerMapSaveFailed => l10n.failureSpeakerMapSaveFailed(detail),
   };
 }
 

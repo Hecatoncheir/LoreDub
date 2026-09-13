@@ -241,6 +241,57 @@
       }
     }
   },
+  "failureSpeakerMapSaveFailed": "Не удалось сохранить замену голосов: {detail}",
+  "@failureSpeakerMapSaveFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "sceneVoices": "Голоса сцены",
+  "sceneVoicesNote": "Кого LoreDub услышал в этом сеансе. Выберите персонажа — и реплики этого голоса будут озвучиваться его голосом.",
+  "sceneVoicesEmpty": "Пока никто не заговорил. Нажмите «Определить голоса» — или запустите перевод, и голоса появятся сами.",
+  "sceneVoicesListen": "Определить голоса",
+  "sceneVoicesListenStop": "Остановить",
+  "sceneVoicesListening": "Слушаю игру. Голоса появляются здесь, как только персонажи заговорят, — перевод при этом не идёт.",
+  "sceneVoiceHeardFor": "Услышано {seconds} с",
+  "@sceneVoiceHeardFor": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "sceneVoicesNeedsConverter": "Голоса различаются конвертером голоса: скачайте его на экране «Модели» и включите запоминание персонажей.",
+  "sceneVoiceUnknown": "Голос {number}",
+  "@sceneVoiceUnknown": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "sceneVoiceAnonymous": "Без опознания",
+  "sceneVoiceLines": "{count, plural, one{{count} реплика} few{{count} реплики} other{{count} реплик}}",
+  "@sceneVoiceLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sceneVoiceReadAs": "Озвучивать как",
+  "sceneVoiceAsHeard": "Как услышано",
+  "sceneVoiceNoCharacters": "Запишите персонажей на экране «Персонажи», чтобы назначать их голоса.",
+  "sceneVoiceReplaced": "Звучит как «{name}»",
+  "@sceneVoiceReplaced": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "failureOcrLanguageMissing": "В Windows не установлено распознавание текста для языка «{language}». Добавьте язык: Параметры → Время и язык → Язык и регион → Добавить язык.",
   "@failureOcrLanguageMissing": {
     "placeholders": {

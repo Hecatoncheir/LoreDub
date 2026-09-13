@@ -15,6 +15,7 @@ import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
+import '../../../domain/speaker_map.dart';
 import 'downloads_cubit.dart';
 import 'settings_cubit.dart';
 import 'shell_cubit.dart';
@@ -25,6 +26,8 @@ class LivePipelineState {
   const LivePipelineState({
     this.status = PipelineStatus.idle,
     this.transcript = const [],
+    this.speakers = const [],
+    this.speakerReplacements = const {},
     this.processes = const [],
     this.selectedProcess,
     this.startupProgress,
@@ -42,6 +45,14 @@ class LivePipelineState {
   final List<TranscriptEntry> transcript;
   final List<GameProcess> processes;
   final GameProcess? selectedProcess;
+
+  /// The voices this session has heard, in the order they first spoke, so
+  /// the player can give any of them a character's voice.
+  final List<SceneSpeaker> speakers;
+
+  /// Which character reads which of them, by speaker key. Kept per game and
+  /// read back when a session starts, so a scene cast outlives one evening.
+  final Map<String, String> speakerReplacements;
 
   /// How far the pipeline is through starting, and what it is doing.
   final double? startupProgress;
@@ -85,6 +96,10 @@ class LivePipelineState {
   bool get snapshotRunning =>
       session == PipelineSession.snapshot && status == PipelineStatus.listening;
 
+  /// The scene session is up, placing the voices of the game without dubbing
+  /// a word of it.
+  bool get sceneRunning => session == PipelineSession.scene && running;
+
   /// The reported devices as a value that can be compared, so the compute
   /// card can be held still through everything else the session reports.
   String get backendSignature =>
@@ -98,13 +113,21 @@ class LivePipelineState {
     ComputeAvailability availability,
   ) => activeBackends[stage] ?? settings.backendFor(stage, availability);
 
-  /// A running snapshot session does not stand in the way: starting live
-  /// dubbing takes the worker over from it.
+  /// Neither a running snapshot session nor one placing the voices of the
+  /// scene stands in the way: starting live dubbing takes the worker over.
   bool canStart(ModelSelection selection, {required bool initializing}) =>
       !initializing &&
-      (status == PipelineStatus.idle || snapshotRunning) &&
+      (status == PipelineStatus.idle || snapshotRunning || sceneRunning) &&
       (!selection.requiresProcess || selectedProcess != null) &&
       selection.requiredModelsInstalled;
+
+  /// The scene session needs the converter, a bank to keep the voices it
+  /// founds in, and — like dubbing — a game to listen to.
+  bool canStartScene(ModelSelection selection, {required bool initializing}) =>
+      !initializing &&
+      (status == PipelineStatus.idle || sceneRunning) &&
+      (!selection.requiresProcess || selectedProcess != null) &&
+      selection.tracksSpeakers;
 
   /// The snapshot session needs its pair of models and a key to select with.
   bool canStartSnapshot(ModelSelection selection, {required bool initializing}) =>
@@ -116,6 +139,8 @@ class LivePipelineState {
   LivePipelineState copyWith({
     PipelineStatus? status,
     List<TranscriptEntry>? transcript,
+    List<SceneSpeaker>? speakers,
+    Map<String, String>? speakerReplacements,
     List<GameProcess>? processes,
     GameProcess? selectedProcess,
     bool clearSelectedProcess = false,
@@ -134,6 +159,8 @@ class LivePipelineState {
   }) => LivePipelineState(
     status: status ?? this.status,
     transcript: transcript ?? this.transcript,
+    speakers: speakers ?? this.speakers,
+    speakerReplacements: speakerReplacements ?? this.speakerReplacements,
     processes: processes ?? this.processes,
     selectedProcess: clearSelectedProcess ? null : selectedProcess ?? this.selectedProcess,
     startupProgress: clearStartupProgress ? null : startupProgress ?? this.startupProgress,
@@ -221,6 +248,10 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       if (isClosed || state.status != PipelineStatus.idle) return;
     }
     _startRequestedAt = _clock();
+    // What this game was told to replace outlives a session; whoever spoke
+    // in the last one does not.
+    final replacements = await _appRepository.loadSpeakerMap(_game);
+    if (isClosed) return;
     emit(
       state.copyWith(
         status: PipelineStatus.starting,
@@ -229,6 +260,10 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         startupStage: '',
         clearDetectedLanguage: true,
         clearSpokenVoice: true,
+        // Whoever spoke in the last session is not in this one yet; what
+        // the player told this game to read in whose voice still holds.
+        speakers: const [],
+        speakerReplacements: replacements,
       ),
     );
     try {
@@ -275,6 +310,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         voiceBank: selection.keepsVoiceBank
             ? await _appRepository.voiceBankFileFor(state.selectedProcess?.name ?? '')
             : null,
+        speakerMap: await _appRepository.speakerMapFileFor(_game),
       );
     } catch (exception) {
       if (isClosed) return;
@@ -339,6 +375,65 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     }
   }
 
+  /// Starts or ends the session that places the voices of the scene: the
+  /// game's audio through the converter, with nothing translated or voiced.
+  ///
+  /// It is what the replacements are made against before dubbing runs — the
+  /// voices it meets join the game's bank under the numbers the dubbing
+  /// session will know them by — and it is ready in seconds, since neither
+  /// whisper nor the translator is loaded.
+  Future<void> toggleSceneVoices({required bool initializing}) async {
+    final startedAt = _startRequestedAt;
+    if (state.status == PipelineStatus.starting &&
+        startedAt != null &&
+        _clock().difference(startedAt) < doubleClickGrace) {
+      return;
+    }
+    _errors.report(null);
+    if (state.running) {
+      // Live dubbing and the snapshot session are ended where they started.
+      if (state.session == PipelineSession.scene) await stop();
+      return;
+    }
+    final selection = _selection;
+    if (!state.canStartScene(selection, initializing: initializing)) return;
+    _startRequestedAt = _clock();
+    final replacements = await _appRepository.loadSpeakerMap(_game);
+    if (isClosed) return;
+    emit(
+      state.copyWith(
+        status: PipelineStatus.starting,
+        session: PipelineSession.scene,
+        clearStartupProgress: true,
+        startupStage: '',
+        speakers: const [],
+        speakerReplacements: replacements,
+      ),
+    );
+    try {
+      final settings = _settings.settings;
+      await _appRepository.startSceneVoices(
+        process: selection.requiresProcess ? state.selectedProcess : null,
+        settings: settings,
+        converterDirectory: await _modelRepository.directoryFor(
+          selection.voiceConverter!.model,
+        ),
+        converterBackend: settings.backendFor(
+          ComputeStage.voiceConversion,
+          _downloads.state.availability,
+        ),
+        runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+        // The same bank the dubbing session reads, so a voice met now is
+        // the same voice then.
+        voiceBank: await _appRepository.voiceBankFileFor(_game),
+      );
+    } catch (exception) {
+      if (isClosed) return;
+      emit(state.copyWith(status: PipelineStatus.error));
+      _errors.report(exception);
+    }
+  }
+
   /// Ends the session, paused or not, and gives the game its volume back.
   Future<void> stop() async {
     if (!state.running) return;
@@ -391,6 +486,43 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     }
   }
 
+  /// The game the per-game files are kept under: its executable, or the one
+  /// name the whole default output shares.
+  String get _game => state.selectedProcess?.name ?? '';
+
+  /// The scene list with this voice in it: one heard before keeps its place
+  /// and shows what it just said, a new one joins the end.
+  List<SceneSpeaker> _withSpeaker(String? key, {String line = '', double seconds = 0}) {
+    if (key == null || key.isEmpty) return state.speakers;
+    final at = state.speakers.indexWhere((speaker) => speaker.key == key);
+    if (at < 0) {
+      return [...state.speakers, SceneSpeaker(key: key, line: line, seconds: seconds)];
+    }
+    return [
+      for (final speaker in state.speakers)
+        if (speaker.key == key) speaker.heard(line: line, seconds: seconds) else speaker,
+    ];
+  }
+
+  /// Reads [speaker] in [character]'s voice from the next line on, or in
+  /// their own again when [character] is null.
+  Future<void> assignSpeaker(String speaker, String? character) async {
+    final changed = withReplacement(state.speakerReplacements, speaker, character);
+    // Shown at once and written behind it, the way a character card is: the
+    // worker is told either way, so the next line is already read anew.
+    emit(state.copyWith(speakerReplacements: changed));
+    try {
+      await _appRepository.assignSpeaker(
+        game: _game,
+        replacements: changed,
+        speaker: speaker,
+        character: character,
+      );
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
   /// Empties the transcript. The pipeline is untouched: a running session
   /// keeps appending to the now-clear list.
   void clearTranscript() {
@@ -425,6 +557,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
           english: event['english'] as String? ?? '',
           translated: event['translated'] as String? ?? '',
           latency: Duration(milliseconds: event['latencyMs'] as int? ?? 0),
+          speaker: event['speaker'] as String?,
         );
         // A selection answers the player's request, not the running capture,
         // so it has a list of its own.
@@ -436,8 +569,26 @@ class PipelineCubit extends Cubit<LivePipelineState> {
             ),
           );
         } else {
-          emit(state.copyWith(transcript: [entry, ...state.transcript.take(49)]));
+          emit(
+            state.copyWith(
+              transcript: [entry, ...state.transcript.take(49)],
+              speakers: _withSpeaker(
+                entry.speaker,
+                line: entry.translated.trim().isEmpty ? entry.original : entry.translated,
+              ),
+            ),
+          );
         }
+      // A voice placed before the dubbing runs: no words, only who spoke.
+      case 'sceneVoice':
+        emit(
+          state.copyWith(
+            speakers: _withSpeaker(
+              event['speaker'] as String?,
+              seconds: (event['seconds'] as num?)?.toDouble() ?? 0,
+            ),
+          ),
+        );
       case 'snapshotReading':
         emit(state.copyWith(snapshotReading: true, snapshotMissed: false));
       case 'snapshot':

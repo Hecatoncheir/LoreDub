@@ -397,6 +397,75 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String failureSpeakerMapSaveFailed(String detail) {
+    return 'The voice replacements could not be saved: $detail';
+  }
+
+  @override
+  String get sceneVoices => 'Voices of the scene';
+
+  @override
+  String get sceneVoicesNote =>
+      'Who LoreDub has heard this session. Pick a character and this voice\'s lines are read in theirs.';
+
+  @override
+  String get sceneVoicesEmpty =>
+      'Nobody has spoken yet. Press “Place the voices” — or start dubbing, and they gather by themselves.';
+
+  @override
+  String get sceneVoicesListen => 'Place the voices';
+
+  @override
+  String get sceneVoicesListenStop => 'Stop';
+
+  @override
+  String get sceneVoicesListening =>
+      'Listening to the game. Voices appear here as characters speak; nothing is dubbed meanwhile.';
+
+  @override
+  String sceneVoiceHeardFor(String seconds) {
+    return 'Heard for $seconds s';
+  }
+
+  @override
+  String get sceneVoicesNeedsConverter =>
+      'Voices are told apart by the voice converter: download it on the Models screen and turn character memory on.';
+
+  @override
+  String sceneVoiceUnknown(int number) {
+    return 'Voice $number';
+  }
+
+  @override
+  String get sceneVoiceAnonymous => 'Nobody in particular';
+
+  @override
+  String sceneVoiceLines(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lines',
+      one: '$count line',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sceneVoiceReadAs => 'Read as';
+
+  @override
+  String get sceneVoiceAsHeard => 'As heard';
+
+  @override
+  String get sceneVoiceNoCharacters =>
+      'Record characters on the Characters screen to give their voices away.';
+
+  @override
+  String sceneVoiceReplaced(String name) {
+    return 'Read as “$name”';
+  }
+
+  @override
   String failureOcrLanguageMissing(String language) {
     return 'Windows has no text recognition installed for $language. Add the language in Settings → Time & language → Language & region → Add a language.';
   }

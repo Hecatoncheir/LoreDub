@@ -34,7 +34,7 @@ import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart'
-    show PipelineSession, PipelineStatus, TranscriptEntry;
+    show PipelineSession, PipelineStatus, SceneSpeaker, TranscriptEntry;
 import 'package:lore_dub/src/ui/dashboard/character_tiles.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
@@ -73,6 +73,8 @@ void main() {
     ComputeAvailability? availability,
     PipelineStatus status = PipelineStatus.idle,
     List<TranscriptEntry> transcript = const [],
+    List<SceneSpeaker> speakers = const [],
+    Map<String, String> speakerReplacements = const {},
     String? detectedLanguage,
     double? startupProgress,
     String startupStage = '',
@@ -92,6 +94,8 @@ void main() {
       LivePipelineState(
         status: status,
         transcript: transcript,
+        speakers: speakers,
+        speakerReplacements: speakerReplacements,
         detectedLanguage: detectedLanguage,
         startupProgress: startupProgress,
         startupStage: startupStage,
@@ -2123,6 +2127,157 @@ void main() {
     });
   });
 
+  group('the voices of the scene', () {
+    const guard = Character(id: 'a1', name: 'Стражник', vector: [0.2, 0.4]);
+
+    DashboardCubits stageScene({
+      List<SceneSpeaker> speakers = const [],
+      Map<String, String> replacements = const {},
+      List<Character> characters = const [guard],
+    }) {
+      final cubits = stage(
+        buildCubits(),
+        // The whole default output needs no process chosen.
+        settings: const AppSettings(audioCaptureSource: AudioCaptureSource.system),
+        models: catalogue(),
+        speakers: speakers,
+        speakerReplacements: replacements,
+      );
+      cubits.characters.seed(CharactersState(loading: false, characters: characters));
+      return cubits;
+    }
+
+    testWidgets('says nobody has spoken yet', (tester) async {
+      await pumpDashboard(tester, stageScene(), const Size(1400, 900));
+
+      expect(find.text('SCENE VOICES'), findsOneWidget);
+      expect(find.textContaining('Пока никто не заговорил'), findsOneWidget);
+    });
+
+    testWidgets('offers to place the voices before anything is dubbed', (tester) async {
+      await pumpDashboard(tester, stageScene(), const Size(1400, 900));
+
+      final listen = find.byKey(const ValueKey('sceneListen'));
+      expect(tester.widget<TextButton>(listen).onPressed, isNotNull);
+      expect(find.text('Определить голоса'), findsOneWidget);
+      expect(find.textContaining('Нажмите «Определить голоса»'), findsOneWidget);
+    });
+
+    testWidgets('cannot place them while nothing can hear who is speaking', (tester) async {
+      final cubits = stage(
+        buildCubits(),
+        settings: const AppSettings(audioCaptureSource: AudioCaptureSource.system),
+        // The converter is what tells the voices apart.
+        models: catalogue(missingLanguage: null)
+          ..removeWhere((state) => state.model.kind == ModelKind.voiceConversion),
+      );
+      cubits.characters.seed(const CharactersState(loading: false));
+      await pumpDashboard(tester, cubits, const Size(1400, 900));
+
+      expect(
+        tester.widget<TextButton>(find.byKey(const ValueKey('sceneListen'))).onPressed,
+        isNull,
+      );
+      expect(find.textContaining('Голоса различаются конвертером'), findsOneWidget);
+    });
+
+    testWidgets('says it is listening while the voices are placed', (tester) async {
+      final cubits = stageScene();
+      cubits.pipeline.seed(
+        const LivePipelineState(
+          status: PipelineStatus.listening,
+          session: PipelineSession.scene,
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1400, 900));
+
+      expect(find.text('Остановить'), findsOneWidget);
+      expect(find.textContaining('Слушаю игру'), findsOneWidget);
+    });
+
+    testWidgets('names a voice the bank founded and the card it knows', (tester) async {
+      await pumpDashboard(
+        tester,
+        stageScene(
+          speakers: const [
+            SceneSpeaker(key: 'timbre:0', line: 'Стоять!', lines: 2),
+            SceneSpeaker(key: 'character:a1', line: 'Чего тебе?'),
+          ],
+        ),
+        const Size(1400, 900),
+      );
+
+      // The bank counts from zero and the player counts from one.
+      expect(find.text('Голос 1'), findsOneWidget);
+      expect(find.text('Стражник'), findsOneWidget);
+      expect(find.text('Стоять!'), findsOneWidget);
+      expect(find.text('2 реплики'), findsOneWidget);
+    });
+
+    testWidgets('gives a voice a character and takes the choice back', (tester) async {
+      final cubits = stageScene(
+        speakers: const [SceneSpeaker(key: 'timbre:0', line: 'Стоять!')],
+      );
+      await pumpDashboard(tester, cubits, const Size(1400, 900));
+
+      await tester.tap(find.byKey(const ValueKey('assign-timbre:0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Стражник').last);
+      await tester.pumpAndSettle();
+
+      expect(cubits.pipeline.state.speakerReplacements, {'timbre:0': 'a1'});
+
+      await tester.tap(find.byKey(const ValueKey('assign-timbre:0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Как услышано').last);
+      await tester.pumpAndSettle();
+
+      expect(cubits.pipeline.state.speakerReplacements, isEmpty);
+    });
+
+    testWidgets('offers nothing to a line nobody was heard in', (tester) async {
+      await pumpDashboard(
+        tester,
+        stageScene(
+          speakers: const [SceneSpeaker(key: 'voice:eugene', line: 'Привет')],
+        ),
+        const Size(1400, 900),
+      );
+
+      expect(find.text('Без опознания'), findsOneWidget);
+      expect(find.byKey(const ValueKey('assign-voice:eugene')), findsNothing);
+    });
+
+    testWidgets('says in the transcript who was heard and who reads them', (tester) async {
+      await pumpDashboard(
+        tester,
+        stageScene(
+            speakers: const [SceneSpeaker(key: 'timbre:0', line: 'Стоять!')],
+            replacements: const {'timbre:0': 'a1'},
+          )
+          ..pipeline.seed(
+            LivePipelineState(
+              status: PipelineStatus.listening,
+              speakers: const [SceneSpeaker(key: 'timbre:0', line: 'Стоять!')],
+              speakerReplacements: const {'timbre:0': 'a1'},
+              transcript: const [
+                TranscriptEntry(
+                  original: 'Halt!',
+                  english: 'Halt!',
+                  translated: 'Стоять!',
+                  latency: Duration(milliseconds: 900),
+                  speaker: 'timbre:0',
+                ),
+              ],
+            ),
+          ),
+        const Size(1400, 900),
+      );
+
+      expect(find.text('Голос 1'), findsWidgets);
+      expect(find.text('Звучит как «Стражник»'), findsOneWidget);
+    });
+  });
   group('the subtitle area', () {
     Future<DashboardCubits> pumpSubtitleArea(
       WidgetTester tester, {

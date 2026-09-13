@@ -111,6 +111,9 @@ enum FailureCode {
 
   /// A file the player chose holds no characters; the detail is its name.
   charactersImportFailed,
+
+  /// Whose voice reads whom could not be written back for this game.
+  speakerMapSaveFailed,
 }
 
 class LoreDubFailure implements Exception {
