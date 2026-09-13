@@ -160,4 +160,38 @@ void main() {
       }
     }
   });
+
+  testWidgets('keeps a dragged node under the pointer', (tester) async {
+    final cubits = await pumpGraph(tester, const Size(1500, 950));
+    final zoom = cubits.graph.state.layout.view.zoom;
+    final card = find.text('Перевод');
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(card.first),
+      kind: PointerDeviceKind.mouse,
+    );
+    // Past the slop first, so what is measured below is drag and nothing else.
+    await gesture.moveBy(const Offset(8, 8));
+    await tester.pump();
+    final from = tester.getCenter(card.first);
+    final before = cubits.graph.state.graph.node(PipelineNodeIds.translation)!.position;
+
+    await gesture.moveBy(const Offset(120, 60));
+    await tester.pump();
+
+    final after = cubits.graph.state.graph.node(PipelineNodeIds.translation)!.position;
+    final moved = tester.getCenter(card.first) - from;
+    await gesture.up();
+
+    // The card goes exactly as far as the pointer, whatever the canvas is
+    // scaled to. Measured against the drag's own delta it ran ahead: that is
+    // reported in the card's coordinates, and the card moves out from under
+    // the pointer as it goes, so every step was measured against a card that
+    // had already answered the one before it.
+    expect(moved.dx, closeTo(120, 0.5), reason: 'the pointer moved 120 across');
+    expect(moved.dy, closeTo(60, 0.5), reason: 'and 60 down');
+    // Which is that distance in the coordinates the scheme is laid out in.
+    expect(after.x - before.x, closeTo(120 / zoom, 0.5));
+    expect(after.y - before.y, closeTo(60 / zoom, 0.5));
+  });
 }

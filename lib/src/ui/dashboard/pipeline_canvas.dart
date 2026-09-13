@@ -158,6 +158,11 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
   /// be shown as the one that would catch it.
   PipelinePort? _over;
 
+  /// Where the pointer was when a node last answered it, on the screen. What
+  /// a node moves is the distance from here, so it keeps up with the pointer
+  /// exactly instead of with its own idea of how far it has come.
+  Offset? _dragging;
+
   PipelineGraphState get _state => widget.state;
   GraphView get _view => _state.layout.view;
 
@@ -349,11 +354,25 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
           availability: widget.availability,
           selected: _state.selected == node.id,
           onTap: () => widget.bloc.add(PipelineNodeSelected(node.id)),
-          onGrab: () => widget.bloc.add(PipelineNodeGrabbed(node.id)),
-          onDrag: (delta) => widget.bloc.add(
-            PipelineNodeMoved(node.id, delta.dx / _view.zoom, delta.dy / _view.zoom),
-          ),
-          onDrop: () => widget.bloc.add(const PipelineArrangementSettled()),
+          onGrab: (at) {
+            _dragging = at;
+            widget.bloc.add(PipelineNodeGrabbed(node.id));
+          },
+          onDrag: (at) {
+            final from = _dragging ?? at;
+            _dragging = at;
+            widget.bloc.add(
+              PipelineNodeMoved(
+                node.id,
+                (at.dx - from.dx) / _view.zoom,
+                (at.dy - from.dy) / _view.zoom,
+              ),
+            );
+          },
+          onDrop: () {
+            _dragging = null;
+            widget.bloc.add(const PipelineArrangementSettled());
+          },
           onRemove: node.characterId == null
               ? null
               : () => widget.bloc.add(PipelineCharacterRemoved(node.characterId!)),
@@ -619,8 +638,14 @@ class _NodeCard extends StatelessWidget {
   final ComputeAvailability availability;
   final bool selected;
   final VoidCallback onTap;
-  final VoidCallback onGrab;
-  final void Function(Offset delta) onDrag;
+
+  /// Where the pointer took hold, and where it has got to, both on the
+  /// screen. Not the drag's own delta: that is reported in the card's own
+  /// coordinates, and the card moves out from under the pointer as it is
+  /// dragged, so every step would be measured against a card that had
+  /// already answered the step before it.
+  final void Function(Offset at) onGrab;
+  final void Function(Offset at) onDrag;
   final VoidCallback onDrop;
 
   /// Takes the node off the canvas. Only a card has one: the stages of the
@@ -632,8 +657,8 @@ class _NodeCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return GestureDetector(
       onTap: onTap,
-      onPanStart: (_) => onGrab(),
-      onPanUpdate: (details) => onDrag(details.delta),
+      onPanStart: (details) => onGrab(details.globalPosition),
+      onPanUpdate: (details) => onDrag(details.globalPosition),
       onPanEnd: (_) => onDrop(),
       child: MouseRegion(
         cursor: SystemMouseCursors.grab,
