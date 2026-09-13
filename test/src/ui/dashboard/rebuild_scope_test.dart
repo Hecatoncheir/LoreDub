@@ -27,6 +27,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/theme.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// What one report of download progress costs the rest of the screen.
@@ -63,7 +64,18 @@ void main() {
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(
-        UpdateService(client: MockClient((_) async => http.Response('', 503))),
+        UpdateService(
+          client: MockClient((_) async => http.Response('', 503)),
+          // Read from the platform otherwise, which a unit test does not have.
+          packageInfo: Future.value(
+            PackageInfo(
+              appName: 'LoreDub',
+              packageName: 'lore_dub',
+              version: '0.15.0',
+              buildNumber: '20',
+            ),
+          ),
+        ),
         NotificationService(plugin: FlutterLocalNotificationsPlugin()),
       ),
     );
