@@ -158,7 +158,8 @@ would stop reaching the game.
 </p>
 
 The same pipeline drawn as nodes on a dotted canvas: **Original stream**,
-**Whisper**, **Translation**, **Voice** and **Stream**, joined by links. Empty
+**Whisper**, **Translation**, **Voice**, **Mix** and **Stream**, joined by
+links. Empty
 space drags the canvas, the wheel zooms, and the scheme is fitted into the
 window the first time it is opened.
 
@@ -176,6 +177,11 @@ language, the voice and its speed, how loud the original stays, whether lines
 overlap, and which device the stage runs on. These are the same settings the
 other screens hold — the graph keeps nothing of its own — so the two can never
 disagree. While a session runs the route and the models stay as it started.
+
+**Mix** is the playback queue: the pipeline's own voice and the voices of every
+character on the canvas enter it, and what leaves is what reaches the output
+device. Whether lines may overlap is set there too — no more than two voices
+sound together, and one character never talks over themselves.
 
 The person button puts a character card on the canvas. A link from one card to
 another says whose voice reads whom — the same substitution the card carries

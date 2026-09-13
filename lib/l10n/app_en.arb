@@ -997,8 +997,8 @@
   "pipelineNoProcess": "No game selected",
   "pipelineNoModel": "No model selected",
   "pipelineOutputDefault": "Default device",
-  "pipelineOutputOverlapping": "overlapping",
-  "pipelineOutputInTurn": "in turn",
+  "pipelineMixOverlapping": "overlapping",
+  "pipelineMixInTurn": "in turn",
   "pipelineReadBy": "In {name}'s voice",
   "@pipelineReadBy": {
     "placeholders": {
@@ -1025,5 +1025,32 @@
         "type": "String"
       }
     }
-  }
+  },
+  "pipelineNodeMix": "Mix",
+  "pipelineMixVoices": "Up to {count} voices at once",
+  "@pipelineMixVoices": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pipelineMixOneVoice": "One voice at a time",
+  "pipelineMixNote": "Everything voiced goes through the mix — the pipeline's own voice and the characters' lines alike. No more than {count} voices sound together, and one character never talks over themselves.",
+  "@pipelineMixNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pipelineOutputOriginal": "original {percent}%",
+  "@pipelineOutputOriginal": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "pipelineOutputNote": "The dubbing goes to the default Windows output device."
 }

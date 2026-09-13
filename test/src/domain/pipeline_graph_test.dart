@@ -14,6 +14,7 @@ void main() {
   const recognition = PipelineNodeIds.recognition;
   const translation = PipelineNodeIds.translation;
   const voice = PipelineNodeIds.voice;
+  const mix = PipelineNodeIds.mix;
   const output = PipelineNodeIds.output;
 
   bool joined(PipelineGraph graph, PipelinePort from, PipelinePort to) =>
@@ -51,6 +52,14 @@ void main() {
         joined(
           graph,
           const PipelinePort(voice, PipelineSocket.voiceAudio),
+          const PipelinePort(mix, PipelineSocket.mixIn),
+        ),
+        isTrue,
+      );
+      expect(
+        joined(
+          graph,
+          const PipelinePort(mix, PipelineSocket.mixOut),
           const PipelinePort(output, PipelineSocket.streamIn),
         ),
         isTrue,
@@ -98,6 +107,26 @@ void main() {
         ),
         isTrue,
       );
+    });
+
+    test('sends every card on to be put in order with the rest', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [guard, smith],
+        layout: const PipelineLayout(characters: ['guard', 'smith']),
+      );
+
+      for (final id in ['guard', 'smith']) {
+        expect(
+          joined(
+            graph,
+            PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterVoice),
+            const PipelinePort(mix, PipelineSocket.mixCast),
+          ),
+          isTrue,
+          reason: 'a card on the canvas is part of the path, not an island beside it',
+        );
+      }
     });
 
     test('draws the reader even when only the card given away was placed', () {
@@ -291,6 +320,21 @@ void main() {
       );
 
       expect((connection as RefusedConnection).reason, ConnectionRefusal.unsupported);
+    });
+
+    test('is refused on the voice a card sends to the mix', () {
+      final connection = proposeDisconnect(
+        PipelineLink(
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
+          const PipelinePort(mix, PipelineSocket.mixCast),
+        ),
+      );
+
+      expect(
+        (connection as RefusedConnection).reason,
+        ConnectionRefusal.unsupported,
+        reason: 'everything voiced is played; there is nothing to switch off',
+      );
     });
   });
 

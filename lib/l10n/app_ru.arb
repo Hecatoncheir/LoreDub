@@ -997,8 +997,8 @@
   "pipelineNoProcess": "Игра не выбрана",
   "pipelineNoModel": "Модель не выбрана",
   "pipelineOutputDefault": "Устройство по умолчанию",
-  "pipelineOutputOverlapping": "внахлёст",
-  "pipelineOutputInTurn": "по очереди",
+  "pipelineMixOverlapping": "внахлёст",
+  "pipelineMixInTurn": "по очереди",
   "pipelineReadBy": "Голосом «{name}»",
   "@pipelineReadBy": {
     "placeholders": {
@@ -1025,5 +1025,32 @@
         "type": "String"
       }
     }
-  }
+  },
+  "pipelineNodeMix": "Сведение",
+  "pipelineMixVoices": "До {count} голосов сразу",
+  "@pipelineMixVoices": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pipelineMixOneVoice": "Один голос за раз",
+  "pipelineMixNote": "Через сведение проходит всё, что озвучено, — и общий голос, и реплики персонажей. Одновременно звучит не больше {count} голосов, а один персонаж никогда не перебивает сам себя.",
+  "@pipelineMixNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pipelineOutputOriginal": "оригинал {percent}%",
+  "@pipelineOutputOriginal": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "pipelineOutputNote": "Озвучка уходит на устройство вывода Windows по умолчанию."
 }

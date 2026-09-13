@@ -1469,10 +1469,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineOutputDefault => 'Устройство по умолчанию';
 
   @override
-  String get pipelineOutputOverlapping => 'внахлёст';
+  String get pipelineMixOverlapping => 'внахлёст';
 
   @override
-  String get pipelineOutputInTurn => 'по очереди';
+  String get pipelineMixInTurn => 'по очереди';
 
   @override
   String pipelineReadBy(String name) {
@@ -1518,4 +1518,28 @@ class AppLocalizationsRu extends AppLocalizations {
   String failurePipelineLayoutSaveFailed(String detail) {
     return 'Не удалось сохранить схему: $detail';
   }
+
+  @override
+  String get pipelineNodeMix => 'Сведение';
+
+  @override
+  String pipelineMixVoices(int count) {
+    return 'До $count голосов сразу';
+  }
+
+  @override
+  String get pipelineMixOneVoice => 'Один голос за раз';
+
+  @override
+  String pipelineMixNote(int count) {
+    return 'Через сведение проходит всё, что озвучено, — и общий голос, и реплики персонажей. Одновременно звучит не больше $count голосов, а один персонаж никогда не перебивает сам себя.';
+  }
+
+  @override
+  String pipelineOutputOriginal(int percent) {
+    return 'оригинал $percent%';
+  }
+
+  @override
+  String get pipelineOutputNote => 'Озвучка уходит на устройство вывода Windows по умолчанию.';
 }

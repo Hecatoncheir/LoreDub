@@ -1461,10 +1461,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineOutputDefault => 'Default device';
 
   @override
-  String get pipelineOutputOverlapping => 'overlapping';
+  String get pipelineMixOverlapping => 'overlapping';
 
   @override
-  String get pipelineOutputInTurn => 'in turn';
+  String get pipelineMixInTurn => 'in turn';
 
   @override
   String pipelineReadBy(String name) {
@@ -1511,4 +1511,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String failurePipelineLayoutSaveFailed(String detail) {
     return 'The graph could not be saved: $detail';
   }
+
+  @override
+  String get pipelineNodeMix => 'Mix';
+
+  @override
+  String pipelineMixVoices(int count) {
+    return 'Up to $count voices at once';
+  }
+
+  @override
+  String get pipelineMixOneVoice => 'One voice at a time';
+
+  @override
+  String pipelineMixNote(int count) {
+    return 'Everything voiced goes through the mix — the pipeline\'s own voice and the characters\' lines alike. No more than $count voices sound together, and one character never talks over themselves.';
+  }
+
+  @override
+  String pipelineOutputOriginal(int percent) {
+    return 'original $percent%';
+  }
+
+  @override
+  String get pipelineOutputNote => 'The dubbing goes to the default Windows output device.';
 }

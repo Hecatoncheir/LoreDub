@@ -40,9 +40,11 @@ radius.
    start/stop action are grouped as `01 / GAME INPUT`; translated dialogue is
    grouped as `02 / LIVE TRANSCRIPT`.
 2. **Signal path** is the same pipeline drawn as nodes on a dotted field: the
-   five stages as cards in the model tiles' vocabulary, the route between
-   them in orange, and the cards of the cast that take a voice from one
-   another joined by dashed graphite. A socket is hollow until something is
+   six stages as cards in the model tiles' vocabulary, the route between
+   them in orange, and the cards of the cast joined to it by dashed graphite:
+   each of them takes a voice from the pipeline or from another card, and
+   sends the lines read in it on to the mix, so a character is part of the
+   path rather than an island beside it. A socket is hollow until something is
    attached and rings orange while a link that would land on it is being
    pulled; a stage the route goes past keeps its card, dimmed and marked. The
    canvas carries no settings of its own — a node's own panel floats over it

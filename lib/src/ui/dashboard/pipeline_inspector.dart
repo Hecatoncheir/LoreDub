@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../data/services/playback_scheduler.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
@@ -116,6 +117,7 @@ class PipelineInspector extends StatelessWidget {
     PipelineNodeKind.recognition => l10n.pipelineNodeRecognition,
     PipelineNodeKind.translation => l10n.pipelineNodeTranslation,
     PipelineNodeKind.voice => l10n.pipelineNodeVoice,
+    PipelineNodeKind.mix => l10n.pipelineNodeMix,
     PipelineNodeKind.output => l10n.pipelineNodeOutput,
     PipelineNodeKind.character => facts.character(node.characterId)?.name ?? l10n.charactersNewName,
   };
@@ -125,6 +127,7 @@ class PipelineInspector extends StatelessWidget {
     PipelineNodeKind.recognition => _recognition(l10n),
     PipelineNodeKind.translation => _translation(l10n),
     PipelineNodeKind.voice => _voice(l10n),
+    PipelineNodeKind.mix => _mix(l10n),
     PipelineNodeKind.output => _output(l10n),
     PipelineNodeKind.character => _character(context, l10n),
   };
@@ -290,6 +293,17 @@ class PipelineInspector extends StatelessWidget {
     ),
   ];
 
+  List<Widget> _mix(AppLocalizations l10n) => [
+    _Toggle(
+      label: l10n.voiceOverlap,
+      value: _settings.overlapVoices,
+      enabled: !_locked,
+      onChanged: (value) => _update(_settings.copyWith(overlapVoices: value)),
+    ),
+    _Note(text: l10n.voiceOverlapNote),
+    _Note(text: l10n.pipelineMixNote(overlappingVoices)),
+  ];
+
   List<Widget> _output(AppLocalizations l10n) => [
     _Field(
       label:
@@ -301,13 +315,7 @@ class PipelineInspector extends StatelessWidget {
         onChanged: _locked ? null : (value) => _update(_settings.copyWith(originalVolume: value)),
       ),
     ),
-    _Toggle(
-      label: l10n.voiceOverlap,
-      value: _settings.overlapVoices,
-      enabled: !_locked,
-      onChanged: (value) => _update(_settings.copyWith(overlapVoices: value)),
-    ),
-    _Note(text: l10n.voiceOverlapNote),
+    _Note(text: l10n.pipelineOutputNote),
   ];
 
   List<Widget> _character(BuildContext context, AppLocalizations l10n) {

@@ -46,9 +46,9 @@ class GraphPoint {
 /// same thing.
 enum PipelineSignal { audio, text, voice }
 
-/// The kinds of node the canvas holds: the five stages of the pipeline, and
+/// The kinds of node the canvas holds: the six stages of the pipeline, and
 /// a card from the player's cast.
-enum PipelineNodeKind { source, recognition, translation, voice, output, character }
+enum PipelineNodeKind { source, recognition, translation, voice, mix, output, character }
 
 /// Where a link may be attached.
 ///
@@ -70,6 +70,12 @@ enum PipelineSocket {
 
   /// The voice the pipeline reads a character in while nobody replaces them.
   voiceCast(PipelineNodeKind.voice, PipelineSignal.voice, false),
+  mixIn(PipelineNodeKind.mix, PipelineSignal.audio, true),
+
+  /// Every voice the scheduler puts in order, the cast's included. It takes
+  /// as many links as there are cards on the canvas.
+  mixCast(PipelineNodeKind.mix, PipelineSignal.voice, true),
+  mixOut(PipelineNodeKind.mix, PipelineSignal.audio, false),
   streamIn(PipelineNodeKind.output, PipelineSignal.audio, true),
 
   /// Whose voice this character is read in. One link only: a card is read
@@ -93,6 +99,7 @@ abstract final class PipelineNodeIds {
   static const recognition = 'recognition';
   static const translation = 'translation';
   static const voice = 'voice';
+  static const mix = 'mix';
   static const output = 'output';
 
   static const characterPrefix = 'character:';
@@ -104,7 +111,7 @@ abstract final class PipelineNodeIds {
       nodeId.startsWith(characterPrefix) ? nodeId.substring(characterPrefix.length) : null;
 
   /// The stages, in the order they are laid out.
-  static const stages = [source, recognition, translation, voice, output];
+  static const stages = [source, recognition, translation, voice, mix, output];
 }
 
 /// One socket of one node — the end of a link, and what the pointer grabs.
@@ -229,21 +236,23 @@ class PipelineLayout {
 
   static const standardPositions = {
     PipelineNodeIds.source: GraphPoint(40, 220),
-    PipelineNodeIds.recognition: GraphPoint(380, 40),
-    PipelineNodeIds.translation: GraphPoint(720, 220),
-    PipelineNodeIds.voice: GraphPoint(1060, 220),
-    PipelineNodeIds.output: GraphPoint(1400, 220),
+    PipelineNodeIds.recognition: GraphPoint(325, 40),
+    PipelineNodeIds.translation: GraphPoint(610, 220),
+    PipelineNodeIds.voice: GraphPoint(895, 220),
+    PipelineNodeIds.mix: GraphPoint(1180, 220),
+    PipelineNodeIds.output: GraphPoint(1465, 220),
   };
 
   /// Where the first character node is put, and how the rest follow: in a
-  /// row under the pipeline, so a card reads the one to its right along a
-  /// curve that runs the way the signal does.
-  static const castOrigin = GraphPoint(560, 480);
-  static const castStep = 300.0;
+  /// row under the pipeline and to the left of the mix they feed, so both
+  /// the substitution between two cards and the voice each of them sends on
+  /// run the way the signal does.
+  static const castOrigin = GraphPoint(620, 520);
+  static const castStep = 260.0;
   static const castRowStep = 170.0;
 
   /// How many cards a row holds before the next one starts.
-  static const castRow = 4;
+  static const castRow = 3;
 
   /// Where the [index]th card goes when nobody has moved it.
   static GraphPoint castPlace(int index) => castOrigin.translate(
@@ -409,6 +418,7 @@ PipelineGraph buildPipelineGraph({
           PipelineNodeIds.recognition => PipelineNodeKind.recognition,
           PipelineNodeIds.translation => PipelineNodeKind.translation,
           PipelineNodeIds.voice => PipelineNodeKind.voice,
+          PipelineNodeIds.mix => PipelineNodeKind.mix,
           _ => PipelineNodeKind.output,
         },
         position: at(id, PipelineLayout.standardPositions[id] ?? GraphPoint.zero),
@@ -446,8 +456,20 @@ PipelineGraph buildPipelineGraph({
     ),
     const PipelineLink(
       PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceAudio),
+      PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixIn),
+    ),
+    const PipelineLink(
+      PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixOut),
       PipelinePort(PipelineNodeIds.output, PipelineSocket.streamIn),
     ),
+    // Every card sends its lines on to be put in order with the rest, which
+    // is why a character on the canvas is part of the path rather than an
+    // island beside it.
+    for (final id in placed)
+      PipelineLink(
+        PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterVoice),
+        const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
+      ),
     for (final id in placed)
       PipelineLink(
         switch (byId[id]?.voicedBy) {
@@ -571,9 +593,7 @@ GraphConnection proposeConnection(
   if (from.socket.signal != to.socket.signal) {
     return const RefusedConnection(ConnectionRefusal.signal);
   }
-  if (graph.linkInto(to) case final existing? when existing.from == from) {
-    return const UnchangedConnection();
-  }
+  if (graph.links.contains(PipelineLink(from, to))) return const UnchangedConnection();
   return switch ((from.socket, to.socket)) {
     (PipelineSocket.gameAudio, PipelineSocket.speechIn) => const RouteConnection(CaptureMode.audio),
     (PipelineSocket.screenText, PipelineSocket.translationIn) => const RouteConnection(

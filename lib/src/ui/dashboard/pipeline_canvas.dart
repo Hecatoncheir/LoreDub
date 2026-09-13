@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../data/services/playback_scheduler.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
@@ -25,8 +26,8 @@ import 'cubits/pipeline_graph_bloc.dart';
 /// so a socket is in one place only: move a row here and the curve, the dot
 /// and the label all follow.
 abstract final class NodeMetrics {
-  static const double width = 268;
-  static const double characterWidth = 236;
+  static const double width = 240;
+  static const double characterWidth = 210;
   static const double headerHeight = 42;
   static const double rowHeight = 34;
   static const double summaryHeight = 54;
@@ -35,8 +36,10 @@ abstract final class NodeMetrics {
   static double rowCentre(int index) => headerHeight + rowHeight / 2 + index * rowHeight;
 
   /// How many port rows a node of this kind has.
-  static int rowsOf(PipelineNodeKind kind) =>
-      kind == PipelineNodeKind.source || kind == PipelineNodeKind.voice ? 2 : 1;
+  static int rowsOf(PipelineNodeKind kind) => switch (kind) {
+    PipelineNodeKind.source || PipelineNodeKind.voice || PipelineNodeKind.mix => 2,
+    _ => 1,
+  };
 
   static Size sizeOf(PipelineNodeKind kind) => Size(
     kind == PipelineNodeKind.character ? characterWidth : width,
@@ -54,6 +57,9 @@ abstract final class NodeMetrics {
     PipelineSocket.voiceIn => Offset(0, rowCentre(0)),
     PipelineSocket.voiceAudio => Offset(width, rowCentre(0)),
     PipelineSocket.voiceCast => Offset(width, rowCentre(1)),
+    PipelineSocket.mixIn => Offset(0, rowCentre(0)),
+    PipelineSocket.mixOut => Offset(width, rowCentre(0)),
+    PipelineSocket.mixCast => Offset(0, rowCentre(1)),
     PipelineSocket.streamIn => Offset(0, rowCentre(0)),
     PipelineSocket.readBy => Offset(0, rowCentre(0)),
     PipelineSocket.characterVoice => Offset(characterWidth, rowCentre(0)),
@@ -364,6 +370,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
     final buttons = <Widget>[];
     for (final link in _state.graph.links) {
       if (link.from.socket != PipelineSocket.characterVoice) continue;
+      if (link.to.socket != PipelineSocket.readBy) continue;
       final from = _state.graph.node(link.from.nodeId);
       final to = _state.graph.node(link.to.nodeId);
       if (from == null || to == null) continue;
@@ -666,6 +673,10 @@ class _NodeCard extends StatelessWidget {
       _PortRow(left: l10n.pipelineSocketText, right: l10n.pipelineSocketAudio),
       _PortRow(right: l10n.pipelineSocketCast),
     ],
+    PipelineNodeKind.mix => [
+      _PortRow(left: l10n.pipelineSocketAudio, right: l10n.pipelineSocketAudio),
+      _PortRow(left: l10n.pipelineSocketCast),
+    ],
     PipelineNodeKind.output => [_PortRow(left: l10n.pipelineSocketAudio)],
     PipelineNodeKind.character => [
       _PortRow(left: l10n.pipelineSocketReadBy, right: l10n.pipelineSocketVoice),
@@ -707,6 +718,7 @@ class _NodeCard extends StatelessWidget {
     PipelineNodeKind.recognition => Icons.graphic_eq_rounded,
     PipelineNodeKind.translation => Icons.translate_rounded,
     PipelineNodeKind.voice => Icons.record_voice_over_rounded,
+    PipelineNodeKind.mix => Icons.multitrack_audio_rounded,
     PipelineNodeKind.output => Icons.volume_up_rounded,
     PipelineNodeKind.character => Icons.person_rounded,
   };
@@ -716,6 +728,7 @@ class _NodeCard extends StatelessWidget {
     PipelineNodeKind.recognition => l10n.pipelineNodeRecognition,
     PipelineNodeKind.translation => l10n.pipelineNodeTranslation,
     PipelineNodeKind.voice => l10n.pipelineNodeVoice,
+    PipelineNodeKind.mix => l10n.pipelineNodeMix,
     PipelineNodeKind.output => l10n.pipelineNodeOutput,
     PipelineNodeKind.character => facts.character(node.characterId)?.name ?? l10n.charactersNewName,
   };
@@ -737,6 +750,10 @@ class _NodeCard extends StatelessWidget {
         VoiceMode.automatic => l10n.voiceAutomatic,
         VoiceMode.chosen => _chosenVoice(l10n),
       },
+      PipelineNodeKind.mix =>
+        settings.overlapVoices
+            ? l10n.pipelineMixVoices(overlappingVoices)
+            : l10n.pipelineMixOneVoice,
       PipelineNodeKind.output => l10n.pipelineOutputDefault,
       PipelineNodeKind.character => _characterHeadline(l10n),
     };
@@ -774,10 +791,12 @@ class _NodeCard extends StatelessWidget {
         facts.selection.clonesVoice
             ? device(ComputeStage.voiceConversion)
             : device(ComputeStage.speech),
-      PipelineNodeKind.output =>
+      PipelineNodeKind.mix =>
         settings.overlapVoices
-            ? l10n.pipelineOutputOverlapping.toUpperCase()
-            : l10n.pipelineOutputInTurn.toUpperCase(),
+            ? l10n.pipelineMixOverlapping.toUpperCase()
+            : l10n.pipelineMixInTurn.toUpperCase(),
+      PipelineNodeKind.output =>
+        l10n.pipelineOutputOriginal((settings.originalVolume * 100).round()).toUpperCase(),
       PipelineNodeKind.character => _characterNote(l10n),
     };
   }

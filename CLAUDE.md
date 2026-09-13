@@ -134,11 +134,14 @@ nodes and is the second way to the same settings, not a second set of them.
 whenever either changes and can never drift from them; every edit goes the
 other way through `proposeConnection`/`proposeDisconnect`, which answer with
 what the link would change (`RouteConnection` -> `captureMode`,
-`ReaderConnection` -> `Character.voicedBy`) or why it is refused. The five
+`ReaderConnection` -> `Character.voicedBy`) or why it is refused. The six
 stage nodes and the character cards carry typed sockets, and only the two
 routes the engine runs can be drawn: game audio through whisper, or screen
 text straight into the translator, which leaves the recognition node
-`bypassed` rather than gone. `PipelineGraphBloc` applies the answer through
+`bypassed` rather than gone. The mix node is `PlaybackScheduler`: the voice's
+audio and every card's voice enter it, and what it puts in order leaves for
+the output, which is why a character on the canvas is joined to the path at
+both ends rather than hanging off it. `PipelineGraphBloc` applies the answer through
 `SettingsCubit` and `CharactersCubit` — so a route change is locked while a
 session runs, while a substitution is not, the running worker being told of
 it the way a scene assignment is — and keeps an undo history of layout,

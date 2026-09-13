@@ -2529,17 +2529,17 @@ abstract class AppLocalizations {
   /// **'Устройство по умолчанию'**
   String get pipelineOutputDefault;
 
-  /// No description provided for @pipelineOutputOverlapping.
+  /// No description provided for @pipelineMixOverlapping.
   ///
   /// In ru, this message translates to:
   /// **'внахлёст'**
-  String get pipelineOutputOverlapping;
+  String get pipelineMixOverlapping;
 
-  /// No description provided for @pipelineOutputInTurn.
+  /// No description provided for @pipelineMixInTurn.
   ///
   /// In ru, this message translates to:
   /// **'по очереди'**
-  String get pipelineOutputInTurn;
+  String get pipelineMixInTurn;
 
   /// No description provided for @pipelineReadBy.
   ///
@@ -2618,6 +2618,42 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось сохранить схему: {detail}'**
   String failurePipelineLayoutSaveFailed(String detail);
+
+  /// No description provided for @pipelineNodeMix.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сведение'**
+  String get pipelineNodeMix;
+
+  /// No description provided for @pipelineMixVoices.
+  ///
+  /// In ru, this message translates to:
+  /// **'До {count} голосов сразу'**
+  String pipelineMixVoices(int count);
+
+  /// No description provided for @pipelineMixOneVoice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Один голос за раз'**
+  String get pipelineMixOneVoice;
+
+  /// No description provided for @pipelineMixNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через сведение проходит всё, что озвучено, — и общий голос, и реплики персонажей. Одновременно звучит не больше {count} голосов, а один персонаж никогда не перебивает сам себя.'**
+  String pipelineMixNote(int count);
+
+  /// No description provided for @pipelineOutputOriginal.
+  ///
+  /// In ru, this message translates to:
+  /// **'оригинал {percent}%'**
+  String pipelineOutputOriginal(int percent);
+
+  /// No description provided for @pipelineOutputNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Озвучка уходит на устройство вывода Windows по умолчанию.'**
+  String get pipelineOutputNote;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

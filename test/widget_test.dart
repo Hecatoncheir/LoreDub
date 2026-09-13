@@ -2357,6 +2357,7 @@ void main() {
       expect(find.text('Оригинальный поток'), findsOneWidget);
       expect(find.text('Whisper'), findsOneWidget);
       expect(find.text('Перевод'), findsOneWidget);
+      expect(find.text('Сведение'), findsOneWidget);
       expect(find.text('Поток'), findsOneWidget);
       expect(find.text('Стражник'), findsOneWidget);
       expect(
