@@ -636,6 +636,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTtsSpeed => 'Speech rate';
 
   @override
+  String get hurryWhenQueued => 'Read faster when lines are queued';
+
+  @override
+  String get hurryWhenQueuedNote =>
+      'A line is read at the pace you set while the voice is free. From the third line waiting each adds a tenth, to no more than half again. When it is recognition that is behind rather than the voice, the pace is left alone: the queue there is not held by the voice.';
+
+  @override
   String speedValue(String value) {
     return '$value×';
   }

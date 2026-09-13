@@ -16,6 +16,7 @@ import '../../domain/hotkey.dart';
 import '../../domain/ocr_text_delta.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/sound_captions.dart';
+import '../../domain/speech_pace.dart';
 import '../../domain/wave_slices.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
@@ -527,6 +528,7 @@ class NativeEngineService {
         whisperModel: models['whisper']!,
         threads: config['cpuThreads']! as int,
         translateSpeech: config['translateSpeech'] as bool? ?? true,
+        speed: _pace(config),
       );
       _publishSpokenLanguage();
       if (result == null) return;
@@ -554,6 +556,7 @@ class NativeEngineService {
       final result = await _inference.processText(
         spoken,
         translate: config['textLanguage'] != config['targetLanguage'],
+        speed: _pace(config),
       );
       await _publishResult(
         result,
@@ -564,6 +567,16 @@ class NativeEngineService {
     } catch (error) {
       _reportFailure(error);
     }
+  }
+
+  /// The pace the next line is read at: the player's own, hurried while
+  /// lines are already queued for the voice. Counted at the moment the line
+  /// is asked for, which is the last moment anything can be done about it —
+  /// the worker retimes the waveform as it synthesizes it.
+  double _pace(Map<String, Object?> config) {
+    final chosen = (config['ttsSpeed']! as num).toDouble();
+    if (config['hurryWhenQueued'] != true) return chosen;
+    return hurriedSpeed(chosen, _playback.waiting);
   }
 
   /// Announces the language whisper settled on, once, so the interface can

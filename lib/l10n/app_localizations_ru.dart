@@ -640,6 +640,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsTtsSpeed => 'Скорость озвучки';
 
   @override
+  String get hurryWhenQueued => 'Ускорять озвучку, когда реплики ждут очереди';
+
+  @override
+  String get hurryWhenQueuedNote =>
+      'Пока голос свободен, реплика читается с выбранной скоростью. Начиная с третьей ожидающей каждая добавляет десятую долю, но не быстрее чем в полтора раза от выбранной. Если отстаёт распознавание, а не голос, скорость не меняется: там очередь держит не озвучка.';
+
+  @override
   String speedValue(String value) {
     return '$value×';
   }

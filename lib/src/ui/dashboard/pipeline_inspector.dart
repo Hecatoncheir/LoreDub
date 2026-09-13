@@ -273,15 +273,27 @@ class PipelineInspector extends StatelessWidget {
         ),
       ),
     _Field(
-      label: '${l10n.settingsTtsSpeed} · ${l10n.speedValue(_settings.ttsSpeed.toStringAsFixed(2))}',
+      label:
+          '${l10n.settingsTtsSpeed} · '
+          '${l10n.speedValue(_settings.chosenSpeed.toStringAsFixed(2))}',
+      // The same range as the settings screen, for the same reason as the
+      // volume: a pace set here is one the other screen can set again.
       child: Slider(
-        value: _settings.ttsSpeed,
-        min: 0.8,
-        max: 1.6,
-        divisions: 16,
+        key: const ValueKey('graphTtsSpeed'),
+        value: _settings.chosenSpeed,
+        min: AppSettings.slowestSpeech,
+        max: AppSettings.fastestSpeech,
+        divisions: AppSettings.speechDivisions,
         onChanged: _locked ? null : (value) => _update(_settings.copyWith(ttsSpeed: value)),
       ),
     ),
+    _Toggle(
+      label: l10n.hurryWhenQueued,
+      value: _settings.hurryWhenQueued,
+      enabled: !_locked,
+      onChanged: (value) => _update(_settings.copyWith(hurryWhenQueued: value)),
+    ),
+    _Note(text: l10n.hurryWhenQueuedNote),
     if (facts.selection.needsVoiceConverter) _device(l10n, ComputeStage.voiceConversion),
     _Toggle(
       label: l10n.voiceBank,

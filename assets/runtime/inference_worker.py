@@ -137,6 +137,19 @@ def median_f0(samples, rate, low=70.0, high=350.0, clarity=0.35):
     return float(np.median(strong or picks))
 
 
+def request_speed(request, fallback):
+    """The pace this one line asks to be read at.
+
+    The queue of lines waiting for the voice is a moment's business rather
+    than a setting, so the pace travels with the line instead of being fixed
+    when the worker starts. Anything unreadable leaves the session's own.
+    """
+    try:
+        return min(2.0, max(0.5, float(request["speed"])))
+    except (KeyError, TypeError, ValueError):
+        return fallback
+
+
 def read_wave_mono(path):
     """Reads a 16-bit PCM WAV as float32 in [-1, 1], mixed down to mono."""
     with wave.open(path, "rb") as stream:
@@ -879,7 +892,9 @@ def main():
             if timbre is not None:
                 # The converter answers at its own rate; the file is written at it.
                 samples, rate = converter.convert(samples, rate, timbre)
-            samples = change_speed(samples, speed, rate)
+            # Hurried while other lines are already waiting for the voice,
+            # so that the dubbing does not fall further behind the game.
+            samples = change_speed(samples, request_speed(request, speed), rate)
             pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16).tobytes()
             output = pathlib.Path(args.work_directory) / f"speech-{request_id}.wav"
             with wave.open(str(output), "wb") as stream:

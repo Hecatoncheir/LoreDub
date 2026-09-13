@@ -21,7 +21,8 @@ class AppSettings {
     this.captureMode = CaptureMode.audio,
     this.targetLanguage = 'ru',
     this.originalVolume = 0.18,
-    this.duckWhileSpeaking = false,
+    this.duckWhileSpeaking = true,
+    this.hurryWhenQueued = true,
     this.ttsSpeed = 1.12,
     this.cpuThreads = 4,
     this.showOverlay = true,
@@ -61,6 +62,11 @@ class AppSettings {
   /// their own volume between lines and step aside for each one.
   final bool duckWhileSpeaking;
 
+  /// Whether a line is read faster while others are already waiting for the
+  /// voice. Off, every line is read at the pace the player set, and a queue
+  /// is simply time spent further behind the game.
+  final bool hurryWhenQueued;
+
   /// The loudest the game is left while it is dubbed. Past this it talks
   /// over the translation rather than under it.
   static const loudestDuck = 0.5;
@@ -92,6 +98,20 @@ class AppSettings {
 
   /// The notches of a volume slider, from the range it may cover.
   int get duckDivisions => ((loudestDuck - quietestDuck) / duckStep).round();
+
+  /// The pace the dubbing is read at by the player's own hand. Slower than
+  /// [slowestSpeech] it drags behind its own words; faster than
+  /// [fastestSpeech] it is heard but no longer followed. A queue may still
+  /// hurry a line past the top — that is the moment's doing, not a setting.
+  static const slowestSpeech = 0.9;
+  static const fastestSpeech = 1.35;
+  static const speechStep = 0.025;
+
+  /// The notches of a speed slider, so the two screens agree on them.
+  static int get speechDivisions => ((fastestSpeech - slowestSpeech) / speechStep).round();
+
+  /// The pace the player chose, held to the range both screens offer.
+  double get chosenSpeed => ttsSpeed.clamp(slowestSpeech, fastestSpeech);
 
   /// Playback rate of the synthesized speech, applied by the inference worker.
   final double ttsSpeed;
@@ -222,6 +242,7 @@ class AppSettings {
     String? targetLanguage,
     double? originalVolume,
     bool? duckWhileSpeaking,
+    bool? hurryWhenQueued,
     double? ttsSpeed,
     int? cpuThreads,
     bool? showOverlay,
@@ -255,6 +276,7 @@ class AppSettings {
     targetLanguage: targetLanguage ?? this.targetLanguage,
     originalVolume: originalVolume ?? this.originalVolume,
     duckWhileSpeaking: duckWhileSpeaking ?? this.duckWhileSpeaking,
+    hurryWhenQueued: hurryWhenQueued ?? this.hurryWhenQueued,
     ttsSpeed: ttsSpeed ?? this.ttsSpeed,
     cpuThreads: cpuThreads ?? this.cpuThreads,
     showOverlay: showOverlay ?? this.showOverlay,

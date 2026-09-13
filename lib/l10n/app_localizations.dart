@@ -1119,6 +1119,18 @@ abstract class AppLocalizations {
   /// **'Скорость озвучки'**
   String get settingsTtsSpeed;
 
+  /// No description provided for @hurryWhenQueued.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ускорять озвучку, когда реплики ждут очереди'**
+  String get hurryWhenQueued;
+
+  /// No description provided for @hurryWhenQueuedNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока голос свободен, реплика читается с выбранной скоростью. Начиная с третьей ожидающей каждая добавляет десятую долю, но не быстрее чем в полтора раза от выбранной. Если отстаёт распознавание, а не голос, скорость не меняется: там очередь держит не озвучка.'**
+  String get hurryWhenQueuedNote;
+
   /// No description provided for @speedValue.
   ///
   /// In ru, this message translates to:

@@ -332,6 +332,12 @@ void main() {
     expect(subtitles.min, 0);
     expect(subtitles.value, 0);
     expect(subtitles.divisions, 25);
+
+    // The pace slider beside it reads the same bounds the node panel does.
+    final pace = tester.widget<Slider>(find.byKey(const ValueKey('ttsSpeed')));
+    expect(pace.min, AppSettings.slowestSpeech);
+    expect(pace.max, AppSettings.fastestSpeech);
+    expect(pace.divisions, AppSettings.speechDivisions);
   });
 
   testWidgets('names the audio path while dubbing what the game says', (tester) async {
@@ -2478,20 +2484,29 @@ void main() {
       );
     });
 
-    testWidgets('sets the volume in the same range the settings screen does', (tester) async {
+    testWidgets('sets the volume and the pace in the same ranges the settings do', (tester) async {
       final cubits = await pumpGraph(tester);
+      const settings = AppSettings();
 
       // The node sits at the far edge of the canvas, where the panel that
       // opens would cover it; selected directly instead of by a tap.
       cubits.graph.add(const PipelineNodeSelected(PipelineNodeIds.output));
       await tester.pumpAndSettle();
 
-      final slider = tester.widget<Slider>(find.byKey(const ValueKey('graphOriginalVolume')));
-      const settings = AppSettings();
-      expect(slider.min, settings.quietestDuck);
-      expect(slider.max, AppSettings.loudestDuck);
-      expect(slider.divisions, settings.duckDivisions);
+      final volume = tester.widget<Slider>(find.byKey(const ValueKey('graphOriginalVolume')));
+      expect(volume.min, settings.quietestDuck);
+      expect(volume.max, AppSettings.loudestDuck);
+      expect(volume.divisions, settings.duckDivisions);
       expect(find.text('Приглушать только под перевод'), findsOneWidget);
+
+      cubits.graph.add(const PipelineNodeSelected(PipelineNodeIds.voice));
+      await tester.pumpAndSettle();
+
+      final pace = tester.widget<Slider>(find.byKey(const ValueKey('graphTtsSpeed')));
+      expect(pace.min, AppSettings.slowestSpeech);
+      expect(pace.max, AppSettings.fastestSpeech);
+      expect(pace.divisions, AppSettings.speechDivisions);
+      expect(find.text('Ускорять озвучку, когда реплики ждут очереди'), findsOneWidget);
     });
 
     testWidgets('opens what a node is set to when it is clicked', (tester) async {

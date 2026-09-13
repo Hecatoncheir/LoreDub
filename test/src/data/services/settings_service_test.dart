@@ -249,15 +249,21 @@ void main() {
     expect((await service.load()).snapshotHotkey, isNull);
   });
 
-  test('turns the game down for the whole session until told otherwise', () async {
+  test('steps the game aside for each line, and hurries a queue', () async {
     SharedPreferences.setMockInitialValues({});
     final service = SettingsService();
 
-    expect((await service.load()).duckWhileSpeaking, isFalse);
+    final fresh = await service.load();
+    expect(fresh.duckWhileSpeaking, isTrue);
+    expect(fresh.hurryWhenQueued, isTrue);
 
-    await service.save(const AppSettings(duckWhileSpeaking: true));
+    await service.save(
+      const AppSettings(duckWhileSpeaking: false, hurryWhenQueued: false),
+    );
 
-    expect((await service.load()).duckWhileSpeaking, isTrue);
+    final stored = await service.load();
+    expect(stored.duckWhileSpeaking, isFalse);
+    expect(stored.hurryWhenQueued, isFalse);
   });
 
   test('lets characters overlap until told otherwise', () async {

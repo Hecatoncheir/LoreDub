@@ -128,10 +128,18 @@ bool ProcessLoopbackCapture::Start(uint32_t process_id, bool exclude_process_tre
                                    SegmentCallback on_segment, ErrorCallback on_error) {
   if (thread_.joinable()) return false;
   stopping_ = false;
+  // Nothing has turned the game down yet.
+  attenuation_ = 1.0;
   thread_ = std::thread(&ProcessLoopbackCapture::CaptureThread, this, process_id,
                         exclude_process_tree,
                         std::move(output_directory), std::move(on_segment), std::move(on_error));
   return true;
+}
+
+void ProcessLoopbackCapture::SetSpeechAttenuation(double factor) {
+  // Silence carries no speech to find, and nothing above the volume the
+  // process had is ever asked for.
+  attenuation_ = factor > 0.0 && factor < 1.0 ? factor : 1.0;
 }
 
 void ProcessLoopbackCapture::Stop() {
@@ -238,7 +246,9 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
         }
       }
       const double rms = frames == 0 ? 0 : std::sqrt(square_sum / frames);
-      const bool voiced = rms >= kSpeechRms;
+      // The threshold follows the game down: what reaches the tap is the
+      // game's own sound times whatever it has been turned down to.
+      const bool voiced = rms >= kSpeechRms * attenuation_.load(std::memory_order_relaxed);
       if (voiced) last_voice = std::chrono::steady_clock::now();
       if (!speaking) {
         for (UINT32 index = 0; index < frames; ++index) {

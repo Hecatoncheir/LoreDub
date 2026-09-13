@@ -347,6 +347,10 @@ class LocalInferenceService {
     /// `large-v3-turbo` was fine-tuned without translation data, so it is
     /// asked to transcribe and only suits an original already in English.
     bool translateSpeech = true,
+
+    /// The pace to read this one line at, when the queue asks for more than
+    /// the session's own.
+    double? speed,
   }) async {
     final whisper = _whisperExecutable ?? await resolveWhisperExecutable();
     final model = whisperModel;
@@ -390,7 +394,7 @@ class LocalInferenceService {
 
     // The captured audio is still on disk here: the worker reads its pitch to
     // decide whose voice to answer in.
-    return processText(english, originalWavePath: wavePath);
+    return processText(english, originalWavePath: wavePath, speed: speed);
   }
 
   /// The voice in [wavePath], as a character's card keeps it: the
@@ -565,6 +569,10 @@ class LocalInferenceService {
     String english, {
     String? originalWavePath,
     bool translate = true,
+
+    /// Read at this pace instead of the session's, when lines are waiting
+    /// for the voice. The worker retimes the waveform it synthesized.
+    double? speed,
   }) async {
     final normalized = english.trim();
     if (normalized.isEmpty) throw ArgumentError.value(english, 'english', 'is empty');
@@ -580,6 +588,7 @@ class LocalInferenceService {
         'id': id,
         'text': normalized,
         'wave': ?originalWavePath,
+        'speed': ?speed,
         if (!translate) 'translate': false,
       }),
     );

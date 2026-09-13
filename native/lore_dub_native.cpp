@@ -43,6 +43,13 @@ bool running = false;
 // instead of queued.
 std::atomic<bool> paused{false};
 std::unique_ptr<ProcessLoopbackCapture> loopback_capture;
+
+// The process the capture is listening to, while it listens to one. Turning
+// that process down turns the capture down with it, so the capture is told
+// of the change and holds its speech threshold at the same sensitivity.
+// Zero while the whole default output is captured: nothing is turned down
+// there.
+uint32_t captured_process_id = 0;
 std::unique_ptr<OcrCapture> ocr_capture;
 
 void PushEvent(std::string event) {
@@ -315,9 +322,20 @@ int32_t VisitSessions(uint32_t process_id, float volume, bool restore) {
       if (SUCCEEDED(simple_volume->GetMasterVolume(&current))) {
         original_volumes.try_emplace(identifier, current);
       }
-      if (SUCCEEDED(simple_volume->SetMasterVolume(volume, nullptr))) ++changed;
+      if (SUCCEEDED(simple_volume->SetMasterVolume(volume, nullptr))) {
+        ++changed;
+        // What the capture will hear from now on is this process's own sound
+        // times the volume just set.
+        if (loopback_capture && session_process_id == captured_process_id) {
+          const auto was = original_volumes.find(identifier);
+          const float before = was == original_volumes.end() ? 1.0f : was->second;
+          loopback_capture->SetSpeechAttenuation(before > 0.0f ? volume / before : 1.0f);
+        }
+      }
     }
   }
+  // The game is back at its own volume, and so is what the capture hears.
+  if (restore && loopback_capture) loopback_capture->SetSpeechAttenuation(1.0);
   if (restore) original_volumes.clear();
   if (uninitialize) CoUninitialize();
   return 0;
@@ -654,6 +672,9 @@ int32_t ld_start(const char* config_json) {
     const bool capture_system = audio_source == "system";
     const uint32_t capture_process_id =
         capture_system ? GetCurrentProcessId() : process_id;
+    // Only a named process is ever turned down; the whole default output is
+    // captured as it plays.
+    captured_process_id = capture_system ? 0 : process_id;
     if (!loopback_capture->Start(
             capture_process_id, capture_system, Wide(capture_directory),
             [](const std::string& filename) {
@@ -668,6 +689,7 @@ int32_t ld_start(const char* config_json) {
                         EscapeJson(message) + "\"}");
             })) {
       loopback_capture.reset();
+      captured_process_id = 0;
       running = false;
       return -6;
     }
@@ -686,6 +708,7 @@ int32_t ld_stop(void) {
     loopback_capture->Stop();
     loopback_capture.reset();
   }
+  captured_process_id = 0;
   if (ocr_capture) {
     ocr_capture->Stop();
     ocr_capture.reset();

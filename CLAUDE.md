@@ -143,16 +143,36 @@ to `audibleDuck` (0.1) wherever the game's own sound is what the pipeline
 listens to, and lets subtitle mode silence it outright, having no ear in it;
 both volume sliders — the settings screen and the output node — read
 `quietestDuck`/`loudestDuck`/`duckDivisions`, so a number set on one can be
-set again on the other. `AppSettings.duckWhileSpeaking` replaces the
+set again on the other. The pace sliders pair the same way over
+`slowestSpeech`/`fastestSpeech`/`speechDivisions`, with `chosenSpeed` holding
+a stored value inside them. `AppSettings.duckWhileSpeaking` replaces the
 session-long duck with one that lasts a line: `PlaybackScheduler.onSpeaking`
 reports the edges of the dubbing's own speech — consecutive lines are one
 stretch, so the game is not lifted between two lines of a scene — and
-`NativeEngineService._duckForSpeech` turns the game down and back. It is off
-by default because the capture hears the game through that same volume: a
-line the game starts mid-dubbing is recognized no more quietly than the
-session-long duck would have left it, but the drop now lands inside the
-segment, where the native VAD (`kSpeechRms`) can read it as the end of the
-phrase.
+`NativeEngineService._duckForSpeech` turns the game down and back. It is on
+by default, which the compensated speech threshold below is what makes safe.
+
+Whatever turns the game down tells the capture, because the threshold that
+decides what counts as speech is measured on the ducked signal:
+`ld_set_process_volume` hands `ProcessLoopbackCapture::SetSpeechAttenuation`
+the factor it applied, and the loop compares against `kSpeechRms` times that
+factor. Fixed, the threshold grew stricter the quieter the game was put — a
+tone giving three segments per window at full volume gave none at 18%, and
+gives three again with the threshold following — so a player who turned the
+game down was quietly turning recognition down with it. It is also what makes
+`duckWhileSpeaking` safe: the drop lands in the middle of a captured phrase,
+and a fixed threshold would read it as the phrase ending.
+
+A line is read at the player's pace until lines start queueing for the voice.
+With `AppSettings.hurryWhenQueued` (on by default), `hurriedSpeed`
+(`domain/speech_pace.dart`) adds a tenth per waiting line past two, to no
+more than half again, and the pace travels with the request —
+`{"speed": n}`, which the worker's `request_speed` clamps and hands to
+`change_speed` — so it retimes that one line rather than the session. It
+counts only `PlaybackScheduler.waiting`: reading faster empties the lines
+waiting to be spoken, while lines waiting to be recognized are not held up by
+the voice at all, and hurrying for them would rush a dubbing that is late for
+another reason.
 
 The Graph screen ("Схема", `DashboardSection.pipeline`) draws the pipeline as
 nodes and is the second way to the same settings, not a second set of them.

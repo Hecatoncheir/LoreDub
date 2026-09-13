@@ -3393,16 +3393,41 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         const SizedBox(height: 12),
         _SettingCard(
           title: l10n.settingsTtsSpeed,
-          subtitle: l10n.speedValue(settings.ttsSpeed.toStringAsFixed(2)),
-          child: Slider(
-            value: settings.ttsSpeed,
-            min: 0.9,
-            max: 1.35,
-            divisions: 18,
-            label: l10n.speedValue(settings.ttsSpeed.toStringAsFixed(2)),
-            onChanged: running
-                ? null
-                : (value) => cubits.settings.update(settings.copyWith(ttsSpeed: value)),
+          subtitle: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
+          child: Column(
+            children: [
+              Slider(
+                key: const ValueKey('ttsSpeed'),
+                value: settings.chosenSpeed,
+                min: AppSettings.slowestSpeech,
+                max: AppSettings.fastestSpeech,
+                divisions: AppSettings.speechDivisions,
+                label: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
+                onChanged: running
+                    ? null
+                    : (value) => cubits.settings.update(settings.copyWith(ttsSpeed: value)),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Switch(
+                    key: const ValueKey('hurryWhenQueued'),
+                    value: settings.hurryWhenQueued,
+                    onChanged: running
+                        ? null
+                        : (value) =>
+                              cubits.settings.update(settings.copyWith(hurryWhenQueued: value)),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(child: Text(l10n.hurryWhenQueued)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l10n.hurryWhenQueuedNote,
+                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),

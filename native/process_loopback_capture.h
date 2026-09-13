@@ -26,11 +26,21 @@ class ProcessLoopbackCapture {
              SegmentCallback on_segment, ErrorCallback on_error);
   void Stop();
 
+  // How far the captured process has been turned down by the caller, as a
+  // factor of the volume it had. Windows takes the loopback tap after the
+  // session volume, so without this the speech threshold grows stricter the
+  // quieter the game is put: at a fifth of the volume a fifth of the voices
+  // in a game stop counting as speech. The threshold follows the factor, so
+  // the same phrases are heard whatever the game is turned down to — and a
+  // change made in the middle of a phrase does not read as its end.
+  void SetSpeechAttenuation(double factor);
+
  private:
   void CaptureThread(uint32_t process_id, bool exclude_process_tree,
                      std::wstring output_directory,
                      SegmentCallback on_segment, ErrorCallback on_error);
 
   std::atomic<bool> stopping_{false};
+  std::atomic<double> attenuation_{1.0};
   std::thread thread_;
 };
