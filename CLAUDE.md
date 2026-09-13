@@ -16,6 +16,7 @@ and `docs/UI_DESIGN.md` for the UI tokens and information architecture.
 flutter pub get
 dart run tool/ffigen.dart          # regenerate lib/src/native/*.g.dart (committed)
 flutter gen-l10n                   # after editing lib/l10n/*.arb (output is committed)
+flutter test test/screenshots.dart --update-goldens   # redraw docs/screenshots/
 dart format --output=none --set-exit-if-changed lib test tool hook
 flutter analyze --fatal-infos      # CI is --fatal-infos; infos must be zero
 flutter test
@@ -514,6 +515,14 @@ validates the tag against `pubspec.yaml` and cuts the release notes out of
 publishes the release with that single `.exe`. `pubspec.yaml` version, the
 `v<major>.<minor>.<patch>` git tag, and a matching `## [x.y.z] - date` section
 in `CHANGELOG.md` must agree, or `prepare_release.dart` fails the workflow.
+
+The screenshots in `docs/screenshots/` that carry the interface are drawn by
+`test/screenshots.dart`, not captured by hand: it stages the cubits, loads the
+real fonts and writes each screen as a golden at 1400x920 in both languages.
+It has no `_test` suffix, so a plain `flutter test` — the run CI makes — passes
+it by; run it with an explicit path and `--update-goldens` after a change that
+shows on screen, and look at what it wrote. `compute-*.png` and `ocr-game.png`
+are captures of a real machine and a real window, and are replaced by hand.
 
 The landing page in `site/` deploys to GitHub Pages from `main`
 (`.github/workflows/pages.yml`), triggered by `site/**`, `assets/branding/**`,

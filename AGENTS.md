@@ -22,6 +22,8 @@ notes live in `docs/`.
 - `flutter analyze --fatal-infos` runs the same strict analysis enforced by CI.
 - `flutter test` runs the complete test suite; add a path and `--plain-name "substring"` for a
   focused test.
+- `flutter test test/screenshots.dart --update-goldens` redraws `docs/screenshots/` from the
+  real widgets; it carries no `_test` suffix, so the suite above leaves it alone.
 - `flutter build windows --debug` builds a local Windows executable. Prepare its runtime with
   `scripts/prepare_windows_runtime.ps1` before exercising inference.
 - `powershell -ExecutionPolicy Bypass -File scripts/build_setup.ps1` validates and produces the

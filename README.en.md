@@ -151,49 +151,11 @@ system-wide while the game is open. A bare letter cannot be bound without Ctrl,
 Alt or Win: Windows hands a registered combination to LoreDub alone, so the key
 would stop reaching the game.
 
-### Graph
+### Snippet
 
 <p align="center">
-  <img src="docs/screenshots/pipeline-en.png" width="900" alt="The Graph screen: the pipeline as nodes, the links between them and two character cards">
+  <img src="docs/screenshots/snapshot-en.png" width="900" alt="The Snippet screen: the selected pieces of text with their translations">
 </p>
-
-The same pipeline drawn as nodes on a dotted canvas: **Original stream**,
-**Whisper**, **Translation**, **Voice**, **Mix** and **Stream**, joined by
-links. Empty
-space drags the canvas, the wheel zooms, and the scheme is fitted into the
-window the first time it is opened.
-
-A link is the setting. Drag **Audio** out of the original stream into
-**Whisper** and the pipeline dubs from sound; drag **Screen text** straight
-into **Translation** and it reads the subtitles instead, which leaves Whisper
-marked as bypassed but still in place, so one link brings the route back. A
-route the engine has no answer for cannot be drawn: the link is not made, and
-a line under the toolbar says why. Two ready arrangements — **Dub from audio**
-and **Subtitles on screen** — set the route and lay the nodes out again.
-
-Clicking a node opens its own settings in a panel over the canvas: the game
-and where its sound is taken from, the recognition model, the dubbing
-language, the voice and its speed, how loud the original stays, whether lines
-overlap, and which device the stage runs on. These are the same settings the
-other screens hold — the graph keeps nothing of its own — so the two can never
-disagree. While a session runs the route and the models stay as it started.
-
-**Mix** is the playback queue: the pipeline's own voice and the voices of every
-character on the canvas enter it, and what leaves is what reaches the output
-device. Whether lines may overlap is set there too — no more than two voices
-sound together, and one character never talks over themselves.
-
-The person button puts a character card on the canvas. A link from one card to
-another says whose voice reads whom — the same substitution the card carries
-on the **Characters** screen: it holds in every game, and a choice in **Scene
-voices** overrides it for the game at hand. The button on the link itself cuts
-it, and the character is read in their own voice again; two cards that would
-read each other cannot be joined. The substitution can be changed while a
-session runs, and the next line is already read anew. The graph remembers
-where the nodes were left, and undo and redo take back the route, the
-substitution and the arrangement alike.
-
-### Snippet
 
 One-off translation of text on screen — notes, hints, menu lines, anything
 the game does not say aloud. Press **Start**: only the translator and the
@@ -210,6 +172,119 @@ combination is changed in **Settings** → **Hotkeys**. The tab's **Text
 language** is English (translated) or the dubbing language (voiced
 untranslated). The frame is drawn over other windows, so the game has to run
 windowed or borderless: a game in exclusive fullscreen would minimize.
+
+### Characters
+
+<p align="center">
+  <img src="docs/screenshots/characters-en.png" width="900" alt="The Characters screen: the recorded cards and a pack under them">
+</p>
+
+This is where character cards are kept: **Add** creates an empty one, the name
+is typed in the card itself, and **Delete** removes it once confirmed.
+
+To record a voice, press **Start recording** and choose the game process —
+only the voice converter is loaded, with neither translator nor speech model,
+so the screen is ready in seconds. Walk up to the character in the game, press
+**Record the voice** on their card and let them talk; the card shows how many
+seconds of speech it has heard. Press **Stop** and the fingerprint is kept: in
+**Live** that character's lines are then read in the voice given to them. The
+longest clear line of the recording stands for them — a fingerprint taken from
+half a word would answer for the character ever after.
+
+The cards are laid out as tiles, the way the models are, and each carries its
+own row of buttons. **Play the recording** plays the very clip the fingerprint
+was taken from, so it is plain whether the right character was caught; a card
+that came from someone else's file has no recording, only the fingerprint.
+**Hear the dubbing voice** speaks a line in the voice this character will be
+read in — with their timbre when Original voice is on. Only the speech model
+is loaded for it, with neither recognition nor the translator, so the first
+sample costs seconds and the ones after it cost nothing. Beside those sit
+export and delete, and **Read in another character's
+voice**: pick any of your own, and this character speaks in their voice
+wherever they are recognized, in any game. The choice is made in advance,
+before the character has ever spoken, and holds from their very first line. A
+choice made in **Voices of the scene** is stronger and belongs to that game
+alone, and chains are not followed: if the smith is in turn read by the bard,
+the guard still gets the smith's voice. Characters are shared by every
+game, unlike the voices Live founds by itself, and a card brought back after
+an edit lands on the one it came from.
+
+Below the cards are the **packs**. **New pack** opens an area whose name is
+typed in place, and cards go into it by being dragged: pick a card up with the
+mouse and drop it on the pack. One character may be in several packs at once —
+the card says which. A card leaves a pack by the cross on it or by being
+dragged back to the cast, and deleting a pack leaves the characters in the
+cast: only the grouping goes.
+
+A pack is exported whole, along with the characters it holds, so someone
+else's pack only has to be read with **Import** for its characters to appear
+both in the pack and in the cast. The same button reads a file of plain cards,
+and **Export all** writes the whole cast at once.
+
+Recording and dubbing never run at once: one worker serves both.
+
+### Graph
+
+<p align="center">
+  <img src="docs/screenshots/pipeline-en.png" width="900" alt="The Graph screen: the pipeline as nodes, the links between them and two character cards">
+</p>
+
+The same pipeline drawn as nodes on a dotted canvas: **Original stream**,
+**Whisper**, **Translation**, **Voice**, **Mix** and **Stream**, joined by
+links. Empty space drags the canvas, the wheel zooms, and the scheme is fitted
+into the window the first time it is opened.
+
+A link is the setting. Drag **Audio** out of the original stream into
+**Whisper** and the pipeline dubs from sound; drag **Screen text** straight
+into **Translation** and it reads the subtitles instead, which leaves Whisper
+marked as bypassed but still in place, so one link brings the route back. A
+route the engine has no answer for cannot be drawn: the link is not made, and
+a line under the toolbar says why. Two ready arrangements — **Dub from audio**
+and **Subtitles on screen** — set the route and lay the nodes out again.
+
+The button on a link cuts it. With the way into the pipeline taken apart every
+stage goes dark, labelled «not routed» and still in its place, while Live
+refuses to start and says why. The mode is remembered, so any link drawn back
+picks up the route it had.
+
+Clicking a node opens its own settings in a panel over the canvas: the game
+and where its sound is taken from, the recognition model, the dubbing
+language, the voice and its speed, how loud the original stays, whether lines
+overlap, and which device the stage runs on. These are the same settings the
+other screens hold — the graph keeps nothing of its own — so the two can never
+disagree.
+
+**Mix** is the playback queue: the pipeline's own voice and the voices of every
+character on the canvas enter it, and what leaves is what reaches the output
+device. Whether lines may overlap is set there too — no more than two voices
+sound together, and one character never talks over themselves. Cutting its
+**Characters** input takes the whole cast out of the mix: the cards stay on
+the canvas but go dark, and every character is read in their own voice again —
+who stands in for whom waits in the cards and comes back with the link.
+
+The person button puts a character card on the canvas. A card has three
+sockets: **Character** coming in, which is what joins it to the pipeline's
+voice, an optional **Voice** coming in, and **Voice** going out. A link from
+one card to another means the first one's lines are spoken by the second:
+drag the Guard's voice into the Smith's and the Smith reads the Guard's part,
+in their own voice and their own timbre — a man for a woman's part or the
+other way about. A card's voice leaves it one way only: lent to another card
+it goes there rather than to the mix, and the card that took the part carries
+it on.
+
+This is the same substitution the card carries on the **Characters** screen:
+it holds in every game, and a choice in **Scene voices** overrides it for the
+game at hand. Two cards that would read each other cannot be joined. The name
+is edited in the node's own panel, and the cross on the card takes it off the
+canvas without touching either the card or the substitution given to it.
+
+The session is rested and stopped from here as well — the buttons appear in
+the toolbar while it runs. The route and the models stay as the session
+started them, a pause included; the cast branch may be changed as it runs —
+cards brought on, taken off, rewired — and the running worker is told at once,
+so the next line is already read anew. The graph remembers where the nodes
+were left, and undo and redo take back the route, the substitution and the
+arrangement alike.
 
 ### Models
 
@@ -235,45 +310,6 @@ Any download can be paused, resumed and cancelled. Closing the application
 mid-download is not a loss: the next attempt fetches the rest rather than
 starting over.
 
-### Characters
-
-This is where character cards are kept: **Add** creates an empty one, the name
-is typed in the card itself, and **Delete** removes it once confirmed.
-
-To record a voice, press **Start recording** and choose the game process —
-only the voice converter is loaded, with neither translator nor speech model,
-so the screen is ready in seconds. Walk up to the character in the game, press
-**Record the voice** on their card and let them talk; the card shows how many
-seconds of speech it has heard. Press **Stop** and the fingerprint is kept: in
-**Live** that character's lines are then read in the voice given to them. The
-longest clear line of the recording stands for them — a fingerprint taken from
-half a word would answer for the character ever after.
-
-The cards are laid out as tiles, the way the models are, and each carries its
-own row of buttons: record, export, delete. There is also **Read in another character's
-voice**: pick any of your own, and this character speaks in their voice
-wherever they are recognized, in any game. The choice is made in advance,
-before the character has ever spoken, and holds from their very first line. A
-choice made in **Voices of the scene** is stronger and belongs to that game
-alone, and chains are not followed: if the smith is in turn read by the bard,
-the guard still gets the smith's voice. Characters are shared by every
-game, unlike the voices Live founds by itself, and a card brought back after
-an edit lands on the one it came from.
-
-Below the cards are the **packs**. **New pack** opens an area whose name is
-typed in place, and cards go into it by being dragged: pick a card up with the
-mouse and drop it on the pack. One character may be in several packs at once —
-the card says which. A card leaves a pack by the cross on it or by being
-dragged back to the cast, and deleting a pack leaves the characters in the
-cast: only the grouping goes.
-
-A pack is exported whole, along with the characters it holds, so someone
-else's pack only has to be read with **Import** for its characters to appear
-both in the pack and in the cast. The same button reads a file of plain cards,
-and **Export all** writes the whole cast at once.
-
-Recording and dubbing never run at once: one worker serves both.
-
 ### Settings
 
 <p align="center">
@@ -284,6 +320,24 @@ Interface language (Russian or English, applied immediately), the text source
 (audio or subtitles), how far the original is turned down while dubbing, the
 speech rate and the voice. Below those: CPU threads, the compute device, the
 Python path and a proxy for downloads.
+
+**Turn the game down only under the translation** (on) leaves the game at its
+own volume while LoreDub is silent and steps aside for the length of every
+dubbed line, so music and effects no longer sit quiet all evening. Turn it off
+for the older behaviour: the game turned down from the start of the session to
+its end.
+
+**Read faster when lines are queued** (on) speeds the dubbing up when a queue
+has gathered for the voice: up to two lines waiting it reads at the pace you
+set, and from the third each adds a tenth, to no more than half again. When it
+is recognition that is behind rather than the voice, the pace is left alone —
+the queue there is not held by the voice.
+
+The original's volume does not go below 10% in audio mode. Windows takes the
+capture after the session volume, so turning the game down turns down what
+LoreDub itself hears: at zero it would hear no line at all. Subtitle mode
+offers the zero — nothing is captured there, and the game may be silenced
+outright.
 
 ### Graphics card
 
@@ -807,13 +861,14 @@ section at the [LoreDub releases page](https://github.com/Hecatoncheir/LoreDub/r
 assets/runtime/              persistent Marian/Silero worker
 assets/branding/             LoreDub icon and brand assets
 assets/fonts/                bundled Nunito, Nunito Sans and JetBrains Mono (OFL)
-docs/screenshots/            screen captures used by the READMEs
+docs/screenshots/            screen captures used by the READMEs and the page
 lib/l10n/                    interface translations, Russian is the source
 lib/src/data/services/       orchestration, native bridge, model storage
 lib/src/ui/                  Windows dashboard and model manager
 native/                      process-loopback capture, VAD, volume, playback
 hook/                        Dart Native Assets compiler hook
 tool/ffigen.dart             generated FFI bindings
+test/screenshots.dart        redraws the screen captures
 installer/                   Inno Setup definition
 scripts/                     Windows runtime and packaging scripts
 ```
