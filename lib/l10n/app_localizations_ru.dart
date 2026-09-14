@@ -22,7 +22,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navLive => 'Эфир';
 
   @override
-  String get navSnapshot => 'Фрагмент';
+  String get navSnapshot => 'Экран';
 
   @override
   String get navCharacters => 'Персонажи';
@@ -261,7 +261,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get titleLive => 'Перевод игры';
 
   @override
-  String get titleSnapshot => 'Перевод фрагмента';
+  String get titleSnapshot => 'Перевод с экрана';
 
   @override
   String get titleModels => 'Локальные модели';
@@ -329,9 +329,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get captureSystemNote => 'Захватывается весь дефолтный поток, кроме звука LoreDub';
 
   @override
-  String get captureOcrNote => 'Субтитры читаются с окна выбранной игры, пока оно активно';
-
-  @override
   String get settingsAudioSource => 'Источник звука';
 
   @override
@@ -386,6 +383,20 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get screenHowTo =>
+      'Пока сеанс идёт, субтитры в рамке читаются и озвучиваются сами — озвучивается только то, что в них прибавилось.';
+
+  @override
+  String get silenceWhileReading => 'Заглушить игру полностью';
+
+  @override
+  String get silenceWhileReadingNote =>
+      'Здесь звук игры ничего не значит — текст берётся с экрана, и игру можно заглушить совсем, чтобы она не произносила реплику одновременно с озвучкой. Выключено — игра приглушается так же, как в «Эфире».';
+
+  @override
+  String get screenPickGame => 'Выберите игру, чтобы читать её экран';
+
+  @override
   String get snapshotNoHotkey => 'Клавиша выделения не назначена.';
 
   @override
@@ -393,7 +404,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String snapshotNote(String language) {
-    return 'Загружаются только переводчик и голос ($language), без распознавания речи. Рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.';
+    return 'Загружаются только переводчик и голос ($language), без распознавания речи. Читается окно выбранной игры, пока оно впереди — игра должна идти в оконном или полноэкранном оконном режиме.';
   }
 
   @override
@@ -652,18 +663,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get modelDownload => 'Скачать';
 
   @override
-  String get settingsCaptureSource => 'Источник текста';
-
-  @override
-  String get captureAudio => 'Речь из игры';
-
-  @override
-  String get captureOcr => 'Субтитры с экрана';
-
-  @override
-  String get settingsOcrRegion => 'Область субтитров';
-
-  @override
   String get ocrRegionNote =>
       'Обведите мышью место, где игра пишет субтитры. Экран ниже — это окно игры в уменьшенном виде; рамка хранится в долях окна, поэтому подходит к любому разрешению.';
 
@@ -728,10 +727,6 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get voiceUnavailable =>
       'В пакете этого языка голоса только одного пола — выбрать можно, но подстраиваться не под что.';
-
-  @override
-  String get voiceNeedsAudio =>
-      'В режиме субтитров оригинал не слышен, поэтому голос берётся выбранный.';
 
   @override
   String get voiceOriginal => 'Голос оригинала';
@@ -896,7 +891,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get interfaceLanguageNote => 'Меняется сразу, без перезапуска.';
 
   @override
-  String get settingsGroupSource => 'ЯЗЫК И ИСТОЧНИК';
+  String get settingsGroupInterface => 'ИНТЕРФЕЙС';
 
   @override
   String get settingsGroupDubbing => 'ОЗВУЧКА';
@@ -1518,10 +1513,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineSchemeCancel => 'Отмена';
 
   @override
-  String get pipelineSchemeAudio => 'Со звука';
-
-  @override
-  String get pipelineSchemeOcr => 'С экрана';
+  String get pipelineSchemeAudio => 'Маршрут собран';
 
   @override
   String get pipelineSchemeUnrouted => 'Без входа';
@@ -1614,9 +1606,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineSocketVoice => 'Голос';
 
   @override
-  String get pipelineBypassed => 'в обход';
-
-  @override
   String get pipelineUnrouted => 'не подключено';
 
   @override
@@ -1648,10 +1637,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pipelineLockedNote => 'Сессия запущена: маршрут и модели закреплены до остановки.';
-
-  @override
-  String get pipelineRecognitionBypassed =>
-      'Сейчас читается текст с экрана — распознавание в этом маршруте не участвует.';
 
   @override
   String get pipelineModelLabel => 'Модель распознавания';

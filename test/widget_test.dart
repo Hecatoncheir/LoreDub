@@ -325,14 +325,6 @@ void main() {
     expect(dubbing.value, AppSettings.audibleDuck, reason: 'the stored zero is lifted');
     expect(dubbing.divisions, 20);
 
-    // Subtitle mode reads the screen and captures no sound of its own.
-    final subtitles = await volumeSlider(
-      const AppSettings(captureMode: CaptureMode.ocr, originalVolume: 0),
-    );
-    expect(subtitles.min, 0);
-    expect(subtitles.value, 0);
-    expect(subtitles.divisions, 25);
-
     // The pace slider beside it reads the same bounds the node panel does.
     final pace = tester.widget<Slider>(find.byKey(const ValueKey('ttsSpeed')));
     expect(pace.min, AppSettings.slowestSpeech);
@@ -348,20 +340,16 @@ void main() {
     expect(find.text('Whisper → English → Marian → Русский → Silero'), findsOneWidget);
   });
 
-  testWidgets('says subtitle mode reads the window rather than the audio', (tester) async {
+  testWidgets('names the screen path on the page that reads the screen', (tester) async {
     final cubits = stage(
       buildCubits(),
-      settings: const AppSettings(captureMode: CaptureMode.ocr),
+      section: DashboardSection.snapshot,
+      models: catalogue(),
     );
-    await pumpDashboard(tester, cubits, const Size(1280, 720));
+    await pumpDashboard(tester, cubits, const Size(1280, 900));
 
-    expect(
-      find.text('Субтитры читаются с окна выбранной игры, пока оно активно'),
-      findsOneWidget,
-    );
     expect(find.text('Windows OCR → English → Marian → Русский → Silero'), findsOneWidget);
-    expect(find.textContaining('звук выбранного процесса'), findsNothing);
-    expect(find.textContaining('Whisper'), findsNothing);
+    expect(find.textContaining('Whisper →'), findsNothing);
   });
 
   testWidgets('names the original language instead of detecting it', (tester) async {
@@ -1708,16 +1696,6 @@ void main() {
       expect(find.text('Xenia (женский)'), findsWidgets);
     });
 
-    testWidgets('says why the voice cannot follow a subtitle stream', (tester) async {
-      final cubits = await pumpSettings(
-        tester,
-        settings: const AppSettings(captureMode: CaptureMode.ocr),
-      );
-
-      expect(cubits.selection.canFollowSpeaker, isFalse);
-      expect(find.textContaining('субтитров'), findsOneWidget);
-    });
-
     testWidgets('says why a one-gender language cannot follow either', (tester) async {
       // Every Spanish voice is a man's.
       final cubits = await pumpSettings(
@@ -2025,10 +2003,11 @@ void main() {
     });
   });
 
-  testWidgets('offers the text language instead of detection for subtitles', (tester) async {
+  testWidgets('offers the text language on the page that reads the screen', (tester) async {
     final cubits = stage(
       buildCubits(),
-      settings: const AppSettings(captureMode: CaptureMode.ocr, sourceLanguage: 'ru'),
+      section: DashboardSection.snapshot,
+      settings: const AppSettings(sourceLanguage: 'ru'),
       models: catalogue(),
     );
     await pumpDashboard(tester, cubits, const Size(1280, 900));
@@ -2049,6 +2028,8 @@ void main() {
     FilledButton startButton(WidgetTester tester) =>
         tester.widget<FilledButton>(find.byKey(const ValueKey('snapshotStart')));
 
+    const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
+
     DashboardCubits stageSnapshot({
       AppSettings settings = const AppSettings(),
       List<ModelInstallState>? models,
@@ -2060,20 +2041,35 @@ void main() {
         settings: settings,
         models: models ?? catalogue(),
       );
-      cubits.pipeline.seed(pipeline);
+      // The frame is read out of one window, so this session waits for a
+      // game as live dubbing does.
+      cubits.pipeline.seed(
+        pipeline.copyWith(processes: const [game], selectedProcess: game),
+      );
       return cubits;
     }
 
-    testWidgets('sits under Live and says how to select', (tester) async {
-      await pumpDashboard(tester, stageSnapshot(), const Size(1280, 900));
+    testWidgets('reads the frame and the selection on one page', (tester) async {
+      await pumpDashboard(tester, stageSnapshot(), const Size(1400, 1000));
 
-      expect(find.text('02  /  AREA SNAPSHOT'), findsOneWidget);
-      expect(find.text('Фрагмент'), findsOneWidget);
-      expect(find.text('Перевод фрагмента'), findsOneWidget);
+      expect(find.text('02  /  SCREEN TEXT'), findsOneWidget);
+      expect(find.text('Экран'), findsOneWidget);
+      expect(find.text('Перевод с экрана'), findsOneWidget);
       expect(find.textContaining('Удерживайте Ctrl + Alt + S'), findsOneWidget);
+      expect(find.textContaining('субтитры в рамке читаются'), findsOneWidget);
       expect(find.text('Язык текста'), findsOneWidget);
+      expect(find.text('SUBTITLES'), findsOneWidget);
       expect(find.text('Выделенные фрагменты появятся здесь'), findsOneWidget);
       expect(startButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('waits for the game whose window it reads', (tester) async {
+      final cubits = stageSnapshot();
+      cubits.pipeline.seed(const LivePipelineState());
+      await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+      expect(find.text('Выберите игру, чтобы читать её экран'), findsOneWidget);
+      expect(startButton(tester).onPressed, isNull);
     });
 
     testWidgets('needs the translator and the voice, not whisper', (tester) async {
@@ -2083,7 +2079,7 @@ void main() {
             ModelInstallState(model: model, installed: model.kind != ModelKind.recognition),
         ],
       );
-      await pumpDashboard(tester, cubits, const Size(1280, 900));
+      await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
       expect(find.text('Для первого запуска нужны модели'), findsNothing);
       expect(startButton(tester).onPressed, isNotNull);
@@ -2103,7 +2099,7 @@ void main() {
       final cubits = stageSnapshot(
         pipeline: const LivePipelineState(
           status: PipelineStatus.listening,
-          session: PipelineSession.snapshot,
+          session: PipelineSession.screen,
           snapshots: [snippet],
         ),
       );
@@ -2118,7 +2114,7 @@ void main() {
       final cubits = stageSnapshot(
         pipeline: const LivePipelineState(
           status: PipelineStatus.listening,
-          session: PipelineSession.snapshot,
+          session: PipelineSession.screen,
           snapshotMissed: true,
         ),
       );
@@ -2146,7 +2142,7 @@ void main() {
       cubits.pipeline.seed(
         const LivePipelineState(
           status: PipelineStatus.listening,
-          session: PipelineSession.snapshot,
+          session: PipelineSession.screen,
         ),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
@@ -2713,14 +2709,7 @@ void main() {
         findsNothing,
         reason: 'only the cards put on the canvas are drawn',
       );
-      expect(find.widgetWithText(ChoiceChip, 'Речь из игры'), findsOneWidget);
-    });
-
-    testWidgets('marks recognition as bypassed while the screen is read', (tester) async {
-      await pumpGraph(tester, settings: const AppSettings(captureMode: CaptureMode.ocr));
-
-      expect(find.text('В ОБХОД'), findsOneWidget);
-      expect(find.widgetWithText(ChoiceChip, 'Субтитры с экрана'), findsOneWidget);
+      expect(find.byType(ChoiceChip), findsNothing, reason: 'one route needs no presets');
     });
 
     testWidgets('holds the game while a card is being recorded', (tester) async {
@@ -2753,7 +2742,6 @@ void main() {
 
     testWidgets('sets the volume and the pace in the same ranges the settings do', (tester) async {
       final cubits = await pumpGraph(tester);
-      const settings = AppSettings();
 
       // The node sits at the far edge of the canvas, where the panel that
       // opens would cover it; selected directly instead of by a tap.
@@ -2761,9 +2749,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final volume = tester.widget<Slider>(find.byKey(const ValueKey('graphOriginalVolume')));
-      expect(volume.min, settings.quietestDuck);
+      expect(volume.min, AppSettings.audibleDuck);
       expect(volume.max, AppSettings.loudestDuck);
-      expect(volume.divisions, settings.duckDivisions);
+      expect(volume.divisions, AppSettings.duckDivisions);
       expect(find.text('Приглушать только под перевод'), findsOneWidget);
 
       cubits.graph.add(const PipelineNodeSelected(PipelineNodeIds.voice));
@@ -3117,8 +3105,8 @@ void main() {
     }) async {
       final cubits = stage(
         buildCubits(),
-        section: DashboardSection.settings,
-        settings: AppSettings(captureMode: CaptureMode.ocr, ocrRegion: region),
+        section: DashboardSection.snapshot,
+        settings: AppSettings(ocrRegion: region),
         models: catalogue(),
         status: status,
       );

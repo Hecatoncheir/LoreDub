@@ -11,14 +11,12 @@
 /// downloads in with it.
 library;
 
-import 'app_settings.dart';
 import 'pipeline_graph.dart';
 
 class SavedPipeline {
   const SavedPipeline({
     required this.id,
     required this.name,
-    this.captureMode = CaptureMode.audio,
     this.captureRouted = true,
     this.castRouted = true,
     this.layout = PipelineLayout.standard,
@@ -28,8 +26,8 @@ class SavedPipeline {
   final String id;
   final String name;
 
-  /// The route, as the links into the pipeline describe it.
-  final CaptureMode captureMode;
+  /// Whether the way into the pipeline is drawn, and whether the cast is
+  /// wired into the mix.
   final bool captureRouted;
   final bool castRouted;
 
@@ -45,7 +43,6 @@ class SavedPipeline {
   SavedPipeline copyWith({String? name, PipelineLayout? layout}) => SavedPipeline(
     id: id,
     name: name ?? this.name,
-    captureMode: captureMode,
     captureRouted: captureRouted,
     castRouted: castRouted,
     layout: layout ?? this.layout,
@@ -55,7 +52,6 @@ class SavedPipeline {
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
-    'captureMode': captureMode.name,
     'captureRouted': captureRouted,
     'castRouted': castRouted,
     'layout': layout.toJson(),
@@ -69,10 +65,8 @@ class SavedPipeline {
     return SavedPipeline(
       id: id,
       name: json['name'] as String? ?? '',
-      captureMode: CaptureMode.values.firstWhere(
-        (mode) => mode.name == json['captureMode'],
-        orElse: () => CaptureMode.audio,
-      ),
+      // A scheme written before the subtitles moved off the graph carries a
+      // `captureMode` as well; there is one route now, and it is ignored.
       captureRouted: json['captureRouted'] as bool? ?? true,
       castRouted: json['castRouted'] as bool? ?? true,
       layout: PipelineLayout.fromJson(json['layout']),

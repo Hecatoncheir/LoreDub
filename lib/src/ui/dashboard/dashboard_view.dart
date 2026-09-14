@@ -708,7 +708,7 @@ class _Header extends StatelessWidget {
                 Text(
                   switch (shell.section) {
                     DashboardSection.live => '01  /  LIVE VOICE',
-                    DashboardSection.snapshot => '02  /  AREA SNAPSHOT',
+                    DashboardSection.snapshot => '02  /  SCREEN TEXT',
                     DashboardSection.characters => '03  /  CHARACTER CAST',
                     DashboardSection.pipeline => '04  /  SIGNAL PATH',
                     DashboardSection.models => '05  /  MODEL BANK',
@@ -744,7 +744,7 @@ class _Header extends StatelessWidget {
           builder: (context, pipeline) => _StatusChip(
             status: pipeline.status,
             stage: pipeline.startupStage,
-            snapshot: pipeline.session == PipelineSession.snapshot,
+            snapshot: pipeline.session == PipelineSession.screen,
           ),
         ),
       ],
@@ -894,9 +894,24 @@ const _sceneStackedMinHeight = 360.0;
 
 /// What the running session heard, newest first.
 class _TranscriptCard extends StatelessWidget {
-  const _TranscriptCard({required this.cubits});
+  const _TranscriptCard({
+    required this.cubits,
+    this.number = '02',
+    this.label = 'LIVE TRANSCRIPT',
+    this.fromScreen = false,
+  });
 
   final DashboardCubits cubits;
+
+  /// Which area of its screen this is, and what it is called there. Live
+  /// dubbing lists what it heard second; the screen session lists what the
+  /// frame gained third, after the controls and the frame itself.
+  final String number;
+  final String label;
+
+  /// Whether the lines came off the screen rather than out of the game's
+  /// sound, which is all the empty state needs to name the right route.
+  final bool fromScreen;
 
   @override
   Widget build(BuildContext context) => _PipelineBuilder(
@@ -915,7 +930,7 @@ class _TranscriptCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
               child: Row(
                 children: [
-                  const _ModuleLabel(number: '02', label: 'LIVE TRANSCRIPT'),
+                  _ModuleLabel(number: number, label: label),
                   const Spacer(),
                   _ClearListButton(
                     tooltip: AppLocalizations.of(context).transcriptClearTooltip,
@@ -931,7 +946,7 @@ class _TranscriptCard extends StatelessWidget {
                       cubits: cubits,
                       builder: (context, settings) => _EmptyTranscript(
                         targetLanguage: settings.settings.targetLanguage,
-                        captureMode: settings.settings.captureMode,
+                        fromScreen: fromScreen,
                       ),
                     )
                   : ListView.separated(
@@ -1258,38 +1273,233 @@ class _ClearListButton extends StatelessWidget {
 /// The snapshot screen: a session that loads only the translator and the
 /// voice, and translates what the player frames over the game while the
 /// snapshot key is held.
+/// The screen the game writes on, read two ways at once.
+///
+/// The frame is watched while the session runs, so a line the game adds to
+/// it is dubbed as it appears; the snapshot key picks out anything else on
+/// the screen by hand. One session answers both -- neither needs whisper,
+/// and both end in the same translator and voice -- so what the game keeps
+/// writing and what the player asks for arrive side by side.
 class _SnapshotPanel extends StatelessWidget {
   const _SnapshotPanel({super.key, required this.cubits});
 
   final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
-    child: Column(
-      children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
+  Widget build(BuildContext context) => LayoutBuilder(
+    // The frame, the controls and two lists need more room than the live
+    // screen does. Given less, the screen scrolls and the lists take a
+    // height of their own rather than being crushed to their own headers.
+    builder: (context, constraints) {
+      final stacked = constraints.maxWidth < _frameBesideControlsWidth;
+      final floor = stacked ? _screenStackedMinHeight : _screenMinHeight;
+      final filling = constraints.maxHeight >= floor;
+      final content = _content(context, stacked: stacked, filling: filling);
+      return filling ? content : SingleChildScrollView(child: content);
+    },
+  );
+
+  Widget _content(BuildContext context, {required bool stacked, required bool filling}) {
+    final lists = stacked
+        ? Column(
+            children: [
+              Expanded(child: _SubtitleList(cubits: cubits)),
+              const SizedBox(height: 16),
+              Expanded(child: _SnapshotHistory(cubits: cubits)),
+            ],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _SubtitleList(cubits: cubits)),
+              const SizedBox(width: 16),
+              Expanded(child: _SnapshotHistory(cubits: cubits)),
+            ],
+          );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
+      child: Column(
+        children: [
+          if (stacked)
+            Column(
+              children: [
+                _ScreenCaptureCard(cubits: cubits),
+                const SizedBox(height: 16),
+                _SubtitleFrameCard(cubits: cubits),
+              ],
+            )
+          else
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _ModuleLabel(number: '01', label: 'AREA CAPTURE'),
-                const SizedBox(height: 14),
-                _SnapshotControls(cubits: cubits),
+                Expanded(child: _ScreenCaptureCard(cubits: cubits)),
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: _frameCardWidth,
+                  child: _SubtitleFrameCard(cubits: cubits),
+                ),
               ],
             ),
+          _ModelsNeededNotice(
+            cubits: cubits,
+            ready: (selection) => selection.screenModelsInstalled,
           ),
-        ),
-        _ModelsNeededNotice(
-          cubits: cubits,
-          ready: (selection) => selection.snapshotModelsInstalled,
-        ),
-        const SizedBox(height: 16),
-        Expanded(child: _SnapshotHistory(cubits: cubits)),
-      ],
+          const SizedBox(height: 16),
+          if (filling)
+            Expanded(child: lists)
+          else
+            SizedBox(
+              height: stacked ? _listHeight * 2 + 16 : _listHeight,
+              child: lists,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What the frame gained as the game wrote in it, in the same card live
+/// dubbing lists what it heard in.
+class _SubtitleList extends StatelessWidget {
+  const _SubtitleList({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) =>
+      _TranscriptCard(cubits: cubits, number: '03', label: 'SUBTITLES', fromScreen: true);
+}
+
+/// What the screen session keeps for itself before it starts scrolling: the
+/// controls beside the frame, and a list under them worth looking at.
+const _screenMinHeight = 900.0;
+
+/// The same, with the frame under the controls rather than beside them.
+const _screenStackedMinHeight = 1240.0;
+
+/// How tall one of the two lists is made when the screen scrolls instead of
+/// filling the window.
+const _listHeight = 320.0;
+
+/// Beyond this the subtitle frame stands beside the controls rather than
+/// under them.
+const _frameBesideControlsWidth = 860.0;
+const _frameCardWidth = 380.0;
+
+/// The game to read, the language on its screen, and the session's button.
+class _ScreenCaptureCard extends StatelessWidget {
+  const _ScreenCaptureCard({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _ModuleLabel(number: '01', label: 'SCREEN CAPTURE'),
+          const SizedBox(height: 14),
+          _SnapshotControls(cubits: cubits),
+        ],
+      ),
     ),
   );
+}
+
+/// The frame the subtitles are read out of, drawn on a picture of the game's
+/// window, and whether the game is silenced while they are dubbed.
+///
+/// It lives here rather than in the settings because this is the only
+/// session that reads it: the frame is part of the work this screen does.
+class _SubtitleFrameCard extends StatelessWidget {
+  const _SubtitleFrameCard({required this.cubits});
+
+  final DashboardCubits cubits;
+
+  @override
+  Widget build(BuildContext context) => _SettingsBuilder(
+    cubits: cubits,
+    builder: (context, state) => _PipelineBuilder(
+      cubits: cubits,
+      watch: (pipeline) => pipeline.running,
+      builder: (context, pipeline) => _build(
+        context,
+        state.settings,
+        running: pipeline.running,
+      ),
+    ),
+  );
+
+  Widget _build(BuildContext context, AppSettings settings, {required bool running}) {
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _ModuleLabel(number: '02', label: 'SUBTITLE FRAME'),
+            const SizedBox(height: 14),
+            OcrRegionPicker(
+              key: const ValueKey('ocrRegion'),
+              region: settings.ocrRegion,
+              semanticLabel: l10n.ocrRegionHelp,
+              onChanged: running
+                  ? null
+                  : (region) => cubits.settings.update(settings.copyWith(ocrRegion: region)),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  l10n.ocrRegionValue(
+                    (settings.ocrRegion.width * 100).round(),
+                    (settings.ocrRegion.height * 100).round(),
+                    (settings.ocrRegion.left * 100).round(),
+                    (settings.ocrRegion.top * 100).round(),
+                  ),
+                  style: const TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 12),
+                ),
+                TextButton.icon(
+                  onPressed: running || settings.ocrRegion == OcrRegion.standard
+                      ? null
+                      : () => cubits.settings.update(
+                          settings.copyWith(ocrRegion: OcrRegion.standard),
+                        ),
+                  icon: const Icon(Icons.restart_alt_rounded),
+                  label: Text(l10n.ocrRegionReset),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Switch(
+                  value: settings.silenceWhileReading,
+                  onChanged: running
+                      ? null
+                      : (value) =>
+                            cubits.settings.update(settings.copyWith(silenceWhileReading: value)),
+                ),
+                const SizedBox(width: 6),
+                Flexible(child: Text(l10n.silenceWhileReading)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.silenceWhileReadingNote,
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// How to select, what the last selection came to, and the session's button.
@@ -1308,6 +1518,8 @@ class _SnapshotControls extends StatelessWidget {
         pipeline.session,
         pipeline.snapshotReading,
         pipeline.snapshotMissed,
+        pipeline.selectedProcess,
+        pipeline.processes,
       ),
       builder: (context, pipeline) => _build(context, state.settings, pipeline),
     ),
@@ -1343,6 +1555,18 @@ class _SnapshotControls extends StatelessWidget {
             l10n.snapshotHowTo(hotkey.display),
             style: Theme.of(context).textTheme.bodyLarge,
           ),
+        const SizedBox(height: 8),
+        Text(l10n.screenHowTo, style: Theme.of(context).textTheme.bodyLarge),
+        const SizedBox(height: 14),
+        // The frame is read out of one window, so this session needs the
+        // game named even though nothing of its sound is listened to.
+        ProcessPicker(
+          processes: pipeline.processes,
+          selected: pipeline.selectedProcess,
+          enabled: !pipeline.running,
+          onSelected: cubits.pipeline.selectProcess,
+          onRefresh: cubits.pipeline.refreshProcesses,
+        ),
         const SizedBox(height: 14),
         _TextLanguagePicker(cubits: cubits),
         const SizedBox(height: 10),
@@ -1355,7 +1579,9 @@ class _SnapshotControls extends StatelessWidget {
     );
     final button = _SnapshotStartButton(cubits: cubits);
     return LayoutBuilder(
-      builder: (context, constraints) => constraints.maxWidth < 640
+      // The language row inside is as wide as its own labels; under this the
+      // button goes below it rather than squeezing it off the card.
+      builder: (context, constraints) => constraints.maxWidth < 760
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [details, const SizedBox(height: 14), button],
@@ -1387,6 +1613,11 @@ class _SnapshotControls extends StatelessWidget {
         Icons.info_outline_rounded,
         l10n.snapshotInLive,
         LoreDubPalette.mutedInk,
+      ),
+      _ when pipeline.selectedProcess == null => (
+        Icons.videogame_asset_off_rounded,
+        l10n.screenPickGame,
+        LoreDubPalette.warning,
       ),
       _ => (null, '', LoreDubPalette.mutedInk),
     };
@@ -1439,11 +1670,11 @@ class _SnapshotStartButton extends StatelessWidget {
 
   Widget _build(BuildContext context, LivePipelineState pipeline, {required bool initializing}) {
     final l10n = AppLocalizations.of(context);
-    final own = pipeline.session == PipelineSession.snapshot;
+    final own = pipeline.session == PipelineSession.screen;
     final starting = own && pipeline.status == PipelineStatus.starting;
     final running = own && pipeline.running;
     final progress = pipeline.startupProgress;
-    final canStart = pipeline.canStartSnapshot(cubits.selection, initializing: initializing);
+    final canStart = pipeline.canStartScreen(cubits.selection, initializing: initializing);
     return Tooltip(
       message: starting && pipeline.startupStage.isNotEmpty
           ? describeStartupStage(l10n, pipeline.startupStage)
@@ -1451,7 +1682,7 @@ class _SnapshotStartButton extends StatelessWidget {
       child: FilledButton.icon(
         key: const ValueKey('snapshotStart'),
         onPressed: running || canStart
-            ? () => cubits.pipeline.toggleSnapshot(initializing: initializing)
+            ? () => cubits.pipeline.toggleScreenText(initializing: initializing)
             : null,
         icon: starting
             ? SizedBox(
@@ -1496,7 +1727,7 @@ class _SnapshotHistory extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
             child: Row(
               children: [
-                const _ModuleLabel(number: '02', label: 'SELECTED TEXT'),
+                const _ModuleLabel(number: '04', label: 'SELECTED TEXT'),
                 const Spacer(),
                 _ClearListButton(
                   tooltip: AppLocalizations.of(context).snapshotClearTooltip,
@@ -1595,9 +1826,7 @@ class _SourceControls extends StatelessWidget {
   }) {
     final l10n = AppLocalizations.of(context);
     final running = pipeline.running;
-    final requiresProcess =
-        settings.captureMode == CaptureMode.ocr ||
-        settings.audioCaptureSource == AudioCaptureSource.process;
+    final requiresProcess = settings.audioCaptureSource == AudioCaptureSource.process;
     final selector = ProcessPicker(
       processes: pipeline.processes,
       selected: pipeline.selectedProcess,
@@ -1608,35 +1837,28 @@ class _SourceControls extends StatelessWidget {
       onRefresh: cubits.pipeline.refreshProcesses,
     );
     final helper = Text(
-      settings.captureMode == CaptureMode.ocr
-          ? l10n.captureOcrNote
-          : requiresProcess
-          ? l10n.captureProcessNote
-          : l10n.captureSystemNote,
+      requiresProcess ? l10n.captureProcessNote : l10n.captureSystemNote,
       style: Theme.of(context).textTheme.bodySmall,
     );
-    final sourceSwitch = settings.captureMode == CaptureMode.audio
-        ? SegmentedButton<AudioCaptureSource>(
-            segments: [
-              ButtonSegment(
-                value: AudioCaptureSource.system,
-                icon: const Icon(Icons.speaker_group_outlined),
-                label: Text(l10n.sourceSystem),
-              ),
-              ButtonSegment(
-                value: AudioCaptureSource.process,
-                icon: const Icon(Icons.sports_esports_outlined),
-                label: Text(l10n.sourceProcess),
-              ),
-            ],
-            selected: {settings.audioCaptureSource},
-            onSelectionChanged: running
-                ? null
-                : (selection) => cubits.settings.update(
-                    settings.copyWith(audioCaptureSource: selection.first),
-                  ),
-          )
-        : null;
+    final sourceSwitch = SegmentedButton<AudioCaptureSource>(
+      segments: [
+        ButtonSegment(
+          value: AudioCaptureSource.system,
+          icon: const Icon(Icons.speaker_group_outlined),
+          label: Text(l10n.sourceSystem),
+        ),
+        ButtonSegment(
+          value: AudioCaptureSource.process,
+          icon: const Icon(Icons.sports_esports_outlined),
+          label: Text(l10n.sourceProcess),
+        ),
+      ],
+      selected: {settings.audioCaptureSource},
+      onSelectionChanged: running
+          ? null
+          : (selection) =>
+                cubits.settings.update(settings.copyWith(audioCaptureSource: selection.first)),
+    );
     // The picker carries its own refresh button, so it travels whole into
     // the compact layout instead of leaving it on the row with the start
     // button.
@@ -1647,10 +1869,8 @@ class _SourceControls extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (sourceSwitch != null) ...[
-            sourceSwitch,
-            const SizedBox(height: 12),
-          ],
+          sourceSwitch,
+          const SizedBox(height: 12),
           picker,
           const SizedBox(height: 8),
           helper,
@@ -1667,10 +1887,8 @@ class _SourceControls extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (sourceSwitch != null) ...[
-              sourceSwitch,
-              const SizedBox(width: 16),
-            ],
+            sourceSwitch,
+            const SizedBox(width: 16),
             Expanded(child: picker),
             const SizedBox(width: 16),
             language,
@@ -1911,8 +2129,6 @@ class _LanguageControls extends StatelessWidget {
   );
 
   Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
-    // Subtitles are text: there is nothing to detect, only a script to read.
-    if (settings.captureMode == CaptureMode.ocr) return _TextLanguagePicker(cubits: cubits);
     final l10n = AppLocalizations.of(context);
     final locked = pipeline.running;
     final detected = settings.detectSourceLanguage ? pipeline.detectedLanguage : null;
@@ -2291,14 +2507,15 @@ class _LatencyBadge extends StatelessWidget {
 }
 
 class _EmptyTranscript extends StatelessWidget {
-  const _EmptyTranscript({required this.targetLanguage, required this.captureMode});
+  const _EmptyTranscript({required this.targetLanguage, required this.fromScreen});
 
   /// The pipeline ends in whichever language is selected, so the hint says so
   /// rather than always naming Russian.
   final String targetLanguage;
 
-  /// Subtitle mode starts from Windows OCR, not Whisper, and the hint says so.
-  final CaptureMode captureMode;
+  /// Whether this is the screen session's list rather than live dubbing's:
+  /// the same card, fed by Windows OCR instead of whisper.
+  final bool fromScreen;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -2321,10 +2538,11 @@ class _EmptyTranscript extends StatelessWidget {
               Text(AppLocalizations.of(context).emptyTranscript),
               const SizedBox(height: 6),
               Text(
-                switch (captureMode) {
-                  CaptureMode.audio => AppLocalizations.of(context).pipelineSummary,
-                  CaptureMode.ocr => AppLocalizations.of(context).pipelineSummaryOcr,
-                }(spokenLanguageName(AppLocalizations.of(context), targetLanguage)),
+                (fromScreen
+                    ? AppLocalizations.of(context).pipelineSummaryOcr
+                    : AppLocalizations.of(context).pipelineSummary)(
+                  spokenLanguageName(AppLocalizations.of(context), targetLanguage),
+                ),
                 style: const TextStyle(color: LoreDubPalette.mutedInk),
               ),
             ],
@@ -2460,7 +2678,6 @@ class _GraphToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final preset = PipelinePreset.of(state.graph.route);
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
@@ -2469,35 +2686,10 @@ class _GraphToolbar extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      for (final option in PipelinePreset.values)
-                        ChoiceChip(
-                          // The same words the settings screen and the
-                          // inspector put on this choice: one route, told
-                          // three ways, was read as three settings.
-                          label: Text(switch (option) {
-                            PipelinePreset.audioDub => l10n.captureAudio,
-                            PipelinePreset.subtitles => l10n.captureOcr,
-                          }),
-                          // Neither route is running while the way in is
-                          // taken apart; picking one draws it back.
-                          selected: state.graph.routed && option == preset,
-                          showCheckmark: false,
-                          selectedColor: LoreDubPalette.orange,
-                          backgroundColor: LoreDubPalette.raised,
-                          side: const BorderSide(color: LoreDubPalette.outline),
-                          onSelected: facts.running
-                              ? null
-                              : (_) => cubits.graph.add(PipelinePresetChosen(option)),
-                        ),
-                    ],
-                  ),
-                ),
+                // Nothing stands on the left of the row any more: the two
+                // preset chips picked between the audio route and the
+                // subtitles, and the screen is read on its own page now.
+                const Spacer(),
                 _addCharacter(context, l10n),
                 // The session is rested from here as well as from Live: the
                 // cast is rewired on this screen, and walking to another one
@@ -3636,9 +3828,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
-        _ModuleLabel(number: '01', label: l10n.settingsGroupSource),
+        _ModuleLabel(number: '01', label: l10n.settingsGroupInterface),
         const SizedBox(height: 12),
-        ..._whatIsHeard(context, l10n, state, running: running),
+        ..._theInterface(context, l10n, state, running: running),
         const SizedBox(height: _settingsGroupGap),
         _ModuleLabel(number: '02', label: l10n.settingsGroupDubbing),
         const SizedBox(height: 12),
@@ -3662,9 +3854,10 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     );
   }
 
-  /// What LoreDub listens to: the language it speaks to the player in, where the original comes
-  /// from, and the frame it is read out of.
-  List<Widget> _whatIsHeard(
+  /// The language LoreDub speaks to the player in. Where the original comes
+  /// from is no longer a setting: the game's sound is dubbed on Live, and
+  /// the screen is read on its own page, which keeps the frame it reads.
+  List<Widget> _theInterface(
     BuildContext context,
     AppLocalizations l10n,
     SettingsState state, {
@@ -3688,80 +3881,6 @@ class _SettingsPanelState extends State<_SettingsPanel> {
               cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
         ),
       ),
-      const SizedBox(height: 12),
-      _SettingCard(
-        title: l10n.settingsCaptureSource,
-        child: SegmentedButton<CaptureMode>(
-          segments: [
-            ButtonSegment(
-              value: CaptureMode.audio,
-              icon: const Icon(Icons.hearing_rounded),
-              label: Text(l10n.captureAudio),
-            ),
-            ButtonSegment(
-              value: CaptureMode.ocr,
-              icon: const Icon(Icons.subtitles_rounded),
-              label: Text(l10n.captureOcr),
-            ),
-          ],
-          selected: {settings.captureMode},
-          onSelectionChanged: running
-              ? null
-              : (selection) =>
-                    cubits.settings.update(settings.copyWith(captureMode: selection.first)),
-        ),
-      ),
-      if (settings.captureMode == CaptureMode.ocr) ...[
-        const SizedBox(height: 12),
-        _SettingCard(
-          title: l10n.settingsOcrRegion,
-          subtitle: l10n.ocrRegionNote,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              OcrRegionPicker(
-                key: const ValueKey('ocrRegion'),
-                region: settings.ocrRegion,
-                semanticLabel: l10n.ocrRegionHelp,
-                onChanged: running
-                    ? null
-                    : (region) => cubits.settings.update(settings.copyWith(ocrRegion: region)),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 12,
-                runSpacing: 4,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    l10n.ocrRegionValue(
-                      (settings.ocrRegion.width * 100).round(),
-                      (settings.ocrRegion.height * 100).round(),
-                      (settings.ocrRegion.left * 100).round(),
-                      (settings.ocrRegion.top * 100).round(),
-                    ),
-                    style: const TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 12),
-                  ),
-                  TextButton.icon(
-                    onPressed: running || settings.ocrRegion == OcrRegion.standard
-                        ? null
-                        : () => cubits.settings.update(
-                            settings.copyWith(ocrRegion: OcrRegion.standard),
-                          ),
-                    icon: const Icon(Icons.restart_alt_rounded),
-                    label: Text(l10n.ocrRegionReset),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.ocrRegionHelp,
-                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
-              ),
-            ],
-          ),
-        ),
-      ],
     ];
   }
 
@@ -3780,15 +3899,16 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         subtitle: l10n.originalVolumeValue((settings.duckedVolume * 100).round()),
         // The floor is the capture's: the game is heard through this same
         // volume, and silenced outright it would never be dubbed at all.
-        // Subtitle mode reads the screen and may silence it.
+        // Only the screen session, which has no ear in the game, may take it
+        // all the way down -- and it asks for that on its own page.
         child: Column(
           children: [
             Slider(
               key: const ValueKey('originalVolume'),
               value: settings.duckedVolume,
-              min: settings.quietestDuck,
+              min: AppSettings.audibleDuck,
               max: AppSettings.loudestDuck,
-              divisions: settings.duckDivisions,
+              divisions: AppSettings.duckDivisions,
               label: '${(settings.duckedVolume * 100).round()}%',
               onChanged: running
                   ? null
@@ -4171,10 +4291,9 @@ class _VoiceCard extends StatelessWidget {
     final running = pipeline.running;
     final voices = selection.availableVoices;
     final canFollow = selection.canFollowSpeaker;
-    final canClone = selection.canUseOriginalVoice;
     // A mode this setup cannot honour is shown as the one that will run.
     final mode = switch (settings.voiceMode) {
-      VoiceMode.original when canClone => VoiceMode.original,
+      VoiceMode.original => VoiceMode.original,
       VoiceMode.automatic || VoiceMode.original when canFollow => VoiceMode.automatic,
       _ => VoiceMode.chosen,
     };
@@ -4193,11 +4312,7 @@ class _VoiceCard extends StatelessWidget {
                 enabled: canFollow,
               ),
               ButtonSegment(value: VoiceMode.chosen, label: Text(l10n.voiceFixed)),
-              ButtonSegment(
-                value: VoiceMode.original,
-                label: Text(l10n.voiceOriginal),
-                enabled: canClone,
-              ),
+              ButtonSegment(value: VoiceMode.original, label: Text(l10n.voiceOriginal)),
             ],
             selected: {mode},
             onSelectionChanged: running
@@ -4229,9 +4344,7 @@ class _VoiceCard extends StatelessWidget {
           if (!canFollow) ...[
             const SizedBox(height: 10),
             Text(
-              settings.captureMode == CaptureMode.ocr
-                  ? l10n.voiceNeedsAudio
-                  : l10n.voiceUnavailable,
+              l10n.voiceUnavailable,
               style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
             ),
           ],

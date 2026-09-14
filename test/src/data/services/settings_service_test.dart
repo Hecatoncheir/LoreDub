@@ -26,7 +26,6 @@ void main() {
 
     final loaded = await service.load();
 
-    expect(loaded.captureMode, CaptureMode.ocr);
     expect(loaded.ocrRegion, const OcrRegion(left: 0.1, top: 0.65, right: 0.9, bottom: 0.95));
     expect(loaded.modelProxyUrl, 'http://127.0.0.1:7890');
     expect(loaded.audioCaptureSource, AudioCaptureSource.system);

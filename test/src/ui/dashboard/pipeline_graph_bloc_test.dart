@@ -15,7 +15,6 @@ import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/data/services/update_service.dart';
-import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
@@ -40,7 +39,6 @@ void main() {
 
   const gameAudio = PipelinePort(PipelineNodeIds.source, PipelineSocket.gameAudio);
   const speechIn = PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn);
-  const screenText = PipelinePort(PipelineNodeIds.source, PipelineSocket.screenText);
   const translationIn = PipelinePort(
     PipelineNodeIds.translation,
     PipelineSocket.translationIn,
@@ -96,9 +94,8 @@ void main() {
   tearDown(() async => cubits.dispose());
 
   test('draws the route the settings describe', () {
-    expect(graph.state.graph.route, CaptureMode.audio);
+    expect(graph.state.graph.routed, isTrue);
     expect(graph.state.graph.linkInto(speechIn)?.from, gameAudio);
-    expect(graph.state.graph.node(PipelineNodeIds.recognition)?.bypassed, isFalse);
   });
 
   test('takes the way into the pipeline apart, and draws it back', () async {
@@ -108,17 +105,11 @@ void main() {
     await pumpEvents();
 
     expect(cubits.settings.settings.captureRouted, isFalse);
-    expect(
-      cubits.settings.settings.captureMode,
-      CaptureMode.audio,
-      reason: 'the mode is remembered, so drawing any link back picks it up',
-    );
     expect(graph.state.graph.routed, isFalse);
     expect(graph.state.graph.linkInto(speechIn), isNull);
     for (final node in graph.state.graph.nodes) {
       if (node.kind == PipelineNodeKind.character) continue;
       expect(node.unrouted, isTrue, reason: '${node.id} has nothing reaching it');
-      expect(node.bypassed, isFalse, reason: 'unrouted is not the same as passed over');
     }
 
     await drawLink(gameAudio, speechIn);
@@ -140,18 +131,10 @@ void main() {
     expect(graph.state.graph.linkInto(speechIn)?.from, gameAudio);
   });
 
-  test('taking the screen text to the translator puts the pipeline in subtitle mode', () async {
-    await drawLink(screenText, translationIn);
-
-    expect(cubits.settings.settings.captureMode, CaptureMode.ocr);
-    expect(graph.state.graph.linkInto(translationIn)?.from, screenText);
-    expect(graph.state.refusal, isNull);
-  });
-
   test('a link the engine has no route for changes nothing and says why', () async {
-    await drawLink(screenText, speechIn);
+    await drawLink(gameAudio, translationIn);
 
-    expect(cubits.settings.settings.captureMode, CaptureMode.audio);
+    expect(cubits.settings.settings.captureRouted, isTrue);
     expect(graph.state.refusal, ConnectionRefusal.signal);
   });
 
@@ -189,9 +172,10 @@ void main() {
   test('the route cannot be changed while a session is running', () async {
     cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
 
-    await drawLink(screenText, translationIn);
+    graph.add(PipelineLinkCut(graph.state.graph.linkInto(speechIn)!));
+    await pumpEvents();
 
-    expect(cubits.settings.settings.captureMode, CaptureMode.audio);
+    expect(cubits.settings.settings.captureRouted, isTrue);
     expect(graph.state.refusal, ConnectionRefusal.locked);
   });
 
@@ -204,7 +188,8 @@ void main() {
   });
 
   test('a step back puts the route and the cast where they were', () async {
-    await drawLink(screenText, translationIn);
+    graph.add(PipelineLinkCut(graph.state.graph.linkInto(speechIn)!));
+    await pumpEvents();
     await drawLink(voiceOf('smith'), readBy('guard'));
 
     graph.add(const PipelineGraphUndone());
@@ -213,12 +198,12 @@ void main() {
 
     graph.add(const PipelineGraphUndone());
     await pumpEvents();
-    expect(cubits.settings.settings.captureMode, CaptureMode.audio);
+    expect(cubits.settings.settings.captureRouted, isTrue);
     expect(graph.state.canRedo, isTrue);
 
     graph.add(const PipelineGraphRedone());
     await pumpEvents();
-    expect(cubits.settings.settings.captureMode, CaptureMode.ocr);
+    expect(cubits.settings.settings.captureRouted, isFalse);
   });
 
   test('a node dragged is written where it was left', () async {
@@ -244,13 +229,12 @@ void main() {
     );
   });
 
-  test('a preset lays the canvas out again and picks its route', () async {
+  test('the arrangement goes back to where it started, the cast staying put', () async {
     graph.add(const PipelineNodeGrabbed(PipelineNodeIds.voice));
     graph.add(const PipelineNodeMoved(PipelineNodeIds.voice, 120, 80));
-    graph.add(const PipelinePresetChosen(PipelinePreset.subtitles));
+    graph.add(const PipelineLayoutReset());
     await pumpEvents();
 
-    expect(cubits.settings.settings.captureMode, CaptureMode.ocr);
     expect(
       graph.state.graph.node(PipelineNodeIds.voice)!.position,
       PipelineLayout.standardPositions[PipelineNodeIds.voice],
@@ -344,7 +328,7 @@ void main() {
       final scheme = await keep('Вечер в таверне');
 
       expect(scheme.name, 'Вечер в таверне');
-      expect(scheme.captureMode, CaptureMode.audio);
+      expect(scheme.captureRouted, isTrue);
       expect(scheme.layout.characters, ['guard', 'smith']);
       expect(
         scheme.layout.positions[PipelineNodeIds.voice]!.x,
@@ -355,17 +339,18 @@ void main() {
     });
 
     test('draws a kept scheme again and makes it the one that runs', () async {
-      await drawLink(screenText, translationIn);
-      final subtitles = await keep('С экрана');
+      graph.add(PipelineLinkCut(graph.state.graph.linkInto(speechIn)!));
+      await pumpEvents();
+      final cut = await keep('Путь разобран');
       await drawLink(gameAudio, speechIn);
       graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('smith')));
       await pumpEvents();
-      expect(cubits.settings.settings.captureMode, CaptureMode.audio);
+      expect(cubits.settings.settings.captureRouted, isTrue);
 
-      graph.add(PipelineSchemeChosen(subtitles.id));
+      graph.add(PipelineSchemeChosen(cut.id));
       await pumpEvents();
 
-      expect(cubits.settings.settings.captureMode, CaptureMode.ocr);
+      expect(cubits.settings.settings.captureRouted, isFalse);
       expect(graph.state.layout.characters, ['guard', 'smith'], reason: 'the cards come back');
       expect(graph.state.graph.node(PipelineNodeIds.character('smith')), isNotNull);
     });
@@ -412,16 +397,17 @@ void main() {
     });
 
     test('a scheme is not drawn over a running session that would reroute', () async {
-      await drawLink(screenText, translationIn);
-      final subtitles = await keep('С экрана');
+      graph.add(PipelineLinkCut(graph.state.graph.linkInto(speechIn)!));
+      await pumpEvents();
+      final cut = await keep('Путь разобран');
       await drawLink(gameAudio, speechIn);
       cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
       await pumpEvents();
 
-      graph.add(PipelineSchemeChosen(subtitles.id));
+      graph.add(PipelineSchemeChosen(cut.id));
       await pumpEvents();
 
-      expect(cubits.settings.settings.captureMode, CaptureMode.audio);
+      expect(cubits.settings.settings.captureRouted, isTrue);
       expect(graph.state.refusal, ConnectionRefusal.locked);
     });
 
@@ -640,15 +626,7 @@ void main() {
       cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.paused));
     });
 
-    test('the way into the pipeline stays shut', () async {
-      await drawLink(screenText, translationIn);
-
-      expect(cubits.settings.settings.captureMode, CaptureMode.audio);
-      expect(graph.state.refusal, ConnectionRefusal.locked);
-      expect(graph.state.graph.linkInto(speechIn)?.from, gameAudio);
-    });
-
-    test('and cannot be taken apart either', () async {
+    test('the way into the pipeline cannot be taken apart', () async {
       graph.add(PipelineLinkCut(graph.state.graph.linkInto(speechIn)!));
       await pumpEvents();
 

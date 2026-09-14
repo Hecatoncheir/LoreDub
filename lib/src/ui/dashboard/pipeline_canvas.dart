@@ -53,7 +53,6 @@ abstract final class NodeMetrics {
   /// Where a socket sits, measured from the top-left of its own node.
   static Offset anchorOf(PipelineSocket socket) => switch (socket) {
     PipelineSocket.gameAudio => Offset(width, rowCentre(0)),
-    PipelineSocket.screenText => Offset(width, rowCentre(1)),
     PipelineSocket.speechIn => Offset(0, rowCentre(0)),
     PipelineSocket.speechText => Offset(width, rowCentre(0)),
     PipelineSocket.translationIn => Offset(0, rowCentre(0)),
@@ -527,9 +526,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
     for (final link in _state.graph.links) {
       // The way into the pipeline comes apart the same way a substitution
       // does, by the button on the line itself.
-      final route =
-          link.from.socket == PipelineSocket.gameAudio ||
-          link.from.socket == PipelineSocket.screenText;
+      final route = link.from.socket == PipelineSocket.gameAudio;
       final reader =
           link.from.socket == PipelineSocket.characterVoice &&
           link.to.socket == PipelineSocket.readBy;
@@ -776,7 +773,7 @@ class _NodeCard extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.grab,
         child: Opacity(
-          opacity: node.bypassed || node.unrouted ? 0.55 : 1,
+          opacity: node.unrouted ? 0.55 : 1,
           child: Container(
             decoration: BoxDecoration(
               color: LoreDubPalette.raised,
@@ -844,9 +841,9 @@ class _NodeCard extends StatelessWidget {
               onPressed: remove,
             ),
           ),
-        if (node.bypassed || node.unrouted)
+        if (node.unrouted)
           Text(
-            (node.bypassed ? l10n.pipelineBypassed : l10n.pipelineUnrouted).toUpperCase(),
+            l10n.pipelineUnrouted.toUpperCase(),
             style: const TextStyle(
               fontFamily: LoreDubFonts.mono,
               fontSize: 8,
@@ -983,11 +980,9 @@ class _NodeCard extends StatelessWidget {
         computeBackendName(l10n, facts.backendOf(stage, availability)).toUpperCase();
     return switch (node.kind) {
       PipelineNodeKind.source =>
-        settings.captureMode == CaptureMode.ocr
-            ? l10n.captureOcr.toUpperCase()
-            : (settings.audioCaptureSource == AudioCaptureSource.process
-                  ? l10n.sourceProcess.toUpperCase()
-                  : l10n.sourceSystem.toUpperCase()),
+        settings.audioCaptureSource == AudioCaptureSource.process
+            ? l10n.sourceProcess.toUpperCase()
+            : l10n.sourceSystem.toUpperCase(),
       PipelineNodeKind.recognition => device(ComputeStage.recognition),
       PipelineNodeKind.translation => device(ComputeStage.translation),
       PipelineNodeKind.voice =>

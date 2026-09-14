@@ -16,7 +16,7 @@ enum PipelineStatus { idle, starting, listening, paused, stopping, error }
 /// The engine runs one of them at a time and says on every state event which
 /// one it is running, so that a screen never reads another's session as its
 /// own.
-enum PipelineSession { live, snapshot, scene, characters, preview }
+enum PipelineSession { live, screen, scene, characters, preview }
 
 class TranscriptEntry {
   const TranscriptEntry({

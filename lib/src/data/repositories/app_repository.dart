@@ -125,7 +125,7 @@ class AppRepository {
       await _nativeEngine.start({
         'speaker': speaker,
         'processId': process?.pid ?? 0,
-        'captureMode': settings.captureMode.name,
+        'captureMode': 'audio',
         'audioSource': settings.audioCaptureSource.name,
         'targetLanguage': settings.targetLanguage,
         'sourceLanguage': settings.effectiveSourceLanguage,
@@ -177,10 +177,14 @@ class AppRepository {
     }
   }
 
-  /// Starts the snapshot session: the translator, the voice and the snapshot
-  /// key. Nothing is captured until the player selects an area, and no game
-  /// is turned down.
-  Future<void> startSnapshot({
+  /// Starts the screen session: the translator, the voice, the frame the
+  /// subtitles are read out of, and the snapshot key.
+  ///
+  /// The capture is Windows OCR over the game's window and nothing else --
+  /// no sound is listened to -- so the game may be turned down as far as
+  /// silence without taking the recognition with it.
+  Future<void> startScreenText({
+    required GameProcess? process,
     required AppSettings settings,
     required Map<String, String> modelDirectories,
     required String speaker,
@@ -189,10 +193,19 @@ class AppRepository {
     required String runtimeDirectory,
   }) async {
     try {
-      await _nativeEngine.startSnapshot({
+      await _nativeEngine.startScreenText({
         'speaker': speaker,
+        'processId': process?.pid ?? 0,
+        'captureMode': 'ocr',
         'targetLanguage': settings.targetLanguage,
         'textLanguage': settings.textLanguage,
+        'ocrLanguage': settings.textLanguage,
+        'ocrRegionLeft': settings.ocrRegion.left,
+        'ocrRegionTop': settings.ocrRegion.top,
+        'ocrRegionRight': settings.ocrRegion.right,
+        'ocrRegionBottom': settings.ocrRegion.bottom,
+        'duckVolume': settings.silentDuckedVolume,
+        'duckWhileSpeaking': settings.duckWhileSpeaking,
         'ttsSpeed': settings.chosenSpeed,
         'hurryWhenQueued': settings.hurryWhenQueued,
         'cpuThreads': settings.cpuThreads,
@@ -203,6 +216,9 @@ class AppRepository {
         'runtimeDirectory': runtimeDirectory,
         'characters': await _characters.file(),
       });
+      await _duckScreen(process, settings);
+      _sessionProcess = process;
+      _sessionSettings = settings;
       _nativeEngine.setHotkeys(
         snapshot: settings.snapshotHotkey,
         textLanguage: settings.textLanguage,
@@ -211,6 +227,13 @@ class AppRepository {
       await _nativeEngine.stop();
       rethrow;
     }
+  }
+
+  /// Turns the game down for the screen session. Nothing here listens to the
+  /// game's sound, so this one may silence it outright.
+  Future<void> _duckScreen(GameProcess? process, AppSettings settings) async {
+    if (process == null || settings.duckWhileSpeaking) return;
+    await _nativeEngine.setProcessVolume(process.pid, settings.silentDuckedVolume);
   }
 
   /// Loads the speech model and the converter so a card's voice can be
@@ -260,7 +283,7 @@ class AppRepository {
     try {
       await _nativeEngine.startCharacters({
         'processId': process?.pid ?? 0,
-        'captureMode': CaptureMode.audio.name,
+        'captureMode': 'audio',
         'audioSource': settings.audioCaptureSource.name,
         'cpuThreads': settings.cpuThreads,
         'pythonExecutable': settings.pythonExecutable,
@@ -329,7 +352,7 @@ class AppRepository {
     try {
       await _nativeEngine.startScene({
         'processId': process?.pid ?? 0,
-        'captureMode': CaptureMode.audio.name,
+        'captureMode': 'audio',
         'audioSource': settings.audioCaptureSource.name,
         'cpuThreads': settings.cpuThreads,
         'pythonExecutable': settings.pythonExecutable,
@@ -376,10 +399,7 @@ class AppRepository {
   /// starts and stops speaking.
   Future<void> _duck(GameProcess? process, AppSettings settings) async {
     if (process == null) return;
-    if (settings.captureMode != CaptureMode.ocr &&
-        settings.audioCaptureSource != AudioCaptureSource.process) {
-      return;
-    }
+    if (settings.audioCaptureSource != AudioCaptureSource.process) return;
     if (settings.duckWhileSpeaking) return;
     await _nativeEngine.setProcessVolume(process.pid, settings.duckedVolume);
   }

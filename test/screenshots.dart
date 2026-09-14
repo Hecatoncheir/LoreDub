@@ -115,7 +115,6 @@ const packs = {
 /// Where the game of the pictures writes its subtitles: a band across the
 /// lower middle of the window, clear of the quest in the corner.
 const subtitles = AppSettings(
-  captureMode: CaptureMode.ocr,
   ocrRegion: OcrRegion(left: 0.12, top: 0.74, right: 0.88, bottom: 0.95),
 );
 
@@ -287,6 +286,7 @@ void main() {
     required DashboardSection section,
     AppSettings settings = const AppSettings(),
     PipelineStatus status = PipelineStatus.idle,
+    PipelineSession session = PipelineSession.live,
     List<TranscriptEntry> transcript = const [],
     List<SceneSpeaker> speakers = const [],
     List<TranscriptEntry> snapshots = const [],
@@ -318,6 +318,7 @@ void main() {
     cubits.pipeline.seed(
       LivePipelineState(
         status: status,
+        session: session,
         transcript: transcript,
         speakers: speakers,
         snapshots: snapshots,
@@ -350,8 +351,7 @@ void main() {
           ),
           SavedPipeline(
             id: 's2',
-            name: language == 'ru' ? 'Субтитры квестов' : 'Quest subtitles',
-            captureMode: CaptureMode.ocr,
+            name: language == 'ru' ? 'Весь звук системы' : 'The whole output',
             layout: PipelineLayout.standard,
           ),
         ],
@@ -438,28 +438,15 @@ void main() {
       );
     });
 
-    testWidgets('the settings of a screen read, in $language', (tester) async {
+    testWidgets('the screen read, in $language', (tester) async {
       await shoot(
         tester,
         stage(
           language,
-          section: DashboardSection.settings,
-          settings: subtitles,
-        ),
-        'ocr-settings',
-        language,
-        scroll: 190,
-      );
-    });
-
-    testWidgets('live off the screen, in $language', (tester) async {
-      await shoot(
-        tester,
-        stage(
-          language,
-          section: DashboardSection.live,
+          section: DashboardSection.snapshot,
           settings: subtitles,
           status: PipelineStatus.listening,
+          session: PipelineSession.screen,
           transcript: [
             for (final snippet in snippets[language]!)
               TranscriptEntry(
@@ -467,6 +454,15 @@ void main() {
                 english: snippet.$1,
                 translated: snippet.$2,
                 latency: const Duration(milliseconds: 910),
+              ),
+          ],
+          snapshots: [
+            for (final snippet in snippets[language]!.take(1))
+              TranscriptEntry(
+                original: snippet.$1,
+                english: snippet.$1,
+                translated: snippet.$2,
+                latency: const Duration(milliseconds: 940),
               ),
           ],
         ),

@@ -9,18 +9,20 @@ void main() {
     // Windows takes the loopback tap after the session volume, so a game
     // silenced outright is a pipeline listening to silence.
     const silenced = AppSettings(originalVolume: 0);
-    expect(silenced.quietestDuck, AppSettings.audibleDuck);
     expect(silenced.duckedVolume, AppSettings.audibleDuck);
 
     expect(const AppSettings(originalVolume: 0.3).duckedVolume, 0.3);
     expect(const AppSettings(originalVolume: 0.9).duckedVolume, AppSettings.loudestDuck);
   });
 
-  test('lets subtitle mode silence the game, having no ear in it', () {
-    const subtitles = AppSettings(captureMode: CaptureMode.ocr, originalVolume: 0);
+  test('lets the screen session silence the game, having no ear in it', () {
+    // It takes its text off the screen, so the game may be turned off
+    // altogether rather than left speaking under the dubbing.
+    const asked = AppSettings(silenceWhileReading: true, originalVolume: 0.3);
 
-    expect(subtitles.quietestDuck, 0);
-    expect(subtitles.duckedVolume, 0);
+    expect(asked.silentDuckedVolume, 0);
+    expect(asked.duckedVolume, 0.3, reason: 'live dubbing still hears through this');
+    expect(const AppSettings(originalVolume: 0.3).silentDuckedVolume, 0.3);
   });
 
   test('reads at the same pace whichever screen sets it', () {
@@ -36,8 +38,7 @@ void main() {
   test('moves the volume in the same steps whichever screen sets it', () {
     // The settings screen and the node panel read these, so a number set on
     // one is a number the other can set again.
-    expect(const AppSettings().duckDivisions, 20);
-    expect(const AppSettings(captureMode: CaptureMode.ocr).duckDivisions, 25);
+    expect(AppSettings.duckDivisions, 20);
     expect(AppSettings.duckStep, 0.02);
   });
 

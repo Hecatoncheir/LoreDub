@@ -65,16 +65,14 @@ class SettingsService {
   Future<AppSettings> load() async {
     final preferences = await SharedPreferences.getInstance();
     return AppSettings(
-      captureMode: CaptureMode.values.firstWhere(
-        (mode) => mode.name == preferences.getString('captureMode'),
-        orElse: () => CaptureMode.audio,
-      ),
       captureRouted: preferences.getBool('captureRouted') ?? const AppSettings().captureRouted,
       castRouted: preferences.getBool('castRouted') ?? const AppSettings().castRouted,
       targetLanguage: preferences.getString('targetLanguage') ?? 'ru',
       originalVolume: preferences.getDouble('originalVolume') ?? 0.18,
       duckWhileSpeaking:
           preferences.getBool('duckWhileSpeaking') ?? const AppSettings().duckWhileSpeaking,
+      silenceWhileReading:
+          preferences.getBool('silenceWhileReading') ?? const AppSettings().silenceWhileReading,
       hurryWhenQueued:
           preferences.getBool('hurryWhenQueued') ?? const AppSettings().hurryWhenQueued,
       ttsSpeed: preferences.getDouble('ttsSpeed') ?? 1.12,
@@ -113,12 +111,12 @@ class SettingsService {
   Future<void> save(AppSettings settings) async {
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      preferences.setString('captureMode', settings.captureMode.name),
       preferences.setBool('captureRouted', settings.captureRouted),
       preferences.setBool('castRouted', settings.castRouted),
       preferences.setString('targetLanguage', settings.targetLanguage),
       preferences.setDouble('originalVolume', settings.originalVolume),
       preferences.setBool('duckWhileSpeaking', settings.duckWhileSpeaking),
+      preferences.setBool('silenceWhileReading', settings.silenceWhileReading),
       preferences.setBool('hurryWhenQueued', settings.hurryWhenQueued),
       preferences.setDouble('ttsSpeed', settings.ttsSpeed),
       preferences.setInt('cpuThreads', settings.cpuThreads),

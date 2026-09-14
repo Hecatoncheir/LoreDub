@@ -64,30 +64,17 @@ void main() {
         ),
         isTrue,
       );
-      expect(graph.node(recognition)!.bypassed, isFalse);
     });
 
-    test('goes round whisper when the subtitles are read off the screen', () {
-      final graph = buildPipelineGraph(
-        settings: const AppSettings(captureMode: CaptureMode.ocr),
-        characters: const [],
-      );
+    test('leaves every stage in the one route the engine runs', () {
+      final graph = buildPipelineGraph(settings: const AppSettings(), characters: const []);
 
       expect(
-        joined(
-          graph,
-          const PipelinePort(source, PipelineSocket.screenText),
-          const PipelinePort(translation, PipelineSocket.translationIn),
-        ),
-        isTrue,
-      );
-      expect(
         graph.links.any((link) => link.to.nodeId == recognition),
-        isFalse,
-        reason: 'nothing reaches a stage that takes no part',
+        isTrue,
+        reason: 'the sound is recognized before it is translated',
       );
-      expect(graph.node(recognition)!.bypassed, isTrue);
-      expect(graph.node(recognition), isNotNull, reason: 'still drawn, so it can be put back');
+      expect(graph.nodes.any((node) => node.unrouted), isFalse);
     });
   });
 
@@ -252,21 +239,21 @@ void main() {
   });
 
   group('what a link would change', () {
-    PipelineGraph ocrGraph() => buildPipelineGraph(
-      settings: const AppSettings(captureMode: CaptureMode.ocr),
+    PipelineGraph cutGraph() => buildPipelineGraph(
+      settings: const AppSettings(captureRouted: false),
       characters: const [guard, smith],
       layout: PipelineLayout.drawing(['guard', 'smith']),
     );
 
     test('the way in, when the sound is taken back to whisper', () {
       final connection = proposeConnection(
-        ocrGraph(),
+        cutGraph(),
         const PipelinePort(source, PipelineSocket.gameAudio),
         const PipelinePort(recognition, PipelineSocket.speechIn),
       );
 
       expect(connection, isA<RouteConnection>());
-      expect((connection as RouteConnection).mode, CaptureMode.audio);
+      expect((connection as RouteConnection).routed, isTrue);
     });
 
     test('nothing at all, when the link is already drawn', () {
@@ -281,21 +268,21 @@ void main() {
 
     test('is refused when the two ends carry different things', () {
       final connection = proposeConnection(
-        ocrGraph(),
-        const PipelinePort(source, PipelineSocket.screenText),
-        const PipelinePort(recognition, PipelineSocket.speechIn),
+        cutGraph(),
+        const PipelinePort(source, PipelineSocket.gameAudio),
+        const PipelinePort(translation, PipelineSocket.translationIn),
       );
 
       expect((connection as RefusedConnection).reason, ConnectionRefusal.signal);
     });
 
     test('is refused between two outputs, and on one node', () {
-      final graph = ocrGraph();
+      final graph = cutGraph();
 
       expect(
         (proposeConnection(
           graph,
-          const PipelinePort(source, PipelineSocket.screenText),
+          const PipelinePort(source, PipelineSocket.gameAudio),
           const PipelinePort(recognition, PipelineSocket.speechText),
         ) as RefusedConnection).reason,
         ConnectionRefusal.direction,
@@ -312,8 +299,8 @@ void main() {
 
     test('is refused where the engine has no route', () {
       final connection = proposeConnection(
-        ocrGraph(),
-        const PipelinePort(source, PipelineSocket.screenText),
+        cutGraph(),
+        const PipelinePort(recognition, PipelineSocket.speechText),
         const PipelinePort(voice, PipelineSocket.voiceIn),
       );
 
@@ -322,7 +309,7 @@ void main() {
 
     test('whose voice reads whom, between two cards', () {
       final connection = proposeConnection(
-        ocrGraph(),
+        cutGraph(),
         PipelinePort(PipelineNodeIds.character('smith'), PipelineSocket.characterVoice),
         PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.readBy),
         characters: const [guard, smith],
@@ -379,14 +366,14 @@ void main() {
     test('is read the same way round when it is dragged backwards', () {
       final connection = proposeConnection(
         buildPipelineGraph(
-          settings: const AppSettings(captureMode: CaptureMode.ocr),
+          settings: const AppSettings(captureRouted: false),
           characters: const [],
         ),
         const PipelinePort(recognition, PipelineSocket.speechIn),
         const PipelinePort(source, PipelineSocket.gameAudio),
       );
 
-      expect((connection as RouteConnection).mode, CaptureMode.audio);
+      expect((connection as RouteConnection).routed, isTrue);
     });
   });
 
@@ -787,7 +774,6 @@ void main() {
     );
     for (final id in PipelineNodeIds.stages) {
       expect(graph.node(id)?.unrouted, isTrue, reason: id);
-      expect(graph.node(id)?.bypassed, isFalse, reason: 'unrouted is not passed over: $id');
     }
     // What runs between the stages is the pipeline itself and stays drawn.
     expect(
@@ -796,7 +782,7 @@ void main() {
     );
   });
 
-  test('cutting the way in asks for no route rather than for the other one', () {
+  test('cutting the way in leaves the stages with nothing coming into them', () {
     final graph = buildPipelineGraph(settings: const AppSettings(), characters: const []);
     final route = graph.linkInto(
       const PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn),
@@ -804,7 +790,7 @@ void main() {
 
     expect(
       proposeDisconnect(route),
-      isA<RouteConnection>().having((connection) => connection.mode, 'mode', isNull),
+      isA<RouteConnection>().having((connection) => connection.routed, 'routed', isFalse),
     );
   });
 }

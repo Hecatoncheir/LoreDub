@@ -120,7 +120,7 @@ abstract class AppLocalizations {
   /// No description provided for @navSnapshot.
   ///
   /// In ru, this message translates to:
-  /// **'Фрагмент'**
+  /// **'Экран'**
   String get navSnapshot;
 
   /// No description provided for @navCharacters.
@@ -486,7 +486,7 @@ abstract class AppLocalizations {
   /// No description provided for @titleSnapshot.
   ///
   /// In ru, this message translates to:
-  /// **'Перевод фрагмента'**
+  /// **'Перевод с экрана'**
   String get titleSnapshot;
 
   /// No description provided for @titleModels.
@@ -615,12 +615,6 @@ abstract class AppLocalizations {
   /// **'Захватывается весь дефолтный поток, кроме звука LoreDub'**
   String get captureSystemNote;
 
-  /// No description provided for @captureOcrNote.
-  ///
-  /// In ru, this message translates to:
-  /// **'Субтитры читаются с окна выбранной игры, пока оно активно'**
-  String get captureOcrNote;
-
   /// No description provided for @settingsAudioSource.
   ///
   /// In ru, this message translates to:
@@ -717,6 +711,30 @@ abstract class AppLocalizations {
   /// **'Удерживайте {hotkey}, обведите мышью текст поверх игры и отпустите клавишу — LoreDub прочитает его, переведёт и озвучит.'**
   String snapshotHowTo(String hotkey);
 
+  /// No description provided for @screenHowTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока сеанс идёт, субтитры в рамке читаются и озвучиваются сами — озвучивается только то, что в них прибавилось.'**
+  String get screenHowTo;
+
+  /// No description provided for @silenceWhileReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заглушить игру полностью'**
+  String get silenceWhileReading;
+
+  /// No description provided for @silenceWhileReadingNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здесь звук игры ничего не значит — текст берётся с экрана, и игру можно заглушить совсем, чтобы она не произносила реплику одновременно с озвучкой. Выключено — игра приглушается так же, как в «Эфире».'**
+  String get silenceWhileReadingNote;
+
+  /// No description provided for @screenPickGame.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите игру, чтобы читать её экран'**
+  String get screenPickGame;
+
   /// No description provided for @snapshotNoHotkey.
   ///
   /// In ru, this message translates to:
@@ -732,7 +750,7 @@ abstract class AppLocalizations {
   /// No description provided for @snapshotNote.
   ///
   /// In ru, this message translates to:
-  /// **'Загружаются только переводчик и голос ({language}), без распознавания речи. Рамка рисуется поверх окон — игра должна идти в оконном или полноэкранном оконном режиме.'**
+  /// **'Загружаются только переводчик и голос ({language}), без распознавания речи. Читается окно выбранной игры, пока оно впереди — игра должна идти в оконном или полноэкранном оконном режиме.'**
   String snapshotNote(String language);
 
   /// No description provided for @snapshotStart.
@@ -1155,30 +1173,6 @@ abstract class AppLocalizations {
   /// **'Скачать'**
   String get modelDownload;
 
-  /// No description provided for @settingsCaptureSource.
-  ///
-  /// In ru, this message translates to:
-  /// **'Источник текста'**
-  String get settingsCaptureSource;
-
-  /// No description provided for @captureAudio.
-  ///
-  /// In ru, this message translates to:
-  /// **'Речь из игры'**
-  String get captureAudio;
-
-  /// No description provided for @captureOcr.
-  ///
-  /// In ru, this message translates to:
-  /// **'Субтитры с экрана'**
-  String get captureOcr;
-
-  /// No description provided for @settingsOcrRegion.
-  ///
-  /// In ru, this message translates to:
-  /// **'Область субтитров'**
-  String get settingsOcrRegion;
-
   /// No description provided for @ocrRegionNote.
   ///
   /// In ru, this message translates to:
@@ -1286,12 +1280,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'В пакете этого языка голоса только одного пола — выбрать можно, но подстраиваться не под что.'**
   String get voiceUnavailable;
-
-  /// No description provided for @voiceNeedsAudio.
-  ///
-  /// In ru, this message translates to:
-  /// **'В режиме субтитров оригинал не слышен, поэтому голос берётся выбранный.'**
-  String get voiceNeedsAudio;
 
   /// No description provided for @voiceOriginal.
   ///
@@ -1557,11 +1545,11 @@ abstract class AppLocalizations {
   /// **'Меняется сразу, без перезапуска.'**
   String get interfaceLanguageNote;
 
-  /// No description provided for @settingsGroupSource.
+  /// No description provided for @settingsGroupInterface.
   ///
   /// In ru, this message translates to:
-  /// **'ЯЗЫК И ИСТОЧНИК'**
-  String get settingsGroupSource;
+  /// **'ИНТЕРФЕЙС'**
+  String get settingsGroupInterface;
 
   /// No description provided for @settingsGroupDubbing.
   ///
@@ -2610,14 +2598,8 @@ abstract class AppLocalizations {
   /// No description provided for @pipelineSchemeAudio.
   ///
   /// In ru, this message translates to:
-  /// **'Со звука'**
+  /// **'Маршрут собран'**
   String get pipelineSchemeAudio;
-
-  /// No description provided for @pipelineSchemeOcr.
-  ///
-  /// In ru, this message translates to:
-  /// **'С экрана'**
-  String get pipelineSchemeOcr;
 
   /// No description provided for @pipelineSchemeUnrouted.
   ///
@@ -2781,12 +2763,6 @@ abstract class AppLocalizations {
   /// **'Голос'**
   String get pipelineSocketVoice;
 
-  /// No description provided for @pipelineBypassed.
-  ///
-  /// In ru, this message translates to:
-  /// **'в обход'**
-  String get pipelineBypassed;
-
   /// No description provided for @pipelineUnrouted.
   ///
   /// In ru, this message translates to:
@@ -2846,12 +2822,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Сессия запущена: маршрут и модели закреплены до остановки.'**
   String get pipelineLockedNote;
-
-  /// No description provided for @pipelineRecognitionBypassed.
-  ///
-  /// In ru, this message translates to:
-  /// **'Сейчас читается текст с экрана — распознавание в этом маршруте не участвует.'**
-  String get pipelineRecognitionBypassed;
 
   /// No description provided for @pipelineModelLabel.
   ///

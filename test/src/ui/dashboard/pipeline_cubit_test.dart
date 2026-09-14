@@ -187,18 +187,20 @@ void main() {
     expect(repository.stops, 1);
   });
 
-  group('the snapshot session', () {
+  group('the screen session', () {
     const waiting = LivePipelineState(
       status: PipelineStatus.listening,
-      session: PipelineSession.snapshot,
+      session: PipelineSession.screen,
     );
 
     test('loads only the translator and the voice', () async {
-      await pipeline.toggleSnapshot(initializing: false);
+      // The frame is read out of one window, so the game is named first.
+      pipeline.selectProcess(const GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe'));
+      await pipeline.toggleScreenText(initializing: false);
 
       expect(repository.snapshotStarts, 1);
       expect(repository.snapshotModels.keys, unorderedEquals(['translation', 'speech']));
-      expect(pipeline.state.session, PipelineSession.snapshot);
+      expect(pipeline.state.session, PipelineSession.screen);
       expect(repository.starts, 0, reason: 'nothing is captured');
     });
 
@@ -254,7 +256,7 @@ void main() {
     test('leaves live dubbing to be stopped from its own screen', () async {
       pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
 
-      await pipeline.toggleSnapshot(initializing: false);
+      await pipeline.toggleScreenText(initializing: false);
 
       expect(repository.stops, 0);
       expect(repository.snapshotStarts, 0);
@@ -441,7 +443,8 @@ class _SlowStartRepository extends AppRepository {
   }
 
   @override
-  Future<void> startSnapshot({
+  Future<void> startScreenText({
+    required GameProcess? process,
     required AppSettings settings,
     required Map<String, String> modelDirectories,
     required String speaker,

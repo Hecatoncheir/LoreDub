@@ -22,7 +22,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navLive => 'Live';
 
   @override
-  String get navSnapshot => 'Snippet';
+  String get navSnapshot => 'Screen';
 
   @override
   String get navCharacters => 'Characters';
@@ -258,7 +258,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get titleLive => 'Game dubbing';
 
   @override
-  String get titleSnapshot => 'Snippet translation';
+  String get titleSnapshot => 'Screen translation';
 
   @override
   String get titleModels => 'Local models';
@@ -326,10 +326,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureSystemNote => 'The whole default output is captured, except LoreDub itself';
 
   @override
-  String get captureOcrNote =>
-      'Subtitles are read off the selected game\'s window while it is in front';
-
-  @override
   String get settingsAudioSource => 'Audio source';
 
   @override
@@ -384,6 +380,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get screenHowTo =>
+      'While the session runs the subtitles in the frame are read and voiced by themselves -- only what a line gained is spoken.';
+
+  @override
+  String get silenceWhileReading => 'Silence the game';
+
+  @override
+  String get silenceWhileReadingNote =>
+      'The game\'s sound means nothing here -- the text comes off the screen -- so it may be turned off altogether, rather than speaking a line at the same moment as the dubbing. Off, the game is turned down as it is on Live.';
+
+  @override
+  String get screenPickGame => 'Choose the game whose screen to read';
+
+  @override
   String get snapshotNoHotkey => 'No snapshot key is bound.';
 
   @override
@@ -391,7 +401,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String snapshotNote(String language) {
-    return 'Only the translator and the voice ($language) are loaded, no speech recognition. The frame is drawn over other windows — run the game windowed or borderless.';
+    return 'Only the translator and the voice ($language) are loaded, no speech recognition. The selected game\'s window is read while it is in front -- run the game windowed or borderless.';
   }
 
   @override
@@ -649,18 +659,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modelDownload => 'Download';
 
   @override
-  String get settingsCaptureSource => 'Text source';
-
-  @override
-  String get captureAudio => 'Game speech';
-
-  @override
-  String get captureOcr => 'On-screen subtitles';
-
-  @override
-  String get settingsOcrRegion => 'Subtitle area';
-
-  @override
   String get ocrRegionNote =>
       'Drag a frame over the place where the game prints its subtitles. The screen below stands for the game window; the frame is kept as a share of it, so it fits any resolution.';
 
@@ -725,10 +723,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voiceUnavailable =>
       'This language\'s package ships voices of one gender only — you can pick one, but there is nothing to match.';
-
-  @override
-  String get voiceNeedsAudio =>
-      'Subtitle mode never hears the original, so the chosen voice is used.';
 
   @override
   String get voiceOriginal => 'Original voice';
@@ -890,7 +884,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get interfaceLanguageNote => 'Applies immediately, without a restart.';
 
   @override
-  String get settingsGroupSource => 'LANGUAGE AND SOURCE';
+  String get settingsGroupInterface => 'INTERFACE';
 
   @override
   String get settingsGroupDubbing => 'DUBBING';
@@ -1511,10 +1505,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineSchemeCancel => 'Cancel';
 
   @override
-  String get pipelineSchemeAudio => 'From audio';
-
-  @override
-  String get pipelineSchemeOcr => 'From screen';
+  String get pipelineSchemeAudio => 'Route drawn';
 
   @override
   String get pipelineSchemeUnrouted => 'No way in';
@@ -1606,9 +1597,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineSocketVoice => 'Voice';
 
   @override
-  String get pipelineBypassed => 'bypassed';
-
-  @override
   String get pipelineUnrouted => 'not routed';
 
   @override
@@ -1641,10 +1629,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pipelineLockedNote =>
       'A session is running: the route and the models are settled until it stops.';
-
-  @override
-  String get pipelineRecognitionBypassed =>
-      'Text is being read off the screen — recognition takes no part in this route.';
 
   @override
   String get pipelineModelLabel => 'Recognition model';

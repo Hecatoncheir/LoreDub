@@ -60,24 +60,19 @@ class ModelSelection {
   /// The converter the original voice needs, if the catalogue has one.
   ModelInstallState? get voiceConverter => voiceConverters.firstOrNull;
 
-  /// The original voice is taken from the original's audio, which subtitle
-  /// mode never has.
-  bool get canUseOriginalVoice => settings.captureMode != CaptureMode.ocr;
-
   /// Whether each line will be re-voiced in the timbre of the phrase it
   /// answers.
-  bool get clonesVoice => settings.originalVoice && canUseOriginalVoice;
+  bool get clonesVoice => settings.originalVoice;
 
   /// Whether the worker will be told which character is speaking.
   ///
   /// The converter package is what hears that, so it is loaded for the
   /// fingerprints even when the timbre is not carried over: each character
-  /// then keeps a voice of their own. Subtitle mode has nothing to listen
-  /// to, and one fixed voice has nobody to tell apart.
+  /// then keeps a voice of their own. One fixed voice has nobody to tell
+  /// apart.
   bool get tracksSpeakers =>
       settings.voiceBank &&
       settings.voiceMode != VoiceMode.chosen &&
-      settings.captureMode != CaptureMode.ocr &&
       (voiceConverter?.installed ?? false);
 
   /// Whether the converter is needed at all: to re-voice, or to tell the
@@ -116,7 +111,6 @@ class ModelSelection {
   /// English-to-Russian translator.
   bool get recognitionNeedsEnglish =>
       !recognitionTranslatesSpeech &&
-      settings.captureMode != CaptureMode.ocr &&
       !settings.detectSourceLanguage &&
       settings.sourceLanguage != 'en';
 
@@ -126,9 +120,8 @@ class ModelSelection {
   List<VoiceOption> get availableVoices => speechPackage?.voices ?? const [];
 
   /// Whether the voice can follow the original speaker: it needs a man's and
-  /// a woman's voice to choose between, and audio to hear.
-  bool get canFollowSpeaker =>
-      (speechPackage?.canFollowSpeaker ?? false) && settings.captureMode != CaptureMode.ocr;
+  /// a woman's voice to choose between.
+  bool get canFollowSpeaker => speechPackage?.canFollowSpeaker ?? false;
 
   /// Whether it actually will, given what the user asked for. The original
   /// voice builds on the automatic choice: a base of the right gender leaves
@@ -148,18 +141,17 @@ class ModelSelection {
   /// catalogue: a player dubbing into Russian owes nothing to the French voice.
   bool get requiredModelsInstalled {
     if (models.isEmpty) return false;
-    final needsWhisper = settings.captureMode != CaptureMode.ocr;
-    if (needsWhisper && !(recognition?.installed ?? false)) return false;
+    if (!(recognition?.installed ?? false)) return false;
     final pairInstalled =
         (forTargetLanguage(ModelKind.translation)?.installed ?? false) &&
         (forTargetLanguage(ModelKind.speech)?.installed ?? false);
     return pairInstalled && (!clonesVoice || (voiceConverter?.installed ?? false));
   }
 
-  /// What the snapshot session needs: the translator and the voice of the
-  /// chosen language. It reads the screen, so whisper plays no part, and a
-  /// selected line has no audio for the original voice to follow.
-  bool get snapshotModelsInstalled =>
+  /// What the screen session needs: the translator and the voice of the
+  /// chosen language. It reads the screen, so whisper plays no part, and
+  /// text on a screen has no audio for the original voice to follow.
+  bool get screenModelsInstalled =>
       models.isNotEmpty &&
       (forTargetLanguage(ModelKind.translation)?.installed ?? false) &&
       (forTargetLanguage(ModelKind.speech)?.installed ?? false);
@@ -176,8 +168,7 @@ class ModelSelection {
     return translation && speech;
   }
 
-  /// Whether the pipeline needs a game window chosen before it can start.
-  bool get requiresProcess =>
-      settings.captureMode == CaptureMode.ocr ||
-      settings.audioCaptureSource == AudioCaptureSource.process;
+  /// Whether live dubbing needs a game window chosen before it can start.
+  /// The screen session always needs one: it reads that window.
+  bool get requiresProcess => settings.audioCaptureSource == AudioCaptureSource.process;
 }

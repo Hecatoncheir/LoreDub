@@ -87,8 +87,7 @@ class LivePipelineState {
   bool get liveRunning => running && session == PipelineSession.live;
 
   /// The snapshot session is up and waiting for a selection.
-  bool get snapshotRunning =>
-      session == PipelineSession.snapshot && status == PipelineStatus.listening;
+  bool get screenRunning => session == PipelineSession.screen && status == PipelineStatus.listening;
 
   /// The scene session is up, placing the voices of the game without dubbing
   /// a word of it.
@@ -111,7 +110,7 @@ class LivePipelineState {
   /// scene stands in the way: starting live dubbing takes the worker over.
   bool canStart(ModelSelection selection, {required bool initializing}) =>
       !initializing &&
-      (status == PipelineStatus.idle || snapshotRunning || sceneRunning) &&
+      (status == PipelineStatus.idle || screenRunning || sceneRunning) &&
       (!selection.requiresProcess || selectedProcess != null) &&
       // Taken apart on the graph, the pipeline has nothing to work on.
       selection.settings.captureRouted &&
@@ -125,11 +124,13 @@ class LivePipelineState {
       (!selection.requiresProcess || selectedProcess != null) &&
       selection.tracksSpeakers;
 
-  /// The snapshot session needs its pair of models and a key to select with.
-  bool canStartSnapshot(ModelSelection selection, {required bool initializing}) =>
+  /// The screen session needs its pair of models, a key to select with, and
+  /// the game whose window the subtitle frame is read out of.
+  bool canStartScreen(ModelSelection selection, {required bool initializing}) =>
       !initializing &&
       status == PipelineStatus.idle &&
-      selection.snapshotModelsInstalled &&
+      selectedProcess != null &&
+      selection.screenModelsInstalled &&
       selection.settings.snapshotHotkey != null;
 
   LivePipelineState copyWith({
@@ -332,18 +333,18 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   ComputeBackend _backendFor(ComputeStage stage) =>
       _settings.settings.backendFor(stage, _downloads.state.availability);
 
-  /// Starts or ends the snapshot session, which loads only the translator
-  /// and the voice and then waits for the player to select an area.
-  Future<void> toggleSnapshot({required bool initializing}) async {
+  /// Starts or ends the screen session: the subtitle frame is read while it
+  /// runs, and the snapshot key picks anything else off the screen by hand.
+  Future<void> toggleScreenText({required bool initializing}) async {
     if (_pressedTwice) return;
     _errors.report(null);
     if (state.running) {
       // Live dubbing is ended from its own screen.
-      if (state.session == PipelineSession.snapshot) await stop();
+      if (state.session == PipelineSession.screen) await stop();
       return;
     }
     final selection = _selection;
-    if (!state.canStartSnapshot(selection, initializing: initializing)) return;
+    if (!state.canStartScreen(selection, initializing: initializing)) return;
     _startRequestedAt = _clock();
     // The worker the characters screen holds has neither the translator nor
     // the voice loaded, so this session starts afresh over it.
@@ -352,12 +353,14 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     emit(
       state.copyWith(
         status: PipelineStatus.starting,
-        session: PipelineSession.snapshot,
+        session: PipelineSession.screen,
         clearStartupProgress: true,
         startupStage: '',
         clearSpokenVoice: true,
         snapshotReading: false,
         snapshotMissed: false,
+        // The list under the frame is this session's, not the last one's.
+        transcript: const [],
       ),
     );
     try {
@@ -365,7 +368,8 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       final translation = selection.forTargetLanguage(ModelKind.translation)!.model;
       final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
       final speechDirectory = await _modelRepository.directoryFor(speech);
-      await _appRepository.startSnapshot(
+      await _appRepository.startScreenText(
+        process: state.selectedProcess,
         settings: settings,
         modelDirectories: {
           'translation': await _modelRepository.directoryFor(translation),

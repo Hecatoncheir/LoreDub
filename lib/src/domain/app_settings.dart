@@ -8,8 +8,6 @@ export 'hotkey.dart';
 import 'ocr_region.dart';
 import 'spoken_language.dart';
 
-enum CaptureMode { audio, ocr }
-
 enum AudioCaptureSource { process, system }
 
 /// How the dubbing voice is picked, as the interface offers it. What is
@@ -18,12 +16,12 @@ enum VoiceMode { automatic, chosen, original }
 
 class AppSettings {
   const AppSettings({
-    this.captureMode = CaptureMode.audio,
     this.captureRouted = true,
     this.castRouted = true,
     this.targetLanguage = 'ru',
     this.originalVolume = 0.18,
     this.duckWhileSpeaking = true,
+    this.silenceWhileReading = false,
     this.hurryWhenQueued = true,
     this.ttsSpeed = 1.12,
     this.cpuThreads = 4,
@@ -51,11 +49,9 @@ class AppSettings {
     this.voiceConversionBackend,
   });
 
-  final CaptureMode captureMode;
-
   /// Whether the capture is wired into the pipeline at all. Taken apart on
-  /// the graph, [captureMode] is remembered but nothing is fed to the
-  /// stages: the session cannot start until a link is drawn back.
+  /// the graph nothing is fed to the stages: the session cannot start until
+  /// a link is drawn back.
   final bool captureRouted;
 
   /// Whether the player's cast is wired into the mix. Taken apart on the
@@ -75,6 +71,15 @@ class AppSettings {
   /// their own volume between lines and step aside for each one.
   final bool duckWhileSpeaking;
 
+  /// Whether the game is silenced outright while the screen is read.
+  ///
+  /// Only that session can offer it: it takes its text from the subtitle
+  /// frame and listens to no sound at all, so nothing is lost by turning the
+  /// game off -- and what is gained is not hearing the game speak a line the
+  /// dubbing is reading at the same moment. Live dubbing has its ear in the
+  /// game's own sound and is held above [audibleDuck] whatever is set here.
+  final bool silenceWhileReading;
+
   /// Whether a line is read faster while others are already waiting for the
   /// voice. Off, every line is read at the pace the player set, and a queue
   /// is simply time spent further behind the game.
@@ -85,7 +90,7 @@ class AppSettings {
   static const loudestDuck = 0.5;
 
   /// The quietest the game may be put while its own sound is what the
-  /// pipeline listens to.
+  /// pipeline listens to, and the floor both volume sliders stop at.
   ///
   /// Windows takes the process-loopback tap after the session volume, so
   /// turning the game down turns the capture down with it: measured against
@@ -100,17 +105,16 @@ class AppSettings {
   /// one the settings screen can set again.
   static const duckStep = 0.02;
 
-  /// How quiet the game may be put in this capture mode. Subtitle mode reads
-  /// the screen and captures no sound of its own, so there it may be
-  /// silenced outright.
-  double get quietestDuck => captureMode == CaptureMode.ocr ? 0 : audibleDuck;
+  /// What the game is actually turned down to while it is being listened
+  /// to: [originalVolume] held to what the capture can still hear.
+  double get duckedVolume => originalVolume.clamp(audibleDuck, loudestDuck);
 
-  /// What the game is actually turned down to: [originalVolume] held to what
-  /// this capture mode can still hear.
-  double get duckedVolume => originalVolume.clamp(quietestDuck, loudestDuck);
+  /// What the game is turned down to while the screen is read instead --
+  /// the same number, or silence when the player asked for it.
+  double get silentDuckedVolume => silenceWhileReading ? 0 : duckedVolume;
 
   /// The notches of a volume slider, from the range it may cover.
-  int get duckDivisions => ((loudestDuck - quietestDuck) / duckStep).round();
+  static int get duckDivisions => ((loudestDuck - audibleDuck) / duckStep).round();
 
   /// The pace the dubbing is read at by the player's own hand. Slower than
   /// [slowestSpeech] it drags behind its own words; faster than
@@ -251,12 +255,12 @@ class AppSettings {
   String get effectiveSourceLanguage => detectSourceLanguage ? autoSpokenLanguage : sourceLanguage;
 
   AppSettings copyWith({
-    CaptureMode? captureMode,
     bool? captureRouted,
     bool? castRouted,
     String? targetLanguage,
     double? originalVolume,
     bool? duckWhileSpeaking,
+    bool? silenceWhileReading,
     bool? hurryWhenQueued,
     double? ttsSpeed,
     int? cpuThreads,
@@ -287,12 +291,12 @@ class AppSettings {
     ComputeBackend? voiceConversionBackend,
     bool clearBackendOverrides = false,
   }) => AppSettings(
-    captureMode: captureMode ?? this.captureMode,
     captureRouted: captureRouted ?? this.captureRouted,
     castRouted: castRouted ?? this.castRouted,
     targetLanguage: targetLanguage ?? this.targetLanguage,
     originalVolume: originalVolume ?? this.originalVolume,
     duckWhileSpeaking: duckWhileSpeaking ?? this.duckWhileSpeaking,
+    silenceWhileReading: silenceWhileReading ?? this.silenceWhileReading,
     hurryWhenQueued: hurryWhenQueued ?? this.hurryWhenQueued,
     ttsSpeed: ttsSpeed ?? this.ttsSpeed,
     cpuThreads: cpuThreads ?? this.cpuThreads,

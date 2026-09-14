@@ -77,8 +77,6 @@ enum PipelineSocket {
   /// The game's sound, as the capture hears it.
   gameAudio(PipelineNodeKind.source, PipelineSignal.audio, false),
 
-  /// The text on the screen, as Windows OCR reads it.
-  screenText(PipelineNodeKind.source, PipelineSignal.text, false),
   speechIn(PipelineNodeKind.recognition, PipelineSignal.audio, true),
   speechText(PipelineNodeKind.recognition, PipelineSignal.text, false),
   translationIn(PipelineNodeKind.translation, PipelineSignal.text, true),
@@ -211,7 +209,6 @@ class PipelineNode {
     required this.kind,
     required this.position,
     this.characterId,
-    this.bypassed = false,
     this.unrouted = false,
   });
 
@@ -222,37 +219,23 @@ class PipelineNode {
   /// The card this node draws, for [PipelineNodeKind.character].
   final String? characterId;
 
-  /// Whether the running pipeline goes past this node: recognition, while
-  /// the subtitles are being read off the screen. It is still drawn, so the
-  /// route can be put back by dragging one link.
-  final bool bypassed;
-
   /// Whether nothing reaches this node at all, the way into the pipeline
-  /// having been taken apart. A bypassed node is one the running route goes
-  /// past; an unrouted one belongs to a pipeline that runs nothing. It is
-  /// still drawn where it stood, and a link dragged back to the source puts
-  /// the route together again.
+  /// having been taken apart. It is still drawn where it stood, and a link
+  /// dragged back to the source puts the route together again.
   final bool unrouted;
 }
 
-/// The whole scheme: the nodes, the links between them, and the route the
-/// engine will take through it.
+/// The whole scheme: the nodes and the links between them.
 class PipelineGraph {
   const PipelineGraph({
     this.nodes = const [],
     this.links = const [],
-    this.route = CaptureMode.audio,
     this.routed = true,
     this.chained = const {},
   });
 
   final List<PipelineNode> nodes;
   final List<PipelineLink> links;
-
-  /// Which of the two routes the links describe — the same value the engine
-  /// is started with. Meaningless while [routed] is false: it is only what
-  /// the route would be if it were drawn back.
-  final CaptureMode route;
 
   /// Whether the way into the pipeline is drawn at all. Taken apart, every
   /// stage is unrouted and the session cannot start.
@@ -552,25 +535,6 @@ class GraphView {
   };
 }
 
-/// The arrangements the canvas is offered as a starting point. Each one is a
-/// route the engine runs, not a shape of its own.
-enum PipelinePreset {
-  /// Sound from the game, recognized, translated and read out.
-  audioDub(CaptureMode.audio),
-
-  /// Text read off the screen, translated and read out; whisper takes no
-  /// part in it.
-  subtitles(CaptureMode.ocr);
-
-  const PipelinePreset(this.captureMode);
-
-  final CaptureMode captureMode;
-
-  /// The preset [mode] is running, so the canvas can show which one is on.
-  static PipelinePreset of(CaptureMode mode) =>
-      mode == CaptureMode.ocr ? PipelinePreset.subtitles : PipelinePreset.audioDub;
-}
-
 /// The graph [settings] and [characters] describe, arranged as [layout].
 PipelineGraph buildPipelineGraph({
   required AppSettings settings,
@@ -581,7 +545,6 @@ PipelineGraph buildPipelineGraph({
   final placed = _placedCast(layout.cast, byId);
   GraphPoint at(String nodeId, GraphPoint fallback) => layout.positions[nodeId] ?? fallback;
 
-  final ocr = settings.captureMode == CaptureMode.ocr;
   final routed = settings.captureRouted;
   final cast = settings.castRouted;
   final nodes = <PipelineNode>[
@@ -597,7 +560,6 @@ PipelineGraph buildPipelineGraph({
           _ => PipelineNodeKind.output,
         },
         position: at(id, PipelineLayout.standardPositions[id] ?? GraphPoint.zero),
-        bypassed: routed && ocr && id == PipelineNodeIds.recognition,
         unrouted: !routed,
       ),
     for (final (index, placement) in placed.indexed)
@@ -619,14 +581,7 @@ PipelineGraph buildPipelineGraph({
   final links = <PipelineLink>[
     // Nothing feeds the stages while the way in is taken apart. What runs
     // between them is the pipeline itself and stays drawn, faded with them.
-    if (!routed)
-      ...const <PipelineLink>[]
-    else if (ocr)
-      const PipelineLink(
-        PipelinePort(PipelineNodeIds.source, PipelineSocket.screenText),
-        translation,
-      )
-    else ...[
+    if (routed) ...[
       const PipelineLink(
         PipelinePort(PipelineNodeIds.source, PipelineSocket.gameAudio),
         PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn),
@@ -676,7 +631,6 @@ PipelineGraph buildPipelineGraph({
   return PipelineGraph(
     nodes: nodes,
     links: links,
-    route: settings.captureMode,
     routed: routed,
     chained: {
       for (final placement in placed)
@@ -781,8 +735,8 @@ enum ConnectionRefusal {
   /// Both ends on the same node.
   sameNode,
 
-  /// A pair the engine has no route for, such as the screen's text straight
-  /// into the voice.
+  /// A pair the engine has no route for, such as the game's sound straight
+  /// into the translator.
   unsupported,
 
   /// Two cards reading each other.
@@ -801,12 +755,11 @@ sealed class GraphConnection {
 
 /// The capture route, which is where the pipeline starts.
 final class RouteConnection extends GraphConnection {
-  const RouteConnection(this.mode);
+  const RouteConnection(this.routed);
 
-  /// Which way the pipeline is fed, or null when the way in has been taken
-  /// apart: the mode last used is remembered, and drawing a link back is
-  /// what picks it up again.
-  final CaptureMode? mode;
+  /// Whether the game's sound reaches the stages at all. Taken apart, every
+  /// stage stands with nothing coming into it until a link is drawn back.
+  final bool routed;
 }
 
 /// Whether the player's cast is wired into the mix at all. Taken out, every
@@ -870,10 +823,7 @@ GraphConnection proposeConnection(
   }
   if (graph.links.contains(PipelineLink(from, to))) return const UnchangedConnection();
   return switch ((from.socket, to.socket)) {
-    (PipelineSocket.gameAudio, PipelineSocket.speechIn) => const RouteConnection(CaptureMode.audio),
-    (PipelineSocket.screenText, PipelineSocket.translationIn) => const RouteConnection(
-      CaptureMode.ocr,
-    ),
+    (PipelineSocket.gameAudio, PipelineSocket.speechIn) => const RouteConnection(true),
     // The cast, back into the mix: every card on the canvas speaks again.
     (PipelineSocket.characterVoice, PipelineSocket.mixCast) => const CastConnection(true),
     // A card counted among the voices the game speaks.
@@ -910,10 +860,7 @@ GraphConnection _readerConnection({
 GraphConnection proposeDisconnect(PipelineLink link) {
   // The way into the pipeline comes apart: the stages stay where they are
   // with nothing reaching them, and the route is put back by drawing it.
-  if (link.from.socket == PipelineSocket.gameAudio ||
-      link.from.socket == PipelineSocket.screenText) {
-    return const RouteConnection(null);
-  }
+  if (link.from.socket == PipelineSocket.gameAudio) return const RouteConnection(false);
   // The cast comes out of the mix whole: the cards stay where they are with
   // nobody standing in for anybody, and one line drawn back wakes them all.
   if (link.to.socket == PipelineSocket.mixCast) return const CastConnection(false);

@@ -190,7 +190,6 @@ class _SchemeCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final graph = buildPipelineGraph(
       settings: AppSettings(
-        captureMode: scheme.captureMode,
         captureRouted: scheme.captureRouted,
         castRouted: scheme.castRouted,
       ),
@@ -267,14 +266,10 @@ class _SchemeCard extends StatelessWidget {
     );
   }
 
-  /// What the scheme is, in one line: the route it takes and how many cards
-  /// it puts on the canvas.
+  /// What the scheme is, in one line: whether the way in is drawn and how
+  /// many cards it puts on the canvas.
   String _note(AppLocalizations l10n) {
-    final route = !scheme.captureRouted
-        ? l10n.pipelineSchemeUnrouted
-        : scheme.captureMode == CaptureMode.ocr
-        ? l10n.pipelineSchemeOcr
-        : l10n.pipelineSchemeAudio;
+    final route = scheme.captureRouted ? l10n.pipelineSchemeAudio : l10n.pipelineSchemeUnrouted;
     if (scheme.layout.cast.isEmpty) return route;
     return '$route · ${l10n.pipelineSchemeCast(scheme.layout.cast.length)}';
   }

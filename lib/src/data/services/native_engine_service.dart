@@ -173,16 +173,20 @@ class NativeEngineService {
     );
   }
 
-  /// Loads the translator and the voice for the snapshot session, which
-  /// captures nothing by itself: text arrives only from areas the player
-  /// selects while holding the snapshot key.
-  Future<void> startSnapshot(Map<String, Object?> config) async {
+  /// Loads the translator and the voice for the screen session, and starts
+  /// the capture that reads the subtitle frame.
+  ///
+  /// One session answers for both halves of the screen: what the frame
+  /// gains as the game writes in it, and what the player picks out by hand
+  /// while holding the snapshot key. Whisper takes no part in either --
+  /// nothing here is heard -- so it is ready in seconds.
+  Future<void> startScreenText(Map<String, Object?> config) async {
     _reportedLanguage = null;
     _reportedVoice = null;
     _reportedBankSize = null;
     _paused = false;
-    _session = PipelineSession.snapshot;
-    // One selection at a time is read, so there is no one to talk over.
+    _session = PipelineSession.screen;
+    // One line at a time is read, so there is no one to talk over.
     _playback.maxVoices = 1;
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
@@ -204,13 +208,23 @@ class NativeEngineService {
     if (_inference.translationBackend case final actual?) {
       _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
     }
+    _events.add({'type': 'startup', 'value': 0.98, 'stage': 'capture'});
+    // No capture directory: the screen has no audio to cut into files, and
+    // the native side asks for one only when it listens.
     _activeConfig = config;
+    final pointer = jsonEncode(_activeConfig).toNativeUtf8();
+    try {
+      _throwIfError(ld_start(pointer.cast()));
+    } catch (_) {
+      await _inference.stop();
+      rethrow;
+    } finally {
+      malloc.free(pointer);
+    }
     _pollTimer ??= Timer.periodic(
       const Duration(milliseconds: 80),
       (_) => _pollEvents(),
     );
-    // Nothing native starts here to say so itself.
-    _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
   }
 
   /// Loads the speech model and the converter, and nothing else: the

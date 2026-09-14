@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/app_repository.dart';
-import '../../../domain/app_settings.dart';
 import '../../../domain/character.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
@@ -156,12 +155,6 @@ final class PipelineLayoutReset extends PipelineGraphEvent {
   const PipelineLayoutReset();
 }
 
-final class PipelinePresetChosen extends PipelineGraphEvent {
-  const PipelinePresetChosen(this.preset);
-
-  final PipelinePreset preset;
-}
-
 /// The scheme as it stands is kept on the shelf under [name].
 final class PipelineSchemeSaved extends PipelineGraphEvent {
   const PipelineSchemeSaved(this.name);
@@ -299,8 +292,8 @@ class PipelineGraphState {
   );
 }
 
-/// What one step back restores: where the nodes were, which route was
-/// running, and whose voice read whom.
+/// What one step back restores: where the nodes were, whether the way in
+/// was drawn, and whose voice read whom.
 ///
 /// The canvas owns none of those — they are the settings and the cast — so
 /// undo puts them back through the same calls an edit makes, and the screen
@@ -308,18 +301,15 @@ class PipelineGraphState {
 class _GraphMemento {
   const _GraphMemento({
     required this.layout,
-    required this.captureMode,
     required this.routed,
     required this.castRouted,
     required this.readers,
   });
 
   final PipelineLayout layout;
-  final CaptureMode captureMode;
 
-  /// Whether the way into the pipeline was drawn. Kept beside the mode: a
-  /// step back over a cut route has to put the link there again, not only
-  /// remember which one it was.
+  /// Whether the way into the pipeline was drawn, so a step back over a cut
+  /// route puts the link there again.
   final bool routed;
 
   /// Whether the cast was wired into the mix, which a step back puts back
@@ -374,7 +364,6 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     );
     on<PipelineViewSet>((event, emit) => emit(_withView(event.view)));
     on<PipelineLayoutReset>(_onReset);
-    on<PipelinePresetChosen>(_onPreset);
     on<PipelineGraphSeeded>((event, emit) => emit(_redrawn(event.state)));
     on<PipelineSchemeSaved>(_onSchemeSaved);
     on<PipelineSchemeChosen>(_onSchemeChosen);
@@ -454,7 +443,6 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     return SavedPipeline(
       id: id,
       name: name,
-      captureMode: _settings.settings.captureMode,
       captureRouted: _settings.settings.captureRouted,
       castRouted: _settings.settings.castRouted,
       layout: state.layout,
@@ -486,9 +474,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   ) async {
     final scheme = state.schemes.where((value) => value.id == event.id).firstOrNull;
     if (scheme == null) return;
-    if (routeLocked &&
-        (scheme.captureMode != _settings.settings.captureMode ||
-            scheme.captureRouted != _settings.settings.captureRouted)) {
+    if (routeLocked && scheme.captureRouted != _settings.settings.captureRouted) {
       emit(state.copyWith(refusal: ConnectionRefusal.locked));
       return;
     }
@@ -507,7 +493,6 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     final wasRouted = _settings.settings.castRouted;
     await _settings.update(
       _settings.settings.copyWith(
-        captureMode: scheme.captureMode,
         captureRouted: scheme.captureRouted,
         castRouted: scheme.castRouted,
       ),
@@ -676,21 +661,14 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         return;
       case RefusedConnection(:final reason):
         emit(state.copyWith(refusal: reason));
-      case RouteConnection(:final mode):
+      case RouteConnection(:final routed):
         if (routeLocked) {
           emit(state.copyWith(refusal: ConnectionRefusal.locked));
           return;
         }
         _remember();
         emit(state.copyWith(clearRefusal: true));
-        // A route taken apart keeps the mode it had: drawing any link back
-        // picks it up again rather than asking for it afresh.
-        await _settings.update(
-          _settings.settings.copyWith(
-            captureMode: mode,
-            captureRouted: mode != null,
-          ),
-        );
+        await _settings.update(_settings.settings.copyWith(captureRouted: routed));
       // The cast into the mix, or out of it. Not locked with the route: a
       // session keeps its cast loaded either way, and the worker is told.
       case CastConnection(:final routed):
@@ -753,24 +731,6 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     _persist();
   }
 
-  Future<void> _onPreset(PipelinePresetChosen event, Emitter<PipelineGraphState> emit) async {
-    if (routeLocked) {
-      emit(state.copyWith(refusal: ConnectionRefusal.locked));
-      return;
-    }
-    _remember();
-    emit(
-      _redrawn(
-        state.copyWith(
-          layout: PipelineLayout(cast: state.layout.cast),
-          clearRefusal: true,
-        ),
-      ),
-    );
-    _persist();
-    await _settings.update(_settings.settings.copyWith(captureMode: event.preset.captureMode));
-  }
-
   Future<void> _onUndone(PipelineGraphUndone event, Emitter<PipelineGraphState> emit) async {
     if (_past.isEmpty) return;
     final memento = _past.removeLast();
@@ -793,15 +753,8 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     if (_settings.settings.castRouted != memento.castRouted) {
       await _routeCast(memento.castRouted);
     }
-    if (!routeLocked &&
-        (_settings.settings.captureMode != memento.captureMode ||
-            _settings.settings.captureRouted != memento.routed)) {
-      await _settings.update(
-        _settings.settings.copyWith(
-          captureMode: memento.captureMode,
-          captureRouted: memento.routed,
-        ),
-      );
+    if (!routeLocked && _settings.settings.captureRouted != memento.routed) {
+      await _settings.update(_settings.settings.copyWith(captureRouted: memento.routed));
     }
     for (final entry in memento.readers.entries) {
       final now = _cast.firstWhere(
@@ -826,7 +779,6 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   _GraphMemento _snapshot() => _GraphMemento(
     layout: state.layout,
-    captureMode: _settings.settings.captureMode,
     routed: _settings.settings.captureRouted,
     castRouted: _settings.settings.castRouted,
     readers: {for (final character in _cast) character.id: character.voicedBy},

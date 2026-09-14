@@ -152,43 +152,25 @@ class PipelineInspector extends StatelessWidget {
       ),
     ),
     _Field(
-      label: l10n.settingsCaptureSource,
-      child: _Choices<CaptureMode>(
-        value: _settings.captureMode,
+      label: l10n.settingsAudioSource,
+      child: _Choices<AudioCaptureSource>(
+        value: _settings.audioCaptureSource,
         enabled: !_locked,
         options: {
-          CaptureMode.audio: l10n.captureAudio,
-          CaptureMode.ocr: l10n.captureOcr,
+          AudioCaptureSource.process: l10n.sourceProcess,
+          AudioCaptureSource.system: l10n.sourceSystem,
         },
-        onChanged: (value) => _update(_settings.copyWith(captureMode: value)),
+        onChanged: (value) => _update(_settings.copyWith(audioCaptureSource: value)),
       ),
     ),
-    if (_settings.captureMode == CaptureMode.audio)
-      _Field(
-        label: l10n.settingsAudioSource,
-        child: _Choices<AudioCaptureSource>(
-          value: _settings.audioCaptureSource,
-          enabled: !_locked,
-          options: {
-            AudioCaptureSource.process: l10n.sourceProcess,
-            AudioCaptureSource.system: l10n.sourceSystem,
-          },
-          onChanged: (value) => _update(_settings.copyWith(audioCaptureSource: value)),
-        ),
-      ),
     _Note(
-      text: switch (_settings.captureMode) {
-        CaptureMode.ocr => l10n.captureOcrNote,
-        _ =>
-          _settings.audioCaptureSource == AudioCaptureSource.process
-              ? l10n.captureProcessNote
-              : l10n.captureSystemNote,
-      },
+      text: _settings.audioCaptureSource == AudioCaptureSource.process
+          ? l10n.captureProcessNote
+          : l10n.captureSystemNote,
     ),
   ];
 
   List<Widget> _recognition(AppLocalizations l10n) => [
-    if (node.bypassed) _Note(text: l10n.pipelineRecognitionBypassed),
     _Field(
       label: l10n.pipelineModelLabel,
       child: DropdownButtonFormField<String>(
@@ -248,7 +230,7 @@ class PipelineInspector extends StatelessWidget {
         options: {
           VoiceMode.automatic: l10n.voiceAutomatic,
           VoiceMode.chosen: l10n.voiceFixed,
-          if (facts.selection.canUseOriginalVoice) VoiceMode.original: l10n.voiceOriginal,
+          VoiceMode.original: l10n.voiceOriginal,
         },
         onChanged: (value) => _update(_settings.withVoiceMode(value)),
       ),
@@ -324,9 +306,9 @@ class PipelineInspector extends StatelessWidget {
       child: Slider(
         key: const ValueKey('graphOriginalVolume'),
         value: _settings.duckedVolume,
-        min: _settings.quietestDuck,
+        min: AppSettings.audibleDuck,
         max: AppSettings.loudestDuck,
-        divisions: _settings.duckDivisions,
+        divisions: AppSettings.duckDivisions,
         onChanged: _locked ? null : (value) => _update(_settings.copyWith(originalVolume: value)),
       ),
     ),

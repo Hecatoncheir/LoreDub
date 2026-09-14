@@ -6,7 +6,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/pipeline_library_service.dart';
-import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:path/path.dart' as path;
@@ -30,7 +29,7 @@ void main() {
         SavedPipeline(
           id: 's1',
           name: 'Вечер в таверне',
-          captureMode: CaptureMode.ocr,
+          captureRouted: false,
           castRouted: false,
           layout: PipelineLayout.drawing(['guard']),
           readers: const {'guard': 'smith', 'smith': null},
@@ -43,7 +42,7 @@ void main() {
 
     final scheme = read.pipelines.single;
     expect(scheme.name, 'Вечер в таверне');
-    expect(scheme.captureMode, CaptureMode.ocr);
+    expect(scheme.captureRouted, isFalse);
     expect(scheme.castRouted, isFalse);
     expect(scheme.layout.characters, ['guard']);
     expect(scheme.readers, {'guard': 'smith', 'smith': null});

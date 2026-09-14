@@ -78,17 +78,6 @@ void main() {
     expect(selectionWith(original).requiredModelsInstalled, isTrue);
   });
 
-  test('never clones in subtitle mode, which has no audio to take a timbre from', () {
-    final settings = const AppSettings(
-      captureMode: CaptureMode.ocr,
-    ).withVoiceMode(VoiceMode.original);
-    final selection = selectionWith(settings, converter: false);
-
-    expect(selection.canUseOriginalVoice, isFalse);
-    expect(selection.clonesVoice, isFalse);
-    expect(selection.requiredModelsInstalled, isTrue, reason: 'the converter is not needed here');
-  });
-
   group('telling the characters apart', () {
     final remembering = const AppSettings(voiceBank: true);
 
@@ -109,16 +98,11 @@ void main() {
       expect(selection.requiredModelsInstalled, isTrue, reason: 'it is not needed to start');
     });
 
-    test('leaves a fixed voice and subtitle mode alone', () {
+    test('leaves a fixed voice alone', () {
       expect(
         selectionWith(remembering.withVoiceMode(VoiceMode.chosen)).tracksSpeakers,
         isFalse,
         reason: 'one voice for every line has nobody to tell apart',
-      );
-      expect(
-        selectionWith(remembering.copyWith(captureMode: CaptureMode.ocr)).tracksSpeakers,
-        isFalse,
-        reason: 'subtitles have nothing to listen to',
       );
     });
 
