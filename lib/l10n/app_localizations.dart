@@ -99,6 +99,18 @@ abstract class AppLocalizations {
   /// **'LoreDub'**
   String get appTitle;
 
+  /// No description provided for @navGroupDubbing.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПЕРЕВОД'**
+  String get navGroupDubbing;
+
+  /// No description provided for @navGroupSetup.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПОДГОТОВКА'**
+  String get navGroupSetup;
+
   /// No description provided for @navLive.
   ///
   /// In ru, this message translates to:

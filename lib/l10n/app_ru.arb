@@ -1,6 +1,8 @@
 {
   "@@locale": "ru",
   "appTitle": "LoreDub",
+  "navGroupDubbing": "ПЕРЕВОД",
+  "navGroupSetup": "ПОДГОТОВКА",
   "navLive": "Эфир",
   "navSnapshot": "Фрагмент",
   "navCharacters": "Персонажи",

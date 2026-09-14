@@ -1,6 +1,8 @@
 {
   "@@locale": "en",
   "appTitle": "LoreDub",
+  "navGroupDubbing": "DUBBING",
+  "navGroupSetup": "SETUP",
   "navLive": "Live",
   "navSnapshot": "Snippet",
   "navCharacters": "Characters",

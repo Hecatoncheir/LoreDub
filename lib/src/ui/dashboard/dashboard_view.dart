@@ -289,6 +289,7 @@ class _Navigation extends StatelessWidget {
           builder: (context, shell) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _NavigationGroup(label: AppLocalizations.of(context).navGroupDubbing),
               _NavigationItem(
                 icon: (color) => LoreDubIcons.audioCapture(color: color, size: 21),
                 label: AppLocalizations.of(context).navLive,
@@ -301,6 +302,7 @@ class _Navigation extends StatelessWidget {
                 selected: shell.section == DashboardSection.snapshot,
                 onTap: () => cubits.shell.selectSection(DashboardSection.snapshot),
               ),
+              _NavigationGroup(label: AppLocalizations.of(context).navGroupSetup),
               _NavigationItem(
                 icon: (color) => Icon(Icons.groups_rounded, size: 21, color: color),
                 label: AppLocalizations.of(context).navCharacters,
@@ -553,6 +555,34 @@ class _UpdateRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What the screens under it are for. The six sections are two jobs -- the
+/// dubbing itself, and everything that has to be ready before it -- and a
+/// flat list of six made "Схема" look like as ordinary a way in as "Эфир".
+///
+/// It names the group and nothing else: the compact navigation indexes into
+/// `DashboardSection.values` and has no room for a heading, so the grouping
+/// is the wide window's alone.
+class _NavigationGroup extends StatelessWidget {
+  const _NavigationGroup({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(14, 10, 8, 8),
+    child: Text(
+      label,
+      style: const TextStyle(
+        fontFamily: LoreDubFonts.mono,
+        color: LoreDubPalette.mutedInk,
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.4,
+      ),
+    ),
+  );
 }
 
 class _NavigationItem extends StatelessWidget {

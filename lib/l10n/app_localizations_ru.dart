@@ -13,6 +13,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get appTitle => 'LoreDub';
 
   @override
+  String get navGroupDubbing => 'ПЕРЕВОД';
+
+  @override
+  String get navGroupSetup => 'ПОДГОТОВКА';
+
+  @override
   String get navLive => 'Эфир';
 
   @override

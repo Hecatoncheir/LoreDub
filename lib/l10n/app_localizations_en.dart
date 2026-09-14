@@ -13,6 +13,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'LoreDub';
 
   @override
+  String get navGroupDubbing => 'DUBBING';
+
+  @override
+  String get navGroupSetup => 'SETUP';
+
+  @override
   String get navLive => 'Live';
 
   @override
