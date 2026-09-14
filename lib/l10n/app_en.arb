@@ -542,7 +542,6 @@
   },
   "voiceGenderMale": "male",
   "voiceGenderFemale": "female",
-  "settingsPerformance": "Performance",
   "performanceNote": "Recognition takes most of the delay and scales well with threads. Cores available: {cores}, recommended {recommended}.",
   "@performanceNote": {
     "placeholders": {
@@ -575,7 +574,7 @@
   "interfaceLanguageNote": "Applies immediately, without a restart.",
   "settingsGroupInterface": "INTERFACE",
   "settingsGroupDubbing": "DUBBING",
-  "settingsGroupControl": "HOTKEYS AND COMPUTE",
+  "settingsGroupCompute": "COMPUTE",
   "settingsGroupAdvanced": "ADVANCED",
   "modelWhisperTitle": "Whisper {version}",
   "@modelWhisperTitle": {

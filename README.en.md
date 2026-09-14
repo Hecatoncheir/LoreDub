@@ -420,13 +420,15 @@ starting over.
   <img src="docs/screenshots/settings-en.png" width="900" alt="The Settings screen">
 </p>
 
-The settings come in four groups. **Interface** holds the interface
-language (Russian or English, applied immediately). **Dubbing** holds how far the original is
-turned down while dubbing, the speech rate and the voice. **Hotkeys and
-compute** holds the hotkeys, the CPU threads and the compute device. The
-fourth, **Advanced**, is folded away until its heading is pressed: the Python
-path, the download proxy and the model directory are changed when something
-is broken, not while playing.
+The settings come in four groups. **Interface** holds the interface language
+(Russian or English, applied immediately) and the hotkeys. **Dubbing** holds
+how far the original is turned down while dubbing, the speech rate and the
+voice. **Compute** is one card: where things run. Under **GPU** it names the
+card it found, under **CPU** it asks how many threads to use, and under
+**Automatic** it says neither — the table below already shows where each
+stage ended up. The fourth, **Advanced**, is folded away until its heading is
+pressed: the Python path, the download proxy and the model directory are
+changed when something is broken, not while playing.
 
 **Turn the game down only under the translation** (on) leaves the game at its
 own volume while LoreDub is silent and steps aside for the length of every

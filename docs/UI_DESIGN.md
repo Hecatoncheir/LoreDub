@@ -82,11 +82,13 @@ radius.
    (`compute_matrix.dart`).
 5. **Signal setup** is four named groups, announced by the same numbered
    module label the other screens mark their areas with: the interface
-   (language), dubbing (original volume, speech speed, voice), hotkeys and
-   compute (hotkeys, CPU budget, compute device), and a fourth folded away
-   behind its heading — the Python path, the download proxy and the model
-   directory, which are changed when something is broken rather than while
-   playing. What the pipeline reads is not among them: Live dubs the game's
+   (language and hotkeys, which are the player's own way in), dubbing
+   (original volume, speech speed, voice), compute — one card, which names
+   the adapter under GPU, asks for the thread count under CPU, and says
+   neither under Automatic, the table of stage by device being the answer
+   either line would have given — and a fourth folded away behind its
+   heading — the Python path, the download proxy and the model directory,
+   which are changed when something is broken rather than while playing. What the pipeline reads is not among them: Live dubs the game's
    sound and the Screen page reads the screen, and each carries the controls
    for its own work. Settings are disabled while the pipeline is active.
 

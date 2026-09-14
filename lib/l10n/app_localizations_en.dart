@@ -846,9 +846,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceGenderFemale => 'female';
 
   @override
-  String get settingsPerformance => 'Performance';
-
-  @override
   String performanceNote(int cores, int recommended) {
     return 'Recognition takes most of the delay and scales well with threads. Cores available: $cores, recommended $recommended.';
   }
@@ -918,7 +915,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsGroupDubbing => 'DUBBING';
 
   @override
-  String get settingsGroupControl => 'HOTKEYS AND COMPUTE';
+  String get settingsGroupCompute => 'COMPUTE';
 
   @override
   String get settingsGroupAdvanced => 'ADVANCED';

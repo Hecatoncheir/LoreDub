@@ -893,6 +893,41 @@ void main() {
     expect(find.text('Озвучка'), findsOneWidget);
   });
 
+  testWidgets('says what the compute choice leaves to say, and nothing else', (tester) async {
+    Future<void> open(WidgetTester tester, ComputeDevice device) async {
+      final cubits = stage(
+        buildCubits(),
+        section: DashboardSection.settings,
+        settings: AppSettings(computeDevice: device),
+        models: catalogue(),
+        availability: const ComputeAvailability(
+          adapters: [GraphicsAdapter(name: 'RTX 4070', vendor: GraphicsVendor.nvidia)],
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 1000));
+      final section = find.text('Вычислительное устройство');
+      await tester.scrollUntilVisible(section, 300, scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
+    }
+
+    // Automatic says neither: the table under it already shows where every
+    // stage ended up, which is the answer either line would have given.
+    await open(tester, ComputeDevice.auto);
+    expect(find.textContaining('RTX 4070'), findsNothing);
+    expect(find.byKey(const ValueKey('cpuThreads')), findsNothing);
+
+    await open(tester, ComputeDevice.gpu);
+    expect(find.textContaining('RTX 4070'), findsOneWidget);
+    expect(find.byKey(const ValueKey('cpuThreads')), findsNothing);
+
+    // Everything on the processor: how much of it to use is the question
+    // left, and it is asked here rather than in a card of its own.
+    await open(tester, ComputeDevice.cpu);
+    expect(find.textContaining('RTX 4070'), findsNothing);
+    expect(find.byKey(const ValueKey('cpuThreads')), findsOneWidget);
+    expect(find.textContaining('Распознавание занимает'), findsOneWidget);
+  });
+
   testWidgets('never offers speech anything but the processor', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 900));
     await tester.tap(find.text('Настройки'));

@@ -1461,12 +1461,6 @@ abstract class AppLocalizations {
   /// **'женский'**
   String get voiceGenderFemale;
 
-  /// No description provided for @settingsPerformance.
-  ///
-  /// In ru, this message translates to:
-  /// **'Производительность'**
-  String get settingsPerformance;
-
   /// No description provided for @performanceNote.
   ///
   /// In ru, this message translates to:
@@ -1599,11 +1593,11 @@ abstract class AppLocalizations {
   /// **'ОЗВУЧКА'**
   String get settingsGroupDubbing;
 
-  /// No description provided for @settingsGroupControl.
+  /// No description provided for @settingsGroupCompute.
   ///
   /// In ru, this message translates to:
-  /// **'КЛАВИШИ И ВЫЧИСЛЕНИЯ'**
-  String get settingsGroupControl;
+  /// **'ВЫЧИСЛЕНИЯ'**
+  String get settingsGroupCompute;
 
   /// No description provided for @settingsGroupAdvanced.
   ///

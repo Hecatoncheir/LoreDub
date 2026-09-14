@@ -3887,9 +3887,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         const SizedBox(height: 12),
         ..._howItSounds(context, l10n, state, running: running),
         const SizedBox(height: _settingsGroupGap),
-        _ModuleLabel(number: '03', label: l10n.settingsGroupControl),
+        _ModuleLabel(number: '03', label: l10n.settingsGroupCompute),
         const SizedBox(height: 12),
-        ..._howItIsDriven(context, l10n, state, running: running),
+        _ComputeDeviceCard(cubits: cubits),
         const SizedBox(height: _settingsGroupGap),
         _FoldedHeading(
           number: '04',
@@ -3932,6 +3932,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
               cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
         ),
       ),
+      const SizedBox(height: 12),
+      ..._theHotkeys(context, l10n, state, running: running),
     ];
   }
 
@@ -4048,7 +4050,10 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   /// What the player drives it with, and what the machine drives it on.
-  List<Widget> _howItIsDriven(
+  /// The combinations Windows hands the application wherever the pointer
+  /// is. They are the player's own way in, so they stand with the interface
+  /// rather than beside the hardware the models run on.
+  List<Widget> _theHotkeys(
     BuildContext context,
     AppLocalizations l10n,
     SettingsState state, {
@@ -4155,27 +4160,6 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           ],
         ),
       ),
-      const SizedBox(height: 12),
-      _SettingCard(
-        title: l10n.settingsPerformance,
-        subtitle: l10n.performanceNote(Platform.numberOfProcessors, defaultCpuThreads()),
-        child: DropdownButtonFormField<int>(
-          initialValue: settings.cpuThreads,
-          decoration: InputDecoration(labelText: l10n.cpuThreads),
-          items: _threadOptions(settings.cpuThreads)
-              .map((value) => DropdownMenuItem(value: value, child: Text('$value')))
-              .toList(),
-          onChanged: running
-              ? null
-              : (value) {
-                  if (value != null) {
-                    cubits.settings.update(settings.copyWith(cpuThreads: value));
-                  }
-                },
-        ),
-      ),
-      const SizedBox(height: 12),
-      _ComputeDeviceCard(cubits: cubits),
     ];
   }
 
@@ -4656,11 +4640,39 @@ class _ComputeDeviceCard extends StatelessWidget {
                 ? null
                 : (selection) => cubits.settings.selectComputeDevice(selection.first),
           ),
-          const SizedBox(height: 14),
-          Text(
-            adapter == null ? l10n.computeNoAdapter : l10n.computeAdapterDetected(adapter.name),
-            style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
-          ),
+          // What the choice leaves to say: the card a GPU run would use, or
+          // -- everything being on the processor -- how much of it to use.
+          // Automatic says neither: the table below shows where each stage
+          // ended up, which is the answer it would have given.
+          if (settings.computeDevice == ComputeDevice.gpu) ...[
+            const SizedBox(height: 14),
+            Text(
+              adapter == null ? l10n.computeNoAdapter : l10n.computeAdapterDetected(adapter.name),
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+            ),
+          ] else if (settings.computeDevice == ComputeDevice.cpu) ...[
+            const SizedBox(height: 14),
+            Text(
+              l10n.performanceNote(Platform.numberOfProcessors, defaultCpuThreads()),
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              key: const ValueKey('cpuThreads'),
+              initialValue: settings.cpuThreads,
+              decoration: InputDecoration(labelText: l10n.cpuThreads),
+              items: _threadOptions(settings.cpuThreads)
+                  .map((value) => DropdownMenuItem(value: value, child: Text('$value')))
+                  .toList(),
+              onChanged: running
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        cubits.settings.update(settings.copyWith(cpuThreads: value));
+                      }
+                    },
+            ),
+          ],
           const SizedBox(height: 14),
           // Stage by device: every cell says at a glance whether the stage
           // runs there, could, needs a package first, or cannot at all.

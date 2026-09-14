@@ -851,9 +851,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get voiceGenderFemale => 'женский';
 
   @override
-  String get settingsPerformance => 'Производительность';
-
-  @override
   String performanceNote(int cores, int recommended) {
     return 'Распознавание занимает большую часть задержки и хорошо ускоряется потоками. Доступно ядер: $cores, рекомендуется $recommended.';
   }
@@ -925,7 +922,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsGroupDubbing => 'ОЗВУЧКА';
 
   @override
-  String get settingsGroupControl => 'КЛАВИШИ И ВЫЧИСЛЕНИЯ';
+  String get settingsGroupCompute => 'ВЫЧИСЛЕНИЯ';
 
   @override
   String get settingsGroupAdvanced => 'ДОПОЛНИТЕЛЬНО';
