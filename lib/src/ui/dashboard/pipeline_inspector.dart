@@ -165,7 +165,7 @@ class PipelineInspector extends StatelessWidget {
     ),
     if (_settings.captureMode == CaptureMode.audio)
       _Field(
-        label: l10n.sourceSystem,
+        label: l10n.settingsAudioSource,
         child: _Choices<AudioCaptureSource>(
           value: _settings.audioCaptureSource,
           enabled: !_locked,

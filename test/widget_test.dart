@@ -248,7 +248,7 @@ void main() {
     expect(picker.requestFocusOnTap, isTrue);
     expect(picker.enabled, isTrue);
 
-    await tester.tap(find.text('Весь звук'));
+    await tester.tap(find.text('Звук системы'));
     await tester.pumpAndSettle();
 
     picker = tester.widget<DropdownMenu<GameProcess>>(pickerFinder);
@@ -2655,7 +2655,7 @@ void main() {
         findsNothing,
         reason: 'only the cards put on the canvas are drawn',
       );
-      expect(find.widgetWithText(ChoiceChip, 'Дубляж со звука'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Речь из игры'), findsOneWidget);
     });
 
     testWidgets('marks recognition as bypassed while the screen is read', (tester) async {

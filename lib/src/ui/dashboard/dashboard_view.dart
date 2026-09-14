@@ -2339,9 +2339,12 @@ class _GraphToolbar extends StatelessWidget {
                     children: [
                       for (final option in PipelinePreset.values)
                         ChoiceChip(
+                          // The same words the settings screen and the
+                          // inspector put on this choice: one route, told
+                          // three ways, was read as three settings.
                           label: Text(switch (option) {
-                            PipelinePreset.audioDub => l10n.pipelinePresetAudio,
-                            PipelinePreset.subtitles => l10n.pipelinePresetSubtitles,
+                            PipelinePreset.audioDub => l10n.captureAudio,
+                            PipelinePreset.subtitles => l10n.captureOcr,
                           }),
                           // Neither route is running while the way in is
                           // taken apart; picking one draws it back.

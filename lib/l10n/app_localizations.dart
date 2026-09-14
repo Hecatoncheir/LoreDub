@@ -603,16 +603,22 @@ abstract class AppLocalizations {
   /// **'Субтитры читаются с окна выбранной игры, пока оно активно'**
   String get captureOcrNote;
 
+  /// No description provided for @settingsAudioSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источник звука'**
+  String get settingsAudioSource;
+
   /// No description provided for @sourceSystem.
   ///
   /// In ru, this message translates to:
-  /// **'Весь звук'**
+  /// **'Звук системы'**
   String get sourceSystem;
 
   /// No description provided for @sourceProcess.
   ///
   /// In ru, this message translates to:
-  /// **'Процесс'**
+  /// **'Звук игры'**
   String get sourceProcess;
 
   /// No description provided for @refreshProcesses.
@@ -1140,13 +1146,13 @@ abstract class AppLocalizations {
   /// No description provided for @captureAudio.
   ///
   /// In ru, this message translates to:
-  /// **'Аудио игры'**
+  /// **'Речь из игры'**
   String get captureAudio;
 
   /// No description provided for @captureOcr.
   ///
   /// In ru, this message translates to:
-  /// **'Субтитры + OCR'**
+  /// **'Субтитры с экрана'**
   String get captureOcr;
 
   /// No description provided for @settingsOcrRegion.
@@ -2606,18 +2612,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'{count, plural, one{{count} персонаж} few{{count} персонажа} other{{count} персонажей}}'**
   String pipelineSchemeCast(int count);
-
-  /// No description provided for @pipelinePresetAudio.
-  ///
-  /// In ru, this message translates to:
-  /// **'Дубляж со звука'**
-  String get pipelinePresetAudio;
-
-  /// No description provided for @pipelinePresetSubtitles.
-  ///
-  /// In ru, this message translates to:
-  /// **'Субтитры с экрана'**
-  String get pipelinePresetSubtitles;
 
   /// No description provided for @pipelineResetLayout.
   ///

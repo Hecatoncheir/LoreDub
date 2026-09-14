@@ -322,10 +322,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Subtitles are read off the selected game\'s window while it is in front';
 
   @override
-  String get sourceSystem => 'All audio';
+  String get settingsAudioSource => 'Audio source';
 
   @override
-  String get sourceProcess => 'Process';
+  String get sourceSystem => 'System audio';
+
+  @override
+  String get sourceProcess => 'Game audio';
 
   @override
   String get refreshProcesses => 'Refresh the process list';
@@ -641,10 +644,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsCaptureSource => 'Text source';
 
   @override
-  String get captureAudio => 'Game audio';
+  String get captureAudio => 'Game speech';
 
   @override
-  String get captureOcr => 'Subtitles + OCR';
+  String get captureOcr => 'On-screen subtitles';
 
   @override
   String get settingsOcrRegion => 'Subtitle area';
@@ -1518,12 +1521,6 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get pipelinePresetAudio => 'Dub from audio';
-
-  @override
-  String get pipelinePresetSubtitles => 'Subtitles on screen';
 
   @override
   String get pipelineResetLayout => 'Lay out again';

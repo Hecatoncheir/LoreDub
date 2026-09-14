@@ -324,10 +324,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get captureOcrNote => 'Субтитры читаются с окна выбранной игры, пока оно активно';
 
   @override
-  String get sourceSystem => 'Весь звук';
+  String get settingsAudioSource => 'Источник звука';
 
   @override
-  String get sourceProcess => 'Процесс';
+  String get sourceSystem => 'Звук системы';
+
+  @override
+  String get sourceProcess => 'Звук игры';
 
   @override
   String get refreshProcesses => 'Обновить список процессов';
@@ -644,10 +647,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsCaptureSource => 'Источник текста';
 
   @override
-  String get captureAudio => 'Аудио игры';
+  String get captureAudio => 'Речь из игры';
 
   @override
-  String get captureOcr => 'Субтитры + OCR';
+  String get captureOcr => 'Субтитры с экрана';
 
   @override
   String get settingsOcrRegion => 'Область субтитров';
@@ -1526,12 +1529,6 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get pipelinePresetAudio => 'Дубляж со звука';
-
-  @override
-  String get pipelinePresetSubtitles => 'Субтитры с экрана';
 
   @override
   String get pipelineResetLayout => 'Разложить заново';

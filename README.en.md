@@ -111,7 +111,7 @@ the pipeline stops or the app closes.
 ### Live
 
 This is where the audio source is chosen and the dubbing is started.
-**Process** captures the selected game only; **All audio** captures the whole
+**Game audio** captures the selected game only; **System audio** captures the whole
 default output except LoreDub itself. The process list puts the most recently
 started first, so the game is usually at the top rather than somewhere among
 dozens of background services. When the language of the game is known in
@@ -281,8 +281,8 @@ A link is the setting. Drag **Audio** out of the original stream into
 into **Translation** and it reads the subtitles instead, which leaves Whisper
 marked as bypassed but still in place, so one link brings the route back. A
 route the engine has no answer for cannot be drawn: the link is not made, and
-a line under the toolbar says why. Two ready arrangements — **Dub from audio**
-and **Subtitles on screen** — set the route and lay the nodes out again.
+a line under the toolbar says why. Two ready arrangements — **Game speech**
+and **On-screen subtitles** — set the route and lay the nodes out again.
 
 A node is moved with the mouse, and several of them together. A click with
 **Shift** adds a node to what is already chosen and takes it back out;
@@ -702,7 +702,7 @@ dubbed into Russian, say — is voiced as it is, untranslated.
 
 ### Setting it up
 
-**1. Turn the mode on.** **Settings → Text source → Subtitles + OCR.**
+**1. Turn the mode on.** **Settings → Text source → On-screen subtitles.**
 
 **2. Frame the place where the game prints its subtitles.** A **Subtitle area**
 card appears below the switch, with a scaled-down screen shaped like your
@@ -712,7 +712,7 @@ frame and Shift with the arrows resizes it. **Reset** puts back the default,
 the bottom 45% of the window.
 
 <p align="center">
-  <img src="docs/screenshots/ocr-settings-en.png" width="900" alt="Settings: the Subtitles + OCR mode and a frame on the scaled-down monitor">
+  <img src="docs/screenshots/ocr-settings-en.png" width="900" alt="Settings: the On-screen subtitles mode and a frame on the scaled-down monitor">
 </p>
 
 The frame is kept as a share of the game window rather than in pixels, so it
