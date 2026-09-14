@@ -101,3 +101,7 @@ external int ld_start(
 @meta.RecordUse()
 @ffi.Native<ffi.Int32 Function()>()
 external int ld_stop();
+
+@meta.RecordUse()
+@ffi.Native<ffi.Int32 Function()>()
+external int ld_stop_wave();

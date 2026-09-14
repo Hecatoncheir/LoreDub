@@ -73,6 +73,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get charactersPlayClip => 'Прослушать запись';
 
   @override
+  String get charactersStopSound => 'Остановить воспроизведение';
+
+  @override
   String get charactersPreviewVoice => 'Послушать голос озвучки';
 
   @override

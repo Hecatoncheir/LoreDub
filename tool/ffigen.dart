@@ -15,6 +15,7 @@ Future<void> main() async {
     'ld_set_process_volume',
     'ld_restore_process_volumes',
     'ld_play_wave',
+    'ld_stop_wave',
     'ld_decode_audio',
     'ld_start',
     'ld_stop',

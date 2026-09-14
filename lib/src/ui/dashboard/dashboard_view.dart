@@ -2821,6 +2821,7 @@ class _CharacterCast extends StatelessWidget {
                                     ? null
                                     : () => cubits.characters.playClip(character.id),
                                 previewing: state.previewingId == character.id,
+                                onStopSound: cubits.characters.stopSounding,
                                 carriesTimbre: cubits.characters.carriesTimbre,
                                 onPreview:
                                     state.sounding || state.running || !cubits.characters.canPreview

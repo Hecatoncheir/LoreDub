@@ -26,4 +26,5 @@ const recordUseMapping = {
   'ld_set_process_volume': 'ld_set_process_volume',
   'ld_start': 'ld_start',
   'ld_stop': 'ld_stop',
+  'ld_stop_wave': 'ld_stop_wave',
 };

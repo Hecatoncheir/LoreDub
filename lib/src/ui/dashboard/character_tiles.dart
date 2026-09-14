@@ -73,6 +73,7 @@ class CharacterTile extends StatefulWidget {
     required this.onPlay,
     required this.playing,
     required this.onPreview,
+    this.onStopSound,
     this.carriesTimbre = true,
     required this.previewing,
     required this.onExport,
@@ -120,6 +121,9 @@ class CharacterTile extends StatefulWidget {
 
   /// Whether this card's sample is being got ready or spoken.
   final bool previewing;
+
+  /// Ends what is sounding, whichever of the two started it.
+  final VoidCallback? onStopSound;
 
   /// Whether the sample will be spoken in the character's own timbre. Without
   /// Original voice the dubbing reads them in a plain synthesized voice, and
@@ -408,13 +412,15 @@ class _CharacterTileState extends State<CharacterTile> {
                     key: ValueKey('playClip-${character.id}'),
                     onDark: false,
                     action: ModelAction(
-                      icon: widget.playing ? Icons.graphic_eq_rounded : Icons.play_arrow_rounded,
+                      icon: widget.playing ? Icons.stop_rounded : Icons.play_arrow_rounded,
                       tooltip: widget.playing
-                          ? l10n.charactersPlayingClip
+                          ? l10n.charactersStopSound
                           : (widget.onPlay == null
                                 ? l10n.charactersNoClip
                                 : l10n.charactersPlayClip),
-                      onPressed: widget.onPlay,
+                      // The same button stops it: a recording may run for
+                      // three minutes, and nobody wants to sit through one.
+                      onPressed: widget.playing ? widget.onStopSound : widget.onPlay,
                     ),
                   ),
                   // Not the recording but the dubbing: the Silero voice this
@@ -424,16 +430,16 @@ class _CharacterTileState extends State<CharacterTile> {
                     onDark: false,
                     action: ModelAction(
                       icon: widget.previewing
-                          ? Icons.hourglass_top_rounded
+                          ? Icons.stop_rounded
                           : Icons.record_voice_over_rounded,
                       tooltip: widget.previewing
-                          ? l10n.charactersPreviewLoading
+                          ? l10n.charactersStopSound
                           : (widget.onPreview == null
                                 ? l10n.charactersPreviewNeedsModel
                                 : widget.carriesTimbre
                                 ? l10n.charactersPreviewVoice
                                 : l10n.charactersPreviewPlain),
-                      onPressed: widget.onPreview,
+                      onPressed: widget.previewing ? widget.onStopSound : widget.onPreview,
                     ),
                   ),
                   // Giving a character away is a choice among the others,

@@ -42,6 +42,10 @@ LD_API int32_t ld_restore_process_volumes(void);
 // Plays a PCM WAV file synchronously through the current default output.
 LD_API int32_t ld_play_wave(const char* utf8_path);
 
+// Ends every clip sounding right now, and answers how many there were. The
+// calls playing them return as if their clips had finished.
+LD_API int32_t ld_stop_wave(void);
+
 // Reads any sound file Windows can decode -- wav, mp3, flac, m4a and wma
 // always, ogg and opus through the Web Media Extensions that ship with
 // Windows 10 and later -- and writes it to utf8_output_path as the 16 kHz

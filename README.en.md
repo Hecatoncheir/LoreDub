@@ -225,7 +225,11 @@ thrown away on suspicion — only what is not a voice at all — and when a set
 falls apart into two voices the card says so.
 
 The cards are laid out as tiles, the way the models are, and each carries its
-own row of buttons. **Play the recording** plays the very clip the fingerprint
+own row of buttons. The same button stops it: a recording and a sample both end on a press
+rather than being sat through — three minutes of one is nobody's idea of a
+check.
+
+**Play the recording** plays the very clip the fingerprint
 was taken from, so it is plain whether the right character was caught; a card
 that came from someone else's file has no recording, only the fingerprint.
 **Hear the dubbing voice** speaks a line in the voice this character will be

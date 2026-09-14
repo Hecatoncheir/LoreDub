@@ -213,6 +213,12 @@ abstract class AppLocalizations {
   /// **'Прослушать запись'**
   String get charactersPlayClip;
 
+  /// No description provided for @charactersStopSound.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановить воспроизведение'**
+  String get charactersStopSound;
+
   /// No description provided for @charactersPreviewVoice.
   ///
   /// In ru, this message translates to:

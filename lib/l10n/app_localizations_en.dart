@@ -73,6 +73,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get charactersPlayClip => 'Play the recording';
 
   @override
+  String get charactersStopSound => 'Stop the playback';
+
+  @override
   String get charactersPreviewVoice => 'Hear the dubbing voice';
 
   @override

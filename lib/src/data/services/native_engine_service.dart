@@ -477,6 +477,10 @@ class NativeEngineService {
   /// player asked to hear is not a line of a scene.
   Future<void> playWave(String wavePath) => _playInIsolate(wavePath);
 
+  /// Ends whatever is sounding. A card's recording may run for three
+  /// minutes, and the button that started it is the one that stops it.
+  void stopWave() => ld_stop_wave();
+
   /// Reads [speaker] in [character]'s voice from the next line on. The map
   /// is a file the worker also reads at start, so this only spares a restart.
   Future<void> assignSpeaker(String speaker, String? character) =>

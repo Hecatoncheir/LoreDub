@@ -2286,6 +2286,35 @@ void main() {
       );
     });
 
+    testWidgets('turns the play button into a stop while a clip sounds', (tester) async {
+      final cubits = stageCast(
+        characters: const CharactersState(
+          loading: false,
+          characters: [guard],
+          clips: {'a1'},
+          playingId: 'a1',
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      // A recording may run for three minutes, so the button that started it
+      // is the one that ends it.
+      expect(find.byTooltip('Остановить воспроизведение'), findsOneWidget);
+      expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
+      expect(
+        tester
+            .widget<IconButton>(
+              find.descendant(
+                of: find.byKey(const ValueKey('playClip-a1')),
+                matching: find.byType(IconButton),
+              ),
+            )
+            .onPressed,
+        isNotNull,
+        reason: 'the same button ends it',
+      );
+    });
+
     testWidgets('says on the button when a sample carries no timbre', (tester) async {
       // Without Original voice the dubbing reads every card in a plain
       // synthesized voice, and a sample that sounds like nobody in

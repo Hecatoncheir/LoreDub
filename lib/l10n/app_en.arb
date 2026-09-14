@@ -20,6 +20,7 @@
   "charactersEmpty": "No characters yet. Press Add and record a voice.",
   "charactersRecord": "Record the voice",
   "charactersPlayClip": "Play the recording",
+  "charactersStopSound": "Stop the playback",
   "charactersPreviewVoice": "Hear the dubbing voice",
   "charactersPreviewPlain": "Hear the dubbing voice. The character\u2019s timbre is not carried over: turn on Original voice on the Models screen, or a plain synthesized voice reads them",
   "charactersPreviewLoading": "Getting the voice ready…",

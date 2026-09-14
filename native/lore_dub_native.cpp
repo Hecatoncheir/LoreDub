@@ -602,6 +602,12 @@ bool ReadWaveClip(const std::wstring& path, WaveClip& clip) {
   return has_format && clip.format.wFormatTag == WAVE_FORMAT_PCM && !clip.samples.empty();
 }
 
+// Every clip sounding right now. A card's recording may run for three
+// minutes, so what was started has to be stoppable; the list is what
+// ld_stop_wave reaches for.
+std::mutex sounding_mutex;
+std::vector<HWAVEOUT> sounding_devices;
+
 }  // namespace
 #endif
 
@@ -622,6 +628,10 @@ int32_t ld_play_wave(const char* utf8_path) {
     CloseHandle(done);
     return -21;
   }
+  {
+    std::lock_guard<std::mutex> lock(sounding_mutex);
+    sounding_devices.push_back(device);
+  }
   WAVEHDR header{};
   header.lpData = clip.samples.data();
   header.dwBufferLength = static_cast<DWORD>(clip.samples.size());
@@ -636,11 +646,31 @@ int32_t ld_play_wave(const char* utf8_path) {
     }
     waveOutUnprepareHeader(device, &header, sizeof(header));
   }
+  {
+    // Taken off the list before the handle is closed: whoever stops a clip
+    // must not be left holding a device that no longer exists.
+    std::lock_guard<std::mutex> lock(sounding_mutex);
+    sounding_devices.erase(
+        std::remove(sounding_devices.begin(), sounding_devices.end(), device),
+        sounding_devices.end());
+  }
   waveOutClose(device);
   CloseHandle(done);
   return result;
 #else
   (void)utf8_path;
+  return -2;
+#endif
+}
+
+// Ends whatever is sounding. Resetting the device marks its buffer done, so
+// the call playing it returns as if the clip had finished.
+int32_t ld_stop_wave(void) {
+#if defined(_WIN32)
+  std::lock_guard<std::mutex> lock(sounding_mutex);
+  for (const HWAVEOUT device : sounding_devices) waveOutReset(device);
+  return static_cast<int32_t>(sounding_devices.size());
+#else
   return -2;
 #endif
 }

@@ -69,6 +69,9 @@ class AppRepository {
   /// player asked to hear does not wait behind a scene.
   Future<void> playWave(String wavePath) => _nativeEngine.playWave(wavePath);
 
+  /// Ends whatever is sounding.
+  void stopWave() => _nativeEngine.stopWave();
+
   Future<void> exportCharacters(String destination, CharacterLibrary library) =>
       _characters.exportTo(destination, library);
 

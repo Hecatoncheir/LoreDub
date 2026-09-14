@@ -601,6 +601,14 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
   }
 
+  /// Ends whatever the screen has sounding — a recording being played back
+  /// or a sample being spoken. The clip's own call returns as though it had
+  /// reached the end, so the card puts its button back by itself.
+  void stopSounding() {
+    if (!state.sounding) return;
+    _appRepository.stopWave();
+  }
+
   /// Speaks [text] in the voice the dubbing would read [id] in, and plays
   /// it, so the player can hear a card before a word of the game is dubbed.
   ///
