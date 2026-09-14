@@ -176,7 +176,7 @@ windowed or borderless: a game in exclusive fullscreen would minimize.
 ### Characters
 
 <p align="center">
-  <img src="docs/screenshots/characters-en.png" width="900" alt="The Characters screen: the recorded cards and a pack under them">
+  <img src="docs/screenshots/characters-en.png" width="900" alt="The Characters screen: the recorded cards on the left and the packs beside them">
 </p>
 
 This is where character cards are kept: **Add** creates an empty one, the name
@@ -236,7 +236,14 @@ the guard still gets the smith's voice. Characters are shared by every
 game, unlike the voices Live founds by itself, and a card brought back after
 an edit lands on the one it came from.
 
-Below the cards are the **packs**. **New pack** opens an area whose name is
+Beside the cards, to their right, are the **packs**: the cast on the left and
+the packs next to it, so a card is carried across the screen rather than down
+a scroll, and both ends of the journey stay in sight the whole way. Each side
+scrolls on its own, so reaching for a pack does not move the cards under the
+pointer. In a window too narrow to hold the two side by side, the packs go
+back underneath.
+
+**New pack** opens an area whose name is
 typed in place, and cards go into it by being dragged: pick a card up with the
 mouse and drop it on the pack. One character may be in several packs at once —
 the card says which. A card leaves a pack by the cross on it or by being

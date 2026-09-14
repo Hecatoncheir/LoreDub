@@ -1928,6 +1928,10 @@ class _ModuleLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
+    // As wide as the number and the name, and no wider: given room to
+    // spread — a heading that wraps — a row of its full width would leave
+    // nothing to sit beside it.
+    mainAxisSize: MainAxisSize.min,
     children: [
       Container(
         width: 28,
@@ -2524,23 +2528,75 @@ class _CharactersPanel extends StatelessWidget {
           ready: (selection) => selection.voiceConverter?.installed ?? false,
         ),
         const SizedBox(height: 16),
-        // Two areas, one under the other: the cast, and the packs it is
-        // grouped into. They scroll together, so a card can be dragged from
-        // one into the other without the screen moving under the pointer.
+        // The cast on the left, the packs beside it on the right: a card is
+        // carried across rather than down a scroll, and both ends of the
+        // journey stay in sight the whole way. A window too narrow to hold
+        // the two side by side puts the packs back underneath, where a drag
+        // is longer but possible.
         Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              _CharacterCast(cubits: cubits),
-              const SizedBox(height: 16),
-              _CharacterPacks(cubits: cubits),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) => constraints.maxWidth < _packsBeside
+                ? ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      _CharacterCast(cubits: cubits),
+                      const SizedBox(height: 16),
+                      _CharacterPacks(cubits: cubits),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Each side scrolls on its own, so reaching for a pack
+                      // does not move the cards under the pointer.
+                      Expanded(
+                        child: ListView(
+                          padding: EdgeInsets.zero,
+                          children: [_CharacterCast(cubits: cubits)],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: (constraints.maxWidth * 0.36).clamp(340.0, 480.0),
+                        child: ListView(
+                          padding: EdgeInsets.zero,
+                          children: [_CharacterPacks(cubits: cubits)],
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ],
     ),
   );
 }
+
+/// The head of an area: its number and name on one side, what can be done
+/// to it on the other. In a column too narrow to hold both, the buttons
+/// drop to a line of their own rather than off the edge.
+class _AreaHeading extends StatelessWidget {
+  const _AreaHeading({required this.label, required this.actions});
+
+  final Widget label;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    alignment: WrapAlignment.spaceBetween,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    spacing: 8,
+    runSpacing: 4,
+    children: [
+      label,
+      Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: actions),
+    ],
+  );
+}
+
+/// How much room the characters screen needs before the packs stand beside
+/// the cast rather than under it: two columns of cards, and the gap.
+const _packsBeside = 880.0;
 
 /// Which game to listen to, and whether the session that measures voices is
 /// running. Live dubbing holds the same worker, so the two never run at once.
@@ -2705,10 +2761,9 @@ class _CharacterCast extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-              child: Row(
-                children: [
-                  const _ModuleLabel(number: '02', label: 'CAST'),
-                  const Spacer(),
+              child: _AreaHeading(
+                label: const _ModuleLabel(number: '02', label: 'CAST'),
+                actions: [
                   TextButton.icon(
                     onPressed: state.characters.isEmpty
                         ? null
@@ -2717,7 +2772,6 @@ class _CharacterCast extends StatelessWidget {
                     label: Text(l10n.charactersExportAll),
                     style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton.icon(
                     key: const ValueKey('charactersAdd'),
                     onPressed: () => cubits.characters.add(l10n.charactersNewName),
@@ -2884,10 +2938,9 @@ class _CharacterPacks extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-              child: Row(
-                children: [
-                  const _ModuleLabel(number: '03', label: 'PACKS'),
-                  const Spacer(),
+              child: _AreaHeading(
+                label: const _ModuleLabel(number: '03', label: 'PACKS'),
+                actions: [
                   TextButton.icon(
                     key: const ValueKey('charactersImport'),
                     onPressed: () => _import(context),
@@ -2895,7 +2948,6 @@ class _CharacterPacks extends StatelessWidget {
                     label: Text(l10n.charactersImport),
                     style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton.icon(
                     key: const ValueKey('packsAdd'),
                     onPressed: () => cubits.characters.addPack(l10n.packsNewName),

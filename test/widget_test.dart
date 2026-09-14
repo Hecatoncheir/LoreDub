@@ -2276,6 +2276,41 @@ void main() {
       );
     });
 
+    testWidgets('puts the packs beside the cast, and under it in a narrow window', (
+      tester,
+    ) async {
+      final cubits = stageCast(
+        characters: const CharactersState(
+          loading: false,
+          characters: [guard],
+          packs: [CharacterPack(id: 'p1', name: 'Таверна')],
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1400, 900));
+
+      final cast = tester.getRect(find.byType(CharacterTile));
+      final packs = tester.getRect(find.byType(CharacterPackArea));
+      expect(
+        packs.left,
+        greaterThan(cast.right),
+        reason: 'a card is carried across to the pack rather than down a scroll',
+      );
+      expect(
+        (packs.top - cast.top).abs(),
+        lessThan(200),
+        reason: 'and both ends of the journey are in sight at once',
+      );
+
+      // A window too narrow for two columns puts them back one under the
+      // other, where the drag is longer but possible.
+      await pumpDashboard(tester, cubits, const Size(840, 900));
+
+      expect(
+        tester.getRect(find.byType(CharacterPackArea)).top,
+        greaterThan(tester.getRect(find.byType(CharacterTile)).top),
+      );
+    });
+
     testWidgets('drops a card into a pack and takes it back out', (tester) async {
       final cubits = stageCast(
         characters: const CharactersState(
