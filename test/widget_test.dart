@@ -2413,6 +2413,28 @@ void main() {
 
       expect(cubits.characters.state.packs.single.characterIds, isEmpty);
     });
+
+    testWidgets('keeps saving and throwing away a card behind its menu', (tester) async {
+      final cubits = stageCast(
+        characters: const CharactersState(loading: false, characters: [guard]),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      // Neither of the two is a further unlabelled icon beside the
+      // microphone, where delete sat a slip away from record.
+      expect(find.text('Удалить персонажа'), findsNothing);
+
+      await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+      await tester.pumpAndSettle();
+      expect(find.text('Сохранить карточку в файл'), findsOneWidget);
+
+      await tester.tap(find.text('Удалить персонажа'));
+      await tester.pumpAndSettle();
+      expect(find.text('Удалить персонажа?'), findsOneWidget);
+      await tester.tap(find.text('Отмена'));
+      await tester.pumpAndSettle();
+      expect(cubits.characters.state.characters, hasLength(1));
+    });
   });
 
   testWidgets('takes only sound out of what is dropped on a card', (tester) async {

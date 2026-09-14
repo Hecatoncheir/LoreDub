@@ -430,15 +430,13 @@ class _CharacterTileState extends State<CharacterTile> {
             : l10n.charactersPreviewPlain,
         onPressed: widget.previewing ? widget.onStopSound : widget.onPreview,
       ),
-      _action(
-        icon: Icons.file_upload_outlined,
-        tooltip: l10n.charactersExportHint,
-        onPressed: widget.onExport,
-      ),
-      _action(
-        icon: Icons.delete_outline_rounded,
-        tooltip: l10n.charactersDelete,
-        onPressed: widget.onDelete,
+      // Saving the card and throwing it away are neither of them about the
+      // voice, and one of them cannot be taken back. Five unlabelled icons
+      // in a row put delete a slip away from record; behind a menu it is
+      // named in words and reached on purpose.
+      _CardMenu(
+        onExport: widget.onExport,
+        onDelete: widget.onDelete,
       ),
     ],
   );
@@ -453,6 +451,43 @@ class _CharacterTileState extends State<CharacterTile> {
     onDark: false,
     action: ModelAction(icon: icon, tooltip: tooltip, onPressed: onPressed),
   );
+}
+
+/// The card's rarer two, in the shape the schemes shelf keeps its own in.
+class _CardMenu extends StatelessWidget {
+  const _CardMenu({required this.onExport, required this.onDelete});
+
+  final VoidCallback? onExport;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return PopupMenuButton<String>(
+      tooltip: '',
+      icon: const Icon(Icons.more_horiz_rounded, size: 19),
+      style: IconButton.styleFrom(
+        foregroundColor: LoreDubPalette.ink,
+        hoverColor: LoreDubPalette.orange.withValues(alpha: 0.18),
+        minimumSize: const Size(34, 34),
+        fixedSize: const Size(34, 34),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onSelected: (choice) => switch (choice) {
+        'export' => onExport?.call(),
+        _ => onDelete(),
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'export',
+          enabled: onExport != null,
+          child: Text(l10n.charactersExportHint),
+        ),
+        PopupMenuItem(value: 'delete', child: Text(l10n.charactersDelete)),
+      ],
+    );
+  }
 }
 
 /// What the pointer carries while a card is being dragged: its name alone,
