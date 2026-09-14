@@ -119,6 +119,11 @@ advance, turn **Detect language** off and name it: that removes an extra
 recognition pass and one common mistake — a wrong guess made from a short first
 phrase.
 
+While the dubbing cannot start, a **Before the first start** list stands under
+the source card, in the order the steps are met: download the models, draw the
+route back on the **Graph**, choose the game. Each step leads to the screen it
+is done on, and the list is gone once nothing is left in it.
+
 Every line is shown as the original, the translation, and the time it took to
 travel the whole pipeline. Above each line stands whose voice it was: a
 character card by name, a voice LoreDub founded itself as "Voice 2".
@@ -409,10 +414,14 @@ starting over.
   <img src="docs/screenshots/settings-en.png" width="900" alt="The Settings screen">
 </p>
 
-Interface language (Russian or English, applied immediately), the text source
-(audio or subtitles), how far the original is turned down while dubbing, the
-speech rate and the voice. Below those: CPU threads, the compute device, the
-Python path and a proxy for downloads.
+The settings come in four groups. **Language and source** holds the interface
+language (Russian or English, applied immediately), the text source (audio or
+subtitles) and the subtitle frame. **Dubbing** holds how far the original is
+turned down while dubbing, the speech rate and the voice. **Hotkeys and
+compute** holds the hotkeys, the CPU threads and the compute device. The
+fourth, **Advanced**, is folded away until its heading is pressed: the Python
+path, the download proxy and the model directory are changed when something
+is broken, not while playing.
 
 **Turn the game down only under the translation** (on) leaves the game at its
 own volume while LoreDub is silent and steps aside for the length of every

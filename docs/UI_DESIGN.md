@@ -38,7 +38,12 @@ radius.
 
 1. **Live voice** is the default workspace. Game selection and the single main
    start/stop action are grouped as `01 / GAME INPUT`; translated dialogue is
-   grouped as `02 / LIVE TRANSCRIPT`.
+   grouped as `02 / LIVE TRANSCRIPT`. Between them, while the session cannot
+   start, one card numbers what is still missing — packages, a route taken
+   apart on the graph, a game not yet chosen — each step leading to the
+   screen it is done on, so a disabled start button never has to be guessed
+   at. It is drawn from `stepsBeforeStart`, which reads the same
+   `ModelSelection` the button's own `canStart` does.
 2. **Signal path** is the same pipeline drawn as nodes on a dotted field: the
    six stages as cards in the model tiles' vocabulary, the route between
    them in orange, and the cards of the cast joined to it by dashed graphite:
@@ -66,8 +71,14 @@ radius.
    `model_visuals.dart`. The Compute device card in Settings uses the same
    states for its stage-by-device table and GPU package tiles
    (`compute_matrix.dart`).
-4. **Signal setup** contains capture mode, OCR region, original volume, speech
-   speed, and CPU budget. Settings are disabled while the pipeline is active.
+4. **Signal setup** is four named groups, announced by the same numbered
+   module label the other screens mark their areas with: language and source
+   (interface language, capture mode, OCR region), dubbing (original volume,
+   speech speed, voice), hotkeys and compute (hotkeys, CPU budget, compute
+   device), and a fourth folded away behind its heading — the Python path,
+   the download proxy and the model directory, which are changed when
+   something is broken rather than while playing. Settings are disabled while
+   the pipeline is active.
 
 ## Interaction rules
 
@@ -75,6 +86,10 @@ radius.
 - Every interactive control has a minimum 44–48 px target and visible keyboard
   focus supplied by the Material theme.
 - Status is communicated with text and an indicator, never color alone.
+- The sidebar names two groups — the dubbing (Live, Snippet) and what is
+  prepared before it (Characters, Graph, Models, Settings) — so six entries
+  do not read as six equal ways in. The compact navigation indexes into
+  `DashboardSection.values` and carries no headings.
 - At widths below 900 px the sidebar becomes bottom navigation. The game-source
   controls stack below 720 px to avoid horizontal overflow.
 - Motion is limited to a 180 ms content transition when switching workspaces;
