@@ -43,6 +43,7 @@ class AppSettings {
     this.detectSourceLanguage = true,
     this.sourceLanguage = fallbackSpokenLanguage,
     this.interfaceLanguage = defaultInterfaceLanguage,
+    this.interfaceScale = 1,
     this.whisperModel = '',
     this.automaticVoice = true,
     this.voice = '',
@@ -170,6 +171,26 @@ class AppSettings {
   /// Language of the interface itself, independent of what is being dubbed.
   final String interfaceLanguage;
 
+  /// How much larger or smaller the whole interface is drawn.
+  ///
+  /// Windows has a scale of its own, and a player who reads the screen from
+  /// across the room has already set it; this is the application's own,
+  /// because the dubbing window often sits beside a game that fixed the
+  /// resolution, and the system setting is not worth changing for one
+  /// window. Held to [smallestScale]..[largestScale] by [chosenScale].
+  final double interfaceScale;
+
+  /// Smaller than this the process names and the times are no longer read;
+  /// larger, the node canvas has nowhere left to draw a scheme.
+  static const smallestScale = 0.8;
+  static const largestScale = 1.4;
+  static const scaleStep = 0.05;
+  static int get scaleDivisions => ((largestScale - smallestScale) / scaleStep).round();
+
+  /// What the interface is actually drawn at: a stored value from another
+  /// build, or one written by hand, held to what the screen can carry.
+  double get chosenScale => interfaceScale.clamp(smallestScale, largestScale);
+
   /// Which whisper.cpp model recognition uses, by catalogue id. Empty means
   /// the one the catalogue lists first, which is the smallest.
   final String whisperModel;
@@ -294,6 +315,7 @@ class AppSettings {
     bool? detectSourceLanguage,
     String? sourceLanguage,
     String? interfaceLanguage,
+    double? interfaceScale,
     String? whisperModel,
     bool? automaticVoice,
     String? voice,
@@ -333,6 +355,7 @@ class AppSettings {
     detectSourceLanguage: detectSourceLanguage ?? this.detectSourceLanguage,
     sourceLanguage: sourceLanguage ?? this.sourceLanguage,
     interfaceLanguage: interfaceLanguage ?? this.interfaceLanguage,
+    interfaceScale: interfaceScale ?? this.interfaceScale,
     whisperModel: whisperModel ?? this.whisperModel,
     automaticVoice: automaticVoice ?? this.automaticVoice,
     voice: voice ?? this.voice,

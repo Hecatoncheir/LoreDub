@@ -146,7 +146,7 @@ class ModelTile extends StatelessWidget {
                           waitDuration: const Duration(milliseconds: 400),
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(14, 12, 12, 0),
-                            child: _heading(ink),
+                            child: _heading(AppLocalizations.of(context), ink),
                           ),
                         ),
                         Expanded(
@@ -190,7 +190,7 @@ class ModelTile extends StatelessWidget {
     },
   );
 
-  Widget _heading(Color ink) {
+  Widget _heading(AppLocalizations l10n, Color ink) {
     final detail = TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 11, color: ink);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +239,10 @@ class ModelTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Expanded(child: Text(part.label, style: detail)),
-                Text(formatPackageSize(part.bytes), style: detail),
+                Text(
+                  formatPackageSize(l10n, part.bytes),
+                  style: detail,
+                ),
               ],
             ),
           ),
@@ -328,7 +331,7 @@ class LanguagePairTile extends StatelessWidget {
           final confirmed = await confirmModelRemoval(
             context,
             title: l10n.languageRemoveTitle,
-            message: l10n.languageRemoveMessage(name, formatPackageSize(pair.downloadBytes)),
+            message: l10n.languageRemoveMessage(name, formatPackageSize(l10n, pair.downloadBytes)),
           );
           if (!confirmed) return;
           for (final part in pair.parts) {
@@ -408,7 +411,7 @@ class ConverterTile extends StatelessWidget {
             title: l10n.modelRemoveTitle,
             message: l10n.modelRemoveMessage(
               modelTitle(l10n, model),
-              formatPackageSize(model.downloadBytes),
+              formatPackageSize(l10n, model.downloadBytes),
             ),
           );
           if (confirmed) onRemove(state);
@@ -421,6 +424,6 @@ class ConverterTile extends StatelessWidget {
 String _progressLine(AppLocalizations l10n, double progress, int total) =>
     l10n.whisperDownloadProgress(
       (progress * 100).round(),
-      formatPackageSize((total * progress).round()),
-      formatPackageSize(total),
+      formatPackageSize(l10n, (total * progress).round()),
+      formatPackageSize(l10n, total),
     );

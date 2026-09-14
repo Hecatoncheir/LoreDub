@@ -205,7 +205,7 @@ class RuntimeTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final package = state.package;
-    final size = formatPackageSize(package.approximateBytes);
+    final size = formatPackageSize(l10n, package.approximateBytes);
     return ModelTile(
       title: runtimeName(l10n, package.id),
       parts: [
@@ -284,7 +284,7 @@ class RuntimeTile extends StatelessWidget {
     if (state.progress case final progress?) {
       return l10n.whisperDownloadProgress(
         (progress * 100).round(),
-        formatPackageSize((state.package.approximateBytes * progress).round()),
+        formatPackageSize(l10n, (state.package.approximateBytes * progress).round()),
         size,
       );
     }

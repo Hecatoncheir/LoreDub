@@ -22,6 +22,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navLive => 'Live';
 
   @override
+  String get headerLive => 'LIVE VOICE';
+
+  @override
+  String get headerScreen => 'SCREEN TEXT';
+
+  @override
+  String get headerCharacters => 'CHARACTER CAST';
+
+  @override
+  String get headerPipeline => 'SIGNAL PATH';
+
+  @override
+  String get headerModels => 'MODEL BANK';
+
+  @override
+  String get headerSettings => 'SIGNAL SETUP';
+
+  @override
+  String get areaGameInput => 'GAME INPUT';
+
+  @override
+  String get areaTranscript => 'LIVE TRANSCRIPT';
+
+  @override
+  String get areaSceneVoices => 'SCENE VOICES';
+
+  @override
+  String get areaScreenCapture => 'SCREEN CAPTURE';
+
+  @override
+  String get areaSubtitleFrame => 'SUBTITLE FRAME';
+
+  @override
+  String get areaSubtitles => 'SUBTITLES';
+
+  @override
+  String get areaSelectedText => 'SELECTED TEXT';
+
+  @override
+  String get areaVoiceRecording => 'VOICE RECORDING';
+
+  @override
+  String get areaCast => 'CAST';
+
+  @override
+  String get areaPacks => 'PACKS';
+
+  @override
+  String sizeMegabytes(String value) {
+    return '$value MB';
+  }
+
+  @override
+  String sizeGigabytes(String value) {
+    return '$value GB';
+  }
+
+  @override
   String get navSnapshot => 'Screen';
 
   @override
@@ -277,7 +335,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusListening => 'Listening';
 
   @override
-  String get statusSnapshotReady => 'Waiting for a snippet';
+  String get statusSnapshotReady => 'Reading the screen';
 
   @override
   String get statusPaused => 'Paused';
@@ -442,7 +500,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hotkeysNote =>
-      'They work while Live or Snippet is running, even with the game on screen; a bound combination then does not reach the game. The snapshot key is held down while the area is drawn with the mouse.';
+      'They work while Live or Screen runs, even with the game on screen; the combination then does not reach the game. The snapshot and frame keys are held down while the area is drawn with the mouse.';
 
   @override
   String get hotkeyPause => 'Pause';
@@ -918,7 +976,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsGroupCompute => 'COMPUTE';
 
   @override
-  String get settingsGroupAdvanced => 'ADVANCED';
+  String get settingsScale => 'Scale';
+
+  @override
+  String scaleValue(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get scaleNote =>
+      'Makes the whole interface larger or smaller at once, leaving the Windows scale alone: this window often sits beside a game that took the screen.';
+
+  @override
+  String get settingsGroupDownloads => 'DOWNLOADS';
+
+  @override
+  String get settingsGroupPaths => 'PATHS';
 
   @override
   String modelWhisperTitle(String version) {

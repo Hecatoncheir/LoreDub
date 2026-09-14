@@ -420,15 +420,20 @@ starting over.
   <img src="docs/screenshots/settings-en.png" width="900" alt="The Settings screen">
 </p>
 
-The settings come in four groups. **Interface** holds the interface language
-(Russian or English, applied immediately) and the hotkeys. **Dubbing** holds
-how far the original is turned down while dubbing, the speech rate and the
-voice. **Compute** is one card: where things run. Under **GPU** it names the
-card it found, under **CPU** it asks how many threads to use, and under
-**Automatic** it says neither — the table below already shows where each
-stage ended up. The fourth, **Advanced**, is folded away until its heading is
-pressed: the Python path, the download proxy and the model directory are
-changed when something is broken, not while playing.
+The settings come in areas. **Interface** holds the language (Russian or
+English, applied immediately), the **Scale** of the whole interface, and the
+hotkeys. **Dubbing** holds how far the original is turned down while dubbing,
+the speech rate and the voice. **Compute** is one card: where things run.
+Under **GPU** it names the card it found, under **CPU** it asks how many
+threads to use, and under **Automatic** it says neither — the table below
+already shows where each stage ended up. Side by side at the foot:
+**Downloads** (the proxy, folded until its heading is pressed) and **Paths**
+— the Python path and the model directory. On a narrow window the areas
+stack.
+
+**Scale** draws the whole interface larger or smaller without touching the
+Windows scale: this window often sits beside a game that took the screen, and
+the system setting is not worth changing for one window.
 
 **Turn the game down only under the translation** (on) leaves the game at its
 own volume while LoreDub is silent and steps aside for the length of every

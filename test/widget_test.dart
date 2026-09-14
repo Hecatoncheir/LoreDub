@@ -152,7 +152,7 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
     expect(find.text('Перевод игры'), findsOneWidget);
     expect(find.text('Эфир'), findsOneWidget);
-    expect(find.text('01  /  LIVE VOICE'), findsOneWidget);
+    expect(find.text('01  /  ЖИВОЙ ГОЛОС'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
   });
 
@@ -821,22 +821,24 @@ void main() {
     expect(find.text('Start dubbing'), findsOneWidget);
   });
 
-  testWidgets('keeps the maintenance settings folded until they are asked for', (tester) async {
+  testWidgets('keeps the proxy folded while the paths beside it stand open', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 900));
     await tester.tap(find.text('Настройки'));
     await tester.pumpAndSettle();
 
-    final advanced = find.text('ДОПОЛНИТЕЛЬНО');
-    await tester.scrollUntilVisible(advanced, 300, scrollable: find.byType(Scrollable).first);
+    final downloads = find.text('ЗАГРУЗКА');
+    await tester.scrollUntilVisible(downloads, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    expect(find.text('Каталог моделей'), findsNothing);
+    // The paths are looked at often enough to stand open beside it.
+    expect(find.text('Каталог моделей'), findsOneWidget);
+    expect(find.text('Загрузка моделей'), findsNothing);
 
-    await tester.tap(advanced);
+    await tester.tap(downloads);
     await tester.pumpAndSettle();
-    final directory = find.text('Каталог моделей');
-    await tester.scrollUntilVisible(directory, 300, scrollable: find.byType(Scrollable).first);
+    final proxy = find.text('Загрузка моделей');
+    await tester.scrollUntilVisible(proxy, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    expect(directory, findsOneWidget);
+    expect(proxy, findsOneWidget);
   });
 
   testWidgets('saves a model download proxy from settings', (tester) async {
@@ -844,12 +846,11 @@ void main() {
     await tester.tap(find.text('Настройки'));
     await tester.pumpAndSettle();
 
-    // Python, the proxy and the model directory are folded away until the
-    // heading of their group is pressed.
-    final advanced = find.text('ДОПОЛНИТЕЛЬНО');
-    await tester.scrollUntilVisible(advanced, 300, scrollable: find.byType(Scrollable).first);
+    // The proxy is folded away until the heading of its area is pressed.
+    final downloads = find.text('ЗАГРУЗКА');
+    await tester.scrollUntilVisible(downloads, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    await tester.tap(advanced);
+    await tester.tap(downloads);
     await tester.pumpAndSettle();
 
     final proxyField = find.widgetWithText(
@@ -1003,7 +1004,7 @@ void main() {
       expect(colour(cell('recognition', 'cpu')), LoreDubPalette.panel);
       expect(colour(cell('translation', 'cpu')), LoreDubPalette.graphite);
       expect(
-        find.descendant(of: cell('translation', 'cuda'), matching: find.text('2.5 GB')),
+        find.descendant(of: cell('translation', 'cuda'), matching: find.text('2.5 ГБ')),
         findsOneWidget,
         reason: 'the missing package names its size',
       );
@@ -1181,7 +1182,7 @@ void main() {
       await tester.tap(removeButton());
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('436 MB'), findsWidgets);
+      expect(find.textContaining('436 МБ'), findsWidgets);
     });
 
     testWidgets('keeps the runtime when the question is declined', (tester) async {
@@ -1511,7 +1512,7 @@ void main() {
         closeTo(turbo.downloadBytes / small.downloadBytes, 0.01),
       );
       expect(height(whisperModelId), lessThan(height('whisper-small')));
-      expect(find.text('465 MB'), findsOneWidget, reason: 'each size is written on the axis');
+      expect(find.text('465 МБ'), findsOneWidget, reason: 'each size is written on the axis');
       expect(find.text('хорошо'), findsOneWidget);
       expect(find.text('без перевода'), findsOneWidget, reason: 'turbo only transcribes');
     });
@@ -1548,7 +1549,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Удалить модель?'), findsOneWidget);
-      expect(find.textContaining('Whisper small (465 MB)'), findsOneWidget);
+      expect(find.textContaining('Whisper small (465 МБ)'), findsOneWidget);
 
       await tester.tap(find.text('Оставить'));
       await tester.pumpAndSettle();
@@ -2087,13 +2088,13 @@ void main() {
     testWidgets('reads the frame and the selection on one page', (tester) async {
       await pumpDashboard(tester, stageSnapshot(), const Size(1400, 1000));
 
-      expect(find.text('02  /  SCREEN TEXT'), findsOneWidget);
+      expect(find.text('02  /  ТЕКСТ С ЭКРАНА'), findsOneWidget);
       expect(find.text('Экран'), findsOneWidget);
       expect(find.text('Перевод с экрана'), findsOneWidget);
       expect(find.textContaining('Удерживайте Ctrl + Alt + S'), findsOneWidget);
       expect(find.textContaining('субтитры в рамке читаются'), findsOneWidget);
       expect(find.text('Язык текста'), findsOneWidget);
-      expect(find.text('SUBTITLES'), findsOneWidget);
+      expect(find.text('СУБТИТРЫ'), findsOneWidget);
       expect(find.text('Выделенные фрагменты появятся здесь'), findsOneWidget);
       expect(startButton(tester).onPressed, isNotNull);
       // The frame is drawn here before the game starts, and over the game
@@ -2178,7 +2179,7 @@ void main() {
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
       expect(find.text('Нажмите E, чтобы открыть'), findsOneWidget);
-      expect(find.text('Ждёт фрагмента'), findsOneWidget);
+      expect(find.text('Читаю экран'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Остановить'), findsOneWidget);
     });
 
@@ -2253,7 +2254,7 @@ void main() {
     testWidgets('sits before Settings and says how a voice is recorded', (tester) async {
       await pumpDashboard(tester, stageCast(), const Size(1280, 900));
 
-      expect(find.text('03  /  CHARACTER CAST'), findsOneWidget);
+      expect(find.text('03  /  СОСТАВ ПЕРСОНАЖЕЙ'), findsOneWidget);
       expect(find.text('Голоса персонажей'), findsOneWidget);
       expect(find.textContaining('Пока ни одного персонажа'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Запустить запись'), findsOneWidget);
@@ -2580,7 +2581,7 @@ void main() {
     testWidgets('says nobody has spoken yet', (tester) async {
       await pumpDashboard(tester, stageScene(), const Size(1400, 900));
 
-      expect(find.text('SCENE VOICES'), findsOneWidget);
+      expect(find.text('ГОЛОСА СЦЕНЫ'), findsOneWidget);
       expect(find.textContaining('Пока никто не заговорил'), findsOneWidget);
     });
 
@@ -2769,7 +2770,7 @@ void main() {
     testWidgets('draws the stages of the pipeline as nodes', (tester) async {
       await pumpGraph(tester);
 
-      expect(find.text('04  /  SIGNAL PATH'), findsOneWidget);
+      expect(find.text('04  /  ПУТЬ СИГНАЛА'), findsOneWidget);
       expect(find.text('Оригинальный поток'), findsOneWidget);
       expect(find.text('Whisper'), findsOneWidget);
       expect(find.text('Перевод'), findsOneWidget);

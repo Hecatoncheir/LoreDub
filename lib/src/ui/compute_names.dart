@@ -58,8 +58,13 @@ String voiceLabel(AppLocalizations l10n, VoiceOption voice) {
 
 /// Rounded to whole gigabytes: the exact figure is noise next to the decision
 /// the reader is making, which is whether to spend the download at all.
-String formatPackageSize(int bytes) {
+///
+/// The unit is a word like any other -- "461 MB" beside "перевод" was the one
+/// line of the models screen left in English.
+String formatPackageSize(AppLocalizations l10n, int bytes) {
   const gigabyte = 1024 * 1024 * 1024;
-  if (bytes >= gigabyte) return '${(bytes / gigabyte).toStringAsFixed(1)} GB';
-  return '${(bytes / (1024 * 1024)).round()} MB';
+  if (bytes >= gigabyte) {
+    return l10n.sizeGigabytes((bytes / gigabyte).toStringAsFixed(1));
+  }
+  return l10n.sizeMegabytes('${(bytes / (1024 * 1024)).round()}');
 }

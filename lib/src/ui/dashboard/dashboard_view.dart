@@ -706,13 +706,21 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
+                  // The marking over the title reads in the player's own
+                  // language: it is a strap rather than a brand, and half
+                  // the screens already named their areas in Russian.
                   switch (shell.section) {
-                    DashboardSection.live => '01  /  LIVE VOICE',
-                    DashboardSection.snapshot => '02  /  SCREEN TEXT',
-                    DashboardSection.characters => '03  /  CHARACTER CAST',
-                    DashboardSection.pipeline => '04  /  SIGNAL PATH',
-                    DashboardSection.models => '05  /  MODEL BANK',
-                    DashboardSection.settings => '06  /  SIGNAL SETUP',
+                    DashboardSection.live => '01  /  ${AppLocalizations.of(context).headerLive}',
+                    DashboardSection.snapshot =>
+                      '02  /  ${AppLocalizations.of(context).headerScreen}',
+                    DashboardSection.characters =>
+                      '03  /  ${AppLocalizations.of(context).headerCharacters}',
+                    DashboardSection.pipeline =>
+                      '04  /  ${AppLocalizations.of(context).headerPipeline}',
+                    DashboardSection.models =>
+                      '05  /  ${AppLocalizations.of(context).headerModels}',
+                    DashboardSection.settings =>
+                      '06  /  ${AppLocalizations.of(context).headerSettings}',
                   },
                   style: const TextStyle(
                     fontFamily: LoreDubFonts.mono,
@@ -829,7 +837,7 @@ class _LivePanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _ModuleLabel(number: '01', label: 'GAME INPUT'),
+                _ModuleLabel(number: '01', label: AppLocalizations.of(context).areaGameInput),
                 const SizedBox(height: 14),
                 LayoutBuilder(
                   builder: (context, constraints) => _SourceControls(
@@ -901,7 +909,7 @@ class _TranscriptCard extends StatelessWidget {
   const _TranscriptCard({
     required this.cubits,
     this.number = '02',
-    this.label = 'LIVE TRANSCRIPT',
+    this.label,
     this.fromScreen = false,
   });
 
@@ -911,7 +919,9 @@ class _TranscriptCard extends StatelessWidget {
   /// dubbing lists what it heard second; the screen session lists what the
   /// frame gained third, after the controls and the frame itself.
   final String number;
-  final String label;
+
+  /// Null on Live, where it is the transcript of what was heard.
+  final String? label;
 
   /// Whether the lines came off the screen rather than out of the game's
   /// sound, which is all the empty state needs to name the right route.
@@ -934,7 +944,10 @@ class _TranscriptCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
               child: Row(
                 children: [
-                  _ModuleLabel(number: number, label: label),
+                  _ModuleLabel(
+                    number: number,
+                    label: label ?? AppLocalizations.of(context).areaTranscript,
+                  ),
                   const Spacer(),
                   _ClearListButton(
                     tooltip: AppLocalizations.of(context).transcriptClearTooltip,
@@ -1012,9 +1025,12 @@ class _SceneVoicesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 9, 12, 8),
-            child: _ModuleLabel(number: '03', label: 'SCENE VOICES'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+            child: _ModuleLabel(
+              number: '03',
+              label: AppLocalizations.of(context).areaSceneVoices,
+            ),
           ),
           const Divider(height: 1),
           // On its own line rather than beside the label: this column is
@@ -1370,8 +1386,12 @@ class _SubtitleList extends StatelessWidget {
   final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) =>
-      _TranscriptCard(cubits: cubits, number: '03', label: 'SUBTITLES', fromScreen: true);
+  Widget build(BuildContext context) => _TranscriptCard(
+    cubits: cubits,
+    number: '03',
+    label: AppLocalizations.of(context).areaSubtitles,
+    fromScreen: true,
+  );
 }
 
 /// What the screen session keeps for itself before it starts scrolling: the
@@ -1403,7 +1423,7 @@ class _ScreenCaptureCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _ModuleLabel(number: '01', label: 'SCREEN CAPTURE'),
+          _ModuleLabel(number: '01', label: AppLocalizations.of(context).areaScreenCapture),
           const SizedBox(height: 14),
           _SnapshotControls(cubits: cubits),
         ],
@@ -1440,7 +1460,7 @@ class _SubtitleFrameCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _ModuleLabel(number: '02', label: 'SUBTITLE FRAME'),
+            _ModuleLabel(number: '02', label: l10n.areaSubtitleFrame),
             const SizedBox(height: 14),
             OcrRegionPicker(
               key: const ValueKey('ocrRegion'),
@@ -1778,7 +1798,10 @@ class _SnapshotHistory extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
             child: Row(
               children: [
-                const _ModuleLabel(number: '04', label: 'SELECTED TEXT'),
+                _ModuleLabel(
+                  number: '04',
+                  label: AppLocalizations.of(context).areaSelectedText,
+                ),
                 const Spacer(),
                 _ClearListButton(
                   tooltip: AppLocalizations.of(context).snapshotClearTooltip,
@@ -2919,7 +2942,10 @@ class _CharactersPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _ModuleLabel(number: '01', label: 'VOICE RECORDING'),
+                _ModuleLabel(
+                  number: '01',
+                  label: AppLocalizations.of(context).areaVoiceRecording,
+                ),
                 const SizedBox(height: 14),
                 _CharacterSessionControls(cubits: cubits),
               ],
@@ -3168,7 +3194,7 @@ class _CharacterCast extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
               child: _AreaHeading(
-                label: const _ModuleLabel(number: '02', label: 'CAST'),
+                label: _ModuleLabel(number: '02', label: l10n.areaCast),
                 actions: [
                   TextButton.icon(
                     onPressed: state.characters.isEmpty
@@ -3346,7 +3372,7 @@ class _CharacterPacks extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
               child: _AreaHeading(
-                label: const _ModuleLabel(number: '03', label: 'PACKS'),
+                label: _ModuleLabel(number: '03', label: l10n.areaPacks),
                 actions: [
                   TextButton.icon(
                     key: const ValueKey('charactersImport'),
@@ -3783,11 +3809,10 @@ class _SettingsPanel extends StatefulWidget {
 }
 
 class _SettingsPanelState extends State<_SettingsPanel> {
-  /// Whether the last group is unfolded. Python, the proxy and the model
-  /// directory are maintenance rather than dubbing -- they are changed when
-  /// something is broken, not while playing -- and open they made the screen
-  /// a third longer than the settings a player actually came for.
-  bool _advancedOpen = false;
+  /// Whether the proxy is unfolded. It is changed on a connection that
+  /// needs one and never again, so it is asked for rather than shown -- the
+  /// paths beside it are looked at more often and stand open.
+  bool _proxyOpen = false;
 
   final _proxyFormKey = GlobalKey<FormState>();
   final _pythonFormKey = GlobalKey<FormState>();
@@ -3895,16 +3920,32 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         const SizedBox(height: 12),
         _ComputeDeviceCard(cubits: cubits),
         const SizedBox(height: _settingsGroupGap),
-        _FoldedHeading(
-          number: '04',
-          label: l10n.settingsGroupAdvanced,
-          open: _advancedOpen,
-          onTap: () => setState(() => _advancedOpen = !_advancedOpen),
+        // Where the parts come from, and where they are kept: two areas of
+        // their own rather than one drawer holding everything a player only
+        // opens when something is broken.
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final downloads = _theDownloads(context, l10n, state, running: running);
+            final paths = _thePaths(context, l10n, state, running: running);
+            return constraints.maxWidth >= _pairedCardsWidth
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: downloads),
+                      const SizedBox(width: 12),
+                      Expanded(child: paths),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      downloads,
+                      const SizedBox(height: _settingsGroupGap),
+                      paths,
+                    ],
+                  );
+          },
         ),
-        if (_advancedOpen) ...[
-          const SizedBox(height: 12),
-          ..._whereThingsLive(context, l10n, state, running: running),
-        ],
       ],
     );
   }
@@ -3919,27 +3960,113 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     required bool running,
   }) {
     final settings = state.settings;
+    final language = _SettingCard(
+      title: l10n.settingsInterfaceLanguage,
+      subtitle: l10n.interfaceLanguageNote,
+      child: SegmentedButton<String>(
+        segments: [
+          for (final language in interfaceLanguages)
+            ButtonSegment(
+              value: language,
+              label: Text(interfaceLanguageName(language)),
+            ),
+        ],
+        selected: {settings.interfaceLanguage},
+        onSelectionChanged: (selection) =>
+            cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
+      ),
+    );
     return [
-      _SettingCard(
-        title: l10n.settingsInterfaceLanguage,
-        subtitle: l10n.interfaceLanguageNote,
-        child: SegmentedButton<String>(
-          segments: [
-            for (final language in interfaceLanguages)
-              ButtonSegment(
-                value: language,
-                label: Text(interfaceLanguageName(language)),
+      LayoutBuilder(
+        builder: (context, constraints) => constraints.maxWidth >= _pairedCardsWidth
+            ? IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: language),
+                    const SizedBox(width: 12),
+                    Expanded(child: _scaleCard(l10n, settings)),
+                  ],
+                ),
+              )
+            : Column(
+                children: [language, const SizedBox(height: 12), _scaleCard(l10n, settings)],
               ),
-          ],
-          selected: {settings.interfaceLanguage},
-          onSelectionChanged: (selection) =>
-              cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
-        ),
       ),
       const SizedBox(height: 12),
       ..._theHotkeys(context, l10n, state, running: running),
     ];
   }
+
+  /// How large the interface itself is drawn, beside the language it speaks:
+  /// the two things a player sets once, for their own eyes rather than for
+  /// the dubbing.
+  Widget _scaleCard(AppLocalizations l10n, AppSettings settings) => _SettingCard(
+    title: l10n.settingsScale,
+    subtitle: l10n.scaleValue((settings.chosenScale * 100).round()),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Slider(
+          key: const ValueKey('interfaceScale'),
+          value: settings.chosenScale,
+          min: AppSettings.smallestScale,
+          max: AppSettings.largestScale,
+          divisions: AppSettings.scaleDivisions,
+          label: l10n.scaleValue((settings.chosenScale * 100).round()),
+          onChanged: (value) => cubits.settings.update(settings.copyWith(interfaceScale: value)),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.scaleNote,
+          style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+        ),
+      ],
+    ),
+  );
+
+  /// The proxy the downloads go through, folded away until it is asked for.
+  Widget _theDownloads(
+    BuildContext context,
+    AppLocalizations l10n,
+    SettingsState state, {
+    required bool running,
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _FoldedHeading(
+        number: '04',
+        label: l10n.settingsGroupDownloads,
+        open: _proxyOpen,
+        onTap: () => setState(() => _proxyOpen = !_proxyOpen),
+      ),
+      if (_proxyOpen) ...[
+        const SizedBox(height: 12),
+        _proxyCard(context, l10n),
+      ],
+    ],
+  );
+
+  /// Where the interpreter and the packages sit on this machine.
+  Widget _thePaths(
+    BuildContext context,
+    AppLocalizations l10n,
+    SettingsState state, {
+    required bool running,
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      // The same height the folded heading beside it takes, so the two
+      // areas start on one line.
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: _ModuleLabel(number: '05', label: l10n.settingsGroupPaths),
+      ),
+      _pythonCard(context, l10n),
+      const SizedBox(height: 12),
+      _modelDirectoryCard(context, l10n),
+    ],
+  );
 
   /// What the dubbing sounds like: how far the game is turned down under it, how fast a line is
   /// read, and in whose voice.
@@ -4168,164 +4295,157 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   /// Where the parts come from and where they are kept.
-  List<Widget> _whereThingsLive(
-    BuildContext context,
-    AppLocalizations l10n,
-    SettingsState state, {
-    required bool running,
-  }) {
-    return [
-      _SettingCard(
-        title: l10n.settingsPython,
-        subtitle: l10n.pythonNote,
-        child: Form(
-          key: _pythonFormKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _pythonController,
-                keyboardType: TextInputType.url,
-                textInputAction: TextInputAction.done,
-                decoration: InputDecoration(
-                  labelText: l10n.pythonFieldLabel,
-                  helperText: l10n.pythonFieldHelper,
-                  prefixIcon: const Icon(Icons.terminal_rounded),
-                ),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? l10n.pythonFieldRequired : null,
-                onFieldSubmitted: (_) => _savePython(),
+  Widget _pythonCard(BuildContext context, AppLocalizations l10n) => _SettingsBuilder(
+    cubits: cubits,
+    builder: (context, state) => _SettingCard(
+      title: l10n.settingsPython,
+      subtitle: l10n.pythonNote,
+      child: Form(
+        key: _pythonFormKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _pythonController,
+              keyboardType: TextInputType.url,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: l10n.pythonFieldLabel,
+                helperText: l10n.pythonFieldHelper,
+                prefixIcon: const Icon(Icons.terminal_rounded),
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  TextButton.icon(
-                    onPressed: state.searchingPython ? null : _findPython,
-                    icon: state.searchingPython
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.manage_search_rounded),
-                    label: Text(
-                      state.searchingPython ? l10n.pythonSearching : l10n.pythonFindAutomatically,
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      _pythonController.text = bundledPythonExecutablePath();
-                      _savePython();
-                    },
-                    icon: const Icon(Icons.settings_backup_restore_rounded),
-                    label: Text(l10n.pythonBundled),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _savePython,
-                    icon: const Icon(Icons.save_outlined),
-                    label: Text(l10n.save),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-      const SizedBox(height: 12),
-      _SettingCard(
-        title: l10n.settingsModelDownloads,
-        subtitle: l10n.proxyNote,
-        child: Form(
-          key: _proxyFormKey,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final field = TextFormField(
-                controller: _proxyController,
-                keyboardType: TextInputType.url,
-                textInputAction: TextInputAction.done,
-                decoration: InputDecoration(
-                  labelText: l10n.proxyLabel,
-                  hintText: 'http://127.0.0.1:7890',
-                  helperText: l10n.proxyHelper,
-                  helperMaxLines: 2,
-                  prefixIcon: const Icon(Icons.lan_outlined),
-                ),
-                validator: _validateProxy,
-                onFieldSubmitted: (_) => _saveProxy(),
-              );
-              final save = OutlinedButton.icon(
-                onPressed: _saveProxy,
-                icon: const Icon(Icons.save_outlined),
-                label: Text(l10n.save),
-              );
-              if (constraints.maxWidth < 620) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    field,
-                    const SizedBox(height: 12),
-                    Align(alignment: Alignment.centerRight, child: save),
-                  ],
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: field),
-                  const SizedBox(width: 16),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: save,
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ),
-      const SizedBox(height: 12),
-      _SettingCard(
-        title: l10n.settingsModelDirectory,
-        subtitle: l10n.modelDirectoryNote,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final path = _DownloadsBuilder(
-              cubits: cubits,
-              builder: (context, downloads) => SelectableText(
-                downloads.modelDirectoryPath,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            );
-            final open = OutlinedButton.icon(
-              onPressed: cubits.downloads.openModelDirectory,
-              icon: const Icon(Icons.folder_open_rounded),
-              label: Text(l10n.openInExplorer),
-            );
-            if (constraints.maxWidth < 620) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  path,
-                  const SizedBox(height: 12),
-                  Align(alignment: Alignment.centerRight, child: open),
-                ],
-              );
-            }
-            return Row(
+              validator: (value) => (value ?? '').trim().isEmpty ? l10n.pythonFieldRequired : null,
+              onFieldSubmitted: (_) => _savePython(),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(child: path),
-                const SizedBox(width: 16),
-                open,
+                TextButton.icon(
+                  onPressed: state.searchingPython ? null : _findPython,
+                  icon: state.searchingPython
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.manage_search_rounded),
+                  label: Text(
+                    state.searchingPython ? l10n.pythonSearching : l10n.pythonFindAutomatically,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    _pythonController.text = bundledPythonExecutablePath();
+                    _savePython();
+                  },
+                  icon: const Icon(Icons.settings_backup_restore_rounded),
+                  label: Text(l10n.pythonBundled),
+                ),
+                FilledButton.icon(
+                  onPressed: _savePython,
+                  icon: const Icon(Icons.save_outlined),
+                  label: Text(l10n.save),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _proxyCard(BuildContext context, AppLocalizations l10n) => _SettingCard(
+    title: l10n.settingsModelDownloads,
+    subtitle: l10n.proxyNote,
+    child: Form(
+      key: _proxyFormKey,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final field = TextFormField(
+            controller: _proxyController,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: l10n.proxyLabel,
+              hintText: 'http://127.0.0.1:7890',
+              helperText: l10n.proxyHelper,
+              helperMaxLines: 2,
+              prefixIcon: const Icon(Icons.lan_outlined),
+            ),
+            validator: _validateProxy,
+            onFieldSubmitted: (_) => _saveProxy(),
+          );
+          final save = OutlinedButton.icon(
+            onPressed: _saveProxy,
+            icon: const Icon(Icons.save_outlined),
+            label: Text(l10n.save),
+          );
+          if (constraints.maxWidth < 620) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                field,
+                const SizedBox(height: 12),
+                Align(alignment: Alignment.centerRight, child: save),
               ],
             );
-          },
-        ),
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: field),
+              const SizedBox(width: 16),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: save,
+              ),
+            ],
+          );
+        },
       ),
-    ];
-  }
+    ),
+  );
+
+  Widget _modelDirectoryCard(BuildContext context, AppLocalizations l10n) => _SettingCard(
+    title: l10n.settingsModelDirectory,
+    subtitle: l10n.modelDirectoryNote,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final path = _DownloadsBuilder(
+          cubits: cubits,
+          builder: (context, downloads) => SelectableText(
+            downloads.modelDirectoryPath,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        );
+        final open = OutlinedButton.icon(
+          onPressed: cubits.downloads.openModelDirectory,
+          icon: const Icon(Icons.folder_open_rounded),
+          label: Text(l10n.openInExplorer),
+        );
+        if (constraints.maxWidth < 620) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              path,
+              const SizedBox(height: 12),
+              Align(alignment: Alignment.centerRight, child: open),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: path),
+            const SizedBox(width: 16),
+            open,
+          ],
+        );
+      },
+    ),
+  );
 }
 
 /// Thread counts worth offering on this machine, always including whatever is
@@ -4783,7 +4903,7 @@ class _ComputeDeviceCard extends StatelessWidget {
       );
     }
     if (downloads.missingRuntimeFor(stage, backend) case final missing?) {
-      final size = formatPackageSize(missing.package.approximateBytes);
+      final size = formatPackageSize(l10n, missing.package.approximateBytes);
       if (missing.progress case final progress?) {
         return BackendCell(
           key: key,

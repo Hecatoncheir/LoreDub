@@ -4,6 +4,38 @@
   "navGroupDubbing": "DUBBING",
   "navGroupSetup": "SETUP",
   "navLive": "Live",
+  "headerLive": "LIVE VOICE",
+  "headerScreen": "SCREEN TEXT",
+  "headerCharacters": "CHARACTER CAST",
+  "headerPipeline": "SIGNAL PATH",
+  "headerModels": "MODEL BANK",
+  "headerSettings": "SIGNAL SETUP",
+  "areaGameInput": "GAME INPUT",
+  "areaTranscript": "LIVE TRANSCRIPT",
+  "areaSceneVoices": "SCENE VOICES",
+  "areaScreenCapture": "SCREEN CAPTURE",
+  "areaSubtitleFrame": "SUBTITLE FRAME",
+  "areaSubtitles": "SUBTITLES",
+  "areaSelectedText": "SELECTED TEXT",
+  "areaVoiceRecording": "VOICE RECORDING",
+  "areaCast": "CAST",
+  "areaPacks": "PACKS",
+  "sizeMegabytes": "{value} MB",
+  "@sizeMegabytes": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "sizeGigabytes": "{value} GB",
+  "@sizeGigabytes": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "navSnapshot": "Screen",
   "navCharacters": "Characters",
   "titleCharacters": "Character voices",
@@ -144,7 +176,7 @@
   "statusIdle": "Stopped",
   "statusStarting": "Starting…",
   "statusListening": "Listening",
-  "statusSnapshotReady": "Waiting for a snippet",
+  "statusSnapshotReady": "Reading the screen",
   "statusPaused": "Paused",
   "statusStopping": "Stopping…",
   "statusError": "Error",
@@ -239,7 +271,7 @@
   "snapshotEmpty": "Selected text will appear here",
   "snapshotClearTooltip": "Remove the snippets from the list",
   "settingsHotkeys": "Hotkeys",
-  "hotkeysNote": "They work while Live or Snippet is running, even with the game on screen; a bound combination then does not reach the game. The snapshot key is held down while the area is drawn with the mouse.",
+  "hotkeysNote": "They work while Live or Screen runs, even with the game on screen; the combination then does not reach the game. The snapshot and frame keys are held down while the area is drawn with the mouse.",
   "hotkeyPause": "Pause",
   "hotkeyResume": "Resume",
   "hotkeySnapshot": "Select an area",
@@ -575,7 +607,18 @@
   "settingsGroupInterface": "INTERFACE",
   "settingsGroupDubbing": "DUBBING",
   "settingsGroupCompute": "COMPUTE",
-  "settingsGroupAdvanced": "ADVANCED",
+  "settingsScale": "Scale",
+  "scaleValue": "{percent}%",
+  "@scaleValue": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "scaleNote": "Makes the whole interface larger or smaller at once, leaving the Windows scale alone: this window often sits beside a game that took the screen.",
+  "settingsGroupDownloads": "DOWNLOADS",
+  "settingsGroupPaths": "PATHS",
   "modelWhisperTitle": "Whisper {version}",
   "@modelWhisperTitle": {
     "placeholders": {

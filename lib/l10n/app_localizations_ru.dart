@@ -22,6 +22,64 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navLive => 'Эфир';
 
   @override
+  String get headerLive => 'ЖИВОЙ ГОЛОС';
+
+  @override
+  String get headerScreen => 'ТЕКСТ С ЭКРАНА';
+
+  @override
+  String get headerCharacters => 'СОСТАВ ПЕРСОНАЖЕЙ';
+
+  @override
+  String get headerPipeline => 'ПУТЬ СИГНАЛА';
+
+  @override
+  String get headerModels => 'БАНК МОДЕЛЕЙ';
+
+  @override
+  String get headerSettings => 'НАСТРОЙКА СИГНАЛА';
+
+  @override
+  String get areaGameInput => 'ИСТОЧНИК';
+
+  @override
+  String get areaTranscript => 'РАСШИФРОВКА';
+
+  @override
+  String get areaSceneVoices => 'ГОЛОСА СЦЕНЫ';
+
+  @override
+  String get areaScreenCapture => 'ЗАХВАТ ЭКРАНА';
+
+  @override
+  String get areaSubtitleFrame => 'РАМКА СУБТИТРОВ';
+
+  @override
+  String get areaSubtitles => 'СУБТИТРЫ';
+
+  @override
+  String get areaSelectedText => 'ВЫДЕЛЕННЫЙ ТЕКСТ';
+
+  @override
+  String get areaVoiceRecording => 'ЗАПИСЬ ГОЛОСА';
+
+  @override
+  String get areaCast => 'СОСТАВ';
+
+  @override
+  String get areaPacks => 'ПАКЕТЫ';
+
+  @override
+  String sizeMegabytes(String value) {
+    return '$value МБ';
+  }
+
+  @override
+  String sizeGigabytes(String value) {
+    return '$value ГБ';
+  }
+
+  @override
   String get navSnapshot => 'Экран';
 
   @override
@@ -280,7 +338,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get statusListening => 'Слушаю';
 
   @override
-  String get statusSnapshotReady => 'Ждёт фрагмента';
+  String get statusSnapshotReady => 'Читаю экран';
 
   @override
   String get statusPaused => 'Пауза';
@@ -445,7 +503,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get hotkeysNote =>
-      'Работают, пока идёт «Эфир» или «Фрагмент», даже когда на экране игра; назначенное сочетание тогда до игры не доходит. Клавишу выделения держат нажатой, пока обводят область мышью.';
+      'Работают, пока идёт «Эфир» или «Экран», даже когда на экране игра; назначенное сочетание тогда до игры не доходит. Клавиши выделения и рамки держат нажатыми, пока обводят область мышью.';
 
   @override
   String get hotkeyPause => 'Пауза';
@@ -925,7 +983,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsGroupCompute => 'ВЫЧИСЛЕНИЯ';
 
   @override
-  String get settingsGroupAdvanced => 'ДОПОЛНИТЕЛЬНО';
+  String get settingsScale => 'Масштаб';
+
+  @override
+  String scaleValue(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get scaleNote =>
+      'Увеличивает или уменьшает весь интерфейс сразу, не трогая масштаб самой Windows: окно часто стоит рядом с игрой, которая заняла экран.';
+
+  @override
+  String get settingsGroupDownloads => 'ЗАГРУЗКА';
+
+  @override
+  String get settingsGroupPaths => 'ПУТИ';
 
   @override
   String modelWhisperTitle(String version) {

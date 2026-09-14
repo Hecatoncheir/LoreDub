@@ -38,11 +38,13 @@ String modelDescription(AppLocalizations l10n, ModelPackage model) => switch (mo
     model.translatesSpeech
         ? l10n.modelWhisperNote
         : '${l10n.modelWhisperNote} ${l10n.modelWhisperTranscribeOnly}',
-  ModelKind.translation => l10n.modelTranslationNote(formatPackageSize(model.downloadBytes)),
+  ModelKind.translation => l10n.modelTranslationNote(formatPackageSize(l10n, model.downloadBytes)),
   // The Russian package ships several voices worth naming; the others do not.
   ModelKind.speech =>
     model.id == speechModelFor('ru')?.id
         ? l10n.modelVoiceNoteRu
         : l10n.modelVoiceNote(voiceSpeechName(l10n, model.language!)),
-  ModelKind.voiceConversion => l10n.modelConverterNote(formatPackageSize(model.downloadBytes)),
+  ModelKind.voiceConversion => l10n.modelConverterNote(
+    formatPackageSize(l10n, model.downloadBytes),
+  ),
 };

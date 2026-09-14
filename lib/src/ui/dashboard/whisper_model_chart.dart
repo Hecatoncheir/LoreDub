@@ -181,7 +181,7 @@ class WhisperModelChart extends StatelessWidget {
               width: left - 10,
               top: labelCentres[index] - 8,
               child: Text(
-                formatPackageSize(models[index].model.downloadBytes),
+                formatPackageSize(l10n, models[index].model.downloadBytes),
                 textAlign: TextAlign.right,
                 style: marking,
               ),
@@ -240,7 +240,7 @@ class WhisperModelChart extends StatelessWidget {
         title: l10n.modelRemoveTitle,
         message: l10n.modelRemoveMessage(
           modelTitle(l10n, state.model),
-          formatPackageSize(state.model.downloadBytes),
+          formatPackageSize(l10n, state.model.downloadBytes),
         ),
       );
       if (confirmed) onRemove(state);
@@ -256,11 +256,11 @@ class WhisperModelChart extends StatelessWidget {
       if (progress != null)
         l10n.whisperDownloadProgress(
           (progress * 100).round(),
-          formatPackageSize((model.downloadBytes * progress).round()),
-          formatPackageSize(model.downloadBytes),
+          formatPackageSize(l10n, (model.downloadBytes * progress).round()),
+          formatPackageSize(l10n, model.downloadBytes),
         )
       else if (!state.installed)
-        l10n.whisperHintDownload(formatPackageSize(model.downloadBytes))
+        l10n.whisperHintDownload(formatPackageSize(l10n, model.downloadBytes))
       else if (model.id == selectedId)
         l10n.whisperHintSelected
       else if (onSelect == null)

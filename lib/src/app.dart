@@ -21,6 +21,35 @@ import 'ui/dashboard/cubits/settings_cubit.dart';
 import 'ui/dashboard/dashboard_view.dart';
 import 'ui/theme.dart';
 
+/// Draws [child] larger or smaller than the window it is given.
+///
+/// The child is laid out in a window of its own -- the real one divided by
+/// the scale -- and the drawing is stretched back over the real one, so a
+/// scaled interface reflows rather than being a picture of a smaller one.
+/// `Transform` carries the pointer back through the same matrix, so what is
+/// clicked is what was drawn.
+class _Scaled extends StatelessWidget {
+  const _Scaled({required this.scale, required this.child});
+
+  final double scale;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (scale == 1) return child;
+    final media = MediaQuery.of(context);
+    final size = media.size / scale;
+    return MediaQuery(
+      data: media.copyWith(size: size, devicePixelRatio: media.devicePixelRatio * scale),
+      child: Transform.scale(
+        scale: scale,
+        alignment: Alignment.topLeft,
+        child: SizedBox(width: size.width, height: size.height, child: child),
+      ),
+    );
+  }
+}
+
 class LoreDubBootstrap extends StatefulWidget {
   const LoreDubBootstrap({super.key});
 
@@ -55,7 +84,8 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
     // application above the dashboard.
     bloc: cubits.settings,
     buildWhen: (previous, current) =>
-        previous.settings.interfaceLanguage != current.settings.interfaceLanguage,
+        previous.settings.interfaceLanguage != current.settings.interfaceLanguage ||
+        previous.settings.chosenScale != current.settings.chosenScale,
     builder: (context, state) => MaterialApp(
       title: 'LoreDub',
       debugShowCheckedModeBanner: false,
@@ -68,7 +98,10 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: DashboardView(cubits: cubits),
+      home: _Scaled(
+        scale: state.settings.chosenScale,
+        child: DashboardView(cubits: cubits),
+      ),
     ),
   );
 }

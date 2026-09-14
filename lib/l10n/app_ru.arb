@@ -4,6 +4,38 @@
   "navGroupDubbing": "ПЕРЕВОД",
   "navGroupSetup": "ПОДГОТОВКА",
   "navLive": "Эфир",
+  "headerLive": "ЖИВОЙ ГОЛОС",
+  "headerScreen": "ТЕКСТ С ЭКРАНА",
+  "headerCharacters": "СОСТАВ ПЕРСОНАЖЕЙ",
+  "headerPipeline": "ПУТЬ СИГНАЛА",
+  "headerModels": "БАНК МОДЕЛЕЙ",
+  "headerSettings": "НАСТРОЙКА СИГНАЛА",
+  "areaGameInput": "ИСТОЧНИК",
+  "areaTranscript": "РАСШИФРОВКА",
+  "areaSceneVoices": "ГОЛОСА СЦЕНЫ",
+  "areaScreenCapture": "ЗАХВАТ ЭКРАНА",
+  "areaSubtitleFrame": "РАМКА СУБТИТРОВ",
+  "areaSubtitles": "СУБТИТРЫ",
+  "areaSelectedText": "ВЫДЕЛЕННЫЙ ТЕКСТ",
+  "areaVoiceRecording": "ЗАПИСЬ ГОЛОСА",
+  "areaCast": "СОСТАВ",
+  "areaPacks": "ПАКЕТЫ",
+  "sizeMegabytes": "{value} МБ",
+  "@sizeMegabytes": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "sizeGigabytes": "{value} ГБ",
+  "@sizeGigabytes": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "navSnapshot": "Экран",
   "navCharacters": "Персонажи",
   "titleCharacters": "Голоса персонажей",
@@ -144,7 +176,7 @@
   "statusIdle": "Остановлено",
   "statusStarting": "Запуск…",
   "statusListening": "Слушаю",
-  "statusSnapshotReady": "Ждёт фрагмента",
+  "statusSnapshotReady": "Читаю экран",
   "statusPaused": "Пауза",
   "statusStopping": "Остановка…",
   "statusError": "Ошибка",
@@ -239,7 +271,7 @@
   "snapshotEmpty": "Выделенные фрагменты появятся здесь",
   "snapshotClearTooltip": "Убрать фрагменты из списка",
   "settingsHotkeys": "Горячие клавиши",
-  "hotkeysNote": "Работают, пока идёт «Эфир» или «Фрагмент», даже когда на экране игра; назначенное сочетание тогда до игры не доходит. Клавишу выделения держат нажатой, пока обводят область мышью.",
+  "hotkeysNote": "Работают, пока идёт «Эфир» или «Экран», даже когда на экране игра; назначенное сочетание тогда до игры не доходит. Клавиши выделения и рамки держат нажатыми, пока обводят область мышью.",
   "hotkeyPause": "Пауза",
   "hotkeyResume": "Восстановление",
   "hotkeySnapshot": "Выделение области",
@@ -575,7 +607,18 @@
   "settingsGroupInterface": "ИНТЕРФЕЙС",
   "settingsGroupDubbing": "ОЗВУЧКА",
   "settingsGroupCompute": "ВЫЧИСЛЕНИЯ",
-  "settingsGroupAdvanced": "ДОПОЛНИТЕЛЬНО",
+  "settingsScale": "Масштаб",
+  "scaleValue": "{percent}%",
+  "@scaleValue": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "scaleNote": "Увеличивает или уменьшает весь интерфейс сразу, не трогая масштаб самой Windows: окно часто стоит рядом с игрой, которая заняла экран.",
+  "settingsGroupDownloads": "ЗАГРУЗКА",
+  "settingsGroupPaths": "ПУТИ",
   "modelWhisperTitle": "Whisper {version}",
   "@modelWhisperTitle": {
     "placeholders": {

@@ -117,6 +117,114 @@ abstract class AppLocalizations {
   /// **'Эфир'**
   String get navLive;
 
+  /// No description provided for @headerLive.
+  ///
+  /// In ru, this message translates to:
+  /// **'ЖИВОЙ ГОЛОС'**
+  String get headerLive;
+
+  /// No description provided for @headerScreen.
+  ///
+  /// In ru, this message translates to:
+  /// **'ТЕКСТ С ЭКРАНА'**
+  String get headerScreen;
+
+  /// No description provided for @headerCharacters.
+  ///
+  /// In ru, this message translates to:
+  /// **'СОСТАВ ПЕРСОНАЖЕЙ'**
+  String get headerCharacters;
+
+  /// No description provided for @headerPipeline.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПУТЬ СИГНАЛА'**
+  String get headerPipeline;
+
+  /// No description provided for @headerModels.
+  ///
+  /// In ru, this message translates to:
+  /// **'БАНК МОДЕЛЕЙ'**
+  String get headerModels;
+
+  /// No description provided for @headerSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'НАСТРОЙКА СИГНАЛА'**
+  String get headerSettings;
+
+  /// No description provided for @areaGameInput.
+  ///
+  /// In ru, this message translates to:
+  /// **'ИСТОЧНИК'**
+  String get areaGameInput;
+
+  /// No description provided for @areaTranscript.
+  ///
+  /// In ru, this message translates to:
+  /// **'РАСШИФРОВКА'**
+  String get areaTranscript;
+
+  /// No description provided for @areaSceneVoices.
+  ///
+  /// In ru, this message translates to:
+  /// **'ГОЛОСА СЦЕНЫ'**
+  String get areaSceneVoices;
+
+  /// No description provided for @areaScreenCapture.
+  ///
+  /// In ru, this message translates to:
+  /// **'ЗАХВАТ ЭКРАНА'**
+  String get areaScreenCapture;
+
+  /// No description provided for @areaSubtitleFrame.
+  ///
+  /// In ru, this message translates to:
+  /// **'РАМКА СУБТИТРОВ'**
+  String get areaSubtitleFrame;
+
+  /// No description provided for @areaSubtitles.
+  ///
+  /// In ru, this message translates to:
+  /// **'СУБТИТРЫ'**
+  String get areaSubtitles;
+
+  /// No description provided for @areaSelectedText.
+  ///
+  /// In ru, this message translates to:
+  /// **'ВЫДЕЛЕННЫЙ ТЕКСТ'**
+  String get areaSelectedText;
+
+  /// No description provided for @areaVoiceRecording.
+  ///
+  /// In ru, this message translates to:
+  /// **'ЗАПИСЬ ГОЛОСА'**
+  String get areaVoiceRecording;
+
+  /// No description provided for @areaCast.
+  ///
+  /// In ru, this message translates to:
+  /// **'СОСТАВ'**
+  String get areaCast;
+
+  /// No description provided for @areaPacks.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПАКЕТЫ'**
+  String get areaPacks;
+
+  /// No description provided for @sizeMegabytes.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value} МБ'**
+  String sizeMegabytes(String value);
+
+  /// No description provided for @sizeGigabytes.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value} ГБ'**
+  String sizeGigabytes(String value);
+
   /// No description provided for @navSnapshot.
   ///
   /// In ru, this message translates to:
@@ -522,7 +630,7 @@ abstract class AppLocalizations {
   /// No description provided for @statusSnapshotReady.
   ///
   /// In ru, this message translates to:
-  /// **'Ждёт фрагмента'**
+  /// **'Читаю экран'**
   String get statusSnapshotReady;
 
   /// No description provided for @statusPaused.
@@ -822,7 +930,7 @@ abstract class AppLocalizations {
   /// No description provided for @hotkeysNote.
   ///
   /// In ru, this message translates to:
-  /// **'Работают, пока идёт «Эфир» или «Фрагмент», даже когда на экране игра; назначенное сочетание тогда до игры не доходит. Клавишу выделения держат нажатой, пока обводят область мышью.'**
+  /// **'Работают, пока идёт «Эфир» или «Экран», даже когда на экране игра; назначенное сочетание тогда до игры не доходит. Клавиши выделения и рамки держат нажатыми, пока обводят область мышью.'**
   String get hotkeysNote;
 
   /// No description provided for @hotkeyPause.
@@ -1599,11 +1707,35 @@ abstract class AppLocalizations {
   /// **'ВЫЧИСЛЕНИЯ'**
   String get settingsGroupCompute;
 
-  /// No description provided for @settingsGroupAdvanced.
+  /// No description provided for @settingsScale.
   ///
   /// In ru, this message translates to:
-  /// **'ДОПОЛНИТЕЛЬНО'**
-  String get settingsGroupAdvanced;
+  /// **'Масштаб'**
+  String get settingsScale;
+
+  /// No description provided for @scaleValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'{percent}%'**
+  String scaleValue(int percent);
+
+  /// No description provided for @scaleNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Увеличивает или уменьшает весь интерфейс сразу, не трогая масштаб самой Windows: окно часто стоит рядом с игрой, которая заняла экран.'**
+  String get scaleNote;
+
+  /// No description provided for @settingsGroupDownloads.
+  ///
+  /// In ru, this message translates to:
+  /// **'ЗАГРУЗКА'**
+  String get settingsGroupDownloads;
+
+  /// No description provided for @settingsGroupPaths.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПУТИ'**
+  String get settingsGroupPaths;
 
   /// No description provided for @modelWhisperTitle.
   ///
