@@ -44,7 +44,20 @@ class _Scaled extends StatelessWidget {
       child: Transform.scale(
         scale: scale,
         alignment: Alignment.topLeft,
-        child: SizedBox(width: size.width, height: size.height, child: child),
+        // The home of a MaterialApp is given the window's size as a tight
+        // constraint, and a SizedBox cannot shrink under one: the child was
+        // laid out at the window's own size and then magnified past its
+        // edge. OverflowBox lets it take the size it is asked for, which is
+        // the window divided by the scale, so magnifying it lands back
+        // exactly on the window.
+        child: OverflowBox(
+          alignment: Alignment.topLeft,
+          minWidth: 0,
+          maxWidth: double.infinity,
+          minHeight: 0,
+          maxHeight: double.infinity,
+          child: SizedBox(width: size.width, height: size.height, child: child),
+        ),
       ),
     );
   }

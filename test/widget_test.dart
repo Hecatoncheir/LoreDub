@@ -156,6 +156,21 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
+  testWidgets('draws a scaled interface inside the window it was given', (tester) async {
+    // A magnified interface reflows in a smaller window and is drawn back
+    // over the real one. Laid out at the window's own size first, it was
+    // magnified past the edge and the right of every screen was lost.
+    SharedPreferences.setMockInitialValues({'interfaceScale': 1.25});
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const LoreDubBootstrap());
+    await tester.pump();
+
+    expect(tester.getSize(find.byType(DashboardView)), const Size(1120, 720));
+  });
+
   testWidgets('uses compact navigation in a narrow window', (tester) async {
     await pumpLoreDub(tester, const Size(760, 720));
 
@@ -821,7 +836,7 @@ void main() {
     expect(find.text('Start dubbing'), findsOneWidget);
   });
 
-  testWidgets('keeps the proxy folded while the paths beside it stand open', (tester) async {
+  testWidgets('puts the downloads and the paths side by side at the foot', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 900));
     await tester.tap(find.text('Настройки'));
     await tester.pumpAndSettle();
@@ -829,28 +844,19 @@ void main() {
     final downloads = find.text('ЗАГРУЗКА');
     await tester.scrollUntilVisible(downloads, 300, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    // The paths are looked at often enough to stand open beside it.
-    expect(find.text('Каталог моделей'), findsOneWidget);
-    expect(find.text('Загрузка моделей'), findsNothing);
 
-    await tester.tap(downloads);
-    await tester.pumpAndSettle();
-    final proxy = find.text('Загрузка моделей');
-    await tester.scrollUntilVisible(proxy, 300, scrollable: find.byType(Scrollable).first);
-    await tester.pumpAndSettle();
-    expect(proxy, findsOneWidget);
+    expect(find.text('ПУТИ'), findsOneWidget);
+    expect(find.text('Загрузка моделей'), findsOneWidget, reason: 'nothing is folded away');
+    expect(
+      tester.getTopLeft(find.text('ПУТИ')).dx,
+      greaterThan(tester.getTopLeft(downloads).dx),
+      reason: 'the paths stand beside the downloads, not under them',
+    );
   });
 
   testWidgets('saves a model download proxy from settings', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 900));
     await tester.tap(find.text('Настройки'));
-    await tester.pumpAndSettle();
-
-    // The proxy is folded away until the heading of its area is pressed.
-    final downloads = find.text('ЗАГРУЗКА');
-    await tester.scrollUntilVisible(downloads, 300, scrollable: find.byType(Scrollable).first);
-    await tester.pumpAndSettle();
-    await tester.tap(downloads);
     await tester.pumpAndSettle();
 
     final proxyField = find.widgetWithText(

@@ -2380,44 +2380,6 @@ class _ModuleLabel extends StatelessWidget {
   );
 }
 
-/// A group's heading that also opens and closes it, as the schemes shelf
-/// does: the whole row is the handle, there being nothing else on that line
-/// to hit by mistake, and it is given a full touch target rather than the
-/// label's own height.
-class _FoldedHeading extends StatelessWidget {
-  const _FoldedHeading({
-    required this.number,
-    required this.label,
-    required this.open,
-    required this.onTap,
-  });
-
-  final String number;
-  final String label;
-  final bool open;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(6),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          _ModuleLabel(number: number, label: label),
-          const Spacer(),
-          Icon(
-            open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-            size: 20,
-            color: LoreDubPalette.mutedInk,
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
 /// One recognized phrase, shaped like the speech bubble on the application
 /// icon: the text on the dark signal surface, and the time it took beside the
 /// tail on the orange accent.
@@ -3809,11 +3771,6 @@ class _SettingsPanel extends StatefulWidget {
 }
 
 class _SettingsPanelState extends State<_SettingsPanel> {
-  /// Whether the proxy is unfolded. It is changed on a connection that
-  /// needs one and never again, so it is asked for rather than shown -- the
-  /// paths beside it are looked at more often and stand open.
-  bool _proxyOpen = false;
-
   final _proxyFormKey = GlobalKey<FormState>();
   final _pythonFormKey = GlobalKey<FormState>();
   late final TextEditingController _proxyController;
@@ -3998,6 +3955,13 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     ];
   }
 
+  /// The marking over one of the two areas at the foot, spaced so that both
+  /// of them start on the same line.
+  Widget _areaHeading(String label, {required String number}) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: _ModuleLabel(number: number, label: label),
+  );
+
   /// How large the interface itself is drawn, beside the language it speaks:
   /// the two things a player sets once, for their own eyes rather than for
   /// the dubbing.
@@ -4025,7 +3989,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     ),
   );
 
-  /// The proxy the downloads go through, folded away until it is asked for.
+  /// The proxy the downloads go through.
   Widget _theDownloads(
     BuildContext context,
     AppLocalizations l10n,
@@ -4034,16 +3998,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      _FoldedHeading(
-        number: '04',
-        label: l10n.settingsGroupDownloads,
-        open: _proxyOpen,
-        onTap: () => setState(() => _proxyOpen = !_proxyOpen),
-      ),
-      if (_proxyOpen) ...[
-        const SizedBox(height: 12),
-        _proxyCard(context, l10n),
-      ],
+      _areaHeading(l10n.settingsGroupDownloads, number: '04'),
+      _proxyCard(context, l10n),
     ],
   );
 
@@ -4056,12 +4012,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      // The same height the folded heading beside it takes, so the two
-      // areas start on one line.
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: _ModuleLabel(number: '05', label: l10n.settingsGroupPaths),
-      ),
+      _areaHeading(l10n.settingsGroupPaths, number: '05'),
       _pythonCard(context, l10n),
       const SizedBox(height: 12),
       _modelDirectoryCard(context, l10n),
@@ -4318,10 +4269,11 @@ class _SettingsPanelState extends State<_SettingsPanel> {
               onFieldSubmitted: (_) => _savePython(),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 8,
-              runSpacing: 8,
+            // Side by side where the card is wide enough for all three, and
+            // one under another at a shared width where it is not: wrapped
+            // at their own widths they came out ragged, each button a
+            // different length down the right edge.
+            _PythonActions(
               children: [
                 TextButton.icon(
                   onPressed: state.searchingPython ? null : _findPython,
@@ -4445,6 +4397,37 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         );
       },
     ),
+  );
+}
+
+/// The buttons under the Python path: a row while they fit, a stack of one
+/// width when they do not.
+class _PythonActions extends StatelessWidget {
+  const _PythonActions({required this.children});
+
+  final List<Widget> children;
+
+  /// Below this the three of them no longer share a line.
+  static const _oneRow = 520.0;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => constraints.maxWidth >= _oneRow
+        ? Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 8,
+            children: children,
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (index, child) in children.indexed) ...[
+                if (index > 0) const SizedBox(height: 8),
+                child,
+              ],
+            ],
+          ),
   );
 }
 

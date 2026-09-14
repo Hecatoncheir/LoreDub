@@ -427,9 +427,8 @@ the speech rate and the voice. **Compute** is one card: where things run.
 Under **GPU** it names the card it found, under **CPU** it asks how many
 threads to use, and under **Automatic** it says neither — the table below
 already shows where each stage ended up. Side by side at the foot:
-**Downloads** (the proxy, folded until its heading is pressed) and **Paths**
-— the Python path and the model directory. On a narrow window the areas
-stack.
+**Downloads** with the proxy, and **Paths** — the Python path and the model
+directory. On a narrow window the areas stack.
 
 **Scale** draws the whole interface larger or smaller without touching the
 Windows scale: this window often sits beside a game that took the screen, and
