@@ -2737,10 +2737,25 @@ class _GraphToolbar extends StatelessWidget {
           children: [
             Row(
               children: [
-                // Nothing stands on the left of the row any more: the two
-                // preset chips picked between the audio route and the
-                // subtitles, and the screen is read on its own page now.
-                const Spacer(),
+                // How the canvas is worked, on the row the buttons that work
+                // it are on: the two chips that used to stand here picked
+                // between the audio route and the subtitles, and the screen
+                // is read on its own page now. Whatever the last attempt at
+                // a link came to takes the same place, so a refusal is read
+                // where the hand already is.
+                Expanded(
+                  child: switch (state.refusal) {
+                    final refusal? => Text(
+                      describeConnectionRefusal(l10n, refusal),
+                      style: const TextStyle(fontSize: 12, color: LoreDubPalette.error),
+                    ),
+                    _ => Text(
+                      l10n.pipelineGraphHint,
+                      style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+                    ),
+                  },
+                ),
+                const SizedBox(width: 12),
                 _addCharacter(context, l10n),
                 // The session is rested from here as well as from Live: the
                 // cast is rewired on this screen, and walking to another one
@@ -2794,17 +2809,6 @@ class _GraphToolbar extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            switch (state.refusal) {
-              final refusal? => Text(
-                describeConnectionRefusal(l10n, refusal),
-                style: const TextStyle(fontSize: 12, color: LoreDubPalette.error),
-              ),
-              _ => Text(
-                l10n.pipelineGraphHint,
-                style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
-              ),
-            },
             const SizedBox(height: 10),
             // The shelf of kept schemes, each with a picture of itself: a
             // click puts it on the canvas and it is the one that runs. It is
