@@ -206,57 +206,8 @@ class RuntimeTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final package = state.package;
     final size = formatPackageSize(package.approximateBytes);
-    final title = runtimeName(l10n, package.id);
-    final progress = state.progress;
-    final List<ModelAction> actions;
-    if (progress != null) {
-      actions = [
-        // pip runs to the end or not at all, so only a cancel is offered.
-        if (state.pausable)
-          ModelAction(
-            icon: state.paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-            tooltip: stopping
-                ? l10n.downloadStopping
-                : state.paused
-                ? l10n.downloadResume
-                : l10n.downloadPause,
-            onPressed: stopping ? null : (state.paused ? onInstall : onPause),
-          ),
-        ModelAction(
-          icon: Icons.close_rounded,
-          tooltip: state.pausable ? l10n.downloadCancel : l10n.downloadCancelNotResumable,
-          onPressed: stopping ? null : onCancel,
-        ),
-      ];
-    } else if (!state.installed) {
-      actions = [
-        ModelAction(
-          icon: Icons.download_rounded,
-          tooltip: l10n.modelDownload,
-          onPressed: running ? null : onInstall,
-        ),
-      ];
-    } else {
-      actions = [
-        ModelAction(
-          icon: Icons.delete_outline_rounded,
-          tooltip: running ? l10n.runtimeRemoveLocked : l10n.computeRuntimeRemove,
-          onPressed: running
-              ? null
-              : () async {
-                  final confirmed = await confirmModelRemoval(
-                    context,
-                    title: l10n.computeRuntimeRemoveTitle,
-                    message: l10n.computeRuntimeRemoveMessage(size),
-                    confirmLabel: l10n.computeRuntimeRemoveConfirm,
-                  );
-                  if (confirmed) onRemove();
-                },
-        ),
-      ];
-    }
     return ModelTile(
-      title: title,
+      title: runtimeName(l10n, package.id),
       parts: [
         ModelTilePart(
           label: runtimeServes(l10n, package.id),
@@ -264,28 +215,80 @@ class RuntimeTile extends StatelessWidget {
           installed: state.installed,
         ),
       ],
-      progress: progress,
+      progress: state.progress,
       paused: state.paused,
       installed: state.installed,
-      inUse: inUse && state.installed && progress == null,
+      inUse: inUse && state.installed && state.progress == null,
       marked: inUse && state.installed,
-      tooltip: [
-        title,
-        if (progress != null)
-          l10n.whisperDownloadProgress(
-            (progress * 100).round(),
-            formatPackageSize((package.approximateBytes * progress).round()),
-            size,
-          )
-        else if (!state.installed)
-          l10n.computeRuntimeMissing(size)
-        else if (inUse)
-          l10n.runtimeHintInUse
-        else
-          l10n.runtimeHintIdle,
-      ].join('\n'),
+      tooltip: '${runtimeName(l10n, package.id)}\n${_hint(l10n, size)}',
       onTap: null,
-      actions: actions,
+      actions: _actions(context, l10n, size),
     );
+  }
+
+  /// What the tile offers right now: a download on its way can be held or
+  /// stopped, one that is not here can be fetched, and one that is here can
+  /// be given back.
+  List<ModelAction> _actions(BuildContext context, AppLocalizations l10n, String size) {
+    if (state.progress != null) return _whileDownloading(l10n);
+    if (!state.installed) {
+      return [
+        ModelAction(
+          icon: Icons.download_rounded,
+          tooltip: l10n.modelDownload,
+          onPressed: running ? null : onInstall,
+        ),
+      ];
+    }
+    return [
+      ModelAction(
+        icon: Icons.delete_outline_rounded,
+        tooltip: running ? l10n.runtimeRemoveLocked : l10n.computeRuntimeRemove,
+        onPressed: running ? null : () => _askThenRemove(context, l10n, size),
+      ),
+    ];
+  }
+
+  List<ModelAction> _whileDownloading(AppLocalizations l10n) => [
+    // pip runs to the end or not at all, so only a cancel is offered.
+    if (state.pausable)
+      ModelAction(
+        icon: state.paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+        tooltip: stopping
+            ? l10n.downloadStopping
+            : state.paused
+            ? l10n.downloadResume
+            : l10n.downloadPause,
+        onPressed: stopping ? null : (state.paused ? onInstall : onPause),
+      ),
+    ModelAction(
+      icon: Icons.close_rounded,
+      tooltip: state.pausable ? l10n.downloadCancel : l10n.downloadCancelNotResumable,
+      onPressed: stopping ? null : onCancel,
+    ),
+  ];
+
+  Future<void> _askThenRemove(BuildContext context, AppLocalizations l10n, String size) async {
+    final confirmed = await confirmModelRemoval(
+      context,
+      title: l10n.computeRuntimeRemoveTitle,
+      message: l10n.computeRuntimeRemoveMessage(size),
+      confirmLabel: l10n.computeRuntimeRemoveConfirm,
+    );
+    if (confirmed) onRemove();
+  }
+
+  /// The second line of the tooltip: how far the download is, or what the
+  /// package is doing for this machine.
+  String _hint(AppLocalizations l10n, String size) {
+    if (state.progress case final progress?) {
+      return l10n.whisperDownloadProgress(
+        (progress * 100).round(),
+        formatPackageSize((state.package.approximateBytes * progress).round()),
+        size,
+      );
+    }
+    if (!state.installed) return l10n.computeRuntimeMissing(size);
+    return inUse ? l10n.runtimeHintInUse : l10n.runtimeHintIdle;
   }
 }

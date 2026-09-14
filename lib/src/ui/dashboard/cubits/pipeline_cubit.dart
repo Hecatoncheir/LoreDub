@@ -231,12 +231,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }
 
   Future<void> toggle({required bool initializing}) async {
-    final startedAt = _startRequestedAt;
-    if (state.status == PipelineStatus.starting &&
-        startedAt != null &&
-        _clock().difference(startedAt) < doubleClickGrace) {
-      return;
-    }
+    if (_pressedTwice) return;
     _errors.report(null);
     if (state.liveRunning) return stop();
     final selection = _selection;
@@ -266,25 +261,28 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         speakers: const [],
       ),
     );
+    await _startLive(selection);
+  }
+
+  /// Whether the button was pressed again while the first press was still
+  /// being answered. Starting takes minutes to show anything, and a second
+  /// press would start a second session over the first.
+  bool get _pressedTwice {
+    if (state.status != PipelineStatus.starting) return false;
+    final startedAt = _startRequestedAt;
+    return startedAt != null && _clock().difference(startedAt) < doubleClickGrace;
+  }
+
+  /// Hands the engine everything one live session needs.
+  Future<void> _startLive(ModelSelection selection) async {
     try {
       final settings = _settings.settings;
       final translation = selection.forTargetLanguage(ModelKind.translation)!.model;
       final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
-      final speechDirectory = await _modelRepository.directoryFor(speech);
-      final recognition = selection.recognition!.model;
       await _appRepository.start(
         process: selection.requiresProcess ? state.selectedProcess : null,
         settings: settings,
-        modelDirectories: {
-          'whisper': path.join(
-            await _modelRepository.directoryFor(recognition),
-            recognition.primaryFileName,
-          ),
-          'translation': await _modelRepository.directoryFor(translation),
-          'speech': path.join(speechDirectory, speech.primaryFileName),
-          if (selection.needsVoiceConverter)
-            'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
-        },
+        modelDirectories: await _modelDirectories(selection),
         speaker: selection.voice,
         translationPrefix: translation.translationPrefix ?? '',
         translateSpeech: selection.recognitionTranslatesSpeech,
@@ -293,18 +291,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         revoice: selection.clonesVoice,
         maleVoices: speech.voicesOf(VoiceGender.male),
         femaleVoices: speech.voicesOf(VoiceGender.female),
-        recognitionBackend: settings.backendFor(
-          ComputeStage.recognition,
-          _downloads.state.availability,
-        ),
-        translationBackend: settings.backendFor(
-          ComputeStage.translation,
-          _downloads.state.availability,
-        ),
-        voiceConversionBackend: settings.backendFor(
-          ComputeStage.voiceConversion,
-          _downloads.state.availability,
-        ),
+        recognitionBackend: _backendFor(ComputeStage.recognition),
+        translationBackend: _backendFor(ComputeStage.translation),
+        voiceConversionBackend: _backendFor(ComputeStage.voiceConversion),
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
         // Kept per game, so one game's cast does not answer for another's.
         voiceBank: selection.keepsVoiceBank
@@ -318,15 +307,35 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     }
   }
 
+  /// Where each model this session runs on actually sits. Whisper and the
+  /// speech model are named by file, the other two by directory.
+  Future<Map<String, String>> _modelDirectories(ModelSelection selection) async {
+    final recognition = selection.recognition!.model;
+    final translation = selection.forTargetLanguage(ModelKind.translation)!.model;
+    final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
+    return {
+      'whisper': path.join(
+        await _modelRepository.directoryFor(recognition),
+        recognition.primaryFileName,
+      ),
+      'translation': await _modelRepository.directoryFor(translation),
+      'speech': path.join(
+        await _modelRepository.directoryFor(speech),
+        speech.primaryFileName,
+      ),
+      if (selection.needsVoiceConverter)
+        'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
+    };
+  }
+
+  /// Where [stage] runs, given what this machine turned out to have.
+  ComputeBackend _backendFor(ComputeStage stage) =>
+      _settings.settings.backendFor(stage, _downloads.state.availability);
+
   /// Starts or ends the snapshot session, which loads only the translator
   /// and the voice and then waits for the player to select an area.
   Future<void> toggleSnapshot({required bool initializing}) async {
-    final startedAt = _startRequestedAt;
-    if (state.status == PipelineStatus.starting &&
-        startedAt != null &&
-        _clock().difference(startedAt) < doubleClickGrace) {
-      return;
-    }
+    if (_pressedTwice) return;
     _errors.report(null);
     if (state.running) {
       // Live dubbing is ended from its own screen.
@@ -365,10 +374,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         // A selected line has no audio to follow the speaker by.
         speaker: selection.voice,
         translationPrefix: translation.translationPrefix ?? '',
-        translationBackend: settings.backendFor(
-          ComputeStage.translation,
-          _downloads.state.availability,
-        ),
+        translationBackend: _backendFor(ComputeStage.translation),
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
       );
     } catch (exception) {
@@ -386,12 +392,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// session will know them by — and it is ready in seconds, since neither
   /// whisper nor the translator is loaded.
   Future<void> toggleSceneVoices({required bool initializing}) async {
-    final startedAt = _startRequestedAt;
-    if (state.status == PipelineStatus.starting &&
-        startedAt != null &&
-        _clock().difference(startedAt) < doubleClickGrace) {
-      return;
-    }
+    if (_pressedTwice) return;
     _errors.report(null);
     if (state.running) {
       // Live dubbing and the snapshot session are ended where they started.
@@ -422,10 +423,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         converterDirectory: await _modelRepository.directoryFor(
           selection.voiceConverter!.model,
         ),
-        converterBackend: settings.backendFor(
-          ComputeStage.voiceConversion,
-          _downloads.state.availability,
-        ),
+        converterBackend: _backendFor(ComputeStage.voiceConversion),
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
         // The same bank the dubbing session reads, so a voice met now is
         // the same voice then.

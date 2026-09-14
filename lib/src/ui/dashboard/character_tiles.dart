@@ -257,10 +257,11 @@ class _CharacterTileState extends State<CharacterTile> {
     return parts.join(' · ');
   }
 
+  /// The card itself: a name to type in, the lines saying what it carries,
+  /// and the buttons along its foot.
   Widget _tile(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final character = widget.character;
-    final recording = widget.recording;
+    final lit = widget.recording || _over || widget.building;
     return HoverGrow(
       alignment: Alignment.center,
       scale: 1.02,
@@ -269,15 +270,15 @@ class _CharacterTileState extends State<CharacterTile> {
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: const BorderRadius.all(Radius.circular(12)),
+          // Files held over the card say so the way a recording does: the
+          // whole card is the target, so the whole edge lights up.
           side: BorderSide(
-            // Files held over the card say so the way a recording does: the
-            // whole card is the target, so the whole edge lights up.
-            color: recording || _over || widget.building
+            color: lit
                 ? LoreDubPalette.orange
                 : hovered
                 ? LoreDubPalette.ink
                 : LoreDubPalette.outline,
-            width: recording || _over || widget.building ? 2 : 1,
+            width: lit ? 2 : 1,
           ),
         ),
         child: Column(
@@ -285,184 +286,173 @@ class _CharacterTileState extends State<CharacterTile> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-              child: TextField(
-                controller: _name,
-                style: const TextStyle(
-                  fontFamily: LoreDubFonts.display,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-                decoration: InputDecoration(
-                  labelText: l10n.charactersNameLabel,
-                  isDense: true,
-                ),
-                onEditingComplete: _rename,
-                onTapOutside: (_) => _rename(),
-              ),
+              child: _nameField(l10n),
             ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-                // Every line gives way rather than spilling: a card may
-                // carry what was recorded, whose voice reads it and the packs
-                // it belongs to at once, and a narrow window wraps them.
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        recording
-                            ? (widget.heardSeconds > 0
-                                  ? l10n.charactersHeard(widget.heardSeconds.toStringAsFixed(1))
-                                  : l10n.charactersRecording)
-                            : character.vector.isEmpty
-                            ? l10n.charactersNoVoice
-                            : l10n.charactersVoiceKept(
-                                character.seconds.toStringAsFixed(1),
-                                switch (character.gender) {
-                                  'male' => l10n.voiceGenderMale,
-                                  'female' => l10n.voiceGenderFemale,
-                                  _ => l10n.charactersGenderUnknown,
-                                },
-                              ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: LoreDubFonts.mono,
-                          fontSize: 11,
-                          color: recording ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
-                          fontWeight: recording ? FontWeight.w600 : null,
-                        ),
-                      ),
-                    ),
-                    if (widget.building || widget.built != null)
-                      Flexible(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            _buildingLine(l10n),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontFamily: LoreDubFonts.mono,
-                              fontSize: 11,
-                              color: widget.built?.together == false
-                                  ? LoreDubPalette.error
-                                  : LoreDubPalette.orange,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (widget.character.voicedBy case final id?)
-                      Flexible(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            l10n.sceneVoiceReplaced(_nameOf(id, l10n)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontFamily: LoreDubFonts.mono,
-                              fontSize: 11,
-                              color: LoreDubPalette.orange,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (widget.packNames.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Flexible(
-                        child: Text(
-                          l10n.charactersInPacks(widget.packNames.join(', ')),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: LoreDubFonts.mono,
-                            fontSize: 11,
-                            color: LoreDubPalette.mutedInk,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                child: _lines(l10n),
               ),
             ),
-            SizedBox(
-              height: 44,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ModelActionButton(
-                    onDark: false,
-                    action: ModelAction(
-                      icon: recording ? Icons.stop_rounded : Icons.mic_rounded,
-                      tooltip: recording ? l10n.charactersRecordStop : l10n.charactersRecord,
-                      onPressed: widget.onRecord,
-                    ),
-                  ),
-                  // Hear back what the card was taken from: the surest way
-                  // to tell whether the right character was caught.
-                  ModelActionButton(
-                    key: ValueKey('playClip-${character.id}'),
-                    onDark: false,
-                    action: ModelAction(
-                      icon: widget.playing ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                      tooltip: widget.playing
-                          ? l10n.charactersStopSound
-                          : (widget.onPlay == null
-                                ? l10n.charactersNoClip
-                                : l10n.charactersPlayClip),
-                      // The same button stops it: a recording may run for
-                      // three minutes, and nobody wants to sit through one.
-                      onPressed: widget.playing ? widget.onStopSound : widget.onPlay,
-                    ),
-                  ),
-                  // Not the recording but the dubbing: the Silero voice this
-                  // card will be read in, with its own timbre over it.
-                  ModelActionButton(
-                    key: ValueKey('previewVoice-${character.id}'),
-                    onDark: false,
-                    action: ModelAction(
-                      icon: widget.previewing
-                          ? Icons.stop_rounded
-                          : Icons.record_voice_over_rounded,
-                      tooltip: widget.previewing
-                          ? l10n.charactersStopSound
-                          : (widget.onPreview == null
-                                ? l10n.charactersPreviewNeedsModel
-                                : widget.carriesTimbre
-                                ? l10n.charactersPreviewVoice
-                                : l10n.charactersPreviewPlain),
-                      onPressed: widget.previewing ? widget.onStopSound : widget.onPreview,
-                    ),
-                  ),
-                  ModelActionButton(
-                    onDark: false,
-                    action: ModelAction(
-                      icon: Icons.file_upload_outlined,
-                      tooltip: l10n.charactersExportHint,
-                      onPressed: widget.onExport,
-                    ),
-                  ),
-                  ModelActionButton(
-                    onDark: false,
-                    action: ModelAction(
-                      icon: Icons.delete_outline_rounded,
-                      tooltip: l10n.charactersDelete,
-                      onPressed: widget.onDelete,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            SizedBox(height: 44, child: _actions(l10n)),
           ],
         ),
       ),
     );
   }
+
+  Widget _nameField(AppLocalizations l10n) => TextField(
+    controller: _name,
+    style: const TextStyle(
+      fontFamily: LoreDubFonts.display,
+      fontSize: 17,
+      fontWeight: FontWeight.w700,
+    ),
+    decoration: InputDecoration(labelText: l10n.charactersNameLabel, isDense: true),
+    onEditingComplete: _rename,
+    onTapOutside: (_) => _rename(),
+  );
+
+  /// What the card carries, a line each.
+  ///
+  /// Every line gives way rather than spilling: a card may say what was
+  /// recorded, whose voice reads it and which packs it belongs to at once,
+  /// and a narrow window wraps them.
+  Widget _lines(AppLocalizations l10n) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _line(
+        _voiceLine(l10n),
+        color: widget.recording ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
+        bold: widget.recording,
+        maxLines: 2,
+      ),
+      if (widget.building || widget.built != null)
+        _line(
+          _buildingLine(l10n),
+          top: 6,
+          color: widget.built?.together == false ? LoreDubPalette.error : LoreDubPalette.orange,
+          bold: true,
+          maxLines: 2,
+        ),
+      if (widget.character.voicedBy case final id?)
+        _line(
+          l10n.sceneVoiceReplaced(_nameOf(id, l10n)),
+          top: 6,
+          color: LoreDubPalette.orange,
+          bold: true,
+        ),
+      // A rigid gap rather than a padding inside the line: the lines give
+      // way when the card is short, and the space between them should not.
+      if (widget.packNames.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        _line(l10n.charactersInPacks(widget.packNames.join(', '))),
+      ],
+    ],
+  );
+
+  /// One such line, in the small monospaced type they all share.
+  Widget _line(
+    String text, {
+    double top = 0,
+    Color color = LoreDubPalette.mutedInk,
+    bool bold = false,
+    int maxLines = 1,
+  }) => Flexible(
+    child: Padding(
+      padding: EdgeInsets.only(top: top),
+      child: Text(
+        text,
+        maxLines: maxLines,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: LoreDubFonts.mono,
+          fontSize: 11,
+          color: color,
+          fontWeight: bold ? FontWeight.w600 : null,
+        ),
+      ),
+    ),
+  );
+
+  /// What the card has of a voice: the seconds ticking by while it records,
+  /// or what its recording came to, or that it has none yet.
+  String _voiceLine(AppLocalizations l10n) {
+    if (widget.recording) {
+      return widget.heardSeconds > 0
+          ? l10n.charactersHeard(widget.heardSeconds.toStringAsFixed(1))
+          : l10n.charactersRecording;
+    }
+    if (widget.character.vector.isEmpty) return l10n.charactersNoVoice;
+    return l10n.charactersVoiceKept(
+      widget.character.seconds.toStringAsFixed(1),
+      switch (widget.character.gender) {
+        'male' => l10n.voiceGenderMale,
+        'female' => l10n.voiceGenderFemale,
+        _ => l10n.charactersGenderUnknown,
+      },
+    );
+  }
+
+  Widget _actions(AppLocalizations l10n) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      _action(
+        icon: widget.recording ? Icons.stop_rounded : Icons.mic_rounded,
+        tooltip: widget.recording ? l10n.charactersRecordStop : l10n.charactersRecord,
+        onPressed: widget.onRecord,
+      ),
+      // Hear back what the card was taken from: the surest way to tell
+      // whether the right character was caught. The same button stops it —
+      // a recording may run for three minutes, and nobody wants to sit
+      // through one.
+      _action(
+        key: ValueKey('playClip-${widget.character.id}'),
+        icon: widget.playing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+        tooltip: widget.playing
+            ? l10n.charactersStopSound
+            : widget.onPlay == null
+            ? l10n.charactersNoClip
+            : l10n.charactersPlayClip,
+        onPressed: widget.playing ? widget.onStopSound : widget.onPlay,
+      ),
+      // Not the recording but the dubbing: the Silero voice this card will
+      // be read in, with its own timbre over it.
+      _action(
+        key: ValueKey('previewVoice-${widget.character.id}'),
+        icon: widget.previewing ? Icons.stop_rounded : Icons.record_voice_over_rounded,
+        tooltip: widget.previewing
+            ? l10n.charactersStopSound
+            : widget.onPreview == null
+            ? l10n.charactersPreviewNeedsModel
+            : widget.carriesTimbre
+            ? l10n.charactersPreviewVoice
+            : l10n.charactersPreviewPlain,
+        onPressed: widget.previewing ? widget.onStopSound : widget.onPreview,
+      ),
+      _action(
+        icon: Icons.file_upload_outlined,
+        tooltip: l10n.charactersExportHint,
+        onPressed: widget.onExport,
+      ),
+      _action(
+        icon: Icons.delete_outline_rounded,
+        tooltip: l10n.charactersDelete,
+        onPressed: widget.onDelete,
+      ),
+    ],
+  );
+
+  Widget _action({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback? onPressed,
+    Key? key,
+  }) => ModelActionButton(
+    key: key,
+    onDark: false,
+    action: ModelAction(icon: icon, tooltip: tooltip, onPressed: onPressed),
+  );
 }
 
 /// What the pointer carries while a card is being dragged: its name alone,

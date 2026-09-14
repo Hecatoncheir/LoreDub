@@ -103,38 +103,53 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
     );
     var updates = state.updates;
     try {
-      final version = updates.currentVersion.isNotEmpty
-          ? updates.currentVersion
-          : await _updateRepository.currentVersion();
-      final release = await _updateRepository.latestRelease(proxyUrl: proxyUrl?.call() ?? '');
-      final newer = release != null && isNewerRelease(release.version, version);
-      final installer = newer ? release.installer : null;
-      final installable = installer != null && _updateRepository.canInstall;
-      updates = UpdateState(
-        status: newer ? UpdateStatus.available : UpdateStatus.current,
-        currentVersion: version,
-        release: newer ? release : null,
-        installable: installable,
-        // A setup an earlier run finished downloading goes straight to the
-        // restart rather than asking to be fetched a second time.
-        installerPath: installable ? await _updateRepository.downloadedInstaller(installer) : null,
-      );
-      if (newer && announce) {
-        // The toast is raised outside any widget, so the wording is loaded
-        // for the interface language rather than read from a context.
-        final l10n = await AppLocalizations.delegate.load(
-          Locale(interfaceLanguage?.call() ?? const AppSettings().interfaceLanguage),
-        );
-        await _updateRepository.announce(
-          title: l10n.updateAvailableTitle,
-          body: l10n.updateAvailableBody(release.version),
-        );
+      updates = await _askForTheLatest(updates);
+      // Announced only when it is news: a check the player asked for
+      // themselves is answered on the screen they asked it from.
+      if (announce) {
+        if (updates.release case final release?) await _announce(release);
       }
     } catch (exception) {
       updates = updates.copyWith(status: UpdateStatus.failed, error: exception);
     }
     if (isClosed) return;
     emit(state.copyWith(updates: updates));
+  }
+
+  /// What the repository says the newest release is, against the version
+  /// this build carries. A release that is not newer leaves the state
+  /// saying so and nothing else.
+  Future<UpdateState> _askForTheLatest(UpdateState updates) async {
+    final version = updates.currentVersion.isNotEmpty
+        ? updates.currentVersion
+        : await _updateRepository.currentVersion();
+    final release = await _updateRepository.latestRelease(proxyUrl: proxyUrl?.call() ?? '');
+    final newer = release != null && isNewerRelease(release.version, version);
+    final installer = newer ? release.installer : null;
+    final installable = installer != null && _updateRepository.canInstall;
+    return UpdateState(
+      status: newer ? UpdateStatus.available : UpdateStatus.current,
+      currentVersion: version,
+      release: newer ? release : null,
+      installable: installable,
+      // A setup an earlier run finished downloading goes straight to the
+      // restart rather than asking to be fetched a second time.
+      installerPath: installable ? await _updateRepository.downloadedInstaller(installer) : null,
+    );
+  }
+
+  /// Raises the Windows toast about [release].
+  ///
+  /// It is shown outside any widget, so the wording is loaded for the
+  /// interface language rather than read from a context.
+  Future<void> _announce(AppRelease release) async {
+    final l10n = await AppLocalizations.delegate.load(
+      Locale(interfaceLanguage?.call() ?? const AppSettings().interfaceLanguage),
+    );
+    await _updateRepository.announce(
+      title: l10n.updateAvailableTitle,
+      body: l10n.updateAvailableBody(release.version),
+    );
   }
 
   Future<void> openReleasePage() async {

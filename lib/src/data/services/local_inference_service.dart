@@ -341,30 +341,42 @@ class LocalInferenceService {
     _pending.clear();
   }
 
+  /// One line the worker wrote: its handshake, a step of its startup, or
+  /// the answer to a request somebody is waiting for.
   void _handleWorkerLine(String line) {
     try {
       final message = jsonDecode(line) as Map<String, Object?>;
-      if (message['type'] == 'ready') {
-        _translationDevice = message['device'] as String?;
-        _converterDevice = message['converterDevice'] as String?;
-        if (!(_workerReady?.isCompleted ?? true)) _workerReady!.complete();
-        return;
+      switch (message['type']) {
+        case 'ready':
+          _onWorkerReady(message);
+        case 'progress':
+          onStartupProgress?.call(
+            (message['value']! as num).toDouble(),
+            message['stage'] as String? ?? '',
+          );
+        default:
+          _answerRequest(message);
       }
-      if (message['type'] == 'progress') {
-        onStartupProgress?.call(
-          (message['value']! as num).toDouble(),
-          message['stage'] as String? ?? '',
-        );
-        return;
-      }
-      final id = message['id'] as int?;
-      if (id != null) _pending.remove(id)?.complete(message);
     } catch (error) {
       // Keep the offending line: a reply nobody can parse would otherwise only
       // show up as a request timeout two minutes later.
       _diagnostics.add('unreadable worker reply: $line');
       stderr.writeln('[inference] invalid worker response: $error');
     }
+  }
+
+  /// The worker has loaded its models and says where it put them.
+  void _onWorkerReady(Map<String, Object?> message) {
+    _translationDevice = message['device'] as String?;
+    _converterDevice = message['converterDevice'] as String?;
+    final ready = _workerReady;
+    if (ready != null && !ready.isCompleted) ready.complete();
+  }
+
+  /// Hands a reply to whoever asked for it. A line carrying no request id
+  /// answers nobody and is passed over.
+  void _answerRequest(Map<String, Object?> message) {
+    if (message['id'] case final int id) _pending.remove(id)?.complete(message);
   }
 
   Future<InferenceResult?> processSegment({
