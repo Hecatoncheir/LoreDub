@@ -151,27 +151,34 @@ system-wide while the game is open. A bare letter cannot be bound without Ctrl,
 Alt or Win: Windows hands a registered combination to LoreDub alone, so the key
 would stop reaching the game.
 
-### Snippet
+### Screen
 
 <p align="center">
-  <img src="docs/screenshots/snapshot-en.png" width="900" alt="The Snippet screen: the selected pieces of text with their translations">
+  <img src="docs/screenshots/snapshot-en.png" width="900" alt="The Screen page: the subtitle frame, the subtitles read out of it and the selected snippets">
 </p>
 
-One-off translation of text on screen — notes, hints, menu lines, anything
-the game does not say aloud. Press **Start**: only the translator and the
-voice are loaded, with no speech recognition and no process to pick. Then,
-in the game, hold the snapshot key (Ctrl+Alt+S by default) — the screen dims
-a little — draw a frame around the text with the mouse and let go of the key.
-The frame disappears, Windows OCR reads the text inside it, and it is
-translated and voiced; the tab shows the original with its translation. Esc
-or the right mouse button cancels the selection.
+Everything the game writes rather than says. One session does both: it reads
+the **subtitles** out of the frame while it runs, and translates the
+**snippets** you pick out with the key. Speech recognition takes no part
+here — only the translator and the voice are loaded — so it is ready in
+seconds. The two lists are kept apart: what the frame gained on the left,
+what was selected by hand on the right.
 
-The key works during **Live** too, on the models already loaded; starting
-**Live** while the snapshot session runs stops that session first. The
-combination is changed in **Settings** → **Hotkeys**. The tab's **Text
-language** is English (translated) or the dubbing language (voiced
-untranslated). The frame is drawn over other windows, so the game has to run
-windowed or borderless: a game in exclusive fullscreen would minimize.
+Choose the game process — its window is what is read — adjust the frame if
+you need to, and press **Start**. The frame and its setup are described under
+[subtitle mode](#subtitle-mode).
+
+A snippet is picked out like this: in the game, hold the snapshot key
+(Ctrl+Alt+S by default) — the screen dims a little — draw a frame around the
+text with the mouse and let go of the key. The frame disappears, Windows OCR
+reads the text inside it, and it is translated and voiced. Esc or the right
+mouse button cancels the selection. The key works during **Live** too, on the
+models already loaded; starting **Live** while the screen is being read stops
+that session first. The combination is changed in **Settings** → **Hotkeys**.
+**Text language** is English (translated) or the dubbing language (voiced
+untranslated). The selection frame is drawn over other windows, so the game
+has to run windowed or borderless: a game in exclusive fullscreen would
+minimize.
 
 ### Characters
 
@@ -282,12 +289,11 @@ links. Empty space drags the canvas, the wheel zooms, and the scheme is fitted
 into the window the first time it is opened.
 
 A link is the setting. Drag **Audio** out of the original stream into
-**Whisper** and the pipeline dubs from sound; drag **Screen text** straight
-into **Translation** and it reads the subtitles instead, which leaves Whisper
-marked as bypassed but still in place, so one link brings the route back. A
-route the engine has no answer for cannot be drawn: the link is not made, and
-a line under the toolbar says why. Two ready arrangements — **Game speech**
-and **On-screen subtitles** — set the route and lay the nodes out again.
+**Whisper** and the pipeline dubs from sound; cut that link and every stage
+stands with nothing coming into it until it is drawn back. A route the engine
+has no answer for cannot be drawn: the link is not made, and a line under the
+toolbar says why. Reading the screen is not on this canvas at all — it is the
+**Screen** page's own session.
 
 A node is moved with the mouse, and several of them together. A click with
 **Shift** adds a node to what is already chosen and takes it back out;
@@ -414,9 +420,8 @@ starting over.
   <img src="docs/screenshots/settings-en.png" width="900" alt="The Settings screen">
 </p>
 
-The settings come in four groups. **Language and source** holds the interface
-language (Russian or English, applied immediately), the text source (audio or
-subtitles) and the subtitle frame. **Dubbing** holds how far the original is
+The settings come in four groups. **Interface** holds the interface
+language (Russian or English, applied immediately). **Dubbing** holds how far the original is
 turned down while dubbing, the speech rate and the voice. **Hotkeys and
 compute** holds the hotkeys, the CPU threads and the compute device. The
 fourth, **Advanced**, is folded away until its heading is pressed: the Python
@@ -435,11 +440,10 @@ set, and from the third each adds a tenth, to no more than half again. When it
 is recognition that is behind rather than the voice, the pace is left alone —
 the queue there is not held by the voice.
 
-The original's volume does not go below 10% in audio mode. Windows takes the
-capture after the session volume, so turning the game down turns down what
-LoreDub itself hears: at zero it would hear no line at all. Subtitle mode
-offers the zero — nothing is captured there, and the game may be silenced
-outright.
+The original's volume does not go below 10%. Windows takes the capture after
+the session volume, so turning the game down turns down what LoreDub itself
+hears: at zero it would hear no line at all. The **Screen** page has no ear in
+the game, so it offers **Silence the game** instead, which takes it to zero.
 
 ### Graphics card
 
@@ -513,9 +517,8 @@ and its median fundamental taken.
 | Spanish | es_0, es_1, es_2 | — | no |
 | Ukrainian | mykyta | — | no |
 
-Automatic is unavailable where a package ships voices of one gender only, and
-in subtitle mode, which never hears the original. Both say so in Settings and
-fall back to the chosen voice.
+Automatic is unavailable where a package ships voices of one gender only. It
+says so in Settings and falls back to the chosen voice.
 
 **Original voice** goes further: the timbre is taken from the same captured
 line and moved onto the Silero voice by the
@@ -525,8 +528,7 @@ converter less to move; where the package cannot follow the speaker's gender,
 the chosen voice is the base. A line with no voice in it — music, noise, a short
 grunt — keeps the previous timbre. It needs the converter (131 MB) from the
 Original voice section of the **Models** screen, and on the processor it adds
-about 0.9 s a line. Subtitle mode cannot offer it for the same reason:
-there is no original to hear.
+about 0.9 s a line.
 
 Where the converter runs is chosen apart from translation, in the
 **OpenVoice** row of the Device section, which appears with the mode. On an
@@ -573,7 +575,7 @@ differently by mode:
   bank on, this session's fingerprints without it);
 - Automatic: by the character when the voice bank is on; without it by the
   Silero voice, which separates men from women and nothing more;
-- Choose and subtitle mode have one voice, so lines play strictly in turn.
+- Choose has one voice, so lines play strictly in turn.
 
 A short line nobody could be matched to plays on its own.
 
@@ -705,33 +707,31 @@ off the screen. Windows OCR recognizes the text inside a chosen area of the
 game window, and each line goes straight to the translator and the speech
 synthesizer — this mode needs neither Whisper nor a recognition model.
 
-The text language is chosen on **Live** in place of **Detect language**:
-English is translated, while text in the dubbing language — Russian subtitles
-dubbed into Russian, say — is voiced as it is, untranslated.
+All of it lives on the **Screen** page, apart from **Live**, which dubs the
+sound. **Text language** is there: English is translated, while text in the
+dubbing language — Russian subtitles dubbed into Russian, say — is voiced as
+it is, untranslated.
 
 ### Setting it up
 
-**1. Turn the mode on.** **Settings → Text source → On-screen subtitles.**
+**1. Open Screen and choose the game.** Its window is what gets read.
 
-**2. Frame the place where the game prints its subtitles.** A **Subtitle area**
-card appears below the switch, with a scaled-down screen shaped like your
+**2. Frame the place where the game prints its subtitles.** The **SUBTITLE
+FRAME** card beside the controls holds a scaled-down screen shaped like your
 monitor that stands for the game window. Drag across it to draw a frame, then
 move it and pull its corners and sides. From the keyboard, the arrows move the
 frame and Shift with the arrows resizes it. **Reset** puts back the default,
 the bottom 45% of the window.
 
-<p align="center">
-  <img src="docs/screenshots/ocr-settings-en.png" width="900" alt="Settings: the On-screen subtitles mode and a frame on the scaled-down monitor">
-</p>
-
 The frame is kept as a share of the game window rather than in pixels, so it
 survives a change of resolution. The line under the screen gives its size and
-offsets in percent.
+offsets in percent. **Silence the game** turns the game's own sound off while
+the screen is read: nothing here listens to it, and it keeps the game from
+speaking a line at the same moment as the dubbing.
 
-**3. Start dubbing.** On **Live**, choose the game process, press **Start
-dubbing** and switch to the game. Text is read only while the game is the
-foreground window, so neither LoreDub nor a browser over the game can pass for
-subtitles.
+**3. Start reading.** Press **Start** and switch to the game. Text is read
+only while the game is the foreground window, so neither LoreDub nor a browser
+over the game can pass for subtitles.
 
 <p align="center">
   <img src="docs/screenshots/ocr-game.png" width="900" alt="The game window: only the text inside the frame is read, the objective in the corner stays outside it">
@@ -740,7 +740,7 @@ subtitles.
 <p align="center"><i>What OCR sees: everything outside the frame is dimmed. The line at the bottom is translated, the objective in the corner is not.</i></p>
 
 <p align="center">
-  <img src="docs/screenshots/ocr-live-en.png" width="900" alt="Live: lines read off the screen, translated and voiced">
+  <img src="docs/screenshots/ocr-live-en.png" width="900" alt="Screen: lines read off the screen, translated and voiced">
 </p>
 
 <p align="center"><i>A real run over the test window: each line read off the screen, translated and voiced in under a second — there is no speech recognition to wait for. None of the objectives from the corner reached the transcript.</i></p>

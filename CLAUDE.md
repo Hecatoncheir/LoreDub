@@ -140,11 +140,12 @@ rather than the slider's, because Windows takes the process-loopback tap
 down turns the capture down with it. Measured against a tone of raw peak
 2614, half volume gave 1308, 18% gave 472, and zero gave nothing at all — not
 one segment in eight seconds. `duckedVolume` therefore holds `originalVolume`
-to `audibleDuck` (0.1) wherever the game's own sound is what the pipeline
-listens to, and lets subtitle mode silence it outright, having no ear in it;
-both volume sliders — the settings screen and the output node — read
-`quietestDuck`/`loudestDuck`/`duckDivisions`, so a number set on one can be
-set again on the other. The pace sliders pair the same way over
+to `audibleDuck` (0.1), the game's own sound being what the pipeline listens
+to; both volume sliders — the settings screen and the output node — read
+`audibleDuck`/`loudestDuck`/`duckDivisions`, so a number set on one can be
+set again on the other. The screen session has no ear in the game, so it
+offers `AppSettings.silenceWhileReading` instead — one switch on its own page
+— and starts with `silentDuckedVolume`, which is that same number or zero. The pace sliders pair the same way over
 `slowestSpeech`/`fastestSpeech`/`speechDivisions`, with `chosenSpeed` holding
 a stored value inside them. `AppSettings.duckWhileSpeaking` replaces the
 session-long duck with one that lasts a line: `PlaybackScheduler.onSpeaking`
@@ -176,7 +177,7 @@ the voice at all, and hurrying for them would rush a dubbing that is late for
 another reason.
 
 The six screens are listed in the order the work is done in — Эфир,
-Фрагмент, Персонажи, Схема, Модели, Настройки — which is the order of
+Экран, Персонажи, Схема, Модели, Настройки — which is the order of
 `DashboardSection` itself: the compact navigation indexes into
 `DashboardSection.values`, and the header numbers each screen by it.
 
@@ -186,12 +187,13 @@ nodes and is the second way to the same settings, not a second set of them.
 `AppSettings`, the cast and a `PipelineLayout`, so the canvas is rebuilt
 whenever either changes and can never drift from them; every edit goes the
 other way through `proposeConnection`/`proposeDisconnect`, which answer with
-what the link would change (`RouteConnection` -> `captureMode`,
+what the link would change (`RouteConnection` -> `AppSettings.captureRouted`,
 `ReaderConnection` -> `Character.voicedBy`) or why it is refused. Cutting the
-way in answers `RouteConnection(null)`: `AppSettings.captureRouted` goes
-false, the mode is remembered for whichever link is drawn back, every stage
-is `unrouted` — faded, labelled, still in its place — and `canStart` refuses
-until it is joined again. Cutting any of the lines into the mix's `mixCast`
+way in answers `RouteConnection(false)`: every stage is `unrouted` — faded,
+labelled, still in its place — and `canStart` refuses until it is joined
+again. There is one route on the canvas, the game's sound through whisper,
+because it is the only one this engine starts from here: reading the screen
+is the Screen page's own session and is not drawn at all. Cutting any of the lines into the mix's `mixCast`
 answers `CastConnection(false)` and takes the player's whole cast out the
 same way: the cards stay where they were put, drawn dark, who stands in for
 whom waits in them, and the worker is started with `--as-heard`, which makes
@@ -220,19 +222,18 @@ game speaks it, when a part arrives at it, or when somebody reads it
 at one size on the screen (`NodeMetrics.grabReach` divided by the zoom, no
 taller than a row): a scheme fitted into a small window draws dots six pixels
 across, which nothing can take hold of. The six
-stage nodes and the character cards carry typed sockets, and only the two
-routes the engine runs can be drawn: game audio through whisper, or screen
-text straight into the translator, which leaves the recognition node
-`bypassed` rather than gone. The mix node is `PlaybackScheduler`: the voice's
+stage nodes and the character cards carry typed sockets, and the one route
+the engine runs can be drawn: game audio into whisper. The mix node is
+`PlaybackScheduler`: the voice's
 audio and every card's voice enter it, and what it puts in order leaves for
 the output, which is why a character on the canvas is joined to the path at
 both ends rather than hanging off it. `PipelineGraphBloc` applies the answer through
 `SettingsCubit` and `CharactersCubit` — so a route change is locked while a
 session runs, while a substitution is not, the running worker being told of
 it rather than restarted — and keeps an undo history of layout,
-capture mode and readers. Schemes the player keeps are a shelf beside that arrangement:
+route and readers. Schemes the player keeps are a shelf beside that arrangement:
 `SavedPipeline` (`domain/saved_pipeline.dart`) holds the route
-(`captureMode`, `captureRouted`, `castRouted`), the `PipelineLayout` and the
+(`captureRouted`, `castRouted`), the `PipelineLayout` and the
 substitutions among the cards drawn, written to `<app support>/pipelines.json`
 by `PipelineLibraryService` and exported and imported as the same shape.
 Choosing one puts it back through the calls an edit makes — `SettingsCubit`
@@ -263,11 +264,16 @@ place for card sizes and socket anchors, which the curves, the dots and the
 hit-testing all read) and fits the scheme into the window the first time it
 is drawn; `pipeline_inspector.dart` is the panel that floats over it.
 
-The Snippet screen ("Фрагмент", `DashboardSection.snapshot`) runs a second kind of
-session, `PipelineSession.snapshot`: `AppRepository.startSnapshot` ->
-`NativeEngineService.startSnapshot` loads the worker with Marian and Silero
-only (no whisper, no `ld_start`) and registers just the snapshot key through
-`ld_set_hotkeys`; live dubbing registers it as well. The key is held, not
+The Screen screen ("Экран", `DashboardSection.snapshot`) runs the second kind of
+session, `PipelineSession.screen`: `AppRepository.startScreenText` ->
+`NativeEngineService.startScreenText` loads the worker with Marian and Silero
+only (no whisper) and then calls `ld_start` with `captureMode: 'ocr'`, which
+starts `OcrCapture` over the game's window and no audio capture at all. One
+session therefore answers for both halves of that screen — what the subtitle
+frame gains, which arrives as `ocrText`, and what the player picks out with
+the snapshot key, registered through `ld_set_hotkeys`; live dubbing registers
+the key as well. Because the frame is read out of one window, this session
+needs a process chosen, which `canStartScreen` checks. The key is held, not
 pressed: on its WM_HOTKEY the hotkey thread runs `SelectScreenArea`
 (`native/snapshot_overlay.cpp`) — a dimming layered window over the virtual
 screen, a click-through orange frame above it, a nested message loop, and
@@ -277,10 +283,13 @@ events are `snapshotReading`, then `snapshot` with the text (`failed` when
 OCR could not run). The text is queued as `PendingPhrase.text(snapshot:
 true)`, its `transcript` event carries `snapshot: true` and lands in
 `LivePipelineState.snapshots` rather than the transcript, and it is voiced
-even while a live session is paused. Starting live dubbing over a running
-snapshot session stops that session first, since its worker has no whisper.
+even while a live session is paused. Subtitle lines carry no such flag and go
+to `LivePipelineState.transcript`, which the screen draws beside the
+snapshots and which `toggleScreenText` clears at the start, a transcript
+belonging to one session. Starting live dubbing over a running screen session
+stops it first, since its worker has no whisper.
 
-Text read off the screen — subtitle mode and snippets — is in
+Text read off the screen — the subtitle frame and the snippets — is in
 `AppSettings.textLanguage`: English, or the dubbing language itself when the
 original is named as that (Marian only reads English, and Windows OCR detects
 nothing). It reaches the native side as `ocrLanguage` (ld_start) and
@@ -290,7 +299,7 @@ recognizer by primary subtag, and a missing one comes back as an
 `targetLanguage`, `processText` sends `"translate": false` and the worker
 voices the text as it is.
 
-Subtitle mode voices only what a line gained: `NativeEngineService` keeps the
+Subtitle reading voices only what a line gained: `NativeEngineService` keeps the
 last `ocrText` and passes each new one through `freshOcrText`
 (`domain/ocr_text_delta.dart`), which compares the two texts whole — the
 longest common word subsequence, case and punctuation ignored. When more than
@@ -345,8 +354,7 @@ also handed the OpenVoice V2 converter directory (`--voice-converter`, a
 its captured WAV. The network lives in `assets/runtime/tone_converter.py`, a
 torch-and-numpy-only port of the MIT converter that the worker imports from
 its own directory; its weights load with `weights_only=True`. A phrase with no
-voiced frames keeps the previous timbre, and subtitle mode has no audio, so
-`ModelSelection.clonesVoice` is false there. The converter is its own
+voiced frames keeps the previous timbre. The converter is its own
 `ComputeStage.voiceConversion` (`--converter-device`), sharing the `torch-cuda`
 runtime with translation; the worker brings that runtime in when either stage
 asks for CUDA and reports both devices in its `ready` line. With

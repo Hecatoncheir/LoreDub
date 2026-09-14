@@ -44,19 +44,28 @@ radius.
    screen it is done on, so a disabled start button never has to be guessed
    at. It is drawn from `stepsBeforeStart`, which reads the same
    `ModelSelection` the button's own `canStart` does.
-2. **Signal path** is the same pipeline drawn as nodes on a dotted field: the
+2. **Screen text** is the other half of the work, on a page of its own: the
+   frame the subtitles are read out of, drawn on a picture of the game's
+   window, beside the controls that start the session -- and under them two
+   lists, what the frame gained and what the player picked out by hand. One
+   session answers both, so the frame belongs here rather than in the
+   settings: it is part of the work this page does, and nothing else reads
+   it.
+3. **Signal path** is the same pipeline drawn as nodes on a dotted field: the
    six stages as cards in the model tiles' vocabulary, the route between
    them in orange, and the cards of the cast joined to it by dashed graphite:
    each of them takes a voice from the pipeline or from another card, and
    sends the lines read in it on to the mix, so a character is part of the
    path rather than an island beside it. A socket is hollow until something is
    attached and rings orange while a link that would land on it is being
-   pulled; a stage the route goes past keeps its card, dimmed and marked. The
+   pulled; with the way in cut, every stage keeps its card, dimmed and
+   marked. There is one route on this canvas — the game's sound through
+   whisper — because there is one the engine runs from here. The
    canvas carries no settings of its own — a node's own panel floats over it
    and writes into the same places the other screens do — and the panel is
    floated rather than docked so opening it never moves the scheme out from
    under the pointer that opened it.
-3. **Model bank** shows installation state, download progress, and recovery
+4. **Model bank** shows installation state, download progress, and recovery
    errors without mixing them into the live controls. The Whisper builds are a
    size-against-quality chart (`whisper_model_chart.dart`): bar height is the
    download to scale, and a bar is light when missing, ticked when downloaded,
@@ -71,14 +80,15 @@ radius.
    `model_visuals.dart`. The Compute device card in Settings uses the same
    states for its stage-by-device table and GPU package tiles
    (`compute_matrix.dart`).
-4. **Signal setup** is four named groups, announced by the same numbered
-   module label the other screens mark their areas with: language and source
-   (interface language, capture mode, OCR region), dubbing (original volume,
-   speech speed, voice), hotkeys and compute (hotkeys, CPU budget, compute
-   device), and a fourth folded away behind its heading — the Python path,
-   the download proxy and the model directory, which are changed when
-   something is broken rather than while playing. Settings are disabled while
-   the pipeline is active.
+5. **Signal setup** is four named groups, announced by the same numbered
+   module label the other screens mark their areas with: the interface
+   (language), dubbing (original volume, speech speed, voice), hotkeys and
+   compute (hotkeys, CPU budget, compute device), and a fourth folded away
+   behind its heading — the Python path, the download proxy and the model
+   directory, which are changed when something is broken rather than while
+   playing. What the pipeline reads is not among them: Live dubs the game's
+   sound and the Screen page reads the screen, and each carries the controls
+   for its own work. Settings are disabled while the pipeline is active.
 
 ## Interaction rules
 
