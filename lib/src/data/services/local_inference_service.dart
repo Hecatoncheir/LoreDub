@@ -212,6 +212,10 @@ class LocalInferenceService {
     /// game rather than one.
     String? characters,
 
+    /// Read every voice as itself: the cast is out of the mix on the graph,
+    /// so who stands in for whom waits in the cards without being applied.
+    bool asHeard = false,
+
     /// Whose voice reads whom in this game, as the player assigned it.
   }) async {
     // A worker left over from a session that was not stopped would go on
@@ -289,6 +293,7 @@ class LocalInferenceService {
           if (revoice) '--revoice',
           if (voiceBank != null) ...['--voice-bank', voiceBank],
           if (characters != null) ...['--characters', characters],
+          if (asHeard) '--as-heard',
         ],
       ],
       environment: const {'PYTHONIOENCODING': 'utf-8'},
@@ -573,6 +578,35 @@ class LocalInferenceService {
       speaker: response['speaker'] as String?,
       seconds: (response['seconds'] as num?)?.toDouble() ?? 0,
     );
+  }
+
+  /// Reads every voice as itself from now on, or lets the cast stand in
+  /// again: the branch from the cast into the mix, cut or drawn on the graph
+  /// while the session runs.
+  ///
+  /// The cards keep who stands in for whom either way; this is only whether
+  /// any of it is applied.
+  Future<void> readAsHeard(bool value) async {
+    final worker = _worker;
+    if (worker == null) return;
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(jsonEncode({'id': id, 'asHeard': value}));
+    final response = await completer.future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
   }
 
   /// Reads [character] in [target]'s voice wherever they are recognized, as

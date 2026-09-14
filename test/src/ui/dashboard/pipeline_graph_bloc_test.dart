@@ -724,6 +724,7 @@ void main() {
     test('the cast comes out of the mix, and goes back in', () async {
       const intoTheMix = PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast);
       await drawLink(voiceOf('guard'), readBy('smith'));
+      repository.heard.clear();
 
       graph.add(
         PipelineLinkCut(
@@ -733,6 +734,11 @@ void main() {
       await pumpEvents();
 
       expect(cubits.settings.settings.castRouted, isFalse);
+      expect(
+        repository.heard,
+        [true],
+        reason: 'the session keeps its cast loaded, so it is told to read every voice as itself',
+      );
       expect(graph.state.refusal, isNull, reason: 'the cast is not locked with the route');
       // The cards stay where they were put, dark, and who stands in for whom
       // waits in them for the link to come back.
@@ -746,6 +752,7 @@ void main() {
       await drawLink(voiceOf('smith'), intoTheMix);
 
       expect(cubits.settings.settings.castRouted, isTrue);
+      expect(repository.heard, [true, false], reason: 'and told again when it is joined back');
       expect(graph.state.graph.linkInto(readBy('smith'))?.from, voiceOf('guard'));
     });
 
@@ -823,6 +830,13 @@ class _GraphRepository extends AppRepository {
 
   /// What a running worker was told to read anew, without a restart.
   final told = <(String, String?)>[];
+
+  @override
+  Future<void> readAsHeard(bool value) async => heard.add(value);
+
+  /// Every time a running worker was told the cast had left the mix, or
+  /// joined it again.
+  final heard = <bool>[];
 
   @override
   Future<void> stop() async {}

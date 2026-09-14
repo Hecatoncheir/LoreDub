@@ -247,6 +247,20 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
   }
 
+  /// Takes the whole cast out of the mix, or puts it back: the branch from
+  /// the cards into the mix, cut or drawn on the graph.
+  ///
+  /// Nothing of the cards changes — who stands in for whom waits in them —
+  /// so there is nothing to write; only a session already running has to be
+  /// told, or it would go on reading the cast until the next start.
+  Future<void> readAsHeard(bool value) async {
+    try {
+      await _appRepository.readAsHeard(value);
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
   Future<void> remove(String id) async {
     if (state.recordingId == id) await stopRecording();
     await _dropClip(id);

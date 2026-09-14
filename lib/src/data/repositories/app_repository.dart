@@ -156,9 +156,11 @@ class AppRepository {
         'voiceConversionBackend': voiceConversionBackend.name,
         'runtimeDirectory': runtimeDirectory,
         'voiceBank': ?voiceBank,
-        // Whose voice reads whom in this game, as the player assigned it.
-        // The player's own characters speak in every game.
+        // The player's own characters, who speak in every game.
         'characters': await _characters.file(),
+        // The cast is out of the mix on the graph: the cards keep who stands
+        // in for whom, and none of it is applied.
+        'asHeard': !settings.castRouted,
       });
       await _duck(process, settings);
       _sessionProcess = process;
@@ -336,12 +338,18 @@ class AppRepository {
         'runtimeDirectory': runtimeDirectory,
         'voiceBank': ?voiceBank,
         'characters': await _characters.file(),
+        'asHeard': !settings.castRouted,
       });
     } catch (_) {
       await _nativeEngine.stop();
       rethrow;
     }
   }
+
+  /// Tells a running session that the cast has been taken out of the mix on
+  /// the graph, or joined back to it: out of it every voice is read as
+  /// itself, and the cards keep who stands in for whom meanwhile.
+  Future<void> readAsHeard(bool value) => _nativeEngine.readAsHeard(value);
 
   /// Tells a running session that [character] is read in [target]'s voice
   /// from the next line on, as their card now says.

@@ -312,7 +312,9 @@ device. Whether lines may overlap is set there too — no more than two voices
 sound together, and one character never talks over themselves. Cutting its
 **Characters** input takes the whole cast out of the mix: the cards stay on
 the canvas but go dark, and every character is read in their own voice again —
-who stands in for whom waits in the cards and comes back with the link.
+who stands in for whom waits in the cards and comes back with the link. It
+takes hold at once, even mid-session or under a pause: the running worker is
+told rather than restarted.
 
 The person button puts a character card on the canvas. A card has three
 sockets: **Character** coming in, an optional **Voice** coming in, and

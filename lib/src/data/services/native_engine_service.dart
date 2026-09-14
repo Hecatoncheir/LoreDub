@@ -144,6 +144,7 @@ class NativeEngineService {
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
       voiceBank: config['voiceBank'] as String?,
       characters: config['characters'] as String?,
+      asHeard: config['asHeard'] as bool? ?? false,
     );
     // What the worker settled on, which is not always what it was asked for.
     if (_inference.translationBackend case final actual?) {
@@ -401,6 +402,7 @@ class NativeEngineService {
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
       voiceBank: config['voiceBank'] as String?,
       characters: config['characters'] as String?,
+      asHeard: config['asHeard'] as bool? ?? false,
     );
     final work = await LocalInferenceService.createWorkDirectory();
     final capture = Directory('${work.path}${Platform.pathSeparator}capture');
@@ -483,6 +485,14 @@ class NativeEngineService {
   /// read the cast when it started.
   Future<void> voiceCharacterAs(String character, String? target) =>
       _inference.voiceCharacterAs(character, target);
+
+  /// Tells a running session that the cast is out of the mix, or back in it.
+  /// The config the session started with is kept in step, so what the canvas
+  /// says now is what a restart of it would be given.
+  Future<void> readAsHeard(bool value) async {
+    _activeConfig?['asHeard'] = value;
+    await _inference.readAsHeard(value);
+  }
 
   Future<void> stop() async {
     // A take left open belongs to a session that is ending.

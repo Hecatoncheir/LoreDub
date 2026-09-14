@@ -622,10 +622,14 @@ def main():
     # the fingerprint kept for them instead of the one of the current line.
     parser.add_argument("--voice-bank", default="")
     # Read every character as themselves: the player has taken the cast out
-    # of the mix on the graph. Who stands in for whom is still in the cards
-    # and in the map; none of it is applied while the branch is dark.
+    # of the mix on the graph. Who stands in for whom is still in the cards;
+    # none of it is applied while the branch is dark.
     parser.add_argument("--as-heard", action="store_true")
     args = parser.parse_args()
+
+    # Not a constant: the cast may be cut from the mix and joined back to it
+    # while the session runs, and the worker is told rather than restarted.
+    as_heard = args.as_heard
 
     speed = min(2.0, max(0.5, args.speed))
 
@@ -752,7 +756,7 @@ def main():
         rather than gaining the character it is read in.
         """
         # The cast is out of the mix: everybody speaks for themselves.
-        if args.as_heard:
+        if as_heard:
             return kind, index
         target = cast.voiced_by(index) if kind == "character" and index is not None else None
         if target is None:
@@ -918,6 +922,14 @@ def main():
                 )
                 reply({"id": request_id, "voiced": True})
                 continue
+            # The cast taken out of the mix on the graph, or joined back to
+            # it. The cards keep who stands in for whom either way; this is
+            # only whether any of it is applied.
+            heard_as_itself = request.get("asHeard")
+            if heard_as_itself is not None:
+                as_heard = bool(heard_as_itself)
+                reply({"id": request_id, "asHeard": as_heard})
+                continue
             # Who is speaking, and nothing else. Live asks this before the
             # dubbing itself runs, so the player can hand out the voices of
             # a scene while only the converter is loaded.
@@ -927,11 +939,11 @@ def main():
                     raise RuntimeError("the voice converter is not loaded")
                 kind, index, _ = identify({"wave": heard_line})
                 answer = {"id": request_id, "speaker": speaker_key(kind, index)}
-                if kind == "character" and index is not None:
-                    # The card the graph gave this one away to, if it did.
-                    target = cast.voiced_by(index)
-                    if target is not None and cast.index_of(target) is not None:
-                        answer["readAs"] = f"character:{target}"
+                # The card the graph gave this one away to, if it did and if
+                # the cast is in the mix at all.
+                read_kind, read_index = read_as(kind, index)
+                if (read_kind, read_index) != (kind, index):
+                    answer["readAs"] = speaker_key(read_kind, read_index)
                 try:
                     samples, rate = read_wave_mono(heard_line)
                     answer["seconds"] = round(len(samples) / rate, 2) if rate else 0

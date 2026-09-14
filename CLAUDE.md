@@ -198,7 +198,12 @@ whom waits in them, and the worker is started with `--as-heard`, which makes
 `read_as` hand back the speaker it was given. Unlike the route it is not
 locked while a session runs — a paused session keeps its cast loaded, so
 this is the one branch the canvas may rewire mid-session, and the running
-worker is told rather than restarted. A card may be drawn more than once
+worker is told rather than restarted: `_routeCast` writes `castRouted` and
+then `CharactersCubit.readAsHeard` sends `{"asHeard": ...}`, which rebinds the
+worker's own `as_heard` (not `args.as_heard`, which only seeds it). The flag
+is a session's, so `AppRepository.start`/`startSceneVoices` put
+`'asHeard': !settings.castRouted` in the config, and
+`NativeEngineService.readAsHeard` keeps `_activeConfig` in step with it. A card may be drawn more than once
 (`CastPlacement`, `PipelineLayout.cast`): the node id of the first copy is
 `character:<id>` — the name an arrangement written before copies already
 files its position under — and later ones carry `#2`, `#3`, which
