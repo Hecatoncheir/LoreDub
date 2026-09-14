@@ -891,3 +891,9 @@ scripts/                     Windows runtime and packaging scripts
 
 Project-owned code is MIT licensed. Downloaded runtime and model artifacts keep
 their upstream licenses and are not stored in this repository.
+
+## Sponsors
+
+LoreDub is free and stays that way. The project is supported by:
+
+- **Artem Emeliashin**
