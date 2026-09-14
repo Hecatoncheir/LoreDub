@@ -1952,6 +1952,44 @@ class _ModuleLabel extends StatelessWidget {
   );
 }
 
+/// A group's heading that also opens and closes it, as the schemes shelf
+/// does: the whole row is the handle, there being nothing else on that line
+/// to hit by mistake, and it is given a full touch target rather than the
+/// label's own height.
+class _FoldedHeading extends StatelessWidget {
+  const _FoldedHeading({
+    required this.number,
+    required this.label,
+    required this.open,
+    required this.onTap,
+  });
+
+  final String number;
+  final String label;
+  final bool open;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(6),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          _ModuleLabel(number: number, label: label),
+          const Spacer(),
+          Icon(
+            open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+            size: 20,
+            color: LoreDubPalette.mutedInk,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// One recognized phrase, shaped like the speech bubble on the application
 /// icon: the text on the dark signal surface, and the time it took beside the
 /// tail on the orange accent.
@@ -3357,6 +3395,12 @@ class _SettingsPanel extends StatefulWidget {
 }
 
 class _SettingsPanelState extends State<_SettingsPanel> {
+  /// Whether the last group is unfolded. Python, the proxy and the model
+  /// directory are maintenance rather than dubbing -- they are changed when
+  /// something is broken, not while playing -- and open they made the screen
+  /// a third longer than the settings a player actually came for.
+  bool _advancedOpen = false;
+
   final _proxyFormKey = GlobalKey<FormState>();
   final _pythonFormKey = GlobalKey<FormState>();
   late final TextEditingController _proxyController;
@@ -3463,9 +3507,16 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         const SizedBox(height: 12),
         ..._howItIsDriven(context, l10n, state, running: running),
         const SizedBox(height: _settingsGroupGap),
-        _ModuleLabel(number: '04', label: l10n.settingsGroupAdvanced),
-        const SizedBox(height: 12),
-        ..._whereThingsLive(context, l10n, state, running: running),
+        _FoldedHeading(
+          number: '04',
+          label: l10n.settingsGroupAdvanced,
+          open: _advancedOpen,
+          onTap: () => setState(() => _advancedOpen = !_advancedOpen),
+        ),
+        if (_advancedOpen) ...[
+          const SizedBox(height: 12),
+          ..._whereThingsLive(context, l10n, state, running: running),
+        ],
       ],
     );
   }

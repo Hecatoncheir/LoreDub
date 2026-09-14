@@ -797,9 +797,35 @@ void main() {
     expect(find.text('Start dubbing'), findsOneWidget);
   });
 
+  testWidgets('keeps the maintenance settings folded until they are asked for', (tester) async {
+    await pumpLoreDub(tester, const Size(1280, 900));
+    await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
+
+    final advanced = find.text('ДОПОЛНИТЕЛЬНО');
+    await tester.scrollUntilVisible(advanced, 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Каталог моделей'), findsNothing);
+
+    await tester.tap(advanced);
+    await tester.pumpAndSettle();
+    final directory = find.text('Каталог моделей');
+    await tester.scrollUntilVisible(directory, 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(directory, findsOneWidget);
+  });
+
   testWidgets('saves a model download proxy from settings', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 900));
     await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
+
+    // Python, the proxy and the model directory are folded away until the
+    // heading of their group is pressed.
+    final advanced = find.text('ДОПОЛНИТЕЛЬНО');
+    await tester.scrollUntilVisible(advanced, 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await tester.tap(advanced);
     await tester.pumpAndSettle();
 
     final proxyField = find.widgetWithText(
