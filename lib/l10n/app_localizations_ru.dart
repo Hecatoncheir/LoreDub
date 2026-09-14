@@ -1447,6 +1447,76 @@ class AppLocalizationsRu extends AppLocalizations {
       'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст. Shift с нажатием выбирает несколько нод, Ctrl с протяжкой — область; выбранные ноды двигаются вместе.';
 
   @override
+  String failurePipelinesSaveFailed(String detail) {
+    return 'Не удалось сохранить схемы: $detail';
+  }
+
+  @override
+  String failurePipelinesExportFailed(String detail) {
+    return 'Не удалось выгрузить схему: $detail';
+  }
+
+  @override
+  String failurePipelinesImportFailed(String detail) {
+    return 'В файле «$detail» нет схемы LoreDub.';
+  }
+
+  @override
+  String get pipelineSchemes => 'Сохранённые схемы';
+
+  @override
+  String get pipelineSaveScheme => 'Сохранить схему';
+
+  @override
+  String get pipelineSchemeName => 'Название схемы';
+
+  @override
+  String get pipelineSchemeNew => 'Новая схема';
+
+  @override
+  String get pipelineSchemesEmpty =>
+      'Сохранённых схем пока нет. «Сохранить схему» запомнит нынешнюю — маршрут, расположение нод и расстановку персонажей, — чтобы к ней можно было вернуться.';
+
+  @override
+  String get pipelineSchemeApply => 'Загрузить схему';
+
+  @override
+  String get pipelineSchemeExport => 'Выгрузить схему в файл';
+
+  @override
+  String get pipelineSchemeImport => 'Загрузить схему из файла';
+
+  @override
+  String get pipelineSchemeDelete => 'Удалить схему';
+
+  @override
+  String get pipelineSchemeRename => 'Переименовать';
+
+  @override
+  String get pipelineSchemeCancel => 'Отмена';
+
+  @override
+  String get pipelineSchemeAudio => 'Со звука';
+
+  @override
+  String get pipelineSchemeOcr => 'С экрана';
+
+  @override
+  String get pipelineSchemeUnrouted => 'Без входа';
+
+  @override
+  String pipelineSchemeCast(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count персонажей',
+      few: '$count персонажа',
+      one: '$count персонаж',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get pipelinePresetAudio => 'Дубляж со звука';
 
   @override

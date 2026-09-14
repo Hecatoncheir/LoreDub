@@ -44,6 +44,7 @@ import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
+import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
@@ -335,6 +336,25 @@ void main() {
     cubits.graph.seed(
       PipelineGraphState(
         loading: false,
+        // Two kept schemes on the shelf, so the pictures on their cards are
+        // in the screenshot the readme shows.
+        schemes: [
+          SavedPipeline(
+            id: 's1',
+            name: language == 'ru' ? 'Вечер в таверне' : 'An evening at the inn',
+            layout: PipelineLayout(
+              cast: placed,
+              positions: {...PipelineLayout.standardPositions, ...where},
+            ),
+            readers: const {'smith': 'guard'},
+          ),
+          SavedPipeline(
+            id: 's2',
+            name: language == 'ru' ? 'Субтитры квестов' : 'Quest subtitles',
+            captureMode: CaptureMode.ocr,
+            layout: PipelineLayout.standard,
+          ),
+        ],
         layout: PipelineLayout(
           cast: placed,
           // Placed by hand, so the wire runs the way the signal does: the

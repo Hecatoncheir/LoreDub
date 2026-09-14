@@ -7,9 +7,11 @@ import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
 import '../../domain/pipeline_graph.dart';
+import '../../domain/saved_pipeline.dart';
 import '../services/character_service.dart';
 import '../services/native_engine_service.dart';
 import '../services/pipeline_graph_service.dart';
+import '../services/pipeline_library_service.dart';
 import '../services/python_discovery.dart';
 import '../services/settings_service.dart';
 import '../services/speaker_map_service.dart';
@@ -24,11 +26,13 @@ class AppRepository {
     CharacterService? characters,
     SpeakerMapService? speakerMap,
     PipelineGraphService? graph,
+    PipelineLibraryService? pipelines,
   ]) : _pythonDiscovery = pythonDiscovery ?? PythonDiscovery(),
        _voiceBank = voiceBank ?? VoiceBankService(),
        _characters = characters ?? CharacterService(),
        _speakerMap = speakerMap ?? SpeakerMapService(),
-       _graph = graph ?? PipelineGraphService();
+       _graph = graph ?? PipelineGraphService(),
+       _pipelines = pipelines ?? PipelineLibraryService();
 
   final NativeEngineService _nativeEngine;
   final SettingsService _settingsService;
@@ -37,6 +41,7 @@ class AppRepository {
   final CharacterService _characters;
   final SpeakerMapService _speakerMap;
   final PipelineGraphService _graph;
+  final PipelineLibraryService _pipelines;
 
   /// Where the pipeline canvas was left. Only the arrangement: what the
   /// pipeline does is the settings and the cast.
@@ -314,6 +319,17 @@ class AppRepository {
       rethrow;
     }
   }
+
+  /// The schemes kept on this machine.
+  Future<PipelineLibrary> loadPipelines() => _pipelines.load();
+
+  Future<void> savePipelines(PipelineLibrary library) => _pipelines.save(library);
+
+  Future<void> exportPipelines(String destination, List<SavedPipeline> pipelines) =>
+      _pipelines.exportTo(destination, pipelines);
+
+  Future<List<SavedPipeline>> importPipelines(List<String> sources) =>
+      _pipelines.readFiles(sources);
 
   /// One voice from the files at [paths], however they are encoded.
   Future<BuiltVoice> buildVoice(List<String> paths) => _nativeEngine.buildVoice(paths);

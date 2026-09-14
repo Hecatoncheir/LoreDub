@@ -329,6 +329,25 @@ neither can two copies of one card. The name is edited in the node's own
 panel, and the cross on a card takes only that copy off the canvas, touching
 neither the card itself nor the substitution given to it.
 
+A scheme can be put on a shelf and taken back down. **Save the scheme**
+keeps the one on the canvas under a name, and it joins the row of cards under
+the toolbar with a picture of itself on it: the same nodes and the same
+links, at the size of a thumbnail. The picture is drawn from the scheme every
+time rather than kept as an image, so it cannot show something the scheme no
+longer holds. A click lays that scheme out on the canvas, and from then on it
+is the one that runs: the route, where the nodes sit, which cards are on the
+canvas and whose voice reads whom. One step back brings the old one up.
+
+A scheme holds only what this screen draws. The models, the languages and the
+volumes are not in it — those belong to the machine the dubbing runs on
+rather than to the drawing, so somebody else's scheme does not drag their
+downloads in with it. The menu on a card renames the scheme, deletes it and
+writes it to a file, and **Read a scheme from a file** reads one back: a
+scheme carrying an id already on the shelf lands on the one it came from
+rather than beside it. The route is locked for the length of a session as it
+is everywhere else: a scheme with another way in cannot be put up mid-run,
+and LoreDub says why.
+
 The session is rested and stopped from here as well — the buttons appear in
 the toolbar while it runs. The route and the models stay as the session
 started them, a pause included; the cast branch may be changed as it runs —

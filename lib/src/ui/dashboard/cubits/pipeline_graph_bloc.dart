@@ -10,6 +10,7 @@ import '../../../data/repositories/app_repository.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/character.dart';
 import '../../../domain/pipeline_graph.dart';
+import '../../../domain/saved_pipeline.dart';
 import 'characters_cubit.dart';
 import 'pipeline_cubit.dart';
 import 'settings_cubit.dart';
@@ -161,6 +162,48 @@ final class PipelinePresetChosen extends PipelineGraphEvent {
   final PipelinePreset preset;
 }
 
+/// The scheme as it stands is kept on the shelf under [name].
+final class PipelineSchemeSaved extends PipelineGraphEvent {
+  const PipelineSchemeSaved(this.name);
+
+  final String name;
+}
+
+/// A kept scheme is drawn again and becomes the one that runs.
+final class PipelineSchemeChosen extends PipelineGraphEvent {
+  const PipelineSchemeChosen(this.id);
+
+  final String id;
+}
+
+final class PipelineSchemeRenamed extends PipelineGraphEvent {
+  const PipelineSchemeRenamed(this.id, this.name);
+
+  final String id;
+  final String name;
+}
+
+final class PipelineSchemeRemoved extends PipelineGraphEvent {
+  const PipelineSchemeRemoved(this.id);
+
+  final String id;
+}
+
+/// One scheme written to a file of the player's choosing.
+final class PipelineSchemeExported extends PipelineGraphEvent {
+  const PipelineSchemeExported(this.id, this.destination);
+
+  final String id;
+  final String destination;
+}
+
+/// Schemes read from files, added to the shelf by id.
+final class PipelineSchemeImported extends PipelineGraphEvent {
+  const PipelineSchemeImported(this.sources);
+
+  final List<String> sources;
+}
+
 final class PipelineGraphUndone extends PipelineGraphEvent {
   const PipelineGraphUndone();
 }
@@ -193,6 +236,7 @@ class PipelineGraphState {
     this.layout = PipelineLayout.standard,
     this.selected,
     this.chosen = const {},
+    this.schemes = const [],
     this.drag,
     this.refusal,
     this.canUndo = false,
@@ -210,6 +254,10 @@ class PipelineGraphState {
   /// Every node chosen, which is what a drag moves and what the canvas
   /// draws with an edge. One node clicked is a choice of one.
   final Set<String> chosen;
+
+  /// The schemes kept on the shelf, newest last, each drawn as a card with
+  /// a picture of itself.
+  final List<SavedPipeline> schemes;
 
   /// The link the pointer is carrying, while it carries one.
   final PipelineLinkDrag? drag;
@@ -230,6 +278,7 @@ class PipelineGraphState {
     String? selected,
     bool clearSelected = false,
     Set<String>? chosen,
+    List<SavedPipeline>? schemes,
     PipelineLinkDrag? drag,
     bool clearDrag = false,
     ConnectionRefusal? refusal,
@@ -242,6 +291,7 @@ class PipelineGraphState {
     layout: layout ?? this.layout,
     selected: clearSelected ? null : selected ?? this.selected,
     chosen: chosen ?? this.chosen,
+    schemes: schemes ?? this.schemes,
     drag: clearDrag ? null : drag ?? this.drag,
     refusal: clearRefusal ? null : refusal ?? this.refusal,
     canUndo: canUndo ?? this.canUndo,
@@ -326,6 +376,12 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     on<PipelineLayoutReset>(_onReset);
     on<PipelinePresetChosen>(_onPreset);
     on<PipelineGraphSeeded>((event, emit) => emit(_redrawn(event.state)));
+    on<PipelineSchemeSaved>(_onSchemeSaved);
+    on<PipelineSchemeChosen>(_onSchemeChosen);
+    on<PipelineSchemeRenamed>(_onSchemeRenamed);
+    on<PipelineSchemeRemoved>(_onSchemeRemoved);
+    on<PipelineSchemeExported>(_onSchemeExported);
+    on<PipelineSchemeImported>(_onSchemeImported);
     on<PipelineGraphUndone>(_onUndone);
     on<PipelineGraphRedone>(_onRedone);
 
@@ -361,14 +417,171 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   Future<void> _onOpened(PipelineGraphOpened event, Emitter<PipelineGraphState> emit) async {
     if (!state.loading) return;
+    // What the canvas stood on when the disk was asked. A bloc serves each
+    // kind of event on a stream of its own, so a card placed while this was
+    // waiting has already landed — and the arrangement read here must not
+    // undo it.
+    final before = state.layout;
     var layout = PipelineLayout.standard;
+    var schemes = const <SavedPipeline>[];
     try {
       layout = await _appRepository.loadGraphLayout();
     } catch (exception) {
       debugPrint('pipeline layout not read: $exception');
     }
+    try {
+      schemes = (await _appRepository.loadPipelines()).pipelines;
+    } catch (exception) {
+      debugPrint('saved schemes not read: $exception');
+    }
     if (isClosed) return;
-    emit(_redrawn(state.copyWith(loading: false, layout: layout)));
+    emit(
+      _redrawn(
+        state.copyWith(
+          loading: false,
+          layout: identical(state.layout, before) ? layout : state.layout,
+          schemes: schemes,
+        ),
+      ),
+    );
+  }
+
+  /// The scheme as it stands: the route, the arrangement, and whose voice
+  /// reads whom among the cards drawn on it. The models and the languages
+  /// are left out — they belong to the machine, not to the drawing.
+  SavedPipeline _asScheme(String id, String name) {
+    final drawn = {for (final placement in state.layout.cast) placement.characterId};
+    return SavedPipeline(
+      id: id,
+      name: name,
+      captureMode: _settings.settings.captureMode,
+      captureRouted: _settings.settings.captureRouted,
+      castRouted: _settings.settings.castRouted,
+      layout: state.layout,
+      readers: {
+        for (final character in _cast)
+          if (drawn.contains(character.id)) character.id: character.voicedBy,
+      },
+    );
+  }
+
+  Future<void> _onSchemeSaved(
+    PipelineSchemeSaved event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    final name = event.name.trim();
+    if (name.isEmpty) return;
+    final scheme = _asScheme(DateTime.now().microsecondsSinceEpoch.toRadixString(36), name);
+    await _keep([...state.schemes, scheme], emit);
+  }
+
+  /// Draws a kept scheme and makes it the one that runs.
+  ///
+  /// Everything goes back through the calls an edit makes — the settings for
+  /// the route, the cast for the substitutions — so the other screens are
+  /// right without being told, and one step back puts the old scheme up.
+  Future<void> _onSchemeChosen(
+    PipelineSchemeChosen event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    final scheme = state.schemes.where((value) => value.id == event.id).firstOrNull;
+    if (scheme == null) return;
+    if (routeLocked &&
+        (scheme.captureMode != _settings.settings.captureMode ||
+            scheme.captureRouted != _settings.settings.captureRouted)) {
+      emit(state.copyWith(refusal: ConnectionRefusal.locked));
+      return;
+    }
+    _remember();
+    emit(
+      _redrawn(
+        state.copyWith(
+          layout: scheme.layout,
+          chosen: const {},
+          clearSelected: true,
+          clearRefusal: true,
+        ),
+      ),
+    );
+    _persist();
+    await _settings.update(
+      _settings.settings.copyWith(
+        captureMode: scheme.captureMode,
+        captureRouted: scheme.captureRouted,
+        castRouted: scheme.castRouted,
+      ),
+    );
+    for (final entry in scheme.readers.entries) {
+      final now = _cast.where((character) => character.id == entry.key).firstOrNull;
+      if (now == null || now.voicedBy == entry.value) continue;
+      await _characters.voiceAs(entry.key, entry.value);
+    }
+  }
+
+  Future<void> _onSchemeRenamed(
+    PipelineSchemeRenamed event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    final name = event.name.trim();
+    if (name.isEmpty) return;
+    await _keep([
+      for (final scheme in state.schemes)
+        if (scheme.id == event.id) scheme.copyWith(name: name) else scheme,
+    ], emit);
+  }
+
+  Future<void> _onSchemeRemoved(
+    PipelineSchemeRemoved event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    await _keep([
+      for (final scheme in state.schemes)
+        if (scheme.id != event.id) scheme,
+    ], emit);
+  }
+
+  Future<void> _onSchemeExported(
+    PipelineSchemeExported event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    final scheme = state.schemes.where((value) => value.id == event.id).firstOrNull;
+    if (scheme == null) return;
+    try {
+      await _appRepository.exportPipelines(event.destination, [scheme]);
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
+  /// Schemes read from files. One that carries an id already on the shelf
+  /// lands on the scheme it came from, the way an imported card does.
+  Future<void> _onSchemeImported(
+    PipelineSchemeImported event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    List<SavedPipeline> incoming;
+    try {
+      incoming = await _appRepository.importPipelines(event.sources);
+    } catch (exception) {
+      _errors.report(exception);
+      return;
+    }
+    final byId = {for (final scheme in state.schemes) scheme.id: scheme};
+    for (final scheme in incoming) {
+      byId[scheme.id] = scheme;
+    }
+    await _keep(byId.values.toList(), emit);
+  }
+
+  /// Writes the shelf and shows it. The schemes are the player's own, so a
+  /// folder that cannot be written to costs a message rather than the edit.
+  Future<void> _keep(List<SavedPipeline> schemes, Emitter<PipelineGraphState> emit) async {
+    emit(state.copyWith(schemes: schemes));
+    try {
+      await _appRepository.savePipelines(PipelineLibrary(pipelines: schemes));
+    } catch (exception) {
+      _errors.report(exception);
+    }
   }
 
   /// A click on a node, with or without shift. Without, the choice becomes

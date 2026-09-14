@@ -2469,6 +2469,114 @@ abstract class AppLocalizations {
   /// **'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст. Shift с нажатием выбирает несколько нод, Ctrl с протяжкой — область; выбранные ноды двигаются вместе.'**
   String get pipelineGraphHint;
 
+  /// No description provided for @failurePipelinesSaveFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить схемы: {detail}'**
+  String failurePipelinesSaveFailed(String detail);
+
+  /// No description provided for @failurePipelinesExportFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось выгрузить схему: {detail}'**
+  String failurePipelinesExportFailed(String detail);
+
+  /// No description provided for @failurePipelinesImportFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'В файле «{detail}» нет схемы LoreDub.'**
+  String failurePipelinesImportFailed(String detail);
+
+  /// No description provided for @pipelineSchemes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранённые схемы'**
+  String get pipelineSchemes;
+
+  /// No description provided for @pipelineSaveScheme.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить схему'**
+  String get pipelineSaveScheme;
+
+  /// No description provided for @pipelineSchemeName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Название схемы'**
+  String get pipelineSchemeName;
+
+  /// No description provided for @pipelineSchemeNew.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новая схема'**
+  String get pipelineSchemeNew;
+
+  /// No description provided for @pipelineSchemesEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранённых схем пока нет. «Сохранить схему» запомнит нынешнюю — маршрут, расположение нод и расстановку персонажей, — чтобы к ней можно было вернуться.'**
+  String get pipelineSchemesEmpty;
+
+  /// No description provided for @pipelineSchemeApply.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузить схему'**
+  String get pipelineSchemeApply;
+
+  /// No description provided for @pipelineSchemeExport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выгрузить схему в файл'**
+  String get pipelineSchemeExport;
+
+  /// No description provided for @pipelineSchemeImport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузить схему из файла'**
+  String get pipelineSchemeImport;
+
+  /// No description provided for @pipelineSchemeDelete.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить схему'**
+  String get pipelineSchemeDelete;
+
+  /// No description provided for @pipelineSchemeRename.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переименовать'**
+  String get pipelineSchemeRename;
+
+  /// No description provided for @pipelineSchemeCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмена'**
+  String get pipelineSchemeCancel;
+
+  /// No description provided for @pipelineSchemeAudio.
+  ///
+  /// In ru, this message translates to:
+  /// **'Со звука'**
+  String get pipelineSchemeAudio;
+
+  /// No description provided for @pipelineSchemeOcr.
+  ///
+  /// In ru, this message translates to:
+  /// **'С экрана'**
+  String get pipelineSchemeOcr;
+
+  /// No description provided for @pipelineSchemeUnrouted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без входа'**
+  String get pipelineSchemeUnrouted;
+
+  /// No description provided for @pipelineSchemeCast.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} персонаж} few{{count} персонажа} other{{count} персонажей}}'**
+  String pipelineSchemeCast(int count);
+
   /// No description provided for @pipelinePresetAudio.
   ///
   /// In ru, this message translates to:

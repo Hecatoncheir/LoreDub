@@ -116,6 +116,15 @@ enum FailureCode {
   /// A file the player chose holds no characters; the detail is its name.
   charactersImportFailed,
 
+  /// The shelf of saved schemes could not be written.
+  pipelinesSaveFailed,
+
+  /// A scheme could not be written to the file the player chose.
+  pipelinesExportFailed,
+
+  /// The file the player chose holds no scheme.
+  pipelinesImportFailed,
+
   /// Whose voice reads whom could not be written back for this game.
   speakerMapSaveFailed,
 

@@ -47,6 +47,7 @@ import 'ocr_region_picker.dart';
 import 'process_picker.dart';
 import 'pipeline_canvas.dart';
 import 'pipeline_inspector.dart';
+import 'pipeline_shelf.dart';
 import 'whisper_model_chart.dart';
 
 /// Rebuilds only when the shell changes, which is the section, the banner
@@ -2361,6 +2362,16 @@ class _GraphToolbar extends StatelessWidget {
                   ),
                 ],
                 IconButton(
+                  tooltip: l10n.pipelineSaveScheme,
+                  icon: const Icon(Icons.bookmark_add_outlined, size: 20),
+                  onPressed: () => _saveScheme(context, l10n),
+                ),
+                IconButton(
+                  tooltip: l10n.pipelineSchemeImport,
+                  icon: const Icon(Icons.file_open_outlined, size: 20),
+                  onPressed: () => _importScheme(l10n),
+                ),
+                IconButton(
                   tooltip: l10n.pipelineResetLayout,
                   icon: const Icon(Icons.grid_view_rounded, size: 20),
                   onPressed: () => cubits.graph.add(const PipelineLayoutReset()),
@@ -2392,10 +2403,57 @@ class _GraphToolbar extends StatelessWidget {
                 style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
               ),
             },
+            const SizedBox(height: 10),
+            _ModuleLabel(number: '02', label: l10n.pipelineSchemes.toUpperCase()),
+            const SizedBox(height: 8),
+            // The shelf of kept schemes, each with a picture of itself: a
+            // click puts it on the canvas and it is the one that runs.
+            PipelineShelf(
+              schemes: state.schemes,
+              cast: facts.characters,
+              onChoose: (id) => cubits.graph.add(PipelineSchemeChosen(id)),
+              onRename: (id, name) => cubits.graph.add(PipelineSchemeRenamed(id, name)),
+              onRemove: (id) => cubits.graph.add(PipelineSchemeRemoved(id)),
+              onExport: (id) => _exportScheme(id, l10n),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  /// Keeps the scheme as it stands, under a name the player types.
+  Future<void> _saveScheme(BuildContext context, AppLocalizations l10n) async {
+    final name = await askForName(
+      context,
+      title: l10n.pipelineSchemeName,
+      action: l10n.pipelineSaveScheme,
+      initial: l10n.pipelineSchemeNew,
+    );
+    if (name != null) cubits.graph.add(PipelineSchemeSaved(name));
+  }
+
+  Future<void> _exportScheme(String id, AppLocalizations l10n) async {
+    final scheme = state.schemes.where((value) => value.id == id).firstOrNull;
+    if (scheme == null) return;
+    final destination = await getSaveLocation(
+      suggestedName: '${scheme.name}.loredub-scheme.json',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'LoreDub', extensions: ['json']),
+      ],
+    );
+    if (destination == null) return;
+    cubits.graph.add(PipelineSchemeExported(id, destination.path));
+  }
+
+  Future<void> _importScheme(AppLocalizations l10n) async {
+    final files = await openFiles(
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'LoreDub', extensions: ['json']),
+      ],
+    );
+    if (files.isEmpty) return;
+    cubits.graph.add(PipelineSchemeImported([for (final file in files) file.path]));
   }
 
   /// Every card of the cast, drawn or not: a card already on the canvas can

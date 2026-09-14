@@ -225,7 +225,20 @@ both ends rather than hanging off it. `PipelineGraphBloc` applies the answer thr
 `SettingsCubit` and `CharactersCubit` — so a route change is locked while a
 session runs, while a substitution is not, the running worker being told of
 it the way a scene assignment is — and keeps an undo history of layout,
-capture mode and readers. Only the arrangement is its own: node positions,
+capture mode and readers. Schemes the player keeps are a shelf beside that arrangement:
+`SavedPipeline` (`domain/saved_pipeline.dart`) holds the route
+(`captureMode`, `captureRouted`, `castRouted`), the `PipelineLayout` and the
+substitutions among the cards drawn, written to `<app support>/pipelines.json`
+by `PipelineLibraryService` and exported and imported as the same shape.
+Choosing one puts it back through the calls an edit makes — `SettingsCubit`
+for the route, `CharactersCubit.voiceAs` for the substitutions — so the other
+screens follow and one step back restores the scheme that was up; a scheme
+that would reroute a running session is refused with `locked`. Models and
+languages are deliberately not in it: they belong to the machine, and a
+scheme from elsewhere must not name downloads this one does not have. The
+card's picture is painted from `buildPipelineGraph` over the saved layout
+(`pipeline_shelf.dart`), never stored, so it cannot drift from the scheme.
+Only the arrangement is its own: node positions,
 which cards were placed and where the canvas is looked at from, written to
 `<app support>/pipeline_graph.json` by `PipelineGraphService` without holding
 the event queue. Several nodes can be chosen at once: `PipelineGraphState.chosen` is the set,

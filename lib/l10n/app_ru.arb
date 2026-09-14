@@ -998,6 +998,44 @@
   "navPipeline": "Схема",
   "titlePipeline": "Схема конвейера",
   "pipelineGraphHint": "Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст. Shift с нажатием выбирает несколько нод, Ctrl с протяжкой — область; выбранные ноды двигаются вместе.",
+  "failurePipelinesSaveFailed": "Не удалось сохранить схемы: {detail}",
+  "@failurePipelinesSaveFailed": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "failurePipelinesExportFailed": "Не удалось выгрузить схему: {detail}",
+  "@failurePipelinesExportFailed": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "failurePipelinesImportFailed": "В файле «{detail}» нет схемы LoreDub.",
+  "@failurePipelinesImportFailed": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "pipelineSchemes": "Сохранённые схемы",
+  "pipelineSaveScheme": "Сохранить схему",
+  "pipelineSchemeName": "Название схемы",
+  "pipelineSchemeNew": "Новая схема",
+  "pipelineSchemesEmpty": "Сохранённых схем пока нет. «Сохранить схему» запомнит нынешнюю — маршрут, расположение нод и расстановку персонажей, — чтобы к ней можно было вернуться.",
+  "pipelineSchemeApply": "Загрузить схему",
+  "pipelineSchemeExport": "Выгрузить схему в файл",
+  "pipelineSchemeImport": "Загрузить схему из файла",
+  "pipelineSchemeDelete": "Удалить схему",
+  "pipelineSchemeRename": "Переименовать",
+  "pipelineSchemeCancel": "Отмена",
+  "pipelineSchemeAudio": "Со звука",
+  "pipelineSchemeOcr": "С экрана",
+  "pipelineSchemeUnrouted": "Без входа",
+  "pipelineSchemeCast": "{count, plural, one{{count} персонаж} few{{count} персонажа} other{{count} персонажей}}",
+  "@pipelineSchemeCast": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "pipelinePresetAudio": "Дубляж со звука",
   "pipelinePresetSubtitles": "Субтитры с экрана",
   "pipelineResetLayout": "Разложить заново",

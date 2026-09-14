@@ -998,6 +998,44 @@
   "navPipeline": "Graph",
   "titlePipeline": "Pipeline graph",
   "pipelineGraphHint": "Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas. Shift-click chooses several nodes, Ctrl-drag draws a band around them, and what is chosen moves together.",
+  "failurePipelinesSaveFailed": "The schemes could not be saved: {detail}",
+  "@failurePipelinesSaveFailed": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "failurePipelinesExportFailed": "The scheme could not be written: {detail}",
+  "@failurePipelinesExportFailed": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "failurePipelinesImportFailed": "There is no LoreDub scheme in “{detail}”.",
+  "@failurePipelinesImportFailed": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "pipelineSchemes": "Saved schemes",
+  "pipelineSaveScheme": "Save the scheme",
+  "pipelineSchemeName": "Name of the scheme",
+  "pipelineSchemeNew": "New scheme",
+  "pipelineSchemesEmpty": "No schemes kept yet. Save the scheme keeps this one — the route, where the nodes sit and which cards are on the canvas — so you can come back to it.",
+  "pipelineSchemeApply": "Draw this scheme",
+  "pipelineSchemeExport": "Write the scheme to a file",
+  "pipelineSchemeImport": "Read a scheme from a file",
+  "pipelineSchemeDelete": "Delete the scheme",
+  "pipelineSchemeRename": "Rename",
+  "pipelineSchemeCancel": "Cancel",
+  "pipelineSchemeAudio": "From audio",
+  "pipelineSchemeOcr": "From screen",
+  "pipelineSchemeUnrouted": "No way in",
+  "pipelineSchemeCast": "{count, plural, =1{one character} other{{count} characters}}",
+  "@pipelineSchemeCast": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "pipelinePresetAudio": "Dub from audio",
   "pipelinePresetSubtitles": "Subtitles on screen",
   "pipelineResetLayout": "Lay out again",

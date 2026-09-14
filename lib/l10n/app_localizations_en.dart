@@ -1440,6 +1440,75 @@ class AppLocalizationsEn extends AppLocalizations {
       'Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas. Shift-click chooses several nodes, Ctrl-drag draws a band around them, and what is chosen moves together.';
 
   @override
+  String failurePipelinesSaveFailed(String detail) {
+    return 'The schemes could not be saved: $detail';
+  }
+
+  @override
+  String failurePipelinesExportFailed(String detail) {
+    return 'The scheme could not be written: $detail';
+  }
+
+  @override
+  String failurePipelinesImportFailed(String detail) {
+    return 'There is no LoreDub scheme in “$detail”.';
+  }
+
+  @override
+  String get pipelineSchemes => 'Saved schemes';
+
+  @override
+  String get pipelineSaveScheme => 'Save the scheme';
+
+  @override
+  String get pipelineSchemeName => 'Name of the scheme';
+
+  @override
+  String get pipelineSchemeNew => 'New scheme';
+
+  @override
+  String get pipelineSchemesEmpty =>
+      'No schemes kept yet. Save the scheme keeps this one — the route, where the nodes sit and which cards are on the canvas — so you can come back to it.';
+
+  @override
+  String get pipelineSchemeApply => 'Draw this scheme';
+
+  @override
+  String get pipelineSchemeExport => 'Write the scheme to a file';
+
+  @override
+  String get pipelineSchemeImport => 'Read a scheme from a file';
+
+  @override
+  String get pipelineSchemeDelete => 'Delete the scheme';
+
+  @override
+  String get pipelineSchemeRename => 'Rename';
+
+  @override
+  String get pipelineSchemeCancel => 'Cancel';
+
+  @override
+  String get pipelineSchemeAudio => 'From audio';
+
+  @override
+  String get pipelineSchemeOcr => 'From screen';
+
+  @override
+  String get pipelineSchemeUnrouted => 'No way in';
+
+  @override
+  String pipelineSchemeCast(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count characters',
+      one: 'one character',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get pipelinePresetAudio => 'Dub from audio';
 
   @override

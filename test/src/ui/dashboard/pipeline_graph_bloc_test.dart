@@ -18,6 +18,7 @@ import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
+import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
@@ -325,6 +326,124 @@ void main() {
     );
   });
 
+  group('the shelf of schemes', () {
+    /// A scheme kept from a canvas arranged differently from the one the
+    /// test starts on, so drawing it back is visible.
+    Future<SavedPipeline> keep(String name) async {
+      graph.add(PipelineSchemeSaved(name));
+      await pumpEvents();
+      return graph.state.schemes.last;
+    }
+
+    test('keeps the scheme as it stands, and writes the shelf', () async {
+      await drawLink(voiceOf('guard'), readBy('smith'));
+      graph.add(const PipelineNodeGrabbed(PipelineNodeIds.voice));
+      graph.add(const PipelineNodeMoved(PipelineNodeIds.voice, 30, 40));
+      await pumpEvents();
+
+      final scheme = await keep('Вечер в таверне');
+
+      expect(scheme.name, 'Вечер в таверне');
+      expect(scheme.captureMode, CaptureMode.audio);
+      expect(scheme.layout.characters, ['guard', 'smith']);
+      expect(
+        scheme.layout.positions[PipelineNodeIds.voice]!.x,
+        PipelineLayout.standardPositions[PipelineNodeIds.voice]!.x + 30,
+      );
+      expect(scheme.readers['guard'], 'smith', reason: 'who reads whom is part of the scheme');
+      expect(repository.shelf.pipelines.single.id, scheme.id, reason: 'written to the shelf');
+    });
+
+    test('draws a kept scheme again and makes it the one that runs', () async {
+      await drawLink(screenText, translationIn);
+      final subtitles = await keep('С экрана');
+      await drawLink(gameAudio, speechIn);
+      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('smith')));
+      await pumpEvents();
+      expect(cubits.settings.settings.captureMode, CaptureMode.audio);
+
+      graph.add(PipelineSchemeChosen(subtitles.id));
+      await pumpEvents();
+
+      expect(cubits.settings.settings.captureMode, CaptureMode.ocr);
+      expect(graph.state.layout.characters, ['guard', 'smith'], reason: 'the cards come back');
+      expect(graph.state.graph.node(PipelineNodeIds.character('smith')), isNotNull);
+    });
+
+    test('puts the substitutions of a scheme back through the cast', () async {
+      await drawLink(voiceOf('guard'), readBy('smith'));
+      final together = await keep('Со сменой голосов');
+      graph.add(
+        PipelineLinkCut(
+          PipelineLink(voiceOf('guard'), readBy('smith')),
+        ),
+      );
+      await pumpEvents();
+      expect(repository.stored.characters.first.voicedBy, isNull);
+
+      graph.add(PipelineSchemeChosen(together.id));
+      await pumpEvents();
+
+      expect(repository.stored.characters.first.voicedBy, 'smith');
+    });
+
+    test('a scheme is not drawn over a running session that would reroute', () async {
+      await drawLink(screenText, translationIn);
+      final subtitles = await keep('С экрана');
+      await drawLink(gameAudio, speechIn);
+      cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+      await pumpEvents();
+
+      graph.add(PipelineSchemeChosen(subtitles.id));
+      await pumpEvents();
+
+      expect(cubits.settings.settings.captureMode, CaptureMode.audio);
+      expect(graph.state.refusal, ConnectionRefusal.locked);
+    });
+
+    test('renames and throws away a scheme', () async {
+      final scheme = await keep('Схема');
+
+      graph.add(PipelineSchemeRenamed(scheme.id, 'Другое имя'));
+      await pumpEvents();
+      expect(repository.shelf.pipelines.single.name, 'Другое имя');
+
+      graph.add(PipelineSchemeRemoved(scheme.id));
+      await pumpEvents();
+      expect(graph.state.schemes, isEmpty);
+      expect(repository.shelf.pipelines, isEmpty);
+    });
+
+    test('writes one scheme to a file and reads schemes back', () async {
+      final scheme = await keep('Схема');
+
+      graph.add(PipelineSchemeExported(scheme.id, 'C:/out.json'));
+      await pumpEvents();
+      expect(repository.exported.single.$1, 'C:/out.json');
+      expect(repository.exported.single.$2.single.id, scheme.id);
+
+      // A file carrying an id already on the shelf lands on the scheme it
+      // came from rather than beside it.
+      repository.incoming = [
+        SavedPipeline(id: scheme.id, name: 'Из файла'),
+        const SavedPipeline(id: 'other', name: 'Ещё одна'),
+      ];
+      graph.add(const PipelineSchemeImported(['C:/in.json']));
+      await pumpEvents();
+
+      expect(graph.state.schemes.length, 2);
+      expect(graph.state.schemes.first.name, 'Из файла');
+      expect(repository.shelf.pipelines.last.id, 'other');
+    });
+
+    test('a scheme with no name is not kept', () async {
+      graph.add(const PipelineSchemeSaved('   '));
+      await pumpEvents();
+
+      expect(graph.state.schemes, isEmpty);
+    });
+  });
+
   group('choosing several nodes', () {
     const voice = PipelineNodeIds.voice;
     const mix = PipelineNodeIds.mix;
@@ -628,6 +747,11 @@ class _GraphRepository extends AppRepository {
   CharacterLibrary stored = CharacterLibrary.empty;
   PipelineLayout layout = PipelineLayout.standard;
 
+  /// The shelf of schemes, what was written out of it and what is read in.
+  PipelineLibrary shelf = PipelineLibrary.empty;
+  final exported = <(String, List<SavedPipeline>)>[];
+  List<SavedPipeline> incoming = const [];
+
   @override
   Future<CharacterLibrary> loadCharacters() async => stored;
 
@@ -639,6 +763,19 @@ class _GraphRepository extends AppRepository {
 
   @override
   Future<void> saveGraphLayout(PipelineLayout value) async => layout = value;
+
+  @override
+  Future<PipelineLibrary> loadPipelines() async => shelf;
+
+  @override
+  Future<void> savePipelines(PipelineLibrary library) async => shelf = library;
+
+  @override
+  Future<void> exportPipelines(String destination, List<SavedPipeline> pipelines) async =>
+      exported.add((destination, pipelines));
+
+  @override
+  Future<List<SavedPipeline>> importPipelines(List<String> sources) async => incoming;
 
   @override
   Future<void> voiceCharacterAs(String id, String? target) async => told.add((id, target));
