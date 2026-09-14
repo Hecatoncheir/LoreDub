@@ -396,6 +396,28 @@ named cast before the game's bank (`CharacterCast`), answering
 Export and import are `file_selector` dialogs over the same JSON shape, so a
 file with one card and a file with twenty read the same way.
 
+A card can also be built from files rather than from the game. The whole
+tile is a `DropTarget` (`desktop_drop`), and what lands on it goes through
+`ld_decode_audio` (`native/audio_decoder.cpp`): Media Foundation reads
+anything Windows can play -- ogg and opus through the Web Media Extensions --
+and writes 16 kHz mono 16-bit WAV through the same `wave_file::WriteMono` the
+capture uses, because the rate and the loudness are part of the fingerprint
+(the same clip at 48 kHz and at 16 kHz meets itself at 0.50 to 0.86). The
+worker's `build_voice` then embeds every file and averages them, which is
+measured to beat keeping one: over 36 clips of five characters, leaving each
+out in turn, the held-out clip is closer to the average of the rest than to
+any single other clip 36 times out of 36, by 0.076. This is not the bank's
+"never average" rule broken -- there the pipeline founds the voices and a
+fingerprint that wandered would stand for a character nobody chose; here the
+player names the files as one person. What the numbers also say is that a
+threshold cannot tell a stranger from an odd line of the right character
+(same-character pairs run 0.57 to 0.94, different-character pairs up to
+0.80), so `STRANGE_FILE` (0.45) only drops what is not a voice at all, and
+`LOOSE_SET` (0.80) is a warning that the set holds two voices rather than a
+rejection. `CharactersCubit.voiceFromFiles` borrows an embed-only session
+(`startVoiceFiles`, no `ld_start`, no game) when the screen has none, and
+puts it down again.
+
 The cards are drawn as tiles in the models' vocabulary (`character_tiles.dart`:
 `CharacterTile` over `ModelTile`'s grid and action band), and under them sit
 the packs — `CharacterPack`, a name and a list of character ids, that the

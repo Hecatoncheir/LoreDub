@@ -2306,6 +2306,24 @@ void main() {
     });
   });
 
+  testWidgets('takes only sound out of what is dropped on a card', (tester) async {
+    // Windows decodes what it can play, so a card takes the game's own
+    // ogg and an mp3 beside it; a folder or a screenshot dropped by
+    // mistake is left where it was.
+    expect(
+      CharacterTile.soundAmong(const [
+        r'C:\game\vo\guard_01.OGG',
+        r'C:\music\theme.mp3',
+        r'C:\shots\screen.png',
+        r'C:\game\vo',
+      ]),
+      [
+        r'C:\game\vo\guard_01.OGG',
+        r'C:\music\theme.mp3',
+      ],
+    );
+  });
+
   group('the voices of the scene', () {
     const guard = Character(id: 'a1', name: 'Стражник', vector: [0.2, 0.4]);
 

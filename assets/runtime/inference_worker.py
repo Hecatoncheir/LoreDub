@@ -181,6 +181,73 @@ def read_wave_mono(path):
     return samples, rate
 
 
+def build_voice(converter, paths):
+    """One fingerprint for a character, from several recordings of them.
+
+    The recordings are averaged rather than picked between. Leaving each of
+    36 measured clips out in turn, the held-out clip is closer to the
+    average of the rest than to any single other clip of the same character
+    36 times out of 36, by 0.076 on average: what several files buy is the
+    centre of a voice instead of the quirks of one line of it. (The game's
+    own bank still never averages -- there the voices are founded by the
+    pipeline and a fingerprint that wandered would stand for a character
+    nobody chose. Here the player says which files are one person.)
+
+    What comes back says how well the files agreed, so the player can see
+    the fingerprint was taken from one voice and not from two.
+    """
+    measured = []
+    skipped = []
+    for path in paths:
+        try:
+            samples, rate = read_wave_mono(path)
+        except (OSError, wave.Error, ValueError):
+            samples, rate = None, 0
+        if samples is None or rate <= 0 or len(samples) < rate * SHORTEST_CLIP:
+            skipped.append(path)
+            continue
+        fingerprint = converter.embed(samples, rate).flatten().float().cpu().numpy()
+        norm = float(np.linalg.norm(fingerprint)) or 1.0
+        measured.append((path, fingerprint / norm, len(samples) / rate))
+    if not measured:
+        raise RuntimeError("none of the files held enough voice to measure")
+
+    vectors = np.stack([vector for _, vector, _ in measured])
+
+    def centre(matrix):
+        average = matrix.mean(axis=0)
+        return average / (float(np.linalg.norm(average)) or 1.0)
+
+    # Held against the average of them all, anything that is not a voice
+    # falls far below the rest; then the average is taken again without it.
+    against = vectors @ centre(vectors)
+    kept = [index for index, score in enumerate(against) if score >= STRANGE_FILE]
+    if not kept:
+        raise RuntimeError("the files do not sound like one voice")
+    skipped += [measured[index][0] for index in range(len(measured)) if index not in kept]
+    vectors = vectors[kept]
+    average = centre(vectors)
+    against = vectors @ average
+
+    # The clip that stands closest to the result is the one the card keeps
+    # to play back: what the player hears is the recording the fingerprint
+    # is nearest to, not a clip chosen for being first.
+    anchor = kept[int(np.argmax(against))]
+    genders = [speaker_gender(measured[index][0]) for index in kept]
+    heard = [gender for gender in genders if gender]
+    return {
+        "vector": [round(float(value), 6) for value in average],
+        "gender": max(set(heard), key=heard.count) if heard else None,
+        "seconds": round(sum(measured[index][2] for index in kept), 2),
+        "used": len(kept),
+        "skipped": skipped,
+        "agreement": round(float(against.mean()), 3),
+        "weakest": round(float(against.min()), 3),
+        "together": bool(float(against.mean()) >= LOOSE_SET),
+        "anchor": measured[anchor][0],
+    }
+
+
 # Two or more Latin letters in a translated line means a name came through
 # untranslated, which the speech model cannot read.
 LATIN_RUN = re.compile(r"[A-Za-z]{2,}")
@@ -209,6 +276,27 @@ def speaker_gender(path):
         return "female"
     return None
 
+
+# A file dropped onto a card is kept unless it is plainly not a voice at
+# all. Measured over 36 clips of five characters, decoded from ogg at the
+# rate the capture works at: two clips of one character meet anywhere from
+# 0.57 to 0.94, two clips of different characters at up to 0.80. The two
+# spreads overlap, so no threshold tells a stranger from an odd line of the
+# right character, and pretending otherwise would throw away good
+# recordings. What a threshold does catch is audio that is not a voice at
+# all -- music, a room, silence with a cough in it -- which never came near
+# this number.
+STRANGE_FILE = 0.45
+
+# Under this the set does not hold together, and the player is told so
+# rather than handed a fingerprint of nobody. One character's own clips sit
+# at 0.875 to 0.932 around their average; two characters mixed by mistake,
+# at 0.746 to 0.864.
+LOOSE_SET = 0.80
+
+# A clip shorter than this says nothing about a voice. It is what the
+# capture keeps a segment from.
+SHORTEST_CLIP = 0.35
 
 # A line joins a stored voice from this cosine between fingerprints up.
 # Measured on the OpenVoice demo speakers: two noisy lines of one person met
@@ -837,6 +925,13 @@ def main():
                         "seconds": round(len(heard) / rate, 2),
                     }
                 )
+                continue
+            # A card built from the files the player dropped onto it.
+            gathered = request.get("voiceFrom")
+            if gathered:
+                if converter is None:
+                    raise RuntimeError("the voice converter is not loaded")
+                reply({"id": request_id, **build_voice(converter, [str(p) for p in gathered])})
                 continue
             # Read this speaker in another character's voice from now on.
             # The interface keeps the file; this spares the player a restart.

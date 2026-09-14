@@ -5,7 +5,7 @@
   "navSnapshot": "Фрагмент",
   "navCharacters": "Персонажи",
   "titleCharacters": "Голоса персонажей",
-  "charactersNote": "Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом.",
+  "charactersNote": "Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом. Голос можно собрать и из готовых записей: перетащите их на карточку.",
   "charactersHowTo": "Запустите запись, выберите процесс игры — и записывайте голоса по очереди.",
   "charactersNeedsConverter": "Нужен конвертер голоса: скачайте его в разделе «Голос оригинала» на экране «Модели».",
   "charactersSessionStart": "Запустить запись",
@@ -36,6 +36,22 @@
     }
   },
   "charactersNoVoice": "Голос ещё не записан",
+  "charactersBuilding": "Считаю голос из файлов…",
+  "charactersBuiltFrom": "Собран из {files} записей · сходство {agreement}",
+  "@charactersBuiltFrom": {
+    "placeholders": {
+      "files": {"type": "int"},
+      "agreement": {"type": "String"}
+    }
+  },
+  "charactersBuiltFromOne": "Собран из одной записи",
+  "charactersBuiltApart": "Записи звучат как разные голоса",
+  "charactersBuiltSkipped": "Без голоса: {files}",
+  "@charactersBuiltSkipped": {
+    "placeholders": {
+      "files": {"type": "int"}
+    }
+  },
   "charactersVoiceKept": "Голос записан · {seconds} с · {gender}",
   "@charactersVoiceKept": {
     "placeholders": {
@@ -742,6 +758,7 @@
   },
   "failureWorkerTimeoutSilent": "Marian/Silero не ответил за 2 минуты. Вывода процесса нет.",
   "failureWorkerNotRunning": "Marian/Silero worker не запущен",
+  "failureAudioNotDecoded": "Windows не смог прочитать ни один из этих файлов как звук",
   "failureWorkerFailed": "Marian/Silero: {detail}",
   "@failureWorkerFailed": {
     "placeholders": {

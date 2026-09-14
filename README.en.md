@@ -191,6 +191,31 @@ seconds of speech it has heard. Press **Stop** and the fingerprint is kept: in
 longest clear line of the recording stands for them — a fingerprint taken from
 half a word would answer for the character ever after.
 
+A voice can also be built from recordings already on disk — the game's own
+voice files, clips cut out of them, anything Windows can play. Drag them onto
+a character's card with the mouse (the whole card is the target) and LoreDub
+measures the voice from all of them at once: .ogg and .opus, .mp3, .m4a,
+.flac, .wav. Windows does the decoding, and every file is brought to the rate
+and the loudness the capture writes at — otherwise a fingerprint from a file
+would not answer for the same character a fingerprint from the game does.
+
+The recordings are **averaged** rather than picked between. Measured over 36
+clips of five characters: leave any one of them out, build the voice from the
+rest, and the one left out sits closer to their average than to any single
+other clip of the same character — 36 times out of 36, by 0.076 of cosine on
+average. So the more recordings, the closer the fingerprint sits to the
+character's voice rather than to one line of it. Under the name the card says
+how many recordings went in and how closely they agreed; a file with no voice
+in it is skipped and counted separately. The card keeps the recording that
+stands closest to the fingerprint, and that is what **Play the recording**
+plays.
+
+What this cannot do is tell a stranger from an unusual line of the right
+character: two clips of one character meet anywhere from 0.57 to 0.94, two of
+different characters at up to 0.80, and those spreads overlap. So nothing is
+thrown away on suspicion — only what is not a voice at all — and when a set
+falls apart into two voices the card says so.
+
 The cards are laid out as tiles, the way the models are, and each carries its
 own row of buttons. **Play the recording** plays the very clip the fingerprint
 was taken from, so it is plain whether the right character was caught; a card

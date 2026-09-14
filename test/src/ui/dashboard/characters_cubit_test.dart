@@ -17,6 +17,7 @@ import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
+import 'package:lore_dub/src/domain/built_voice.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
@@ -112,6 +113,89 @@ void main() {
     characters.handleEvent({'type': 'state', 'state': 'idle'});
 
     expect(characters.state.running, isFalse);
+  });
+
+  group('a card built from files', () {
+    setUp(() {
+      characters.seed(const CharactersState(loading: false, characters: [guard]));
+      repository.building = const BuiltVoice(
+        vector: [0.1, 0.2],
+        gender: 'male',
+        seconds: 12.5,
+        used: 3,
+        skipped: ['C:/music.mp3'],
+        agreement: 0.91,
+        weakest: 0.84,
+        anchor: 'C:/work/dropped_1.wav',
+      );
+    });
+
+    test('measures every recording at once and keeps what came of it', () async {
+      await characters.voiceFromFiles('a1', const [
+        'C:/one.ogg',
+        'C:/two.ogg',
+        'C:/three.ogg',
+        'C:/music.mp3',
+      ]);
+
+      expect(repository.builtFrom.single.length, 4, reason: 'all of them, in one go');
+      expect(repository.stored.characters.single.vector, [0.1, 0.2]);
+      expect(repository.stored.characters.single.gender, 'male');
+      expect(repository.stored.characters.single.seconds, 12.5);
+      // The clip the fingerprint stands closest to is what the card plays.
+      expect(repository.kept['a1'], 'C:/work/dropped_1.wav');
+      expect(characters.state.clips, contains('a1'));
+      expect(characters.state.built?.used, 3);
+      expect(characters.state.built?.skipped, ['C:/music.mp3']);
+      expect(characters.state.builtId, 'a1');
+      expect(characters.state.building, isFalse);
+    });
+
+    test('borrows a session of its own and puts it down again', () async {
+      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+
+      expect(repository.fileSessionStarts, 1, reason: 'no game to listen to, only the converter');
+      expect(repository.stops, 1, reason: 'and it is not left running');
+    });
+
+    test('measures through the session the screen is already recording with', () async {
+      characters.seed(
+        const CharactersState(
+          loading: false,
+          characters: [guard],
+          status: PipelineStatus.listening,
+        ),
+      );
+
+      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+
+      expect(repository.fileSessionStarts, 0);
+      expect(repository.stops, 0, reason: "the player's own session is theirs to end");
+    });
+
+    test('leaves the card alone while another is being recorded', () async {
+      characters.seed(
+        const CharactersState(
+          loading: false,
+          characters: [guard],
+          status: PipelineStatus.listening,
+          recordingId: 'a1',
+        ),
+      );
+
+      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+
+      expect(repository.builtFrom, isEmpty);
+    });
+
+    test('keeps the fingerprint even when the clip cannot be kept', () async {
+      repository.building = const BuiltVoice(vector: [0.3], used: 1, seconds: 2);
+
+      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+
+      expect(repository.stored.characters.single.vector, [0.3]);
+      expect(characters.state.clips, isNot(contains('a1')), reason: 'no anchor, no play button');
+    });
   });
 
   test('keeps the longest clear voice a recording heard', () async {
@@ -413,6 +497,12 @@ class _CastRepository extends AppRepository {
   CharacterLibrary incoming = CharacterLibrary.empty;
   final recordings = <bool>[];
 
+  /// What a card built from files answers with, and what it was asked for.
+  BuiltVoice building = const BuiltVoice();
+  final builtFrom = <List<String>>[];
+  int fileSessionStarts = 0;
+  int stops = 0;
+
   /// The clips kept beside the cards, by card, and what was played.
   final kept = <String, String>{};
   final played = <String>[];
@@ -433,6 +523,20 @@ class _CastRepository extends AppRepository {
 
   @override
   Future<void> playWave(String wavePath) async => played.add(wavePath);
+
+  @override
+  Future<void> startVoiceFiles({
+    required AppSettings settings,
+    required String converterDirectory,
+    required ComputeBackend converterBackend,
+    required String runtimeDirectory,
+  }) async => fileSessionStarts++;
+
+  @override
+  Future<BuiltVoice> buildVoice(List<String> paths) async {
+    builtFrom.add(paths);
+    return building;
+  }
 
   @override
   Future<void> startVoicePreview({
@@ -463,7 +567,7 @@ class _CastRepository extends AppRepository {
   void recordCharacterVoice({required bool recording}) => recordings.add(recording);
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async => stops++;
 
   @override
   void dispose() {}

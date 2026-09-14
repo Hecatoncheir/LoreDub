@@ -42,6 +42,14 @@ LD_API int32_t ld_restore_process_volumes(void);
 // Plays a PCM WAV file synchronously through the current default output.
 LD_API int32_t ld_play_wave(const char* utf8_path);
 
+// Reads any sound file Windows can decode -- wav, mp3, flac, m4a and wma
+// always, ogg and opus through the Web Media Extensions that ship with
+// Windows 10 and later -- and writes it to utf8_output_path as the 16 kHz
+// mono 16-bit WAV the pipeline measures voices in, at the loudness a
+// captured segment is written at. Returns the length in milliseconds, or a
+// negative error code.
+LD_API int32_t ld_decode_audio(const char* utf8_path, const char* utf8_output_path);
+
 // Starts/stops the real-time pipeline. Config is a UTF-8 JSON object. Events
 // are retrieved using ld_poll_event_json.
 LD_API int32_t ld_start(const char* config_json);

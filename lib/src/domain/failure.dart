@@ -46,6 +46,10 @@ enum FailureCode {
   /// The worker replied with an error of its own.
   workerFailed,
 
+  /// Not one of the files dropped onto a card held sound Windows could
+  /// read.
+  audioNotDecoded,
+
   /// The pipeline was stopped while a phrase was in flight.
   pipelineStopped,
 

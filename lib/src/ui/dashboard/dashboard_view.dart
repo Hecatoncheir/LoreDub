@@ -2720,6 +2720,15 @@ class _CharacterCast extends StatelessWidget {
                                     : () => state.recordingId == character.id
                                           ? cubits.characters.stopRecording()
                                           : cubits.characters.startRecording(character.id),
+                                building: state.buildingId == character.id,
+                                built: state.builtId == character.id ? state.built : null,
+                                onFilesDropped:
+                                    state.building ||
+                                        state.recording ||
+                                        !cubits.characters.canRecord
+                                    ? null
+                                    : (paths) =>
+                                          cubits.characters.voiceFromFiles(character.id, paths),
                                 onExport: character.vector.isEmpty
                                     ? null
                                     : () => _export(context, character),

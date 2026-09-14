@@ -3,6 +3,8 @@
 
 #include "process_loopback_capture.h"
 
+#include "wave_file.h"
+
 #if defined(_WIN32)
 
 #define NOMINMAX
@@ -84,36 +86,7 @@ class ActivationHandler final
 };
 
 bool WriteWave(const std::wstring& filename, std::vector<int16_t> samples) {
-  if (samples.empty()) return false;
-  int peak = 1;
-  for (const int16_t sample : samples) peak = std::max(peak, std::abs(static_cast<int>(sample)));
-  const double gain = std::min(8.0, 28000.0 / static_cast<double>(peak));
-  for (int16_t& sample : samples) {
-    sample = static_cast<int16_t>(std::clamp(std::lround(sample * gain), -32768L, 32767L));
-  }
-
-  std::ofstream output(filename, std::ios::binary);
-  if (!output) return false;
-  const uint32_t data_size = static_cast<uint32_t>(samples.size() * sizeof(int16_t));
-  const uint32_t riff_size = 36 + data_size;
-  const uint32_t byte_rate = kSampleRate * kChannels * kBitsPerSample / 8;
-  const uint16_t block_align = kChannels * kBitsPerSample / 8;
-  const uint32_t fmt_size = 16;
-  const uint16_t pcm = 1;
-  output.write("RIFF", 4);
-  output.write(reinterpret_cast<const char*>(&riff_size), sizeof(riff_size));
-  output.write("WAVEfmt ", 8);
-  output.write(reinterpret_cast<const char*>(&fmt_size), sizeof(fmt_size));
-  output.write(reinterpret_cast<const char*>(&pcm), sizeof(pcm));
-  output.write(reinterpret_cast<const char*>(&kChannels), sizeof(kChannels));
-  output.write(reinterpret_cast<const char*>(&kSampleRate), sizeof(kSampleRate));
-  output.write(reinterpret_cast<const char*>(&byte_rate), sizeof(byte_rate));
-  output.write(reinterpret_cast<const char*>(&block_align), sizeof(block_align));
-  output.write(reinterpret_cast<const char*>(&kBitsPerSample), sizeof(kBitsPerSample));
-  output.write("data", 4);
-  output.write(reinterpret_cast<const char*>(&data_size), sizeof(data_size));
-  output.write(reinterpret_cast<const char*>(samples.data()), data_size);
-  return output.good();
+  return wave_file::WriteMono(filename, std::move(samples), kSampleRate);
 }
 
 }  // namespace

@@ -9,6 +9,7 @@ import 'package:path/path.dart' as path;
 
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
+import '../../../domain/built_voice.dart';
 import '../../../domain/character.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/game_process.dart';
@@ -34,6 +35,9 @@ class CharactersState {
     this.playingId,
     this.previewingId,
     this.previewReady = false,
+    this.buildingId,
+    this.builtId,
+    this.built,
   });
 
   final List<Character> characters;
@@ -66,6 +70,13 @@ class CharactersState {
   /// The card whose clip is sounding right now.
   final String? playingId;
 
+  /// The card whose voice is being measured from files dropped on it, and
+  /// what came of the last such measurement. Both are the screen's own: the
+  /// card keeps only the fingerprint.
+  final String? buildingId;
+  final String? builtId;
+  final BuiltVoice? built;
+
   /// The card whose sample is being spoken — from the moment it is asked
   /// for, which on the first one means waiting for the speech model.
   final String? previewingId;
@@ -76,6 +87,9 @@ class CharactersState {
   bool get running => status == PipelineStatus.starting || status == PipelineStatus.listening;
 
   bool get recording => recordingId != null;
+
+  /// Whether a card is being measured from files right now.
+  bool get building => buildingId != null;
 
   /// Whether [id] has a clip of its own to play.
   bool canPlay(String id) => clips.contains(id);
@@ -104,6 +118,11 @@ class CharactersState {
     bool clearPlayingId = false,
     String? previewingId,
     bool clearPreviewingId = false,
+    String? buildingId,
+    bool clearBuildingId = false,
+    String? builtId,
+    BuiltVoice? built,
+    bool clearBuilt = false,
     bool? previewReady,
   }) => CharactersState(
     characters: characters ?? this.characters,
@@ -115,6 +134,9 @@ class CharactersState {
     clips: clips ?? this.clips,
     playingId: clearPlayingId ? null : playingId ?? this.playingId,
     previewingId: clearPreviewingId ? null : previewingId ?? this.previewingId,
+    buildingId: clearBuildingId ? null : buildingId ?? this.buildingId,
+    builtId: clearBuilt ? null : builtId ?? this.builtId,
+    built: clearBuilt ? null : built ?? this.built,
     previewReady: previewReady ?? this.previewReady,
   );
 }
@@ -450,6 +472,93 @@ class CharactersCubit extends Cubit<CharactersState> {
       await _appRepository.removeCharacterClip(id);
     } on Object {
       // Nothing to tell the player: the card goes either way.
+    }
+  }
+
+  /// Measures the voice of [id] from the recordings the player dropped onto
+  /// the card, whatever they are encoded as.
+  ///
+  /// The files are averaged rather than picked between, which is what makes
+  /// a card built this way steadier than one built from a single line, and
+  /// what came of it — how many files were used, how well they agreed, which
+  /// ones held no voice — is kept in [CharactersState.built] for the card to
+  /// show. The clip the fingerprint stands closest to becomes the one the
+  /// card plays back, so what the player hears is a recording they gave it.
+  Future<void> voiceFromFiles(String id, List<String> paths) async {
+    if (paths.isEmpty || state.building || state.recording || !canRecord) return;
+    final character = state.characters.where((value) => value.id == id).firstOrNull;
+    if (character == null) return;
+    _errors.report(null);
+    emit(state.copyWith(buildingId: id, clearBuilt: true));
+    final started = state.running;
+    try {
+      if (!started) {
+        final settings = _settings.settings;
+        // The converter and nothing else: there is no game to listen to,
+        // and the recordings are already on disk.
+        await _appRepository.startVoiceFiles(
+          settings: settings,
+          converterDirectory: await _modelRepository.directoryFor(
+            _selection.voiceConverter!.model,
+          ),
+          converterBackend: settings.backendFor(
+            ComputeStage.voiceConversion,
+            _downloads.state.availability,
+          ),
+          runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+        );
+      }
+      final built = await _appRepository.buildVoice(paths);
+      var kept = state.clips;
+      if (built.anchor case final anchor?) {
+        try {
+          await _appRepository.keepCharacterClip(id, anchor);
+          kept = {...kept, id};
+        } catch (exception) {
+          // A card without its clip is still a card: only the play button
+          // goes, and the fingerprint it was built from stays.
+          kept = {...kept}..remove(id);
+          _errors.report(exception);
+        }
+      }
+      if (isClosed) return;
+      emit(state.copyWith(built: built, builtId: id, clips: kept));
+      await _write(
+        characters: [
+          for (final value in state.characters)
+            if (value.id == id)
+              value.copyWith(
+                vector: built.vector,
+                gender: built.gender,
+                clearGender: built.gender == null,
+                seconds: built.seconds,
+              )
+            else
+              value,
+        ],
+      );
+    } catch (exception) {
+      _errors.report(exception);
+    } finally {
+      // A session this screen borrowed only to measure files is put down
+      // again; one the player started for recording is theirs to end. The
+      // engine is stopped rather than stopSession: nothing reported itself
+      // as listening, so there is no session state to go by.
+      if (!started) {
+        try {
+          await _appRepository.stop();
+        } catch (exception) {
+          _errors.report(exception);
+        }
+      }
+      if (!isClosed) {
+        emit(
+          state.copyWith(
+            clearBuildingId: true,
+            status: started ? state.status : PipelineStatus.idle,
+          ),
+        );
+      }
     }
   }
 

@@ -20,6 +20,13 @@ import 'package:meta/meta.dart' as meta;
 external int ld_abi_version();
 
 @meta.RecordUse()
+@ffi.Native<ffi.Int32 Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)>()
+external int ld_decode_audio(
+  ffi.Pointer<ffi.Char> utf8_path,
+  ffi.Pointer<ffi.Char> utf8_output_path,
+);
+
+@meta.RecordUse()
 @ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.Int32)>()
 external ffi.Pointer<ffi.Char> ld_error_message(
   int error_code,

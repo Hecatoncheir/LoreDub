@@ -126,7 +126,7 @@ abstract class AppLocalizations {
   /// No description provided for @charactersNote.
   ///
   /// In ru, this message translates to:
-  /// **'Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом.'**
+  /// **'Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом. Голос можно собрать и из готовых записей: перетащите их на карточку.'**
   String get charactersNote;
 
   /// No description provided for @charactersHowTo.
@@ -266,6 +266,36 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Голос ещё не записан'**
   String get charactersNoVoice;
+
+  /// No description provided for @charactersBuilding.
+  ///
+  /// In ru, this message translates to:
+  /// **'Считаю голос из файлов…'**
+  String get charactersBuilding;
+
+  /// No description provided for @charactersBuiltFrom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Собран из {files} записей · сходство {agreement}'**
+  String charactersBuiltFrom(int files, String agreement);
+
+  /// No description provided for @charactersBuiltFromOne.
+  ///
+  /// In ru, this message translates to:
+  /// **'Собран из одной записи'**
+  String get charactersBuiltFromOne;
+
+  /// No description provided for @charactersBuiltApart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записи звучат как разные голоса'**
+  String get charactersBuiltApart;
+
+  /// No description provided for @charactersBuiltSkipped.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без голоса: {files}'**
+  String charactersBuiltSkipped(int files);
 
   /// No description provided for @charactersVoiceKept.
   ///
@@ -1916,6 +1946,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Marian/Silero worker не запущен'**
   String get failureWorkerNotRunning;
+
+  /// No description provided for @failureAudioNotDecoded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Windows не смог прочитать ни один из этих файлов как звук'**
+  String get failureAudioNotDecoded;
 
   /// No description provided for @failureWorkerFailed.
   ///

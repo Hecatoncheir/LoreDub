@@ -26,7 +26,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get charactersNote =>
-      'Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом.';
+      'Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом. Голос можно собрать и из готовых записей: перетащите их на карточку.';
 
   @override
   String get charactersHowTo =>
@@ -101,6 +101,25 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get charactersNoVoice => 'Голос ещё не записан';
+
+  @override
+  String get charactersBuilding => 'Считаю голос из файлов…';
+
+  @override
+  String charactersBuiltFrom(int files, String agreement) {
+    return 'Собран из $files записей · сходство $agreement';
+  }
+
+  @override
+  String get charactersBuiltFromOne => 'Собран из одной записи';
+
+  @override
+  String get charactersBuiltApart => 'Записи звучат как разные голоса';
+
+  @override
+  String charactersBuiltSkipped(int files) {
+    return 'Без голоса: $files';
+  }
 
   @override
   String charactersVoiceKept(String seconds, String gender) {
@@ -1118,6 +1137,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get failureWorkerNotRunning => 'Marian/Silero worker не запущен';
+
+  @override
+  String get failureAudioNotDecoded => 'Windows не смог прочитать ни один из этих файлов как звук';
 
   @override
   String failureWorkerFailed(String detail) {

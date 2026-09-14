@@ -12,6 +12,7 @@
 /// Mapping from Dart function name to native symbol name.
 const recordUseMapping = {
   'ld_abi_version': 'ld_abi_version',
+  'ld_decode_audio': 'ld_decode_audio',
   'ld_error_message': 'ld_error_message',
   'ld_is_process_loopback_supported': 'ld_is_process_loopback_supported',
   'ld_list_processes_json': 'ld_list_processes_json',

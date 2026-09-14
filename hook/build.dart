@@ -13,6 +13,7 @@ Future<void> main(List<String> arguments) async {
       name: 'lore_dub_native',
       assetName: 'src/native/lore_dub_native.g.dart',
       sources: const [
+        'native/audio_decoder.cpp',
         'native/lore_dub_native.cpp',
         'native/process_loopback_capture.cpp',
         'native/ocr_capture.cpp',
@@ -32,6 +33,11 @@ Future<void> main(List<String> arguments) async {
               'gdi32',
               'windowsapp',
               'dxgi',
+              // Windows' own decoders, which is how a dropped ogg or mp3
+              // becomes a recording the converter can measure.
+              'mfplat',
+              'mfreadwrite',
+              'mfuuid',
             ]
           : const [],
     );

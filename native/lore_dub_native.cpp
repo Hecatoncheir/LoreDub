@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "lore_dub_native.h"
+#include "audio_decoder.h"
 #include "ocr_capture.h"
 #include "process_loopback_capture.h"
 #include "snapshot_overlay.h"
@@ -732,6 +733,28 @@ int32_t ld_poll_event_json(char* output, int32_t capacity) {
   return result;
 }
 
+// A file the player dropped onto a card, brought into the shape every
+// other recording the converter is shown comes in. The work is Windows's
+// own decoders; what is ours is the rate and the loudness, which is what
+// lets a dropped file and a captured line answer for the same character.
+int32_t ld_decode_audio(const char* utf8_path, const char* utf8_output_path) {
+#if defined(_WIN32)
+  if (utf8_path == nullptr || utf8_path[0] == '\0') return -30;
+  if (utf8_output_path == nullptr || utf8_output_path[0] == '\0') return -30;
+  double seconds = 0;
+  const int32_t result = DecodeAudioFile(Wide(utf8_path), Wide(utf8_output_path), &seconds);
+  if (result != 0) {
+    // The decoder's own codes sit apart from the pipeline's.
+    return result == kDecodeUnsupported ? -31 : (result == kDecodeNoAudio ? -32 : -33);
+  }
+  return static_cast<int32_t>(seconds * 1000.0);
+#else
+  (void)utf8_path;
+  (void)utf8_output_path;
+  return -2;
+#endif
+}
+
 const char* ld_error_message(int32_t error_code) {
   switch (error_code) {
     case 0: return "Success";
@@ -748,6 +771,10 @@ const char* ld_error_message(int32_t error_code) {
     case -14: return "No matching active audio session was found";
     case -20: return "Playback path is empty";
     case -21: return "Windows could not play the generated wave file";
+    case -30: return "Audio path is empty";
+    case -31: return "Windows cannot decode this sound file";
+    case -32: return "The file holds no audio";
+    case -33: return "The decoded recording could not be written";
     default: return "Unknown native error";
   }
 }

@@ -14,6 +14,7 @@ import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
 import '../../domain/hotkey.dart';
 import '../../domain/ocr_text_delta.dart';
+import '../../domain/built_voice.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/sound_captions.dart';
 import '../../domain/speech_pace.dart';
@@ -240,6 +241,91 @@ class NativeEngineService {
     // Nothing native starts here to say so itself.
     _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
   }
+
+  /// Loads the converter and nothing else, with no capture at all: the
+  /// files a card is built from are already on disk, and there is no game
+  /// to listen to. The screen waits seconds rather than a minute.
+  Future<void> startVoiceFiles(Map<String, Object?> config) async {
+    _paused = false;
+    _session = PipelineSession.characters;
+    _recordingVoice = false;
+    final models = config['models']! as Map<String, String>;
+    await _inference.start(
+      embedOnly: true,
+      threads: config['cpuThreads']! as int,
+      speed: 1,
+      pythonExecutable: config['pythonExecutable']! as String,
+      requiresWhisper: false,
+      voiceConverter: models['converter'],
+      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+    );
+    _activeConfig = config;
+    _pollTimer ??= Timer.periodic(
+      const Duration(milliseconds: 80),
+      (_) => _pollEvents(),
+    );
+    // Nothing native starts here to say so itself.
+    _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
+  }
+
+  /// Turns the files at [paths] into recordings the converter can measure
+  /// and hands them to the worker as one voice.
+  ///
+  /// Windows does the decoding, so a card takes whatever the machine can
+  /// play -- ogg and opus included. Each file is brought to the rate and
+  /// the loudness the capture writes at, or a fingerprint from a file would
+  /// not answer for the same character a fingerprint from the game does.
+  Future<BuiltVoice> buildVoice(List<String> paths) async {
+    final work = await LocalInferenceService.createWorkDirectory();
+    final decoded = <String>[];
+    final unreadable = <String>[];
+    for (final (index, source) in paths.indexed) {
+      final target = '${work.path}${Platform.pathSeparator}dropped_$index.wav';
+      final milliseconds = await Isolate.run(() => _decodeAudio(source, target));
+      if (milliseconds < 0) {
+        unreadable.add(source);
+        continue;
+      }
+      decoded.add(target);
+    }
+    if (decoded.isEmpty) {
+      throw const LoreDubFailure(FailureCode.audioNotDecoded);
+    }
+    try {
+      final built = await _inference.buildVoice(decoded);
+      _anchorKept = built.anchor;
+      // The worker answers about the files it was handed; the player knows
+      // the ones they dropped, so the two are put back together here.
+      final ofSource = {for (final (index, path) in decoded.indexed) path: index};
+      return BuiltVoice(
+        vector: built.vector,
+        gender: built.gender,
+        seconds: built.seconds,
+        used: built.used,
+        skipped: [
+          ...unreadable,
+          for (final path in built.skipped)
+            if (ofSource[path] case final index?) paths[index] else path,
+        ],
+        agreement: built.agreement,
+        weakest: built.weakest,
+        together: built.together,
+        anchor: built.anchor,
+      );
+    } finally {
+      for (final path in decoded) {
+        // The one the fingerprint stands closest to is left where it is:
+        // the card keeps it to play back, and the caller drops it once it
+        // has been copied there.
+        if (path != _anchorKept) await _deleteIfPresent(path);
+      }
+      _anchorKept = null;
+    }
+  }
+
+  /// The decoded file the last build left for the caller to keep.
+  String? _anchorKept;
 
   /// Speaks [text] in [voice], over [timbre] when the converter is loaded,
   /// and plays it. The file is the worker's and is dropped afterwards.
@@ -745,6 +831,20 @@ class NativeEngineService {
   /// from an instance closure would drag the whole service — and its futures,
   /// which cannot cross an isolate boundary — into the message.
   static Future<void> _playInIsolate(String wavePath) => Isolate.run(() => _playWave(wavePath));
+
+  /// The length in milliseconds of what was written, or a negative code.
+  /// Static for the same reason, and run apart because a long file is a
+  /// wait rather than a moment.
+  static int _decodeAudio(String source, String target) {
+    final from = source.toNativeUtf8();
+    final to = target.toNativeUtf8();
+    try {
+      return ld_decode_audio(from.cast(), to.cast());
+    } finally {
+      malloc.free(from);
+      malloc.free(to);
+    }
+  }
 
   static void _playWave(String wavePath) {
     final pointer = wavePath.toNativeUtf8();

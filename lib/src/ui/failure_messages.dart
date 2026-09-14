@@ -32,6 +32,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
       detail.isEmpty ? l10n.failureWorkerTimeoutSilent : l10n.failureWorkerTimeout(detail),
     FailureCode.workerNotRunning => l10n.failureWorkerNotRunning,
     FailureCode.workerFailed => l10n.failureWorkerFailed(detail),
+    FailureCode.audioNotDecoded => l10n.failureAudioNotDecoded,
     FailureCode.pipelineStopped => l10n.failurePipelineStopped,
     FailureCode.captureFailed => l10n.failureCaptureFailed(detail),
     FailureCode.windowsOnly => l10n.failureWindowsOnly,

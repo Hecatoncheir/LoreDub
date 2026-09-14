@@ -13,6 +13,7 @@ import '../../domain/compute_device.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/sound_captions.dart';
 import '../../domain/spoken_language.dart';
+import '../../domain/built_voice.dart';
 import '../../domain/failure.dart';
 import 'runtime_catalog.dart';
 
@@ -435,6 +436,38 @@ class LocalInferenceService {
       gender: response['gender'] as String?,
       seconds: (response['seconds'] as num?)?.toDouble() ?? 0,
     );
+  }
+
+  /// One fingerprint for a character, measured from every recording in
+  /// [wavePaths] at once.
+  ///
+  /// The worker averages them, which is what makes a card built from files
+  /// steadier than one built from a single line, and says how well they
+  /// agreed so the player can see they were one voice.
+  Future<BuiltVoice> buildVoice(List<String> wavePaths) async {
+    final worker = _worker;
+    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(jsonEncode({'id': id, 'voiceFrom': wavePaths}));
+    // The converter runs once per file; a folder of them is a wait, not a
+    // moment, and a card the player is watching must not give up first.
+    final response = await completer.future.timeout(
+      Duration(seconds: 30 + 15 * wavePaths.length),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
+    return BuiltVoice.fromJson(response);
   }
 
   /// A sample of [voice], in [timbre] when one is given and the converter

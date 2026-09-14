@@ -5,7 +5,7 @@
   "navSnapshot": "Snippet",
   "navCharacters": "Characters",
   "titleCharacters": "Character voices",
-  "charactersNote": "A card remembers a character's voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them.",
+  "charactersNote": "A card remembers a character's voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them. A voice can also be built from recordings you already have: drop them on the card.",
   "charactersHowTo": "Start the recording session, choose the game process, and record the voices one by one.",
   "charactersNeedsConverter": "The voice converter is needed: download it in the Original voice section of the Models screen.",
   "charactersSessionStart": "Start recording",
@@ -36,6 +36,22 @@
     }
   },
   "charactersNoVoice": "No voice recorded yet",
+  "charactersBuilding": "Measuring the voice from the files…",
+  "charactersBuiltFrom": "Built from {files} recordings · agreement {agreement}",
+  "@charactersBuiltFrom": {
+    "placeholders": {
+      "files": {"type": "int"},
+      "agreement": {"type": "String"}
+    }
+  },
+  "charactersBuiltFromOne": "Built from one recording",
+  "charactersBuiltApart": "The recordings sound like more than one voice",
+  "charactersBuiltSkipped": "No voice in: {files}",
+  "@charactersBuiltSkipped": {
+    "placeholders": {
+      "files": {"type": "int"}
+    }
+  },
   "charactersVoiceKept": "Voice recorded · {seconds} s · {gender}",
   "@charactersVoiceKept": {
     "placeholders": {
@@ -742,6 +758,7 @@
   },
   "failureWorkerTimeoutSilent": "Marian/Silero did not answer within 2 minutes, and printed nothing.",
   "failureWorkerNotRunning": "The Marian/Silero worker is not running",
+  "failureAudioNotDecoded": "Windows could not read any of those files as sound",
   "failureWorkerFailed": "Marian/Silero: {detail}",
   "@failureWorkerFailed": {
     "placeholders": {

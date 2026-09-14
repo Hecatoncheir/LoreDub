@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../../domain/app_settings.dart';
+import '../../domain/built_voice.dart';
 import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
@@ -290,6 +291,32 @@ class AppRepository {
       rethrow;
     }
   }
+
+  /// Starts the session a card is built through when the recordings are
+  /// already on disk: the converter that measures a voice and nothing else,
+  /// with no game listened to at all.
+  Future<void> startVoiceFiles({
+    required AppSettings settings,
+    required String converterDirectory,
+    required ComputeBackend converterBackend,
+    required String runtimeDirectory,
+  }) async {
+    try {
+      await _nativeEngine.startVoiceFiles({
+        'cpuThreads': settings.cpuThreads,
+        'pythonExecutable': settings.pythonExecutable,
+        'models': {'converter': converterDirectory},
+        'voiceConversionBackend': converterBackend.name,
+        'runtimeDirectory': runtimeDirectory,
+      });
+    } catch (_) {
+      await _nativeEngine.stop();
+      rethrow;
+    }
+  }
+
+  /// One voice from the files at [paths], however they are encoded.
+  Future<BuiltVoice> buildVoice(List<String> paths) => _nativeEngine.buildVoice(paths);
 
   /// Starts the session Live gathers the voices of a scene through: the
   /// game's audio and the converter that hears who is speaking, with neither

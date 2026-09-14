@@ -3,9 +3,11 @@
 
 import 'dart:math' as math;
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../domain/built_voice.dart';
 import '../../domain/character.dart';
 import '../../domain/pipeline_state.dart';
 import '../theme.dart';
@@ -74,6 +76,9 @@ class CharacterTile extends StatefulWidget {
     required this.previewing,
     required this.onExport,
     required this.onDelete,
+    this.onFilesDropped,
+    this.building = false,
+    this.built,
     this.fromPackId,
   });
 
@@ -117,9 +122,49 @@ class CharacterTile extends StatefulWidget {
   final VoidCallback? onExport;
   final VoidCallback onDelete;
 
+  /// Takes the recordings dropped onto the card and measures its voice from
+  /// all of them at once. Null while nothing could be measured — the
+  /// converter is missing, or another card is being recorded.
+  final ValueChanged<List<String>>? onFilesDropped;
+
+  /// Whether this card's voice is being measured from dropped files.
+  final bool building;
+
+  /// What came of the last such measurement on this card, while the screen
+  /// still has it to show.
+  final BuiltVoice? built;
+
   /// Set when the card is drawn inside a pack, so dropping it on the cast
   /// takes it out of that pack.
   final String? fromPackId;
+
+  /// What a card takes when files are dropped on it. Windows decodes them,
+  /// so the list is what it can play rather than what this app can read.
+  static const soundFiles = {
+    '.wav',
+    '.ogg',
+    '.oga',
+    '.opus',
+    '.mp3',
+    '.m4a',
+    '.aac',
+    '.flac',
+    '.wma',
+    '.webm',
+    '.mp4',
+  };
+
+  /// The paths among [paths] that look like sound. A folder dropped by
+  /// mistake, or a screenshot, is left rather than sent to be decoded.
+  static List<String> soundAmong(Iterable<String> paths) => [
+    for (final path in paths)
+      if (soundFiles.contains(_extensionOf(path))) path,
+  ];
+
+  static String _extensionOf(String path) {
+    final dot = path.lastIndexOf('.');
+    return dot < 0 ? '' : path.substring(dot).toLowerCase();
+  }
 
   @override
   State<CharacterTile> createState() => _CharacterTileState();
@@ -127,6 +172,9 @@ class CharacterTile extends StatefulWidget {
 
 class _CharacterTileState extends State<CharacterTile> {
   late final TextEditingController _name = TextEditingController(text: widget.character.name);
+
+  /// Whether files are being held over this card right now.
+  bool _over = false;
 
   @override
   void didUpdateWidget(CharacterTile oldWidget) {
@@ -153,12 +201,24 @@ class _CharacterTileState extends State<CharacterTile> {
   @override
   Widget build(BuildContext context) {
     final tile = _tile(context);
-    return Draggable<CharacterDrag>(
+    final dragged = Draggable<CharacterDrag>(
       data: CharacterDrag(character: widget.character, fromPackId: widget.fromPackId),
       dragAnchorStrategy: pointerDragAnchorStrategy,
       feedback: _DragCard(name: widget.character.name),
       childWhenDragging: Opacity(opacity: 0.4, child: tile),
       child: tile,
+    );
+    // The whole card takes the files, not a strip of it: what the player
+    // aims at is the character, and a card is small enough already.
+    return DropTarget(
+      onDragEntered: (_) => setState(() => _over = true),
+      onDragExited: (_) => setState(() => _over = false),
+      onDragDone: (details) {
+        setState(() => _over = false);
+        final sound = CharacterTile.soundAmong(details.files.map((file) => file.path));
+        if (sound.isNotEmpty) widget.onFilesDropped?.call(sound);
+      },
+      child: dragged,
     );
   }
 
@@ -169,6 +229,24 @@ class _CharacterTileState extends State<CharacterTile> {
       if (other.id == id) return other.name;
     }
     return l10n.sceneVoiceAnonymous;
+  }
+
+  /// What the card says about the recordings it was just built from: how
+  /// many held a voice, how closely they agreed, and what was left out.
+  /// One recording agrees with itself, so its number is not shown.
+  String _buildingLine(AppLocalizations l10n) {
+    final built = widget.built;
+    if (widget.building || built == null) return l10n.charactersBuilding;
+    final parts = [
+      if (!built.together)
+        l10n.charactersBuiltApart
+      else if (built.used <= 1)
+        l10n.charactersBuiltFromOne
+      else
+        l10n.charactersBuiltFrom(built.used, built.agreement.toStringAsFixed(2)),
+      if (built.skipped.isNotEmpty) l10n.charactersBuiltSkipped(built.skipped.length),
+    ];
+    return parts.join(' · ');
   }
 
   Widget _tile(BuildContext context) {
@@ -184,12 +262,14 @@ class _CharacterTileState extends State<CharacterTile> {
         shape: RoundedRectangleBorder(
           borderRadius: const BorderRadius.all(Radius.circular(12)),
           side: BorderSide(
-            color: recording
+            // Files held over the card say so the way a recording does: the
+            // whole card is the target, so the whole edge lights up.
+            color: recording || _over || widget.building
                 ? LoreDubPalette.orange
                 : hovered
                 ? LoreDubPalette.ink
                 : LoreDubPalette.outline,
-            width: recording ? 2 : 1,
+            width: recording || _over || widget.building ? 2 : 1,
           ),
         ),
         child: Column(
@@ -247,6 +327,25 @@ class _CharacterTileState extends State<CharacterTile> {
                         ),
                       ),
                     ),
+                    if (widget.building || widget.built != null)
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            _buildingLine(l10n),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: LoreDubFonts.mono,
+                              fontSize: 11,
+                              color: widget.built?.together == false
+                                  ? LoreDubPalette.error
+                                  : LoreDubPalette.orange,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                     if (widget.character.voicedBy case final id?)
                       Flexible(
                         child: Padding(

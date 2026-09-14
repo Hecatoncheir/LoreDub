@@ -26,7 +26,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get charactersNote =>
-      'A card remembers a character\'s voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them.';
+      'A card remembers a character\'s voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them. A voice can also be built from recordings you already have: drop them on the card.';
 
   @override
   String get charactersHowTo =>
@@ -102,6 +102,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get charactersNoVoice => 'No voice recorded yet';
+
+  @override
+  String get charactersBuilding => 'Measuring the voice from the files…';
+
+  @override
+  String charactersBuiltFrom(int files, String agreement) {
+    return 'Built from $files recordings · agreement $agreement';
+  }
+
+  @override
+  String get charactersBuiltFromOne => 'Built from one recording';
+
+  @override
+  String get charactersBuiltApart => 'The recordings sound like more than one voice';
+
+  @override
+  String charactersBuiltSkipped(int files) {
+    return 'No voice in: $files';
+  }
 
   @override
   String charactersVoiceKept(String seconds, String gender) {
@@ -1112,6 +1131,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get failureWorkerNotRunning => 'The Marian/Silero worker is not running';
+
+  @override
+  String get failureAudioNotDecoded => 'Windows could not read any of those files as sound';
 
   @override
   String failureWorkerFailed(String detail) {
