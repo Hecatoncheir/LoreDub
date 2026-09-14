@@ -257,10 +257,78 @@ void main() {
     expect(graph.state.layout.characters, ['guard', 'smith'], reason: 'the cast stays put');
   });
 
+  test('draws a card again beside the part it takes over', () async {
+    graph.add(const PipelineCharacterPlaced('guard'));
+    await pumpEvents();
+
+    final copy = PipelineNodeIds.characterCopy('guard', 2);
+    expect(graph.state.layout.cast.length, 3);
+    expect(graph.state.graph.node(copy)?.characterId, 'guard');
+    expect(graph.state.selected, copy, reason: 'the panel opens on what was just drawn');
+    // The card was already one of the voices of the game; the copy is drawn
+    // to take a part over, so the mix is not told the same character twice.
+    expect(
+      graph.state.graph.linkInto(PipelinePort(copy, PipelineSocket.characterIn)),
+      isNull,
+    );
+    expect(
+      graph.state.graph.linkInto(
+        PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+      ),
+      isNotNull,
+    );
+    expect(repository.layout.cast.length, 3, reason: 'the arrangement is written');
+  });
+
+  test('one copy goes and the others stay', () async {
+    graph.add(const PipelineCharacterPlaced('guard'));
+    await pumpEvents();
+
+    graph.add(PipelineCharacterRemoved(PipelineNodeIds.characterCopy('guard', 2)));
+    await pumpEvents();
+
+    expect(graph.state.layout.characters, ['guard', 'smith']);
+    expect(graph.state.graph.node(PipelineNodeIds.character('guard')), isNotNull);
+  });
+
+  test('a card stops being counted among the voices of the game', () async {
+    final counted = graph.state.graph.linkInto(
+      PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+    )!;
+
+    graph.add(PipelineLinkCut(counted));
+    await pumpEvents();
+
+    expect(
+      graph.state.graph.linkInto(
+        PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+      ),
+      isNull,
+    );
+    expect(
+      cubits.characters.state.characters.firstWhere((value) => value.id == 'guard').voicedBy,
+      isNull,
+      reason: 'a note on the canvas changes nothing of the cast',
+    );
+    expect(cubits.settings.settings.castRouted, isTrue, reason: 'nor of the settings');
+    expect(repository.layout.cast.first.heard, isFalse);
+
+    graph.add(const PipelineGraphUndone());
+    await pumpEvents();
+
+    expect(
+      graph.state.graph.linkInto(
+        PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+      ),
+      isNotNull,
+      reason: 'one step back counts it in again',
+    );
+  });
+
   test('a card taken off the canvas keeps the voice that reads it', () async {
     await drawLink(voiceOf('guard'), readBy('smith'));
 
-    graph.add(const PipelineCharacterRemoved('guard'));
+    graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('guard')));
     await pumpEvents();
 
     expect(graph.state.layout.characters, ['smith']);
@@ -270,7 +338,7 @@ void main() {
   test('takes a card off the canvas even while it speaks for another', () async {
     await drawLink(voiceOf('guard'), readBy('smith'));
 
-    graph.add(const PipelineCharacterRemoved('smith'));
+    graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('smith')));
     await pumpEvents();
 
     expect(graph.state.layout.characters, ['guard']);
@@ -333,7 +401,7 @@ void main() {
     });
 
     test('a card is brought onto the canvas', () async {
-      graph.add(const PipelineCharacterRemoved('smith'));
+      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('smith')));
       await pumpEvents();
       expect(graph.state.layout.characters, ['guard']);
 
@@ -345,7 +413,7 @@ void main() {
     });
 
     test('a card is taken off it', () async {
-      graph.add(const PipelineCharacterRemoved('guard'));
+      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('guard')));
       await pumpEvents();
 
       expect(graph.state.layout.characters, ['smith']);

@@ -86,8 +86,8 @@ enum PipelineSocket {
   voiceIn(PipelineNodeKind.voice, PipelineSignal.text, true),
   voiceAudio(PipelineNodeKind.voice, PipelineSignal.audio, false),
 
-  /// The cast the dubbing reads: it reaches every card on the canvas, which
-  /// is the one socket of theirs that is never empty.
+  /// The cast the dubbing reads: a dashed line to every card the game
+  /// itself may speak.
   voiceCast(PipelineNodeKind.voice, PipelineSignal.voice, false),
 
   mixIn(PipelineNodeKind.mix, PipelineSignal.audio, true),
@@ -98,8 +98,10 @@ enum PipelineSocket {
   mixOut(PipelineNodeKind.mix, PipelineSignal.audio, false),
   streamIn(PipelineNodeKind.output, PipelineSignal.audio, true),
 
-  /// The card itself, as the dubbing knows it. Filled for every card drawn:
-  /// this is where it joins the pipeline.
+  /// The card itself, as the dubbing hears it in the game. It is the one
+  /// socket that says nothing about the route: a card whose character is
+  /// never spoken by the game — one put on the canvas only to lend its
+  /// voice — leaves it empty, and cutting the line changes no setting.
   characterIn(PipelineNodeKind.character, PipelineSignal.voice, true),
 
   /// The parts this card speaks besides its own: a line arriving here is
@@ -133,11 +135,30 @@ abstract final class PipelineNodeIds {
 
   static const characterPrefix = 'character:';
 
+  /// What tells the second drawing of a card from the first.
+  static const copyMark = '#';
+
   static String character(String characterId) => '$characterPrefix$characterId';
 
-  /// The card [nodeId] draws, or null when it is a stage.
-  static String? characterOf(String nodeId) =>
-      nodeId.startsWith(characterPrefix) ? nodeId.substring(characterPrefix.length) : null;
+  /// The [copy]th drawing of a card. The first keeps the plain name, so an
+  /// arrangement written before a card could be drawn twice still finds the
+  /// node its positions are filed under.
+  static String characterCopy(String characterId, int copy) =>
+      copy <= 1 ? character(characterId) : '${character(characterId)}$copyMark$copy';
+
+  /// The card [nodeId] draws, or null when it is a stage. Every drawing of
+  /// a card answers with the same card: which copy it is matters to the
+  /// canvas and to nothing else.
+  static String? characterOf(String nodeId) {
+    if (!nodeId.startsWith(characterPrefix)) return null;
+    final name = nodeId.substring(characterPrefix.length);
+    final mark = name.lastIndexOf(copyMark);
+    if (mark < 0) return name;
+    // Only a copy number is cut off: a card whose own id holds a # — one
+    // imported from somebody else's file — keeps every letter of it.
+    final copy = name.substring(mark + 1);
+    return copy.isNotEmpty && int.tryParse(copy) != null ? name.substring(0, mark) : name;
+  }
 
   /// The stages, in the order they are laid out.
   static const stages = [source, recognition, translation, voice, mix, output];
@@ -264,15 +285,88 @@ class PipelineGraph {
   ];
 }
 
+/// One drawing of a card on the canvas.
+///
+/// A card may be drawn more than once: once among the voices the game
+/// speaks, again beside the character whose part it takes over, so the line
+/// between them is a hand's breadth rather than the width of the scheme.
+/// The copies are the same card — whose voice reads whom belongs to the
+/// character and not to the drawing — so what a copy carries of its own is
+/// only where it sits and whether the game is expected to speak it here.
+class CastPlacement {
+  const CastPlacement({required this.nodeId, required this.characterId, this.heard = true});
+
+  /// The first drawing of [characterId], under the node name an arrangement
+  /// from before copies already uses.
+  factory CastPlacement.of(String characterId, {bool heard = true}) => CastPlacement(
+    nodeId: PipelineNodeIds.character(characterId),
+    characterId: characterId,
+    heard: heard,
+  );
+
+  final String nodeId;
+  final String characterId;
+
+  /// Whether the game's own dialogue is expected to hold this character —
+  /// the dashed line from the voice node. It says no more than that: the
+  /// worker matches every line against the whole cast whatever the canvas
+  /// shows. A card drawn only to lend its voice has none, and neither does
+  /// a second copy, which is there to take a part rather than to speak one.
+  final bool heard;
+
+  CastPlacement copyWith({bool? heard}) =>
+      CastPlacement(nodeId: nodeId, characterId: characterId, heard: heard ?? this.heard);
+
+  Map<String, Object?> toJson() => {'node': nodeId, 'character': characterId, 'heard': heard};
+
+  static CastPlacement? fromJson(Object? json) => switch (json) {
+    {'node': final String node, 'character': final String character} => CastPlacement(
+      nodeId: node,
+      characterId: character,
+      heard: switch (json) {
+        {'heard': final bool heard} => heard,
+        _ => true,
+      },
+    ),
+    // A file from before a card could be drawn twice lists the cards by id.
+    final String character => CastPlacement.of(character),
+    _ => null,
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is CastPlacement &&
+      other.nodeId == nodeId &&
+      other.characterId == characterId &&
+      other.heard == heard;
+
+  @override
+  int get hashCode => Object.hash(nodeId, characterId, heard);
+
+  @override
+  String toString() => 'CastPlacement($nodeId${heard ? '' : ', unheard'})';
+}
+
 /// Where the nodes sit, which cards were put on the canvas, and where the
 /// canvas itself is. This is all that is kept on disk: everything else is
 /// derived from the settings and the cast.
 class PipelineLayout {
   const PipelineLayout({
     this.positions = const {},
-    this.characters = const [],
+    this.cast = const [],
     this.view = const GraphView(),
   });
+
+  /// The arrangement a list of cards describes, each drawn once.
+  factory PipelineLayout.drawing(
+    List<String> characters, {
+    Map<String, GraphPoint> positions = const {},
+    GraphView view = const GraphView(),
+  }) => PipelineLayout(
+    positions: positions,
+    cast: [for (final id in characters) CastPlacement.of(id)],
+    view: view,
+  );
 
   /// What a canvas that was never arranged looks like.
   static const standard = PipelineLayout(positions: standardPositions);
@@ -305,43 +399,78 @@ class PipelineLayout {
 
   final Map<String, GraphPoint> positions;
 
-  /// The cards the player put on the canvas, in the order they were placed.
-  /// A card that reads another, or is read by one, is drawn whether or not
-  /// it is listed here: a substitution nobody can see is a trap.
-  final List<String> characters;
+  /// The cards the player drew on the canvas, in the order they drew them.
+  /// A card may appear more than once; a card that reads another, or is
+  /// read by one, is still drawn only where it was put, and the face of it
+  /// says who reads it, so no substitution goes unsaid.
+  final List<CastPlacement> cast;
   final GraphView view;
+
+  /// The cards on the canvas, one entry per drawing of one.
+  List<String> get characters => [for (final placement in cast) placement.characterId];
 
   PipelineLayout copyWith({
     Map<String, GraphPoint>? positions,
-    List<String>? characters,
+    List<CastPlacement>? cast,
     GraphView? view,
   }) => PipelineLayout(
     positions: positions ?? this.positions,
-    characters: characters ?? this.characters,
+    cast: cast ?? this.cast,
     view: view ?? this.view,
   );
 
   PipelineLayout withPosition(String nodeId, GraphPoint at) =>
       copyWith(positions: {...positions, nodeId: at});
 
-  PipelineLayout withCharacter(String characterId) =>
-      characters.contains(characterId) ? this : copyWith(characters: [...characters, characterId]);
+  /// Another drawing of [characterId], under a node name none of its other
+  /// drawings answers to.
+  ///
+  /// The first copy is one of the game's voices and carries the dashed line
+  /// that says so; the ones after it are drawn to take a part over, so they
+  /// start without it and the mix is not told the same character twice.
+  PipelineLayout withCharacter(String characterId) {
+    final taken = {for (final placement in cast) placement.nodeId};
+    var copy = 1;
+    while (taken.contains(PipelineNodeIds.characterCopy(characterId, copy))) {
+      copy++;
+    }
+    return copyWith(
+      cast: [
+        ...cast,
+        CastPlacement(
+          nodeId: PipelineNodeIds.characterCopy(characterId, copy),
+          characterId: characterId,
+          heard: copy == 1,
+        ),
+      ],
+    );
+  }
 
-  PipelineLayout withoutCharacter(String characterId) => copyWith(
-    characters: [
-      for (final id in characters)
-        if (id != characterId) id,
+  /// One drawing taken off the canvas. The card itself, and whoever reads
+  /// it, are untouched: only this copy of it goes.
+  PipelineLayout withoutNode(String nodeId) => copyWith(
+    cast: [
+      for (final placement in cast)
+        if (placement.nodeId != nodeId) placement,
     ],
     positions: {
       for (final entry in positions.entries)
-        if (entry.key != PipelineNodeIds.character(characterId)) entry.key: entry.value,
+        if (entry.key != nodeId) entry.key: entry.value,
     },
   );
 
+  /// Whether the game is expected to speak the card drawn at [nodeId].
+  PipelineLayout withHeard(String nodeId, bool heard) => copyWith(
+    cast: [
+      for (final placement in cast)
+        if (placement.nodeId == nodeId) placement.copyWith(heard: heard) else placement,
+    ],
+  );
+
   Map<String, Object?> toJson() => {
-    'version': 1,
+    'version': 2,
     'nodes': {for (final entry in positions.entries) entry.key: entry.value.toJson()},
-    'characters': characters,
+    'cast': [for (final placement in cast) placement.toJson()],
     'view': view.toJson(),
   };
 
@@ -356,11 +485,12 @@ class PipelineLayout {
         if (GraphPoint.fromJson(entry.value) case final point?) positions[entry.key] = point;
       }
     }
+    // Version 1 listed the cards by id under `characters`, each drawn once.
+    final cast = json['cast'] ?? json['characters'];
     return PipelineLayout(
       positions: positions.isEmpty ? standardPositions : positions,
-      characters: [
-        for (final value in json['characters'] as List<Object?>? ?? const [])
-          if (value is String) value,
+      cast: [
+        for (final value in cast as List<Object?>? ?? const []) ?CastPlacement.fromJson(value),
       ],
       view: GraphView.fromJson(json['view']),
     );
@@ -448,7 +578,7 @@ PipelineGraph buildPipelineGraph({
   PipelineLayout layout = PipelineLayout.standard,
 }) {
   final byId = {for (final character in characters) character.id: character};
-  final placed = _placedCharacters(layout.characters, byId);
+  final placed = _placedCast(layout.cast, byId);
   GraphPoint at(String nodeId, GraphPoint fallback) => layout.positions[nodeId] ?? fallback;
 
   final ocr = settings.captureMode == CaptureMode.ocr;
@@ -470,15 +600,20 @@ PipelineGraph buildPipelineGraph({
         bypassed: routed && ocr && id == PipelineNodeIds.recognition,
         unrouted: !routed,
       ),
-    for (final (index, id) in placed.indexed)
+    for (final (index, placement) in placed.indexed)
       PipelineNode(
-        id: PipelineNodeIds.character(id),
+        id: placement.nodeId,
         kind: PipelineNodeKind.character,
-        characterId: id,
-        position: at(PipelineNodeIds.character(id), PipelineLayout.castPlace(index)),
+        characterId: placement.characterId,
+        position: at(placement.nodeId, PipelineLayout.castPlace(index)),
         unrouted: !cast,
       ),
   ];
+  final where = {for (final node in nodes) node.id: node.position};
+  final sends = {
+    for (final placement in placed) placement.nodeId: _partOf(placement, byId, placed, where),
+  };
+  final carrying = _carrying(placed, byId, sends);
 
   const translation = PipelinePort(PipelineNodeIds.translation, PipelineSocket.translationIn);
   final links = <PipelineLink>[
@@ -517,27 +652,24 @@ PipelineGraph buildPipelineGraph({
     // stands in for whom is remembered in the cards and comes back with the
     // link, but nothing of it runs meanwhile.
     if (cast) ...[
-      // The cast reaches every card that is drawn: this is where a character
-      // joins the pipeline, whoever ends up speaking them.
-      for (final id in placed)
-        PipelineLink(
-          const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
-          PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterIn),
-        ),
+      // A note rather than a route: the dashed line says the game's own
+      // dialogue may hold this character. A card drawn only to lend its
+      // voice carries none, and the pipeline runs the same either way.
+      for (final placement in placed)
+        if (placement.heard)
+          PipelineLink(
+            const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
+            PipelinePort(placement.nodeId, PipelineSocket.characterIn),
+          ),
       // A card's lines leave it one way only: into the card that speaks for
       // it, which carries them on to the mix, or into the mix itself when it
       // speaks for itself.
-      for (final id in placed)
-        PipelineLink(
-          PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterVoice),
-          switch (_spokenBy(id, byId, placed)) {
-            final reader? => PipelinePort(
-              PipelineNodeIds.character(reader),
-              PipelineSocket.readBy,
-            ),
-            _ => const PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast),
-          },
-        ),
+      for (final placement in placed)
+        if (carrying.contains(placement.nodeId))
+          PipelineLink(
+            PipelinePort(placement.nodeId, PipelineSocket.characterVoice),
+            sends[placement.nodeId]!,
+          ),
     ],
   ];
 
@@ -547,43 +679,93 @@ PipelineGraph buildPipelineGraph({
     route: settings.captureMode,
     routed: routed,
     chained: {
-      for (final id in placed)
-        if (byId[byId[id]?.voicedBy]?.voicedBy != null) id,
+      for (final placement in placed)
+        if (byId[byId[placement.characterId]?.voicedBy]?.voicedBy != null) placement.characterId,
     },
   );
 }
 
-/// The card that speaks [id]'s lines in its place, when that card is drawn
-/// beside it.
+/// Where the part drawn at [from] goes: into the nearest drawing of the card
+/// that speaks for it, or into the mix when it speaks for itself.
 ///
-/// Nothing when [id] speaks for itself, and nothing when the card standing
-/// in for it is off the canvas: there is nowhere on the canvas for the line
-/// to run, so it runs to the mix, and the card says whose voice reads it on
-/// its own face.
-String? _spokenBy(String id, Map<String, Character> byId, List<String> placed) {
-  final reader = byId[id]?.voicedBy;
-  return reader != null && placed.contains(reader) ? reader : null;
+/// The nearest one, because a card is drawn twice precisely so the line has
+/// somewhere short to run — the copy the player put beside this one is the
+/// copy they meant. A card standing in for another that is nowhere on the
+/// canvas sends its part to the mix, and says whose voice reads it on its
+/// own face.
+PipelinePort _partOf(
+  CastPlacement from,
+  Map<String, Character> byId,
+  List<CastPlacement> placed,
+  Map<String, GraphPoint> where,
+) {
+  const mix = PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast);
+  final reader = byId[from.characterId]?.voicedBy;
+  if (reader == null || reader == from.characterId) return mix;
+  CastPlacement? nearest;
+  var best = double.infinity;
+  final here = where[from.nodeId] ?? GraphPoint.zero;
+  for (final placement in placed) {
+    if (placement.characterId != reader) continue;
+    final there = where[placement.nodeId] ?? GraphPoint.zero;
+    final span = (there.x - here.x) * (there.x - here.x) + (there.y - here.y) * (there.y - here.y);
+    if (span >= best) continue;
+    best = span;
+    nearest = placement;
+  }
+  return nearest == null ? mix : PipelinePort(nearest.nodeId, PipelineSocket.readBy);
 }
 
-/// The cards the canvas draws: the ones the player put there, and only
-/// those. A card is taken off the canvas when the player asks, even while
-/// another card on it is read in their voice — that link then comes to
-/// nothing until they are put back, which is what the empty socket says.
-List<String> _placedCharacters(List<String> placed, Map<String, Character> byId) {
+/// The drawings that have a line to send on.
+///
+/// A card the game speaks has its own part; a card another's part arrives at
+/// carries it on to wherever its own would go; and a card whose character is
+/// read by somebody sends its part even when the game never speaks it, since
+/// a substitution nobody can see is a trap.
+Set<String> _carrying(
+  List<CastPlacement> placed,
+  Map<String, Character> byId,
+  Map<String, PipelinePort> sends,
+) {
+  final carrying = {
+    for (final placement in placed)
+      if (placement.heard || byId[placement.characterId]?.voicedBy != null) placement.nodeId,
+  };
+  // What a card takes over it also passes on, and so may the card after it.
+  for (var pass = 0; pass < placed.length; pass++) {
+    var grew = false;
+    for (final placement in placed) {
+      if (!carrying.contains(placement.nodeId)) continue;
+      final to = sends[placement.nodeId];
+      if (to == null || to.socket != PipelineSocket.readBy) continue;
+      if (carrying.add(to.nodeId)) grew = true;
+    }
+    if (!grew) break;
+  }
+  return carrying;
+}
+
+/// The drawings the canvas keeps: the ones the player put there whose card
+/// is still in the cast. A card is taken off the canvas when the player
+/// asks, even while another card on it is read in their voice — that line
+/// then comes to nothing until they are put back, which is what the empty
+/// socket says.
+List<CastPlacement> _placedCast(List<CastPlacement> placed, Map<String, Character> byId) {
   final drawn = [
-    for (final id in placed)
-      if (byId.containsKey(id)) id,
+    for (final placement in placed)
+      if (byId.containsKey(placement.characterId)) placement,
   ];
-  // The card that speaks for another is drawn after it, so the line between
-  // them runs the way every other one does: out of the right edge of the
-  // part, into the left of whoever takes it over.
-  for (final id in [...drawn]) {
-    final reader = byId[id]?.voicedBy;
+  // The card that speaks for another is laid out after it, so a line
+  // between two that were never moved runs the way every other one does:
+  // out of the right edge of the part, into the left of whoever takes it
+  // over.
+  for (final placement in [...drawn]) {
+    final reader = byId[placement.characterId]?.voicedBy;
     if (reader == null) continue;
-    final at = drawn.indexOf(reader);
-    if (at < 0 || at > drawn.indexOf(id)) continue;
-    drawn.removeAt(at);
-    drawn.insert(drawn.indexOf(id) + 1, reader);
+    final at = drawn.indexWhere((other) => other.characterId == reader);
+    if (at < 0 || at > drawn.indexOf(placement)) continue;
+    final moved = drawn.removeAt(at);
+    drawn.insert(drawn.indexOf(placement) + 1, moved);
   }
   return drawn;
 }
@@ -635,6 +817,19 @@ final class CastConnection extends GraphConnection {
   final bool routed;
 }
 
+/// Whether the game itself is expected to speak the card drawn at [nodeId].
+///
+/// This one changes nothing but the drawing: the worker matches every line
+/// against the whole cast whatever the canvas says. It is the player's note
+/// that this character can be met in the original, which is why it is kept
+/// with the arrangement and not with the settings.
+final class HeardConnection extends GraphConnection {
+  const HeardConnection(this.nodeId, this.heard);
+
+  final String nodeId;
+  final bool heard;
+}
+
 /// Whose voice reads a card: [readerId], or the pipeline's own when null.
 final class ReaderConnection extends GraphConnection {
   const ReaderConnection(this.characterId, this.readerId);
@@ -681,6 +876,8 @@ GraphConnection proposeConnection(
     ),
     // The cast, back into the mix: every card on the canvas speaks again.
     (PipelineSocket.characterVoice, PipelineSocket.mixCast) => const CastConnection(true),
+    // A card counted among the voices the game speaks.
+    (PipelineSocket.voiceCast, PipelineSocket.characterIn) => HeardConnection(to.nodeId, true),
     // The line runs from the character whose part it is to the card that
     // will speak it: what travels the wire is the part, not the timbre.
     (PipelineSocket.characterVoice, PipelineSocket.readBy) => _readerConnection(
@@ -697,6 +894,9 @@ GraphConnection _readerConnection({
   required String character,
   required List<Character> characters,
 }) {
+  // Two drawings of one card: it already speaks for itself, and a line
+  // between the copies would say nothing else.
+  if (reader == character) return const RefusedConnection(ConnectionRefusal.loop);
   for (final known in characters) {
     // Two cards reading each other would leave neither a voice to start from.
     if (known.id == reader && known.voicedBy == character) {
@@ -706,8 +906,7 @@ GraphConnection _readerConnection({
   return ReaderConnection(character, reader);
 }
 
-/// What cutting [link] would mean. Only a substitution can be cut: the route
-/// is always whole, and is changed by drawing the other one instead.
+/// What cutting [link] would mean.
 GraphConnection proposeDisconnect(PipelineLink link) {
   // The way into the pipeline comes apart: the stages stay where they are
   // with nothing reaching them, and the route is put back by drawing it.
@@ -718,6 +917,11 @@ GraphConnection proposeDisconnect(PipelineLink link) {
   // The cast comes out of the mix whole: the cards stay where they are with
   // nobody standing in for anybody, and one line drawn back wakes them all.
   if (link.to.socket == PipelineSocket.mixCast) return const CastConnection(false);
+  // The card is no longer counted among the voices the game speaks. Nothing
+  // of the pipeline changes with it: it is a note on the canvas.
+  if (link.to.socket == PipelineSocket.characterIn) {
+    return HeardConnection(link.to.nodeId, false);
+  }
   if (link.to.socket != PipelineSocket.readBy ||
       link.from.socket != PipelineSocket.characterVoice) {
     return const RefusedConnection(ConnectionRefusal.unsupported);

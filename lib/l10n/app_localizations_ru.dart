@@ -1443,9 +1443,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineAddCharacter => 'Добавить персонажа на схему';
 
   @override
-  String get pipelineAllPlaced => 'Все персонажи уже на схеме';
-
-  @override
   String get pipelineNoCharacters => 'Персонажей пока нет — запишите их на экране «Персонажи»';
 
   @override
@@ -1465,6 +1462,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pipelineCutCast => 'Убрать персонажей из сведения';
+
+  @override
+  String get pipelineCutHeard => 'Не слышать этого персонажа в игре';
 
   @override
   String get pipelineNodeSource => 'Оригинальный поток';

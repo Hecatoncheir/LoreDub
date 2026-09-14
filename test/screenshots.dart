@@ -288,7 +288,8 @@ void main() {
     List<SceneSpeaker> speakers = const [],
     List<TranscriptEntry> snapshots = const [],
     Map<String, String> replacements = const {},
-    List<String> placed = const [],
+    List<CastPlacement> placed = const [],
+    Map<String, GraphPoint> where = const {},
   }) {
     final cubits = buildCubits();
     cubits.shell.seed(
@@ -335,15 +336,11 @@ void main() {
       PipelineGraphState(
         loading: false,
         layout: PipelineLayout(
-          positions: {
-            ...PipelineLayout.standardPositions,
-            // Placed by hand, so the wire runs the way the signal does:
-            // the card whose part is handed on to the left of the card that
-            // reads it.
-            for (final (index, id) in placed.indexed)
-              PipelineNodeIds.character(id): PipelineLayout.castPlace(index),
-          },
-          characters: placed,
+          cast: placed,
+          // Placed by hand, so the wire runs the way the signal does: the
+          // card whose part is handed on to the left of the card that reads
+          // it, and the copy that takes the part next to the part itself.
+          positions: {...PipelineLayout.standardPositions, ...where},
         ),
       ),
     );
@@ -352,9 +349,27 @@ void main() {
 
   for (final language in ['ru', 'en']) {
     testWidgets('the graph, in $language', (tester) async {
+      // The smith's part is read by the guard, whose card is drawn twice:
+      // once among the voices the game speaks, and once beside the smith,
+      // where it takes that part over. The copy is not one of the game's
+      // own voices, so no dashed line reaches it.
+      const copy = 'character:guard#2';
       await shoot(
         tester,
-        stage(language, section: DashboardSection.pipeline, placed: const ['smith', 'guard']),
+        stage(
+          language,
+          section: DashboardSection.pipeline,
+          placed: [
+            CastPlacement.of('smith'),
+            const CastPlacement(nodeId: copy, characterId: 'guard', heard: false),
+            CastPlacement.of('guard'),
+          ],
+          where: {
+            PipelineNodeIds.character('smith'): PipelineLayout.castPlace(0),
+            copy: PipelineLayout.castPlace(1),
+            PipelineNodeIds.character('guard'): PipelineLayout.castPlace(2),
+          },
+        ),
         'pipeline',
         language,
       );

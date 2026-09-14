@@ -96,7 +96,7 @@ void main() {
       final graph = buildPipelineGraph(
         settings: const AppSettings(),
         characters: const [guard],
-        layout: const PipelineLayout(characters: ['guard']),
+        layout: PipelineLayout.drawing(['guard']),
       );
 
       // The cast reaches every card that is drawn: that socket is the one
@@ -133,7 +133,7 @@ void main() {
       final graph = buildPipelineGraph(
         settings: const AppSettings(),
         characters: const [guard, smith],
-        layout: const PipelineLayout(characters: ['guard', 'smith']),
+        layout: PipelineLayout.drawing(['guard', 'smith']),
       );
 
       for (final id in ['guard', 'smith']) {
@@ -156,7 +156,7 @@ void main() {
           Character(id: 'guard', name: 'Стражник', vector: [0.2], voicedBy: 'smith'),
           smith,
         ],
-        layout: const PipelineLayout(characters: ['guard']),
+        layout: PipelineLayout.drawing(['guard']),
       );
 
       // Only what the player put there is drawn, so a card can always be
@@ -190,7 +190,7 @@ void main() {
           Character(id: 'guard', name: 'Стражник', vector: [0.2], voicedBy: 'smith'),
           smith,
         ],
-        layout: const PipelineLayout(characters: ['guard', 'smith']),
+        layout: PipelineLayout.drawing(['guard', 'smith']),
       );
 
       // Both cards are in the cast whoever reads whom.
@@ -244,7 +244,7 @@ void main() {
           Character(id: 'smith', name: 'Кузнец', vector: [0.1], voicedBy: 'cook'),
           Character(id: 'cook', name: 'Повар', vector: [0.5]),
         ],
-        layout: const PipelineLayout(characters: ['guard', 'smith', 'cook']),
+        layout: PipelineLayout.drawing(['guard', 'smith', 'cook']),
       );
 
       expect(graph.chained, {'guard'});
@@ -255,7 +255,7 @@ void main() {
     PipelineGraph ocrGraph() => buildPipelineGraph(
       settings: const AppSettings(captureMode: CaptureMode.ocr),
       characters: const [guard, smith],
-      layout: const PipelineLayout(characters: ['guard', 'smith']),
+      layout: PipelineLayout.drawing(['guard', 'smith']),
     );
 
     test('the way in, when the sound is taken back to whisper', () {
@@ -340,7 +340,7 @@ void main() {
       final graph = buildPipelineGraph(
         settings: const AppSettings(),
         characters: const [guard, given],
-        layout: const PipelineLayout(characters: ['guard', 'smith']),
+        layout: PipelineLayout.drawing(['guard', 'smith']),
       );
 
       final connection = proposeConnection(
@@ -358,7 +358,7 @@ void main() {
       final graph = buildPipelineGraph(
         settings: const AppSettings(),
         characters: const [given, smith],
-        layout: const PipelineLayout(characters: ['guard', 'smith']),
+        layout: PipelineLayout.drawing(['guard', 'smith']),
       );
 
       // The voice comes back by cutting the line that lent it, there being
@@ -430,7 +430,7 @@ void main() {
         buildPipelineGraph(
           settings: const AppSettings(castRouted: false),
           characters: const [guard],
-          layout: const PipelineLayout(characters: ['guard']),
+          layout: PipelineLayout.drawing(['guard']),
         ),
         PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
         const PipelinePort(mix, PipelineSocket.mixCast),
@@ -447,7 +447,7 @@ void main() {
           Character(id: 'guard', name: 'Стражник', vector: [0.2], voicedBy: 'smith'),
           smith,
         ],
-        layout: const PipelineLayout(characters: ['guard', 'smith']),
+        layout: PipelineLayout.drawing(['guard', 'smith']),
       );
 
       for (final id in ['guard', 'smith']) {
@@ -468,12 +468,228 @@ void main() {
     });
   });
 
+  group('a card drawn more than once', () {
+    /// The same card twice, the copy put away to the right of the first.
+    PipelineLayout twice(String characterId, {bool heard = true}) => PipelineLayout(
+      cast: [
+        CastPlacement.of(characterId, heard: heard),
+        CastPlacement(
+          nodeId: PipelineNodeIds.characterCopy(characterId, 2),
+          characterId: characterId,
+          heard: false,
+        ),
+      ],
+      positions: {
+        PipelineNodeIds.character(characterId): const GraphPoint(600, 500),
+        PipelineNodeIds.characterCopy(characterId, 2): const GraphPoint(1600, 500),
+      },
+    );
+
+    test('is drawn as many nodes as it was put on the canvas', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [guard],
+        layout: twice('guard'),
+      );
+
+      expect(graph.ofKind(PipelineNodeKind.character).length, 2);
+      for (final node in graph.ofKind(PipelineNodeKind.character)) {
+        expect(node.characterId, 'guard', reason: 'both drawings are the same card');
+      }
+    });
+
+    test('is counted among the voices of the game once', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [guard],
+        layout: twice('guard'),
+      );
+
+      expect(
+        graph.linkInto(
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+        ),
+        isNotNull,
+      );
+      // The copy is drawn to take a part over, not to be heard a second
+      // time, so nothing arrives at it and nothing leaves it either.
+      expect(
+        graph.linkInto(
+          PipelinePort(PipelineNodeIds.characterCopy('guard', 2), PipelineSocket.characterIn),
+        ),
+        isNull,
+      );
+      expect(
+        joined(
+          graph,
+          PipelinePort(PipelineNodeIds.characterCopy('guard', 2), PipelineSocket.characterVoice),
+          const PipelinePort(mix, PipelineSocket.mixCast),
+        ),
+        isFalse,
+      );
+    });
+
+    test('takes the part into the copy the player put beside it', () {
+      // The smith is read by the guard, whose card is drawn twice: once by
+      // the pipeline, once beside the smith. The line is meant for the near
+      // one -- that is what the second drawing is for.
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [
+          guard,
+          Character(id: 'smith', name: 'Кузнец', vector: [], voicedBy: 'guard'),
+        ],
+        layout: PipelineLayout(
+          cast: [
+            CastPlacement.of('guard'),
+            CastPlacement(
+              nodeId: PipelineNodeIds.characterCopy('guard', 2),
+              characterId: 'guard',
+              heard: false,
+            ),
+            CastPlacement.of('smith'),
+          ],
+          positions: {
+            PipelineNodeIds.character('guard'): const GraphPoint(0, 0),
+            PipelineNodeIds.characterCopy('guard', 2): const GraphPoint(900, 500),
+            PipelineNodeIds.character('smith'): const GraphPoint(620, 500),
+          },
+        ),
+      );
+
+      expect(
+        joined(
+          graph,
+          PipelinePort(PipelineNodeIds.character('smith'), PipelineSocket.characterVoice),
+          PipelinePort(PipelineNodeIds.characterCopy('guard', 2), PipelineSocket.readBy),
+        ),
+        isTrue,
+      );
+      // What the copy takes over it carries on, the way the card it stands
+      // for would have.
+      expect(
+        joined(
+          graph,
+          PipelinePort(PipelineNodeIds.characterCopy('guard', 2), PipelineSocket.characterVoice),
+          const PipelinePort(mix, PipelineSocket.mixCast),
+        ),
+        isTrue,
+      );
+    });
+
+    test('cannot be read by itself', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [guard],
+        layout: twice('guard'),
+      );
+
+      expect(
+        proposeConnection(
+          graph,
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
+          PipelinePort(PipelineNodeIds.characterCopy('guard', 2), PipelineSocket.readBy),
+          characters: const [guard],
+        ),
+        isA<RefusedConnection>().having(
+          (refusal) => refusal.reason,
+          'reason',
+          ConnectionRefusal.loop,
+        ),
+      );
+    });
+  });
+
+  group('a card the game never speaks', () {
+    test('is drawn without the line that says it may be heard', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [guard],
+        layout: PipelineLayout(cast: [CastPlacement.of('guard', heard: false)]),
+      );
+
+      expect(
+        graph.linkInto(
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+        ),
+        isNull,
+      );
+      // Nothing of its own to send, and nothing arriving to carry on: the
+      // card is there to lend its voice and nothing else.
+      expect(
+        joined(
+          graph,
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
+          const PipelinePort(mix, PipelineSocket.mixCast),
+        ),
+        isFalse,
+      );
+    });
+
+    test('still shows whose voice reads it', () {
+      // A substitution nobody can see is a trap, whether or not the game
+      // ever speaks the card it was set on.
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [
+          guard,
+          Character(id: 'smith', name: 'Кузнец', vector: [], voicedBy: 'guard'),
+        ],
+        layout: PipelineLayout(
+          cast: [CastPlacement.of('smith', heard: false), CastPlacement.of('guard')],
+        ),
+      );
+
+      expect(
+        joined(
+          graph,
+          PipelinePort(PipelineNodeIds.character('smith'), PipelineSocket.characterVoice),
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.readBy),
+        ),
+        isTrue,
+      );
+    });
+
+    test('is counted in and out by the line itself', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [guard],
+        layout: PipelineLayout.drawing(['guard']),
+      );
+      final counted = graph.linkInto(
+        PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+      )!;
+
+      expect(
+        proposeDisconnect(counted),
+        isA<HeardConnection>()
+            .having((connection) => connection.nodeId, 'node', PipelineNodeIds.character('guard'))
+            .having((connection) => connection.heard, 'heard', isFalse),
+      );
+
+      final without = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [guard],
+        layout: PipelineLayout(cast: [CastPlacement.of('guard', heard: false)]),
+      );
+      expect(
+        proposeConnection(
+          without,
+          const PipelinePort(voice, PipelineSocket.voiceCast),
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+          characters: const [guard],
+        ),
+        isA<HeardConnection>().having((connection) => connection.heard, 'heard', isTrue),
+      );
+    });
+  });
+
   group('the arrangement', () {
     test('comes back as it was written', () {
-      const layout = PipelineLayout(
-        positions: {source: GraphPoint(12, 34), 'character:guard': GraphPoint(-8, 900)},
-        characters: ['guard'],
-        view: GraphView(x: 40, y: -20, zoom: 0.8),
+      final layout = PipelineLayout.drawing(
+        ['guard'],
+        positions: const {source: GraphPoint(12, 34), 'character:guard': GraphPoint(-8, 900)},
+        view: const GraphView(x: 40, y: -20, zoom: 0.8),
       );
 
       final read = PipelineLayout.fromJson(layout.toJson());
@@ -485,18 +701,53 @@ void main() {
       expect(read.view.zoom, 0.8);
     });
 
+    test('keeps every drawing of a card, and which of them is heard', () {
+      final layout = PipelineLayout(
+        cast: [
+          CastPlacement.of('guard'),
+          CastPlacement(
+            nodeId: PipelineNodeIds.characterCopy('guard', 2),
+            characterId: 'guard',
+            heard: false,
+          ),
+        ],
+      );
+
+      final read = PipelineLayout.fromJson(layout.toJson());
+
+      expect(read.cast, layout.cast);
+    });
+
+    test('reads a file from before a card could be drawn twice', () {
+      final read = PipelineLayout.fromJson(const {
+        'version': 1,
+        'characters': ['guard', 'smith'],
+      });
+
+      expect(read.cast, [CastPlacement.of('guard'), CastPlacement.of('smith')]);
+    });
+
+    test('draws the second copy of a card without counting it in again', () {
+      final layout = PipelineLayout.drawing(['guard']).withCharacter('guard');
+
+      expect(layout.cast.length, 2);
+      expect(layout.cast.last.nodeId, PipelineNodeIds.characterCopy('guard', 2));
+      expect(layout.cast.last.heard, isFalse);
+      expect(layout.cast.first.heard, isTrue);
+    });
+
     test('falls back to the standard one when the file says nothing', () {
       expect(PipelineLayout.fromJson('rubbish').positions, PipelineLayout.standardPositions);
       expect(PipelineLayout.fromJson(const <String, Object?>{}).characters, isEmpty);
     });
 
     test('forgets a card together with where it was put', () {
-      const layout = PipelineLayout(
-        positions: {'character:guard': GraphPoint(1, 2)},
-        characters: ['guard', 'smith'],
+      final layout = PipelineLayout.drawing(
+        ['guard', 'smith'],
+        positions: const {'character:guard': GraphPoint(1, 2)},
       );
 
-      final without = layout.withoutCharacter('guard');
+      final without = layout.withoutNode('character:guard');
 
       expect(without.characters, ['smith']);
       expect(without.positions, isEmpty);

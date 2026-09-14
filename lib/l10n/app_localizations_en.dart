@@ -1436,9 +1436,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineAddCharacter => 'Put a character on the graph';
 
   @override
-  String get pipelineAllPlaced => 'Every character is already on the graph';
-
-  @override
   String get pipelineNoCharacters => 'No characters yet — record them on the Characters screen';
 
   @override
@@ -1458,6 +1455,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pipelineCutCast => 'Take the cast out of the mix';
+
+  @override
+  String get pipelineCutHeard => 'Stop counting this one among the voices of the game';
 
   @override
   String get pipelineNodeSource => 'Original stream';

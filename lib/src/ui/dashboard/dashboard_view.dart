@@ -2398,26 +2398,41 @@ class _GraphToolbar extends StatelessWidget {
     );
   }
 
-  /// The cards not yet on the canvas. A card already drawn is left out
-  /// rather than greyed: the menu is a list of what can still be added.
+  /// Every card of the cast, drawn or not: a card already on the canvas can
+  /// be drawn again beside the character whose part it takes over, and the
+  /// count beside its name says how many of it are there.
   Widget _addCharacter(BuildContext context, AppLocalizations l10n) {
-    final drawn = {
-      for (final node in state.graph.ofKind(PipelineNodeKind.character)) node.characterId,
-    };
-    final waiting = [
-      for (final character in facts.characters)
-        if (!drawn.contains(character.id)) character,
-    ];
+    final drawn = <String, int>{};
+    for (final node in state.graph.ofKind(PipelineNodeKind.character)) {
+      drawn.update(node.characterId ?? '', (count) => count + 1, ifAbsent: () => 1);
+    }
     return PopupMenuButton<String>(
-      tooltip: facts.characters.isEmpty
-          ? l10n.pipelineNoCharacters
-          : (waiting.isEmpty ? l10n.pipelineAllPlaced : l10n.pipelineAddCharacter),
-      enabled: waiting.isNotEmpty,
+      tooltip: facts.characters.isEmpty ? l10n.pipelineNoCharacters : l10n.pipelineAddCharacter,
+      enabled: facts.characters.isNotEmpty,
       icon: const Icon(Icons.person_add_alt_rounded, size: 20),
       onSelected: (id) => cubits.graph.add(PipelineCharacterPlaced(id)),
       itemBuilder: (context) => [
-        for (final character in waiting)
-          PopupMenuItem(value: character.id, child: Text(character.name)),
+        for (final character in facts.characters)
+          PopupMenuItem(
+            value: character.id,
+            child: Row(
+              children: [
+                Expanded(child: Text(character.name)),
+                if (drawn[character.id] case final count?)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Text(
+                      '×$count',
+                      style: const TextStyle(
+                        fontFamily: LoreDubFonts.mono,
+                        fontSize: 11,
+                        color: LoreDubPalette.mutedInk,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
       ],
     );
   }

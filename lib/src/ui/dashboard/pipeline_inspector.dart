@@ -390,7 +390,7 @@ class PipelineInspector extends StatelessWidget {
       OutlinedButton.icon(
         icon: const Icon(Icons.close_rounded, size: 18),
         label: Text(l10n.pipelineRemoveNode),
-        onPressed: () => cubits.graph.add(PipelineCharacterRemoved(character.id)),
+        onPressed: () => cubits.graph.add(PipelineCharacterRemoved(node.id)),
       ),
     ];
   }

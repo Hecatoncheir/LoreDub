@@ -2493,7 +2493,7 @@ void main() {
       );
       cubits.characters.seed(CharactersState(characters: characters, loading: false));
       cubits.graph.seed(
-        PipelineGraphState(loading: false, layout: PipelineLayout(characters: placed)),
+        PipelineGraphState(loading: false, layout: PipelineLayout.drawing(placed)),
       );
       await pumpDashboard(tester, cubits, const Size(1500, 950));
       await tester.pump();
@@ -2787,6 +2787,51 @@ void main() {
 
       expect(cubits.graph.state.layout.characters, ['guard']);
       expect(find.text('Стражник'), findsWidgets);
+    });
+
+    testWidgets('draws a card again from the toolbar, and says how many are out', (tester) async {
+      final cubits = await pumpGraph(tester);
+
+      await tester.tap(find.byIcon(Icons.person_add_alt_rounded));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // The card already on the canvas is offered again rather than left
+      // out: a copy beside the part it takes over keeps the line short.
+      expect(find.widgetWithText(PopupMenuItem<String>, 'Стражник'), findsOneWidget);
+      expect(find.text('\u00d71'), findsOneWidget, reason: 'one of it is drawn');
+
+      await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Стражник'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(cubits.graph.state.layout.characters, ['guard', 'guard']);
+      expect(find.text('Стражник'), findsWidgets);
+    });
+
+    testWidgets('takes a card out of the voices the game speaks', (tester) async {
+      final cubits = await pumpGraph(tester);
+      final counted = cubits.graph.state.graph.linkInto(
+        PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+      )!;
+
+      expect(
+        find.byTooltip('Не слышать этого персонажа в игре'),
+        findsOneWidget,
+        reason: 'the dashed line comes apart by the badge on it',
+      );
+
+      cubits.graph.add(PipelineLinkCut(counted));
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        cubits.graph.state.graph.linkInto(
+          PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterIn),
+        ),
+        isNull,
+      );
+      expect(find.text('Стражник'), findsWidgets, reason: 'the card stays where it was put');
     });
   });
 

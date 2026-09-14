@@ -198,7 +198,20 @@ whom waits in them, and the worker is started with `--as-heard`, which makes
 `read_as` hand back the speaker it was given. Unlike the route it is not
 locked while a session runs — a paused session keeps its cast loaded, so
 this is the one branch the canvas may rewire mid-session, and the running
-worker is told rather than restarted. The pointer picks a socket up through a box held
+worker is told rather than restarted. A card may be drawn more than once
+(`CastPlacement`, `PipelineLayout.cast`): the node id of the first copy is
+`character:<id>` — the name an arrangement written before copies already
+files its position under — and later ones carry `#2`, `#3`, which
+`PipelineNodeIds.characterOf` strips, so every copy answers with the same
+card. `CastPlacement.heard` is the dashed line from `voiceCast`: a note that
+the game's dialogue may hold this character, cut and drawn through
+`HeardConnection`, kept with the arrangement and read by nothing else — the
+worker matches every line against the whole cast whatever the canvas says. It
+is what makes copies useful: the first copy is heard, the ones after it are
+not, so the mix is told a character once while the part they take over runs
+to the copy standing nearest (`_partOf`). A card sends a line on when the
+game speaks it, when a part arrives at it, or when somebody reads it
+(`_carrying`) — the last so that a substitution is never hidden. The pointer picks a socket up through a box held
 at one size on the screen (`NodeMetrics.grabReach` divided by the zoom, no
 taller than a row): a scheme fitted into a small window draws dots six pixels
 across, which nothing can take hold of. The six

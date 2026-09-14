@@ -2469,12 +2469,6 @@ abstract class AppLocalizations {
   /// **'Добавить персонажа на схему'**
   String get pipelineAddCharacter;
 
-  /// No description provided for @pipelineAllPlaced.
-  ///
-  /// In ru, this message translates to:
-  /// **'Все персонажи уже на схеме'**
-  String get pipelineAllPlaced;
-
   /// No description provided for @pipelineNoCharacters.
   ///
   /// In ru, this message translates to:
@@ -2516,6 +2510,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Убрать персонажей из сведения'**
   String get pipelineCutCast;
+
+  /// No description provided for @pipelineCutHeard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не слышать этого персонажа в игре'**
+  String get pipelineCutHeard;
 
   /// No description provided for @pipelineNodeSource.
   ///

@@ -382,9 +382,9 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
             _dragging = null;
             widget.bloc.add(const PipelineArrangementSettled());
           },
-          onRemove: node.characterId == null
+          onRemove: node.kind != PipelineNodeKind.character
               ? null
-              : () => widget.bloc.add(PipelineCharacterRemoved(node.characterId!)),
+              : () => widget.bloc.add(PipelineCharacterRemoved(node.id)),
         ),
       ),
       for (final socket in PipelineSocket.values)
@@ -444,7 +444,9 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
           link.to.socket == PipelineSocket.readBy;
       // The cast comes out of the mix whole, so any of its lines will do.
       final cast = link.to.socket == PipelineSocket.mixCast;
-      if (!route && !reader && !cast) continue;
+      // The dashed line that counts a card among the voices of the game.
+      final heard = link.to.socket == PipelineSocket.characterIn;
+      if (!route && !reader && !cast && !heard) continue;
       final from = _state.graph.node(link.from.nodeId);
       final to = _state.graph.node(link.to.nodeId);
       if (from == null || to == null) continue;
@@ -459,12 +461,16 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
           width: 30,
           height: 30,
           child: Tooltip(
-            // Three kinds of line come apart here and they part with
-            // different things: one card takes its own part back, the cast
+            // Four kinds of line come apart here and they part with
+            // different things: one card takes its own part back, a card
+            // stops being counted among the voices of the game, the cast
             // leaves the mix, the pipeline loses what feeds it.
-            message: route
-                ? l10n.pipelineCutRoute
-                : (cast ? l10n.pipelineCutCast : l10n.pipelineCutLink),
+            message: switch ((route, cast, heard)) {
+              (true, _, _) => l10n.pipelineCutRoute,
+              (_, true, _) => l10n.pipelineCutCast,
+              (_, _, true) => l10n.pipelineCutHeard,
+              _ => l10n.pipelineCutLink,
+            },
             child: Material(
               shape: const CircleBorder(side: BorderSide(color: LoreDubPalette.graphite)),
               color: LoreDubPalette.raised,

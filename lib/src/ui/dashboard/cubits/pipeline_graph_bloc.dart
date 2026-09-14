@@ -95,18 +95,21 @@ final class PipelineLinkCut extends PipelineGraphEvent {
   final PipelineLink link;
 }
 
+/// A card was drawn on the canvas. A card already there is drawn again
+/// rather than refused: a copy beside the character whose part it takes
+/// over keeps the line between them short.
 final class PipelineCharacterPlaced extends PipelineGraphEvent {
   const PipelineCharacterPlaced(this.characterId);
 
   final String characterId;
 }
 
-/// A card was taken off the canvas. It keeps whatever voice reads it; only
-/// the node goes.
+/// One drawing of a card was taken off the canvas. The card keeps whatever
+/// voice reads it, and its other drawings stay: only this node goes.
 final class PipelineCharacterRemoved extends PipelineGraphEvent {
-  const PipelineCharacterRemoved(this.characterId);
+  const PipelineCharacterRemoved(this.nodeId);
 
-  final String characterId;
+  final String nodeId;
 }
 
 final class PipelineViewPanned extends PipelineGraphEvent {
@@ -420,6 +423,16 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         _remember();
         emit(state.copyWith(clearRefusal: true));
         await _characters.voiceAs(characterId, readerId);
+      // A note on the card, kept with the arrangement: nothing of the
+      // pipeline changes with it, so nothing is written through.
+      case HeardConnection(:final nodeId, :final heard):
+        _remember();
+        emit(
+          _redrawn(
+            state.copyWith(layout: state.layout.withHeard(nodeId, heard), clearRefusal: true),
+          ),
+        );
+        _persist();
     }
   }
 
@@ -427,16 +440,9 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     PipelineCharacterPlaced event,
     Emitter<PipelineGraphState> emit,
   ) async {
-    if (state.layout.characters.contains(event.characterId)) return;
     _remember();
-    emit(
-      _redrawn(
-        state.copyWith(
-          layout: state.layout.withCharacter(event.characterId),
-          selected: PipelineNodeIds.character(event.characterId),
-        ),
-      ),
-    );
+    final layout = state.layout.withCharacter(event.characterId);
+    emit(_redrawn(state.copyWith(layout: layout, selected: layout.cast.last.nodeId)));
     _persist();
   }
 
@@ -445,12 +451,11 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     Emitter<PipelineGraphState> emit,
   ) async {
     _remember();
-    final node = PipelineNodeIds.character(event.characterId);
     emit(
       _redrawn(
         state.copyWith(
-          layout: state.layout.withoutCharacter(event.characterId),
-          clearSelected: state.selected == node,
+          layout: state.layout.withoutNode(event.nodeId),
+          clearSelected: state.selected == event.nodeId,
         ),
       ),
     );
@@ -462,7 +467,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     emit(
       _redrawn(
         state.copyWith(
-          layout: PipelineLayout(characters: state.layout.characters),
+          layout: PipelineLayout(cast: state.layout.cast),
           clearRefusal: true,
         ),
       ),
@@ -479,7 +484,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     emit(
       _redrawn(
         state.copyWith(
-          layout: PipelineLayout(characters: state.layout.characters),
+          layout: PipelineLayout(cast: state.layout.cast),
           clearRefusal: true,
         ),
       ),

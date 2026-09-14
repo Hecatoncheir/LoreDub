@@ -263,20 +263,36 @@ the canvas but go dark, and every character is read in their own voice again —
 who stands in for whom waits in the cards and comes back with the link.
 
 The person button puts a character card on the canvas. A card has three
-sockets: **Character** coming in, which is what joins it to the pipeline's
-voice, an optional **Voice** coming in, and **Voice** going out. A link from
-one card to another means the first one's lines are spoken by the second:
-drag the Guard's voice into the Smith's and the Smith reads the Guard's part,
-in their own voice and their own timbre — a man for a woman's part or the
-other way about. A card's voice leaves it one way only: lent to another card
-it goes there rather than to the mix, and the card that took the part carries
-it on.
+sockets: **Character** coming in, an optional **Voice** coming in, and
+**Voice** going out. A link from one card to another means the first one's
+lines are spoken by the second: drag the Guard's voice into the Smith's and
+the Smith reads the Guard's part, in their own voice and their own timbre — a
+man for a woman's part or the other way about. A card's voice leaves it one
+way only: lent to another card it goes there rather than to the mix, and the
+card that took the part carries it on.
+
+The dashed line from the voice node's **Characters** output into a card's
+**Character** input is a note rather than a route: it says this character may
+be met in the original track. The button on it takes the note off. A card put
+on the canvas only to lend its voice — the character may never be spoken by
+the game at all — stands without the dashed line, and nothing leaves it for
+the mix until it takes over somebody's part. The pipeline runs the same
+either way: the worker matches every line against the whole cast regardless.
+
+One card may be put on the canvas more than once. The first copy is one of
+the game's own voices and carries the dashed line; the ones after it are
+drawn beside the part the character takes over, so the line between them is a
+hand's breadth rather than the width of the scheme. The copies are the same
+card: a part goes to whichever of them stands nearest. That is how the whole
+picture is drawn at once — the Quiet One speaks in their own voice, reads for
+the First, and may in turn be given to the Third.
 
 This is the same substitution the card carries on the **Characters** screen:
 it holds in every game, and a choice in **Scene voices** overrides it for the
-game at hand. Two cards that would read each other cannot be joined. The name
-is edited in the node's own panel, and the cross on the card takes it off the
-canvas without touching either the card or the substitution given to it.
+game at hand. Two cards that would read each other cannot be joined, and
+neither can two copies of one card. The name is edited in the node's own
+panel, and the cross on a card takes only that copy off the canvas, touching
+neither the card itself nor the substitution given to it.
 
 The session is rested and stopped from here as well — the buttons appear in
 the toolbar while it runs. The route and the models stay as the session
