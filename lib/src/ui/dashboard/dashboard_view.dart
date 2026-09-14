@@ -20,7 +20,6 @@ import '../../domain/model_selection.dart';
 import '../../domain/ocr_region.dart';
 import '../../domain/pipeline_graph.dart';
 import '../../domain/runtime_paths.dart';
-import '../../domain/speaker_map.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
@@ -1001,7 +1000,9 @@ class _SceneVoicesCard extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
                     children: [
                       Text(
-                        characters.isEmpty ? l10n.sceneVoiceNoCharacters : l10n.sceneVoicesNote,
+                        characters.isEmpty
+                            ? l10n.sceneVoiceNoCharacters
+                            : '${l10n.sceneVoicesNote} ${l10n.voicesOnTheGraph}',
                         style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
                       ),
                       const SizedBox(height: 6),
@@ -1016,9 +1017,6 @@ class _SceneVoicesCard extends StatelessWidget {
                             pipeline.speakerReplacements,
                             characters,
                           ),
-                          onAssign: characters.isEmpty || !isReplaceableSpeaker(speaker.key)
-                              ? null
-                              : (id) => cubits.pipeline.assignSpeaker(speaker.key, id),
                         ),
                     ],
                   ),
@@ -2644,7 +2642,10 @@ class _CharacterSessionControls extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.charactersNote, style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          '${l10n.charactersNote} ${l10n.voicesOnTheGraph}',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
         const SizedBox(height: 14),
         Row(
           children: [
@@ -2816,7 +2817,6 @@ class _CharacterCast extends StatelessWidget {
                                     if (other.id != character.id) other,
                                 ],
                                 onRename: (name) => cubits.characters.rename(character.id, name),
-                                onVoiceAs: (id) => cubits.characters.voiceAs(character.id, id),
                                 playing: state.playingId == character.id,
                                 onPlay: !state.canPlay(character.id) || state.sounding
                                     ? null

@@ -29,6 +29,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'A card remembers a character\'s voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them. A voice can also be built from recordings you already have: drop them on the card.';
 
   @override
+  String get voicesOnTheGraph => 'Who voices whom is set on the Graph screen.';
+
+  @override
   String get charactersHowTo =>
       'Start the recording session, choose the game process, and record the voices one by one.';
 

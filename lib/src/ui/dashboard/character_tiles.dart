@@ -68,7 +68,6 @@ class CharacterTile extends StatefulWidget {
     required this.packNames,
     required this.cast,
     required this.onRename,
-    required this.onVoiceAs,
     required this.onRecord,
     required this.onPlay,
     required this.playing,
@@ -96,14 +95,12 @@ class CharacterTile extends StatefulWidget {
   /// a card already belongs without opening every pack.
   final List<String> packNames;
 
-  /// The other cards, to give this one's lines away to.
+  /// The other cards, so the line under the name can call the one reading
+  /// this character by name. Who reads whom is drawn on the graph; a card
+  /// shows it and does not set it.
   final List<Character> cast;
 
   final ValueChanged<String> onRename;
-
-  /// Reads this character in another's voice wherever they are recognized,
-  /// or in their own again when the id is null.
-  final ValueChanged<String?> onVoiceAs;
 
   /// Null while another card records, or while no session runs.
   final VoidCallback? onRecord;
@@ -442,40 +439,6 @@ class _CharacterTileState extends State<CharacterTile> {
                       onPressed: widget.previewing ? widget.onStopSound : widget.onPreview,
                     ),
                   ),
-                  // Giving a character away is a choice among the others,
-                  // so the button opens the cast rather than toggling.
-                  PopupMenuButton<String>(
-                    key: ValueKey('voiceAs-${character.id}'),
-                    tooltip: l10n.charactersVoicedByHint,
-                    enabled: widget.cast.isNotEmpty,
-                    // The empty value is their own voice back.
-                    onSelected: (id) => widget.onVoiceAs(id.isEmpty ? null : id),
-                    itemBuilder: (context) => [
-                      PopupMenuItem(value: '', child: Text(l10n.charactersOwnVoice)),
-                      for (final other in widget.cast)
-                        PopupMenuItem(value: other.id, child: Text(other.name)),
-                    ],
-                    icon: Icon(
-                      Icons.published_with_changes_rounded,
-                      size: 19,
-                      color: character.voicedBy == null
-                          ? LoreDubPalette.ink
-                          : LoreDubPalette.orange,
-                    ),
-                    iconSize: 19,
-                    padding: EdgeInsets.zero,
-                    // Sized like the buttons beside it. Not with
-                    // `constraints`: on a popup button that is the size of
-                    // the menu that opens, not of the button, and it left
-                    // the list of characters squeezed into 34 by 34 — a box
-                    // with one letter of one name in it.
-                    style: IconButton.styleFrom(
-                      minimumSize: const Size(34, 34),
-                      fixedSize: const Size(34, 34),
-                      padding: EdgeInsets.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
                   ModelActionButton(
                     onDark: false,
                     action: ModelAction(
@@ -758,9 +721,9 @@ class _PackMember extends StatelessWidget {
 /// One voice of the running scene: who was heard, what they last said, and
 /// the character whose voice reads them from now on.
 ///
-/// The replacement is the whole point of the row: a game's own voice, or a
-/// card recognized in it, can be handed another character's voice without
-/// waiting for the next session.
+/// The row says who the voice is and who reads it. Setting that is the
+/// graph's, so that one scheme decides who speaks for whom rather than three
+/// screens disagreeing about it.
 class SceneVoiceRow extends StatelessWidget {
   const SceneVoiceRow({
     super.key,
@@ -769,7 +732,6 @@ class SceneVoiceRow extends StatelessWidget {
     required this.characters,
     required this.assignedId,
     required this.standingName,
-    required this.onAssign,
   });
 
   final SceneSpeaker speaker;
@@ -787,9 +749,6 @@ class SceneVoiceRow extends StatelessWidget {
   /// game's choice, named so the row can say where the substitution comes
   /// from. Null when there is none, or when this game has its own.
   final String? standingName;
-
-  /// Null when this voice cannot be replaced at all.
-  final ValueChanged<String?>? onAssign;
 
   @override
   Widget build(BuildContext context) {
@@ -855,50 +814,30 @@ class SceneVoiceRow extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 8),
-          if (onAssign == null)
-            Text(
-              l10n.sceneVoiceAsHeard,
-              style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
-            )
-          else
-            Align(
-              alignment: Alignment.centerLeft,
-              child: PopupMenuButton<String>(
-                key: ValueKey('assign-${speaker.key}'),
-                tooltip: l10n.sceneVoiceReadAs,
-                // The empty value stands for the voice as it was heard, so
-                // the menu can offer taking a replacement back.
-                onSelected: (id) => onAssign!(id.isEmpty ? null : id),
-                itemBuilder: (context) => [
-                  PopupMenuItem(value: '', child: Text(l10n.sceneVoiceAsHeard)),
-                  for (final character in characters)
-                    PopupMenuItem(value: character.id, child: Text(character.name)),
-                ],
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
-                  decoration: BoxDecoration(
-                    color: LoreDubPalette.raised,
-                    borderRadius: const BorderRadius.all(Radius.circular(8)),
-                    border: Border.all(
-                      color: assigned == null ? LoreDubPalette.outline : LoreDubPalette.orange,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        assigned?.name ?? l10n.sceneVoiceAsHeard,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: assigned == null ? null : FontWeight.w600,
-                        ),
-                      ),
-                      const Icon(Icons.arrow_drop_down_rounded, size: 20),
-                    ],
-                  ),
+          // Who reads this voice, whoever decided it — this game's own
+          // choice, or the card as the graph wired it. The row shows it and
+          // nothing more: the graph is where it is set.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              key: ValueKey('reads-${speaker.key}'),
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+              decoration: BoxDecoration(
+                color: LoreDubPalette.raised,
+                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                border: Border.all(
+                  color: assigned == null ? LoreDubPalette.outline : LoreDubPalette.orange,
+                ),
+              ),
+              child: Text(
+                assigned?.name ?? standingName ?? l10n.sceneVoiceAsHeard,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: assigned == null && standingName == null ? null : FontWeight.w600,
                 ),
               ),
             ),
+          ),
         ],
       ),
     );

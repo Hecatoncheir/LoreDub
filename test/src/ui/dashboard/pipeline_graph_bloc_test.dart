@@ -652,6 +652,29 @@ void main() {
       expect(graph.state.graph.node(PipelineNodeIds.character('guard')), isNull);
     });
 
+    test('a scheme put up while it rests changes who reads whom', () async {
+      // The point of resting: rearrange the cast, put the scheme up, and
+      // carry on with the voices it describes.
+      await drawLink(voiceOf('guard'), readBy('smith'));
+      graph.add(const PipelineSchemeSaved('Со сменой'));
+      await pumpEvents();
+      final scheme = graph.state.schemes.single;
+      graph.add(PipelineLinkCut(PipelineLink(voiceOf('guard'), readBy('smith'))));
+      await pumpEvents();
+      repository.told.clear();
+
+      graph.add(PipelineSchemeChosen(scheme.id));
+      await pumpEvents();
+
+      expect(repository.stored.characters.first.voicedBy, 'smith');
+      expect(
+        repository.told,
+        contains(('guard', 'smith')),
+        reason: 'the worker running under the pause is told, not left behind',
+      );
+      expect(cubits.pipeline.state.status, PipelineStatus.paused, reason: 'still rested');
+    });
+
     test('one card is given to another, and the worker is told', () async {
       await drawLink(voiceOf('guard'), readBy('smith'));
 

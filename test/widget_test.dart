@@ -2250,7 +2250,7 @@ void main() {
       expect(find.textContaining('Перетащите сюда'), findsOneWidget);
     });
 
-    testWidgets('says who reads a card and offers the cast to change it', (tester) async {
+    testWidgets('says who reads a card, and leaves the setting to the graph', (tester) async {
       final cubits = stageCast(
         characters: const CharactersState(
           loading: false,
@@ -2263,27 +2263,10 @@ void main() {
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
       expect(find.text('Звучит как «Кузнец»'), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('voiceAs-a1')));
-      await tester.pumpAndSettle();
-
-      // The cast to give the card away to, and their own voice back.
-      expect(find.text('Своим голосом'), findsOneWidget);
-      expect(find.widgetWithText(PopupMenuItem<String>, 'Кузнец'), findsOneWidget);
-      expect(
-        find.widgetWithText(PopupMenuItem<String>, 'Стражник'),
-        findsNothing,
-        reason: 'a card cannot be read by itself',
-      );
-      // The list that opens is a list of names. `constraints` on a popup
-      // button is the size of the menu rather than of the button, and it was
-      // handed the button's 34 by 34: the cast came out as a box with one
-      // letter of one name in it.
-      expect(
-        tester.getSize(find.widgetWithText(PopupMenuItem<String>, 'Кузнец')).width,
-        greaterThan(100),
-        reason: 'the menu is not squeezed to the size of the button',
-      );
+      // One scheme decides who speaks for whom. The card says what it is;
+      // the graph is where it is drawn.
+      expect(find.byKey(const ValueKey('voiceAs-a1')), findsNothing);
+      expect(find.byIcon(Icons.published_with_changes_rounded), findsNothing);
     });
 
     testWidgets('turns the play button into a stop while a clip sounds', (tester) async {
@@ -2513,24 +2496,15 @@ void main() {
       expect(find.text('2 реплики'), findsOneWidget);
     });
 
-    testWidgets('gives a voice a character and takes the choice back', (tester) async {
+    testWidgets('says who reads a voice of the scene, and offers no choice', (tester) async {
       final cubits = stageScene(
-        speakers: const [SceneSpeaker(key: 'timbre:0', line: 'Стоять!')],
+        speakers: const [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
       );
       await pumpDashboard(tester, cubits, const Size(1400, 900));
 
-      await tester.tap(find.byKey(const ValueKey('assign-timbre:0')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Стражник').last);
-      await tester.pumpAndSettle();
-
-      expect(cubits.pipeline.state.speakerReplacements, {'timbre:0': 'a1'});
-
-      await tester.tap(find.byKey(const ValueKey('assign-timbre:0')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Как услышано').last);
-      await tester.pumpAndSettle();
-
+      // Live shows the cast at work; changing it is the graph's.
+      expect(find.byKey(const ValueKey('assign-character:a1')), findsNothing);
+      expect(find.byKey(const ValueKey('reads-character:a1')), findsOneWidget);
       expect(cubits.pipeline.state.speakerReplacements, isEmpty);
     });
 

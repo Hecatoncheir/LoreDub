@@ -129,6 +129,12 @@ abstract class AppLocalizations {
   /// **'Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом. Голос можно собрать и из готовых записей: перетащите их на карточку.'**
   String get charactersNote;
 
+  /// No description provided for @voicesOnTheGraph.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кто кого озвучивает, задаётся на экране «Схема».'**
+  String get voicesOnTheGraph;
+
   /// No description provided for @charactersHowTo.
   ///
   /// In ru, this message translates to:

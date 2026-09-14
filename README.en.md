@@ -124,14 +124,9 @@ travel the whole pipeline. Above each line stands whose voice it was: a
 character card by name, a voice LoreDub founded itself as "Voice 2".
 
 Beside the transcript are the **voices of the scene**: everyone heard this
-session, with the last thing they said. Each of them carries a **Read as**
-choice: give a voice one of your recorded characters and, from the very next
-line, it is read in their voice — and, with **Original voice**, in their
-timbre. Both a voice LoreDub founded itself and a card it recognized can be
-replaced, so a nameless guard can be given the voice of your own Guard. The
-choice is kept for that game and holds after a restart; **As heard** gives a
-voice back to itself, and a substitution that came from the character's own
-card is marked "By the card".
+session, with the last thing they said and the name of whoever reads them. It
+shows rather than sets: who voices whom is drawn on the **Graph**, so that one
+scheme decides it instead of three screens disagreeing about it.
 
 The voices can also be sorted out **before** any dubbing: **Place the voices**
 starts listening — only the voice converter is loaded, with neither whisper
@@ -228,6 +223,9 @@ The cards are laid out as tiles, the way the models are, and each carries its
 own row of buttons. The same button stops it: a recording and a sample both end on a press
 rather than being sat through — three minutes of one is nobody's idea of a
 check.
+
+A card shows who reads it and does not set it: the "Reads as…" line under the
+name says whose voice it is, and the **Graph** is where that is drawn.
 
 **Play the recording** plays the very clip the fingerprint
 was taken from, so it is plain whether the right character was caught; a card

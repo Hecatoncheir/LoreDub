@@ -361,6 +361,13 @@ voice of the game, and `PlaybackScheduler` keeps ordering lines by who spoke.
 A `voice:<name>` speaker means nothing heard who was talking, so it is the one
 kind that cannot be replaced.
 
+Only the graph sets a substitution. Live and the characters screen show who
+reads whom and offer no control for it: one scheme decides who speaks for
+whom, and three screens that could each change it disagreed about where it
+came from. `PipelineCubit.assignSpeaker` and `CharactersCubit.voiceAs` are
+still the calls that apply one -- the graph bloc makes them -- and a speaker
+map already on disk is still read and still answers first.
+
 A substitution can also be set before anyone has spoken: `Character.voicedBy`
 names the card that reads this one, holds in every game, and is applied by the
 same `read_as` — the per-game map answers first, the card after it, one hop
