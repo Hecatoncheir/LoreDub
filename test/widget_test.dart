@@ -2142,6 +2142,22 @@ void main() {
       expect(find.textContaining('% экрана'), findsOneWidget, reason: 'the frame says of what');
     });
 
+    testWidgets('stacks the language and its note where the card is narrow', (tester) async {
+      // Wide enough for the frame to stand beside the controls, and so
+      // narrow for the controls that the language and its note no longer
+      // share a line: fixed at both halves, the row used to overflow.
+      await pumpDashboard(tester, stageSnapshot(), const Size(1160, 1000));
+
+      final field = find.byKey(const ValueKey('textLanguage-en'));
+      final note = find.text('Текст на языке озвучки озвучивается без перевода');
+      expect(field, findsOneWidget);
+      expect(
+        tester.getTopLeft(note).dy,
+        greaterThan(tester.getBottomLeft(field).dy - 1),
+        reason: 'the note went under the field rather than off the card',
+      );
+    });
+
     testWidgets('waits for the game whose window it reads', (tester) async {
       final cubits = stageSnapshot();
       cubits.pipeline.seed(const LivePipelineState());

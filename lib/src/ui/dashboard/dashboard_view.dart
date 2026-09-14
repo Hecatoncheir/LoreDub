@@ -2322,17 +2322,33 @@ class _LanguageRow extends StatelessWidget {
   /// without being cut short.
   static const double actionWidth = 240;
 
+  /// What the two of them need side by side.
+  static const double _sideBySide = fieldWidth + 12 + actionWidth;
+
   final Widget field;
   final Widget action;
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      SizedBox(width: fieldWidth, child: field),
-      const SizedBox(width: 12),
-      SizedBox(width: actionWidth, child: action),
-    ],
+  Widget build(BuildContext context) => LayoutBuilder(
+    // Both halves were fixed and the row refused to shrink, so a card
+    // narrower than the two of them -- the screen page's controls beside
+    // the subtitle frame -- was overflowed by whatever was missing. Given
+    // less than they need, they go one under the other and take the width
+    // there is.
+    builder: (context, constraints) =>
+        !constraints.hasBoundedWidth || constraints.maxWidth >= _sideBySide
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(width: fieldWidth, child: field),
+              const SizedBox(width: 12),
+              SizedBox(width: actionWidth, child: action),
+            ],
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [field, const SizedBox(height: 10), action],
+          ),
   );
 }
 
