@@ -219,6 +219,12 @@ abstract class AppLocalizations {
   /// **'Послушать голос озвучки'**
   String get charactersPreviewVoice;
 
+  /// No description provided for @charactersPreviewPlain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Послушать голос озвучки. Тембр персонажа не переносится: включите «Голос оригинала» на экране «Модели», иначе персонажа читает обычный голос синтеза'**
+  String get charactersPreviewPlain;
+
   /// No description provided for @charactersPreviewLoading.
   ///
   /// In ru, this message translates to:

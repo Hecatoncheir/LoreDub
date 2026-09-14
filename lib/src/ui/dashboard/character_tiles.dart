@@ -73,6 +73,7 @@ class CharacterTile extends StatefulWidget {
     required this.onPlay,
     required this.playing,
     required this.onPreview,
+    this.carriesTimbre = true,
     required this.previewing,
     required this.onExport,
     required this.onDelete,
@@ -119,6 +120,12 @@ class CharacterTile extends StatefulWidget {
 
   /// Whether this card's sample is being got ready or spoken.
   final bool previewing;
+
+  /// Whether the sample will be spoken in the character's own timbre. Without
+  /// Original voice the dubbing reads them in a plain synthesized voice, and
+  /// a sample that says so is worth more than one that leaves the player
+  /// wondering where the voice they recorded went.
+  final bool carriesTimbre;
   final VoidCallback? onExport;
   final VoidCallback onDelete;
 
@@ -423,7 +430,9 @@ class _CharacterTileState extends State<CharacterTile> {
                           ? l10n.charactersPreviewLoading
                           : (widget.onPreview == null
                                 ? l10n.charactersPreviewNeedsModel
-                                : l10n.charactersPreviewVoice),
+                                : widget.carriesTimbre
+                                ? l10n.charactersPreviewVoice
+                                : l10n.charactersPreviewPlain),
                       onPressed: widget.onPreview,
                     ),
                   ),

@@ -303,17 +303,27 @@ class LocalInferenceService {
       _diagnostics.add(line);
       stderr.writeln('[inference] $line');
     });
+    // The worker this watches, and the start it belongs to. A stop kills
+    // the process and returns before Windows has finished with it, so for a
+    // moment two workers exist: the one being taken down and the one the
+    // next screen is starting. Without naming them, the dead one's exit
+    // code failed the live one's start — and the start it failed was the
+    // minutes-long one, so a session begun after listening to a card gave
+    // "the worker exited with -1 and said nothing" every time.
+    final worker = _worker!;
+    final ready = _workerReady!;
     unawaited(
-      _worker!.exitCode.then((code) {
+      worker.exitCode.then((code) {
+        if (!identical(_worker, worker)) return;
         final error = _diagnostics.describeExit(code);
-        if (!(_workerReady?.isCompleted ?? true)) _workerReady!.completeError(error);
+        if (!ready.isCompleted) ready.completeError(error);
         for (final request in _pending.values) {
           if (!request.isCompleted) request.completeError(error);
         }
         _pending.clear();
       }),
     );
-    await _workerReady!.future.timeout(const Duration(minutes: 5));
+    await ready.future.timeout(const Duration(minutes: 5));
   }
 
   void _handleWorkerLine(String line) {
@@ -695,11 +705,22 @@ class LocalInferenceService {
       }
     }
     _pending.clear();
-    await _worker?.stdin.close();
-    _worker?.kill();
-    await _stdoutSubscription?.cancel();
-    await _stderrSubscription?.cancel();
+    final worker = _worker;
+    // Cleared before the process is waited on: whatever else asks for the
+    // worker while it dies must be told there is none, not handed the one
+    // on its way out.
     _worker = null;
     _workerReady = null;
+    await worker?.stdin.close();
+    worker?.kill();
+    // Waited for, so the next worker starts on a machine this one has
+    // finished with: the extracted script, the work directory and the
+    // models it holds are all things two of them would share.
+    await worker?.exitCode.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => -1,
+    );
+    await _stdoutSubscription?.cancel();
+    await _stderrSubscription?.cancel();
   }
 }

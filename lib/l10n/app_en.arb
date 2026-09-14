@@ -21,6 +21,7 @@
   "charactersRecord": "Record the voice",
   "charactersPlayClip": "Play the recording",
   "charactersPreviewVoice": "Hear the dubbing voice",
+  "charactersPreviewPlain": "Hear the dubbing voice. The character\u2019s timbre is not carried over: turn on Original voice on the Models screen, or a plain synthesized voice reads them",
   "charactersPreviewLoading": "Getting the voice ready…",
   "charactersPreviewNeedsModel": "The speech model is missing: fetch it on the Models screen",
   "charactersPlayingClip": "Sounding…",

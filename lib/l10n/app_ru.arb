@@ -21,6 +21,7 @@
   "charactersRecord": "Записать голос",
   "charactersPlayClip": "Прослушать запись",
   "charactersPreviewVoice": "Послушать голос озвучки",
+  "charactersPreviewPlain": "Послушать голос озвучки. Тембр персонажа не переносится: включите «Голос оригинала» на экране «Модели», иначе персонажа читает обычный голос синтеза",
   "charactersPreviewLoading": "Готовлю голос…",
   "charactersPreviewNeedsModel": "Нужна модель озвучки: загрузите её на экране «Модели»",
   "charactersPlayingClip": "Звучит…",

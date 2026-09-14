@@ -2110,11 +2110,12 @@ void main() {
 
     DashboardCubits stageCast({
       CharactersState characters = const CharactersState(loading: false),
+      AppSettings settings = const AppSettings(),
     }) {
       final cubits = stage(
         buildCubits(),
         section: DashboardSection.characters,
-        settings: const AppSettings(),
+        settings: settings,
         models: catalogue(),
       );
       cubits.characters.seed(characters);
@@ -2274,6 +2275,33 @@ void main() {
         greaterThan(100),
         reason: 'the menu is not squeezed to the size of the button',
       );
+    });
+
+    testWidgets('says on the button when a sample carries no timbre', (tester) async {
+      // Without Original voice the dubbing reads every card in a plain
+      // synthesized voice, and a sample that sounds like nobody in
+      // particular is exactly right — so the button says why beforehand.
+      final plain = stageCast(
+        characters: const CharactersState(loading: false, characters: [guard]),
+      );
+      await pumpDashboard(tester, plain, const Size(1280, 900));
+
+      expect(find.byTooltip('Послушать голос озвучки'), findsNothing);
+      expect(
+        find.byTooltip(
+          'Послушать голос озвучки. Тембр персонажа не переносится: включите «Голос оригинала» '
+          'на экране «Модели», иначе персонажа читает обычный голос синтеза',
+        ),
+        findsOneWidget,
+      );
+
+      final cloning = stageCast(
+        characters: const CharactersState(loading: false, characters: [guard]),
+        settings: const AppSettings(originalVoice: true),
+      );
+      await pumpDashboard(tester, cloning, const Size(1280, 900));
+
+      expect(find.byTooltip('Послушать голос озвучки'), findsOneWidget);
     });
 
     testWidgets('puts the packs beside the cast, and under it in a narrow window', (

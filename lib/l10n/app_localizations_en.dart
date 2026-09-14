@@ -76,6 +76,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get charactersPreviewVoice => 'Hear the dubbing voice';
 
   @override
+  String get charactersPreviewPlain =>
+      'Hear the dubbing voice. The character’s timbre is not carried over: turn on Original voice on the Models screen, or a plain synthesized voice reads them';
+
+  @override
   String get charactersPreviewLoading => 'Getting the voice ready…';
 
   @override

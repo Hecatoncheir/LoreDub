@@ -76,6 +76,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get charactersPreviewVoice => 'Послушать голос озвучки';
 
   @override
+  String get charactersPreviewPlain =>
+      'Послушать голос озвучки. Тембр персонажа не переносится: включите «Голос оригинала» на экране «Модели», иначе персонажа читает обычный голос синтеза';
+
+  @override
   String get charactersPreviewLoading => 'Готовлю голос…';
 
   @override

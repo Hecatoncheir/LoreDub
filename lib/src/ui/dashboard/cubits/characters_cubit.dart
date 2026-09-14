@@ -179,6 +179,12 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// language is what says it.
   bool get canPreview => _selection.forTargetLanguage(ModelKind.speech)?.installed ?? false;
 
+  /// Whether a sample will be spoken in the character's own timbre. Without
+  /// «Original voice» the dubbing reads every card in a plain synthesized
+  /// voice, and a card that says so spares the player wondering where the
+  /// voice they recorded went.
+  bool get carriesTimbre => _selection.clonesVoice;
+
   Future<void> load() async {
     try {
       final library = await _appRepository.loadCharacters();
