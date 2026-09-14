@@ -3434,433 +3434,487 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     ),
   );
 
+  /// The whole screen: four groups of cards, in the order a player meets
+  /// them — what is heard, how it sounds, what drives it, where it lives.
   Widget _build(BuildContext context, SettingsState state, {required bool running}) {
     final l10n = AppLocalizations.of(context);
-    final settings = state.settings;
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
-        _SettingCard(
-          title: l10n.settingsInterfaceLanguage,
-          subtitle: l10n.interfaceLanguageNote,
-          child: SegmentedButton<String>(
-            segments: [
-              for (final language in interfaceLanguages)
-                ButtonSegment(
-                  value: language,
-                  label: Text(interfaceLanguageName(language)),
-                ),
-            ],
-            selected: {settings.interfaceLanguage},
-            onSelectionChanged: (selection) =>
-                cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
-          ),
+        ..._whatIsHeard(context, l10n, state, running: running),
+        const SizedBox(height: 12),
+        ..._howItSounds(context, l10n, state, running: running),
+        const SizedBox(height: 12),
+        ..._howItIsDriven(context, l10n, state, running: running),
+        const SizedBox(height: 12),
+        ..._whereThingsLive(context, l10n, state, running: running),
+      ],
+    );
+  }
+
+  /// What LoreDub listens to: the language it speaks to the player in, where the original comes
+  /// from, and the frame it is read out of.
+  List<Widget> _whatIsHeard(
+    BuildContext context,
+    AppLocalizations l10n,
+    SettingsState state, {
+    required bool running,
+  }) {
+    final settings = state.settings;
+    return [
+      _SettingCard(
+        title: l10n.settingsInterfaceLanguage,
+        subtitle: l10n.interfaceLanguageNote,
+        child: SegmentedButton<String>(
+          segments: [
+            for (final language in interfaceLanguages)
+              ButtonSegment(
+                value: language,
+                label: Text(interfaceLanguageName(language)),
+              ),
+          ],
+          selected: {settings.interfaceLanguage},
+          onSelectionChanged: (selection) =>
+              cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
         ),
+      ),
+      const SizedBox(height: 12),
+      _SettingCard(
+        title: l10n.settingsCaptureSource,
+        child: SegmentedButton<CaptureMode>(
+          segments: [
+            ButtonSegment(
+              value: CaptureMode.audio,
+              icon: const Icon(Icons.hearing_rounded),
+              label: Text(l10n.captureAudio),
+            ),
+            ButtonSegment(
+              value: CaptureMode.ocr,
+              icon: const Icon(Icons.subtitles_rounded),
+              label: Text(l10n.captureOcr),
+            ),
+          ],
+          selected: {settings.captureMode},
+          onSelectionChanged: running
+              ? null
+              : (selection) =>
+                    cubits.settings.update(settings.copyWith(captureMode: selection.first)),
+        ),
+      ),
+      if (settings.captureMode == CaptureMode.ocr) ...[
         const SizedBox(height: 12),
         _SettingCard(
-          title: l10n.settingsCaptureSource,
-          child: SegmentedButton<CaptureMode>(
-            segments: [
-              ButtonSegment(
-                value: CaptureMode.audio,
-                icon: const Icon(Icons.hearing_rounded),
-                label: Text(l10n.captureAudio),
+          title: l10n.settingsOcrRegion,
+          subtitle: l10n.ocrRegionNote,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              OcrRegionPicker(
+                key: const ValueKey('ocrRegion'),
+                region: settings.ocrRegion,
+                semanticLabel: l10n.ocrRegionHelp,
+                onChanged: running
+                    ? null
+                    : (region) => cubits.settings.update(settings.copyWith(ocrRegion: region)),
               ),
-              ButtonSegment(
-                value: CaptureMode.ocr,
-                icon: const Icon(Icons.subtitles_rounded),
-                label: Text(l10n.captureOcr),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 12,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    l10n.ocrRegionValue(
+                      (settings.ocrRegion.width * 100).round(),
+                      (settings.ocrRegion.height * 100).round(),
+                      (settings.ocrRegion.left * 100).round(),
+                      (settings.ocrRegion.top * 100).round(),
+                    ),
+                    style: const TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 12),
+                  ),
+                  TextButton.icon(
+                    onPressed: running || settings.ocrRegion == OcrRegion.standard
+                        ? null
+                        : () => cubits.settings.update(
+                            settings.copyWith(ocrRegion: OcrRegion.standard),
+                          ),
+                    icon: const Icon(Icons.restart_alt_rounded),
+                    label: Text(l10n.ocrRegionReset),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l10n.ocrRegionHelp,
+                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
               ),
             ],
-            selected: {settings.captureMode},
-            onSelectionChanged: running
-                ? null
-                : (selection) =>
-                      cubits.settings.update(settings.copyWith(captureMode: selection.first)),
           ),
         ),
-        if (settings.captureMode == CaptureMode.ocr) ...[
-          const SizedBox(height: 12),
-          _SettingCard(
-            title: l10n.settingsOcrRegion,
-            subtitle: l10n.ocrRegionNote,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      ],
+    ];
+  }
+
+  /// What the dubbing sounds like: how far the game is turned down under it, how fast a line is
+  /// read, and in whose voice.
+  List<Widget> _howItSounds(
+    BuildContext context,
+    AppLocalizations l10n,
+    SettingsState state, {
+    required bool running,
+  }) {
+    final settings = state.settings;
+    return [
+      _SettingCard(
+        title: l10n.settingsOriginalVolume,
+        subtitle: l10n.originalVolumeValue((settings.duckedVolume * 100).round()),
+        // The floor is the capture's: the game is heard through this same
+        // volume, and silenced outright it would never be dubbed at all.
+        // Subtitle mode reads the screen and may silence it.
+        child: Column(
+          children: [
+            Slider(
+              key: const ValueKey('originalVolume'),
+              value: settings.duckedVolume,
+              min: settings.quietestDuck,
+              max: AppSettings.loudestDuck,
+              divisions: settings.duckDivisions,
+              label: '${(settings.duckedVolume * 100).round()}%',
+              onChanged: running
+                  ? null
+                  : (value) => cubits.settings.update(settings.copyWith(originalVolume: value)),
+            ),
+            const SizedBox(height: 4),
+            Row(
               children: [
-                OcrRegionPicker(
-                  key: const ValueKey('ocrRegion'),
-                  region: settings.ocrRegion,
-                  semanticLabel: l10n.ocrRegionHelp,
+                Switch(
+                  value: settings.duckWhileSpeaking,
                   onChanged: running
                       ? null
-                      : (region) => cubits.settings.update(settings.copyWith(ocrRegion: region)),
+                      : (value) =>
+                            cubits.settings.update(settings.copyWith(duckWhileSpeaking: value)),
                 ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      l10n.ocrRegionValue(
-                        (settings.ocrRegion.width * 100).round(),
-                        (settings.ocrRegion.height * 100).round(),
-                        (settings.ocrRegion.left * 100).round(),
-                        (settings.ocrRegion.top * 100).round(),
-                      ),
-                      style: const TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 12),
-                    ),
-                    TextButton.icon(
-                      onPressed: running || settings.ocrRegion == OcrRegion.standard
-                          ? null
-                          : () => cubits.settings.update(
-                              settings.copyWith(ocrRegion: OcrRegion.standard),
-                            ),
-                      icon: const Icon(Icons.restart_alt_rounded),
-                      label: Text(l10n.ocrRegionReset),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  l10n.ocrRegionHelp,
-                  style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
-                ),
+                const SizedBox(width: 6),
+                Flexible(child: Text(l10n.duckWhileSpeaking)),
               ],
             ),
-          ),
-        ],
-        const SizedBox(height: 12),
-        _SettingCard(
-          title: l10n.settingsOriginalVolume,
-          subtitle: l10n.originalVolumeValue((settings.duckedVolume * 100).round()),
-          // The floor is the capture's: the game is heard through this same
-          // volume, and silenced outright it would never be dubbed at all.
-          // Subtitle mode reads the screen and may silence it.
-          child: Column(
-            children: [
-              Slider(
-                key: const ValueKey('originalVolume'),
-                value: settings.duckedVolume,
-                min: settings.quietestDuck,
-                max: AppSettings.loudestDuck,
-                divisions: settings.duckDivisions,
-                label: '${(settings.duckedVolume * 100).round()}%',
-                onChanged: running
-                    ? null
-                    : (value) => cubits.settings.update(settings.copyWith(originalVolume: value)),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Switch(
-                    value: settings.duckWhileSpeaking,
-                    onChanged: running
-                        ? null
-                        : (value) =>
-                              cubits.settings.update(settings.copyWith(duckWhileSpeaking: value)),
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(child: Text(l10n.duckWhileSpeaking)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.duckWhileSpeakingNote,
-                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
-              ),
-            ],
-          ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.duckWhileSpeakingNote,
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        _SettingCard(
-          title: l10n.settingsTtsSpeed,
-          subtitle: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
-          child: Column(
-            children: [
-              Slider(
-                key: const ValueKey('ttsSpeed'),
-                value: settings.chosenSpeed,
-                min: AppSettings.slowestSpeech,
-                max: AppSettings.fastestSpeech,
-                divisions: AppSettings.speechDivisions,
-                label: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
-                onChanged: running
-                    ? null
-                    : (value) => cubits.settings.update(settings.copyWith(ttsSpeed: value)),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Switch(
-                    key: const ValueKey('hurryWhenQueued'),
-                    value: settings.hurryWhenQueued,
-                    onChanged: running
-                        ? null
-                        : (value) =>
-                              cubits.settings.update(settings.copyWith(hurryWhenQueued: value)),
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(child: Text(l10n.hurryWhenQueued)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.hurryWhenQueuedNote,
-                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        _VoiceCard(cubits: cubits),
-        const SizedBox(height: 12),
-        _SettingCard(
-          title: l10n.settingsHotkeys,
-          subtitle: l10n.hotkeysNote,
-          child: Column(
-            children: [
-              _HotkeyRow(
-                label: l10n.hotkeyPause,
-                field: HotkeyField(
-                  key: const ValueKey('pauseHotkey'),
-                  value: settings.pauseHotkey,
-                  enabled: !running,
-                  validate: (hotkey) => _hotkeyProblem(
-                    l10n,
-                    hotkey,
-                    others: [
-                      (_settings.resumeHotkey, l10n.hotkeyResume),
-                      (_settings.snapshotHotkey, l10n.hotkeySnapshot),
-                    ],
-                  ),
-                  onChanged: (hotkey) => cubits.settings.update(
-                    hotkey == null
-                        ? _settings.copyWith(clearPauseHotkey: true)
-                        : _settings.copyWith(pauseHotkey: hotkey),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _HotkeyRow(
-                label: l10n.hotkeyResume,
-                field: HotkeyField(
-                  key: const ValueKey('resumeHotkey'),
-                  value: settings.resumeHotkey,
-                  enabled: !running,
-                  validate: (hotkey) => _hotkeyProblem(
-                    l10n,
-                    hotkey,
-                    others: [
-                      (_settings.pauseHotkey, l10n.hotkeyPause),
-                      (_settings.snapshotHotkey, l10n.hotkeySnapshot),
-                    ],
-                  ),
-                  onChanged: (hotkey) => cubits.settings.update(
-                    hotkey == null
-                        ? _settings.copyWith(clearResumeHotkey: true)
-                        : _settings.copyWith(resumeHotkey: hotkey),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _HotkeyRow(
-                label: l10n.hotkeySnapshot,
-                field: HotkeyField(
-                  key: const ValueKey('snapshotHotkey'),
-                  value: settings.snapshotHotkey,
-                  enabled: !running,
-                  validate: (hotkey) => _hotkeyProblem(
-                    l10n,
-                    hotkey,
-                    others: [
-                      (_settings.pauseHotkey, l10n.hotkeyPause),
-                      (_settings.resumeHotkey, l10n.hotkeyResume),
-                    ],
-                  ),
-                  onChanged: (hotkey) => cubits.settings.update(
-                    hotkey == null
-                        ? _settings.copyWith(clearSnapshotHotkey: true)
-                        : _settings.copyWith(snapshotHotkey: hotkey),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingCard(
-          title: l10n.settingsPerformance,
-          subtitle: l10n.performanceNote(Platform.numberOfProcessors, defaultCpuThreads()),
-          child: DropdownButtonFormField<int>(
-            initialValue: settings.cpuThreads,
-            decoration: InputDecoration(labelText: l10n.cpuThreads),
-            items: _threadOptions(settings.cpuThreads)
-                .map((value) => DropdownMenuItem(value: value, child: Text('$value')))
-                .toList(),
-            onChanged: running
-                ? null
-                : (value) {
-                    if (value != null) {
-                      cubits.settings.update(settings.copyWith(cpuThreads: value));
-                    }
-                  },
-          ),
-        ),
-        const SizedBox(height: 12),
-        _ComputeDeviceCard(cubits: cubits),
-        const SizedBox(height: 12),
-        _SettingCard(
-          title: l10n.settingsPython,
-          subtitle: l10n.pythonNote,
-          child: Form(
-            key: _pythonFormKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+      ),
+      const SizedBox(height: 12),
+      _SettingCard(
+        title: l10n.settingsTtsSpeed,
+        subtitle: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
+        child: Column(
+          children: [
+            Slider(
+              key: const ValueKey('ttsSpeed'),
+              value: settings.chosenSpeed,
+              min: AppSettings.slowestSpeech,
+              max: AppSettings.fastestSpeech,
+              divisions: AppSettings.speechDivisions,
+              label: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
+              onChanged: running
+                  ? null
+                  : (value) => cubits.settings.update(settings.copyWith(ttsSpeed: value)),
+            ),
+            const SizedBox(height: 4),
+            Row(
               children: [
-                TextFormField(
-                  controller: _pythonController,
-                  keyboardType: TextInputType.url,
-                  textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
-                    labelText: l10n.pythonFieldLabel,
-                    helperText: l10n.pythonFieldHelper,
-                    prefixIcon: const Icon(Icons.terminal_rounded),
-                  ),
-                  validator: (value) =>
-                      (value ?? '').trim().isEmpty ? l10n.pythonFieldRequired : null,
-                  onFieldSubmitted: (_) => _savePython(),
+                Switch(
+                  key: const ValueKey('hurryWhenQueued'),
+                  value: settings.hurryWhenQueued,
+                  onChanged: running
+                      ? null
+                      : (value) =>
+                            cubits.settings.update(settings.copyWith(hurryWhenQueued: value)),
                 ),
-                const SizedBox(height: 12),
-                Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    TextButton.icon(
-                      onPressed: state.searchingPython ? null : _findPython,
-                      icon: state.searchingPython
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.manage_search_rounded),
-                      label: Text(
-                        state.searchingPython ? l10n.pythonSearching : l10n.pythonFindAutomatically,
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        _pythonController.text = bundledPythonExecutablePath();
-                        _savePython();
-                      },
-                      icon: const Icon(Icons.settings_backup_restore_rounded),
-                      label: Text(l10n.pythonBundled),
-                    ),
-                    FilledButton.icon(
-                      onPressed: _savePython,
-                      icon: const Icon(Icons.save_outlined),
-                      label: Text(l10n.save),
-                    ),
-                  ],
-                ),
+                const SizedBox(width: 6),
+                Flexible(child: Text(l10n.hurryWhenQueued)),
               ],
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingCard(
-          title: l10n.settingsModelDownloads,
-          subtitle: l10n.proxyNote,
-          child: Form(
-            key: _proxyFormKey,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final field = TextFormField(
-                  controller: _proxyController,
-                  keyboardType: TextInputType.url,
-                  textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
-                    labelText: l10n.proxyLabel,
-                    hintText: 'http://127.0.0.1:7890',
-                    helperText: l10n.proxyHelper,
-                    helperMaxLines: 2,
-                    prefixIcon: const Icon(Icons.lan_outlined),
-                  ),
-                  validator: _validateProxy,
-                  onFieldSubmitted: (_) => _saveProxy(),
-                );
-                final save = OutlinedButton.icon(
-                  onPressed: _saveProxy,
-                  icon: const Icon(Icons.save_outlined),
-                  label: Text(l10n.save),
-                );
-                if (constraints.maxWidth < 620) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      field,
-                      const SizedBox(height: 12),
-                      Align(alignment: Alignment.centerRight, child: save),
-                    ],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: field),
-                    const SizedBox(width: 16),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: save,
-                    ),
-                  ],
-                );
-              },
+            const SizedBox(height: 4),
+            Text(
+              l10n.hurryWhenQueuedNote,
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
             ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+      _VoiceCard(cubits: cubits),
+    ];
+  }
+
+  /// What the player drives it with, and what the machine drives it on.
+  List<Widget> _howItIsDriven(
+    BuildContext context,
+    AppLocalizations l10n,
+    SettingsState state, {
+    required bool running,
+  }) {
+    final settings = state.settings;
+    return [
+      _SettingCard(
+        title: l10n.settingsHotkeys,
+        subtitle: l10n.hotkeysNote,
+        child: Column(
+          children: [
+            _HotkeyRow(
+              label: l10n.hotkeyPause,
+              field: HotkeyField(
+                key: const ValueKey('pauseHotkey'),
+                value: settings.pauseHotkey,
+                enabled: !running,
+                validate: (hotkey) => _hotkeyProblem(
+                  l10n,
+                  hotkey,
+                  others: [
+                    (_settings.resumeHotkey, l10n.hotkeyResume),
+                    (_settings.snapshotHotkey, l10n.hotkeySnapshot),
+                  ],
+                ),
+                onChanged: (hotkey) => cubits.settings.update(
+                  hotkey == null
+                      ? _settings.copyWith(clearPauseHotkey: true)
+                      : _settings.copyWith(pauseHotkey: hotkey),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _HotkeyRow(
+              label: l10n.hotkeyResume,
+              field: HotkeyField(
+                key: const ValueKey('resumeHotkey'),
+                value: settings.resumeHotkey,
+                enabled: !running,
+                validate: (hotkey) => _hotkeyProblem(
+                  l10n,
+                  hotkey,
+                  others: [
+                    (_settings.pauseHotkey, l10n.hotkeyPause),
+                    (_settings.snapshotHotkey, l10n.hotkeySnapshot),
+                  ],
+                ),
+                onChanged: (hotkey) => cubits.settings.update(
+                  hotkey == null
+                      ? _settings.copyWith(clearResumeHotkey: true)
+                      : _settings.copyWith(resumeHotkey: hotkey),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _HotkeyRow(
+              label: l10n.hotkeySnapshot,
+              field: HotkeyField(
+                key: const ValueKey('snapshotHotkey'),
+                value: settings.snapshotHotkey,
+                enabled: !running,
+                validate: (hotkey) => _hotkeyProblem(
+                  l10n,
+                  hotkey,
+                  others: [
+                    (_settings.pauseHotkey, l10n.hotkeyPause),
+                    (_settings.resumeHotkey, l10n.hotkeyResume),
+                  ],
+                ),
+                onChanged: (hotkey) => cubits.settings.update(
+                  hotkey == null
+                      ? _settings.copyWith(clearSnapshotHotkey: true)
+                      : _settings.copyWith(snapshotHotkey: hotkey),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+      _SettingCard(
+        title: l10n.settingsPerformance,
+        subtitle: l10n.performanceNote(Platform.numberOfProcessors, defaultCpuThreads()),
+        child: DropdownButtonFormField<int>(
+          initialValue: settings.cpuThreads,
+          decoration: InputDecoration(labelText: l10n.cpuThreads),
+          items: _threadOptions(settings.cpuThreads)
+              .map((value) => DropdownMenuItem(value: value, child: Text('$value')))
+              .toList(),
+          onChanged: running
+              ? null
+              : (value) {
+                  if (value != null) {
+                    cubits.settings.update(settings.copyWith(cpuThreads: value));
+                  }
+                },
+        ),
+      ),
+      const SizedBox(height: 12),
+      _ComputeDeviceCard(cubits: cubits),
+    ];
+  }
+
+  /// Where the parts come from and where they are kept.
+  List<Widget> _whereThingsLive(
+    BuildContext context,
+    AppLocalizations l10n,
+    SettingsState state, {
+    required bool running,
+  }) {
+    return [
+      _SettingCard(
+        title: l10n.settingsPython,
+        subtitle: l10n.pythonNote,
+        child: Form(
+          key: _pythonFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _pythonController,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: l10n.pythonFieldLabel,
+                  helperText: l10n.pythonFieldHelper,
+                  prefixIcon: const Icon(Icons.terminal_rounded),
+                ),
+                validator: (value) =>
+                    (value ?? '').trim().isEmpty ? l10n.pythonFieldRequired : null,
+                onFieldSubmitted: (_) => _savePython(),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  TextButton.icon(
+                    onPressed: state.searchingPython ? null : _findPython,
+                    icon: state.searchingPython
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.manage_search_rounded),
+                    label: Text(
+                      state.searchingPython ? l10n.pythonSearching : l10n.pythonFindAutomatically,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      _pythonController.text = bundledPythonExecutablePath();
+                      _savePython();
+                    },
+                    icon: const Icon(Icons.settings_backup_restore_rounded),
+                    label: Text(l10n.pythonBundled),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _savePython,
+                    icon: const Icon(Icons.save_outlined),
+                    label: Text(l10n.save),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        _SettingCard(
-          title: l10n.settingsModelDirectory,
-          subtitle: l10n.modelDirectoryNote,
+      ),
+      const SizedBox(height: 12),
+      _SettingCard(
+        title: l10n.settingsModelDownloads,
+        subtitle: l10n.proxyNote,
+        child: Form(
+          key: _proxyFormKey,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final path = _DownloadsBuilder(
-                cubits: cubits,
-                builder: (context, downloads) => SelectableText(
-                  downloads.modelDirectoryPath,
-                  style: Theme.of(context).textTheme.bodyMedium,
+              final field = TextFormField(
+                controller: _proxyController,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: l10n.proxyLabel,
+                  hintText: 'http://127.0.0.1:7890',
+                  helperText: l10n.proxyHelper,
+                  helperMaxLines: 2,
+                  prefixIcon: const Icon(Icons.lan_outlined),
                 ),
+                validator: _validateProxy,
+                onFieldSubmitted: (_) => _saveProxy(),
               );
-              final open = OutlinedButton.icon(
-                onPressed: cubits.downloads.openModelDirectory,
-                icon: const Icon(Icons.folder_open_rounded),
-                label: Text(l10n.openInExplorer),
+              final save = OutlinedButton.icon(
+                onPressed: _saveProxy,
+                icon: const Icon(Icons.save_outlined),
+                label: Text(l10n.save),
               );
               if (constraints.maxWidth < 620) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    path,
+                    field,
                     const SizedBox(height: 12),
-                    Align(alignment: Alignment.centerRight, child: open),
+                    Align(alignment: Alignment.centerRight, child: save),
                   ],
                 );
               }
               return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: path),
+                  Expanded(child: field),
                   const SizedBox(width: 16),
-                  open,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: save,
+                  ),
                 ],
               );
             },
           ),
         ),
-      ],
-    );
+      ),
+      const SizedBox(height: 12),
+      _SettingCard(
+        title: l10n.settingsModelDirectory,
+        subtitle: l10n.modelDirectoryNote,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final path = _DownloadsBuilder(
+              cubits: cubits,
+              builder: (context, downloads) => SelectableText(
+                downloads.modelDirectoryPath,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            );
+            final open = OutlinedButton.icon(
+              onPressed: cubits.downloads.openModelDirectory,
+              icon: const Icon(Icons.folder_open_rounded),
+              label: Text(l10n.openInExplorer),
+            );
+            if (constraints.maxWidth < 620) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  path,
+                  const SizedBox(height: 12),
+                  Align(alignment: Alignment.centerRight, child: open),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: path),
+                const SizedBox(width: 16),
+                open,
+              ],
+            );
+          },
+        ),
+      ),
+    ];
   }
 }
 
