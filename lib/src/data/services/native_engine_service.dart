@@ -427,10 +427,44 @@ class NativeEngineService {
   ///
   /// What an ended recording heard is dropped: the screen has had its
   /// chance to keep the clip that earned the card.
-  void setRecordingVoice({required bool recording}) {
-    _recordingVoice = recording;
-    if (!recording) _dropRecordedClips();
+  /// Opens or closes the take a card is recorded from.
+  ///
+  /// The capture holds it open meanwhile: neither a pause in the speech nor
+  /// the length of a phrase ends it, so what the card is measured from is
+  /// everything the player heard between pressing record and pressing stop.
+  /// Closing it waits for that recording to be written and measured — it is
+  /// the only one the take has, and the card is nothing without it.
+  Future<void> setRecordingVoice({required bool recording}) async {
+    if (recording) {
+      _dropRecordedClips();
+      _recordingVoice = true;
+      ld_hold_take(1);
+      return;
+    }
+    if (!_recordingVoice) return;
+    // What the take had gathered when it was let go of. Nothing means the
+    // game was silent throughout, and there is no recording to wait for.
+    final held = ld_hold_take(0);
+    if (held <= 0) {
+      _recordingVoice = false;
+      return;
+    }
+    final closing = Completer<void>();
+    _takeClosing = closing;
+    try {
+      // Long enough for the capture's own wake-up, the file, and the
+      // converter reading three minutes of it on a busy CPU.
+      await closing.future.timeout(const Duration(seconds: 90));
+    } on TimeoutException {
+      // Nothing came of it after all: what was gathered held no voice.
+    } finally {
+      if (identical(_takeClosing, closing)) _takeClosing = null;
+      _recordingVoice = false;
+    }
   }
+
+  /// Waiting for the recording a closed take leaves behind, if anything is.
+  Completer<void>? _takeClosing;
 
   void _dropRecordedClips() {
     for (final clip in _recordedClips) {
@@ -454,6 +488,12 @@ class NativeEngineService {
       _inference.voiceCharacterAs(character, target);
 
   Future<void> stop() async {
+    // A take left open belongs to a session that is ending.
+    if (_recordingVoice) {
+      ld_hold_take(0);
+      _recordingVoice = false;
+      if (!(_takeClosing?.isCompleted ?? true)) _takeClosing!.complete();
+    }
     // Cleared first: segments captured moments ago are still travelling
     // through the queue, and failing them is expected once the user stops.
     _activeConfig = null;
@@ -611,6 +651,8 @@ class NativeEngineService {
       _reportFailure(error);
     } finally {
       if (!kept) await _deleteIfPresent(wavePath);
+      // Whoever is waiting for the take to close has what it heard now.
+      if (!(_takeClosing?.isCompleted ?? true)) _takeClosing!.complete();
     }
   }
 

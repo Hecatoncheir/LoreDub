@@ -389,9 +389,17 @@ where the player records their own cast. `CharacterService` keeps them in one
 because the player owns these cards — and `AppRepository.startCharacterVoices`
 runs a session for recording them: `ld_start` on the game's audio plus the
 worker under `--embed-only`, which loads the converter and neither Marian nor
-Silero, so the screen is ready in seconds. While a card records, each captured
-segment goes to `{"fingerprint": path}` instead of recognition and comes back
-as a `characterVoice` event; the cubit keeps the longest clear one. It keeps
+Silero, so the screen is ready in seconds. While a card records the capture is held open
+(`ld_hold_take`, `ProcessLoopbackCapture::SetHoldingTake`): neither the
+end-of-phrase silence nor the twelve-second segment cap closes it, so the take
+is everything between the two button presses, to a ceiling of three minutes.
+Letting go writes it within about 100 ms and answers with how much was
+gathered, so a silent take is not waited for; the recording then goes to
+`{"fingerprint": path}` instead of recognition and comes back as a
+`characterVoice` event, which is why `stopRecording` awaits
+`recordCharacterVoice(recording: false)` rather than writing the card
+straight away. Nothing is measured while the take runs, so the card counts
+the seconds off its own clock. It keeps
 the audio too: the engine holds every measured clip until the recording ends,
 and the card's own is copied to `<app support>/characters/<id>.wav` before
 that, so the player can hear back what they caught. The other button on a

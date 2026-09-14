@@ -182,6 +182,12 @@ windowed or borderless: a game in exclusive fullscreen would minimize.
 This is where character cards are kept: **Add** creates an empty one, the name
 is typed in the card itself, and **Delete** removes it once confirmed.
 
+A take runs until it is stopped: neither a pause in the speech nor the
+length of a phrase ends it, so the fingerprint is taken from everything that
+sounded between **Record the voice** and **Stop**. The card counts the
+seconds meanwhile. Three minutes is the ceiling — a recording nobody stopped
+is a mistake rather than a wish.
+
 To record a voice, press **Start recording** and choose the game process —
 only the voice converter is loaded, with neither translator nor speech model,
 so the screen is ready in seconds. Walk up to the character in the game, press

@@ -33,6 +33,12 @@ external ffi.Pointer<ffi.Char> ld_error_message(
 );
 
 @meta.RecordUse()
+@ffi.Native<ffi.Int32 Function(ffi.Int32)>()
+external int ld_hold_take(
+  int holding,
+);
+
+@meta.RecordUse()
 @ffi.Native<ffi.Int32 Function()>()
 external int ld_is_process_loopback_supported();
 

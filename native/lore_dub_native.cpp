@@ -507,6 +507,21 @@ void StopHotkeys() {
 }  // namespace
 #endif
 
+int32_t ld_hold_take(int32_t holding) {
+#if defined(_WIN32)
+  if (!loopback_capture) return -5;
+  // What the take had gathered when it was let go of, in milliseconds, so
+  // the caller knows whether a recording is on its way. Opening one answers
+  // zero: there is nothing in it yet.
+  const size_t held = holding != 0 ? 0 : loopback_capture->HeldSamples();
+  loopback_capture->SetHoldingTake(holding != 0);
+  return static_cast<int32_t>(held * 1000 / 16000);
+#else
+  (void)holding;
+  return -2;
+#endif
+}
+
 int32_t ld_set_paused(int32_t value) {
   paused = value != 0;
   return 0;

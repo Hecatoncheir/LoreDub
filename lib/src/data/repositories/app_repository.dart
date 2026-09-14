@@ -377,9 +377,9 @@ class AppRepository {
   Future<void> voiceCharacterAs(String character, String? target) =>
       _nativeEngine.voiceCharacterAs(character, target);
 
-  /// Whether what the game says is being measured for a character's card.
-  /// Between recordings the captured audio is thrown away.
-  void recordCharacterVoice({required bool recording}) =>
+  /// Opens or closes the take a character's card is measured from. Closing
+  /// it waits for what was recorded to be measured.
+  Future<void> recordCharacterVoice({required bool recording}) =>
       _nativeEngine.setRecordingVoice(recording: recording);
 
   /// What the running session was started with, so a resume can turn the

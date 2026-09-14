@@ -198,7 +198,7 @@ void main() {
     });
   });
 
-  test('keeps the longest clear voice a recording heard', () async {
+  test('keeps the whole take a recording heard', () async {
     characters.seed(
       const CharactersState(
         loading: false,
@@ -210,22 +210,14 @@ void main() {
     characters.startRecording('a1');
     expect(repository.recordings, [true]);
 
-    // Too short to stand for anyone, then a clear line, then a shorter one.
-    characters.handleEvent({
-      'type': 'characterVoice',
-      'vector': [9.0],
-      'seconds': 0.8,
-    });
+    // The take is one recording, closed by the stop below: however long the
+    // character went on, and whatever pauses they left, this is what the
+    // card is measured from.
     characters.handleEvent({
       'type': 'characterVoice',
       'vector': [0.7, 0.1],
       'gender': 'male',
-      'seconds': 2.4,
-    });
-    characters.handleEvent({
-      'type': 'characterVoice',
-      'vector': [5.0],
-      'seconds': 1.9,
+      'seconds': 24.5,
     });
 
     await characters.stopRecording();
@@ -234,7 +226,29 @@ void main() {
     final kept = characters.state.characters.single;
     expect(kept.vector, [0.7, 0.1]);
     expect(kept.gender, 'male');
-    expect(kept.seconds, 2.4);
+    expect(kept.seconds, 24.5, reason: 'the take, not the longest line in it');
+    expect(characters.state.heardSeconds, 0, reason: 'the clock is put away with the take');
+  });
+
+  test('leaves the card alone when a take held too little speech', () async {
+    characters.seed(
+      const CharactersState(
+        loading: false,
+        status: PipelineStatus.listening,
+        characters: [guard],
+      ),
+    );
+
+    characters.startRecording('a1');
+    characters.handleEvent({
+      'type': 'characterVoice',
+      'vector': [9.0],
+      'seconds': 0.8,
+    });
+
+    await characters.stopRecording();
+
+    expect(characters.state.characters.single.vector, guard.vector);
   });
 
   test('keeps the clip the card was recorded from, and plays it back', () async {
@@ -564,7 +578,7 @@ class _CastRepository extends AppRepository {
   Future<CharacterLibrary> readCharacterFiles(List<String> sources) async => incoming;
 
   @override
-  void recordCharacterVoice({required bool recording}) => recordings.add(recording);
+  Future<void> recordCharacterVoice({required bool recording}) async => recordings.add(recording);
 
   @override
   Future<void> stop() async => stops++;

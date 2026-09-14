@@ -14,6 +14,7 @@ const recordUseMapping = {
   'ld_abi_version': 'ld_abi_version',
   'ld_decode_audio': 'ld_decode_audio',
   'ld_error_message': 'ld_error_message',
+  'ld_hold_take': 'ld_hold_take',
   'ld_is_process_loopback_supported': 'ld_is_process_loopback_supported',
   'ld_list_processes_json': 'ld_list_processes_json',
   'ld_play_wave': 'ld_play_wave',

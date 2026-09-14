@@ -55,6 +55,16 @@ LD_API int32_t ld_decode_audio(const char* utf8_path, const char* utf8_output_pa
 LD_API int32_t ld_start(const char* config_json);
 LD_API int32_t ld_stop(void);
 
+// Holds the capture open as one take (1), or lets it go (0). While held,
+// nothing ends the recording -- not a pause in the speech, not the length of
+// a phrase -- so the characters screen keeps everything between pressing
+// record and pressing stop. Letting go writes what was gathered and delivers
+// it as an audioSegment event within about 100 ms. Letting go answers with
+// how much the take had gathered, in milliseconds, so a caller can tell a
+// recording on its way from a silence that will deliver nothing; opening one
+// answers zero. A take nobody let go of ends at three minutes.
+LD_API int32_t ld_hold_take(int32_t holding);
+
 // Pauses (1) or resumes (0) the running pipeline without tearing it down.
 // While paused, capture keeps its devices; recognized subtitle text is
 // dropped here, and audio segments are dropped by the caller.

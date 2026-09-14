@@ -40,6 +40,11 @@ constexpr size_t kEndSilenceSamples = kSampleRate * 7 / 10;
 constexpr long long kEndSilenceMilliseconds = 700;
 constexpr size_t kMinimumSpeechSamples = kSampleRate * 35 / 100;
 constexpr size_t kMaximumSegmentSamples = kSampleRate * 12;
+
+// As long as a held take may run. A recording nobody stopped is a mistake
+// rather than a wish, and three minutes of one voice says more than a
+// fingerprint has any use for.
+constexpr size_t kHeldTakeSamples = kSampleRate * 180;
 constexpr double kSpeechRms = 180.0;
 
 std::string WindowsError(HRESULT result) {
@@ -107,6 +112,15 @@ bool ProcessLoopbackCapture::Start(uint32_t process_id, bool exclude_process_tre
                         exclude_process_tree,
                         std::move(output_directory), std::move(on_segment), std::move(on_error));
   return true;
+}
+
+void ProcessLoopbackCapture::SetHoldingTake(bool holding) {
+  if (holding) held_samples_.store(0, std::memory_order_relaxed);
+  holding_.store(holding, std::memory_order_relaxed);
+}
+
+size_t ProcessLoopbackCapture::HeldSamples() const {
+  return held_samples_.load(std::memory_order_relaxed);
 }
 
 void ProcessLoopbackCapture::SetSpeechAttenuation(double factor) {
@@ -200,6 +214,7 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
   std::vector<int16_t> segment;
   size_t silence_samples = 0;
   bool speaking = false;
+  bool was_holding = false;
   uint64_t sequence = 0;
   auto last_voice = std::chrono::steady_clock::now();
   while (!stopping_) {
@@ -252,9 +267,23 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
     const auto quiet = std::chrono::duration_cast<std::chrono::milliseconds>(
                            std::chrono::steady_clock::now() - last_voice)
                            .count();
-    const bool end_segment = speaking && (silence_samples >= kEndSilenceSamples ||
-                                          segment.size() >= kMaximumSegmentSamples ||
-                                          quiet >= kEndSilenceMilliseconds);
+    // A held take ends when it is let go of, and not before: neither a
+    // pause in the speech nor the length of a phrase closes it. The wake-up
+    // above is at most 100 ms, so letting go lands the recording promptly.
+    const bool holding = holding_.load(std::memory_order_relaxed);
+    // What a take has gathered, so the caller can tell a recording worth
+    // waiting for from a silence worth nothing.
+    if (holding) {
+      held_samples_.store(speaking ? segment.size() : 0, std::memory_order_relaxed);
+    }
+    const bool released = was_holding && !holding;
+    was_holding = holding;
+    const bool end_segment =
+        speaking &&
+        (released || (holding ? segment.size() >= kHeldTakeSamples
+                              : (silence_samples >= kEndSilenceSamples ||
+                                 segment.size() >= kMaximumSegmentSamples ||
+                                 quiet >= kEndSilenceMilliseconds)));
     if (end_segment) {
       if (segment.size() >= kMinimumSpeechSamples) {
         const std::wstring filename = output_directory + L"\\segment-" +

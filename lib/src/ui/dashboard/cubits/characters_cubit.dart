@@ -374,6 +374,9 @@ class CharactersCubit extends Cubit<CharactersState> {
   }
 
   Future<void> stopSession() async {
+    _recordingTicks?.cancel();
+    _recordingTicks = null;
+    _recordingSince = null;
     // Live calls this too, to take the worker over. Without a session of
     // this screen's there is nothing to end, and stopping the engine would
     // take down the one that is about to start.
@@ -389,23 +392,53 @@ class CharactersCubit extends Cubit<CharactersState> {
   }
 
   /// Begins measuring what the game says for [id].
+  ///
+  /// The take runs until it is stopped: nothing in the game — a pause, a
+  /// line that runs long — ends it, so what the card is measured from is
+  /// everything heard in between. Three minutes is the ceiling, since a
+  /// recording nobody stopped is a mistake rather than a wish.
   void startRecording(String id) {
     if (!state.running || state.recording) return;
     _heard = null;
     _heardGender = null;
     _heardClip = null;
-    _appRepository.recordCharacterVoice(recording: true);
+    _heardSeconds = 0;
+    unawaited(_appRepository.recordCharacterVoice(recording: true));
+    // Nothing is measured until the take is stopped, so the card counts the
+    // seconds itself rather than leaving the player without an answer.
+    _recordingSince = DateTime.now();
+    _recordingTicks?.cancel();
+    _recordingTicks = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      if (isClosed || _recordingSince == null) return;
+      emit(
+        state.copyWith(
+          heardSeconds: DateTime.now().difference(_recordingSince!).inMilliseconds / 1000,
+        ),
+      );
+    });
     emit(state.copyWith(recordingId: id, heardSeconds: 0));
   }
 
-  /// Keeps what was heard as the character's voice.
+  /// The clock the card counts a take by, and the ticks that show it.
+  DateTime? _recordingSince;
+  Timer? _recordingTicks;
+
+  /// How much the take was measured to hold, as the converter read it.
+  double _heardSeconds = 0;
+
+  /// Closes the take and keeps what it heard as the character's voice.
   Future<void> stopRecording() async {
     final id = state.recordingId;
     if (id == null) return;
+    _recordingTicks?.cancel();
+    _recordingTicks = null;
+    _recordingSince = null;
+    // The take is one recording, and it is this call that closes it: what
+    // the converter makes of it lands while this waits.
+    await _appRepository.recordCharacterVoice(recording: false);
+    if (isClosed) return;
     final heard = _heard;
     final clip = _heardClip;
-    // Kept before the engine is told to stop: what a recording heard is
-    // dropped the moment it ends, and this is the last chance at the file.
     var kept = state.clips;
     if (heard != null && clip != null) {
       try {
@@ -417,9 +450,7 @@ class CharactersCubit extends Cubit<CharactersState> {
         _errors.report(exception);
       }
     }
-    _appRepository.recordCharacterVoice(recording: false);
-    if (isClosed) return;
-    emit(state.copyWith(clearRecordingId: true, clips: kept));
+    emit(state.copyWith(clearRecordingId: true, clips: kept, heardSeconds: 0));
     if (heard == null) return;
     await _write(
       characters: [
@@ -429,7 +460,7 @@ class CharactersCubit extends Cubit<CharactersState> {
               vector: heard,
               gender: _heardGender,
               clearGender: _heardGender == null,
-              seconds: state.heardSeconds,
+              seconds: _heardSeconds,
             )
           else
             character,
@@ -458,16 +489,18 @@ class CharactersCubit extends Cubit<CharactersState> {
       case 'characterVoice':
         if (!state.recording) return;
         final seconds = (event['seconds'] as num?)?.toDouble() ?? 0;
-        // The longest clear line stands for the character: a fingerprint
-        // taken from a grunt would answer for them ever after.
-        if (seconds < enoughSeconds || seconds <= state.heardSeconds) return;
+        // The take is one recording, so this is it — unless it holds less
+        // speech than a fingerprint can be taken from.
+        if (seconds < enoughSeconds) return;
         _heard = [
           for (final value in event['vector'] as List<Object?>? ?? const [])
             if (value is num) value.toDouble(),
         ];
         _heardGender = event['gender'] as String?;
         _heardClip = event['clip'] as String?;
-        emit(state.copyWith(heardSeconds: seconds));
+        // How long the take turned out to hold, which is what the card
+        // keeps; the seconds on screen meanwhile are the clock's.
+        _heardSeconds = seconds;
     }
   }
 

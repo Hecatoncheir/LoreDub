@@ -2223,7 +2223,16 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(cubits.characters.state.recordingId, 'a1');
-      expect(find.textContaining('Идёт запись'), findsOneWidget);
+      // The take runs until it is stopped, so the card counts it rather than
+      // saying only that something is going on.
+      expect(find.textContaining('Записано'), findsOneWidget);
+
+      // A take runs until it is stopped, so the test stops it — as the
+      // player would, by the button that is now a square.
+      await tester.tap(find.widgetWithIcon(IconButton, Icons.stop_rounded));
+      await tester.pumpAndSettle();
+
+      expect(cubits.characters.state.recordingId, isNull);
     });
 
     testWidgets('makes a pack and says a card can be dropped into it', (tester) async {
