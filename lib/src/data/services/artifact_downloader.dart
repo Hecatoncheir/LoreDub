@@ -41,64 +41,33 @@ Future<DownloadOutcome> downloadArtifacts(
   int stallRetries = 5,
 }) async {
   await directory.create(recursive: true);
-  final knownTotal = artifacts.fold<int>(0, (sum, artifact) => sum + (artifact.byteSize ?? 0));
-  var completed = 0;
+  final progress = _Progress(
+    total: artifacts.fold<int>(0, (sum, artifact) => sum + (artifact.byteSize ?? 0)),
+    report: onProgress,
+  );
   for (final artifact in artifacts) {
     final destination = File(path.join(directory.path, artifact.fileName));
     final partial = File('${destination.path}.part');
+    // Already here and whole from an earlier run: nothing to fetch.
     if (await destination.exists() && await verifyArtifact(destination, artifact)) {
-      completed += artifact.byteSize ?? 0;
+      progress.done += artifact.byteSize ?? 0;
       continue;
     }
     if (control?.requestedStop case final stop?) {
       return _stopped(stop, partial);
     }
-    var artifactBytes = 0;
-    DownloadOutcome? stopped;
-    for (var stalls = 0; ; stalls++) {
-      try {
-        final resumed = await _openStream(client, artifact, partial, stallTimeout);
-        final response = resumed.response;
-        final sink = partial.openWrite(
-          mode: resumed.offset > 0 ? FileMode.writeOnlyAppend : FileMode.writeOnly,
-        );
-        artifactBytes = resumed.offset;
-        try {
-          await for (final chunk in response.stream.timeout(stallTimeout)) {
-            // Checked between chunks so a stop lands within a few hundred
-            // kilobytes rather than at the end of a half-gigabyte file.
-            if (control?.requestedStop case final stop?) {
-              stopped = stop;
-              break;
-            }
-            sink.add(chunk);
-            artifactBytes += chunk.length;
-            final responseTotal = response.contentLength;
-            if (knownTotal > 0) {
-              onProgress(((completed + artifactBytes) / knownTotal).clamp(0, 1));
-            } else if (responseTotal != null && responseTotal > 0) {
-              onProgress(((artifactBytes) / (responseTotal + resumed.offset)).clamp(0, 1));
-            } else {
-              onProgress(0);
-            }
-          }
-        } finally {
-          await sink.close();
-        }
-        break;
-      } on TimeoutException {
-        // The connection went quiet without closing. What arrived is on
-        // disk, so a fresh request picks up from there with a range.
-        if (control?.requestedStop case final stop?) {
-          stopped = stop;
-          break;
-        }
-        if (stalls >= stallRetries) {
-          throw LoreDubFailure(FailureCode.downloadStalled, detail: artifact.fileName);
-        }
-      }
-    }
-    if (stopped != null) return _stopped(stopped, partial);
+
+    final fetched = await _fetchArtifact(
+      artifact: artifact,
+      partial: partial,
+      client: client,
+      control: control,
+      progress: progress,
+      stallTimeout: stallTimeout,
+      stallRetries: stallRetries,
+    );
+    if (fetched.stop case final stop?) return _stopped(stop, partial);
+
     if (!await verifyArtifact(partial, artifact)) {
       // A part that fails here is not worth resuming: the bytes on disk are
       // wrong, and every later attempt would inherit them.
@@ -106,10 +75,110 @@ Future<DownloadOutcome> downloadArtifacts(
       throw LoreDubFailure(FailureCode.verificationFailed, detail: artifact.fileName);
     }
     await partial.rename(destination.path);
-    completed += artifact.byteSize ?? artifactBytes;
+    progress.done += artifact.byteSize ?? fetched.bytes;
   }
   onProgress(1);
   return DownloadOutcome.completed;
+}
+
+/// How far along the whole download is, as one fraction.
+///
+/// The total is known in advance when the catalogue gives every size. When
+/// it does not, the one file being fetched is all there is to go by, and a
+/// response that will not say how long it is leaves nothing to show at all.
+class _Progress {
+  _Progress({required this.total, required this.report});
+
+  final int total;
+  final DownloadProgress report;
+
+  /// The bytes of the files already finished.
+  int done = 0;
+
+  void at({required int bytes, required int offset, int? responseTotal}) {
+    if (total > 0) {
+      report(((done + bytes) / total).clamp(0, 1));
+    } else if (responseTotal != null && responseTotal > 0) {
+      report((bytes / (responseTotal + offset)).clamp(0, 1));
+    } else {
+      report(0);
+    }
+  }
+}
+
+/// How one artifact's download ended: how much of it is on disk, and the
+/// stop the player asked for, if they asked for one.
+class _Fetched {
+  const _Fetched(this.bytes, this.stop);
+
+  final int bytes;
+  final DownloadOutcome? stop;
+}
+
+/// Streams one artifact into its `.part` file, reconnecting for as long as
+/// the connection keeps going quiet on it.
+Future<_Fetched> _fetchArtifact({
+  required ModelArtifact artifact,
+  required File partial,
+  required http.Client client,
+  required DownloadControl? control,
+  required _Progress progress,
+  required Duration stallTimeout,
+  required int stallRetries,
+}) async {
+  for (var stalls = 0; ; stalls++) {
+    try {
+      return await _streamToPart(
+        artifact: artifact,
+        partial: partial,
+        client: client,
+        control: control,
+        progress: progress,
+        stallTimeout: stallTimeout,
+      );
+    } on TimeoutException {
+      // The connection went quiet without closing. What arrived is on disk,
+      // so a fresh request picks up from there with a range.
+      if (control?.requestedStop case final stop?) return _Fetched(0, stop);
+      if (stalls >= stallRetries) {
+        throw LoreDubFailure(FailureCode.downloadStalled, detail: artifact.fileName);
+      }
+    }
+  }
+}
+
+/// One attempt: opens the stream where the part left off and writes until
+/// the file ends or the player stops it.
+Future<_Fetched> _streamToPart({
+  required ModelArtifact artifact,
+  required File partial,
+  required http.Client client,
+  required DownloadControl? control,
+  required _Progress progress,
+  required Duration stallTimeout,
+}) async {
+  final resumed = await _openStream(client, artifact, partial, stallTimeout);
+  final sink = partial.openWrite(
+    mode: resumed.offset > 0 ? FileMode.writeOnlyAppend : FileMode.writeOnly,
+  );
+  var bytes = resumed.offset;
+  try {
+    await for (final chunk in resumed.response.stream.timeout(stallTimeout)) {
+      // Checked between chunks so a stop lands within a few hundred
+      // kilobytes rather than at the end of a half-gigabyte file.
+      if (control?.requestedStop case final stop?) return _Fetched(bytes, stop);
+      sink.add(chunk);
+      bytes += chunk.length;
+      progress.at(
+        bytes: bytes,
+        offset: resumed.offset,
+        responseTotal: resumed.response.contentLength,
+      );
+    }
+  } finally {
+    await sink.close();
+  }
+  return _Fetched(bytes, null);
 }
 
 /// Leaves the partial file in the state the stop asked for: a pause keeps it

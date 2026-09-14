@@ -70,34 +70,69 @@ Future<String> resolveWhisperExecutable({
 bool isWindowsStoreAliasStub(String executablePath) =>
     path.basename(path.dirname(executablePath)).toLowerCase() == 'windowsapps';
 
+/// The interpreter the worker is to be started with.
+///
+/// A setting that names a file is taken as it is; a bare name is looked for
+/// along PATH. The Store alias stub is passed over wherever it turns up, and
+/// if it is the only thing found it is its own failure: telling the player to
+/// install Python is no answer when Windows has put a decoy in front of them.
 Future<String> resolvePythonExecutable(String configured) async {
   final candidate = configured.trim().isEmpty ? bundledPythonExecutablePath() : configured.trim();
-  final file = File(candidate);
   var skippedStoreAlias = false;
-  if (await file.exists()) {
-    if (!isWindowsStoreAliasStub(file.path)) return file.absolute.path;
+
+  final named = File(candidate);
+  if (await named.exists()) {
+    if (!isWindowsStoreAliasStub(named.path)) return named.absolute.path;
     skippedStoreAlias = true;
   }
 
-  if (!candidate.contains('/') && !candidate.contains(r'\')) {
-    final pathValue = Platform.environment['PATH'] ?? '';
-    for (final directory in pathValue.split(Platform.isWindows ? ';' : ':')) {
-      if (directory.trim().isEmpty) continue;
-      for (final name in {
-        candidate,
-        if (Platform.isWindows && !candidate.toLowerCase().endsWith('.exe')) '$candidate.exe',
-      }) {
-        final pathCandidate = File(path.join(directory, name));
-        if (!await pathCandidate.exists()) continue;
-        if (isWindowsStoreAliasStub(pathCandidate.path)) {
-          skippedStoreAlias = true;
-          continue;
-        }
-        return pathCandidate.absolute.path;
-      }
-    }
+  if (_isBareName(candidate)) {
+    final found = await _alongPath(candidate);
+    if (found.executable case final executable?) return executable;
+    skippedStoreAlias = skippedStoreAlias || found.skippedStoreAlias;
   }
 
   if (skippedStoreAlias) throw const LoreDubFailure(FailureCode.pythonStoreAlias);
   throw LoreDubFailure(FailureCode.pythonMissing, detail: candidate);
 }
+
+/// What a search turned up: the interpreter to run, or — having found none —
+/// whether the Store decoy was among what it passed over.
+class _PythonSearch {
+  const _PythonSearch({this.executable, this.skippedStoreAlias = false});
+
+  final String? executable;
+  final bool skippedStoreAlias;
+}
+
+/// Looks for [name] in every directory of PATH, in order.
+Future<_PythonSearch> _alongPath(String name) async {
+  var skippedStoreAlias = false;
+  for (final directory in _pathDirectories()) {
+    for (final fileName in _fileNamesFor(name)) {
+      final candidate = File(path.join(directory, fileName));
+      if (!await candidate.exists()) continue;
+      if (isWindowsStoreAliasStub(candidate.path)) {
+        skippedStoreAlias = true;
+        continue;
+      }
+      return _PythonSearch(executable: candidate.absolute.path);
+    }
+  }
+  return _PythonSearch(skippedStoreAlias: skippedStoreAlias);
+}
+
+/// A name with no directory in it is looked for along PATH; anything else is
+/// a place the player named, and there is nowhere else to look.
+bool _isBareName(String candidate) => !candidate.contains('/') && !candidate.contains(r'\');
+
+Iterable<String> _pathDirectories() => (Platform.environment['PATH'] ?? '')
+    .split(Platform.isWindows ? ';' : ':')
+    .where((directory) => directory.trim().isNotEmpty);
+
+/// The file names one bare name can stand for: on Windows it is spelled with
+/// the extension as well, the way the shell would complete it.
+Set<String> _fileNamesFor(String name) => {
+  name,
+  if (Platform.isWindows && !name.toLowerCase().endsWith('.exe')) '$name.exe',
+};

@@ -521,115 +521,173 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     emit(state.copyWith(snapshots: const []));
   }
 
+  /// Hands one engine event to the part of the state it changes.
+  ///
+  /// The switch only names the handler: each kind of event is a method of a
+  /// few lines below, so reading one of them never means reading the rest.
   void _handleEvent(Map<String, Object?> event) {
     switch (event['type']) {
       case 'state':
-        // The engine serves the characters screen in its turn, and that
-        // session is not this screen's to show. An event naming no session
-        // is the engine coming to rest, which ends whatever was running.
-        if (event['session'] case final String session when session != state.session.name) {
-          return;
-        }
-        final status = switch (event['state']) {
-          'ready' || 'listening' => PipelineStatus.listening,
-          'starting' => PipelineStatus.starting,
-          _ => PipelineStatus.idle,
-        };
-        emit(
-          state.copyWith(
-            status: status,
-            clearStartupProgress: status != PipelineStatus.starting,
-            startupStage: status == PipelineStatus.starting ? null : '',
-          ),
-        );
+        _onSessionState(event);
       case 'transcript':
-        final entry = TranscriptEntry(
-          original: event['original'] as String? ?? '',
-          english: event['english'] as String? ?? '',
-          translated: event['translated'] as String? ?? '',
-          latency: Duration(milliseconds: event['latencyMs'] as int? ?? 0),
-          speaker: event['speaker'] as String?,
-        );
-        // A selection answers the player's request, not the running capture,
-        // so it has a list of its own.
-        if (event['snapshot'] == true) {
-          emit(
-            state.copyWith(
-              snapshots: [entry, ...state.snapshots.take(49)],
-              snapshotReading: false,
-            ),
-          );
-        } else {
-          emit(
-            state.copyWith(
-              transcript: [entry, ...state.transcript.take(49)],
-              speakers: _withSpeaker(
-                entry.speaker,
-                line: entry.translated.trim().isEmpty ? entry.original : entry.translated,
-              ),
-            ),
-          );
-        }
-      // A voice placed before the dubbing runs: no words, only who spoke.
+        _onTranscript(event);
       case 'sceneVoice':
-        emit(
-          state.copyWith(
-            speakers: _withSpeaker(
-              event['speaker'] as String?,
-              seconds: (event['seconds'] as num?)?.toDouble() ?? 0,
-            ),
-          ),
-        );
+        _onSceneVoice(event);
       case 'snapshotReading':
         emit(state.copyWith(snapshotReading: true, snapshotMissed: false));
       case 'snapshot':
-        // Text that was found stays in reading until its translation lands.
-        if ((event['text'] as String? ?? '').isNotEmpty) return;
-        emit(state.copyWith(snapshotReading: false, snapshotMissed: event['failed'] != true));
+        _onSnapshot(event);
       case 'startup':
-        emit(
-          state.copyWith(
-            startupProgress: (event['value'] as num?)?.toDouble(),
-            clearStartupProgress: event['value'] == null,
-            startupStage: event['stage'] as String? ?? '',
-          ),
-        );
+        _onStartup(event);
       case 'language':
-        final code = event['code'] as String?;
-        emit(state.copyWith(detectedLanguage: code, clearDetectedLanguage: code == null));
+        _onDetectedLanguage(event);
       case 'voice':
-        final name = event['name'] as String?;
-        emit(state.copyWith(spokenVoice: name, clearSpokenVoice: name == null));
+        _onSpokenVoice(event);
       case 'voiceBank':
         // The event carries this game's count; the settings show all games.
         unawaited(_settings.refreshVoiceBank());
       case 'backend':
-        final stage = ComputeStage.values.where((value) => value.name == event['stage']);
-        final backend = ComputeBackend.values.where((value) => value.name == event['backend']);
-        if (stage.isEmpty || backend.isEmpty) return;
-        emit(
-          state.copyWith(
-            activeBackends: {...state.activeBackends, stage.first: backend.first},
-          ),
-        );
-      // A system-wide combination, pressed from inside the game.
+        _onBackend(event);
       case 'hotkey':
-        switch (event['action']) {
-          case 'pause':
-            unawaited(pause());
-          case 'resume':
-            unawaited(resume());
-        }
+        _onHotkey(event);
       case 'error':
-        // A phrase failing does not stop the capture, so the pipeline keeps
-        // its state and the controls stay usable. Marking the session as
-        // failed here used to leave it stuck: neither startable nor stoppable.
-        // An event without a failure has nothing to show, and reporting null
-        // would clear a banner raised a moment earlier.
-        // Whatever failed, a selection still waiting will not be answered.
-        if (state.snapshotReading) emit(state.copyWith(snapshotReading: false));
-        if (event['failure'] case final failure?) _errors.report(failure);
+        _onError(event);
     }
+  }
+
+  /// The engine has started, come up or come to rest.
+  void _onSessionState(Map<String, Object?> event) {
+    // The engine serves the characters screen in its turn, and that session
+    // is not this screen's to show. An event naming no session is the engine
+    // coming to rest, which ends whatever was running.
+    if (event['session'] case final String session when session != state.session.name) {
+      return;
+    }
+    final status = switch (event['state']) {
+      'ready' || 'listening' => PipelineStatus.listening,
+      'starting' => PipelineStatus.starting,
+      _ => PipelineStatus.idle,
+    };
+    emit(
+      state.copyWith(
+        status: status,
+        clearStartupProgress: status != PipelineStatus.starting,
+        startupStage: status == PipelineStatus.starting ? null : '',
+      ),
+    );
+  }
+
+  /// One dubbed line, from the capture or from a selection.
+  void _onTranscript(Map<String, Object?> event) {
+    final entry = TranscriptEntry(
+      original: event['original'] as String? ?? '',
+      english: event['english'] as String? ?? '',
+      translated: event['translated'] as String? ?? '',
+      latency: Duration(milliseconds: event['latencyMs'] as int? ?? 0),
+      speaker: event['speaker'] as String?,
+    );
+    // A selection answers the player's request, not the running capture, so
+    // it has a list of its own.
+    if (event['snapshot'] == true) {
+      emit(
+        state.copyWith(
+          snapshots: [entry, ...state.snapshots.take(49)],
+          snapshotReading: false,
+        ),
+      );
+      return;
+    }
+    emit(
+      state.copyWith(
+        transcript: [entry, ...state.transcript.take(49)],
+        speakers: _withSpeaker(
+          entry.speaker,
+          line: entry.translated.trim().isEmpty ? entry.original : entry.translated,
+        ),
+      ),
+    );
+  }
+
+  /// A voice placed before the dubbing runs: no words, only who spoke.
+  void _onSceneVoice(Map<String, Object?> event) {
+    emit(
+      state.copyWith(
+        speakers: _withSpeaker(
+          event['speaker'] as String?,
+          seconds: (event['seconds'] as num?)?.toDouble() ?? 0,
+        ),
+      ),
+    );
+  }
+
+  /// What the screen selection was read as, or that nothing was read.
+  void _onSnapshot(Map<String, Object?> event) {
+    // Text that was found stays in reading until its translation lands.
+    if ((event['text'] as String? ?? '').isNotEmpty) return;
+    emit(state.copyWith(snapshotReading: false, snapshotMissed: event['failed'] != true));
+  }
+
+  /// How far the worker is through its startup.
+  void _onStartup(Map<String, Object?> event) {
+    emit(
+      state.copyWith(
+        startupProgress: (event['value'] as num?)?.toDouble(),
+        clearStartupProgress: event['value'] == null,
+        startupStage: event['stage'] as String? ?? '',
+      ),
+    );
+  }
+
+  /// The language whisper settled on, once it has settled on one.
+  void _onDetectedLanguage(Map<String, Object?> event) {
+    final code = event['code'] as String?;
+    emit(state.copyWith(detectedLanguage: code, clearDetectedLanguage: code == null));
+  }
+
+  /// The voice the last line was read in.
+  void _onSpokenVoice(Map<String, Object?> event) {
+    final name = event['name'] as String?;
+    emit(state.copyWith(spokenVoice: name, clearSpokenVoice: name == null));
+  }
+
+  /// Where a stage actually ended up running, which is not always what it
+  /// was asked for. A stage or a backend this build does not know is left.
+  void _onBackend(Map<String, Object?> event) {
+    final stage = _valueNamed(ComputeStage.values, event['stage']);
+    final backend = _valueNamed(ComputeBackend.values, event['backend']);
+    if (stage == null || backend == null) return;
+    emit(state.copyWith(activeBackends: {...state.activeBackends, stage: backend}));
+  }
+
+  /// A system-wide combination, pressed from inside the game.
+  void _onHotkey(Map<String, Object?> event) {
+    switch (event['action']) {
+      case 'pause':
+        unawaited(pause());
+      case 'resume':
+        unawaited(resume());
+    }
+  }
+
+  /// Something went wrong with one phrase.
+  ///
+  /// A phrase failing does not stop the capture, so the pipeline keeps its
+  /// state and the controls stay usable. Marking the session as failed here
+  /// used to leave it stuck: neither startable nor stoppable. An event
+  /// without a failure has nothing to show, and reporting null would clear a
+  /// banner raised a moment earlier.
+  void _onError(Map<String, Object?> event) {
+    // Whatever failed, a selection still waiting will not be answered.
+    if (state.snapshotReading) emit(state.copyWith(snapshotReading: false));
+    if (event['failure'] case final failure?) _errors.report(failure);
+  }
+
+  /// The enum value written as [name], or null when nothing is.
+  static T? _valueNamed<T extends Enum>(List<T> values, Object? name) {
+    for (final value in values) {
+      if (value.name == name) return value;
+    }
+    return null;
   }
 
   /// Stages a state a widget test wants to render without starting anything.

@@ -487,35 +487,48 @@ class CharactersCubit extends Cubit<CharactersState> {
   void handleEvent(Map<String, Object?> event) {
     switch (event['type']) {
       case 'state':
-        // The dubbing screens hold the worker in their turn, and a session
-        // of theirs is not this screen's to show. An event naming no session
-        // is the engine coming to rest, which ends this one as well.
-        if (event['session'] case final String session
-            when session != PipelineSession.characters.name) {
-          return;
-        }
-        final status = switch (event['state']) {
+        _onSessionState(event);
+      case 'characterVoice':
+        _onCharacterVoice(event);
+    }
+  }
+
+  /// The session has started, come up or come to rest.
+  void _onSessionState(Map<String, Object?> event) {
+    // The dubbing screens hold the worker in their turn, and a session of
+    // theirs is not this screen's to show. An event naming no session is the
+    // engine coming to rest, which ends this one as well.
+    if (event['session'] case final String session
+        when session != PipelineSession.characters.name) {
+      return;
+    }
+    emit(
+      state.copyWith(
+        status: switch (event['state']) {
           'ready' || 'listening' => PipelineStatus.listening,
           'starting' => PipelineStatus.starting,
           _ => PipelineStatus.idle,
-        };
-        emit(state.copyWith(status: status));
-      case 'characterVoice':
-        if (!state.recording) return;
-        final seconds = (event['seconds'] as num?)?.toDouble() ?? 0;
-        // The take is one recording, so this is it — unless it holds less
-        // speech than a fingerprint can be taken from.
-        if (seconds < enoughSeconds) return;
-        _heard = [
-          for (final value in event['vector'] as List<Object?>? ?? const [])
-            if (value is num) value.toDouble(),
-        ];
-        _heardGender = event['gender'] as String?;
-        _heardClip = event['clip'] as String?;
-        // How long the take turned out to hold, which is what the card
-        // keeps; the seconds on screen meanwhile are the clock's.
-        _heardSeconds = seconds;
-    }
+        },
+      ),
+    );
+  }
+
+  /// What was measured from the take a card is recording.
+  void _onCharacterVoice(Map<String, Object?> event) {
+    if (!state.recording) return;
+    final seconds = (event['seconds'] as num?)?.toDouble() ?? 0;
+    // The take is one recording, so this is it — unless it holds less speech
+    // than a fingerprint can be taken from.
+    if (seconds < enoughSeconds) return;
+    _heard = [
+      for (final value in event['vector'] as List<Object?>? ?? const [])
+        if (value is num) value.toDouble(),
+    ];
+    _heardGender = event['gender'] as String?;
+    _heardClip = event['clip'] as String?;
+    // How long the take turned out to hold, which is what the card keeps;
+    // the seconds on screen meanwhile are the clock's.
+    _heardSeconds = seconds;
   }
 
   /// Throws away the clip of a card that is going. A clip left behind costs
@@ -539,79 +552,87 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// card plays back, so what the player hears is a recording they gave it.
   Future<void> voiceFromFiles(String id, List<String> paths) async {
     if (paths.isEmpty || state.building || state.recording || !canRecord) return;
-    final character = state.characters.where((value) => value.id == id).firstOrNull;
-    if (character == null) return;
+    if (!state.characters.any((character) => character.id == id)) return;
     _errors.report(null);
     emit(state.copyWith(buildingId: id, clearBuilt: true));
-    final started = state.running;
+    // A session the player started is theirs to end; one borrowed here to
+    // measure files with is put down again when the measuring is over.
+    final borrowed = !state.running;
     try {
-      if (!started) {
-        final settings = _settings.settings;
-        // The converter and nothing else: there is no game to listen to,
-        // and the recordings are already on disk.
-        await _appRepository.startVoiceFiles(
-          settings: settings,
-          converterDirectory: await _modelRepository.directoryFor(
-            _selection.voiceConverter!.model,
-          ),
-          converterBackend: settings.backendFor(
-            ComputeStage.voiceConversion,
-            _downloads.state.availability,
-          ),
-          runtimeDirectory: _downloads.state.runtimeDirectoryPath,
-        );
-      }
+      if (borrowed) await _startForFiles();
       final built = await _appRepository.buildVoice(paths);
-      var kept = state.clips;
-      if (built.anchor case final anchor?) {
-        try {
-          await _appRepository.keepCharacterClip(id, anchor);
-          kept = {...kept, id};
-        } catch (exception) {
-          // A card without its clip is still a card: only the play button
-          // goes, and the fingerprint it was built from stays.
-          kept = {...kept}..remove(id);
-          _errors.report(exception);
-        }
-      }
+      final clips = await _keptClips(id, built.anchor);
       if (isClosed) return;
-      emit(state.copyWith(built: built, builtId: id, clips: kept));
-      await _write(
-        characters: [
-          for (final value in state.characters)
-            if (value.id == id)
-              value.copyWith(
-                vector: built.vector,
-                gender: built.gender,
-                clearGender: built.gender == null,
-                seconds: built.seconds,
-              )
-            else
-              value,
-        ],
-      );
+      emit(state.copyWith(built: built, builtId: id, clips: clips));
+      await _write(characters: _withVoiceBuilt(id, built));
     } catch (exception) {
       _errors.report(exception);
     } finally {
-      // A session this screen borrowed only to measure files is put down
-      // again; one the player started for recording is theirs to end. The
-      // engine is stopped rather than stopSession: nothing reported itself
-      // as listening, so there is no session state to go by.
-      if (!started) {
-        try {
-          await _appRepository.stop();
-        } catch (exception) {
-          _errors.report(exception);
-        }
-      }
+      if (borrowed) await _stopBorrowed();
       if (!isClosed) {
         emit(
           state.copyWith(
             clearBuildingId: true,
-            status: started ? state.status : PipelineStatus.idle,
+            status: borrowed ? PipelineStatus.idle : state.status,
           ),
         );
       }
+    }
+  }
+
+  /// Loads the converter and nothing else: there is no game to listen to,
+  /// and the recordings are already on disk.
+  Future<void> _startForFiles() async {
+    final settings = _settings.settings;
+    await _appRepository.startVoiceFiles(
+      settings: settings,
+      converterDirectory: await _modelRepository.directoryFor(_selection.voiceConverter!.model),
+      converterBackend: settings.backendFor(
+        ComputeStage.voiceConversion,
+        _downloads.state.availability,
+      ),
+      runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+    );
+  }
+
+  /// The clips with [anchor] kept as [id]'s: the recording the fingerprint
+  /// stands closest to, so the card plays back one the player gave it.
+  ///
+  /// A card without its clip is still a card — only the play button goes —
+  /// so a clip that cannot be kept is reported and passed over.
+  Future<Set<String>> _keptClips(String id, String? anchor) async {
+    if (anchor == null) return state.clips;
+    try {
+      await _appRepository.keepCharacterClip(id, anchor);
+      return {...state.clips, id};
+    } catch (exception) {
+      _errors.report(exception);
+      return {...state.clips}..remove(id);
+    }
+  }
+
+  /// The cast with [id]'s card carrying what the files were measured into.
+  List<Character> _withVoiceBuilt(String id, BuiltVoice built) => [
+    for (final character in state.characters)
+      if (character.id == id)
+        character.copyWith(
+          vector: built.vector,
+          gender: built.gender,
+          clearGender: built.gender == null,
+          seconds: built.seconds,
+        )
+      else
+        character,
+  ];
+
+  /// Puts down a session borrowed only to measure files. The engine is
+  /// stopped rather than `stopSession`: nothing reported itself as
+  /// listening, so there is no session state to go by.
+  Future<void> _stopBorrowed() async {
+    try {
+      await _appRepository.stop();
+    } catch (exception) {
+      _errors.report(exception);
     }
   }
 

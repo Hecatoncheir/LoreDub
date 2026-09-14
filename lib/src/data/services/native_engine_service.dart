@@ -580,39 +580,61 @@ class NativeEngineService {
     }
   }
 
+  /// Takes what the native side has gathered since the last tick — at most a
+  /// handful, so one slow turn cannot hold the interface — and gives each
+  /// event to the part that knows what to do with it.
   void _pollEvents() {
     for (var index = 0; index < 16; index++) {
       final json = _readNativeString(ld_poll_event_json, emptyAllowed: true);
       if (json.isEmpty) break;
       final event = jsonDecode(json) as Map<String, Object?>;
-      if (event['type'] == 'audioSegment') {
-        final wavePath = event['path']! as String;
-        // A segment queued a moment before the pause is dropped like one
-        // captured during it, and so is everything heard between recordings.
-        if (_activeConfig == null ||
-            _paused ||
-            (_session == PipelineSession.characters && !_recordingVoice)) {
-          unawaited(_deleteIfPresent(wavePath));
-          continue;
-        }
-        _phrases.add(PendingPhrase.audio(wavePath));
-      } else if (event['type'] == 'ocrText') {
-        if (_activeConfig == null || _paused) continue;
-        final text = event['text']! as String;
-        final fresh = freshOcrText(_previousOcrText, text);
-        _previousOcrText = text;
-        if (fresh != null) _phrases.add(PendingPhrase.text(fresh));
-      } else if (event['type'] == 'snapshot') {
-        if (_activeConfig == null) continue;
-        // Read even while dubbing rests: a selection is asked for by hand.
-        // OCR reports the lines on screen apart; the translator wants prose.
-        final text = (event['text'] as String? ?? '').split(RegExp(r'\s+')).join(' ').trim();
-        if (text.isNotEmpty) _phrases.add(PendingPhrase.text(text, snapshot: true));
-        _events.add(event);
-      } else {
-        _events.add(_ofSession(fromNativeEvent(event)));
+      switch (event['type']) {
+        case 'audioSegment':
+          _onCapturedAudio(event['path']! as String);
+        case 'ocrText':
+          _onScreenText(event['text']! as String);
+        case 'snapshot':
+          _onSnapshotText(event);
+        default:
+          _events.add(_ofSession(fromNativeEvent(event)));
       }
     }
+  }
+
+  /// A phrase the capture cut out of the game's sound.
+  void _onCapturedAudio(String wavePath) {
+    // A segment queued a moment before the pause is dropped like one
+    // captured during it, and so is everything heard between recordings.
+    if (_listening && !_betweenRecordings) {
+      _phrases.add(PendingPhrase.audio(wavePath));
+      return;
+    }
+    unawaited(_deleteIfPresent(wavePath));
+  }
+
+  /// Whether captured sound is wanted at all right now.
+  bool get _listening => _activeConfig != null && !_paused;
+
+  /// The characters screen holds the capture open between takes, and what it
+  /// hears then belongs to nobody.
+  bool get _betweenRecordings => _session == PipelineSession.characters && !_recordingVoice;
+
+  /// Subtitles read off the screen: only what the line gained is voiced.
+  void _onScreenText(String text) {
+    if (!_listening) return;
+    final fresh = freshOcrText(_previousOcrText, text);
+    _previousOcrText = text;
+    if (fresh != null) _phrases.add(PendingPhrase.text(fresh));
+  }
+
+  /// An area of the screen the player selected by hand. Read even while the
+  /// dubbing rests: it was asked for, not overheard.
+  void _onSnapshotText(Map<String, Object?> event) {
+    if (_activeConfig == null) return;
+    // OCR reports the lines on screen apart; the translator wants prose.
+    final text = (event['text'] as String? ?? '').split(RegExp(r'\s+')).join(' ').trim();
+    if (text.isNotEmpty) _phrases.add(PendingPhrase.text(text, snapshot: true));
+    _events.add(event);
   }
 
   /// [event] with the session it belongs to written on it.

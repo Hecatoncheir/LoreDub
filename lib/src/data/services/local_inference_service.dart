@@ -215,8 +215,6 @@ class LocalInferenceService {
     /// Read every voice as itself: the cast is out of the mix on the graph,
     /// so who stands in for whom waits in the cards without being applied.
     bool asHeard = false,
-
-    /// Whose voice reads whom in this game, as the player assigned it.
   }) async {
     // A worker left over from a session that was not stopped would go on
     // holding its models — and its share of a graphics card — with the
@@ -239,13 +237,9 @@ class LocalInferenceService {
         : null;
     final python = await resolvePythonExecutable(pythonExecutable);
     final work = await createWorkDirectory();
-    final workerFile = File(path.join(work.path, 'inference_worker.py'));
-    final workerBytes = await rootBundle.load('assets/runtime/inference_worker.py');
-    await workerFile.writeAsBytes(workerBytes.buffer.asUint8List(), flush: true);
+    final workerFile = await _extractScript('assets/runtime/inference_worker.py', work);
     // The converter is a module the worker imports from its own directory.
-    final converterFile = File(path.join(work.path, 'tone_converter.py'));
-    final converterBytes = await rootBundle.load('assets/runtime/tone_converter.py');
-    await converterFile.writeAsBytes(converterBytes.buffer.asUint8List(), flush: true);
+    await _extractScript('assets/runtime/tone_converter.py', work);
     // The translator and the converter each ask for the CUDA build on their
     // own, and whichever does brings it in for both.
     final cudaTorch =
@@ -298,35 +292,53 @@ class LocalInferenceService {
       ],
       environment: const {'PYTHONIOENCODING': 'utf-8'},
     );
+    _listenTo(_worker!, _workerReady!);
+    // Loading Marian and Silero is minutes on a cold machine; past that, the
+    // worker is not coming up at all.
+    await _workerReady!.future.timeout(const Duration(minutes: 5));
+  }
+
+  /// Copies one of the bundled runtime scripts into the work directory,
+  /// where the interpreter can reach it, and answers with what it wrote.
+  static Future<File> _extractScript(String asset, Directory work) async {
+    final file = File(path.join(work.path, path.basename(asset)));
+    final bytes = await rootBundle.load(asset);
+    await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+    return file;
+  }
+
+  /// Reads what [worker] says and answers [ready] when it has started — or
+  /// fails it, and every request in flight, if the worker dies first.
+  ///
+  /// The worker and the start are named rather than read from the fields. A
+  /// stop kills the process and returns before Windows has finished with it,
+  /// so for a moment two workers exist: the one being taken down and the one
+  /// the next screen is starting. Unnamed, the dead one's exit code failed
+  /// the live one's start — and that start is the minutes-long one, so a
+  /// session begun after listening to a card gave "the worker exited with -1
+  /// and said nothing" every time.
+  void _listenTo(Process worker, Completer<void> ready) {
     // IOSink defaults to the system encoding, which would corrupt any
     // non-ASCII phrase on the way into the worker.
-    _worker!.stdin.encoding = utf8;
-    _stdoutSubscription = decodeWorkerLines(_worker!.stdout).listen(_handleWorkerLine);
-    _stderrSubscription = decodeWorkerLines(_worker!.stderr).listen((line) {
+    worker.stdin.encoding = utf8;
+    _stdoutSubscription = decodeWorkerLines(worker.stdout).listen(_handleWorkerLine);
+    _stderrSubscription = decodeWorkerLines(worker.stderr).listen((line) {
       _diagnostics.add(line);
       stderr.writeln('[inference] $line');
     });
-    // The worker this watches, and the start it belongs to. A stop kills
-    // the process and returns before Windows has finished with it, so for a
-    // moment two workers exist: the one being taken down and the one the
-    // next screen is starting. Without naming them, the dead one's exit
-    // code failed the live one's start — and the start it failed was the
-    // minutes-long one, so a session begun after listening to a card gave
-    // "the worker exited with -1 and said nothing" every time.
-    final worker = _worker!;
-    final ready = _workerReady!;
-    unawaited(
-      worker.exitCode.then((code) {
-        if (!identical(_worker, worker)) return;
-        final error = _diagnostics.describeExit(code);
-        if (!ready.isCompleted) ready.completeError(error);
-        for (final request in _pending.values) {
-          if (!request.isCompleted) request.completeError(error);
-        }
-        _pending.clear();
-      }),
-    );
-    await ready.future.timeout(const Duration(minutes: 5));
+    unawaited(worker.exitCode.then((code) => _onWorkerExit(worker, ready, code)));
+  }
+
+  /// The worker is gone. Whoever was waiting on it is told why, unless it is
+  /// a worker this service has already replaced.
+  void _onWorkerExit(Process worker, Completer<void> ready, int code) {
+    if (!identical(_worker, worker)) return;
+    final error = _diagnostics.describeExit(code);
+    if (!ready.isCompleted) ready.completeError(error);
+    for (final request in _pending.values) {
+      if (!request.isCompleted) request.completeError(error);
+    }
+    _pending.clear();
   }
 
   void _handleWorkerLine(String line) {
