@@ -1602,24 +1602,27 @@ class _SnapshotControls extends StatelessWidget {
         // the game can pass for its subtitles; the screen is read whatever
         // is on it, which is the only way into a game that keeps no
         // ordinary window.
-        SegmentedButton<ScreenSource>(
-          segments: [
-            ButtonSegment(
-              value: ScreenSource.gameWindow,
-              icon: const Icon(Icons.crop_din_rounded),
-              label: Text(l10n.screenSourceWindow),
-            ),
-            ButtonSegment(
-              value: ScreenSource.wholeScreen,
-              icon: const Icon(Icons.desktop_windows_outlined),
-              label: Text(l10n.screenSourceScreen),
-            ),
-          ],
-          selected: {settings.screenSource},
-          onSelectionChanged: pipeline.running
-              ? null
-              : (selection) =>
-                    cubits.settings.update(settings.copyWith(screenSource: selection.first)),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<ScreenSource>(
+            segments: [
+              ButtonSegment(
+                value: ScreenSource.gameWindow,
+                icon: const Icon(Icons.crop_din_rounded),
+                label: Text(l10n.screenSourceWindow),
+              ),
+              ButtonSegment(
+                value: ScreenSource.wholeScreen,
+                icon: const Icon(Icons.desktop_windows_outlined),
+                label: Text(l10n.screenSourceScreen),
+              ),
+            ],
+            selected: {settings.screenSource},
+            onSelectionChanged: pipeline.running
+                ? null
+                : (selection) =>
+                      cubits.settings.update(settings.copyWith(screenSource: selection.first)),
+          ),
         ),
         const SizedBox(height: 14),
         game,
@@ -3920,17 +3923,20 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     final language = _SettingCard(
       title: l10n.settingsInterfaceLanguage,
       subtitle: l10n.interfaceLanguageNote,
-      child: SegmentedButton<String>(
-        segments: [
-          for (final language in interfaceLanguages)
-            ButtonSegment(
-              value: language,
-              label: Text(interfaceLanguageName(language)),
-            ),
-        ],
-        selected: {settings.interfaceLanguage},
-        onSelectionChanged: (selection) =>
-            cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
+      child: SizedBox(
+        width: double.infinity,
+        child: SegmentedButton<String>(
+          segments: [
+            for (final language in interfaceLanguages)
+              ButtonSegment(
+                value: language,
+                label: Text(interfaceLanguageName(language)),
+              ),
+          ],
+          selected: {settings.interfaceLanguage},
+          onSelectionChanged: (selection) =>
+              cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
+        ),
       ),
     );
     return [
