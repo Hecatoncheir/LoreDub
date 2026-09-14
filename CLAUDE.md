@@ -423,8 +423,15 @@ anything Windows can play -- ogg and opus through the Web Media Extensions --
 and writes 16 kHz mono 16-bit WAV through the same `wave_file::WriteMono` the
 capture uses, because the rate and the loudness are part of the fingerprint
 (the same clip at 48 kHz and at 16 kHz meets itself at 0.50 to 0.86). The
-worker's `build_voice` then embeds every file and averages them, which is
-measured to beat keeping one: over 36 clips of five characters, leaving each
+worker's `build_voice` then embeds every file and averages them **as the
+encoder gave them**: a card's vector is the conditioning the converter
+re-voices against, so it has a length (the encoder answers around 12 to 14)
+as well as a direction. Cosine ignores the length, so a normalized card is
+still recognized perfectly and sounds like nobody -- converting one
+character into another with a unit-length target lands at 0.05 to 0.13 of
+the character aimed at, further off than not converting at all, against 0.75
+to 0.90 for the plain average. Normalize only for comparing. Averaging is
+measured to beat keeping one clip: over 36 clips of five characters, leaving each
 out in turn, the held-out clip is closer to the average of the rest than to
 any single other clip 36 times out of 36, by 0.076. This is not the bank's
 "never average" rule broken -- there the pipeline founds the voices and a

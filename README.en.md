@@ -199,8 +199,10 @@ measures the voice from all of them at once: .ogg and .opus, .mp3, .m4a,
 and the loudness the capture writes at — otherwise a fingerprint from a file
 would not answer for the same character a fingerprint from the game does.
 
-The recordings are **averaged** rather than picked between. Measured over 36
-clips of five characters: leave any one of them out, build the voice from the
+The recordings are **averaged** rather than picked between, and averaged as
+they come: a card's fingerprint is not only what recognizes the character, it
+is the timbre the converter re-voices into. Measured over 36 clips of five
+characters: leave any one of them out, build the voice from the
 rest, and the one left out sits closer to their average than to any single
 other clip of the same character — 36 times out of 36, by 0.076 of cosine on
 average. So the more recordings, the closer the fingerprint sits to the

@@ -193,6 +193,14 @@ def build_voice(converter, paths):
     pipeline and a fingerprint that wandered would stand for a character
     nobody chose. Here the player says which files are one person.)
 
+    The average is the plain one, in the scale the encoder answers in. A
+    card's vector is handed to the converter as the timbre to re-voice
+    against, and that is a vector with a length as well as a direction: the
+    encoder answers around 12 to 14, and the same average at length one
+    turns a voice into nobody -- converting one character into another with
+    it lands at 0.05 to 0.13 of the character aimed at, further away than
+    leaving the clip alone. Averaged as it comes, it lands at 0.75 to 0.90.
+
     What comes back says how well the files agreed, so the player can see
     the fingerprint was taken from one voice and not from two.
     """
@@ -206,28 +214,36 @@ def build_voice(converter, paths):
         if samples is None or rate <= 0 or len(samples) < rate * SHORTEST_CLIP:
             skipped.append(path)
             continue
+        # Kept as the encoder gave it. The card's vector is not only
+        # something to recognize a speaker by -- it is the conditioning the
+        # converter is re-voiced against -- and that one has a length as
+        # well as a direction.
         fingerprint = converter.embed(samples, rate).flatten().float().cpu().numpy()
-        norm = float(np.linalg.norm(fingerprint)) or 1.0
-        measured.append((path, fingerprint / norm, len(samples) / rate))
+        measured.append((path, fingerprint, len(samples) / rate))
     if not measured:
         raise RuntimeError("none of the files held enough voice to measure")
 
     vectors = np.stack([vector for _, vector, _ in measured])
 
-    def centre(matrix):
-        average = matrix.mean(axis=0)
-        return average / (float(np.linalg.norm(average)) or 1.0)
+    def unit(matrix):
+        """The same vectors at length one, which is what comparing them
+        means; the average itself is never kept this way."""
+        lengths = np.linalg.norm(matrix, axis=-1, keepdims=True)
+        return matrix / np.where(lengths == 0, 1.0, lengths)
+
+    def agreement(matrix, average):
+        return unit(matrix) @ unit(average)
 
     # Held against the average of them all, anything that is not a voice
     # falls far below the rest; then the average is taken again without it.
-    against = vectors @ centre(vectors)
+    against = agreement(vectors, vectors.mean(axis=0))
     kept = [index for index, score in enumerate(against) if score >= STRANGE_FILE]
     if not kept:
         raise RuntimeError("the files do not sound like one voice")
     skipped += [measured[index][0] for index in range(len(measured)) if index not in kept]
     vectors = vectors[kept]
-    average = centre(vectors)
-    against = vectors @ average
+    average = vectors.mean(axis=0)
+    against = agreement(vectors, average)
 
     # The clip that stands closest to the result is the one the card keeps
     # to play back: what the player hears is the recording the fingerprint

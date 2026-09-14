@@ -29,7 +29,10 @@ class BuiltVoice {
     this.anchor,
   });
 
-  /// The fingerprint itself, as the card keeps it.
+  /// The fingerprint itself, as the card keeps it, in the scale the encoder
+  /// answers in. It is not only something to recognize a speaker by: the
+  /// converter is handed it as the timbre to re-voice against, and that is a
+  /// vector with a length as well as a direction. Do not normalize it.
   final List<double> vector;
   final String? gender;
 
