@@ -1533,6 +1533,30 @@ abstract class AppLocalizations {
   /// **'Меняется сразу, без перезапуска.'**
   String get interfaceLanguageNote;
 
+  /// No description provided for @settingsGroupSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'ЯЗЫК И ИСТОЧНИК'**
+  String get settingsGroupSource;
+
+  /// No description provided for @settingsGroupDubbing.
+  ///
+  /// In ru, this message translates to:
+  /// **'ОЗВУЧКА'**
+  String get settingsGroupDubbing;
+
+  /// No description provided for @settingsGroupControl.
+  ///
+  /// In ru, this message translates to:
+  /// **'КЛАВИШИ И ВЫЧИСЛЕНИЯ'**
+  String get settingsGroupControl;
+
+  /// No description provided for @settingsGroupAdvanced.
+  ///
+  /// In ru, this message translates to:
+  /// **'ДОПОЛНИТЕЛЬНО'**
+  String get settingsGroupAdvanced;
+
   /// No description provided for @modelWhisperTitle.
   ///
   /// In ru, this message translates to:

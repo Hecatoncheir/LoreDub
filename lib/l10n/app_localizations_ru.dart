@@ -885,6 +885,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get interfaceLanguageNote => 'Меняется сразу, без перезапуска.';
 
   @override
+  String get settingsGroupSource => 'ЯЗЫК И ИСТОЧНИК';
+
+  @override
+  String get settingsGroupDubbing => 'ОЗВУЧКА';
+
+  @override
+  String get settingsGroupControl => 'КЛАВИШИ И ВЫЧИСЛЕНИЯ';
+
+  @override
+  String get settingsGroupAdvanced => 'ДОПОЛНИТЕЛЬНО';
+
+  @override
   String modelWhisperTitle(String version) {
     return 'Whisper $version';
   }

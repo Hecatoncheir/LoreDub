@@ -534,6 +534,10 @@
   "openInExplorer": "Open in Explorer",
   "settingsInterfaceLanguage": "Interface language",
   "interfaceLanguageNote": "Applies immediately, without a restart.",
+  "settingsGroupSource": "LANGUAGE AND SOURCE",
+  "settingsGroupDubbing": "DUBBING",
+  "settingsGroupControl": "HOTKEYS AND COMPUTE",
+  "settingsGroupAdvanced": "ADVANCED",
   "modelWhisperTitle": "Whisper {version}",
   "@modelWhisperTitle": {
     "placeholders": {

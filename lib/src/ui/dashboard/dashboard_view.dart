@@ -3343,6 +3343,10 @@ class _ModelCard extends StatelessWidget {
   }
 }
 
+/// How far one group of settings stands from the next: enough more than the
+/// 12 between cards that the break is read as a break rather than a gap.
+const _settingsGroupGap = 28.0;
+
 class _SettingsPanel extends StatefulWidget {
   const _SettingsPanel({super.key, required this.cubits});
 
@@ -3436,16 +3440,30 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
   /// The whole screen: four groups of cards, in the order a player meets
   /// them — what is heard, how it sounds, what drives it, where it lives.
+  ///
+  /// Each group is announced the way the other screens number their areas,
+  /// and stands off further from its neighbour than the cards inside it do.
+  /// The grouping was a gap alone before, and the same gap the cards within
+  /// a group already kept, so eleven cards read as one list and the
+  /// interface language sat level with the path to Python.
   Widget _build(BuildContext context, SettingsState state, {required bool running}) {
     final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
+        _ModuleLabel(number: '01', label: l10n.settingsGroupSource),
+        const SizedBox(height: 12),
         ..._whatIsHeard(context, l10n, state, running: running),
+        const SizedBox(height: _settingsGroupGap),
+        _ModuleLabel(number: '02', label: l10n.settingsGroupDubbing),
         const SizedBox(height: 12),
         ..._howItSounds(context, l10n, state, running: running),
+        const SizedBox(height: _settingsGroupGap),
+        _ModuleLabel(number: '03', label: l10n.settingsGroupControl),
         const SizedBox(height: 12),
         ..._howItIsDriven(context, l10n, state, running: running),
+        const SizedBox(height: _settingsGroupGap),
+        _ModuleLabel(number: '04', label: l10n.settingsGroupAdvanced),
         const SizedBox(height: 12),
         ..._whereThingsLive(context, l10n, state, running: running),
       ],

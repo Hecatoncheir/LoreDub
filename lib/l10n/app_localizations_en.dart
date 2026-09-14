@@ -879,6 +879,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get interfaceLanguageNote => 'Applies immediately, without a restart.';
 
   @override
+  String get settingsGroupSource => 'LANGUAGE AND SOURCE';
+
+  @override
+  String get settingsGroupDubbing => 'DUBBING';
+
+  @override
+  String get settingsGroupControl => 'HOTKEYS AND COMPUTE';
+
+  @override
+  String get settingsGroupAdvanced => 'ADVANCED';
+
+  @override
   String modelWhisperTitle(String version) {
     return 'Whisper $version';
   }
