@@ -2593,6 +2593,36 @@ void main() {
       expect(find.text('Звучит как «Стражник»'), findsOneWidget);
     });
   });
+  testWidgets('keeps a scheme under the name the dialog is given', (tester) async {
+    // Through the running application rather than staged cubits: what broke
+    // here was the dialog's own field being let go of while the dialog was
+    // still fading, and a fade needs a screen that really has one.
+    await pumpLoreDub(tester, const Size(1400, 920));
+    await tester.tap(find.text('Схема'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.byIcon(Icons.bookmark_add_outlined));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Название схемы'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).last, 'Вечер в таверне');
+    await tester.tap(find.widgetWithText(FilledButton, 'Сохранить схему'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(tester.takeException(), isNull, reason: 'the dialog took nothing down with it');
+    // The shelf keeps it, folded away until its heading is pressed.
+    expect(find.textContaining('СОХРАНЁННЫЕ СХЕМЫ'), findsOneWidget);
+    await tester.tap(find.textContaining('СОХРАНЁННЫЕ СХЕМЫ'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Вечер в таверне'), findsOneWidget);
+  });
+
   group('the pipeline graph', () {
     const guard = Character(id: 'guard', name: 'Стражник', vector: [0.2, 0.4], seconds: 2.5);
     const smith = Character(id: 'smith', name: 'Кузнец', vector: [0.1, 0.9], seconds: 3.5);
