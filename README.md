@@ -879,6 +879,14 @@ scripts/                     скрипты runtime и упаковки под W
 
 ## Спонсоры
 
-LoreDub бесплатен и останется таким. Проект поддерживают:
+LoreDub делается на свои и остаётся бесплатным — без рекламы, без подписки, без
+сбора данных. Эти люди помогают этому продолжаться:
 
-- **Artem Emeliashin**
+<p align="center">
+  <img src="https://img.shields.io/badge/Artem_Emeliashin-e8590c?style=for-the-badge" alt="Artem Emeliashin">
+</p>
+
+<p align="center">
+Хотите встать рядом — <a href="https://github.com/Hecatoncheir/LoreDub/issues">напишите в Issues</a>.<br>
+Имя каждого, кто поддержал проект, стоит здесь и на <a href="https://hecatoncheir.github.io/LoreDub/">странице LoreDub</a>.
+</p>

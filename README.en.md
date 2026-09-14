@@ -894,6 +894,14 @@ their upstream licenses and are not stored in this repository.
 
 ## Sponsors
 
-LoreDub is free and stays that way. The project is supported by:
+LoreDub is built at its authors' own expense and stays free — no ads, no
+subscription, nothing collected. These people keep that going:
 
-- **Artem Emeliashin**
+<p align="center">
+  <img src="https://img.shields.io/badge/Artem_Emeliashin-e8590c?style=for-the-badge" alt="Artem Emeliashin">
+</p>
+
+<p align="center">
+Want to stand beside them — <a href="https://github.com/Hecatoncheir/LoreDub/issues">say so in Issues</a>.<br>
+Everyone who supports the project is named here and on the <a href="https://hecatoncheir.github.io/LoreDub/">LoreDub page</a>.
+</p>
