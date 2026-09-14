@@ -387,6 +387,30 @@ void main() {
       expect(repository.stored.characters.first.voicedBy, 'smith');
     });
 
+    test('a scheme with an empty canvas takes every substitution away', () async {
+      // What the user hit: one scheme with the cast rearranged, another with
+      // a bare canvas. Choosing the bare one left the arrangement sounding,
+      // because it named no cards to put back.
+      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('guard')));
+      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('smith')));
+      await pumpEvents();
+      final bare = await keep('Пусто');
+      await drawLink(voiceOf('guard'), readBy('smith'));
+      expect(repository.stored.characters.first.voicedBy, 'smith');
+      repository.told.clear();
+
+      graph.add(PipelineSchemeChosen(bare.id));
+      await pumpEvents();
+
+      expect(graph.state.layout.cast, isEmpty);
+      expect(repository.stored.characters.first.voicedBy, isNull);
+      expect(
+        repository.told,
+        contains(('guard', null)),
+        reason: 'a session under the pause is told, not left reading the old scheme',
+      );
+    });
+
     test('a scheme is not drawn over a running session that would reroute', () async {
       await drawLink(screenText, translationIn);
       final subtitles = await keep('С экрана');

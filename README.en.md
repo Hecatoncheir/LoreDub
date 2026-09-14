@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/branding/loredub-icon.png" width="180" alt="LoreDub application icon">
+  <a href="https://hecatoncheir.github.io/LoreDub/"><img src="assets/branding/loredub-icon.png" width="180" alt="LoreDub application icon"></a>
 </p>
 
 <h1 align="center">LoreDub</h1>
@@ -345,6 +345,10 @@ screens show it and leave it alone. Two cards that would read each other
 cannot be joined, and neither can two copies of one card. The name is edited in the node's own
 panel, and the cross on a card takes only that copy off the canvas, touching
 neither the card itself nor the substitution given to it.
+
+The scheme that is up decides everything: a card it does not draw is read in
+its own voice. An empty scheme therefore takes every substitution away rather
+than leaving the previous one running.
 
 A scheme can be put on a shelf and taken back down. **Save the scheme**
 keeps the one on the canvas under a name, and it joins the row of cards under

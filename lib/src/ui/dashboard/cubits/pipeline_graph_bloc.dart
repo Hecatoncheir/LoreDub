@@ -511,10 +511,15 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         castRouted: scheme.castRouted,
       ),
     );
-    for (final entry in scheme.readers.entries) {
-      final now = _cast.where((character) => character.id == entry.key).firstOrNull;
-      if (now == null || now.voicedBy == entry.value) continue;
-      await _characters.voiceAs(entry.key, entry.value);
+    // The scheme is the whole picture of who reads whom, so it is put back
+    // over the whole cast rather than over the cards it happens to name: a
+    // card this scheme does not draw is read by nobody. Kept the other way,
+    // an empty scheme changed nothing at all and the arrangement it replaced
+    // went on sounding under a canvas that said nothing about it.
+    for (final character in _cast) {
+      final reader = scheme.readers[character.id];
+      if (character.voicedBy == reader) continue;
+      await _characters.voiceAs(character.id, reader);
     }
   }
 

@@ -233,7 +233,12 @@ by `PipelineLibraryService` and exported and imported as the same shape.
 Choosing one puts it back through the calls an edit makes — `SettingsCubit`
 for the route, `CharactersCubit.voiceAs` for the substitutions — so the other
 screens follow and one step back restores the scheme that was up; a scheme
-that would reroute a running session is refused with `locked`. Models and
+that would reroute a running session is refused with `locked`. The
+substitutions go back over the **whole** cast, not over the cards the scheme
+names: a scheme is the whole picture of who reads whom, so a card it does not
+draw is read by nobody. Applied only to what it lists, a scheme with an empty
+canvas changed nothing and the arrangement it replaced went on sounding under
+a canvas that said nothing about it. Models and
 languages are deliberately not in it: they belong to the machine, and a
 scheme from elsewhere must not name downloads this one does not have. The
 card's picture is painted from `buildPipelineGraph` over the saved layout
