@@ -294,10 +294,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get routeNeededTitle => 'Путь не собран';
 
   @override
-  String get routeNeededNote =>
-      'Связь от «Оригинального потока» снята, и конвейеру нечего обрабатывать. Протяните её обратно на «Схеме» — или выберите там пресет.';
-
-  @override
   String get routeNeededAction => 'К схеме';
 
   @override
@@ -308,6 +304,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get modelsNeededAction => 'Открыть модели';
+
+  @override
+  String get startChecklistTitle => 'Чтобы начать';
+
+  @override
+  String get startStepGame => 'Выберите игру в списке процессов';
 
   @override
   String get processLabel => 'Процесс игры';

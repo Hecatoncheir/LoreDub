@@ -549,12 +549,6 @@ abstract class AppLocalizations {
   /// **'Путь не собран'**
   String get routeNeededTitle;
 
-  /// No description provided for @routeNeededNote.
-  ///
-  /// In ru, this message translates to:
-  /// **'Связь от «Оригинального потока» снята, и конвейеру нечего обрабатывать. Протяните её обратно на «Схеме» — или выберите там пресет.'**
-  String get routeNeededNote;
-
   /// No description provided for @routeNeededAction.
   ///
   /// In ru, this message translates to:
@@ -578,6 +572,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Открыть модели'**
   String get modelsNeededAction;
+
+  /// No description provided for @startChecklistTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чтобы начать'**
+  String get startChecklistTitle;
+
+  /// No description provided for @startStepGame.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите игру в списке процессов'**
+  String get startStepGame;
 
   /// No description provided for @processLabel.
   ///

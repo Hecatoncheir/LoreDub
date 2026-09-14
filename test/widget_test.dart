@@ -569,6 +569,42 @@ void main() {
     expect(startButton().onPressed, isNotNull);
   });
 
+  testWidgets('says in one card what the dead start button waits for', (tester) async {
+    // All three reasons at once, numbered in the order they are met. They
+    // used to be a notice for the packages, a notice for the route, and
+    // nothing whatever for a game not yet chosen.
+    final cubits = stage(
+      buildCubits(),
+      settings: const AppSettings(captureRouted: false),
+      models: catalogue(installed: false),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
+
+    expect(find.text('Чтобы начать'), findsOneWidget);
+    expect(find.text('1.'), findsOneWidget);
+    expect(find.text('Для первого запуска нужны модели'), findsOneWidget);
+    expect(find.text('2.'), findsOneWidget);
+    expect(find.text('Путь не собран'), findsOneWidget);
+    expect(find.text('3.'), findsOneWidget);
+    expect(find.text('Выберите игру в списке процессов'), findsOneWidget);
+
+    // The package step leads to the screen the packages are on; the game is
+    // chosen in the picker above the card, so that step leads nowhere.
+    await tester.tap(find.widgetWithText(TextButton, 'Открыть модели'));
+    await tester.pumpAndSettle();
+    expect(cubits.shell.state.section, DashboardSection.models);
+  });
+
+  testWidgets('takes the card away once nothing is left to ask for', (tester) async {
+    final cubits = stage(buildCubits(), models: catalogue());
+    cubits.pipeline.selectProcess(
+      const GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe'),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
+
+    expect(find.text('Чтобы начать'), findsNothing);
+  });
+
   testWidgets('picks the dubbing language beside the start button', (tester) async {
     final cubits = stage(buildCubits(), models: catalogue(missingLanguage: 'de'));
     await pumpDashboard(tester, cubits, const Size(1280, 720));

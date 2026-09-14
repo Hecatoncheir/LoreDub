@@ -291,10 +291,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get routeNeededTitle => 'The way in is not drawn';
 
   @override
-  String get routeNeededNote =>
-      'The link out of the original stream has been taken apart, so the pipeline has nothing to work on. Draw it back on the graph, or pick a preset there.';
-
-  @override
   String get routeNeededAction => 'To the graph';
 
   @override
@@ -305,6 +301,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelsNeededAction => 'Open models';
+
+  @override
+  String get startChecklistTitle => 'Before the first start';
+
+  @override
+  String get startStepGame => 'Choose the game in the process list';
 
   @override
   String get processLabel => 'Game process';

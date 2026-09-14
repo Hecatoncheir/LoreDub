@@ -22,6 +22,7 @@ import '../../domain/pipeline_graph.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/spoken_language.dart';
+import '../../domain/start_requirements.dart';
 import '../../../l10n/app_localizations.dart';
 import '../app_icons.dart';
 import '../compute_names.dart';
@@ -806,7 +807,19 @@ class _LivePanel extends StatelessWidget {
   final DashboardCubits cubits;
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) => LayoutBuilder(
+    // The transcript takes what the cards above it leave, and in a short
+    // window -- a compact layout with its navigation along the foot, a
+    // checklist still to be worked through -- that was less than the card
+    // needs for its own header. Under the floor the screen scrolls instead.
+    builder: (context, constraints) => constraints.maxHeight >= _liveMinHeight
+        ? _content(context)
+        : SingleChildScrollView(
+            child: SizedBox(height: _liveMinHeight, child: _content(context)),
+          ),
+  );
+
+  Widget _content(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
     child: Column(
       children: [
@@ -828,11 +841,7 @@ class _LivePanel extends StatelessWidget {
             ),
           ),
         ),
-        _ModelsNeededNotice(
-          cubits: cubits,
-          ready: (selection) => selection.requiredModelsInstalled,
-        ),
-        _RouteNeededNotice(cubits: cubits),
+        _StartChecklist(cubits: cubits),
         const SizedBox(height: 16),
         // The transcript and the voices of the scene stand side by side
         // where there is room; a narrow window stacks them, the transcript
@@ -869,6 +878,11 @@ class _LivePanel extends StatelessWidget {
     ),
   );
 }
+
+/// What the live screen keeps for itself before it starts scrolling: the two
+/// cards at their tallest, and a transcript still worth looking at under
+/// them.
+const _liveMinHeight = 640.0;
 
 /// Beyond this the scene voices sit beside the transcript rather than under
 /// it; below it the transcript would be left too narrow to read.
@@ -1081,35 +1095,129 @@ class _ModelsNeededNotice extends StatelessWidget {
   );
 }
 
-/// Says the way into the pipeline has been taken apart on the graph, and
-/// leads back there. Nothing can start meanwhile: the stages have nothing
-/// to work on.
-class _RouteNeededNotice extends StatelessWidget {
-  const _RouteNeededNotice({required this.cubits});
+/// What still stands between the player and the first press of Start.
+///
+/// The three reasons `canStart` refuses for used to be told separately --
+/// one notice for the packages, another for a route taken apart, and
+/// nothing at all for a game not yet chosen, which left the button dead
+/// with no word about what it waited on. They are one card now, numbered in
+/// the order they are met, and it is gone the moment nothing is left in it.
+class _StartChecklist extends StatelessWidget {
+  const _StartChecklist({required this.cubits});
 
   final DashboardCubits cubits;
 
+  // Whether a package is there rather than how far its download has got:
+  // the card must not redraw through the hundred ticks of one.
   @override
-  Widget build(BuildContext context) => _SettingsBuilder(
+  Widget build(BuildContext context) => _DownloadsBuilder(
+    onlyWhatIsInstalled: true,
     cubits: cubits,
-    builder: (context, state) {
-      if (state.settings.captureRouted) return const SizedBox.shrink();
-      final l10n = AppLocalizations.of(context);
-      return Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: Card(
-          child: ListTile(
-            leading: const Icon(Icons.link_off_rounded, color: LoreDubPalette.warning),
-            title: Text(l10n.routeNeededTitle),
-            subtitle: Text(l10n.routeNeededNote),
-            trailing: TextButton(
-              onPressed: () => cubits.shell.selectSection(DashboardSection.pipeline),
-              child: Text(l10n.routeNeededAction),
+    builder: (context, _) => _SettingsBuilder(
+      cubits: cubits,
+      builder: (context, _) => _PipelineBuilder(
+        cubits: cubits,
+        watch: (pipeline) => pipeline.selectedProcess,
+        builder: (context, pipeline) => _build(
+          context,
+          stepsBeforeStart(cubits.selection, gameChosen: pipeline.selectedProcess != null),
+        ),
+      ),
+    ),
+  );
+
+  Widget _build(BuildContext context, List<StartStep> steps) {
+    if (steps.isEmpty) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 12, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.checklist_rounded, color: LoreDubPalette.warning, size: 20),
+                  const SizedBox(width: 10),
+                  Text(
+                    l10n.startChecklistTitle,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              for (final (index, step) in steps.indexed)
+                _StartStepRow(
+                  number: index + 1,
+                  title: switch (step) {
+                    StartStep.models => l10n.modelsNeededTitle,
+                    StartStep.route => l10n.routeNeededTitle,
+                    StartStep.game => l10n.startStepGame,
+                  },
+                  action: switch (step) {
+                    StartStep.models => l10n.modelsNeededAction,
+                    StartStep.route => l10n.routeNeededAction,
+                    StartStep.game => null,
+                  },
+                  // The picker the game is chosen in stands on this same
+                  // screen, a finger's width above, so that step leads
+                  // nowhere and only says what is missing.
+                  onPressed: switch (step) {
+                    StartStep.models => () => cubits.shell.selectSection(DashboardSection.models),
+                    StartStep.route => () => cubits.shell.selectSection(DashboardSection.pipeline),
+                    StartStep.game => null,
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One line of the checklist: its place in the list, what is missing, and
+/// the screen it is put right on.
+class _StartStepRow extends StatelessWidget {
+  const _StartStepRow({
+    required this.number,
+    required this.title,
+    required this.action,
+    required this.onPressed,
+  });
+
+  final int number;
+  final String title;
+  final String? action;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 10),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 30,
+          child: Text(
+            '$number.',
+            style: const TextStyle(
+              fontFamily: LoreDubFonts.mono,
+              color: LoreDubPalette.mutedInk,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
-      );
-    },
+        // A step is a line and no more: three of them with a paragraph
+        // each left the transcript under the card nothing to stand in.
+        Expanded(child: Text(title)),
+        if (action case final label?) ...[
+          const SizedBox(width: 12),
+          TextButton(onPressed: onPressed, child: Text(label)),
+        ],
+      ],
+    ),
   );
 }
 
