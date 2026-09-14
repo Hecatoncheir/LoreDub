@@ -753,6 +753,24 @@ abstract class AppLocalizations {
   /// **'Язык перевода'**
   String get targetLanguageLabel;
 
+  /// No description provided for @translationFromLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'С какого языка'**
+  String get translationFromLabel;
+
+  /// No description provided for @translationToLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'На какой язык'**
+  String get translationToLabel;
+
+  /// No description provided for @translationFromWhisper.
+  ///
+  /// In ru, this message translates to:
+  /// **'Whisper отдаёт английский текст, с какого бы языка ни говорила игра, — поэтому перевод всегда начинается с него.'**
+  String get translationFromWhisper;
+
   /// No description provided for @languageWithoutModels.
   ///
   /// In ru, this message translates to:

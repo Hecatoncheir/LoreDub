@@ -2866,7 +2866,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ВЫБРАНО'), findsOneWidget);
-      expect(find.text('Язык перевода'), findsOneWidget);
+      // Both ends of the stage, and the one that is settled says so: whisper
+      // hands English over whatever the game speaks.
+      expect(find.text('С какого языка'), findsOneWidget);
+      expect(find.text('На какой язык'), findsOneWidget);
+      expect(find.textContaining('Whisper отдаёт английский текст'), findsOneWidget);
     });
 
     testWidgets('says what each line parts with when it is cut', (tester) async {

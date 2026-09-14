@@ -312,9 +312,16 @@ belonging to one session. Starting live dubbing over a running screen session
 stops it first, since its worker has no whisper.
 
 Text read off the screen — the subtitle frame and the snippets — is in
-`AppSettings.textLanguage`: English, or the dubbing language itself when the
-original is named as that (Marian only reads English, and Windows OCR detects
-nothing). It reaches the native side as `ocrLanguage` (ld_start) and
+`AppSettings.screenLanguage`, read through `textLanguage`: English, or the
+dubbing language itself, which is then voiced untranslated (Marian only reads
+English, and Windows OCR detects nothing). It is the screen's own setting
+rather than `sourceLanguage` read a second way — the two were one field, so
+naming the screen's text as Russian named the game's speech as Russian too,
+and the graph, which draws the dubbing of sound and nothing else, redrew its
+translator around a choice made on another page. For the same reason the
+translation node shows English as what comes in: whisper runs with `-tr` and
+hands English over whatever the game speaks, so `sourceLanguage` — what
+whisper is told to listen for — says nothing about that stage. It reaches the native side as `ocrLanguage` (ld_start) and
 `snapshotLanguage` (ld_set_hotkeys); `FindOcrLanguage` picks the installed
 recognizer by primary subtag, and a missing one comes back as an
 `ocrLanguageMissing` event (`FailureCode.ocrLanguageMissing`). When it equals

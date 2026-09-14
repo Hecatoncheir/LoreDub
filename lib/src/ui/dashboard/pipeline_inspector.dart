@@ -9,6 +9,7 @@ import '../../domain/app_settings.dart';
 import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/pipeline_graph.dart';
+import '../../domain/spoken_language.dart';
 import '../compute_names.dart';
 import '../language_names.dart';
 import '../model_names.dart';
@@ -194,8 +195,23 @@ class PipelineInspector extends StatelessWidget {
   ];
 
   List<Widget> _translation(AppLocalizations l10n) => [
+    // What comes in is settled by what feeds this node: whisper is run with
+    // -tr and hands English over whatever the game speaks, so the language
+    // the game is listened to in -- a setting of Live's, and one that says
+    // nothing about this stage -- is not what is shown here.
     _Field(
-      label: l10n.targetLanguageLabel,
+      label: l10n.translationFromLabel,
+      child: _Choices<String>(
+        value: fallbackSpokenLanguage,
+        enabled: false,
+        options: {fallbackSpokenLanguage: spokenLanguageName(l10n, fallbackSpokenLanguage)},
+        onChanged: (_) {},
+      ),
+    ),
+    _Note(text: l10n.translationFromWhisper),
+    const SizedBox(height: 14),
+    _Field(
+      label: l10n.translationToLabel,
       child: DropdownButtonFormField<String>(
         key: ValueKey('graph-language-${_settings.targetLanguage}'),
         initialValue: _settings.targetLanguage,

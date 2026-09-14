@@ -42,6 +42,7 @@ class AppSettings {
     this.pythonExecutable = '',
     this.detectSourceLanguage = true,
     this.sourceLanguage = fallbackSpokenLanguage,
+    this.screenLanguage = fallbackSpokenLanguage,
     this.interfaceLanguage = defaultInterfaceLanguage,
     this.interfaceScale = 1,
     this.whisperModel = '',
@@ -286,12 +287,21 @@ class AppSettings {
     clearBackendOverrides: true,
   );
 
-  /// The language of text read off the screen, in subtitle mode and from a
-  /// snippet. Windows OCR detects nothing and the translators read only
-  /// English, so it is English unless the original is named as the dubbing
-  /// language itself — which is then voiced as it is, untranslated.
+  /// What the screen session reads: English, or the dubbing language
+  /// itself, which is then voiced as it is rather than translated.
+  ///
+  /// Its own setting rather than [sourceLanguage] read a second way. The
+  /// two were one field, so naming the screen's text as Russian named the
+  /// game's speech as Russian too -- and the graph, which draws the dubbing
+  /// of sound and nothing else, redrew its translator around a choice made
+  /// on another page.
+  final String screenLanguage;
+
+  /// The same, held to what the pair of models can actually do: Windows OCR
+  /// detects nothing and the translators read only English, so anything but
+  /// the dubbing language itself is English.
   String get textLanguage =>
-      sourceLanguage == targetLanguage ? targetLanguage : fallbackSpokenLanguage;
+      screenLanguage == targetLanguage ? targetLanguage : fallbackSpokenLanguage;
 
   /// What whisper.cpp should be told to expect.
   String get effectiveSourceLanguage => detectSourceLanguage ? autoSpokenLanguage : sourceLanguage;
@@ -314,6 +324,7 @@ class AppSettings {
     String? pythonExecutable,
     bool? detectSourceLanguage,
     String? sourceLanguage,
+    String? screenLanguage,
     String? interfaceLanguage,
     double? interfaceScale,
     String? whisperModel,
@@ -354,6 +365,7 @@ class AppSettings {
     pythonExecutable: pythonExecutable ?? this.pythonExecutable,
     detectSourceLanguage: detectSourceLanguage ?? this.detectSourceLanguage,
     sourceLanguage: sourceLanguage ?? this.sourceLanguage,
+    screenLanguage: screenLanguage ?? this.screenLanguage,
     interfaceLanguage: interfaceLanguage ?? this.interfaceLanguage,
     interfaceScale: interfaceScale ?? this.interfaceScale,
     whisperModel: whisperModel ?? this.whisperModel,

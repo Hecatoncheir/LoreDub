@@ -2297,7 +2297,9 @@ class _TextLanguagePicker extends StatelessWidget {
         onChanged: locked
             ? null
             : (value) {
-                if (value != null) cubits.settings.update(settings.copyWith(sourceLanguage: value));
+                if (value != null) {
+                  cubits.settings.update(settings.copyWith(screenLanguage: value));
+                }
               },
       ),
       action: Text(

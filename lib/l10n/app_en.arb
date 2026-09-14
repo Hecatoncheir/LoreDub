@@ -207,6 +207,9 @@
   "sourceProcess": "Game audio",
   "refreshProcesses": "Refresh the process list",
   "targetLanguageLabel": "Dubbing language",
+  "translationFromLabel": "From",
+  "translationToLabel": "Into",
+  "translationFromWhisper": "Whisper hands over English whatever the game speaks, so the translation always starts from it.",
   "languageWithoutModels": "{language} · not downloaded",
   "@languageWithoutModels": {
     "placeholders": {

@@ -403,6 +403,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get targetLanguageLabel => 'Язык перевода';
 
   @override
+  String get translationFromLabel => 'С какого языка';
+
+  @override
+  String get translationToLabel => 'На какой язык';
+
+  @override
+  String get translationFromWhisper =>
+      'Whisper отдаёт английский текст, с какого бы языка ни говорила игра, — поэтому перевод всегда начинается с него.';
+
+  @override
   String languageWithoutModels(String language) {
     return '$language · нет моделей';
   }

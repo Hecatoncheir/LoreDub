@@ -207,6 +207,9 @@
   "sourceProcess": "Звук игры",
   "refreshProcesses": "Обновить список процессов",
   "targetLanguageLabel": "Язык перевода",
+  "translationFromLabel": "С какого языка",
+  "translationToLabel": "На какой язык",
+  "translationFromWhisper": "Whisper отдаёт английский текст, с какого бы языка ни говорила игра, — поэтому перевод всегда начинается с него.",
   "languageWithoutModels": "{language} · нет моделей",
   "@languageWithoutModels": {
     "placeholders": {

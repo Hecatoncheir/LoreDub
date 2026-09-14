@@ -28,6 +28,15 @@ class SettingsService {
     return stored;
   }
 
+  /// Builds before the screen had a language of its own read this off the
+  /// game's own source language, so a file without the key starts at
+  /// English -- which is what the screen reads unless it is told otherwise.
+  static String _readScreenLanguage(SharedPreferences preferences) {
+    final stored = preferences.getString('screenLanguage');
+    if (stored == null || !isSupportedSpokenLanguage(stored)) return fallbackSpokenLanguage;
+    return stored;
+  }
+
   /// A pin written by a build that offered more backends than this one must
   /// not survive as a value no stage can resolve.
   static ComputeBackend? _readBackend(SharedPreferences preferences, String key) {
@@ -91,6 +100,7 @@ class SettingsService {
       pythonExecutable: preferences.getString('pythonExecutable') ?? bundledPythonExecutablePath(),
       detectSourceLanguage: preferences.getBool('detectSourceLanguage') ?? true,
       sourceLanguage: _readSourceLanguage(preferences),
+      screenLanguage: _readScreenLanguage(preferences),
       interfaceLanguage: _readInterfaceLanguage(preferences),
       interfaceScale: preferences.getDouble('interfaceScale') ?? const AppSettings().interfaceScale,
       whisperModel: preferences.getString('whisperModel') ?? '',
@@ -140,6 +150,7 @@ class SettingsService {
       preferences.setString('pythonExecutable', settings.pythonExecutable),
       preferences.setBool('detectSourceLanguage', settings.detectSourceLanguage),
       preferences.setString('sourceLanguage', settings.sourceLanguage),
+      preferences.setString('screenLanguage', settings.screenLanguage),
       preferences.setString('interfaceLanguage', settings.interfaceLanguage),
       preferences.setDouble('interfaceScale', settings.interfaceScale),
       preferences.setString('whisperModel', settings.whisperModel),

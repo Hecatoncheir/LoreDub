@@ -8,14 +8,20 @@ void main() {
   test('reads on-screen text in English unless it is the dubbing language', () {
     expect(const AppSettings().textLanguage, 'en');
     expect(
-      const AppSettings(sourceLanguage: 'de').textLanguage,
+      const AppSettings(screenLanguage: 'de').textLanguage,
       'en',
       reason: 'German cannot be translated into Russian',
     );
-    expect(const AppSettings(sourceLanguage: 'ru').textLanguage, 'ru');
-    expect(
-      const AppSettings(sourceLanguage: 'ru', detectSourceLanguage: false).textLanguage,
-      'ru',
-    );
+    expect(const AppSettings(screenLanguage: 'ru').textLanguage, 'ru');
+  });
+
+  test('belongs to the screen, not to the game the pipeline listens to', () {
+    // One field served both, so naming the screen's text as Russian named
+    // the game's speech as Russian too -- and the graph, which draws the
+    // dubbing of sound, redrew itself around a choice made on another page.
+    const listening = AppSettings(sourceLanguage: 'ru');
+
+    expect(listening.textLanguage, 'en');
+    expect(const AppSettings(screenLanguage: 'ru').sourceLanguage, 'en');
   });
 }

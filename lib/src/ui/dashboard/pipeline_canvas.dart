@@ -15,6 +15,7 @@ import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
 import '../../domain/model_selection.dart';
 import '../../domain/pipeline_graph.dart';
+import '../../domain/spoken_language.dart';
 import '../compute_names.dart';
 import '../language_names.dart';
 import '../model_names.dart';
@@ -942,8 +943,11 @@ class _NodeCard extends StatelessWidget {
         final model? => whisperShortName(model),
         _ => l10n.pipelineNoModel,
       },
+      // Whisper is run with -tr, so what reaches the translator is English
+      // whatever the game speaks; the language Live listens in says nothing
+      // about this stage and used to be written here as if it did.
       PipelineNodeKind.translation =>
-        '${spokenLanguageName(l10n, settings.effectiveSourceLanguage)}'
+        '${spokenLanguageName(l10n, fallbackSpokenLanguage)}'
             ' → ${translationTargetName(l10n, settings.targetLanguage)}',
       PipelineNodeKind.voice => switch (settings.voiceMode) {
         VoiceMode.original => l10n.voiceOriginal,

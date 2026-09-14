@@ -400,6 +400,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get targetLanguageLabel => 'Dubbing language';
 
   @override
+  String get translationFromLabel => 'From';
+
+  @override
+  String get translationToLabel => 'Into';
+
+  @override
+  String get translationFromWhisper =>
+      'Whisper hands over English whatever the game speaks, so the translation always starts from it.';
+
+  @override
   String languageWithoutModels(String language) {
     return '$language · not downloaded';
   }
