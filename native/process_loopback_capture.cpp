@@ -47,6 +47,58 @@ constexpr size_t kMaximumSegmentSamples = kSampleRate * 12;
 constexpr size_t kHeldTakeSamples = kSampleRate * 180;
 constexpr double kSpeechRms = 180.0;
 
+/// The loudness of one packet, as the root mean square of its samples.
+///
+/// A packet Windows marks as silent carries no samples worth reading: it is
+/// a run of zeroes the audio engine did not bother to write out.
+double PacketRms(const int16_t* input, UINT32 frames, DWORD flags) {
+  if (frames == 0 || (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0) return 0;
+  double square_sum = 0;
+  for (UINT32 index = 0; index < frames; ++index) {
+    const double value = input[index];
+    square_sum += value * value;
+  }
+  return std::sqrt(square_sum / frames);
+}
+
+/// Adds one packet to the end of [segment], writing silence as zeroes.
+void AppendPacket(std::vector<int16_t>& segment, const int16_t* input, UINT32 frames,
+                  DWORD flags) {
+  const size_t old_size = segment.size();
+  segment.resize(old_size + frames, 0);
+  if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0) {
+    std::copy(input, input + frames, segment.begin() + static_cast<std::ptrdiff_t>(old_size));
+  }
+}
+
+/// The same, into the quarter second kept ahead of a phrase so that its
+/// first syllable is not cut off.
+void AppendPreRoll(std::deque<int16_t>& pre_roll, const int16_t* input, UINT32 frames,
+                   DWORD flags) {
+  for (UINT32 index = 0; index < frames; ++index) {
+    pre_roll.push_back((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0 ? input[index] : 0);
+  }
+  while (pre_roll.size() > kPreRollSamples) pre_roll.pop_front();
+}
+
+/// A path for the next captured phrase, named by this process and a number
+/// that only grows, so two segments can never share a file.
+std::wstring SegmentPath(const std::wstring& directory, uint64_t sequence) {
+  return directory + L"\\segment-" + std::to_wstring(GetCurrentProcessId()) + L"-" +
+         std::to_wstring(sequence) + L".wav";
+}
+
+/// A wide Windows path as the UTF-8 the Dart side reads.
+std::string Utf8Path(const std::wstring& path) {
+  const int size =
+      WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, nullptr, 0, nullptr, nullptr);
+  if (size <= 0) return {};
+  std::string utf8(static_cast<size_t>(size), '\0');
+  WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, utf8.data(), size, nullptr, nullptr);
+  utf8.pop_back();  // The terminator WideCharToMultiByte counted in.
+  return utf8;
+}
+
 std::string WindowsError(HRESULT result) {
   char* message = nullptr;
   FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
@@ -226,35 +278,22 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
       UINT32 frames = 0;
       if (FAILED(capture->GetBuffer(&bytes, &frames, &flags, nullptr, nullptr))) break;
       const auto* input = reinterpret_cast<const int16_t*>(bytes);
-      double square_sum = 0;
-      if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0) {
-        for (UINT32 index = 0; index < frames; ++index) {
-          const double value = input[index];
-          square_sum += value * value;
-        }
-      }
-      const double rms = frames == 0 ? 0 : std::sqrt(square_sum / frames);
       // The threshold follows the game down: what reaches the tap is the
       // game's own sound times whatever it has been turned down to.
-      const bool voiced = rms >= kSpeechRms * attenuation_.load(std::memory_order_relaxed);
+      const bool voiced = PacketRms(input, frames, flags) >=
+                          kSpeechRms * attenuation_.load(std::memory_order_relaxed);
       if (voiced) last_voice = std::chrono::steady_clock::now();
-      if (!speaking) {
-        for (UINT32 index = 0; index < frames; ++index) {
-          pre_roll.push_back((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0 ? input[index] : 0);
-        }
-        while (pre_roll.size() > kPreRollSamples) pre_roll.pop_front();
+      if (speaking) {
+        AppendPacket(segment, input, frames, flags);
+        silence_samples = voiced ? 0 : silence_samples + frames;
+      } else {
+        AppendPreRoll(pre_roll, input, frames, flags);
+        // A phrase begins with what was heard just before it.
         if (voiced) {
           speaking = true;
           segment.assign(pre_roll.begin(), pre_roll.end());
           pre_roll.clear();
         }
-      } else {
-        const size_t old_size = segment.size();
-        segment.resize(old_size + frames, 0);
-        if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0) {
-          std::copy(input, input + frames, segment.begin() + static_cast<std::ptrdiff_t>(old_size));
-        }
-        silence_samples = voiced ? 0 : silence_samples + frames;
       }
       capture->ReleaseBuffer(frames);
     }
@@ -278,26 +317,20 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
     }
     const bool released = was_holding && !holding;
     was_holding = holding;
-    const bool end_segment =
-        speaking &&
-        (released || (holding ? segment.size() >= kHeldTakeSamples
-                              : (silence_samples >= kEndSilenceSamples ||
-                                 segment.size() >= kMaximumSegmentSamples ||
-                                 quiet >= kEndSilenceMilliseconds)));
-    if (end_segment) {
+
+    // A phrase ends where the speech does, or where it has run long enough
+    // that the pipeline should not wait for the pause.
+    const bool phrase_over = silence_samples >= kEndSilenceSamples ||
+                             segment.size() >= kMaximumSegmentSamples ||
+                             quiet >= kEndSilenceMilliseconds;
+    // A held take ends only when it is let go of, or at the three-minute
+    // ceiling; neither a pause nor the length of a phrase closes it.
+    const bool take_over = released || segment.size() >= kHeldTakeSamples;
+    if (speaking && (holding ? take_over : (released || phrase_over))) {
+      // Too short to hold speech: what was caught was a door or a footstep.
       if (segment.size() >= kMinimumSpeechSamples) {
-        const std::wstring filename = output_directory + L"\\segment-" +
-                                      std::to_wstring(GetCurrentProcessId()) + L"-" +
-                                      std::to_wstring(++sequence) + L".wav";
-        if (WriteWave(filename, std::move(segment))) {
-          const int utf8_size = WideCharToMultiByte(CP_UTF8, 0, filename.c_str(), -1,
-                                                     nullptr, 0, nullptr, nullptr);
-          std::string utf8(static_cast<size_t>(utf8_size), '\0');
-          WideCharToMultiByte(CP_UTF8, 0, filename.c_str(), -1, utf8.data(),
-                              utf8_size, nullptr, nullptr);
-          utf8.pop_back();
-          on_segment(utf8);
-        }
+        const std::wstring filename = SegmentPath(output_directory, ++sequence);
+        if (WriteWave(filename, std::move(segment))) on_segment(Utf8Path(filename));
       }
       segment.clear();
       silence_samples = 0;
