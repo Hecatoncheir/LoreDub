@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../data/services/playback_scheduler.dart';
@@ -172,6 +173,53 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
   /// exactly instead of with its own idea of how far it has come.
   Offset? _dragging;
 
+  /// The band being drawn with control held, in canvas places. Null while
+  /// no band is being drawn, which is most of the time.
+  GraphPoint? _bandFrom;
+  GraphPoint? _bandTo;
+
+  /// Whether the modifier is down right now. Read at the moment of the
+  /// gesture rather than kept: a key let go while the pointer is down must
+  /// not turn a band into a pan half way through.
+  static bool get _adding => HardwareKeyboard.instance.isShiftPressed;
+  static bool get _banding =>
+      HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed;
+
+  /// The band as it stands, with its corners put in order.
+  Rect? get _band {
+    final from = _bandFrom;
+    final to = _bandTo;
+    if (from == null || to == null) return null;
+    return Rect.fromLTRB(
+      math.min(from.x, to.x),
+      math.min(from.y, to.y),
+      math.max(from.x, to.x),
+      math.max(from.y, to.y),
+    );
+  }
+
+  /// Where [at] on the screen lands on the canvas.
+  GraphPoint _onCanvas(Offset at) {
+    final box = _viewport.currentContext?.findRenderObject() as RenderBox?;
+    final local = box?.globalToLocal(at) ?? at;
+    return _view.toCanvas(GraphPoint(local.dx, local.dy));
+  }
+
+  /// Every node the band covers, by the card it draws rather than by the
+  /// corner it starts at: a card half inside the band was meant.
+  Set<String> _caughtBy(Rect band) => {
+    for (final node in _state.graph.nodes)
+      if (band.overlaps(
+        Rect.fromLTWH(
+          node.position.x,
+          node.position.y,
+          NodeMetrics.sizeOf(node.kind).width,
+          NodeMetrics.sizeOf(node.kind).height,
+        ),
+      ))
+        node.id,
+  };
+
   PipelineGraphState get _state => widget.state;
   GraphView get _view => _state.layout.view;
 
@@ -299,9 +347,40 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => widget.bloc.add(const PipelineNodeSelected(null)),
-          onPanUpdate: (details) =>
-              widget.bloc.add(PipelineViewPanned(details.delta.dx, details.delta.dy)),
-          onPanEnd: (_) => widget.bloc.add(const PipelineArrangementSettled()),
+          // Empty space drags the canvas, as it always has; with control
+          // held it draws a band over the nodes instead, which is the one
+          // gesture that needs a modifier to tell it from panning.
+          onPanStart: (details) {
+            if (!_banding) return;
+            setState(() {
+              _bandFrom = _onCanvas(details.globalPosition);
+              _bandTo = _bandFrom;
+            });
+          },
+          onPanUpdate: (details) {
+            if (_bandFrom == null) {
+              widget.bloc.add(PipelineViewPanned(details.delta.dx, details.delta.dy));
+              return;
+            }
+            setState(() => _bandTo = _onCanvas(details.globalPosition));
+          },
+          onPanEnd: (_) {
+            final band = _band;
+            if (band != null) {
+              // A band drawn with shift held adds to what was chosen; on
+              // its own it is the whole choice.
+              final caught = _caughtBy(band);
+              widget.bloc.add(
+                PipelineSelectionSet(_adding ? {..._state.chosen, ...caught} : caught),
+              );
+              setState(() {
+                _bandFrom = null;
+                _bandTo = null;
+              });
+              return;
+            }
+            widget.bloc.add(const PipelineArrangementSettled());
+          },
           child: CustomPaint(
             painter: _DotFieldPainter(view),
             // The nodes sit on a box of their own rather than on the window:
@@ -338,6 +417,18 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
                       ),
                       for (final node in _state.graph.nodes) ..._nodeLayer(context, node),
                       ..._cutButtons(context),
+                      if (_band case final band?)
+                        Positioned.fromRect(
+                          rect: band,
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: LoreDubPalette.orange.withValues(alpha: 0.08),
+                                border: Border.all(color: LoreDubPalette.orange),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -361,8 +452,8 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
           node: node,
           facts: widget.facts,
           availability: widget.availability,
-          selected: _state.selected == node.id,
-          onTap: () => widget.bloc.add(PipelineNodeSelected(node.id)),
+          selected: _state.chosen.contains(node.id),
+          onTap: () => widget.bloc.add(PipelineNodeSelected(node.id, add: _adding)),
           onGrab: (at) {
             _dragging = at;
             widget.bloc.add(PipelineNodeGrabbed(node.id));

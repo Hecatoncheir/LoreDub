@@ -228,7 +228,14 @@ it the way a scene assignment is — and keeps an undo history of layout,
 capture mode and readers. Only the arrangement is its own: node positions,
 which cards were placed and where the canvas is looked at from, written to
 `<app support>/pipeline_graph.json` by `PipelineGraphService` without holding
-the event queue. `pipeline_canvas.dart` owns the geometry (`NodeMetrics`, one
+the event queue. Several nodes can be chosen at once: `PipelineGraphState.chosen` is the set,
+`selected` stays the one node the inspector shows and is null over any other
+number. Shift-click passes `add: true` to `PipelineNodeSelected`; a
+control-drag over empty space draws a band in the canvas's own state and ends
+in `PipelineSelectionSet` with what it covered, because the canvas owns the
+geometry and the bloc owns the choice. `PipelineNodeMoved` then carries every
+chosen node, clamping the whole group by whichever of them reaches
+`GraphWorld` first so it keeps its shape. `pipeline_canvas.dart` owns the geometry (`NodeMetrics`, one
 place for card sizes and socket anchors, which the curves, the dots and the
 hit-testing all read) and fits the scheme into the window the first time it
 is drawn; `pipeline_inspector.dart` is the panel that floats over it.

@@ -1437,7 +1437,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pipelineGraphHint =>
-      'Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas.';
+      'Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas. Shift-click chooses several nodes, Ctrl-drag draws a band around them, and what is chosen moves together.';
 
   @override
   String get pipelinePresetAudio => 'Dub from audio';

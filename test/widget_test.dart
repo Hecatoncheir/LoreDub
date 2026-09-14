@@ -40,6 +40,7 @@ import 'package:lore_dub/src/ui/dashboard/character_tiles.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
+import 'package:lore_dub/src/ui/dashboard/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/dashboard/pipeline_inspector.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
@@ -2788,6 +2789,82 @@ void main() {
         greaterThanOrEqualTo(tester.getBottomLeft(field).dy),
         reason: 'the list must not slide up over the field it is typed into',
       );
+    });
+
+    testWidgets('chooses a second node with shift held', (tester) async {
+      final cubits = await pumpGraph(tester);
+
+      await tester.tap(find.text('Whisper'));
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.tap(find.text('Перевод'));
+      await tester.pump();
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+
+      expect(cubits.graph.state.chosen, {
+        PipelineNodeIds.recognition,
+        PipelineNodeIds.translation,
+      });
+      // Two nodes have no settings between them, so the panel stays shut.
+      expect(cubits.graph.state.selected, isNull);
+      expect(find.byType(PipelineInspector), findsNothing);
+    });
+
+    testWidgets('draws a band with control held and chooses what it covers', (tester) async {
+      final cubits = await pumpGraph(tester);
+      final source = tester.getCenter(find.text('Оригинальный поток'));
+      final canvas = tester.getRect(find.byType(PipelineCanvas));
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      // From an empty corner of the canvas across the first card: a band, not
+      // a pan, which is what the modifier is for.
+      final gesture = await tester.startGesture(canvas.topLeft + const Offset(6, 6));
+      await gesture.moveTo(source + const Offset(20, 20));
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+
+      expect(cubits.graph.state.chosen, contains(PipelineNodeIds.source));
+      expect(
+        cubits.graph.state.layout.view.x,
+        PipelineGraphState(layout: cubits.graph.state.layout).layout.view.x,
+        reason: 'the canvas stayed where it was',
+      );
+    });
+
+    testWidgets('carries every chosen node with the one being dragged', (tester) async {
+      final cubits = await pumpGraph(tester);
+      await tester.tap(find.text('Whisper'));
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.tap(find.text('Перевод'));
+      await tester.pump();
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('Whisper')),
+        kind: PointerDeviceKind.mouse,
+      );
+      // Past the slop first, so what is measured is drag and nothing else.
+      await gesture.moveBy(const Offset(8, 8));
+      await tester.pump();
+      final was = {
+        for (final id in [PipelineNodeIds.recognition, PipelineNodeIds.translation])
+          id: cubits.graph.state.graph.node(id)!.position,
+      };
+
+      await gesture.moveBy(const Offset(60, 20));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      final zoom = cubits.graph.state.layout.view.zoom;
+      for (final id in was.keys) {
+        final moved = cubits.graph.state.graph.node(id)!.position;
+        expect(moved.x - was[id]!.x, closeTo(60 / zoom, 1));
+        expect(moved.y - was[id]!.y, closeTo(20 / zoom, 1));
+      }
     });
 
     testWidgets('puts a card on the canvas from the toolbar', (tester) async {

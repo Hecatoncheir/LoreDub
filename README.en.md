@@ -267,6 +267,16 @@ route the engine has no answer for cannot be drawn: the link is not made, and
 a line under the toolbar says why. Two ready arrangements — **Dub from audio**
 and **Subtitles on screen** — set the route and lay the nodes out again.
 
+A node is moved with the mouse, and several of them together. A click with
+**Shift** adds a node to what is already chosen and takes it back out;
+dragging over empty space with **Ctrl** (or Cmd) draws a band and takes
+everything it touched, edge included. What is chosen carries an orange edge:
+drag any one of them and they all go, keeping the distances between them, and
+at the edge of the canvas the group stops whole rather than folding against
+it. One step back undoes such a move in one. A click on empty space lets them
+all go, and while more than one node is chosen the settings panel stays shut —
+there is no such thing as the settings of five nodes.
+
 The button on a link cuts it. With the way into the pipeline taken apart every
 stage goes dark, labelled «not routed» and still in its place, while Live
 refuses to start and says why. The mode is remembered, so any link drawn back

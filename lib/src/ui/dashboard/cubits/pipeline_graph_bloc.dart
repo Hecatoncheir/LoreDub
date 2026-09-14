@@ -61,10 +61,24 @@ final class PipelineArrangementSettled extends PipelineGraphEvent {
 }
 
 final class PipelineNodeSelected extends PipelineGraphEvent {
-  const PipelineNodeSelected(this.nodeId);
+  const PipelineNodeSelected(this.nodeId, {this.add = false});
 
-  /// Null closes the inspector.
+  /// Null closes the inspector and clears the choice.
   final String? nodeId;
+
+  /// Set by a click with shift held: the node joins what is already chosen,
+  /// or leaves it if it was there. Without it the choice collapses to this
+  /// one node, which is what a plain click has always done.
+  final bool add;
+}
+
+/// Everything the band covered, as the canvas worked it out. The canvas owns
+/// the geometry — where a card sits and how big it is — so it says which
+/// nodes were caught and the bloc keeps the choice.
+final class PipelineSelectionSet extends PipelineGraphEvent {
+  const PipelineSelectionSet(this.nodeIds);
+
+  final Set<String> nodeIds;
 }
 
 /// A link is being pulled out of [port].
@@ -178,6 +192,7 @@ class PipelineGraphState {
     this.graph = const PipelineGraph(),
     this.layout = PipelineLayout.standard,
     this.selected,
+    this.chosen = const {},
     this.drag,
     this.refusal,
     this.canUndo = false,
@@ -188,8 +203,13 @@ class PipelineGraphState {
   final PipelineGraph graph;
   final PipelineLayout layout;
 
-  /// The node the inspector is showing, if any.
+  /// The node the inspector is showing, if any. Null while several are
+  /// chosen: one node's settings over a choice of five would be a trap.
   final String? selected;
+
+  /// Every node chosen, which is what a drag moves and what the canvas
+  /// draws with an edge. One node clicked is a choice of one.
+  final Set<String> chosen;
 
   /// The link the pointer is carrying, while it carries one.
   final PipelineLinkDrag? drag;
@@ -209,6 +229,7 @@ class PipelineGraphState {
     PipelineLayout? layout,
     String? selected,
     bool clearSelected = false,
+    Set<String>? chosen,
     PipelineLinkDrag? drag,
     bool clearDrag = false,
     ConnectionRefusal? refusal,
@@ -220,6 +241,7 @@ class PipelineGraphState {
     graph: graph ?? this.graph,
     layout: layout ?? this.layout,
     selected: clearSelected ? null : selected ?? this.selected,
+    chosen: chosen ?? this.chosen,
     drag: clearDrag ? null : drag ?? this.drag,
     refusal: clearRefusal ? null : refusal ?? this.refusal,
     canUndo: canUndo ?? this.canUndo,
@@ -269,12 +291,9 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     on<PipelineNodeGrabbed>(_onGrabbed);
     on<PipelineNodeMoved>(_onMoved);
     on<PipelineArrangementSettled>((event, emit) => _persist());
-    on<PipelineNodeSelected>(
-      (event, emit) => emit(
-        event.nodeId == null
-            ? state.copyWith(clearSelected: true)
-            : state.copyWith(selected: event.nodeId),
-      ),
+    on<PipelineNodeSelected>(_onSelected);
+    on<PipelineSelectionSet>(
+      (event, emit) => emit(_choosing(event.nodeIds)),
     );
     on<PipelineLinkStarted>(
       (event, emit) => emit(
@@ -352,26 +371,65 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     emit(_redrawn(state.copyWith(loading: false, layout: layout)));
   }
 
+  /// A click on a node, with or without shift. Without, the choice becomes
+  /// that node alone; with, the node joins the choice or leaves it.
+  void _onSelected(PipelineNodeSelected event, Emitter<PipelineGraphState> emit) {
+    final nodeId = event.nodeId;
+    if (nodeId == null) {
+      emit(state.copyWith(clearSelected: true, chosen: const {}));
+      return;
+    }
+    if (!event.add) {
+      emit(state.copyWith(selected: nodeId, chosen: {nodeId}));
+      return;
+    }
+    final chosen = {...state.chosen};
+    if (!chosen.remove(nodeId)) chosen.add(nodeId);
+    emit(_choosing(chosen));
+  }
+
+  /// The state with [nodeIds] chosen. The inspector follows a choice of one
+  /// and closes over any other number: it shows the settings of a node, and
+  /// there is no such thing as the settings of five.
+  PipelineGraphState _choosing(Set<String> nodeIds) => nodeIds.length == 1
+      ? state.copyWith(selected: nodeIds.first, chosen: nodeIds)
+      : state.copyWith(clearSelected: true, chosen: nodeIds);
+
   void _onGrabbed(PipelineNodeGrabbed event, Emitter<PipelineGraphState> emit) {
     _remember();
-    emit(state.copyWith(selected: event.nodeId, clearRefusal: true));
+    // A node taken hold of from outside the choice becomes the choice; one
+    // already in it keeps the others, so a group is dragged by any of them.
+    emit(
+      state.chosen.contains(event.nodeId)
+          ? state.copyWith(clearRefusal: true)
+          : state.copyWith(selected: event.nodeId, chosen: {event.nodeId}, clearRefusal: true),
+    );
   }
 
   void _onMoved(PipelineNodeMoved event, Emitter<PipelineGraphState> emit) {
     final node = state.graph.node(event.nodeId);
     if (node == null) return;
-    emit(
-      _redrawn(
-        state.copyWith(
-          layout: state.layout.withPosition(
-            event.nodeId,
-            // Held inside the world the canvas lays under the nodes: one
-            // dragged out of it would be drawn and never clicked again.
-            GraphWorld.hold(node.position.translate(event.dx, event.dy)),
-          ),
-        ),
-      ),
-    );
+    // Everything chosen moves with the node the pointer has: a group keeps
+    // its shape, so the whole choice is held back by whichever of them
+    // reaches the edge of the world first rather than folding against it.
+    final moving = [
+      for (final id in state.chosen.contains(event.nodeId) ? state.chosen : {event.nodeId})
+        ?state.graph.node(id),
+    ];
+    if (moving.isEmpty) return;
+    var dx = event.dx;
+    var dy = event.dy;
+    for (final chosen in moving) {
+      final held = GraphWorld.hold(chosen.position.translate(dx, dy));
+      dx = held.x - chosen.position.x;
+      dy = held.y - chosen.position.y;
+    }
+    if (dx == 0 && dy == 0) return;
+    var layout = state.layout;
+    for (final chosen in moving) {
+      layout = layout.withPosition(chosen.id, chosen.position.translate(dx, dy));
+    }
+    emit(_redrawn(state.copyWith(layout: layout)));
   }
 
   Future<void> _onReleased(
@@ -555,15 +613,25 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   /// The state with the graph rebuilt from the settings, the cast and the
   /// arrangement it now carries.
-  PipelineGraphState _redrawn(PipelineGraphState value) => value.copyWith(
-    graph: buildPipelineGraph(
+  PipelineGraphState _redrawn(PipelineGraphState value) {
+    final graph = buildPipelineGraph(
       settings: _settings.settings,
       characters: _cast,
       layout: value.layout,
-    ),
-    canUndo: _past.isNotEmpty,
-    canRedo: _future.isNotEmpty,
-  );
+    );
+    // A card taken off the canvas leaves the choice with it, so a drag does
+    // not carry a node that is no longer drawn.
+    final chosen = {
+      for (final id in value.chosen)
+        if (graph.node(id) != null) id,
+    };
+    return value.copyWith(
+      graph: graph,
+      chosen: chosen.length == value.chosen.length ? null : chosen,
+      canUndo: _past.isNotEmpty,
+      canRedo: _future.isNotEmpty,
+    );
+  }
 
   PipelineGraphState _withView(GraphView view) =>
       state.copyWith(layout: state.layout.copyWith(view: view));

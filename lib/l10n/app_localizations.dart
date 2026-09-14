@@ -2466,7 +2466,7 @@ abstract class AppLocalizations {
   /// No description provided for @pipelineGraphHint.
   ///
   /// In ru, this message translates to:
-  /// **'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст.'**
+  /// **'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст. Shift с нажатием выбирает несколько нод, Ctrl с протяжкой — область; выбранные ноды двигаются вместе.'**
   String get pipelineGraphHint;
 
   /// No description provided for @pipelinePresetAudio.

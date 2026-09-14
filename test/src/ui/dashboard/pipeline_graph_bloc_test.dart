@@ -325,6 +325,119 @@ void main() {
     );
   });
 
+  group('choosing several nodes', () {
+    const voice = PipelineNodeIds.voice;
+    const mix = PipelineNodeIds.mix;
+
+    test('a click chooses one node and lets the last one go', () async {
+      graph.add(const PipelineNodeSelected(voice));
+      await pumpEvents();
+      graph.add(const PipelineNodeSelected(mix));
+      await pumpEvents();
+
+      expect(graph.state.chosen, {mix});
+      expect(graph.state.selected, mix, reason: 'one chosen node opens its own settings');
+    });
+
+    test('a click with shift adds a node and takes it back out', () async {
+      graph.add(const PipelineNodeSelected(voice));
+      graph.add(const PipelineNodeSelected(mix, add: true));
+      await pumpEvents();
+
+      expect(graph.state.chosen, {voice, mix});
+      expect(
+        graph.state.selected,
+        isNull,
+        reason: 'there is no such thing as the settings of two nodes',
+      );
+
+      graph.add(const PipelineNodeSelected(mix, add: true));
+      await pumpEvents();
+
+      expect(graph.state.chosen, {voice});
+      expect(graph.state.selected, voice, reason: 'down to one, the panel opens again');
+    });
+
+    test('a band names what it caught, and empty space lets it all go', () async {
+      graph.add(const PipelineSelectionSet({voice, mix}));
+      await pumpEvents();
+      expect(graph.state.chosen, {voice, mix});
+
+      graph.add(const PipelineNodeSelected(null));
+      await pumpEvents();
+
+      expect(graph.state.chosen, isEmpty);
+      expect(graph.state.selected, isNull);
+    });
+
+    test('a drag carries every chosen node the same way', () async {
+      final was = {
+        for (final id in [voice, mix]) id: graph.state.graph.node(id)!.position,
+      };
+      graph.add(const PipelineSelectionSet({voice, mix}));
+      await pumpEvents();
+
+      graph.add(const PipelineNodeGrabbed(voice));
+      graph.add(const PipelineNodeMoved(voice, 40, -25));
+      await pumpEvents();
+
+      for (final id in [voice, mix]) {
+        expect(graph.state.graph.node(id)!.position.x, was[id]!.x + 40);
+        expect(graph.state.graph.node(id)!.position.y, was[id]!.y - 25);
+      }
+
+      // One step back is the whole move, not one node of it.
+      graph.add(const PipelineGraphUndone());
+      await pumpEvents();
+      for (final id in [voice, mix]) {
+        expect(graph.state.graph.node(id)!.position, was[id]);
+      }
+    });
+
+    test('the group keeps its shape at the edge of the world', () async {
+      graph.add(const PipelineSelectionSet({voice, mix}));
+      await pumpEvents();
+      final apart =
+          graph.state.graph.node(mix)!.position.x - graph.state.graph.node(voice)!.position.x;
+
+      graph.add(const PipelineNodeGrabbed(voice));
+      graph.add(const PipelineNodeMoved(voice, GraphWorld.width * 2, 0));
+      await pumpEvents();
+
+      expect(
+        graph.state.graph.node(mix)!.position.x - graph.state.graph.node(voice)!.position.x,
+        apart,
+        reason: 'held back by whichever reaches the wall first, not folded against it',
+      );
+    });
+
+    test('a node taken hold of from outside the choice becomes the choice', () async {
+      graph.add(const PipelineSelectionSet({voice, mix}));
+      await pumpEvents();
+
+      graph.add(PipelineNodeGrabbed(PipelineNodeIds.character('guard')));
+      graph.add(PipelineNodeMoved(PipelineNodeIds.character('guard'), 10, 10));
+      await pumpEvents();
+
+      expect(graph.state.chosen, {PipelineNodeIds.character('guard')});
+      expect(
+        graph.state.graph.node(voice)!.position,
+        PipelineLayout.standardPositions[voice],
+        reason: 'the ones let go of stayed where they were',
+      );
+    });
+
+    test('a card taken off the canvas leaves the choice with it', () async {
+      graph.add(PipelineSelectionSet({PipelineNodeIds.character('guard'), voice}));
+      await pumpEvents();
+
+      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('guard')));
+      await pumpEvents();
+
+      expect(graph.state.chosen, {voice});
+    });
+  });
+
   test('a card taken off the canvas keeps the voice that reads it', () async {
     await drawLink(voiceOf('guard'), readBy('smith'));
 

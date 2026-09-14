@@ -997,7 +997,7 @@
   "stageCapture": "Starting capture",
   "navPipeline": "Graph",
   "titlePipeline": "Pipeline graph",
-  "pipelineGraphHint": "Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas.",
+  "pipelineGraphHint": "Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas. Shift-click chooses several nodes, Ctrl-drag draws a band around them, and what is chosen moves together.",
   "pipelinePresetAudio": "Dub from audio",
   "pipelinePresetSubtitles": "Subtitles on screen",
   "pipelineResetLayout": "Lay out again",
