@@ -14,7 +14,6 @@ import '../services/pipeline_graph_service.dart';
 import '../services/pipeline_library_service.dart';
 import '../services/python_discovery.dart';
 import '../services/settings_service.dart';
-import '../services/speaker_map_service.dart';
 import '../services/voice_bank_service.dart';
 
 class AppRepository {
@@ -24,13 +23,11 @@ class AppRepository {
     PythonDiscovery? pythonDiscovery,
     VoiceBankService? voiceBank,
     CharacterService? characters,
-    SpeakerMapService? speakerMap,
     PipelineGraphService? graph,
     PipelineLibraryService? pipelines,
   ]) : _pythonDiscovery = pythonDiscovery ?? PythonDiscovery(),
        _voiceBank = voiceBank ?? VoiceBankService(),
        _characters = characters ?? CharacterService(),
-       _speakerMap = speakerMap ?? SpeakerMapService(),
        _graph = graph ?? PipelineGraphService(),
        _pipelines = pipelines ?? PipelineLibraryService();
 
@@ -39,7 +36,6 @@ class AppRepository {
   final PythonDiscovery _pythonDiscovery;
   final VoiceBankService _voiceBank;
   final CharacterService _characters;
-  final SpeakerMapService _speakerMap;
   final PipelineGraphService _graph;
   final PipelineLibraryService _pipelines;
 
@@ -95,28 +91,6 @@ class AppRepository {
   Future<int> voiceBankSize() => _voiceBank.count();
   Future<void> clearVoiceBank() => _voiceBank.clear();
 
-  /// The file whose voice reads whom is kept in for [game].
-  Future<String> speakerMapFileFor(String game) => _speakerMap.fileFor(game);
-
-  /// Whose voice reads whom in [game], as the player assigned it.
-  Future<Map<String, String>> loadSpeakerMap(String game) => _speakerMap.load(game);
-
-  /// Keeps [replacements] for [game] and tells the running worker that
-  /// [speaker] is read in [character]'s voice from now on — or in their own
-  /// again, when [character] is null.
-  ///
-  /// Written for the next session and told to the one running, so the change
-  /// is heard on the next line rather than on the next launch.
-  Future<void> assignSpeaker({
-    required String game,
-    required Map<String, String> replacements,
-    required String speaker,
-    String? character,
-  }) async {
-    await _speakerMap.save(game, replacements);
-    await _nativeEngine.assignSpeaker(speaker, character);
-  }
-
   /// What the machine's adapters and drivers offer, before the download
   /// state of the GPU runtimes is taken into account.
   Future<ComputeAvailability> probeGraphics() => _nativeEngine.probeGraphics();
@@ -145,7 +119,6 @@ class AppRepository {
     required ComputeBackend translationBackend,
     required ComputeBackend voiceConversionBackend,
     required String runtimeDirectory,
-    String? speakerMap,
     String? voiceBank,
   }) async {
     try {
@@ -184,7 +157,6 @@ class AppRepository {
         'runtimeDirectory': runtimeDirectory,
         'voiceBank': ?voiceBank,
         // Whose voice reads whom in this game, as the player assigned it.
-        'speakerMap': ?speakerMap,
         // The player's own characters speak in every game.
         'characters': await _characters.file(),
       });
@@ -363,7 +335,6 @@ class AppRepository {
         'voiceConversionBackend': converterBackend.name,
         'runtimeDirectory': runtimeDirectory,
         'voiceBank': ?voiceBank,
-        'speakerMap': await _speakerMap.fileFor(process?.name ?? ''),
         'characters': await _characters.file(),
       });
     } catch (_) {

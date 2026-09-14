@@ -213,7 +213,6 @@ class LocalInferenceService {
     String? characters,
 
     /// Whose voice reads whom in this game, as the player assigned it.
-    String? speakerMap,
   }) async {
     // A worker left over from a session that was not stopped would go on
     // holding its models — and its share of a graphics card — with the
@@ -290,7 +289,6 @@ class LocalInferenceService {
           if (revoice) '--revoice',
           if (voiceBank != null) ...['--voice-bank', voiceBank],
           if (characters != null) ...['--characters', characters],
-          if (speakerMap != null) ...['--speaker-map', speakerMap],
         ],
       ],
       environment: const {'PYTHONIOENCODING': 'utf-8'},
@@ -593,40 +591,6 @@ class LocalInferenceService {
       jsonEncode({
         'id': id,
         'voicedBy': {'character': character, 'target': target ?? ''},
-      }),
-    );
-    final response = await completer.future.timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
-  }
-
-  /// Reads [speaker] in the voice of [character] from the next line on, or
-  /// in their own again when [character] is null.
-  ///
-  /// The file is the interface's to write; this only spares the player a
-  /// restart, so a worker that is not running is no failure — the map is
-  /// read again when one starts.
-  Future<void> assignSpeaker(String speaker, String? character) async {
-    final worker = _worker;
-    if (worker == null) return;
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(
-      jsonEncode({
-        'id': id,
-        'assign': {'speaker': speaker, 'character': character ?? ''},
       }),
     );
     final response = await completer.future.timeout(

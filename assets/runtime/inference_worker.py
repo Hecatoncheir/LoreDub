@@ -578,41 +578,6 @@ class CharacterCast:
         return None
 
 
-class SpeakerReplacements:
-    """Whose voice reads whom, as the player assigned it in Live.
-
-    The keys are the speakers the worker itself reports — "character:<id>"
-    for one of the player's cards, "timbre:<n>" for a voice this game's bank
-    founded — and the values name the character to read them in. The file
-    belongs to the interface: it is read here and never written, so an
-    assignment made while a session runs is sent in as well.
-    """
-
-    def __init__(self, path):
-        self.replacements = {}
-        if not path:
-            return
-        try:
-            data = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return
-        entries = data.get("replacements") if isinstance(data, dict) else None
-        if not isinstance(entries, dict):
-            return
-        for speaker, character in entries.items():
-            if isinstance(speaker, str) and isinstance(character, str) and character:
-                self.replacements[speaker] = character
-
-    def assign(self, speaker, character):
-        if character:
-            self.replacements[speaker] = character
-        else:
-            self.replacements.pop(speaker, None)
-
-    def character_for(self, speaker):
-        return self.replacements.get(speaker) if speaker else None
-
-
 def main():
     use_utf8_streams()
     parser = argparse.ArgumentParser()
@@ -656,8 +621,6 @@ def main():
     # The game's voice bank. With it, a character met before is voiced with
     # the fingerprint kept for them instead of the one of the current line.
     parser.add_argument("--voice-bank", default="")
-    # Whose voice reads whom in this game, as the player assigned it in Live.
-    parser.add_argument("--speaker-map", default="")
     # Read every character as themselves: the player has taken the cast out
     # of the mix on the graph. Who stands in for whom is still in the cards
     # and in the map; none of it is applied while the branch is dark.
@@ -768,7 +731,6 @@ def main():
     cast = CharacterCast(args.characters)
 
     # Whose voice reads whom, as the player assigned it for this game.
-    replacements = SpeakerReplacements(args.speaker_map)
 
     def speaker_key(kind, index):
         """What a line of this speaker is reported as, which is also what a
@@ -782,8 +744,8 @@ def main():
         return None
 
     def read_as(kind, index):
-        """The character who reads this speaker: the one the player assigned,
-        or the speaker themselves.
+        """The character who reads this speaker: the card the graph gave them
+        away to, or the speaker themselves.
 
         Only the voice and the timbre change. Who was heard is reported as it
         was heard, so the scene list keeps one row per voice of the game
@@ -792,11 +754,7 @@ def main():
         # The cast is out of the mix: everybody speaks for themselves.
         if args.as_heard:
             return kind, index
-        target = replacements.character_for(speaker_key(kind, index))
-        # A card carries its own standing substitution, which holds in every
-        # game; this game's own choice answers before it.
-        if target is None and kind == "character" and index is not None:
-            target = cast.voiced_by(index)
+        target = cast.voiced_by(index) if kind == "character" and index is not None else None
         if target is None:
             return kind, index
         at = cast.index_of(target)
@@ -949,16 +907,6 @@ def main():
                     raise RuntimeError("the voice converter is not loaded")
                 reply({"id": request_id, **build_voice(converter, [str(p) for p in gathered])})
                 continue
-            # Read this speaker in another character's voice from now on.
-            # The interface keeps the file; this spares the player a restart.
-            assignment = request.get("assign")
-            if assignment is not None:
-                replacements.assign(
-                    str(assignment.get("speaker", "")),
-                    str(assignment.get("character", "")),
-                )
-                reply({"id": request_id, "assigned": True})
-                continue
             # A card read in another's voice from now on, as the characters
             # screen has just been told. The cast was read at start, so a
             # session already running is told rather than left behind.
@@ -979,8 +927,9 @@ def main():
                     raise RuntimeError("the voice converter is not loaded")
                 kind, index, _ = identify({"wave": heard_line})
                 answer = {"id": request_id, "speaker": speaker_key(kind, index)}
-                if answer["speaker"] is not None:
-                    target = replacements.character_for(answer["speaker"])
+                if kind == "character" and index is not None:
+                    # The card the graph gave this one away to, if it did.
+                    target = cast.voiced_by(index)
                     if target is not None and cast.index_of(target) is not None:
                         answer["readAs"] = f"character:{target}"
                 try:

@@ -271,16 +271,8 @@
       }
     }
   },
-  "failureSpeakerMapSaveFailed": "Не удалось сохранить замену голосов: {detail}",
-  "@failureSpeakerMapSaveFailed": {
-    "placeholders": {
-      "detail": {
-        "type": "String"
-      }
-    }
-  },
   "sceneVoices": "Голоса сцены",
-  "sceneVoicesNote": "Кого LoreDub услышал в этом сеансе. Выберите персонажа — и реплики этого голоса будут озвучиваться его голосом.",
+  "sceneVoicesNote": "Кого LoreDub услышал в этом сеансе и чьим голосом он звучит.",
   "sceneVoicesEmpty": "Пока никто не заговорил. Нажмите «Определить голоса» — или запустите перевод, и голоса появятся сами.",
   "sceneVoicesListen": "Определить голоса",
   "sceneVoicesListenStop": "Остановить",
@@ -312,16 +304,8 @@
     }
   },
   "sceneVoiceReadAs": "Озвучивать как",
-  "sceneVoiceStanding": "По карточке: «{name}»",
-  "@sceneVoiceStanding": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "sceneVoiceAsHeard": "Как услышано",
-  "sceneVoiceNoCharacters": "Запишите персонажей на экране «Персонажи», чтобы назначать их голоса.",
+  "sceneVoiceNoCharacters": "Запишите персонажей на экране «Персонажи», а на «Схеме» решите, кто кого озвучивает.",
   "sceneVoiceReplaced": "Звучит как «{name}»",
   "@sceneVoiceReplaced": {
     "placeholders": {

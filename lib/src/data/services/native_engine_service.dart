@@ -144,7 +144,6 @@ class NativeEngineService {
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
       voiceBank: config['voiceBank'] as String?,
       characters: config['characters'] as String?,
-      speakerMap: config['speakerMap'] as String?,
     );
     // What the worker settled on, which is not always what it was asked for.
     if (_inference.translationBackend case final actual?) {
@@ -402,7 +401,6 @@ class NativeEngineService {
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
       voiceBank: config['voiceBank'] as String?,
       characters: config['characters'] as String?,
-      speakerMap: config['speakerMap'] as String?,
     );
     final work = await LocalInferenceService.createWorkDirectory();
     final capture = Directory('${work.path}${Platform.pathSeparator}capture');
@@ -480,11 +478,6 @@ class NativeEngineService {
   /// Ends whatever is sounding. A card's recording may run for three
   /// minutes, and the button that started it is the one that stops it.
   void stopWave() => ld_stop_wave();
-
-  /// Reads [speaker] in [character]'s voice from the next line on. The map
-  /// is a file the worker also reads at start, so this only spares a restart.
-  Future<void> assignSpeaker(String speaker, String? character) =>
-      _inference.assignSpeaker(speaker, character);
 
   /// Carries a card's standing substitution into the running session, which
   /// read the cast when it started.

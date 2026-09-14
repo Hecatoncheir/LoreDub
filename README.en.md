@@ -131,9 +131,9 @@ scheme decides it instead of three screens disagreeing about it.
 The voices can also be sorted out **before** any dubbing: **Place the voices**
 starts listening — only the voice converter is loaded, with neither whisper
 nor the translator, so it is ready in seconds. Walk through the scene, let the
-characters talk, hand out their voices, and only then start dubbing: a voice
-founded while listening joins the game's bank under the very number the
-dubbing session will know it by, so the assignments hold. Starting the dubbing
+characters talk, lay the voices out on the **Graph**, and only then start
+dubbing: a voice founded while listening joins the game's bank under the very
+number the dubbing session will know it by, so the scheme still holds. Starting the dubbing
 over a listening session takes the worker from it. A narrow or low window puts
 the area under the transcript.
 
@@ -340,9 +340,9 @@ picture is drawn at once — the Quiet One speaks in their own voice, reads for
 the First, and may in turn be given to the Third.
 
 This is the same substitution the card carries on the **Characters** screen:
-it holds in every game, and a choice in **Scene voices** overrides it for the
-game at hand. Two cards that would read each other cannot be joined, and
-neither can two copies of one card. The name is edited in the node's own
+it holds in every game, and the graph is the only place it is set — the other
+screens show it and leave it alone. Two cards that would read each other
+cannot be joined, and neither can two copies of one card. The name is edited in the node's own
 panel, and the cross on a card takes only that copy off the canvas, touching
 neither the card itself nor the substitution given to it.
 

@@ -729,9 +729,7 @@ class SceneVoiceRow extends StatelessWidget {
     super.key,
     required this.speaker,
     required this.name,
-    required this.characters,
-    required this.assignedId,
-    required this.standingName,
+    required this.readsAs,
   });
 
   final SceneSpeaker speaker;
@@ -739,21 +737,13 @@ class SceneVoiceRow extends StatelessWidget {
   /// What to call the voice itself, already resolved to wording.
   final String name;
 
-  /// The cast to choose from; empty until the player has recorded one.
-  final List<Character> characters;
-
-  /// The character reading this voice, when this game was given one.
-  final String? assignedId;
-
-  /// The card standing in for this voice by its own card rather than by this
-  /// game's choice, named so the row can say where the substitution comes
-  /// from. Null when there is none, or when this game has its own.
-  final String? standingName;
+  /// The name of the character reading this voice, as the graph gave it
+  /// away; null when the voice reads itself.
+  final String? readsAs;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final assigned = characters.where((character) => character.id == assignedId).firstOrNull;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -762,9 +752,9 @@ class SceneVoiceRow extends StatelessWidget {
           Row(
             children: [
               Icon(
-                assigned == null ? Icons.graphic_eq_rounded : Icons.published_with_changes_rounded,
+                readsAs == null ? Icons.graphic_eq_rounded : Icons.published_with_changes_rounded,
                 size: 16,
-                color: assigned == null ? LoreDubPalette.mutedInk : LoreDubPalette.orange,
+                color: readsAs == null ? LoreDubPalette.mutedInk : LoreDubPalette.orange,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -800,23 +790,9 @@ class SceneVoiceRow extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
           ),
-          if (standingName case final name?) ...[
-            const SizedBox(height: 4),
-            Text(
-              l10n.sceneVoiceStanding(name),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: LoreDubFonts.mono,
-                fontSize: 11,
-                color: LoreDubPalette.orange,
-              ),
-            ),
-          ],
           const SizedBox(height: 8),
-          // Who reads this voice, whoever decided it — this game's own
-          // choice, or the card as the graph wired it. The row shows it and
-          // nothing more: the graph is where it is set.
+          // Who reads this voice, as the graph wired it. The row shows it
+          // and nothing more: the graph is where it is set.
           Align(
             alignment: Alignment.centerLeft,
             child: Container(
@@ -826,14 +802,14 @@ class SceneVoiceRow extends StatelessWidget {
                 color: LoreDubPalette.raised,
                 borderRadius: const BorderRadius.all(Radius.circular(8)),
                 border: Border.all(
-                  color: assigned == null ? LoreDubPalette.outline : LoreDubPalette.orange,
+                  color: readsAs == null ? LoreDubPalette.outline : LoreDubPalette.orange,
                 ),
               ),
               child: Text(
-                assigned?.name ?? standingName ?? l10n.sceneVoiceAsHeard,
+                readsAs ?? l10n.sceneVoiceAsHeard,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: assigned == null && standingName == null ? null : FontWeight.w600,
+                  fontWeight: readsAs == null ? null : FontWeight.w600,
                 ),
               ),
             ),

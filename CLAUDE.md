@@ -224,7 +224,7 @@ the output, which is why a character on the canvas is joined to the path at
 both ends rather than hanging off it. `PipelineGraphBloc` applies the answer through
 `SettingsCubit` and `CharactersCubit` — so a route change is locked while a
 session runs, while a substitution is not, the running worker being told of
-it the way a scene assignment is — and keeps an undo history of layout,
+it rather than restarted — and keeps an undo history of layout,
 capture mode and readers. Schemes the player keeps are a shelf beside that arrangement:
 `SavedPipeline` (`domain/saved_pipeline.dart`) holds the route
 (`captureMode`, `captureRouted`, `castRouted`), the `PipelineLayout` and the
@@ -347,47 +347,42 @@ character, otherwise a line of 1.5 s or more founds a new one. Kept voices are
 never averaged — the user asked for that explicitly — and replies carry
 `bankSize` so the settings count can be refreshed.
 
-Who a line is read in can be overridden per game. Every worker reply carries
-the speaker it *heard* (`speaker`), and `PipelineCubit` collects those into
-`LivePipelineState.speakers` — the "Scene voices" area beside the transcript.
-Assigning a character there writes `<app support>/speaker_map/<exe>.json`
-(`SpeakerMapService`, named like the bank) and sends `{"assign": {...}}` to the
-running worker, so the next line is already read anew; `--speaker-map` hands
-the same file to the next session. In the worker `read_as` swaps the heard
-`(kind, index)` for the assigned character before `voice_for`/`timbre_for`,
-which is why the replacement carries both the Silero voice and the timbre,
-while `speaker` is still reported as heard — the scene list keeps one row per
-voice of the game, and `PlaybackScheduler` keeps ordering lines by who spoke.
-A `voice:<name>` speaker means nothing heard who was talking, so it is the one
-kind that cannot be replaced.
+Every worker reply carries the speaker it *heard* (`speaker`), and
+`PipelineCubit` collects those into `LivePipelineState.speakers` — the
+"Scene voices" area beside the transcript. That area shows and does not set:
+who reads whom is drawn on the graph, and there is no second place to change
+it. One scheme decides who speaks for whom, because three screens that could
+each change it disagreed about where the answer came from — a per-game
+`speaker_map/<exe>.json` was the third, and it is gone: no file, no
+`--speaker-map`, no `{"assign": {...}}` request.
 
-Only the graph sets a substitution. Live and the characters screen show who
-reads whom and offer no control for it: one scheme decides who speaks for
-whom, and three screens that could each change it disagreed about where it
-came from. `PipelineCubit.assignSpeaker` and `CharactersCubit.voiceAs` are
-still the calls that apply one -- the graph bloc makes them -- and a speaker
-map already on disk is still read and still answers first.
-
-A substitution can also be set before anyone has spoken: `Character.voicedBy`
-names the card that reads this one, holds in every game, and is applied by the
-same `read_as` — the per-game map answers first, the card after it, one hop
-only (`readerOfSpeaker` in `domain/speaker_map.dart` is the same rule for the
-interface, and is what names the reader in the transcript). The cast file is
-read when a session starts, so `CharactersCubit.voiceAs` also sends
-`{"voicedBy": {...}}` to a running worker, the way a scene assignment does.
+The substitution itself is the card's: `Character.voicedBy` names the card
+that reads this one, holds in every game, and is applied by the worker's
+`read_as` before `voice_for`/`timbre_for`, which is why it carries both the
+Silero voice and the timbre. `speaker` is still reported as heard — the scene
+list keeps one row per voice of the game, and `PlaybackScheduler` keeps
+ordering lines by who spoke. Only a card can be given away: a `timbre:<n>`
+voice the bank founded has no card to carry anything, and a `voice:<name>`
+speaker means nothing heard who was talking at all. The substitution is
+followed one hop (`readerOfSpeaker` in `domain/speaker_keys.dart` is the same
+rule for the interface, and is what names the reader in the transcript and in
+the scene list). The cast file is read when a session starts, so
+`CharactersCubit.voiceAs` — which the graph bloc is now the only caller of —
+also sends `{"voicedBy": {...}}` to a running worker, so a scheme rearranged
+under a pause is heard from the next line rather than at the next start.
 
 The voices can be placed before anything is dubbed. `PipelineSession.scene`
 (`toggleSceneVoices` -> `AppRepository.startSceneVoices` ->
-`NativeEngineService.startScene`) is the characters session with the bank, the
-cast and the map added and the recording gate left open: `ld_start` on the
+`NativeEngineService.startScene`) is the characters session with the bank and
+the cast added and the recording gate left open: `ld_start` on the
 game's audio plus the worker under `--embed-only`, so it is ready in seconds.
 Each captured segment goes to `{"listen": path}` instead of recognition, the
 worker answers with the speaker `identify` placed it as, and the segment is
 dropped — the reply becomes a `sceneVoice` event and a row with no words, only
 the seconds heard. The bank is the point: a voice founded while listening is
 written to `<app support>/voice_bank/<exe>.json` there and then, so the
-dubbing session knows it under the same `timbre:<n>` and the replacements made
-beforehand still name the same speaker. Starting live dubbing over it stops it
+dubbing session knows it under the same `timbre:<n>` and a card recognized
+there is already the one the graph gave away. Starting live dubbing over it stops it
 first, as with the snapshot session.
 
 The Characters screen (`DashboardSection.characters`, `CharactersCubit`) is

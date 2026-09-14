@@ -271,16 +271,8 @@
       }
     }
   },
-  "failureSpeakerMapSaveFailed": "The voice replacements could not be saved: {detail}",
-  "@failureSpeakerMapSaveFailed": {
-    "placeholders": {
-      "detail": {
-        "type": "String"
-      }
-    }
-  },
   "sceneVoices": "Voices of the scene",
-  "sceneVoicesNote": "Who LoreDub has heard this session. Pick a character and this voice's lines are read in theirs.",
+  "sceneVoicesNote": "Who LoreDub has heard this session, and whose voice reads them.",
   "sceneVoicesEmpty": "Nobody has spoken yet. Press “Place the voices” — or start dubbing, and they gather by themselves.",
   "sceneVoicesListen": "Place the voices",
   "sceneVoicesListenStop": "Stop",
@@ -312,16 +304,8 @@
     }
   },
   "sceneVoiceReadAs": "Read as",
-  "sceneVoiceStanding": "By the card: “{name}”",
-  "@sceneVoiceStanding": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "sceneVoiceAsHeard": "As heard",
-  "sceneVoiceNoCharacters": "Record characters on the Characters screen to give their voices away.",
+  "sceneVoiceNoCharacters": "Record characters on the Characters screen, then draw who reads whom on the Graph.",
   "sceneVoiceReplaced": "Read as “{name}”",
   "@sceneVoiceReplaced": {
     "placeholders": {

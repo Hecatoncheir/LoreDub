@@ -3,7 +3,7 @@
 
 import '../../l10n/app_localizations.dart';
 import '../domain/character.dart';
-import '../domain/speaker_map.dart';
+import '../domain/speaker_keys.dart';
 
 /// What to call a voice the session heard.
 ///
@@ -29,32 +29,9 @@ String speakerName(AppLocalizations l10n, String speaker, List<Character> charac
 /// The name of the character [speaker] is actually read in, or null when it
 /// is read as itself.
 ///
-/// Both kinds of substitution answer here: the one this game was given in
-/// Live, and the standing one a card carries into every game.
-String? replacementName(
-  AppLocalizations l10n,
-  String speaker,
-  Map<String, String> replacements,
-  List<Character> characters,
-) {
-  final id = readerOfSpeaker(speaker, replacements, characters);
-  if (id == null) return null;
-  for (final character in characters) {
-    if (character.id == id) return character.name;
-  }
-  return null;
-}
-
-/// The name of the card standing in for [speaker] by their own card rather
-/// than by this game's choice, so a row can say where the substitution comes
-/// from. Null when this game has its own choice, or when there is none.
-String? standingReplacementName(
-  String speaker,
-  Map<String, String> replacements,
-  List<Character> characters,
-) {
-  if (replacements.containsKey(speaker)) return null;
-  final id = readerOfSpeaker(speaker, replacements, characters);
+/// There is one source for that: the card the graph gave this one away to.
+String? replacementName(String speaker, List<Character> characters) {
+  final id = readerOfSpeaker(speaker, characters);
   if (id == null) return null;
   for (final character in characters) {
     if (character.id == id) return character.name;

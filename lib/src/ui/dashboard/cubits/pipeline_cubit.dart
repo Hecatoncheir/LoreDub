@@ -15,7 +15,6 @@ import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
-import '../../../domain/speaker_map.dart';
 import 'downloads_cubit.dart';
 import 'settings_cubit.dart';
 import 'shell_cubit.dart';
@@ -27,7 +26,6 @@ class LivePipelineState {
     this.status = PipelineStatus.idle,
     this.transcript = const [],
     this.speakers = const [],
-    this.speakerReplacements = const {},
     this.processes = const [],
     this.selectedProcess,
     this.startupProgress,
@@ -49,10 +47,6 @@ class LivePipelineState {
   /// The voices this session has heard, in the order they first spoke, so
   /// the player can give any of them a character's voice.
   final List<SceneSpeaker> speakers;
-
-  /// Which character reads which of them, by speaker key. Kept per game and
-  /// read back when a session starts, so a scene cast outlives one evening.
-  final Map<String, String> speakerReplacements;
 
   /// How far the pipeline is through starting, and what it is doing.
   final double? startupProgress;
@@ -142,7 +136,6 @@ class LivePipelineState {
     PipelineStatus? status,
     List<TranscriptEntry>? transcript,
     List<SceneSpeaker>? speakers,
-    Map<String, String>? speakerReplacements,
     List<GameProcess>? processes,
     GameProcess? selectedProcess,
     bool clearSelectedProcess = false,
@@ -162,7 +155,6 @@ class LivePipelineState {
     status: status ?? this.status,
     transcript: transcript ?? this.transcript,
     speakers: speakers ?? this.speakers,
-    speakerReplacements: speakerReplacements ?? this.speakerReplacements,
     processes: processes ?? this.processes,
     selectedProcess: clearSelectedProcess ? null : selectedProcess ?? this.selectedProcess,
     startupProgress: clearStartupProgress ? null : startupProgress ?? this.startupProgress,
@@ -259,9 +251,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     // The characters screen holds the worker with no whisper in it, the way
     // a snapshot session does; starting here takes it over.
     await releaseWorker?.call();
-    // What this game was told to replace outlives a session; whoever spoke
-    // in the last one does not.
-    final replacements = await _appRepository.loadSpeakerMap(_game);
     if (isClosed) return;
     emit(
       state.copyWith(
@@ -271,10 +260,10 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         startupStage: '',
         clearDetectedLanguage: true,
         clearSpokenVoice: true,
-        // Whoever spoke in the last session is not in this one yet; what
-        // the player told this game to read in whose voice still holds.
+        // Whoever spoke in the last session is not in this one yet. Who
+        // reads whom is not kept here at all: it is the graph's, and it is
+        // in the cards.
         speakers: const [],
-        speakerReplacements: replacements,
       ),
     );
     try {
@@ -321,7 +310,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         voiceBank: selection.keepsVoiceBank
             ? await _appRepository.voiceBankFileFor(state.selectedProcess?.name ?? '')
             : null,
-        speakerMap: await _appRepository.speakerMapFileFor(_game),
       );
     } catch (exception) {
       if (isClosed) return;
@@ -416,7 +404,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     // Both sessions listen through the converter, but only one may hold the
     // worker; the one the characters screen started gives way.
     await releaseWorker?.call();
-    final replacements = await _appRepository.loadSpeakerMap(_game);
     if (isClosed) return;
     emit(
       state.copyWith(
@@ -425,7 +412,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         clearStartupProgress: true,
         startupStage: '',
         speakers: const [],
-        speakerReplacements: replacements,
       ),
     );
     try {
@@ -520,25 +506,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       for (final speaker in state.speakers)
         if (speaker.key == key) speaker.heard(line: line, seconds: seconds) else speaker,
     ];
-  }
-
-  /// Reads [speaker] in [character]'s voice from the next line on, or in
-  /// their own again when [character] is null.
-  Future<void> assignSpeaker(String speaker, String? character) async {
-    final changed = withReplacement(state.speakerReplacements, speaker, character);
-    // Shown at once and written behind it, the way a character card is: the
-    // worker is told either way, so the next line is already read anew.
-    emit(state.copyWith(speakerReplacements: changed));
-    try {
-      await _appRepository.assignSpeaker(
-        game: _game,
-        replacements: changed,
-        speaker: speaker,
-        character: character,
-      );
-    } catch (exception) {
-      _errors.report(exception);
-    }
   }
 
   /// Empties the transcript. The pipeline is untouched: a running session

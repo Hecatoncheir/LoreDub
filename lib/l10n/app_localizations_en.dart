@@ -462,16 +462,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String failureSpeakerMapSaveFailed(String detail) {
-    return 'The voice replacements could not be saved: $detail';
-  }
-
-  @override
   String get sceneVoices => 'Voices of the scene';
 
   @override
-  String get sceneVoicesNote =>
-      'Who LoreDub has heard this session. Pick a character and this voice\'s lines are read in theirs.';
+  String get sceneVoicesNote => 'Who LoreDub has heard this session, and whose voice reads them.';
 
   @override
   String get sceneVoicesEmpty =>
@@ -519,16 +513,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sceneVoiceReadAs => 'Read as';
 
   @override
-  String sceneVoiceStanding(String name) {
-    return 'By the card: “$name”';
-  }
-
-  @override
   String get sceneVoiceAsHeard => 'As heard';
 
   @override
   String get sceneVoiceNoCharacters =>
-      'Record characters on the Characters screen to give their voices away.';
+      'Record characters on the Characters screen, then draw who reads whom on the Graph.';
 
   @override
   String sceneVoiceReplaced(String name) {

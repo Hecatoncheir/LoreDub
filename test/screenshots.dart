@@ -133,7 +133,7 @@ const lines = {
       'character:guard',
       1673,
     ),
-    ('Archers on the wall.', 'Лучники на стене.', 'timbre:2', 1563),
+    ('Archers on the wall.', 'Лучники на стене.', 'character:smith', 1563),
   ],
   'en': [
     (
@@ -142,7 +142,7 @@ const lines = {
       'character:guard',
       1673,
     ),
-    ('Archers on the wall.', 'Bogenschützen auf der Mauer.', 'timbre:2', 1563),
+    ('Archers on the wall.', 'Bogenschützen auf der Mauer.', 'character:smith', 1563),
   ],
 };
 
@@ -166,7 +166,8 @@ const snippets = {
 };
 
 /// The voices the session has heard, as the scene list shows them: two of
-/// the player's own cards and one the game's bank founded by itself.
+/// the player's own cards — one of them read by the other, the way the
+/// graph was drawn — and one the game's bank founded by itself.
 const heard = [
   SceneSpeaker(
     key: 'character:guard',
@@ -174,7 +175,8 @@ const heard = [
     lines: 12,
     seconds: 2.4,
   ),
-  SceneSpeaker(key: 'timbre:2', line: 'Archers on the wall.', lines: 5, seconds: 1.8),
+  SceneSpeaker(key: 'character:smith', line: 'Archers on the wall.', lines: 5, seconds: 1.8),
+  SceneSpeaker(key: 'timbre:2', line: 'The gate holds until dawn.', lines: 3, seconds: 1.2),
 ];
 
 /// Nothing here reaches the network or the notification centre.
@@ -288,7 +290,6 @@ void main() {
     List<TranscriptEntry> transcript = const [],
     List<SceneSpeaker> speakers = const [],
     List<TranscriptEntry> snapshots = const [],
-    Map<String, String> replacements = const {},
     List<CastPlacement> placed = const [],
     Map<String, GraphPoint> where = const {},
   }) {
@@ -320,7 +321,6 @@ void main() {
         transcript: transcript,
         speakers: speakers,
         snapshots: snapshots,
-        speakerReplacements: replacements,
         processes: const [game],
         selectedProcess: game,
       ),
@@ -483,7 +483,6 @@ void main() {
           section: DashboardSection.live,
           status: PipelineStatus.listening,
           speakers: heard,
-          replacements: const {'timbre:2': 'herbalist'},
           transcript: [
             for (final line in lines[language]!)
               TranscriptEntry(

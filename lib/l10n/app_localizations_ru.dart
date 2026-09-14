@@ -464,16 +464,10 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String failureSpeakerMapSaveFailed(String detail) {
-    return 'Не удалось сохранить замену голосов: $detail';
-  }
-
-  @override
   String get sceneVoices => 'Голоса сцены';
 
   @override
-  String get sceneVoicesNote =>
-      'Кого LoreDub услышал в этом сеансе. Выберите персонажа — и реплики этого голоса будут озвучиваться его голосом.';
+  String get sceneVoicesNote => 'Кого LoreDub услышал в этом сеансе и чьим голосом он звучит.';
 
   @override
   String get sceneVoicesEmpty =>
@@ -522,16 +516,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sceneVoiceReadAs => 'Озвучивать как';
 
   @override
-  String sceneVoiceStanding(String name) {
-    return 'По карточке: «$name»';
-  }
-
-  @override
   String get sceneVoiceAsHeard => 'Как услышано';
 
   @override
   String get sceneVoiceNoCharacters =>
-      'Запишите персонажей на экране «Персонажи», чтобы назначать их голоса.';
+      'Запишите персонажей на экране «Персонажи», а на «Схеме» решите, кто кого озвучивает.';
 
   @override
   String sceneVoiceReplaced(String name) {

@@ -843,12 +843,6 @@ abstract class AppLocalizations {
   /// **'В файле «{detail}» нет персонажей LoreDub.'**
   String failureCharactersImportFailed(String detail);
 
-  /// No description provided for @failureSpeakerMapSaveFailed.
-  ///
-  /// In ru, this message translates to:
-  /// **'Не удалось сохранить замену голосов: {detail}'**
-  String failureSpeakerMapSaveFailed(String detail);
-
   /// No description provided for @sceneVoices.
   ///
   /// In ru, this message translates to:
@@ -858,7 +852,7 @@ abstract class AppLocalizations {
   /// No description provided for @sceneVoicesNote.
   ///
   /// In ru, this message translates to:
-  /// **'Кого LoreDub услышал в этом сеансе. Выберите персонажа — и реплики этого голоса будут озвучиваться его голосом.'**
+  /// **'Кого LoreDub услышал в этом сеансе и чьим голосом он звучит.'**
   String get sceneVoicesNote;
 
   /// No description provided for @sceneVoicesEmpty.
@@ -921,12 +915,6 @@ abstract class AppLocalizations {
   /// **'Озвучивать как'**
   String get sceneVoiceReadAs;
 
-  /// No description provided for @sceneVoiceStanding.
-  ///
-  /// In ru, this message translates to:
-  /// **'По карточке: «{name}»'**
-  String sceneVoiceStanding(String name);
-
   /// No description provided for @sceneVoiceAsHeard.
   ///
   /// In ru, this message translates to:
@@ -936,7 +924,7 @@ abstract class AppLocalizations {
   /// No description provided for @sceneVoiceNoCharacters.
   ///
   /// In ru, this message translates to:
-  /// **'Запишите персонажей на экране «Персонажи», чтобы назначать их голоса.'**
+  /// **'Запишите персонажей на экране «Персонажи», а на «Схеме» решите, кто кого озвучивает.'**
   String get sceneVoiceNoCharacters;
 
   /// No description provided for @sceneVoiceReplaced.

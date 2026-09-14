@@ -324,42 +324,6 @@ void main() {
     expect(pipeline.state.speakers, isEmpty);
   });
 
-  test('assigns a character to a voice and takes the assignment back', () async {
-    pipeline.listen();
-    repository.push({
-      'type': 'transcript',
-      'original': 'Halt!',
-      'translated': 'Стоять!',
-      'speaker': 'timbre:0',
-    });
-    await settle();
-
-    await pipeline.assignSpeaker('timbre:0', 'a1');
-
-    expect(pipeline.state.speakerReplacements, {'timbre:0': 'a1'});
-    expect(repository.assignments, [('timbre:0', 'a1')], reason: 'the worker is told as well');
-
-    await pipeline.assignSpeaker('timbre:0', null);
-
-    expect(pipeline.state.speakerReplacements, isEmpty);
-    expect(repository.assignments.last, ('timbre:0', null));
-  });
-
-  test('reads back what this game was told to replace when a session starts', () async {
-    repository.replacements = const {'timbre:1': 'b2'};
-    pipeline.selectProcess(
-      const GameProcess(pid: 7, name: 'Skyrim.exe', path: 'C:/Games/Skyrim.exe'),
-    );
-
-    // The start never finishes here, which is far enough: the map is read
-    // before the worker is asked for anything.
-    unawaited(pipeline.toggle(initializing: false));
-    await settle();
-
-    expect(pipeline.state.speakerReplacements, {'timbre:1': 'b2'});
-    expect(pipeline.state.speakers, isEmpty, reason: 'nobody has spoken in this session yet');
-  });
-
   group('placing the voices before the dubbing', () {
     test('listens through the converter alone, translating nothing', () async {
       unawaited(pipeline.toggleSceneVoices(initializing: false));
@@ -396,21 +360,6 @@ void main() {
       expect(voices.first.lines, 2);
       expect(voices.first.seconds, 3.2, reason: 'the longest phrase stands');
       expect(voices.first.line, isEmpty, reason: 'nothing was recognized');
-    });
-
-    test('assigns a character while only the voices are being placed', () async {
-      pipeline.seed(
-        const LivePipelineState(
-          status: PipelineStatus.listening,
-          session: PipelineSession.scene,
-          speakers: [SceneSpeaker(key: 'timbre:0', seconds: 2)],
-        ),
-      );
-
-      await pipeline.assignSpeaker('timbre:0', 'a1');
-
-      expect(pipeline.state.speakerReplacements, {'timbre:0': 'a1'});
-      expect(repository.assignments, [('timbre:0', 'a1')]);
     });
 
     test('gives the worker over when the dubbing starts', () async {
@@ -485,7 +434,6 @@ class _SlowStartRepository extends AppRepository {
     required ComputeBackend translationBackend,
     required ComputeBackend voiceConversionBackend,
     required String runtimeDirectory,
-    String? speakerMap,
     String? voiceBank,
   }) {
     starts++;
@@ -510,9 +458,6 @@ class _SlowStartRepository extends AppRepository {
   @override
   Future<String> voiceBankFileFor(String game) async => 'voice_bank/$game.json';
 
-  @override
-  Future<String> speakerMapFileFor(String game) async => 'speaker_map/$game.json';
-
   int sceneStarts = 0;
   String? sceneBank;
 
@@ -527,24 +472,6 @@ class _SlowStartRepository extends AppRepository {
   }) async {
     sceneStarts++;
     sceneBank = voiceBank;
-  }
-
-  /// Whose voice reads whom, without a file behind it.
-  Map<String, String> replacements = const {};
-  final assignments = <(String, String?)>[];
-
-  @override
-  Future<Map<String, String>> loadSpeakerMap(String game) async => replacements;
-
-  @override
-  Future<void> assignSpeaker({
-    required String game,
-    required Map<String, String> replacements,
-    required String speaker,
-    String? character,
-  }) async {
-    assignments.add((speaker, character));
-    this.replacements = replacements;
   }
 
   @override

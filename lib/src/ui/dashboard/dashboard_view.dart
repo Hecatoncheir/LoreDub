@@ -897,7 +897,6 @@ class _TranscriptCard extends StatelessWidget {
                       itemBuilder: (context, index) => _TranscriptBubble(
                         entry: pipeline.transcript[index],
                         characters: characters.characters,
-                        replacements: pipeline.speakerReplacements,
                       ),
                     ),
             ),
@@ -910,9 +909,8 @@ class _TranscriptCard extends StatelessWidget {
 
 /// Who the session has heard, and whose voice reads them.
 ///
-/// A voice of the game and a card recognized in it are both here: the row
-/// offers either of them a character from the cast, and the choice is kept
-/// for this game.
+/// A voice of the game and a card recognized in it are both here. The area
+/// shows and does not set: who reads whom is drawn on the graph.
 class _SceneVoicesCard extends StatelessWidget {
   const _SceneVoicesCard({required this.cubits});
 
@@ -923,12 +921,7 @@ class _SceneVoicesCard extends StatelessWidget {
     cubits: cubits,
     builder: (context, shell) => _PipelineBuilder(
       cubits: cubits,
-      watch: (pipeline) => (
-        pipeline.speakers,
-        pipeline.speakerReplacements,
-        pipeline.status,
-        pipeline.session,
-      ),
+      watch: (pipeline) => (pipeline.speakers, pipeline.status, pipeline.session),
       builder: (context, pipeline) => _CharactersBuilder(
         cubits: cubits,
         watch: (characters) => characters.characters,
@@ -1010,13 +1003,7 @@ class _SceneVoicesCard extends StatelessWidget {
                         SceneVoiceRow(
                           speaker: speaker,
                           name: speakerName(l10n, speaker.key, characters),
-                          characters: characters,
-                          assignedId: pipeline.speakerReplacements[speaker.key],
-                          standingName: standingReplacementName(
-                            speaker.key,
-                            pipeline.speakerReplacements,
-                            characters,
-                          ),
+                          readsAs: replacementName(speaker.key, characters),
                         ),
                     ],
                   ),
@@ -1969,32 +1956,23 @@ class _ModuleLabel extends StatelessWidget {
 /// icon: the text on the dark signal surface, and the time it took beside the
 /// tail on the orange accent.
 class _TranscriptBubble extends StatelessWidget {
-  const _TranscriptBubble({
-    required this.entry,
-    this.characters = const [],
-    this.replacements = const {},
-  });
+  const _TranscriptBubble({required this.entry, this.characters = const []});
 
   static const double _tailInset = 28;
   static const Size _tailSize = Size(26, 14);
 
   final TranscriptEntry entry;
 
-  /// The cast, so a line matched to a card is named rather than numbered.
+  /// The cast, so a line matched to a card is named rather than numbered,
+  /// and so a line read by another card can say whose voice it was.
   final List<Character> characters;
-
-  /// Whose voice reads whom, so a line says when it was read as somebody
-  /// else.
-  final Map<String, String> replacements;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final original = entry.original.isEmpty ? entry.english : entry.original;
     final speaker = entry.speaker;
-    final readAs = speaker == null
-        ? null
-        : replacementName(l10n, speaker, replacements, characters);
+    final readAs = speaker == null ? null : replacementName(speaker, characters);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

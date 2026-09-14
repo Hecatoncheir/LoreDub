@@ -697,12 +697,6 @@ void main() {
       expect(repository.told.last, ('guard', null));
     });
 
-    test('a voice of the scene is handed to a card', () async {
-      await cubits.pipeline.assignSpeaker('timbre:0', 'guard');
-
-      expect(cubits.pipeline.state.speakerReplacements, {'timbre:0': 'guard'});
-    });
-
     test('the cast comes out of the mix, and goes back in', () async {
       const intoTheMix = PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast);
       await drawLink(voiceOf('guard'), readBy('smith'));

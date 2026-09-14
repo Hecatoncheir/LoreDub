@@ -78,7 +78,6 @@ void main() {
     PipelineStatus status = PipelineStatus.idle,
     List<TranscriptEntry> transcript = const [],
     List<SceneSpeaker> speakers = const [],
-    Map<String, String> speakerReplacements = const {},
     String? detectedLanguage,
     double? startupProgress,
     String startupStage = '',
@@ -99,7 +98,6 @@ void main() {
         status: status,
         transcript: transcript,
         speakers: speakers,
-        speakerReplacements: speakerReplacements,
         detectedLanguage: detectedLanguage,
         startupProgress: startupProgress,
         startupStage: startupStage,
@@ -2414,7 +2412,6 @@ void main() {
 
     DashboardCubits stageScene({
       List<SceneSpeaker> speakers = const [],
-      Map<String, String> replacements = const {},
       List<Character> characters = const [guard],
     }) {
       final cubits = stage(
@@ -2423,7 +2420,6 @@ void main() {
         settings: const AppSettings(audioCaptureSource: AudioCaptureSource.system),
         models: catalogue(),
         speakers: speakers,
-        speakerReplacements: replacements,
       );
       cubits.characters.seed(CharactersState(loading: false, characters: characters));
       return cubits;
@@ -2497,15 +2493,23 @@ void main() {
     });
 
     testWidgets('says who reads a voice of the scene, and offers no choice', (tester) async {
-      final cubits = stageScene(
-        speakers: const [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
+      await pumpDashboard(
+        tester,
+        stageScene(
+          speakers: const [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
+          characters: const [
+            Character(id: 'a1', name: 'Стражник', vector: [0.2], voicedBy: 'b2'),
+            Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
+          ],
+        ),
+        const Size(1400, 900),
       );
-      await pumpDashboard(tester, cubits, const Size(1400, 900));
 
-      // Live shows the cast at work; changing it is the graph's.
+      // Live shows the cast at work as the graph arranged it; changing it is
+      // the graph's alone.
       expect(find.byKey(const ValueKey('assign-character:a1')), findsNothing);
       expect(find.byKey(const ValueKey('reads-character:a1')), findsOneWidget);
-      expect(cubits.pipeline.state.speakerReplacements, isEmpty);
+      expect(find.text('Кузнец'), findsOneWidget);
     });
 
     testWidgets('offers nothing to a line nobody was heard in', (tester) async {
@@ -2521,41 +2525,27 @@ void main() {
       expect(find.byKey(const ValueKey('assign-voice:eugene')), findsNothing);
     });
 
-    testWidgets('says a voice is read by the card rather than by this game', (tester) async {
-      await pumpDashboard(
-        tester,
-        stageScene(
-          speakers: const [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
-          characters: const [
-            Character(id: 'a1', name: 'Стражник', vector: [0.2], voicedBy: 'b2'),
-            Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
-          ],
-        ),
-        const Size(1400, 900),
-      );
-
-      expect(find.text('По карточке: «Кузнец»'), findsOneWidget);
-    });
-
     testWidgets('says in the transcript who was heard and who reads them', (tester) async {
       await pumpDashboard(
         tester,
         stageScene(
-            speakers: const [SceneSpeaker(key: 'timbre:0', line: 'Стоять!')],
-            replacements: const {'timbre:0': 'a1'},
+            speakers: const [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
+            characters: const [
+              Character(id: 'a1', name: 'Стражник', vector: [0.2], voicedBy: 'b2'),
+              Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
+            ],
           )
           ..pipeline.seed(
-            LivePipelineState(
+            const LivePipelineState(
               status: PipelineStatus.listening,
-              speakers: const [SceneSpeaker(key: 'timbre:0', line: 'Стоять!')],
-              speakerReplacements: const {'timbre:0': 'a1'},
-              transcript: const [
+              speakers: [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
+              transcript: [
                 TranscriptEntry(
                   original: 'Halt!',
                   english: 'Halt!',
                   translated: 'Стоять!',
                   latency: Duration(milliseconds: 900),
-                  speaker: 'timbre:0',
+                  speaker: 'character:a1',
                 ),
               ],
             ),
@@ -2563,8 +2553,8 @@ void main() {
         const Size(1400, 900),
       );
 
-      expect(find.text('Голос 1'), findsWidgets);
-      expect(find.text('Звучит как «Стражник»'), findsOneWidget);
+      expect(find.text('Стражник'), findsWidgets);
+      expect(find.text('Звучит как «Кузнец»'), findsOneWidget);
     });
   });
   testWidgets('keeps a scheme under the name the dialog is given', (tester) async {

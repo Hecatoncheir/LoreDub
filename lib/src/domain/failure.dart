@@ -125,9 +125,6 @@ enum FailureCode {
   /// The file the player chose holds no scheme.
   pipelinesImportFailed,
 
-  /// Whose voice reads whom could not be written back for this game.
-  speakerMapSaveFailed,
-
   /// The arrangement of the pipeline canvas could not be written back; the
   /// detail is the file system's own message.
   pipelineLayoutSaveFailed,
