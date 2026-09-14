@@ -9,6 +9,8 @@
 /// it can never show a scheme the file no longer holds.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
@@ -392,36 +394,45 @@ class _SchemePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (graph.nodes.isEmpty) return;
+    final spread = _bounds();
+    if (spread.width <= 0 || spread.height <= 0) return;
+
+    // As large as fits either way, and put in the middle of what room there
+    // is, so a wide scheme and a tall one both sit in the card rather than
+    // hugging a corner of it.
+    final scale = math.min(size.width / spread.width, size.height / spread.height);
+    final offset = Offset(
+      (size.width - spread.width * scale) / 2,
+      (size.height - spread.height * scale) / 2,
+    );
+    Offset place(GraphPoint point) => Offset(
+      (point.x - spread.left) * scale + offset.dx,
+      (point.y - spread.top) * scale + offset.dy,
+    );
+
+    _drawWires(canvas, place);
+    _drawCards(canvas, place);
+  }
+
+  /// The rectangle every node of the scheme fits inside, cards and all.
+  Rect _bounds() {
     var left = double.infinity;
     var top = double.infinity;
     var right = -double.infinity;
     var bottom = -double.infinity;
     for (final node in graph.nodes) {
       final card = NodeMetrics.sizeOf(node.kind);
-      left = left < node.position.x ? left : node.position.x;
-      top = top < node.position.y ? top : node.position.y;
-      final edge = node.position.x + card.width;
-      final foot = node.position.y + card.height;
-      right = right > edge ? right : edge;
-      bottom = bottom > foot ? bottom : foot;
+      left = math.min(left, node.position.x);
+      top = math.min(top, node.position.y);
+      right = math.max(right, node.position.x + card.width);
+      bottom = math.max(bottom, node.position.y + card.height);
     }
-    final spread = Size(right - left, bottom - top);
-    if (spread.width <= 0 || spread.height <= 0) return;
-    final scale = (size.width / spread.width) < (size.height / spread.height)
-        ? size.width / spread.width
-        : size.height / spread.height;
-    // Put in the middle of what room there is, so a wide scheme and a tall
-    // one both sit in the card rather than hugging a corner of it.
-    final offset = Offset(
-      (size.width - spread.width * scale) / 2,
-      (size.height - spread.height * scale) / 2,
-    );
+    return Rect.fromLTRB(left, top, right, bottom);
+  }
 
-    Offset place(GraphPoint point) => Offset(
-      (point.x - left) * scale + offset.dx,
-      (point.y - top) * scale + offset.dy,
-    );
-
+  /// The links, as straight lines rather than the canvas's curves: at a
+  /// thumb's width a curve and a line look the same.
+  void _drawWires(Canvas canvas, Offset Function(GraphPoint point) place) {
     final wire = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
@@ -441,24 +452,27 @@ class _SchemePainter extends CustomPainter {
               : LoreDubPalette.orange,
       );
     }
+  }
 
+  /// The nodes, as filled boxes with an edge: a card of the player's cast
+  /// lighter than a stage, and anything unrouted drawn dark.
+  void _drawCards(Canvas canvas, Offset Function(GraphPoint point) place) {
     for (final node in graph.nodes) {
       final card = NodeMetrics.sizeOf(node.kind);
       final box = Rect.fromPoints(
         place(node.position),
         place(node.position.translate(card.width, card.height)),
       );
+      final rounded = RRect.fromRectAndRadius(box, const Radius.circular(2));
       canvas.drawRRect(
-        RRect.fromRectAndRadius(box, const Radius.circular(2)),
+        rounded,
         Paint()
-          ..color = node.unrouted
-              ? LoreDubPalette.raised
-              : node.kind == PipelineNodeKind.character
+          ..color = !node.unrouted && node.kind == PipelineNodeKind.character
               ? LoreDubPalette.panel
               : LoreDubPalette.raised,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(box, const Radius.circular(2)),
+        rounded,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1

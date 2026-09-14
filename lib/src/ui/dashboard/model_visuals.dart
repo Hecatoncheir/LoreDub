@@ -52,48 +52,54 @@ List<ModelAction> modelActions({
       if (!part.installed && part.progress == null) part,
   ];
   final stopping = parts.any((part) => isStopping(part.model.id));
-  if (downloading.isNotEmpty || paused.isNotEmpty) {
-    final running = downloading.isNotEmpty;
+
+  // Nothing in flight: what is missing can be fetched, what is here given
+  // back.
+  if (downloading.isEmpty && paused.isEmpty) {
     return [
-      ModelAction(
-        icon: running ? Icons.pause_rounded : Icons.play_arrow_rounded,
-        tooltip: stopping
-            ? l10n.downloadStopping
-            : running
-            ? l10n.downloadPause
-            : l10n.downloadResume,
-        onPressed: stopping
-            ? null
-            : () {
-                if (running) {
-                  downloading.forEach(onPause);
-                } else {
-                  // Resuming finishes the whole pair, not only the half
-                  // that happened to be paused.
-                  [...paused, ...missing].forEach(onInstall);
-                }
-              },
-      ),
-      ModelAction(
-        icon: Icons.close_rounded,
-        tooltip: l10n.downloadCancel,
-        onPressed: stopping ? null : () => [...downloading, ...paused].forEach(onCancel),
-      ),
+      if (missing.isNotEmpty)
+        ModelAction(
+          icon: Icons.download_rounded,
+          tooltip: l10n.modelDownload,
+          onPressed: () => missing.forEach(onInstall),
+        ),
+      if (parts.any((part) => part.installed))
+        ModelAction(
+          icon: Icons.delete_outline_rounded,
+          tooltip: locked ? l10n.modelRemoveInUse : l10n.modelRemove,
+          onPressed: locked ? null : onRemove,
+        ),
     ];
   }
+
+  // Something is on its way: it can be held or let go of, and the pair is
+  // held and let go of together.
+  final running = downloading.isNotEmpty;
+  void holdOrResume() {
+    if (running) {
+      downloading.forEach(onPause);
+      return;
+    }
+    // Resuming finishes the whole pair, not only the half that happened to
+    // be paused.
+    [...paused, ...missing].forEach(onInstall);
+  }
+
   return [
-    if (missing.isNotEmpty)
-      ModelAction(
-        icon: Icons.download_rounded,
-        tooltip: l10n.modelDownload,
-        onPressed: () => missing.forEach(onInstall),
-      ),
-    if (parts.any((part) => part.installed))
-      ModelAction(
-        icon: Icons.delete_outline_rounded,
-        tooltip: locked ? l10n.modelRemoveInUse : l10n.modelRemove,
-        onPressed: locked ? null : onRemove,
-      ),
+    ModelAction(
+      icon: running ? Icons.pause_rounded : Icons.play_arrow_rounded,
+      tooltip: stopping
+          ? l10n.downloadStopping
+          : running
+          ? l10n.downloadPause
+          : l10n.downloadResume,
+      onPressed: stopping ? null : holdOrResume,
+    ),
+    ModelAction(
+      icon: Icons.close_rounded,
+      tooltip: l10n.downloadCancel,
+      onPressed: stopping ? null : () => [...downloading, ...paused].forEach(onCancel),
+    ),
   ];
 }
 

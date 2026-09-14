@@ -657,7 +657,6 @@ class CharactersCubit extends Cubit<CharactersState> {
     emit(state.copyWith(previewingId: id));
     try {
       final selection = _selection;
-      final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
       // A card read in another's voice is heard as that other: the sample
       // answers what the dubbing will do, not what the card holds.
       // One hop only, as the worker reads it: a card read by a card that is
@@ -666,23 +665,7 @@ class CharactersCubit extends Cubit<CharactersState> {
           state.characters.where((value) => value.id == character.voicedBy).firstOrNull ??
           character;
       if (!state.previewReady) {
-        await _appRepository.startVoicePreview(
-          settings: _settings.settings,
-          modelDirectories: {
-            'speech': path.join(
-              await _modelRepository.directoryFor(speech),
-              speech.primaryFileName,
-            ),
-            if (selection.needsVoiceConverter)
-              'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
-          },
-          speaker: selection.voice,
-          converterBackend: _settings.settings.backendFor(
-            ComputeStage.voiceConversion,
-            _downloads.state.availability,
-          ),
-          runtimeDirectory: _downloads.state.runtimeDirectoryPath,
-        );
+        await _loadSpeechForPreview();
         if (isClosed) return;
         emit(state.copyWith(previewReady: true));
       }
@@ -698,6 +681,27 @@ class CharactersCubit extends Cubit<CharactersState> {
     } finally {
       if (!isClosed) emit(state.copyWith(clearPreviewingId: true));
     }
+  }
+
+  /// Loads the speech model and the converter, without the translator: the
+  /// first sample waits for that, the ones after it do not.
+  Future<void> _loadSpeechForPreview() async {
+    final selection = _selection;
+    final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
+    await _appRepository.startVoicePreview(
+      settings: _settings.settings,
+      modelDirectories: {
+        'speech': path.join(await _modelRepository.directoryFor(speech), speech.primaryFileName),
+        if (selection.needsVoiceConverter)
+          'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
+      },
+      speaker: selection.voice,
+      converterBackend: _settings.settings.backendFor(
+        ComputeStage.voiceConversion,
+        _downloads.state.availability,
+      ),
+      runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+    );
   }
 
   /// The cards with a clip beside them. A directory that cannot be read
