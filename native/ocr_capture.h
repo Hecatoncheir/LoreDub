@@ -10,7 +10,8 @@
 #include <string>
 #include <thread>
 
-// The part of the game window's client area to read, each edge a fraction of
+// The part of the game window's client area -- or of the whole screen, when
+// that is what is read -- to take the text out of, each edge a fraction of
 // its width or height from the top-left corner.
 struct OcrRegion {
   double left = 0.0;
@@ -45,6 +46,10 @@ bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::stri
 // missed it: a frame of nothing would leave the capture reading nothing.
 bool RegionOfWindow(uint32_t process_id, ScreenArea area, OcrRegion* region);
 
+// The same for the whole screen: [area] as fractions of the virtual screen,
+// every monitor together. False when the rectangle came to nothing.
+bool RegionOfScreen(ScreenArea area, OcrRegion* region);
+
 class OcrCapture {
  public:
   using TextCallback = std::function<void(const std::string&)>;
@@ -57,6 +62,11 @@ class OcrCapture {
   OcrCapture& operator=(const OcrCapture&) = delete;
 
   // [language] is the primary subtag of the text to read, "en" or "ru".
+  //
+  // [process_id] is the game whose window the frame is read out of, and
+  // whose turn in the foreground the reading waits for. Zero reads the
+  // virtual screen instead, frame and all, whichever window is in front --
+  // which is what a game that keeps no ordinary window needs.
   bool Start(uint32_t process_id, OcrRegion region, std::string language,
              TextCallback on_text, ErrorCallback on_error);
   void Stop();

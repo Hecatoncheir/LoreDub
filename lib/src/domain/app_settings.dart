@@ -10,6 +10,15 @@ import 'spoken_language.dart';
 
 enum AudioCaptureSource { process, system }
 
+/// Where the screen session takes its text from: the window of the game it
+/// was given, or everything the monitors show.
+///
+/// The window is the better of the two where it works -- text is read only
+/// while the game is in front, so LoreDub's own window over it cannot pass
+/// for subtitles -- but a game that keeps no ordinary window, or a launcher
+/// or a browser beside it, is only readable off the screen itself.
+enum ScreenSource { gameWindow, wholeScreen }
+
 /// How the dubbing voice is picked, as the interface offers it. What is
 /// stored is [AppSettings.automaticVoice] and [AppSettings.originalVoice].
 enum VoiceMode { automatic, chosen, original }
@@ -29,6 +38,7 @@ class AppSettings {
     this.ocrRegion = OcrRegion.standard,
     this.modelProxyUrl = '',
     this.audioCaptureSource = AudioCaptureSource.process,
+    this.screenSource = ScreenSource.gameWindow,
     this.pythonExecutable = '',
     this.detectSourceLanguage = true,
     this.sourceLanguage = fallbackSpokenLanguage,
@@ -143,6 +153,12 @@ class AppSettings {
   final OcrRegion ocrRegion;
   final String modelProxyUrl;
   final AudioCaptureSource audioCaptureSource;
+  final ScreenSource screenSource;
+
+  /// Whether the frame is measured against the whole screen rather than
+  /// against one window -- which is also whether a game has to be named
+  /// before the reading can start.
+  bool get readsWholeScreen => screenSource == ScreenSource.wholeScreen;
   final String pythonExecutable;
 
   /// Whether whisper.cpp guesses the language of the game itself.
@@ -273,6 +289,7 @@ class AppSettings {
     OcrRegion? ocrRegion,
     String? modelProxyUrl,
     AudioCaptureSource? audioCaptureSource,
+    ScreenSource? screenSource,
     String? pythonExecutable,
     bool? detectSourceLanguage,
     String? sourceLanguage,
@@ -311,6 +328,7 @@ class AppSettings {
     ocrRegion: ocrRegion ?? this.ocrRegion,
     modelProxyUrl: modelProxyUrl ?? this.modelProxyUrl,
     audioCaptureSource: audioCaptureSource ?? this.audioCaptureSource,
+    screenSource: screenSource ?? this.screenSource,
     pythonExecutable: pythonExecutable ?? this.pythonExecutable,
     detectSourceLanguage: detectSourceLanguage ?? this.detectSourceLanguage,
     sourceLanguage: sourceLanguage ?? this.sourceLanguage,

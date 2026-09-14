@@ -714,7 +714,12 @@ it is, untranslated.
 
 ### Setting it up
 
-**1. Open Screen and choose the game.** Its window is what gets read.
+**1. Open Screen and choose what to read.** **Game window** reads the chosen
+process's window, and only while it is in front — so neither LoreDub's own
+window nor a browser over the game can pass for subtitles. **Whole screen**
+reads everything the monitors show, whichever window is active: the way into a
+game that keeps no ordinary window. The game process is named in that mode
+only to turn it down.
 
 **2. Frame the place where the game prints its subtitles.** The **SUBTITLE
 FRAME** card beside the controls holds a scaled-down screen shaped like your
@@ -743,9 +748,7 @@ offsets in percent. **Silence the game** turns the game's own sound off while
 the screen is read: nothing here listens to it, and it keeps the game from
 speaking a line at the same moment as the dubbing.
 
-**3. Start reading.** Press **Start** and switch to the game. Text is read
-only while the game is the foreground window, so neither LoreDub nor a browser
-over the game can pass for subtitles.
+**3. Start reading.** Press **Start** and switch to the game.
 
 <p align="center">
   <img src="docs/screenshots/ocr-game.png" width="900" alt="The game window: only the text inside the frame is read, the objective in the corner stays outside it">

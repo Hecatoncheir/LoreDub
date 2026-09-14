@@ -96,6 +96,36 @@ bool CaptureScreen(int x, int y, int crop_width, int crop_height, double scale,
   return copied == TRUE;
 }
 
+// The rectangle every monitor together covers, in screen pixels.
+ScreenArea VirtualScreen() {
+  const int left = GetSystemMetrics(SM_XVIRTUALSCREEN);
+  const int top = GetSystemMetrics(SM_YVIRTUALSCREEN);
+  return ScreenArea{left, top, left + GetSystemMetrics(SM_CXVIRTUALSCREEN),
+                    top + GetSystemMetrics(SM_CYVIRTUALSCREEN)};
+}
+
+// Copies the part of [bounds] that [region] covers, the way CaptureRegion
+// does for a window's client area.
+bool CaptureBounds(ScreenArea bounds, const OcrRegion& region, std::vector<uint8_t>* pixels,
+                   int32_t* output_width, int32_t* output_height) {
+  const int source_width = bounds.right - bounds.left;
+  const int source_height = bounds.bottom - bounds.top;
+  const int source_x = std::clamp(static_cast<int>(source_width * region.left), 0,
+                                  std::max(0, source_width - 1));
+  const int source_y = std::clamp(static_cast<int>(source_height * region.top), 0,
+                                  std::max(0, source_height - 1));
+  const int crop_width =
+      std::clamp(static_cast<int>(source_width * region.right), source_x, source_width) - source_x;
+  const int crop_height =
+      std::clamp(static_cast<int>(source_height * region.bottom), source_y, source_height) -
+      source_y;
+  if (crop_width < 32 || crop_height < 16) return false;
+  // Windows OCR refuses images beyond OcrEngine::MaxImageDimension.
+  const double scale = std::min(1.0, 2400.0 / std::max(crop_width, crop_height));
+  return CaptureScreen(bounds.left + source_x, bounds.top + source_y, crop_width, crop_height,
+                       scale, pixels, output_width, output_height);
+}
+
 bool CaptureRegion(HWND window, const OcrRegion& region, std::vector<uint8_t>* pixels,
                    int32_t* output_width, int32_t* output_height) {
   RECT client{};
@@ -250,6 +280,52 @@ bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::stri
 #endif
 }
 
+// The part of [bounds] that [area] covers, as fractions, or false when the
+// rectangle fell outside it or came to nothing.
+#if defined(_WIN32)
+namespace {
+
+// The frame of [process_id]'s window, copied only while that window is the
+// one in front: LoreDub's own window over the game must not pass for it.
+bool CaptureWindowInFront(uint32_t process_id, const OcrRegion& region,
+                          std::vector<uint8_t>* pixels, int32_t* width, int32_t* height) {
+  const HWND window = FindProcessWindow(process_id);
+  if (window == nullptr || window != GetForegroundWindow()) return false;
+  return CaptureRegion(window, region, pixels, width, height);
+}
+
+}  // namespace
+#endif
+
+namespace {
+
+bool RegionWithin(ScreenArea bounds, ScreenArea area, OcrRegion* region) {
+  const double width = bounds.right - bounds.left;
+  const double height = bounds.bottom - bounds.top;
+  if (width <= 0 || height <= 0) return false;
+  // A player who drew past the edge gets the edge, and one who drew beside
+  // it entirely gets nothing.
+  const double left = std::clamp((area.left - bounds.left) / width, 0.0, 1.0);
+  const double right = std::clamp((area.right - bounds.left) / width, 0.0, 1.0);
+  const double top = std::clamp((area.top - bounds.top) / height, 0.0, 1.0);
+  const double bottom = std::clamp((area.bottom - bounds.top) / height, 0.0, 1.0);
+  if (right - left < 0.02 || bottom - top < 0.02) return false;
+  *region = OcrRegion{left, top, right, bottom};
+  return true;
+}
+
+}  // namespace
+
+bool RegionOfScreen(ScreenArea area, OcrRegion* region) {
+#if !defined(_WIN32)
+  (void)area;
+  (void)region;
+  return false;
+#else
+  return RegionWithin(VirtualScreen(), area, region);
+#endif
+}
+
 bool RegionOfWindow(uint32_t process_id, ScreenArea area, OcrRegion* region) {
 #if !defined(_WIN32)
   (void)process_id;
@@ -263,19 +339,9 @@ bool RegionOfWindow(uint32_t process_id, ScreenArea area, OcrRegion* region) {
   if (!GetClientRect(window, &client)) return false;
   POINT origin{0, 0};
   if (!ClientToScreen(window, &origin)) return false;
-  const double width = client.right;
-  const double height = client.bottom;
-  if (width <= 0 || height <= 0) return false;
-  // The selection is in screen pixels and the frame is in fractions of the
-  // client area, so a player who drew past the edge of the window gets the
-  // edge -- and one who drew beside it entirely gets nothing.
-  const double left = std::clamp((area.left - origin.x) / width, 0.0, 1.0);
-  const double right = std::clamp((area.right - origin.x) / width, 0.0, 1.0);
-  const double top = std::clamp((area.top - origin.y) / height, 0.0, 1.0);
-  const double bottom = std::clamp((area.bottom - origin.y) / height, 0.0, 1.0);
-  if (right - left < 0.02 || bottom - top < 0.02) return false;
-  *region = OcrRegion{left, top, right, bottom};
-  return true;
+  return RegionWithin(
+      ScreenArea{origin.x, origin.y, origin.x + client.right, origin.y + client.bottom}, area,
+      region);
 #endif
 }
 
@@ -329,13 +395,17 @@ void OcrCapture::CaptureThread(uint32_t process_id, std::string language,
     int stable_scans = 0;
     int empty_scans = 0;
     while (!stopping_) {
-      const HWND window = FindProcessWindow(process_id);
       std::vector<uint8_t> pixels;
       int32_t width = 0;
       int32_t height = 0;
       std::string text;
-      if (window != nullptr && window == GetForegroundWindow() &&
-          CaptureRegion(window, Region(), &pixels, &width, &height)) {
+      // Reading the screen waits for nobody: there is no window whose turn
+      // in the foreground would say the game is what is on it.
+      const bool copied = process_id == 0
+                              ? CaptureBounds(VirtualScreen(), Region(), &pixels, &width, &height)
+                              : CaptureWindowInFront(process_id, Region(), &pixels, &width,
+                                                     &height);
+      if (copied) {
         text = Recognize(engine, pixels, width, height);
       }
       if (text.empty()) {

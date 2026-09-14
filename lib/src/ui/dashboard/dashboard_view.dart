@@ -249,7 +249,7 @@ class _Navigation extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 26),
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
           child: Row(
             children: [
               Image.asset(
@@ -572,7 +572,7 @@ class _NavigationGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(14, 10, 8, 8),
+    padding: const EdgeInsets.fromLTRB(14, 24, 8, 8),
     child: Text(
       label,
       style: const TextStyle(
@@ -883,6 +883,10 @@ class _LivePanel extends StatelessWidget {
 /// cards at their tallest, and a transcript still worth looking at under
 /// them.
 const _liveMinHeight = 640.0;
+
+/// Beyond this two setting cards stand side by side rather than one under
+/// the other. Below it a slider and its own notes would be squeezed.
+const _pairedCardsWidth = 900.0;
 
 /// Beyond this the scene voices sit beside the transcript rather than under
 /// it; below it the transcript would be left too narrow to read.
@@ -1424,11 +1428,7 @@ class _SubtitleFrameCard extends StatelessWidget {
     builder: (context, state) => _PipelineBuilder(
       cubits: cubits,
       watch: (pipeline) => pipeline.running,
-      builder: (context, pipeline) => _build(
-        context,
-        state.settings,
-        running: pipeline.running,
-      ),
+      builder: (context, pipeline) => _build(context, state.settings, running: pipeline.running),
     ),
   );
 
@@ -1457,7 +1457,7 @@ class _SubtitleFrameCard extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
-                  l10n.ocrRegionValue(
+                  (settings.readsWholeScreen ? l10n.ocrRegionOfScreen : l10n.ocrRegionValue)(
                     (settings.ocrRegion.width * 100).round(),
                     (settings.ocrRegion.height * 100).round(),
                     (settings.ocrRegion.left * 100).round(),
@@ -1539,7 +1539,17 @@ class _SnapshotControls extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final hotkey = settings.snapshotHotkey;
     final status = _status(l10n, pipeline);
-    final details = Column(
+    final button = _SnapshotStartButton(cubits: cubits);
+    // The frame is read out of one window, so this session needs the game
+    // named even though nothing of its sound is listened to.
+    final picker = ProcessPicker(
+      processes: pipeline.processes,
+      selected: pipeline.selectedProcess,
+      enabled: !pipeline.running,
+      onSelected: cubits.pipeline.selectProcess,
+      onRefresh: cubits.pipeline.refreshProcesses,
+    );
+    Widget details({required Widget game}) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (hotkey == null)
@@ -1568,40 +1578,66 @@ class _SnapshotControls extends StatelessWidget {
         const SizedBox(height: 8),
         Text(l10n.screenHowTo, style: Theme.of(context).textTheme.bodyLarge),
         const SizedBox(height: 14),
-        // The frame is read out of one window, so this session needs the
-        // game named even though nothing of its sound is listened to.
-        ProcessPicker(
-          processes: pipeline.processes,
-          selected: pipeline.selectedProcess,
-          enabled: !pipeline.running,
-          onSelected: cubits.pipeline.selectProcess,
-          onRefresh: cubits.pipeline.refreshProcesses,
+        // A window is read only while it is in front, so nothing put over
+        // the game can pass for its subtitles; the screen is read whatever
+        // is on it, which is the only way into a game that keeps no
+        // ordinary window.
+        SegmentedButton<ScreenSource>(
+          segments: [
+            ButtonSegment(
+              value: ScreenSource.gameWindow,
+              icon: const Icon(Icons.crop_din_rounded),
+              label: Text(l10n.screenSourceWindow),
+            ),
+            ButtonSegment(
+              value: ScreenSource.wholeScreen,
+              icon: const Icon(Icons.desktop_windows_outlined),
+              label: Text(l10n.screenSourceScreen),
+            ),
+          ],
+          selected: {settings.screenSource},
+          onSelectionChanged: pipeline.running
+              ? null
+              : (selection) =>
+                    cubits.settings.update(settings.copyWith(screenSource: selection.first)),
         ),
+        const SizedBox(height: 14),
+        game,
         const SizedBox(height: 14),
         _TextLanguagePicker(cubits: cubits),
         const SizedBox(height: 10),
         Text(
-          l10n.snapshotNote(spokenLanguageName(l10n, settings.targetLanguage)),
+          settings.readsWholeScreen
+              ? l10n.screenWholeNote(spokenLanguageName(l10n, settings.targetLanguage))
+              : l10n.snapshotNote(spokenLanguageName(l10n, settings.targetLanguage)),
           style: Theme.of(context).textTheme.bodySmall,
         ),
         if (status != null) ...[const SizedBox(height: 12), status],
       ],
     );
-    final button = _SnapshotStartButton(cubits: cubits);
     return LayoutBuilder(
-      // The language row inside is as wide as its own labels; under this the
-      // button goes below it rather than squeezing it off the card.
+      // Where there is room the button stands on the row that names the
+      // game, which is what it starts on. Beside the card as a whole it hung
+      // at the middle of a paragraph, level with nothing and moving with
+      // every line the text below it wrapped to. Narrower than this the
+      // picker would be squeezed to a stub, so the button goes under it.
       builder: (context, constraints) => constraints.maxWidth < 760
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [details, const SizedBox(height: 14), button],
-            )
-          : Row(
               children: [
-                Expanded(child: details),
-                const SizedBox(width: 24),
-                SizedBox(width: _LanguageRow.actionWidth, child: button),
+                details(game: picker),
+                const SizedBox(height: 14),
+                button,
               ],
+            )
+          : details(
+              game: Row(
+                children: [
+                  Expanded(child: picker),
+                  const SizedBox(width: 24),
+                  SizedBox(width: _LanguageRow.actionWidth, child: button),
+                ],
+              ),
             ),
     );
   }
@@ -3908,88 +3944,103 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     required bool running,
   }) {
     final settings = state.settings;
-    return [
-      _SettingCard(
-        title: l10n.settingsOriginalVolume,
-        subtitle: l10n.originalVolumeValue((settings.duckedVolume * 100).round()),
-        // The floor is the capture's: the game is heard through this same
-        // volume, and silenced outright it would never be dubbed at all.
-        // Only the screen session, which has no ear in the game, may take it
-        // all the way down -- and it asks for that on its own page.
-        child: Column(
-          children: [
-            Slider(
-              key: const ValueKey('originalVolume'),
-              value: settings.duckedVolume,
-              min: AppSettings.audibleDuck,
-              max: AppSettings.loudestDuck,
-              divisions: AppSettings.duckDivisions,
-              label: '${(settings.duckedVolume * 100).round()}%',
-              onChanged: running
-                  ? null
-                  : (value) => cubits.settings.update(settings.copyWith(originalVolume: value)),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Switch(
-                  value: settings.duckWhileSpeaking,
-                  onChanged: running
-                      ? null
-                      : (value) =>
-                            cubits.settings.update(settings.copyWith(duckWhileSpeaking: value)),
-                ),
-                const SizedBox(width: 6),
-                Flexible(child: Text(l10n.duckWhileSpeaking)),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.duckWhileSpeakingNote,
-              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
-            ),
-          ],
-        ),
+    final volume = _SettingCard(
+      title: l10n.settingsOriginalVolume,
+      subtitle: l10n.originalVolumeValue((settings.duckedVolume * 100).round()),
+      // The floor is the capture's: the game is heard through this same
+      // volume, and silenced outright it would never be dubbed at all.
+      // Only the screen session, which has no ear in the game, may take it
+      // all the way down -- and it asks for that on its own page.
+      child: Column(
+        children: [
+          Slider(
+            key: const ValueKey('originalVolume'),
+            value: settings.duckedVolume,
+            min: AppSettings.audibleDuck,
+            max: AppSettings.loudestDuck,
+            divisions: AppSettings.duckDivisions,
+            label: '${(settings.duckedVolume * 100).round()}%',
+            onChanged: running
+                ? null
+                : (value) => cubits.settings.update(settings.copyWith(originalVolume: value)),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Switch(
+                value: settings.duckWhileSpeaking,
+                onChanged: running
+                    ? null
+                    : (value) =>
+                          cubits.settings.update(settings.copyWith(duckWhileSpeaking: value)),
+              ),
+              const SizedBox(width: 6),
+              Flexible(child: Text(l10n.duckWhileSpeaking)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.duckWhileSpeakingNote,
+            style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+          ),
+        ],
       ),
-      const SizedBox(height: 12),
-      _SettingCard(
-        title: l10n.settingsTtsSpeed,
-        subtitle: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
-        child: Column(
-          children: [
-            Slider(
-              key: const ValueKey('ttsSpeed'),
-              value: settings.chosenSpeed,
-              min: AppSettings.slowestSpeech,
-              max: AppSettings.fastestSpeech,
-              divisions: AppSettings.speechDivisions,
-              label: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
-              onChanged: running
-                  ? null
-                  : (value) => cubits.settings.update(settings.copyWith(ttsSpeed: value)),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Switch(
-                  key: const ValueKey('hurryWhenQueued'),
-                  value: settings.hurryWhenQueued,
-                  onChanged: running
-                      ? null
-                      : (value) =>
-                            cubits.settings.update(settings.copyWith(hurryWhenQueued: value)),
+    );
+    final pace = _SettingCard(
+      title: l10n.settingsTtsSpeed,
+      subtitle: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
+      child: Column(
+        children: [
+          Slider(
+            key: const ValueKey('ttsSpeed'),
+            value: settings.chosenSpeed,
+            min: AppSettings.slowestSpeech,
+            max: AppSettings.fastestSpeech,
+            divisions: AppSettings.speechDivisions,
+            label: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
+            onChanged: running
+                ? null
+                : (value) => cubits.settings.update(settings.copyWith(ttsSpeed: value)),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Switch(
+                key: const ValueKey('hurryWhenQueued'),
+                value: settings.hurryWhenQueued,
+                onChanged: running
+                    ? null
+                    : (value) => cubits.settings.update(settings.copyWith(hurryWhenQueued: value)),
+              ),
+              const SizedBox(width: 6),
+              Flexible(child: Text(l10n.hurryWhenQueued)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.hurryWhenQueuedNote,
+            style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+    return [
+      // Two sliders with a switch under each: side by side they are read at
+      // a glance, and one under the other only where the screen is too
+      // narrow to set either without squeezing its own notes.
+      LayoutBuilder(
+        builder: (context, constraints) => constraints.maxWidth >= _pairedCardsWidth
+            ? IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: volume),
+                    const SizedBox(width: 12),
+                    Expanded(child: pace),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Flexible(child: Text(l10n.hurryWhenQueued)),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.hurryWhenQueuedNote,
-              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
-            ),
-          ],
-        ),
+              )
+            : Column(children: [volume, const SizedBox(height: 12), pace]),
       ),
       const SizedBox(height: 12),
       _VoiceCard(cubits: cubits),

@@ -269,7 +269,14 @@ The Screen screen ("Экран", `DashboardSection.snapshot`) runs the second ki
 session, `PipelineSession.screen`: `AppRepository.startScreenText` ->
 `NativeEngineService.startScreenText` loads the worker with Marian and Silero
 only (no whisper) and then calls `ld_start` with `captureMode: 'ocr'`, which
-starts `OcrCapture` over the game's window and no audio capture at all. One
+starts `OcrCapture` over the game's window -- or over the virtual screen,
+which `AppSettings.screenSource` picks between and `ocrSource` carries to the
+native side -- and no audio capture at all. A window is read only while it is
+the foreground one, so nothing laid over the game passes for its subtitles;
+the screen is read whatever is in front, which is the only way into a game
+that keeps no ordinary window, and needs no process at all (`canStartScreen`
+asks for one only for the window). A process may still be named there, to be
+turned down. One
 session therefore answers for both halves of that screen — what the subtitle
 frame gains, which arrives as `ocrText`, and what the player picks out with
 the snapshot key, registered through `ld_set_hotkeys`; live dubbing registers
@@ -279,7 +286,9 @@ needs a process chosen, which `canStartScreen` checks.
 A second held key draws that frame over the running game rather than over a
 picture of it: `frameKey`/`frameModifiers` with `frameProcessId`, the same
 `SelectScreenArea` overlay, and then `RegionOfWindow` turning what was drawn
-into fractions of that process's client area. The frame is handed to the
+into fractions of that process's client area -- or `RegionOfScreen`, when the
+screen is what is read and `frameOf` is therefore zero. The frame is handed to
+the
 reading thread through `OcrCapture::SetRegion` — the capture reads it on
 every scan rather than holding the one it started with, so nothing is torn
 down — and comes back as a `subtitleFrame` event, which forgets the previous

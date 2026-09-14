@@ -84,6 +84,10 @@ class SettingsService {
         (source) => source.name == preferences.getString('audioCaptureSource'),
         orElse: () => AudioCaptureSource.process,
       ),
+      screenSource: ScreenSource.values.firstWhere(
+        (source) => source.name == preferences.getString('screenSource'),
+        orElse: () => ScreenSource.gameWindow,
+      ),
       pythonExecutable: preferences.getString('pythonExecutable') ?? bundledPythonExecutablePath(),
       detectSourceLanguage: preferences.getBool('detectSourceLanguage') ?? true,
       sourceLanguage: _readSourceLanguage(preferences),
@@ -131,6 +135,7 @@ class SettingsService {
         'audioCaptureSource',
         settings.audioCaptureSource.name,
       ),
+      preferences.setString('screenSource', settings.screenSource.name),
       preferences.setString('pythonExecutable', settings.pythonExecutable),
       preferences.setBool('detectSourceLanguage', settings.detectSourceLanguage),
       preferences.setString('sourceLanguage', settings.sourceLanguage),

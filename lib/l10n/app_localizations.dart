@@ -144,7 +144,7 @@ abstract class AppLocalizations {
   /// No description provided for @voicesOnTheGraph.
   ///
   /// In ru, this message translates to:
-  /// **'Кто кого озвучивает, задаётся на экране «Схема».'**
+  /// **'Какой персонаж будет читать реплику за кого, можно задать на экране «Схема».'**
   String get voicesOnTheGraph;
 
   /// No description provided for @charactersHowTo.
@@ -753,6 +753,24 @@ abstract class AppLocalizations {
   /// **'Загружаются только переводчик и голос ({language}), без распознавания речи. Читается окно выбранной игры, пока оно впереди — игра должна идти в оконном или полноэкранном оконном режиме.'**
   String snapshotNote(String language);
 
+  /// No description provided for @screenSourceWindow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Окно игры'**
+  String get screenSourceWindow;
+
+  /// No description provided for @screenSourceScreen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Весь экран'**
+  String get screenSourceScreen;
+
+  /// No description provided for @screenWholeNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загружаются только переводчик и голос ({language}), без распознавания речи. Читается всё, что на экране, какое бы окно ни было впереди — подходит и для игры без обычного окна. Процесс игры нужен здесь только для того, чтобы её приглушить.'**
+  String screenWholeNote(String language);
+
   /// No description provided for @snapshotStart.
   ///
   /// In ru, this message translates to:
@@ -1202,6 +1220,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Рамка {width} × {height}% окна, отступ {left}% слева и {top}% сверху'**
   String ocrRegionValue(int width, int height, int left, int top);
+
+  /// No description provided for @ocrRegionOfScreen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Рамка {width} × {height}% экрана, отступ {left}% слева и {top}% сверху'**
+  String ocrRegionOfScreen(int width, int height, int left, int top);
 
   /// No description provided for @ocrRegionHelp.
   ///

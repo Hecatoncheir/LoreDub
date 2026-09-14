@@ -195,8 +195,11 @@ class AppRepository {
     try {
       await _nativeEngine.startScreenText({
         'speaker': speaker,
+        // Named even when the screen is what is read: nothing is taken out
+        // of that window then, but it is still the game to turn down.
         'processId': process?.pid ?? 0,
         'captureMode': 'ocr',
+        'ocrSource': settings.readsWholeScreen ? 'screen' : 'process',
         'targetLanguage': settings.targetLanguage,
         'textLanguage': settings.textLanguage,
         'ocrLanguage': settings.textLanguage,
@@ -221,10 +224,11 @@ class AppRepository {
       _sessionSettings = settings;
       _nativeEngine.setHotkeys(
         snapshot: settings.snapshotHotkey,
-        // Drawn over the game rather than over a picture of it: the frame is
-        // measured against the window this session reads.
+        // Drawn over the game rather than over a picture of it, and
+        // measured against whatever this session reads: the window it was
+        // given, or -- with no process to name -- the screen itself.
         frame: settings.frameHotkey,
-        frameOf: process?.pid ?? 0,
+        frameOf: settings.readsWholeScreen ? 0 : process?.pid ?? 0,
         textLanguage: settings.textLanguage,
       );
     } catch (_) {

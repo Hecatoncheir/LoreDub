@@ -2083,6 +2083,23 @@ void main() {
       );
     });
 
+    testWidgets('reads the whole screen without a game to name', (tester) async {
+      // A game that keeps no ordinary window has none to read out of, and
+      // the frame is then measured against the monitors themselves.
+      final cubits = stageSnapshot(settings: const AppSettings());
+      cubits.pipeline.seed(const LivePipelineState());
+      await pumpDashboard(tester, cubits, const Size(1400, 1000));
+      expect(startButton(tester).onPressed, isNull, reason: 'a window needs a game');
+
+      await tester.tap(find.text('Весь экран'));
+      await tester.pumpAndSettle();
+
+      expect(cubits.settings.settings.readsWholeScreen, isTrue);
+      expect(startButton(tester).onPressed, isNotNull);
+      expect(find.textContaining('Читается всё, что на экране'), findsOneWidget);
+      expect(find.textContaining('% экрана'), findsOneWidget, reason: 'the frame says of what');
+    });
+
     testWidgets('waits for the game whose window it reads', (tester) async {
       final cubits = stageSnapshot();
       cubits.pipeline.seed(const LivePipelineState());

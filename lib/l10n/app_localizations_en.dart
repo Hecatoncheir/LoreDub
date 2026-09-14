@@ -35,7 +35,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'A card remembers a character\'s voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them. A voice can also be built from recordings you already have: drop them on the card.';
 
   @override
-  String get voicesOnTheGraph => 'Who voices whom is set on the Graph screen.';
+  String get voicesOnTheGraph =>
+      'Which character reads whose lines can be set on the Graph screen.';
 
   @override
   String get charactersHowTo =>
@@ -405,6 +406,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get screenSourceWindow => 'Game window';
+
+  @override
+  String get screenSourceScreen => 'Whole screen';
+
+  @override
+  String screenWholeNote(String language) {
+    return 'Only the translator and the voice ($language) are loaded, no speech recognition. Everything on the screen is read, whichever window is in front — which is what a game without an ordinary window needs. The game process is named here only to turn it down.';
+  }
+
+  @override
   String get snapshotStart => 'Start';
 
   @override
@@ -676,6 +688,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String ocrRegionValue(int width, int height, int left, int top) {
     return 'Frame $width × $height% of the window, $left% from the left and $top% from the top';
+  }
+
+  @override
+  String ocrRegionOfScreen(int width, int height, int left, int top) {
+    return 'Frame $width × $height% of the screen, $left% from the left and $top% from the top';
   }
 
   @override

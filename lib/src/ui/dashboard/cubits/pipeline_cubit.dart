@@ -130,12 +130,13 @@ class LivePipelineState {
       (!selection.requiresProcess || selectedProcess != null) &&
       selection.tracksSpeakers;
 
-  /// The screen session needs its pair of models, a key to select with, and
-  /// the game whose window the subtitle frame is read out of.
+  /// The screen session needs its pair of models, a key to select with,
+  /// and -- unless the whole screen is what it reads -- the game whose
+  /// window the subtitle frame is taken out of.
   bool canStartScreen(ModelSelection selection, {required bool initializing}) =>
       !initializing &&
       status == PipelineStatus.idle &&
-      selectedProcess != null &&
+      (selection.settings.readsWholeScreen || selectedProcess != null) &&
       selection.screenModelsInstalled &&
       selection.settings.snapshotHotkey != null;
 

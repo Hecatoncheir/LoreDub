@@ -488,7 +488,11 @@ bool DrawSubtitleFrame(uint32_t key, uint32_t process_id) {
   if (result == SelectionResult::quit) return false;
   if (result == SelectionResult::cancelled) return true;
   OcrRegion region;
-  if (!RegionOfWindow(process_id, area, &region)) {
+  // Zero is the screen itself: the frame is then measured against every
+  // monitor together rather than against a window.
+  const bool found = process_id == 0 ? RegionOfScreen(area, &region)
+                                     : RegionOfWindow(process_id, area, &region);
+  if (!found) {
     PushEvent("{\"type\":\"subtitleFrame\",\"failed\":true}");
     return true;
   }
@@ -584,8 +588,6 @@ int32_t ld_set_hotkeys(const char* config_json) {
   if (const auto language = JsonString(config, "snapshotLanguage"); !language.empty()) {
     hotkeys.snapshot_language = language;
   }
-  // Without a window to measure it against there is no frame to draw.
-  if (hotkeys.frame_process_id == 0) hotkeys.frame_key = 0;
   if (hotkeys.pause_key == 0 && hotkeys.resume_key == 0 && hotkeys.snapshot_key == 0 &&
       hotkeys.frame_key == 0) {
     return 0;
@@ -735,7 +737,11 @@ int32_t ld_start(const char* config_json) {
   const std::string capture_directory = JsonString(config, "captureDirectory");
   const std::string capture_mode = JsonString(config, "captureMode");
   const std::string audio_source = JsonString(config, "audioSource");
-  const bool needs_process = capture_mode == "ocr" || audio_source != "system";
+  // Reading the whole screen needs no window, and so no process to find it
+  // by -- one may still be named, to be turned down while the reading runs.
+  const bool whole_screen = JsonString(config, "ocrSource") == "screen";
+  const bool needs_process =
+      capture_mode == "ocr" ? !whole_screen : audio_source != "system";
   if ((needs_process && process_id == 0) ||
       (capture_mode != "ocr" && capture_directory.empty())) {
     running = false;
@@ -750,7 +756,7 @@ int32_t ld_start(const char* config_json) {
     std::string ocr_language = JsonString(config, "ocrLanguage");
     if (ocr_language.empty()) ocr_language = "en";
     if (!ocr_capture->Start(
-            process_id, region, ocr_language,
+            whole_screen ? 0 : process_id, region, ocr_language,
             [](const std::string& recognized_text) {
               if (paused) return;
               PushEvent("{\"type\":\"ocrText\",\"text\":\"" +

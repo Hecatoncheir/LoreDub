@@ -11,6 +11,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
@@ -54,6 +55,16 @@ class _PipelineShelfState extends State<PipelineShelf> {
   /// is for; the shelf is asked for now and then.
   bool _open = false;
 
+  /// Held here so the scrollbar and the row it belongs to are the same
+  /// scroll: a shelf wider than the window is dragged by either.
+  final _shelf = ScrollController();
+
+  @override
+  void dispose() {
+    _shelf.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -69,15 +80,9 @@ class _PipelineShelfState extends State<PipelineShelf> {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
-                _ShelfLabel(label: l10n.pipelineSchemes.toUpperCase()),
-                const SizedBox(width: 10),
-                Text(
-                  widget.schemes.isEmpty ? '' : '${widget.schemes.length}',
-                  style: const TextStyle(
-                    fontFamily: LoreDubFonts.mono,
-                    fontSize: 11,
-                    color: LoreDubPalette.mutedInk,
-                  ),
+                _ShelfLabel(
+                  label: l10n.pipelineSchemes.toUpperCase(),
+                  count: widget.schemes.length,
                 ),
                 const Spacer(),
                 Icon(
@@ -102,18 +107,37 @@ class _PipelineShelfState extends State<PipelineShelf> {
           else
             SizedBox(
               height: PipelineShelf.height,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(bottom: 8),
-                itemCount: widget.schemes.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 12),
-                itemBuilder: (context, index) => _SchemeCard(
-                  scheme: widget.schemes[index],
-                  cast: widget.cast,
-                  onChoose: () => widget.onChoose(widget.schemes[index].id),
-                  onRename: (name) => widget.onRename(widget.schemes[index].id, name),
-                  onRemove: () => widget.onRemove(widget.schemes[index].id),
-                  onExport: () => widget.onExport(widget.schemes[index].id),
+              // Kept schemes run off the side of the window as soon as there
+              // are a few: the bar under them can be dragged, and so can the
+              // cards themselves, a mouse being as good as a finger here.
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.trackpad,
+                    PointerDeviceKind.stylus,
+                  },
+                  scrollbars: false,
+                ),
+                child: Scrollbar(
+                  controller: _shelf,
+                  thumbVisibility: true,
+                  child: ListView.separated(
+                    controller: _shelf,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(bottom: 12),
+                    itemCount: widget.schemes.length,
+                    separatorBuilder: (context, index) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) => _SchemeCard(
+                      scheme: widget.schemes[index],
+                      cast: widget.cast,
+                      onChoose: () => widget.onChoose(widget.schemes[index].id),
+                      onRename: (name) => widget.onRename(widget.schemes[index].id, name),
+                      onRemove: () => widget.onRemove(widget.schemes[index].id),
+                      onExport: () => widget.onExport(widget.schemes[index].id),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -123,11 +147,15 @@ class _PipelineShelfState extends State<PipelineShelf> {
   }
 }
 
-/// The shelf's own heading, in the vocabulary the screens' module labels use.
+/// The shelf's own heading, in the vocabulary the screens' module labels
+/// use -- except that the marking carries how many schemes are kept rather
+/// than which area of the screen this is. There is one shelf, and the number
+/// worth reading is the count.
 class _ShelfLabel extends StatelessWidget {
-  const _ShelfLabel({required this.label});
+  const _ShelfLabel({required this.label, required this.count});
 
   final String label;
+  final int count;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -142,9 +170,9 @@ class _ShelfLabel extends StatelessWidget {
           borderRadius: BorderRadius.circular(4),
           border: Border.all(color: LoreDubPalette.ink),
         ),
-        child: const Text(
-          '02',
-          style: TextStyle(
+        child: Text(
+          '$count',
+          style: const TextStyle(
             fontFamily: LoreDubFonts.mono,
             color: LoreDubPalette.ink,
             fontSize: 10,

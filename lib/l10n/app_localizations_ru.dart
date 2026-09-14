@@ -35,7 +35,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Карточка запоминает голос персонажа: подойдите к нему в игре, нажмите «Записать голос» и дайте ему поговорить. Персонажи общие для всех игр, и в «Эфире» их реплики озвучиваются закреплённым за ними голосом. Голос можно собрать и из готовых записей: перетащите их на карточку.';
 
   @override
-  String get voicesOnTheGraph => 'Кто кого озвучивает, задаётся на экране «Схема».';
+  String get voicesOnTheGraph =>
+      'Какой персонаж будет читать реплику за кого, можно задать на экране «Схема».';
 
   @override
   String get charactersHowTo =>
@@ -408,6 +409,17 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get screenSourceWindow => 'Окно игры';
+
+  @override
+  String get screenSourceScreen => 'Весь экран';
+
+  @override
+  String screenWholeNote(String language) {
+    return 'Загружаются только переводчик и голос ($language), без распознавания речи. Читается всё, что на экране, какое бы окно ни было впереди — подходит и для игры без обычного окна. Процесс игры нужен здесь только для того, чтобы её приглушить.';
+  }
+
+  @override
   String get snapshotStart => 'Запустить';
 
   @override
@@ -680,6 +692,11 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String ocrRegionValue(int width, int height, int left, int top) {
     return 'Рамка $width × $height% окна, отступ $left% слева и $top% сверху';
+  }
+
+  @override
+  String ocrRegionOfScreen(int width, int height, int left, int top) {
+    return 'Рамка $width × $height% экрана, отступ $left% слева и $top% сверху';
   }
 
   @override

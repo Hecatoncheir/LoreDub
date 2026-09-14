@@ -8,7 +8,7 @@
   "navCharacters": "Characters",
   "titleCharacters": "Character voices",
   "charactersNote": "A card remembers a character's voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them. A voice can also be built from recordings you already have: drop them on the card.",
-  "voicesOnTheGraph": "Who voices whom is set on the Graph screen.",
+  "voicesOnTheGraph": "Which character reads whose lines can be set on the Graph screen.",
   "charactersHowTo": "Start the recording session, choose the game process, and record the voices one by one.",
   "charactersNeedsConverter": "The voice converter is needed: download it in the Original voice section of the Models screen.",
   "charactersSessionStart": "Start recording",
@@ -221,6 +221,16 @@
       }
     }
   },
+  "screenSourceWindow": "Game window",
+  "screenSourceScreen": "Whole screen",
+  "screenWholeNote": "Only the translator and the voice ({language}) are loaded, no speech recognition. Everything on the screen is read, whichever window is in front — which is what a game without an ordinary window needs. The game process is named here only to turn it down.",
+  "@screenWholeNote": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
   "snapshotStart": "Start",
   "snapshotStop": "Stop",
   "snapshotReading": "Reading and translating the snippet…",
@@ -412,6 +422,23 @@
   "ocrRegionNote": "Drag a frame over the place where the game prints its subtitles. The screen below stands for the game window; the frame is kept as a share of it, so it fits any resolution.",
   "ocrRegionValue": "Frame {width} × {height}% of the window, {left}% from the left and {top}% from the top",
   "@ocrRegionValue": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "left": {
+        "type": "int"
+      },
+      "top": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrRegionOfScreen": "Frame {width} × {height}% of the screen, {left}% from the left and {top}% from the top",
+  "@ocrRegionOfScreen": {
     "placeholders": {
       "width": {
         "type": "int"

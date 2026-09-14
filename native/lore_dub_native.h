@@ -55,7 +55,9 @@ LD_API int32_t ld_stop_wave(void);
 LD_API int32_t ld_decode_audio(const char* utf8_path, const char* utf8_output_path);
 
 // Starts/stops the real-time pipeline. Config is a UTF-8 JSON object. Events
-// are retrieved using ld_poll_event_json.
+// are retrieved using ld_poll_event_json. With captureMode "ocr", ocrSource
+// picks what the frame is read out of: "screen" for the virtual screen,
+// anything else for processId's window while it is in front.
 LD_API int32_t ld_start(const char* config_json);
 LD_API int32_t ld_stop(void);
 
@@ -90,10 +92,10 @@ LD_API int32_t ld_set_paused(int32_t paused);
 // subtitle capture into what was drawn and sends
 // {"type":"subtitleFrame","left":...,"top":...,"right":...,"bottom":...},
 // each edge a fraction of the client area of frameProcessId's window
-// ("failed":true when that window was nowhere under the rectangle). Without
-// frameProcessId there is nothing to measure the frame against and the key
-// is left unbound. Null or an empty string unregisters them; ld_stop does
-// too.
+// ("failed":true when that window was nowhere under the rectangle). A
+// frameProcessId of zero measures the frame against the virtual screen
+// instead, which is what ld_start reads when its ocrSource is "screen".
+// Null or an empty string unregisters them; ld_stop does too.
 LD_API int32_t ld_set_hotkeys(const char* config_json);
 
 // Pops one UTF-8 JSON event. Returns 0 when the queue is empty, a positive
