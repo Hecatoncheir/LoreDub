@@ -42,6 +42,7 @@ class AppSettings {
     this.pauseHotkey = Hotkey.defaultPause,
     this.resumeHotkey = Hotkey.defaultResume,
     this.snapshotHotkey = Hotkey.defaultSnapshot,
+    this.frameHotkey = Hotkey.defaultFrame,
     this.computeDevice = ComputeDevice.auto,
     this.recognitionBackend,
     this.translationBackend,
@@ -187,6 +188,10 @@ class AppSettings {
   /// once; null leaves the snapshot screen without a way to select.
   final Hotkey? snapshotHotkey;
 
+  /// Held over the running game to draw the subtitle frame where the game
+  /// actually writes, instead of guessing at it on a picture of the screen.
+  final Hotkey? frameHotkey;
+
   VoiceMode get voiceMode => originalVoice
       ? VoiceMode.original
       : automaticVoice
@@ -284,6 +289,8 @@ class AppSettings {
     bool clearResumeHotkey = false,
     Hotkey? snapshotHotkey,
     bool clearSnapshotHotkey = false,
+    Hotkey? frameHotkey,
+    bool clearFrameHotkey = false,
     ComputeDevice? computeDevice,
     ComputeBackend? recognitionBackend,
     ComputeBackend? translationBackend,
@@ -317,6 +324,7 @@ class AppSettings {
     pauseHotkey: clearPauseHotkey ? null : pauseHotkey ?? this.pauseHotkey,
     resumeHotkey: clearResumeHotkey ? null : resumeHotkey ?? this.resumeHotkey,
     snapshotHotkey: clearSnapshotHotkey ? null : snapshotHotkey ?? this.snapshotHotkey,
+    frameHotkey: clearFrameHotkey ? null : frameHotkey ?? this.frameHotkey,
     computeDevice: computeDevice ?? this.computeDevice,
     recognitionBackend: clearBackendOverrides
         ? null

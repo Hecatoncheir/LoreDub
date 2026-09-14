@@ -97,6 +97,7 @@ class SettingsService {
       pauseHotkey: _readHotkey(preferences, 'pauseHotkey', Hotkey.defaultPause),
       resumeHotkey: _readHotkey(preferences, 'resumeHotkey', Hotkey.defaultResume),
       snapshotHotkey: _readHotkey(preferences, 'snapshotHotkey', Hotkey.defaultSnapshot),
+      frameHotkey: _readHotkey(preferences, 'frameHotkey', Hotkey.defaultFrame),
       computeDevice: ComputeDevice.values.firstWhere(
         (device) => device.name == preferences.getString('computeDevice'),
         orElse: () => ComputeDevice.auto,
@@ -145,6 +146,7 @@ class SettingsService {
       preferences.setString('pauseHotkey', settings.pauseHotkey?.encode() ?? ''),
       preferences.setString('resumeHotkey', settings.resumeHotkey?.encode() ?? ''),
       preferences.setString('snapshotHotkey', settings.snapshotHotkey?.encode() ?? ''),
+      preferences.setString('frameHotkey', settings.frameHotkey?.encode() ?? ''),
       preferences.setString('computeDevice', settings.computeDevice.name),
       _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
       _writeBackend(preferences, 'translationBackend', settings.translationBackend),

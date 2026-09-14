@@ -221,6 +221,10 @@ class AppRepository {
       _sessionSettings = settings;
       _nativeEngine.setHotkeys(
         snapshot: settings.snapshotHotkey,
+        // Drawn over the game rather than over a picture of it: the frame is
+        // measured against the window this session reads.
+        frame: settings.frameHotkey,
+        frameOf: process?.pid ?? 0,
         textLanguage: settings.textLanguage,
       );
     } catch (_) {

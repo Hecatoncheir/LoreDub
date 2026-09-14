@@ -442,6 +442,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hotkeySnapshot => 'Select an area';
 
   @override
+  String get hotkeyFrame => 'Subtitle frame';
+
+  @override
+  String frameHowTo(String hotkey) {
+    return 'The frame can be redrawn during the game: hold $hotkey, draw around the place the subtitles are written and let go — the selection disappears and the reading goes on inside the new frame.';
+  }
+
+  @override
+  String get frameMissed => 'The selection missed the game window — the frame is where it was';
+
+  @override
   String get hotkeyUnset => 'Not set';
 
   @override

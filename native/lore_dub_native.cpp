@@ -406,6 +406,7 @@ std::thread snapshot_reader;
 constexpr int kPauseHotkey = 1;
 constexpr int kResumeHotkey = 2;
 constexpr int kSnapshotHotkey = 3;
+constexpr int kFrameHotkey = 4;
 
 struct HotkeyConfig {
   uint32_t pause_key = 0;
@@ -414,6 +415,13 @@ struct HotkeyConfig {
   uint32_t resume_modifiers = 0;
   uint32_t snapshot_key = 0;
   uint32_t snapshot_modifiers = 0;
+  uint32_t frame_key = 0;
+  uint32_t frame_modifiers = 0;
+
+  // Whose window the subtitle frame is measured against. The frame is kept
+  // in fractions of that window's client area, so there is nothing to
+  // measure without it.
+  uint32_t frame_process_id = 0;
 
   // The primary subtag a selected area is read in.
   std::string snapshot_language = "en";
@@ -469,6 +477,31 @@ bool TakeSnapshot(uint32_t key, const std::string& language) {
   return true;
 }
 
+// Lets the player draw the subtitle frame over the running game while the
+// frame key is held, and moves the capture into it once the key comes up.
+// The frame goes on being read where it was drawn -- nothing here reads the
+// area once -- and the new one reaches the settings as an event.
+// Returns false when a WM_QUIT arrived during the selection.
+bool DrawSubtitleFrame(uint32_t key, uint32_t process_id) {
+  ScreenArea area;
+  const auto result = SelectScreenArea(key, &area, PushHotkeyPress);
+  if (result == SelectionResult::quit) return false;
+  if (result == SelectionResult::cancelled) return true;
+  OcrRegion region;
+  if (!RegionOfWindow(process_id, area, &region)) {
+    PushEvent("{\"type\":\"subtitleFrame\",\"failed\":true}");
+    return true;
+  }
+  // The capture thread reads the frame on every scan, so it is enough to
+  // hand it the new one: the session is not torn down and started again.
+  if (ocr_capture) ocr_capture->SetRegion(region);
+  PushEvent("{\"type\":\"subtitleFrame\",\"left\":" + std::to_string(region.left) +
+            ",\"top\":" + std::to_string(region.top) +
+            ",\"right\":" + std::to_string(region.right) +
+            ",\"bottom\":" + std::to_string(region.bottom) + "}");
+  return true;
+}
+
 void HotkeyLoop(HotkeyConfig config, std::promise<void>* ready) {
   MSG message;
   // Creates this thread's message queue, so a WM_QUIT posted from the
@@ -481,6 +514,8 @@ void HotkeyLoop(HotkeyConfig config, std::promise<void>* ready) {
       RegisterAction(kResumeHotkey, config.resume_key, config.resume_modifiers, "resume");
   const bool snapshot_ok =
       RegisterAction(kSnapshotHotkey, config.snapshot_key, config.snapshot_modifiers, "snapshot");
+  const bool frame_ok =
+      RegisterAction(kFrameHotkey, config.frame_key, config.frame_modifiers, "frame");
   ready->set_value();
   while (GetMessageW(&message, nullptr, 0, 0) > 0) {
     if (message.message != WM_HOTKEY) continue;
@@ -488,11 +523,16 @@ void HotkeyLoop(HotkeyConfig config, std::promise<void>* ready) {
       if (!TakeSnapshot(config.snapshot_key, config.snapshot_language)) break;
       continue;
     }
+    if (message.wParam == kFrameHotkey) {
+      if (!DrawSubtitleFrame(config.frame_key, config.frame_process_id)) break;
+      continue;
+    }
     PushHotkeyPress(static_cast<uintptr_t>(message.wParam));
   }
   if (pause_ok) UnregisterHotKey(nullptr, kPauseHotkey);
   if (resume_ok) UnregisterHotKey(nullptr, kResumeHotkey);
   if (snapshot_ok) UnregisterHotKey(nullptr, kSnapshotHotkey);
+  if (frame_ok) UnregisterHotKey(nullptr, kFrameHotkey);
 }
 
 void StopHotkeys() {
@@ -537,11 +577,19 @@ int32_t ld_set_hotkeys(const char* config_json) {
                        JsonUnsigned(config, "resumeKey"),
                        JsonUnsigned(config, "resumeModifiers"),
                        JsonUnsigned(config, "snapshotKey"),
-                       JsonUnsigned(config, "snapshotModifiers")};
+                       JsonUnsigned(config, "snapshotModifiers"),
+                       JsonUnsigned(config, "frameKey"),
+                       JsonUnsigned(config, "frameModifiers"),
+                       JsonUnsigned(config, "frameProcessId")};
   if (const auto language = JsonString(config, "snapshotLanguage"); !language.empty()) {
     hotkeys.snapshot_language = language;
   }
-  if (hotkeys.pause_key == 0 && hotkeys.resume_key == 0 && hotkeys.snapshot_key == 0) return 0;
+  // Without a window to measure it against there is no frame to draw.
+  if (hotkeys.frame_process_id == 0) hotkeys.frame_key = 0;
+  if (hotkeys.pause_key == 0 && hotkeys.resume_key == 0 && hotkeys.snapshot_key == 0 &&
+      hotkeys.frame_key == 0) {
+    return 0;
+  }
   std::lock_guard<std::mutex> lock(hotkey_mutex);
   std::promise<void> ready;
   auto registered = ready.get_future();
@@ -750,6 +798,12 @@ int32_t ld_start(const char* config_json) {
 }
 
 int32_t ld_stop(void) {
+#if defined(_WIN32)
+  // First: the hotkey thread reaches into the capture to move the subtitle
+  // frame, and StopHotkeys joins it. Let go of the capture before that and a
+  // selection still on screen would land in freed memory.
+  StopHotkeys();
+#endif
   if (loopback_capture) {
     loopback_capture->Stop();
     loopback_capture.reset();
@@ -761,10 +815,6 @@ int32_t ld_stop(void) {
   }
   running = false;
   paused = false;
-#if defined(_WIN32)
-  // Nothing is left to pause or resume.
-  StopHotkeys();
-#endif
   PushEvent("{\"type\":\"state\",\"state\":\"idle\"}");
   ld_restore_process_volumes();
   return 0;

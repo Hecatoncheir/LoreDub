@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -37,6 +38,13 @@ inline constexpr char kOcrLanguageMissing[] = "ocrLanguageMissing";
 bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::string* text,
                          std::string* error);
 
+// Turns a rectangle drawn on the screen into the part of [process_id]'s
+// window it covers, each edge a fraction of that window's client area, so a
+// frame drawn over a running game means the same thing at another
+// resolution. False when the window is nowhere to be found, or the rectangle
+// missed it: a frame of nothing would leave the capture reading nothing.
+bool RegionOfWindow(uint32_t process_id, ScreenArea area, OcrRegion* region);
+
 class OcrCapture {
  public:
   using TextCallback = std::function<void(const std::string&)>;
@@ -53,10 +61,21 @@ class OcrCapture {
              TextCallback on_text, ErrorCallback on_error);
   void Stop();
 
+  // Moves the frame while the capture runs, from the next scan on. The
+  // player draws it over the game with a key held, and the reading goes on
+  // in the new place rather than being torn down and started again.
+  void SetRegion(OcrRegion region);
+
  private:
-  void CaptureThread(uint32_t process_id, OcrRegion region, std::string language,
-                     TextCallback on_text, ErrorCallback on_error);
+  void CaptureThread(uint32_t process_id, std::string language, TextCallback on_text,
+                     ErrorCallback on_error);
+  OcrRegion Region();
 
   std::atomic<bool> stopping_{false};
   std::thread thread_;
+
+  // Read by the capture thread on every scan and written by whichever thread
+  // the selection ended on.
+  std::mutex region_mutex_;
+  OcrRegion region_;
 };

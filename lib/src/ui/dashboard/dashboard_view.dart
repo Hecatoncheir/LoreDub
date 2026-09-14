@@ -1372,10 +1372,10 @@ class _SubtitleList extends StatelessWidget {
 
 /// What the screen session keeps for itself before it starts scrolling: the
 /// controls beside the frame, and a list under them worth looking at.
-const _screenMinHeight = 900.0;
+const _screenMinHeight = 980.0;
 
 /// The same, with the frame under the controls rather than beside them.
-const _screenStackedMinHeight = 1240.0;
+const _screenStackedMinHeight = 1320.0;
 
 /// How tall one of the two lists is made when the screen scrolls instead of
 /// filling the window.
@@ -1476,7 +1476,16 @@ class _SubtitleFrameCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
+            // Drawn here before the game starts, or over the game itself
+            // once it has: the same frame either way.
+            if (settings.frameHotkey case final key?) ...[
+              Text(
+                l10n.frameHowTo(key.display),
+                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+            ],
             Row(
               children: [
                 Switch(
@@ -1518,6 +1527,7 @@ class _SnapshotControls extends StatelessWidget {
         pipeline.session,
         pipeline.snapshotReading,
         pipeline.snapshotMissed,
+        pipeline.frameMissed,
         pipeline.selectedProcess,
         pipeline.processes,
       ),
@@ -1613,6 +1623,11 @@ class _SnapshotControls extends StatelessWidget {
         Icons.info_outline_rounded,
         l10n.snapshotInLive,
         LoreDubPalette.mutedInk,
+      ),
+      _ when pipeline.frameMissed => (
+        Icons.crop_free_rounded,
+        l10n.frameMissed,
+        LoreDubPalette.warning,
       ),
       _ when pipeline.selectedProcess == null => (
         Icons.videogame_asset_off_rounded,
@@ -4007,6 +4022,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   others: [
                     (_settings.resumeHotkey, l10n.hotkeyResume),
                     (_settings.snapshotHotkey, l10n.hotkeySnapshot),
+                    (_settings.frameHotkey, l10n.hotkeyFrame),
                   ],
                 ),
                 onChanged: (hotkey) => cubits.settings.update(
@@ -4029,6 +4045,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   others: [
                     (_settings.pauseHotkey, l10n.hotkeyPause),
                     (_settings.snapshotHotkey, l10n.hotkeySnapshot),
+                    (_settings.frameHotkey, l10n.hotkeyFrame),
                   ],
                 ),
                 onChanged: (hotkey) => cubits.settings.update(
@@ -4051,12 +4068,36 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                   others: [
                     (_settings.pauseHotkey, l10n.hotkeyPause),
                     (_settings.resumeHotkey, l10n.hotkeyResume),
+                    (_settings.frameHotkey, l10n.hotkeyFrame),
                   ],
                 ),
                 onChanged: (hotkey) => cubits.settings.update(
                   hotkey == null
                       ? _settings.copyWith(clearSnapshotHotkey: true)
                       : _settings.copyWith(snapshotHotkey: hotkey),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _HotkeyRow(
+              label: l10n.hotkeyFrame,
+              field: HotkeyField(
+                key: const ValueKey('frameHotkey'),
+                value: settings.frameHotkey,
+                enabled: !running,
+                validate: (hotkey) => _hotkeyProblem(
+                  l10n,
+                  hotkey,
+                  others: [
+                    (_settings.pauseHotkey, l10n.hotkeyPause),
+                    (_settings.resumeHotkey, l10n.hotkeyResume),
+                    (_settings.snapshotHotkey, l10n.hotkeySnapshot),
+                  ],
+                ),
+                onChanged: (hotkey) => cubits.settings.update(
+                  hotkey == null
+                      ? _settings.copyWith(clearFrameHotkey: true)
+                      : _settings.copyWith(frameHotkey: hotkey),
                 ),
               ),
             ),

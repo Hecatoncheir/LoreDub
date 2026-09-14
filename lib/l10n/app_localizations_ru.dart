@@ -445,6 +445,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hotkeySnapshot => 'Выделение области';
 
   @override
+  String get hotkeyFrame => 'Рамка субтитров';
+
+  @override
+  String frameHowTo(String hotkey) {
+    return 'Во время игры рамку можно обвести заново: удерживайте $hotkey, выделите место с субтитрами и отпустите — выделение исчезнет, а чтение продолжится в новой рамке.';
+  }
+
+  @override
+  String get frameMissed => 'Выделение не попало в окно игры — рамка осталась прежней';
+
+  @override
   String get hotkeyUnset => 'Не назначено';
 
   @override

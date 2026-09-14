@@ -723,6 +723,20 @@ move it and pull its corners and sides. From the keyboard, the arrows move the
 frame and Shift with the arrows resizes it. **Reset** puts back the default,
 the bottom 45% of the window.
 
+The frame lands best drawn in the game itself rather than here: hold
+**Ctrl+Alt+F** (changed in **Settings** → **Hotkeys** → **Subtitle frame**),
+draw around the place the game writes its lines and let go. The selection
+disappears and the reading goes on inside the new frame — the session is not
+restarted, and the card shows at once where the frame moved to. A selection
+that missed the game window changes nothing and says so.
+
+The frame lands best drawn in the game itself rather than here: hold
+**Ctrl+Alt+F** (changed in **Settings** → **Hotkeys** → **Subtitle frame**),
+draw around the place the game writes its lines and let go. The selection
+disappears and the reading goes on inside the new frame — the session is not
+restarted, and the card shows at once where the frame moved to. A selection
+that missed the game window changes nothing and says so.
+
 The frame is kept as a share of the game window rather than in pixels, so it
 survives a change of resolution. The line under the screen gives its size and
 offsets in percent. **Silence the game** turns the game's own sound off while

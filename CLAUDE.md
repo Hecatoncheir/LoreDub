@@ -82,7 +82,8 @@ than one of them.
    per-process volume, WAV playback, `ld_set_paused` (capture drops what it
    finishes while set) and `ld_set_hotkeys` (RegisterHotKey on a thread with
    its own message loop, presses queued as `hotkey` events; `ld_stop` drops
-   them). Everything crosses the boundary as UTF-8
+   them, and joins that thread before it lets go of the capture, which the
+   frame key reaches into). Everything crosses the boundary as UTF-8
    JSON. The native side hand-rolls its JSON parsing/escaping (`JsonString`,
    `EscapeJson`) — keep config keys flat and string/number valued.
    `NativeEngineService` polls `ld_poll_event_json` every 80 ms and turns
@@ -273,7 +274,19 @@ session therefore answers for both halves of that screen — what the subtitle
 frame gains, which arrives as `ocrText`, and what the player picks out with
 the snapshot key, registered through `ld_set_hotkeys`; live dubbing registers
 the key as well. Because the frame is read out of one window, this session
-needs a process chosen, which `canStartScreen` checks. The key is held, not
+needs a process chosen, which `canStartScreen` checks.
+
+A second held key draws that frame over the running game rather than over a
+picture of it: `frameKey`/`frameModifiers` with `frameProcessId`, the same
+`SelectScreenArea` overlay, and then `RegionOfWindow` turning what was drawn
+into fractions of that process's client area. The frame is handed to the
+reading thread through `OcrCapture::SetRegion` — the capture reads it on
+every scan rather than holding the one it started with, so nothing is torn
+down — and comes back as a `subtitleFrame` event, which forgets the previous
+OCR text (the old frame's) and writes `AppSettings.ocrRegion` through
+`SettingsCubit`, so the picker shows where the reading moved and the next
+session starts there. A selection that missed the window answers
+`failed` and changes nothing. The snapshot key is held, not
 pressed: on its WM_HOTKEY the hotkey thread runs `SelectScreenArea`
 (`native/snapshot_overlay.cpp`) — a dimming layered window over the virtual
 screen, a click-through orange frame above it, a nested message loop, and

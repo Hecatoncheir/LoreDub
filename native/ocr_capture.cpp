@@ -250,6 +250,35 @@ bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::stri
 #endif
 }
 
+bool RegionOfWindow(uint32_t process_id, ScreenArea area, OcrRegion* region) {
+#if !defined(_WIN32)
+  (void)process_id;
+  (void)area;
+  (void)region;
+  return false;
+#else
+  const HWND window = FindProcessWindow(process_id);
+  if (window == nullptr) return false;
+  RECT client{};
+  if (!GetClientRect(window, &client)) return false;
+  POINT origin{0, 0};
+  if (!ClientToScreen(window, &origin)) return false;
+  const double width = client.right;
+  const double height = client.bottom;
+  if (width <= 0 || height <= 0) return false;
+  // The selection is in screen pixels and the frame is in fractions of the
+  // client area, so a player who drew past the edge of the window gets the
+  // edge -- and one who drew beside it entirely gets nothing.
+  const double left = std::clamp((area.left - origin.x) / width, 0.0, 1.0);
+  const double right = std::clamp((area.right - origin.x) / width, 0.0, 1.0);
+  const double top = std::clamp((area.top - origin.y) / height, 0.0, 1.0);
+  const double bottom = std::clamp((area.bottom - origin.y) / height, 0.0, 1.0);
+  if (right - left < 0.02 || bottom - top < 0.02) return false;
+  *region = OcrRegion{left, top, right, bottom};
+  return true;
+#endif
+}
+
 OcrCapture::OcrCapture() = default;
 OcrCapture::~OcrCapture() { Stop(); }
 
@@ -257,10 +286,20 @@ bool OcrCapture::Start(uint32_t process_id, OcrRegion region, std::string langua
                        TextCallback on_text, ErrorCallback on_error) {
   if (thread_.joinable()) return false;
   stopping_ = false;
+  SetRegion(region);
   thread_ = std::thread(&OcrCapture::CaptureThread, this, process_id,
-                        SanitizeRegion(region), std::move(language), std::move(on_text),
-                        std::move(on_error));
+                        std::move(language), std::move(on_text), std::move(on_error));
   return true;
+}
+
+void OcrCapture::SetRegion(OcrRegion region) {
+  std::lock_guard<std::mutex> lock(region_mutex_);
+  region_ = SanitizeRegion(region);
+}
+
+OcrRegion OcrCapture::Region() {
+  std::lock_guard<std::mutex> lock(region_mutex_);
+  return region_;
 }
 
 void OcrCapture::Stop() {
@@ -268,11 +307,10 @@ void OcrCapture::Stop() {
   if (thread_.joinable()) thread_.join();
 }
 
-void OcrCapture::CaptureThread(uint32_t process_id, OcrRegion region, std::string language,
+void OcrCapture::CaptureThread(uint32_t process_id, std::string language,
                                TextCallback on_text, ErrorCallback on_error) {
 #if !defined(_WIN32)
   (void)process_id;
-  (void)region;
   (void)language;
   (void)on_text;
   on_error("Windows OCR is only available on Windows");
@@ -297,7 +335,7 @@ void OcrCapture::CaptureThread(uint32_t process_id, OcrRegion region, std::strin
       int32_t height = 0;
       std::string text;
       if (window != nullptr && window == GetForegroundWindow() &&
-          CaptureRegion(window, region, &pixels, &width, &height)) {
+          CaptureRegion(window, Region(), &pixels, &width, &height)) {
         text = Recognize(engine, pixels, width, height);
       }
       if (text.empty()) {

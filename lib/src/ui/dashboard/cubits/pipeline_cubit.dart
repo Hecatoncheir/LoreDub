@@ -10,6 +10,7 @@ import 'package:path/path.dart' as path;
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../domain/app_settings.dart';
+import '../../../domain/ocr_region.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
@@ -37,6 +38,7 @@ class LivePipelineState {
     this.snapshots = const [],
     this.snapshotReading = false,
     this.snapshotMissed = false,
+    this.frameMissed = false,
   });
 
   final PipelineStatus status;
@@ -75,6 +77,10 @@ class LivePipelineState {
 
   /// Whether the last selection held no text Windows could read.
   final bool snapshotMissed;
+
+  /// Whether the last frame drawn over the game missed its window, so the
+  /// subtitles go on being read where they were.
+  final bool frameMissed;
 
   /// A paused session is still a session: its settings stay locked and its
   /// models loaded.
@@ -152,6 +158,7 @@ class LivePipelineState {
     List<TranscriptEntry>? snapshots,
     bool? snapshotReading,
     bool? snapshotMissed,
+    bool? frameMissed,
   }) => LivePipelineState(
     status: status ?? this.status,
     transcript: transcript ?? this.transcript,
@@ -167,6 +174,7 @@ class LivePipelineState {
     snapshots: snapshots ?? this.snapshots,
     snapshotReading: snapshotReading ?? this.snapshotReading,
     snapshotMissed: snapshotMissed ?? this.snapshotMissed,
+    frameMissed: frameMissed ?? this.frameMissed,
   );
 }
 
@@ -359,6 +367,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         clearSpokenVoice: true,
         snapshotReading: false,
         snapshotMissed: false,
+        frameMissed: false,
         // The list under the frame is this session's, not the last one's.
         transcript: const [],
       ),
@@ -539,6 +548,8 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         emit(state.copyWith(snapshotReading: true, snapshotMissed: false));
       case 'snapshot':
         _onSnapshot(event);
+      case 'subtitleFrame':
+        _onSubtitleFrame(event);
       case 'startup':
         _onStartup(event);
       case 'language':
@@ -555,6 +566,21 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       case 'error':
         _onError(event);
     }
+  }
+
+  /// The player redrew the subtitle frame over the running game.
+  ///
+  /// The capture is already reading the new one; what is kept here is the
+  /// frame itself, so the picker on the screen shows where the reading
+  /// moved to and the next session starts in the same place. A selection
+  /// that missed the game's window changes nothing and says so.
+  void _onSubtitleFrame(Map<String, Object?> event) {
+    if (event['region'] case final OcrRegion region) {
+      emit(state.copyWith(frameMissed: false));
+      unawaited(_settings.update(_settings.settings.copyWith(ocrRegion: region)));
+      return;
+    }
+    emit(state.copyWith(frameMissed: true));
   }
 
   /// The engine has started, come up or come to rest.

@@ -20,6 +20,10 @@ class Hotkey {
   /// Held rather than pressed: the area is drawn while it is down.
   static const defaultSnapshot = Hotkey(keyCode: 0x53, label: 'S', control: true, alt: true);
 
+  /// Held as well, and over the running game: what is drawn becomes the
+  /// subtitle frame, and the reading goes on inside it.
+  static const defaultFrame = Hotkey(keyCode: 0x46, label: 'F', control: true, alt: true);
+
   /// The Windows virtual-key code of the main key.
   final int keyCode;
 

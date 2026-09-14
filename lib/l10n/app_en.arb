@@ -233,6 +233,16 @@
   "hotkeyPause": "Pause",
   "hotkeyResume": "Resume",
   "hotkeySnapshot": "Select an area",
+  "hotkeyFrame": "Subtitle frame",
+  "frameHowTo": "The frame can be redrawn during the game: hold {hotkey}, draw around the place the subtitles are written and let go — the selection disappears and the reading goes on inside the new frame.",
+  "@frameHowTo": {
+    "placeholders": {
+      "hotkey": {
+        "type": "String"
+      }
+    }
+  },
+  "frameMissed": "The selection missed the game window — the frame is where it was",
   "hotkeyUnset": "Not set",
   "hotkeyListening": "Press a combination… (Esc cancels)",
   "hotkeyClear": "Remove the combination",

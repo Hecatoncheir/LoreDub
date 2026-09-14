@@ -825,6 +825,24 @@ abstract class AppLocalizations {
   /// **'Выделение области'**
   String get hotkeySnapshot;
 
+  /// No description provided for @hotkeyFrame.
+  ///
+  /// In ru, this message translates to:
+  /// **'Рамка субтитров'**
+  String get hotkeyFrame;
+
+  /// No description provided for @frameHowTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Во время игры рамку можно обвести заново: удерживайте {hotkey}, выделите место с субтитрами и отпустите — выделение исчезнет, а чтение продолжится в новой рамке.'**
+  String frameHowTo(String hotkey);
+
+  /// No description provided for @frameMissed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выделение не попало в окно игры — рамка осталась прежней'**
+  String get frameMissed;
+
   /// No description provided for @hotkeyUnset.
   ///
   /// In ru, this message translates to:

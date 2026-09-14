@@ -2061,6 +2061,26 @@ void main() {
       expect(find.text('SUBTITLES'), findsOneWidget);
       expect(find.text('Выделенные фрагменты появятся здесь'), findsOneWidget);
       expect(startButton(tester).onPressed, isNotNull);
+      // The frame is drawn here before the game starts, and over the game
+      // itself once it has.
+      expect(find.byKey(const ValueKey('ocrRegion')), findsOneWidget);
+      expect(find.textContaining('удерживайте Ctrl + Alt + F'), findsOneWidget);
+    });
+
+    testWidgets('says when a frame drawn over the game missed its window', (tester) async {
+      final cubits = stageSnapshot(
+        pipeline: const LivePipelineState(
+          status: PipelineStatus.listening,
+          session: PipelineSession.screen,
+          frameMissed: true,
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+      expect(
+        find.text('Выделение не попало в окно игры — рамка осталась прежней'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('waits for the game whose window it reads', (tester) async {

@@ -23,6 +23,7 @@ import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
+import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/model_selection.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
@@ -30,6 +31,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
@@ -45,6 +47,9 @@ void main() {
   Future<void> settle() => Future<void>.delayed(Duration.zero);
 
   setUp(() {
+    // A frame drawn over the game is written through the settings, which
+    // reach the disk; without this the write lands on a missing plugin.
+    SharedPreferences.setMockInitialValues(const {});
     repository = _SlowStartRepository();
     cubits = DashboardCubits(
       repository,
@@ -202,6 +207,38 @@ void main() {
       expect(repository.snapshotModels.keys, unorderedEquals(['translation', 'speech']));
       expect(pipeline.state.session, PipelineSession.screen);
       expect(repository.starts, 0, reason: 'nothing is captured');
+    });
+
+    test('moves the subtitle frame to what was drawn over the game', () async {
+      pipeline
+        ..listen()
+        ..seed(waiting);
+
+      repository.push({
+        'type': 'subtitleFrame',
+        'region': const OcrRegion(left: 0.1, top: 0.7, right: 0.9, bottom: 0.95),
+      });
+      await settle();
+
+      expect(
+        cubits.settings.settings.ocrRegion,
+        const OcrRegion(left: 0.1, top: 0.7, right: 0.9, bottom: 0.95),
+        reason: 'the picker shows where the reading moved, and the next session starts there',
+      );
+      expect(pipeline.state.frameMissed, isFalse);
+    });
+
+    test('leaves the frame where it was when the selection missed the window', () async {
+      pipeline
+        ..listen()
+        ..seed(waiting);
+      final before = cubits.settings.settings.ocrRegion;
+
+      repository.push({'type': 'subtitleFrame', 'failed': true});
+      await settle();
+
+      expect(cubits.settings.settings.ocrRegion, before);
+      expect(pipeline.state.frameMissed, isTrue);
     });
 
     test('keeps a selection apart from the live transcript', () async {

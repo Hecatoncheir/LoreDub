@@ -13,6 +13,7 @@ import '../../domain/compute_device.dart';
 import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
 import '../../domain/hotkey.dart';
+import '../../domain/ocr_region.dart';
 import '../../domain/ocr_text_delta.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/pipeline_state.dart';
@@ -566,16 +567,21 @@ class NativeEngineService {
   }
 
   /// Registers the system-wide combinations that pause and resume the
-  /// session, and the one held to select an area of the screen. Presses
+  /// session, and the two held to draw a rectangle over the screen. Presses
   /// arrive as `hotkey` events, a selection as `snapshotReading` and then
-  /// `snapshot`. A combination another program holds comes back as an error
-  /// naming the action.
+  /// `snapshot`, and a frame drawn over the game as `subtitleFrame`. A
+  /// combination another program holds comes back as an error naming the
+  /// action.
   ///
-  /// [textLanguage] is the language a selected area is read in.
+  /// [textLanguage] is the language a selected area is read in. [frameOf] is
+  /// the process whose window the subtitle frame is measured against: zero
+  /// leaves that key unbound, there being nothing to measure it in.
   void setHotkeys({
     Hotkey? pause,
     Hotkey? resume,
     Hotkey? snapshot,
+    Hotkey? frame,
+    int frameOf = 0,
     String textLanguage = 'en',
   }) {
     final config = jsonEncode({
@@ -586,6 +592,9 @@ class NativeEngineService {
       'resumeModifiers': resume?.modifiers ?? 0,
       'snapshotKey': snapshot?.keyCode ?? 0,
       'snapshotModifiers': snapshot?.modifiers ?? 0,
+      'frameKey': frame?.keyCode ?? 0,
+      'frameModifiers': frame?.modifiers ?? 0,
+      'frameProcessId': frameOf,
     }).toNativeUtf8();
     try {
       _throwIfError(ld_set_hotkeys(config.cast()));
@@ -609,6 +618,8 @@ class NativeEngineService {
           _onScreenText(event['text']! as String);
         case 'snapshot':
           _onSnapshotText(event);
+        case 'subtitleFrame':
+          _onSubtitleFrame(event);
         default:
           _events.add(_ofSession(fromNativeEvent(event)));
       }
@@ -639,6 +650,38 @@ class NativeEngineService {
     final fresh = freshOcrText(_previousOcrText, text);
     _previousOcrText = text;
     if (fresh != null) _phrases.add(PendingPhrase.text(fresh));
+  }
+
+  /// The subtitle frame, redrawn over the running game.
+  ///
+  /// The capture has already moved into it — the native side hands the new
+  /// frame straight to the reading thread — so what is left here is to
+  /// forget the text of the old frame, which the new one has nothing to do
+  /// with, and to keep the config this session was started with honest. A
+  /// selection that landed off the game's window comes back `failed` and
+  /// changes nothing.
+  void _onSubtitleFrame(Map<String, Object?> event) {
+    if (_activeConfig == null) return;
+    if (event['failed'] == true) {
+      _events.add(_ofSession({'type': 'subtitleFrame', 'failed': true}));
+      return;
+    }
+    double edge(String key) => (event[key] as num?)?.toDouble() ?? 0;
+    final region = OcrRegion(
+      left: edge('left'),
+      top: edge('top'),
+      right: edge('right'),
+      bottom: edge('bottom'),
+    );
+    _previousOcrText = null;
+    _activeConfig = {
+      ..._activeConfig!,
+      'ocrRegionLeft': region.left,
+      'ocrRegionTop': region.top,
+      'ocrRegionRight': region.right,
+      'ocrRegionBottom': region.bottom,
+    };
+    _events.add(_ofSession({'type': 'subtitleFrame', 'region': region}));
   }
 
   /// An area of the screen the player selected by hand. Read even while the
