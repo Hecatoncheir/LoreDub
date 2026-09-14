@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../domain/character.dart';
 import '../../domain/failure.dart';
+import '../../domain/json_text.dart';
 
 typedef CharacterRootProvider = Future<Directory> Function();
 
@@ -83,7 +84,7 @@ class CharacterService {
     final source = File(await file());
     if (!await source.exists()) return CharacterLibrary.empty;
     try {
-      return CharacterLibrary.fromJson(jsonDecode(await source.readAsString()));
+      return CharacterLibrary.fromJson(decodeJsonText(await source.readAsString()));
     } on FormatException {
       return CharacterLibrary.empty;
     } on FileSystemException {
@@ -123,7 +124,7 @@ class CharacterService {
     final packs = <CharacterPack>[];
     for (final source in sources) {
       try {
-        final read = jsonDecode(await File(source).readAsString());
+        final read = decodeJsonText(await File(source).readAsString());
         final incoming = charactersFromJson(read);
         if (incoming.isEmpty) {
           throw LoreDubFailure(

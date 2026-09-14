@@ -2408,10 +2408,11 @@ class _GraphToolbar extends StatelessWidget {
               ),
             },
             const SizedBox(height: 10),
-            _ModuleLabel(number: '02', label: l10n.pipelineSchemes.toUpperCase()),
-            const SizedBox(height: 8),
             // The shelf of kept schemes, each with a picture of itself: a
-            // click puts it on the canvas and it is the one that runs.
+            // click puts it on the canvas and it is the one that runs. It is
+            // folded away until asked for — the canvas is what the screen is
+            // for, and a shelf of pictures would take the top of it every
+            // time the screen is opened.
             PipelineShelf(
               schemes: state.schemes,
               cast: facts.characters,

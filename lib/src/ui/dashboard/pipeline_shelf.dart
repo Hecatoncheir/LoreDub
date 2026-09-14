@@ -19,7 +19,7 @@ import '../../domain/saved_pipeline.dart';
 import '../theme.dart';
 import 'pipeline_canvas.dart' show NodeMetrics;
 
-class PipelineShelf extends StatelessWidget {
+class PipelineShelf extends StatefulWidget {
   const PipelineShelf({
     super.key,
     required this.schemes,
@@ -44,35 +44,124 @@ class PipelineShelf extends StatelessWidget {
   final ValueChanged<String> onExport;
 
   @override
+  State<PipelineShelf> createState() => _PipelineShelfState();
+}
+
+class _PipelineShelfState extends State<PipelineShelf> {
+  /// Folded away until the heading is pressed. The canvas is what the screen
+  /// is for; the shelf is asked for now and then.
+  bool _open = false;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    if (schemes.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(2, 2, 2, 10),
-        child: Text(
-          l10n.pipelineSchemesEmpty,
-          style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // The whole heading is the handle, not a lone arrow: there is
+        // nothing else on that line to hit by mistake.
+        InkWell(
+          onTap: () => setState(() => _open = !_open),
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                _ShelfLabel(label: l10n.pipelineSchemes.toUpperCase()),
+                const SizedBox(width: 10),
+                Text(
+                  widget.schemes.isEmpty ? '' : '${widget.schemes.length}',
+                  style: const TextStyle(
+                    fontFamily: LoreDubFonts.mono,
+                    fontSize: 11,
+                    color: LoreDubPalette.mutedInk,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  _open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  size: 20,
+                  color: LoreDubPalette.mutedInk,
+                ),
+              ],
+            ),
+          ),
         ),
-      );
-    }
-    return SizedBox(
-      height: height,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.only(bottom: 8),
-        itemCount: schemes.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 12),
-        itemBuilder: (context, index) => _SchemeCard(
-          scheme: schemes[index],
-          cast: cast,
-          onChoose: () => onChoose(schemes[index].id),
-          onRename: (name) => onRename(schemes[index].id, name),
-          onRemove: () => onRemove(schemes[index].id),
-          onExport: () => onExport(schemes[index].id),
-        ),
-      ),
+        if (_open) ...[
+          const SizedBox(height: 8),
+          if (widget.schemes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 2, 2, 10),
+              child: Text(
+                l10n.pipelineSchemesEmpty,
+                style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+              ),
+            )
+          else
+            SizedBox(
+              height: PipelineShelf.height,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(bottom: 8),
+                itemCount: widget.schemes.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 12),
+                itemBuilder: (context, index) => _SchemeCard(
+                  scheme: widget.schemes[index],
+                  cast: widget.cast,
+                  onChoose: () => widget.onChoose(widget.schemes[index].id),
+                  onRename: (name) => widget.onRename(widget.schemes[index].id, name),
+                  onRemove: () => widget.onRemove(widget.schemes[index].id),
+                  onExport: () => widget.onExport(widget.schemes[index].id),
+                ),
+              ),
+            ),
+        ],
+      ],
     );
   }
+}
+
+/// The shelf's own heading, in the vocabulary the screens' module labels use.
+class _ShelfLabel extends StatelessWidget {
+  const _ShelfLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 28,
+        height: 22,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: LoreDubPalette.orange,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: LoreDubPalette.ink),
+        ),
+        child: const Text(
+          '02',
+          style: TextStyle(
+            fontFamily: LoreDubFonts.mono,
+            color: LoreDubPalette.ink,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      const SizedBox(width: 9),
+      Text(
+        label,
+        style: const TextStyle(
+          fontFamily: LoreDubFonts.mono,
+          fontSize: 11,
+          letterSpacing: 1.4,
+          color: LoreDubPalette.ink,
+        ),
+      ),
+    ],
+  );
 }
 
 class _SchemeCard extends StatelessWidget {
@@ -244,30 +333,53 @@ Future<String?> askForName(
   required String action,
   String initial = '',
 }) async {
-  final field = TextEditingController(text: initial);
   final name = await showDialog<String>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: field,
-        autofocus: true,
-        onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(AppLocalizations.of(context).pipelineSchemeCancel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(field.text.trim()),
-          child: Text(action),
-        ),
-      ],
-    ),
+    builder: (context) => _NameDialog(title: title, action: action, initial: initial),
   );
-  field.dispose();
   return name == null || name.isEmpty ? null : name;
+}
+
+/// The dialog that asks for a name.
+///
+/// It owns the field's controller rather than being handed one: a dialog is
+/// still on screen while it fades out, and a controller let go of the moment
+/// the answer came back is one the field is still reading from — which ends
+/// in a torn-down piece of the tree being asked what it depends on.
+class _NameDialog extends StatefulWidget {
+  const _NameDialog({required this.title, required this.action, required this.initial});
+
+  final String title;
+  final String action;
+  final String initial;
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final TextEditingController _field = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _field.dispose();
+    super.dispose();
+  }
+
+  void _answer([String? value]) => Navigator.of(context).pop((value ?? _field.text).trim());
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: TextField(controller: _field, autofocus: true, onSubmitted: _answer),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(AppLocalizations.of(context).pipelineSchemeCancel),
+      ),
+      FilledButton(onPressed: _answer, child: Text(widget.action)),
+    ],
+  );
 }
 
 /// The scheme at the size of a thumbnail: every node a box where it stands,

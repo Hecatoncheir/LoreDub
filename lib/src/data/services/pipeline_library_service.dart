@@ -8,6 +8,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/failure.dart';
+import '../../domain/json_text.dart';
 import '../../domain/saved_pipeline.dart';
 
 typedef PipelineLibraryRootProvider = Future<Directory> Function();
@@ -35,7 +36,7 @@ class PipelineLibraryService {
     try {
       final source = File(await file());
       if (!await source.exists()) return PipelineLibrary.empty;
-      return PipelineLibrary.fromJson(jsonDecode(await source.readAsString()));
+      return PipelineLibrary.fromJson(decodeJsonText(await source.readAsString()));
     } on FormatException {
       return PipelineLibrary.empty;
     } on FileSystemException {
@@ -74,7 +75,7 @@ class PipelineLibraryService {
     for (final source in sources) {
       try {
         final incoming = PipelineLibrary.pipelinesFromJson(
-          jsonDecode(await File(source).readAsString()),
+          decodeJsonText(await File(source).readAsString()),
         );
         if (incoming.isEmpty) {
           throw LoreDubFailure(

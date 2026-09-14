@@ -8,6 +8,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/failure.dart';
+import '../../domain/json_text.dart';
 import '../../domain/pipeline_graph.dart';
 
 typedef PipelineGraphRootProvider = Future<Directory> Function();
@@ -35,7 +36,7 @@ class PipelineGraphService {
     final source = File(await file());
     if (!await source.exists()) return PipelineLayout.standard;
     try {
-      return PipelineLayout.fromJson(jsonDecode(await source.readAsString()));
+      return PipelineLayout.fromJson(decodeJsonText(await source.readAsString()));
     } on FormatException {
       return PipelineLayout.standard;
     } on FileSystemException {

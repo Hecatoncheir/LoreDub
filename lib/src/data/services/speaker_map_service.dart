@@ -8,6 +8,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/failure.dart';
+import '../../domain/json_text.dart';
 import '../../domain/speaker_map.dart';
 import 'voice_bank_service.dart';
 
@@ -43,7 +44,7 @@ class SpeakerMapService {
     final source = File(await fileFor(game));
     if (!await source.exists()) return const {};
     try {
-      return speakerMapFromJson(jsonDecode(await source.readAsString()));
+      return speakerMapFromJson(decodeJsonText(await source.readAsString()));
     } on FormatException {
       return const {};
     } on FileSystemException {

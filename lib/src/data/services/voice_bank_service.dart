@@ -1,13 +1,13 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/failure.dart';
+import '../../domain/json_text.dart';
 
 typedef VoiceBankRootProvider = Future<Directory> Function();
 
@@ -57,7 +57,7 @@ class VoiceBankService {
     await for (final entry in root.list(followLinks: false)) {
       if (entry is! File || path.extension(entry.path) != '.json') continue;
       try {
-        final json = jsonDecode(await entry.readAsString());
+        final json = decodeJsonText(await entry.readAsString());
         if (json case {'voices': final List<Object?> voices}) total += voices.length;
       } on FormatException {
         continue;
