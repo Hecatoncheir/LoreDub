@@ -50,11 +50,12 @@ class PipelineInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    // Dark, and the whole height of the canvas: the panel is a wall the
-    // scheme is worked against rather than a card lying on it, which is
-    // also what keeps the writing off the dots. Its right corners are the
-    // canvas card's own: it stands against that edge rather than inside it,
-    // so nothing else rounds them.
+    // The whole height of the canvas, against its right edge: the panel is
+    // a wall the scheme is worked against rather than a card lying on it.
+    // Drawn in the colours a plain node is — the paper for its face, the
+    // panel grey for its head — so it belongs to the scheme. Its right
+    // corners are the canvas card's own: it stands against that edge rather
+    // than inside it, so nothing else rounds them.
     const corners = BorderRadius.only(
       topRight: Radius.circular(12),
       bottomRight: Radius.circular(12),
@@ -69,11 +70,11 @@ class PipelineInspector extends StatelessWidget {
           width: width,
           child: DecoratedBox(
             decoration: const BoxDecoration(
-              color: LoreDubPalette.ink,
+              color: LoreDubPalette.raised,
               borderRadius: corners,
-              border: Border(left: BorderSide(color: LoreDubPalette.graphite)),
+              border: Border(left: BorderSide(color: LoreDubPalette.outline)),
               boxShadow: [
-                BoxShadow(color: Color(0x33171717), blurRadius: 24, offset: Offset(-8, 0)),
+                BoxShadow(color: Color(0x22171717), blurRadius: 24, offset: Offset(-8, 0)),
               ],
             ),
             child: ClipRRect(
@@ -84,7 +85,6 @@ class PipelineInspector extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _header(context, l10n),
-                    const Divider(height: 1),
                     Expanded(
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
@@ -105,7 +105,11 @@ class PipelineInspector extends StatelessWidget {
     );
   }
 
-  Widget _header(BuildContext context, AppLocalizations l10n) => Padding(
+  Widget _header(BuildContext context, AppLocalizations l10n) => Container(
+    decoration: const BoxDecoration(
+      color: LoreDubPalette.panel,
+      border: Border(bottom: BorderSide(color: LoreDubPalette.outline)),
+    ),
     padding: const EdgeInsets.fromLTRB(16, 14, 8, 12),
     child: Row(
       children: [
@@ -120,7 +124,7 @@ class PipelineInspector extends StatelessWidget {
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
-                  color: LoreDubPalette.outline,
+                  color: LoreDubPalette.mutedInk,
                 ),
               ),
               const SizedBox(height: 4),
@@ -527,9 +531,7 @@ class _Field extends StatelessWidget {
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            // The outline grey rather than the muted ink: the panel is dark,
-            // and what is muted on paper is barely there on it.
-            color: LoreDubPalette.outline,
+            color: LoreDubPalette.mutedInk,
           ),
         ),
         const SizedBox(height: 6),
@@ -564,11 +566,8 @@ class _Choices<T> extends StatelessWidget {
           selected: entry.key == value,
           onSelected: enabled ? (_) => onChanged(entry.key) : null,
           selectedColor: LoreDubPalette.orange,
-          backgroundColor: LoreDubPalette.graphite,
+          backgroundColor: LoreDubPalette.panel,
           side: const BorderSide(color: LoreDubPalette.outline),
-          labelStyle: TextStyle(
-            color: entry.key == value ? LoreDubPalette.ink : LoreDubPalette.raised,
-          ),
           showCheckmark: false,
         ),
     ],
@@ -610,7 +609,7 @@ class _Note extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 12),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 12, height: 1.4, color: LoreDubPalette.outline),
+      style: const TextStyle(fontSize: 12, height: 1.4, color: LoreDubPalette.mutedInk),
     ),
   );
 }

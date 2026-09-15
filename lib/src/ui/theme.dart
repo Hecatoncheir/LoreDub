@@ -188,97 +188,43 @@ ThemeData buildLoreDubTheme() {
   );
 }
 
-/// The same interface, in the dark.
+/// The same interface, in the colours a node is drawn in.
 ///
-/// The node panel on the graph screen stands over the canvas rather than on
-/// a page of its own, and is drawn in the ink the cast cards are. The house
-/// palette is read the other way up for it: the ink is the ground, the
-/// graphite is what a field is raised out of, the paper colour is the
-/// writing, and the outline grey — too pale to write with on paper — is
-/// what a label is said in. Everything else is the theme's own, so the panel
-/// is this interface in another light rather than a second one.
+/// The node panel on the graph screen is a card of the scheme rather than a
+/// page beside it, so it is drawn the way the plain nodes are: the raised
+/// paper for the face of it, the panel grey for its head and for the fields
+/// sunk into it. Everything else — the shapes, the faces, the orange — is
+/// the theme's own.
 ThemeData buildLoreDubPanelTheme() {
   final base = buildLoreDubTheme();
-  const scheme = ColorScheme.dark(
-    primary: LoreDubPalette.orange,
-    onPrimary: LoreDubPalette.ink,
-    secondary: LoreDubPalette.raised,
-    onSecondary: LoreDubPalette.ink,
-    surface: LoreDubPalette.ink,
-    onSurface: LoreDubPalette.raised,
-    error: LoreDubPalette.error,
-    onError: Colors.white,
-    outline: LoreDubPalette.mutedInk,
-  );
-  const controlShape = RoundedRectangleBorder(
-    borderRadius: BorderRadius.all(Radius.circular(8)),
-  );
   const fieldBorder = OutlineInputBorder(
-    borderSide: BorderSide(color: LoreDubPalette.mutedInk),
+    borderSide: BorderSide(color: LoreDubPalette.outline),
     borderRadius: BorderRadius.all(Radius.circular(8)),
   );
 
   return base.copyWith(
-    brightness: Brightness.dark,
-    colorScheme: scheme,
+    colorScheme: base.colorScheme.copyWith(surface: LoreDubPalette.raised),
     // What a dropdown opens onto.
-    canvasColor: LoreDubPalette.ink,
-    textTheme: base.textTheme.apply(
-      bodyColor: LoreDubPalette.raised,
-      displayColor: LoreDubPalette.raised,
-    ),
-    dividerColor: LoreDubPalette.mutedInk,
-    cardTheme: base.cardTheme.copyWith(
-      color: LoreDubPalette.graphite,
-      shape: const RoundedRectangleBorder(
-        side: BorderSide(color: LoreDubPalette.mutedInk),
-        borderRadius: BorderRadius.all(Radius.circular(12)),
-      ),
-    ),
+    canvasColor: LoreDubPalette.raised,
+    cardTheme: base.cardTheme.copyWith(color: LoreDubPalette.raised),
+    // Sunk into the face of the panel rather than raised out of it: on the
+    // paper colour a field filled with the same is an outline and nothing
+    // else.
     inputDecorationTheme: base.inputDecorationTheme.copyWith(
-      fillColor: LoreDubPalette.graphite,
-      labelStyle: const TextStyle(color: LoreDubPalette.outline),
-      helperStyle: const TextStyle(color: LoreDubPalette.outline),
+      fillColor: LoreDubPalette.panel,
       border: fieldBorder,
       enabledBorder: fieldBorder,
-    ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: LoreDubPalette.raised,
-        minimumSize: const Size(48, 48),
-        side: const BorderSide(color: LoreDubPalette.outline),
-        shape: controlShape,
-      ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: LoreDubPalette.orange,
-        minimumSize: const Size(44, 44),
-        shape: controlShape,
-      ),
-    ),
-    iconButtonTheme: IconButtonThemeData(
-      style: IconButton.styleFrom(
-        foregroundColor: LoreDubPalette.raised,
-        minimumSize: const Size(48, 48),
-        shape: controlShape,
-      ),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(
         minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
-        foregroundColor: WidgetStateProperty.resolveWith(
-          (states) =>
-              states.contains(WidgetState.selected) ? LoreDubPalette.ink : LoreDubPalette.raised,
-        ),
+        foregroundColor: const WidgetStatePropertyAll(LoreDubPalette.ink),
         backgroundColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected)
-              ? LoreDubPalette.orange
-              : LoreDubPalette.graphite,
+          (states) =>
+              states.contains(WidgetState.selected) ? LoreDubPalette.orange : LoreDubPalette.panel,
         ),
-        side: const WidgetStatePropertyAll(BorderSide(color: LoreDubPalette.outline)),
+        side: const WidgetStatePropertyAll(BorderSide(color: LoreDubPalette.graphite)),
       ),
     ),
-    sliderTheme: base.sliderTheme.copyWith(inactiveTrackColor: LoreDubPalette.mutedInk),
   );
 }

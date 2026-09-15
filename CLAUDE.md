@@ -299,11 +299,14 @@ chosen node, clamping the whole group by whichever of them reaches
 place for card sizes and socket anchors, which the curves, the dots and the
 hit-testing all read) and fits the scheme into the window the first time it
 is drawn; `pipeline_inspector.dart` is the panel that stands over it, down the
-right edge and the whole height of the canvas, drawn dark:
-`buildLoreDubPanelTheme` (`ui/theme.dart`) is the house theme read the other
-way up — the ink is the ground, the graphite is what a field is raised out
-of, the paper colour is the writing — so the Material widgets in the panel
-are the same widgets in another light rather than a second set of them.
+right edge and the whole height of the canvas, drawn in the colours a plain
+node is: `buildLoreDubPanelTheme` (`ui/theme.dart`) is the house theme with
+the paper colour for its face and the panel grey for its head and its
+fields, so the panel is a card of the scheme rather than a page beside it.
+It declares that theme and is built under it through a `Builder`, with a
+`Material` of its own: a line of text that asks for no colour is handed one
+by the nearest Material, and without those two the panel was written in the
+theme above it.
 
 A frame of that canvas is watched, because a drag and a pan are a new state
 sixty times a second: `test/graph_bench.dart` times one over a scheme of
