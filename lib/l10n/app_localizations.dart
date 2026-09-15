@@ -231,6 +231,90 @@ abstract class AppLocalizations {
   /// **'Экран'**
   String get navSnapshot;
 
+  /// No description provided for @headerGlossary.
+  ///
+  /// In ru, this message translates to:
+  /// **'СЛОВАРЬ ИГРЫ'**
+  String get headerGlossary;
+
+  /// No description provided for @navGlossary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Словарь'**
+  String get navGlossary;
+
+  /// No description provided for @titleGlossary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что дубляж знать не может'**
+  String get titleGlossary;
+
+  /// No description provided for @glossaryPhrases.
+  ///
+  /// In ru, this message translates to:
+  /// **'ФРАЗЫ'**
+  String get glossaryPhrases;
+
+  /// No description provided for @glossaryPhrasesNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Целая реплика с вашим переводом: ответ берётся отсюда, модель даже не спрашивают. Здесь место идиомам, в которых модель не ошибается, а просто не знает игры: «Fire in the hole!» она переводит как «Огонь в дыру!». Сравнение идёт по предложению целиком, без оглядки на регистр и пробелы.'**
+  String get glossaryPhrasesNote;
+
+  /// No description provided for @glossaryPhraseSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Реплика по-английски'**
+  String get glossaryPhraseSource;
+
+  /// No description provided for @glossaryPhraseReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как её говорить'**
+  String get glossaryPhraseReading;
+
+  /// No description provided for @glossaryNames.
+  ///
+  /// In ru, this message translates to:
+  /// **'ИМЕНА'**
+  String get glossaryNames;
+
+  /// No description provided for @glossaryNamesNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Имя, которое переводчик оставил латиницей — и только там запись и сработает. По замерам модель сама транслитерирует и правильно склоняет имена, которые ей даются («The people of Megaton» — «Жители Мегатона»), и подмена по всей строке сломала бы падеж. Без записи оставшаяся латиница просто транслитерируется: Rapture — «Раптур».'**
+  String get glossaryNamesNote;
+
+  /// No description provided for @glossaryNameSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Имя по-английски'**
+  String get glossaryNameSource;
+
+  /// No description provided for @glossaryNameReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как его говорить'**
+  String get glossaryNameReading;
+
+  /// No description provided for @glossaryEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока пусто.'**
+  String get glossaryEmpty;
+
+  /// No description provided for @glossaryAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить'**
+  String get glossaryAdd;
+
+  /// No description provided for @glossaryRemove.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать'**
+  String get glossaryRemove;
+
   /// No description provided for @navCharacters.
   ///
   /// In ru, this message translates to:
@@ -1029,6 +1113,12 @@ abstract class AppLocalizations {
   /// **'Сочетание для «{action}» уже занято другой программой — назначьте другое в настройках.'**
   String failureHotkeyTaken(String action);
 
+  /// No description provided for @failureGlossarySaveFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить словарь: {detail}'**
+  String failureGlossarySaveFailed(String detail);
+
   /// No description provided for @failureCharactersSaveFailed.
   ///
   /// In ru, this message translates to:
@@ -1610,6 +1700,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Потоки CPU'**
   String get cpuThreads;
+
+  /// No description provided for @roughRecognition.
+  ///
+  /// In ru, this message translates to:
+  /// **'Распознавать быстрее, но грубее'**
+  String get roughRecognition;
+
+  /// No description provided for @roughRecognitionNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Whisper слушает укороченный отрезок звука. На девяти замеренных клипах распознавание заняло 897 мс вместо 1329, а слова вернулись те же на всех девяти, на двух разошлась только запятая. На быстрой или неразборчивой речи ошибок будет больше. На перевод и озвучку не влияет.'**
+  String get roughRecognitionNote;
 
   /// No description provided for @settingsPython.
   ///

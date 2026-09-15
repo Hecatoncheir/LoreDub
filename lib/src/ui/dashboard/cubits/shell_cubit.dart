@@ -17,7 +17,7 @@ import '../../../domain/progress_ticker.dart';
 /// The order the sections are listed in, which is the order the work is
 /// done in: what the game says, a piece of it by hand, whose voices read it,
 /// how the signal runs, what it runs on, and everything else.
-enum DashboardSection { live, snapshot, characters, pipeline, models, settings }
+enum DashboardSection { live, snapshot, characters, glossary, pipeline, models, settings }
 
 /// Where the parts of the dashboard put what went wrong.
 ///

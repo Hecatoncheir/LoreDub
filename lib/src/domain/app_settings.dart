@@ -31,6 +31,7 @@ class AppSettings {
     this.duckWhileSpeaking = true,
     this.silenceWhileReading = false,
     this.hurryWhenQueued = true,
+    this.roughRecognition = false,
     this.ttsSpeed = 1.12,
     this.cpuThreads = 4,
     this.showOverlay = true,
@@ -90,6 +91,17 @@ class AppSettings {
   /// voice. Off, every line is read at the pace the player set, and a queue
   /// is simply time spent further behind the game.
   final bool hurryWhenQueued;
+
+  /// Whether whisper is asked to listen to a shortened stretch of sound.
+  ///
+  /// Recognition is the larger half of the delay before a line is heard, and
+  /// nearly all of it is the encoder, which works over a fixed window
+  /// whatever the phrase is worth. Shortening the window is the one knob that
+  /// moved it: over nine clips it took 897 ms against 1329, and the words
+  /// came back the same on all nine, two of them differing by a comma. It is
+  /// off by default because the cost is paid on the phrases that were already
+  /// hard -- shortened further, whisper began repeating itself.
+  final bool roughRecognition;
 
   /// The loudest the game is left while it is dubbed. Past this it talks
   /// over the translation rather than under it.
@@ -306,6 +318,7 @@ class AppSettings {
     bool? duckWhileSpeaking,
     bool? silenceWhileReading,
     bool? hurryWhenQueued,
+    bool? roughRecognition,
     double? ttsSpeed,
     int? cpuThreads,
     bool? showOverlay,
@@ -346,6 +359,7 @@ class AppSettings {
     duckWhileSpeaking: duckWhileSpeaking ?? this.duckWhileSpeaking,
     silenceWhileReading: silenceWhileReading ?? this.silenceWhileReading,
     hurryWhenQueued: hurryWhenQueued ?? this.hurryWhenQueued,
+    roughRecognition: roughRecognition ?? this.roughRecognition,
     ttsSpeed: ttsSpeed ?? this.ttsSpeed,
     cpuThreads: cpuThreads ?? this.cpuThreads,
     showOverlay: showOverlay ?? this.showOverlay,

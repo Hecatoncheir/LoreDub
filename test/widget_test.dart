@@ -2828,7 +2828,7 @@ void main() {
     testWidgets('draws the stages of the pipeline as nodes', (tester) async {
       await pumpGraph(tester);
 
-      expect(find.text('04  /  ПУТЬ СИГНАЛА'), findsOneWidget);
+      expect(find.text('05  /  ПУТЬ СИГНАЛА'), findsOneWidget);
       expect(find.text('Оригинальный поток'), findsOneWidget);
       expect(find.text('Whisper'), findsOneWidget);
       expect(find.text('Перевод'), findsOneWidget);

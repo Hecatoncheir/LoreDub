@@ -11,6 +11,7 @@ import '../../../domain/failure.dart';
 import '../../../domain/model_selection.dart';
 import 'characters_cubit.dart';
 import 'downloads_cubit.dart';
+import 'glossary_cubit.dart';
 import 'pipeline_cubit.dart';
 import 'pipeline_graph_bloc.dart';
 import 'settings_cubit.dart';
@@ -33,6 +34,7 @@ class DashboardCubits {
     downloads = DownloadsCubit(modelRepository, runtimeRepository, settings, shell);
     pipeline = PipelineCubit(appRepository, modelRepository, settings, downloads, shell);
     characters = CharactersCubit(appRepository, modelRepository, settings, downloads, shell);
+    glossary = GlossaryCubit(appRepository, shell);
     graph = PipelineGraphBloc(appRepository, settings, characters, pipeline, shell);
     // One engine holds one session: a dubbing session starting takes the
     // worker over from the characters screen, which keeps it while it
@@ -57,6 +59,12 @@ class DashboardCubits {
   late final PipelineCubit pipeline;
   late final CharactersCubit characters;
 
+  /// What the player has written down about their games: the names the
+  /// model leaves in Latin script and the lines they have translated
+  /// themselves. It answers to no session -- every one of them that
+  /// translates is handed the same file.
+  late final GlossaryCubit glossary;
+
   /// The pipeline drawn as nodes. A Bloc rather than a Cubit: the canvas is
   /// worked by sequences of gestures, and each one is an event that can be
   /// replayed and undone.
@@ -80,6 +88,7 @@ class DashboardCubits {
         pipeline.loadProcesses(),
         downloads.load(),
         characters.load(),
+        glossary.load(),
       ]);
       await downloads.refreshAvailability(probe: await graphics);
       // After the settings and the cast: the canvas is drawn from them, and
@@ -98,6 +107,7 @@ class DashboardCubits {
   Future<void> dispose() async {
     await _events?.cancel();
     await graph.close();
+    await glossary.close();
     await characters.close();
     await pipeline.close();
     await downloads.close();

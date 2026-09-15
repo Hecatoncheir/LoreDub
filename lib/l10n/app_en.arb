@@ -37,6 +37,20 @@
     }
   },
   "navSnapshot": "Screen",
+  "headerGlossary": "GAME GLOSSARY",
+  "navGlossary": "Glossary",
+  "titleGlossary": "What the dubbing cannot know",
+  "glossaryPhrases": "PHRASES",
+  "glossaryPhrasesNote": "A whole line with your own translation: the answer comes from here and the model is not asked at all. This is where idioms belong -- the model is not wrong about \"Fire in the hole!\" so much as ignorant of the game. The match is on the whole sentence, and neither case nor spacing counts.",
+  "glossaryPhraseSource": "The line in English",
+  "glossaryPhraseReading": "How to say it",
+  "glossaryNames": "NAMES",
+  "glossaryNamesNote": "A name the translator left in Latin script -- and that is the only place an entry is used. Measured, the model transliterates and correctly declines the names it does render (\"The people of Megaton\" comes back as \"Жители Мегатона\"), so a substitution over the whole line would break the grammar it found. Without an entry, Latin left behind is simply written out: Rapture becomes \"Раптур\".",
+  "glossaryNameSource": "The name in English",
+  "glossaryNameReading": "How to say it",
+  "glossaryEmpty": "Nothing here yet.",
+  "glossaryAdd": "Add",
+  "glossaryRemove": "Remove",
   "navCharacters": "Characters",
   "titleCharacters": "Character voices",
   "charactersNote": "A card remembers a character's voice: walk up to them in the game, press Record the voice and let them talk. Characters are shared by every game, and in Live their lines are read in the voice given to them. A voice can also be built from recordings you already have: drop them on the card.",
@@ -305,6 +319,14 @@
   "@failureHotkeyTaken": {
     "placeholders": {
       "action": {
+        "type": "String"
+      }
+    }
+  },
+  "failureGlossarySaveFailed": "The glossary could not be saved: {detail}",
+  "@failureGlossarySaveFailed": {
+    "placeholders": {
+      "detail": {
         "type": "String"
       }
     }
@@ -591,6 +613,8 @@
     }
   },
   "cpuThreads": "CPU threads",
+  "roughRecognition": "Recognize faster, more roughly",
+  "roughRecognitionNote": "Whisper listens over a shortened stretch of sound. On nine clips measured, recognition took 897 ms rather than 1329 and the words came back the same on all nine, two of them differing only by a comma. Fast or unclear speech will cost more mistakes. Translation and the voice are not affected.",
   "settingsPython": "Python runtime",
   "pythonNote": "Marian and Silero run on the python.exe you pick. The setup ships a ready runtime.",
   "pythonFieldLabel": "Python path or command",

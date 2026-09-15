@@ -6,9 +6,11 @@ import '../../domain/built_voice.dart';
 import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/game_process.dart';
+import '../../domain/glossary.dart';
 import '../../domain/pipeline_graph.dart';
 import '../../domain/saved_pipeline.dart';
 import '../services/character_service.dart';
+import '../services/glossary_service.dart';
 import '../services/native_engine_service.dart';
 import '../services/pipeline_graph_service.dart';
 import '../services/pipeline_library_service.dart';
@@ -23,11 +25,13 @@ class AppRepository {
     PythonDiscovery? pythonDiscovery,
     VoiceBankService? voiceBank,
     CharacterService? characters,
+    GlossaryService? glossary,
     PipelineGraphService? graph,
     PipelineLibraryService? pipelines,
   ]) : _pythonDiscovery = pythonDiscovery ?? PythonDiscovery(),
        _voiceBank = voiceBank ?? VoiceBankService(),
        _characters = characters ?? CharacterService(),
+       _glossary = glossary ?? GlossaryService(),
        _graph = graph ?? PipelineGraphService(),
        _pipelines = pipelines ?? PipelineLibraryService();
 
@@ -36,6 +40,7 @@ class AppRepository {
   final PythonDiscovery _pythonDiscovery;
   final VoiceBankService _voiceBank;
   final CharacterService _characters;
+  final GlossaryService _glossary;
   final PipelineGraphService _graph;
   final PipelineLibraryService _pipelines;
 
@@ -49,6 +54,18 @@ class AppRepository {
   Future<CharacterLibrary> loadCharacters() => _characters.load();
   Future<void> saveCharacters(CharacterLibrary library) => _characters.save(library);
   Future<String> charactersFile() => _characters.file();
+
+  /// What the player wrote down about their games. Theirs rather than one
+  /// game's, so every session that translates is handed the same file.
+  Future<Glossary> loadGlossary() => _glossary.load();
+
+  /// Keeps it, and tells a session already running: the player writes an
+  /// entry because they just heard the line, and mean the next one to be
+  /// said their way rather than the next session.
+  Future<void> saveGlossary(Glossary glossary) async {
+    await _glossary.save(glossary);
+    await _nativeEngine.writeGlossary(glossary);
+  }
 
   /// The clip recorded for a card, when it kept one. An imported card
   /// carries a fingerprint but no audio, so it may have none.
@@ -134,6 +151,8 @@ class AppRepository {
         'duckVolume': settings.duckedVolume,
         'duckWhileSpeaking': settings.duckWhileSpeaking,
         'hurryWhenQueued': settings.hurryWhenQueued,
+        'roughRecognition': settings.roughRecognition,
+        'glossary': await _glossary.file(),
         'textLanguage': settings.textLanguage,
         'ocrLanguage': settings.textLanguage,
         'ttsSpeed': settings.chosenSpeed,
@@ -211,6 +230,7 @@ class AppRepository {
         'duckWhileSpeaking': settings.duckWhileSpeaking,
         'ttsSpeed': settings.chosenSpeed,
         'hurryWhenQueued': settings.hurryWhenQueued,
+        'glossary': await _glossary.file(),
         'cpuThreads': settings.cpuThreads,
         'pythonExecutable': settings.pythonExecutable,
         'models': modelDirectories,

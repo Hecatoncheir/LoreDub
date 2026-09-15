@@ -83,6 +83,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSnapshot => 'Screen';
 
   @override
+  String get headerGlossary => 'GAME GLOSSARY';
+
+  @override
+  String get navGlossary => 'Glossary';
+
+  @override
+  String get titleGlossary => 'What the dubbing cannot know';
+
+  @override
+  String get glossaryPhrases => 'PHRASES';
+
+  @override
+  String get glossaryPhrasesNote =>
+      'A whole line with your own translation: the answer comes from here and the model is not asked at all. This is where idioms belong -- the model is not wrong about \"Fire in the hole!\" so much as ignorant of the game. The match is on the whole sentence, and neither case nor spacing counts.';
+
+  @override
+  String get glossaryPhraseSource => 'The line in English';
+
+  @override
+  String get glossaryPhraseReading => 'How to say it';
+
+  @override
+  String get glossaryNames => 'NAMES';
+
+  @override
+  String get glossaryNamesNote =>
+      'A name the translator left in Latin script -- and that is the only place an entry is used. Measured, the model transliterates and correctly declines the names it does render (\"The people of Megaton\" comes back as \"Жители Мегатона\"), so a substitution over the whole line would break the grammar it found. Without an entry, Latin left behind is simply written out: Rapture becomes \"Раптур\".';
+
+  @override
+  String get glossaryNameSource => 'The name in English';
+
+  @override
+  String get glossaryNameReading => 'How to say it';
+
+  @override
+  String get glossaryEmpty => 'Nothing here yet.';
+
+  @override
+  String get glossaryAdd => 'Add';
+
+  @override
+  String get glossaryRemove => 'Remove';
+
+  @override
   String get navCharacters => 'Characters';
 
   @override
@@ -559,6 +603,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String failureGlossarySaveFailed(String detail) {
+    return 'The glossary could not be saved: $detail';
+  }
+
+  @override
   String failureCharactersSaveFailed(String detail) {
     return 'The characters could not be saved: $detail';
   }
@@ -926,6 +975,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cpuThreads => 'CPU threads';
+
+  @override
+  String get roughRecognition => 'Recognize faster, more roughly';
+
+  @override
+  String get roughRecognitionNote =>
+      'Whisper listens over a shortened stretch of sound. On nine clips measured, recognition took 897 ms rather than 1329 and the words came back the same on all nine, two of them differing only by a comma. Fast or unclear speech will cost more mistakes. Translation and the voice are not affected.';
 
   @override
   String get settingsPython => 'Python runtime';

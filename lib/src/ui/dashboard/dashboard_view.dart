@@ -39,6 +39,7 @@ import 'cubits/pipeline_graph_bloc.dart';
 import 'cubits/settings_cubit.dart';
 import 'cubits/shell_cubit.dart';
 import 'character_tiles.dart';
+import 'glossary_screen.dart';
 import 'compute_matrix.dart';
 import 'hotkey_field.dart';
 import 'model_tiles.dart';
@@ -204,6 +205,10 @@ class DashboardView extends StatelessWidget {
                         key: const ValueKey('characters'),
                         cubits: cubits,
                       ),
+                      DashboardSection.glossary => GlossaryPanel(
+                        key: const ValueKey('glossary'),
+                        cubits: cubits,
+                      ),
                       DashboardSection.settings => _SettingsPanel(
                         key: const ValueKey('settings'),
                         cubits: cubits,
@@ -314,6 +319,12 @@ class _Navigation extends StatelessWidget {
                     label: AppLocalizations.of(context).navCharacters,
                     selected: shell.section == DashboardSection.characters,
                     onTap: () => cubits.shell.selectSection(DashboardSection.characters),
+                  ),
+                  _NavigationItem(
+                    icon: (color) => Icon(Icons.menu_book_rounded, size: 21, color: color),
+                    label: AppLocalizations.of(context).navGlossary,
+                    selected: shell.section == DashboardSection.glossary,
+                    onTap: () => cubits.shell.selectSection(DashboardSection.glossary),
                   ),
                   _NavigationItem(
                     icon: (color) => Icon(Icons.account_tree_rounded, size: 21, color: color),
@@ -695,6 +706,25 @@ class _BottomNavigation extends StatelessWidget {
   }
 }
 
+/// The strap over the title: where the section stands in the order the work
+/// is done in, and the name of its area.
+///
+/// Numbered off [DashboardSection] rather than by hand, so a screen put
+/// between two others renumbers the rest by itself.
+String _sectionMark(BuildContext context, DashboardSection section) {
+  final l10n = AppLocalizations.of(context);
+  final area = switch (section) {
+    DashboardSection.live => l10n.headerLive,
+    DashboardSection.snapshot => l10n.headerScreen,
+    DashboardSection.characters => l10n.headerCharacters,
+    DashboardSection.glossary => l10n.headerGlossary,
+    DashboardSection.pipeline => l10n.headerPipeline,
+    DashboardSection.models => l10n.headerModels,
+    DashboardSection.settings => l10n.headerSettings,
+  };
+  return '${(section.index + 1).toString().padLeft(2, '0')}  /  $area';
+}
+
 class _Header extends StatelessWidget {
   const _Header({required this.cubits});
 
@@ -715,19 +745,7 @@ class _Header extends StatelessWidget {
                   // The marking over the title reads in the player's own
                   // language: it is a strap rather than a brand, and half
                   // the screens already named their areas in Russian.
-                  switch (shell.section) {
-                    DashboardSection.live => '01  /  ${AppLocalizations.of(context).headerLive}',
-                    DashboardSection.snapshot =>
-                      '02  /  ${AppLocalizations.of(context).headerScreen}',
-                    DashboardSection.characters =>
-                      '03  /  ${AppLocalizations.of(context).headerCharacters}',
-                    DashboardSection.pipeline =>
-                      '04  /  ${AppLocalizations.of(context).headerPipeline}',
-                    DashboardSection.models =>
-                      '05  /  ${AppLocalizations.of(context).headerModels}',
-                    DashboardSection.settings =>
-                      '06  /  ${AppLocalizations.of(context).headerSettings}',
-                  },
+                  _sectionMark(context, shell.section),
                   style: const TextStyle(
                     fontFamily: LoreDubFonts.mono,
                     color: LoreDubPalette.mutedInk,
@@ -744,6 +762,7 @@ class _Header extends StatelessWidget {
                     DashboardSection.snapshot => AppLocalizations.of(context).titleSnapshot,
                     DashboardSection.models => AppLocalizations.of(context).titleModels,
                     DashboardSection.characters => AppLocalizations.of(context).titleCharacters,
+                    DashboardSection.glossary => AppLocalizations.of(context).titleGlossary,
                     DashboardSection.settings => AppLocalizations.of(context).titleSettings,
                   },
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -4946,6 +4965,28 @@ class _ComputeDeviceCard extends StatelessWidget {
                     },
             ),
           ],
+          const SizedBox(height: 14),
+          // Where recognition spends its time is not a matter of the device,
+          // so this stands outside the branch above: the window whisper
+          // listens over is the same on a processor and on a card.
+          Row(
+            children: [
+              Switch(
+                key: const ValueKey('roughRecognition'),
+                value: settings.roughRecognition,
+                onChanged: running
+                    ? null
+                    : (value) => cubits.settings.update(settings.copyWith(roughRecognition: value)),
+              ),
+              const SizedBox(width: 6),
+              Flexible(child: Text(l10n.roughRecognition)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.roughRecognitionNote,
+            style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+          ),
           const SizedBox(height: 14),
           // Stage by device: every cell says at a glance whether the stage
           // runs there, could, needs a package first, or cannot at all.

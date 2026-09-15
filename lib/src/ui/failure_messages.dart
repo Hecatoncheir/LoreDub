@@ -61,6 +61,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.charactersSaveFailed => l10n.failureCharactersSaveFailed(detail),
     FailureCode.charactersExportFailed => l10n.failureCharactersExportFailed(detail),
     FailureCode.charactersImportFailed => l10n.failureCharactersImportFailed(detail),
+    FailureCode.glossarySaveFailed => l10n.failureGlossarySaveFailed(detail),
     FailureCode.pipelinesSaveFailed => l10n.failurePipelinesSaveFailed(detail),
     FailureCode.pipelinesExportFailed => l10n.failurePipelinesExportFailed(detail),
     FailureCode.pipelinesImportFailed => l10n.failurePipelinesImportFailed(detail),

@@ -83,6 +83,50 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navSnapshot => 'Экран';
 
   @override
+  String get headerGlossary => 'СЛОВАРЬ ИГРЫ';
+
+  @override
+  String get navGlossary => 'Словарь';
+
+  @override
+  String get titleGlossary => 'Что дубляж знать не может';
+
+  @override
+  String get glossaryPhrases => 'ФРАЗЫ';
+
+  @override
+  String get glossaryPhrasesNote =>
+      'Целая реплика с вашим переводом: ответ берётся отсюда, модель даже не спрашивают. Здесь место идиомам, в которых модель не ошибается, а просто не знает игры: «Fire in the hole!» она переводит как «Огонь в дыру!». Сравнение идёт по предложению целиком, без оглядки на регистр и пробелы.';
+
+  @override
+  String get glossaryPhraseSource => 'Реплика по-английски';
+
+  @override
+  String get glossaryPhraseReading => 'Как её говорить';
+
+  @override
+  String get glossaryNames => 'ИМЕНА';
+
+  @override
+  String get glossaryNamesNote =>
+      'Имя, которое переводчик оставил латиницей — и только там запись и сработает. По замерам модель сама транслитерирует и правильно склоняет имена, которые ей даются («The people of Megaton» — «Жители Мегатона»), и подмена по всей строке сломала бы падеж. Без записи оставшаяся латиница просто транслитерируется: Rapture — «Раптур».';
+
+  @override
+  String get glossaryNameSource => 'Имя по-английски';
+
+  @override
+  String get glossaryNameReading => 'Как его говорить';
+
+  @override
+  String get glossaryEmpty => 'Пока пусто.';
+
+  @override
+  String get glossaryAdd => 'Добавить';
+
+  @override
+  String get glossaryRemove => 'Убрать';
+
+  @override
   String get navCharacters => 'Персонажи';
 
   @override
@@ -562,6 +606,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String failureGlossarySaveFailed(String detail) {
+    return 'Не удалось сохранить словарь: $detail';
+  }
+
+  @override
   String failureCharactersSaveFailed(String detail) {
     return 'Не удалось сохранить персонажей: $detail';
   }
@@ -931,6 +980,13 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get cpuThreads => 'Потоки CPU';
+
+  @override
+  String get roughRecognition => 'Распознавать быстрее, но грубее';
+
+  @override
+  String get roughRecognitionNote =>
+      'Whisper слушает укороченный отрезок звука. На девяти замеренных клипах распознавание заняло 897 мс вместо 1329, а слова вернулись те же на всех девяти, на двух разошлась только запятая. На быстрой или неразборчивой речи ошибок будет больше. На перевод и озвучку не влияет.';
 
   @override
   String get settingsPython => 'Python runtime';

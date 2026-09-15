@@ -116,6 +116,9 @@ enum FailureCode {
   /// A file the player chose holds no characters; the detail is its name.
   charactersImportFailed,
 
+  /// What the player wrote down about their games could not be saved.
+  glossarySaveFailed,
+
   /// The shelf of saved schemes could not be written.
   pipelinesSaveFailed,
 

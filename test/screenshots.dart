@@ -40,6 +40,7 @@ import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/app_release.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
+import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
@@ -47,6 +48,7 @@ import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
@@ -111,6 +113,44 @@ const packs = {
     CharacterPack(id: 'port', name: 'The old harbour', characterIds: ['guard', 'smith']),
   ],
 };
+
+/// What the player of the pictures has written down: one idiom the model
+/// takes literally, and one name it leaves in Latin script.
+const glossaryRu = Glossary(
+  entries: [
+    GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Fire in the hole!',
+      reading: '\u041b\u043e\u0436\u0438\u0441\u044c!',
+    ),
+    GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Watch your six.',
+      reading: '\u0421\u0437\u0430\u0434\u0438!',
+    ),
+    GlossaryEntry(
+      kind: GlossaryKind.name,
+      source: 'Hollowvale',
+      reading: '\u0425\u043e\u043b\u043b\u043e\u0443\u0432\u0435\u0439\u043b',
+    ),
+  ],
+);
+
+const glossaryEn = Glossary(
+  entries: [
+    GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Fire in the hole!',
+      reading: 'Take cover, grenade!',
+    ),
+    GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Watch your six.',
+      reading: 'Behind you!',
+    ),
+    GlossaryEntry(kind: GlossaryKind.name, source: 'Hollowvale', reading: 'Hollow Vale'),
+  ],
+);
 
 /// Where the game of the pictures writes its subtitles: a band across the
 /// lower middle of the window, clear of the quest in the corner.
@@ -291,6 +331,7 @@ void main() {
     List<SceneSpeaker> speakers = const [],
     List<TranscriptEntry> snapshots = const [],
     List<CastPlacement> placed = const [],
+    Glossary glossary = Glossary.empty,
     Map<String, GraphPoint> where = const {},
     String? chosen,
   }) {
@@ -327,6 +368,7 @@ void main() {
         selectedProcess: game,
       ),
     );
+    cubits.glossary.seed(GlossaryState(glossary: glossary, loaded: true));
     cubits.characters.seed(
       CharactersState(
         loading: false,
@@ -431,6 +473,19 @@ void main() {
         tester,
         stage(language, section: DashboardSection.characters),
         'characters',
+        language,
+      );
+    });
+
+    testWidgets('the glossary, in $language', (tester) async {
+      await shoot(
+        tester,
+        stage(
+          language,
+          section: DashboardSection.glossary,
+          glossary: language == 'ru' ? glossaryRu : glossaryEn,
+        ),
+        'glossary',
         language,
       );
     });

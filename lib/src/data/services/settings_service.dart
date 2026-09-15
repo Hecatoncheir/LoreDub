@@ -83,6 +83,8 @@ class SettingsService {
           preferences.getBool('silenceWhileReading') ?? const AppSettings().silenceWhileReading,
       hurryWhenQueued:
           preferences.getBool('hurryWhenQueued') ?? const AppSettings().hurryWhenQueued,
+      roughRecognition:
+          preferences.getBool('roughRecognition') ?? const AppSettings().roughRecognition,
       ttsSpeed: preferences.getDouble('ttsSpeed') ?? 1.12,
       cpuThreads: preferences.getInt('cpuThreads') ?? defaultCpuThreads(),
       showOverlay: preferences.getBool('showOverlay') ?? true,
@@ -132,6 +134,7 @@ class SettingsService {
       preferences.setBool('duckWhileSpeaking', settings.duckWhileSpeaking),
       preferences.setBool('silenceWhileReading', settings.silenceWhileReading),
       preferences.setBool('hurryWhenQueued', settings.hurryWhenQueued),
+      preferences.setBool('roughRecognition', settings.roughRecognition),
       preferences.setDouble('ttsSpeed', settings.ttsSpeed),
       preferences.setInt('cpuThreads', settings.cpuThreads),
       preferences.setBool('showOverlay', settings.showOverlay),

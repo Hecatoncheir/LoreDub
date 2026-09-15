@@ -11,6 +11,7 @@ import 'package:ffi/ffi.dart';
 
 import '../../domain/compute_device.dart';
 import '../../domain/failure.dart';
+import '../../domain/glossary.dart';
 import '../../domain/game_process.dart';
 import '../../domain/hotkey.dart';
 import '../../domain/ocr_region.dart';
@@ -146,6 +147,7 @@ class NativeEngineService {
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
       voiceBank: config['voiceBank'] as String?,
       characters: config['characters'] as String?,
+      glossary: config['glossary'] as String?,
       asHeard: _cutFromMix(config['asHeard']),
     );
     // What the worker settled on, which is not always what it was asked for.
@@ -206,6 +208,7 @@ class NativeEngineService {
       voiceConverter: (config['models']! as Map<String, String>)['converter'],
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
       characters: config['characters'] as String?,
+      glossary: config['glossary'] as String?,
     );
     if (_inference.translationBackend case final actual?) {
       _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
@@ -513,6 +516,11 @@ class NativeEngineService {
   /// Tells a running session which cards are out of the mix. The config the
   /// session started with is kept in step, so what the canvas says now is
   /// what a restart of it would be given.
+  /// Tells a running worker what the player has just written down. The
+  /// file is read when a session starts, so without this an entry added
+  /// while one runs would wait for the next start.
+  Future<void> writeGlossary(Glossary glossary) => _inference.updateGlossary(glossary);
+
   Future<void> readAsHeard(Set<String> value) async {
     _activeConfig?['asHeard'] = value.join(',');
     await _inference.readAsHeard(value);
@@ -825,6 +833,7 @@ class NativeEngineService {
         whisperModel: models['whisper']!,
         threads: config['cpuThreads']! as int,
         translateSpeech: config['translateSpeech'] as bool? ?? true,
+        roughRecognition: config['roughRecognition'] as bool? ?? false,
         // What whisper hands over is English; dubbing into English reads it
         // as it is, and the worker was started without a translator anyway.
         translate: config['targetLanguage'] != untranslatedDubbingLanguage,

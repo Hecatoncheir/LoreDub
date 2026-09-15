@@ -226,6 +226,13 @@ class PipelineInspector extends StatelessWidget {
       ),
     ),
     _device(l10n, ComputeStage.recognition),
+    _Toggle(
+      label: l10n.roughRecognition,
+      value: _settings.roughRecognition,
+      enabled: !_locked,
+      onChanged: (value) => _update(_settings.copyWith(roughRecognition: value)),
+    ),
+    _Note(text: l10n.roughRecognitionNote),
   ];
 
   List<Widget> _translation(AppLocalizations l10n) => [

@@ -110,6 +110,20 @@ than one of them.
    dropped. Which build runs is the compute setting:
    bundled `runtime/whisper/` (CPU) or `runtime/whisper-vulkan/`, or the
    downloaded `<app support>/runtime/whisper-cuda/`. OCR mode skips it.
+   Recognition is the larger half of the delay before a line is heard -- 1.33 s
+   of a 1.5 s chain on twelve CPU threads, against 0.06 for translation and
+   0.07 for Silero -- and nearly all of it is the encoder, which works over a
+   fixed window whatever the phrase is worth. `AppSettings.roughRecognition`
+   shortens that window with `-ac`: measured over nine clips, 1000 took 897 ms
+   rather than 1329 and said the same words on all nine, two differing only by
+   a comma. It is off by default and the number is not to be lowered without
+   measuring again -- 768 turned "struggling to reconcile" into "struggling the
+   reconciled", and 512 had whisper repeating a phrase back to itself, which
+   would then be translated and voiced. Two flags that look like they belong
+   here do nothing: `-fa` measured 1536 ms against 1328 over five runs, and the
+   resident `whisper-server` that ships in the same archive answered in
+   1301-1358 ms against the one-shot `whisper-cli`'s 1319-1348, spending the
+   model load it saves on its own upload.
 4. **Python inference worker** — `assets/runtime/inference_worker.py`, bundled
    as a Flutter asset, extracted to the app-support `work/` directory and run
    by `LocalInferenceService` as a persistent subprocess speaking
@@ -130,6 +144,37 @@ than one of them.
    line reports as `device`. `python_discovery.dart` asks an interpreter for
    ctranslate2 along with torch and transformers, since one without it would
    start and then fail on the first line it had to translate.
+
+A line is translated a sentence at a time. Marian was trained on single
+sentences and answers a reply of several with one of them, dropping the rest --
+"Get to the chopper! Now! Go, go, go!" came back as "Давай, давай, давай", and five of
+nine multi-sentence lines measured lost a sentence. `sentences`
+(`inference_worker.py`) cuts the line where one ends and the next begins -- a
+full stop before a small letter being a line thinking aloud rather than an end,
+and one closing a title or an initial no end either -- and the pieces go to
+CTranslate2 as a single batch, which decodes them side by side: 100 ms against
+116 for the same lines whole. `TranslationMemory` keeps the last 512 sentences,
+so a game repeating itself costs nothing and one shout is never rendered two
+ways in the same fight. What the translator leaves in Latin script is written
+out by `transliterated` rather than translated a second time. Silero reads no
+Latin: measured, it drops the word without a sound -- "Добро пожаловать в
+Rapture." speaks for the same 0.95 s as "Добро пожаловать." alone -- and
+raises on a line that is Latin end to end, which reaches the player as a
+failure rather than as a line, so the name written out is the name spoken at
+all. A letter standing on its own is
+dropped the same way and is named rather than spelt: "Press F to pay respects"
+is "Нажмите эф", since one letter of Cyrillic is worth as little to the
+voice as one of Latin (2.07 s against the 1.98 s of the line without it, and
+2.22 s named). `LATIN_RUN` stays the Latin *word*, which is what says whether
+the line was translated at all; `LATIN_TEXT` is any Latin at all, which is
+what has to be written over. The second pass all this replaces answered
+"Rapture" with "восторг" and "Megaton" with "мегатонну", names it had no
+business translating -- and only where the dubbing language is not written in
+Latin itself, which `dubbed_in_latin` asks the translator once at startup: a
+German line is Latin from end to end, so every one of them used to go through
+the model twice for an answer that was thrown away. More than two Latin words
+left behind is a line passed through rather than translated, and that is the one
+case where the second pass earns the time it costs.
 
 Segments are processed strictly sequentially — `NativeEngineService._processing`
 is a chained `Future` — so a small CPU is never asked to run two inferences at
@@ -187,10 +232,43 @@ waiting to be spoken, while lines waiting to be recognized are not held up by
 the voice at all, and hurrying for them would rush a dubbing that is late for
 another reason.
 
-The six screens are listed in the order the work is done in — Эфир,
-Экран, Персонажи, Схема, Модели, Настройки — which is the order of
-`DashboardSection` itself: the compact navigation indexes into
-`DashboardSection.values`, and the header numbers each screen by it.
+The seven screens are listed in the order the work is done in — Эфир,
+Экран, Персонажи, Словарь, Схема, Модели, Настройки — which is the
+order of `DashboardSection` itself: the compact navigation indexes into
+`DashboardSection.values`, and `_sectionMark` numbers the header off
+`section.index`, so a screen put between two others renumbers the rest by
+itself rather than by hand.
+
+The Glossary screen ("Словарь", `DashboardSection.glossary`, `GlossaryCubit`,
+`glossary_screen.dart`) is where the player writes down what no better model
+would know. `GlossaryService` keeps it in one `<app support>/glossary.json`
+for every game, like the cast and unlike the per-game bank, and every session
+that translates is handed the path (`--glossary`). Two kinds, kept apart
+because they reach a line at different moments and neither can do the other's
+work. A `GlossaryKind.phrase` is a whole sentence with the player's own
+translation, answered before the model is asked: the model is not wrong about
+"Fire in the hole!" so much as ignorant of the game. A `GlossaryKind.name`
+replaces what the translator left in Latin script, inside `readable`, and
+nowhere else -- measured, the model transliterates and correctly declines the
+names it does render ("The people of Megaton" comes back as "Жители
+Мегатона", "Talk to the mayor of Megaton" as "с мэром Мегатона"), so a
+nominative laid over the whole line would break the grammar it had already
+found. Two ways of reaching further were measured and do not work: a
+placeholder put in the source so the name could be substituted afterwards is
+transliterated like any other Latin ("Zorvax" survived one sentence of eight,
+and a short one like "Qqq" was dropped outright, taking the name with it), and
+`target_prefix` only holds the start of the line -- forced "Мегатон", the
+decoder wrote "Мегатонн" anyway. What does work, and is not built, is
+`suppress_sequences`: forbidden the form it got wrong, the model finds another
+and declines it properly ("Megaton is gone." became "Мегатонна больше нет",
+"leaving Rapture" became "из Раптуры") -- but deciding that a rendering is
+wrong means telling a mangled form from a declined one, and that needs
+morphology this has none of. Matching ignores case and spacing on both kinds.
+`AppRepository.saveGlossary` writes the file and then tells a running worker
+(`{"glossary": {...}}`, the same shape the file holds, so the worker has one
+parser): the player writes an entry down because they just heard the line go
+wrong, and mean the next one to be said their way rather than the next
+session.
 
 The Graph screen ("Схема", `DashboardSection.pipeline`) draws the pipeline as
 nodes and is the second way to the same settings, not a second set of them.

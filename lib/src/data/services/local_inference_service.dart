@@ -15,6 +15,7 @@ import '../../domain/sound_captions.dart';
 import '../../domain/spoken_language.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/failure.dart';
+import '../../domain/glossary.dart';
 import 'runtime_catalog.dart';
 
 class InferenceResult {
@@ -212,6 +213,11 @@ class LocalInferenceService {
     /// game rather than one.
     String? characters,
 
+    /// What the player wrote down about their games: the names the model
+    /// leaves in Latin script and the sentences they have translated
+    /// themselves. One file for every game, as the cast is.
+    String? glossary,
+
     /// The cards cut out of the mix on the graph, by id. Each of them is
     /// read as it is heard: it lends its voice to nobody, and nobody stands
     /// in for it, though what the cards say waits in them.
@@ -288,6 +294,7 @@ class LocalInferenceService {
           if (revoice) '--revoice',
           if (voiceBank != null) ...['--voice-bank', voiceBank],
           if (characters != null) ...['--characters', characters],
+          if (glossary != null) ...['--glossary', glossary],
           if (asHeard.isNotEmpty) ...['--as-heard', asHeard.join(',')],
         ],
       ],
@@ -380,6 +387,16 @@ class LocalInferenceService {
     if (message['id'] case final int id) _pending.remove(id)?.complete(message);
   }
 
+  /// The audio context `-ac` is given when recognition is asked to hurry.
+  ///
+  /// Measured over nine clips of a recording, against the full window: 1000
+  /// took 897 ms rather than 1329 and said the same words on all nine, two of
+  /// them differing only by a comma. Below it the answers start to drift --
+  /// 768 turned "struggling to reconcile" into "struggling the reconciled" --
+  /// and at 512 whisper began repeating a phrase back to itself, which would
+  /// then be translated and voiced. Measure again before moving it.
+  static const _shortenedAudioContext = 1000;
+
   Future<InferenceResult?> processSegment({
     required String wavePath,
 
@@ -399,6 +416,10 @@ class LocalInferenceService {
     /// Whether what whisper heard still has to be translated. Dubbing into
     /// English does not: whisper was asked for English and handed it over.
     bool translate = true,
+
+    /// Whether to shorten the stretch of sound whisper listens over, which
+    /// is where nearly all of the recognition time goes.
+    bool roughRecognition = false,
   }) async {
     final whisper = _whisperExecutable ?? await resolveWhisperExecutable();
     final model = whisperModel;
@@ -415,6 +436,7 @@ class LocalInferenceService {
       '-l',
       _spokenLanguage ?? 'auto',
       if (translateSpeech) '-tr',
+      if (roughRecognition) ...['-ac', '$_shortenedAudioContext'],
       // Music and noise would otherwise come back as "(soft music)" or
       // "[Music]" — captions whisper learned from subtitles — and be voiced.
       '-sns',
@@ -615,6 +637,34 @@ class LocalInferenceService {
   ///
   /// The cards keep who stands in for whom either way; this is only whether
   /// any of it is applied.
+  /// Hands a running worker what the player has just written down.
+  ///
+  /// The same shape the file holds, so the worker reads it with the parser
+  /// it already has. Sent whether or not the worker translates: one that
+  /// does not simply keeps it unread.
+  Future<void> updateGlossary(Glossary glossary) async {
+    final worker = _worker;
+    if (worker == null) return;
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(jsonEncode({'id': id, 'glossary': glossary.toJson()}));
+    final response = await completer.future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
+  }
+
   Future<void> readAsHeard(Set<String> value) async {
     final worker = _worker;
     if (worker == null) return;

@@ -278,6 +278,18 @@ void main() {
     expect(stored.hurryWhenQueued, isFalse);
   });
 
+  test('listens over the whole window until told to hurry', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    // Off by default: the time it saves is paid for in the phrases that were
+    // already hard, so it is the player who asks for it.
+    expect((await service.load()).roughRecognition, isFalse);
+
+    await service.save(const AppSettings(roughRecognition: true));
+    expect((await service.load()).roughRecognition, isTrue);
+  });
+
   test('lets characters overlap until told otherwise', () async {
     SharedPreferences.setMockInitialValues({});
     final service = SettingsService();
