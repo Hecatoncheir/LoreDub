@@ -2722,19 +2722,41 @@ class _PipelinePanel extends StatelessWidget {
                   ),
                 ),
               ),
-              if (selected != null)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  bottom: 12,
-                  child: PipelineInspector(
-                    cubits: cubits,
-                    node: selected,
-                    facts: facts,
-                    availability: availability,
-                    chained: graph.graph.chained,
+              // The panel comes in from the edge it sits on rather than
+              // appearing over the scheme: what opened it is a click on the
+              // canvas, and the eye should be able to follow one to the
+              // other. Switching from one node to another is not a
+              // transition — the same panel is answering about another
+              // card, and cross-fading two of them would say otherwise.
+              Positioned(
+                top: 12,
+                right: 12,
+                bottom: 12,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.06, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
                   ),
+                  child: selected == null
+                      ? const SizedBox.shrink()
+                      : PipelineInspector(
+                          cubits: cubits,
+                          node: selected,
+                          facts: facts,
+                          availability: availability,
+                          chained: graph.graph.chained,
+                        ),
                 ),
+              ),
             ],
           ),
         ),
@@ -2770,16 +2792,21 @@ class _GraphToolbar extends StatelessWidget {
                 // a link came to takes the same place, so a refusal is read
                 // where the hand already is.
                 Expanded(
-                  child: switch (state.refusal) {
-                    final refusal? => Text(
-                      describeConnectionRefusal(l10n, refusal),
-                      style: const TextStyle(fontSize: 12, color: LoreDubPalette.error),
-                    ),
-                    _ => Text(
-                      l10n.pipelineGraphHint,
-                      style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
-                    ),
-                  },
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: switch (state.refusal) {
+                      final refusal? => Text(
+                        describeConnectionRefusal(l10n, refusal),
+                        key: ValueKey(refusal),
+                        style: const TextStyle(fontSize: 12, color: LoreDubPalette.error),
+                      ),
+                      _ => Text(
+                        l10n.pipelineGraphHint,
+                        key: const ValueKey('hint'),
+                        style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+                      ),
+                    },
+                  ),
                 ),
                 const SizedBox(width: 12),
                 _addCharacter(context, l10n),

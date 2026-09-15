@@ -163,7 +163,42 @@ class PipelineCanvas extends StatefulWidget {
   State<PipelineCanvas> createState() => _PipelineCanvasState();
 }
 
-class _PipelineCanvasState extends State<PipelineCanvas> {
+class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProviderStateMixin {
+  /// How long a line takes to draw itself in, and a line or a card to go.
+  /// Long enough to be seen following the pointer that drew it, short enough
+  /// that nobody waits for it.
+  static const _motion = Duration(milliseconds: 280);
+
+  /// Runs whenever the scheme gains or loses something. One controller for
+  /// the lot: everything a single edit changes moves together, which is what
+  /// makes it read as one change rather than as several.
+  late final AnimationController _drawing = AnimationController(vsync: this, duration: _motion)
+    ..addStatusListener((status) {
+      if (status != AnimationStatus.completed || !mounted) return;
+      setState(() {
+        _appearing = const {};
+        _fading = const {};
+        _leaving = const [];
+      });
+    });
+
+  late final Animation<double> _grown = CurvedAnimation(
+    parent: _drawing,
+    curve: Curves.easeOutCubic,
+  );
+
+  /// A card on its way off: it fades and draws in a little as it goes.
+  late final Animation<double> _going = Tween<double>(begin: 1, end: 0).animate(_grown);
+  late final Animation<double> _shrinking = Tween<double>(begin: 1, end: 0.96).animate(_grown);
+
+  /// The lines drawn since the last frame, which grow from their socket, and
+  /// the ones taken away, which fade where they were.
+  Set<PipelineLink> _appearing = const {};
+  Set<PipelineLink> _fading = const {};
+
+  /// The cards taken off the canvas, kept until they have faded out.
+  List<PipelineNode> _leaving = const [];
+
   final _viewport = GlobalKey();
 
   /// The port the pointer is over while a link is being pulled, so it can
@@ -174,6 +209,54 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
   /// a node moves is the distance from here, so it keeps up with the pointer
   /// exactly instead of with its own idea of how far it has come.
   Offset? _dragging;
+
+  @override
+  void initState() {
+    super.initState();
+    // The scheme draws itself when the screen is opened, line by line out of
+    // the sockets they leave.
+    _appearing = widget.state.graph.links.toSet();
+    if (_appearing.isNotEmpty) _drawing.forward(from: 0);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // A player who has turned animation off in Windows is shown the end of
+    // every one of these at once.
+    _drawing.duration = MediaQuery.disableAnimationsOf(context) ? Duration.zero : _motion;
+  }
+
+  @override
+  void didUpdateWidget(PipelineCanvas old) {
+    super.didUpdateWidget(old);
+    final was = old.state.graph;
+    final now = widget.state.graph;
+    final appearing = {
+      for (final link in now.links)
+        if (!was.links.contains(link)) link,
+    };
+    final fading = {
+      for (final link in was.links)
+        if (!now.links.contains(link)) link,
+    };
+    final drawn = {for (final node in now.nodes) node.id};
+    final leaving = [
+      for (final node in was.nodes)
+        if (!drawn.contains(node.id)) node,
+    ];
+    if (appearing.isEmpty && fading.isEmpty && leaving.isEmpty) return;
+    _appearing = appearing;
+    _fading = fading;
+    _leaving = leaving;
+    _drawing.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _drawing.dispose();
+    super.dispose();
+  }
 
   /// The band being drawn with control held, in canvas places. Null while
   /// no band is being drawn, which is most of the time.
@@ -444,9 +527,17 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
                             graph: _state.graph,
                             drag: _state.drag,
                             over: _over,
+                            appearing: _appearing,
+                            fading: _fading,
+                            leaving: _leaving,
+                            grown: _grown,
                           ),
                         ),
                       ),
+                      // The cards that have been taken off go under the ones
+                      // that are still here, and answer to nothing while
+                      // they fade.
+                      for (final node in _leaving) ..._leavingLayer(context, node),
                       for (final node in _state.graph.nodes) ..._nodeLayer(context, node),
                       ..._cutButtons(context),
                       if (_band case final band?)
@@ -472,42 +563,81 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
     );
   }
 
-  List<Widget> _nodeLayer(BuildContext context, PipelineNode node) {
+  /// A card on its way off the canvas: where it was, fading, and deaf.
+  List<Widget> _leavingLayer(BuildContext context, PipelineNode node) {
     final size = NodeMetrics.sizeOf(node.kind);
     return [
       Positioned(
+        key: ValueKey('leaving/${node.id}'),
         left: node.position.x,
         top: node.position.y,
         width: size.width,
         height: size.height,
-        child: _NodeCard(
-          node: node,
-          facts: widget.facts,
-          availability: widget.availability,
-          selected: _state.chosen.contains(node.id),
-          onTap: () => widget.bloc.add(PipelineNodeSelected(node.id, add: _adding)),
-          onGrab: (at) {
-            _dragging = at;
-            widget.bloc.add(PipelineNodeGrabbed(node.id));
-          },
-          onDrag: (at) {
-            final from = _dragging ?? at;
-            _dragging = at;
-            widget.bloc.add(
-              PipelineNodeMoved(
-                node.id,
-                (at.dx - from.dx) / _view.zoom,
-                (at.dy - from.dy) / _view.zoom,
+        child: IgnorePointer(
+          child: FadeTransition(
+            opacity: _going,
+            child: ScaleTransition(
+              scale: _shrinking,
+              child: _NodeCard(
+                node: node,
+                facts: widget.facts,
+                availability: widget.availability,
+                selected: false,
+                onTap: () {},
+                onGrab: (_) {},
+                onDrag: (_) {},
+                onDrop: () {},
               ),
-            );
-          },
-          onDrop: () {
-            _dragging = null;
-            widget.bloc.add(const PipelineArrangementSettled());
-          },
-          onRemove: node.kind != PipelineNodeKind.character
-              ? null
-              : () => widget.bloc.add(PipelineCharacterRemoved(node.id)),
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _nodeLayer(BuildContext context, PipelineNode node) {
+    final size = NodeMetrics.sizeOf(node.kind);
+    return [
+      Positioned(
+        // Keyed by the node, so a card taken off the canvas does not hand
+        // its place — and the entrance it has already played — to the one
+        // drawn after it.
+        key: ValueKey(node.id),
+        left: node.position.x,
+        top: node.position.y,
+        width: size.width,
+        height: size.height,
+        child: _Appearing(
+          key: ValueKey('rising/${node.id}'),
+          child: _NodeCard(
+            node: node,
+            facts: widget.facts,
+            availability: widget.availability,
+            selected: _state.chosen.contains(node.id),
+            onTap: () => widget.bloc.add(PipelineNodeSelected(node.id, add: _adding)),
+            onGrab: (at) {
+              _dragging = at;
+              widget.bloc.add(PipelineNodeGrabbed(node.id));
+            },
+            onDrag: (at) {
+              final from = _dragging ?? at;
+              _dragging = at;
+              widget.bloc.add(
+                PipelineNodeMoved(
+                  node.id,
+                  (at.dx - from.dx) / _view.zoom,
+                  (at.dy - from.dy) / _view.zoom,
+                ),
+              );
+            },
+            onDrop: () {
+              _dragging = null;
+              widget.bloc.add(const PipelineArrangementSettled());
+            },
+            onRemove: node.kind != PipelineNodeKind.character
+                ? null
+                : () => widget.bloc.add(PipelineCharacterRemoved(node.id)),
+          ),
         ),
       ),
       for (final socket in PipelineSocket.values)
@@ -659,11 +789,30 @@ class _DotFieldPainter extends CustomPainter {
 /// as well -- that one is heard, and it ends in the orange path out -- while
 /// the lines among the cards themselves stay graphite.
 class _LinkPainter extends CustomPainter {
-  const _LinkPainter({required this.graph, this.drag, this.over});
+  // Repainted by the animation rather than rebuilt with it: a builder
+  // ticking every frame hands the whole layer a new widget, and the layer
+  // holds every line of the scheme.
+  _LinkPainter({
+    required this.graph,
+    required this.grown,
+    this.drag,
+    this.over,
+    this.appearing = const {},
+    this.fading = const {},
+    this.leaving = const [],
+  }) : super(repaint: grown);
 
   final PipelineGraph graph;
   final PipelineLinkDrag? drag;
   final PipelinePort? over;
+
+  /// The lines just drawn, which grow out of the socket they leave, and the
+  /// ones just cut, which fade where they lay. [grown] is how far along both
+  /// of those are; [leaving] holds the cards a cut line still hangs off.
+  final Set<PipelineLink> appearing;
+  final Set<PipelineLink> fading;
+  final List<PipelineNode> leaving;
+  final Animation<double> grown;
 
   /// How far the curve leaves a socket before it bends, so two nodes side by
   /// side are joined by a bow rather than a corner.
@@ -685,11 +834,23 @@ class _LinkPainter extends CustomPainter {
     return (from + c1 * 3 + c2 * 3 + to) / 8;
   }
 
+  /// The node [id] is drawn as, whether it is still on the canvas or on its
+  /// way off it: a line being cut with the card it hung off has to be drawn
+  /// somewhere while it fades.
+  PipelineNode? _nodeOf(String id) {
+    if (graph.node(id) case final node?) return node;
+    for (final node in leaving) {
+      if (node.id == id) return node;
+    }
+    return null;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    for (final link in graph.links) {
-      final from = graph.node(link.from.nodeId);
-      final to = graph.node(link.to.nodeId);
+    final drawnSoFar = grown.value;
+    for (final link in [...graph.links, ...fading]) {
+      final from = _nodeOf(link.from.nodeId);
+      final to = _nodeOf(link.to.nodeId);
       if (from == null || to == null) continue;
       final path = pathBetween(
         NodeMetrics.portAt(from, link.from.socket),
@@ -700,13 +861,21 @@ class _LinkPainter extends CustomPainter {
       // carries the orange of the path it joins; the casting among the
       // cards is graphite, being an arrangement rather than a signal.
       final heard = cast && link.to.socket == PipelineSocket.mixCast;
+      // A line just drawn runs out of the socket it leaves and reaches for
+      // the one it was dropped on; a line just cut fades where it lay. Which
+      // of the two happened is worth seeing without reading the whole scheme
+      // again.
+      final drawn = appearing.contains(link) ? _upTo(path, drawnSoFar) : path;
+      final alpha = fading.contains(link) ? (1 - drawnSoFar).clamp(0.0, 1.0) : 1.0;
       canvas.drawPath(
-        cast ? _dashed(path) : path,
+        cast ? _dashed(drawn) : drawn,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = cast ? 1.6 : 2.4
           ..strokeCap = StrokeCap.round
-          ..color = cast && !heard ? LoreDubPalette.graphite : LoreDubPalette.orange,
+          ..color = (cast && !heard ? LoreDubPalette.graphite : LoreDubPalette.orange).withValues(
+            alpha: alpha,
+          ),
       );
     }
     if (drag case final pulling?) {
@@ -724,6 +893,16 @@ class _LinkPainter extends CustomPainter {
           ..color = over == null ? LoreDubPalette.mutedInk : LoreDubPalette.orange,
       );
     }
+  }
+
+  /// The first [share] of [path], measured along the curve.
+  Path _upTo(Path path, double share) {
+    if (share >= 1) return path;
+    final drawn = Path();
+    for (final metric in path.computeMetrics()) {
+      drawn.addPath(metric.extractPath(0, metric.length * share.clamp(0.0, 1.0)), Offset.zero);
+    }
+    return drawn;
   }
 
   /// [path] as a dashed copy of itself. Flutter strokes whole paths only, so
@@ -745,7 +924,11 @@ class _LinkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_LinkPainter old) =>
-      old.graph != graph || old.drag != drag || old.over != over;
+      old.graph != graph ||
+      old.drag != drag ||
+      old.over != over ||
+      old.appearing != appearing ||
+      old.fading != fading;
 }
 
 /// A socket: hollow while nothing is attached, filled when something is,
@@ -768,7 +951,8 @@ class _PortDot extends StatelessWidget {
     final color = signal == PipelineSignal.voice ? LoreDubPalette.graphite : LoreDubPalette.orange;
     return Center(
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: _ease(context, 120),
+        curve: Curves.easeOut,
         width: caught ? 22 : (offered ? 18 : NodeMetrics.dotRadius * 2),
         height: caught ? 22 : (offered ? 18 : NodeMetrics.dotRadius * 2),
         decoration: BoxDecoration(
@@ -779,6 +963,79 @@ class _PortDot extends StatelessWidget {
       ),
     );
   }
+}
+
+/// How long a change of face takes on the canvas — a card chosen, cut out
+/// of the mix, or gone dark — or nothing at all when the player has turned
+/// animation off in Windows.
+Duration _ease(BuildContext context, [int milliseconds = 200]) =>
+    MediaQuery.disableAnimationsOf(context) ? Duration.zero : Duration(milliseconds: milliseconds);
+
+/// The pointer resting on something, for the widget under it to answer with.
+/// A card lifts a little under the pointer, which says it can be taken hold
+/// of before it is.
+class _Hovering extends StatefulWidget {
+  const _Hovering({required this.cursor, required this.builder});
+
+  final MouseCursor cursor;
+  final Widget Function(BuildContext context, bool hovered) builder;
+
+  @override
+  State<_Hovering> createState() => _HoveringState();
+}
+
+class _HoveringState extends State<_Hovering> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    cursor: widget.cursor,
+    onEnter: (_) => setState(() => _hovered = true),
+    onExit: (_) => setState(() => _hovered = false),
+    child: widget.builder(context, _hovered),
+  );
+}
+
+/// A card arriving on the canvas: it comes up rather than appearing whole,
+/// so a card drawn from the toolbar is seen arriving and the scheme lays
+/// itself out when the screen is opened.
+///
+/// Its own controller rather than the canvas's: what it answers is being
+/// mounted, which is a thing that happens to one card at a time.
+class _Appearing extends StatefulWidget {
+  const _Appearing({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<_Appearing> createState() => _AppearingState();
+}
+
+class _AppearingState extends State<_Appearing> with SingleTickerProviderStateMixin {
+  late final AnimationController _rising = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 240),
+  )..forward();
+
+  late final Animation<double> _risen = CurvedAnimation(
+    parent: _rising,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) _rising.value = 1;
+  }
+
+  @override
+  void dispose() {
+    _rising.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(opacity: _risen, child: widget.child);
 }
 
 /// One node, drawn as a card of the same family as the model tiles: a header
@@ -823,11 +1080,18 @@ class _NodeCard extends StatelessWidget {
       onPanStart: (details) => onGrab(details.globalPosition),
       onPanUpdate: (details) => onDrag(details.globalPosition),
       onPanEnd: (_) => onDrop(),
-      child: MouseRegion(
+      child: _Hovering(
         cursor: SystemMouseCursors.grab,
-        child: Opacity(
+        // A card cut out of the mix, or standing under a route that has been
+        // taken apart, goes dark rather than blinking dark: what the player
+        // just did is worth following with the eye.
+        builder: (context, hovered) => AnimatedOpacity(
+          duration: _ease(context),
+          curve: Curves.easeOut,
           opacity: node.unrouted ? 0.55 : 1,
-          child: Container(
+          child: AnimatedContainer(
+            duration: _ease(context),
+            curve: Curves.easeOut,
             decoration: BoxDecoration(
               color: _paint.body,
               borderRadius: BorderRadius.circular(12),
@@ -835,12 +1099,12 @@ class _NodeCard extends StatelessWidget {
                 color: selected ? _paint.chosen : LoreDubPalette.outline,
                 width: selected ? 2 : 1,
               ),
-              boxShadow: selected
-                  ? const [
+              boxShadow: selected || hovered
+                  ? [
                       BoxShadow(
-                        color: Color(0x22171717),
-                        blurRadius: 18,
-                        offset: Offset(0, 6),
+                        color: const Color(0x22171717),
+                        blurRadius: selected ? 18 : 12,
+                        offset: Offset(0, selected ? 6 : 4),
                       ),
                     ]
                   : null,
@@ -859,7 +1123,9 @@ class _NodeCard extends StatelessWidget {
     );
   }
 
-  Widget _header(BuildContext context, AppLocalizations l10n) => Container(
+  Widget _header(BuildContext context, AppLocalizations l10n) => AnimatedContainer(
+    duration: _ease(context),
+    curve: Curves.easeOut,
     height: NodeMetrics.headerHeight,
     padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(

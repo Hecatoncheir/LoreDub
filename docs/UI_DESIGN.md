@@ -105,4 +105,12 @@ radius.
 - At widths below 900 px the sidebar becomes bottom navigation. The game-source
   controls stack below 720 px to avoid horizontal overflow.
 - Motion is limited to a 180 ms content transition when switching workspaces;
-  there is no decorative continuous animation.
+  there is no decorative continuous animation. The graph screen answers an
+  edit with motion of its own — all of it under 300 ms, all of it started by
+  something the player did, none of it running on its own: a line drawn grows
+  out of the socket it leaves, a line cut fades where it lay, a card arrives
+  on the canvas and goes off it rather than blinking on and off, a card going
+  dark or gaining an orange head eases into it, and the panel comes in from
+  the edge it sits on. Every one of these reads
+  `MediaQuery.disableAnimationsOf` and is handed no duration at all where
+  Windows says animation is off.

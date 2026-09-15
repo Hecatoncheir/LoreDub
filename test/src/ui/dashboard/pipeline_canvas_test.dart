@@ -41,6 +41,7 @@ void main() {
     WidgetTester tester,
     Size size, {
     AppSettings settings = const AppSettings(),
+    bool still = false,
   }) async {
     SharedPreferences.setMockInitialValues(const {});
     tester.view.physicalSize = size;
@@ -86,12 +87,34 @@ void main() {
         locale: const Locale('ru'),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: DashboardView(cubits: cubits),
+        home: still
+            // A player who has turned animation off in Windows.
+            ? Builder(
+                builder: (context) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(disableAnimations: true),
+                  child: DashboardView(cubits: cubits),
+                ),
+              )
+            : DashboardView(cubits: cubits),
       ),
     );
     await tester.pumpAndSettle();
     return cubits;
   }
+
+  /// How long a card takes to answer a change of its own face.
+  Duration cardMotion(WidgetTester tester) => tester
+      .widget<AnimatedOpacity>(
+        find
+            .descendant(of: find.byType(PipelineCanvas), matching: find.byType(AnimatedOpacity))
+            .first,
+      )
+      .duration;
+
+  /// The route, which is the one link every scheme has.
+  PipelineLink routeOf(DashboardCubits cubits) => cubits.graph.state.graph.linkInto(
+    const PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn),
+  )!;
 
   /// The boxes that pick a link up, as they end up on the screen.
   List<Rect> ports(WidgetTester tester) => [
@@ -112,6 +135,33 @@ void main() {
       ..sort((a, b) => (a.center - title).distance.compareTo((b.center - title).distance));
     return boxes.first.center;
   }
+
+  testWidgets('draws a line away rather than snapping it off', (tester) async {
+    final cubits = await pumpGraph(tester, const Size(1500, 950));
+
+    cubits.graph.add(PipelineLinkCut(routeOf(cubits)));
+    // One frame for the bloc to answer, one for the canvas to see it.
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      tester.hasRunningAnimations,
+      isTrue,
+      reason: 'the line fades where it lay rather than going between frames',
+    );
+    await tester.pumpAndSettle();
+    expect(cubits.settings.state.settings.captureRouted, isFalse);
+  });
+
+  testWidgets('leaves the canvas still where Windows has animation turned off', (tester) async {
+    // Windows has a switch for this, and a scheme that insists on moving
+    // anyway is exactly what it is turned off to stop.
+    await pumpGraph(tester, const Size(1500, 950));
+    expect(cardMotion(tester), isNot(Duration.zero), reason: 'a card goes dark over a moment');
+
+    await pumpGraph(tester, const Size(1500, 950), still: true);
+    expect(cardMotion(tester), Duration.zero);
+  });
 
   testWidgets('drops a link on a card rather than on its socket', (tester) async {
     // Aiming at a dot six pixels across is needless when the card has one
