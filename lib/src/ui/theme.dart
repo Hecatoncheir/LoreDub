@@ -3,6 +3,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'dashboard/node_paint.dart';
+
 /// Nunito carries the headings, its wider sibling sets the running text, and
 /// JetBrains Mono is reserved for the instrument markings — module numbers,
 /// state labels and measured times — which is where the icon's industrial
@@ -188,43 +190,130 @@ ThemeData buildLoreDubTheme() {
   );
 }
 
-/// The same interface, in the colours a node is drawn in.
+/// The same interface, in the colours [paint] draws a node in.
 ///
-/// The node panel on the graph screen is a card of the scheme rather than a
-/// page beside it, so it is drawn the way the plain nodes are: the raised
-/// paper for the face of it, the panel grey for its head and for the fields
-/// sunk into it. Everything else — the shapes, the faces, the orange — is
-/// the theme's own.
-ThemeData buildLoreDubPanelTheme() {
+/// The panel that opens on a node is that node's panel: it takes the face
+/// the node carries, so choosing the orange output opens an orange panel and
+/// choosing a card of the cast opens a dark one. Everything else — the
+/// shapes, the faces, the spacing — is the theme's own, so what stands in
+/// the panel is the same interface in another colour rather than a second
+/// one.
+ThemeData buildLoreDubPanelTheme(NodePaint paint) {
   final base = buildLoreDubTheme();
-  const fieldBorder = OutlineInputBorder(
-    borderSide: BorderSide(color: LoreDubPalette.outline),
+  const controlShape = RoundedRectangleBorder(
     borderRadius: BorderRadius.all(Radius.circular(8)),
+  );
+  final fieldBorder = OutlineInputBorder(
+    borderSide: BorderSide(color: paint.rule),
+    borderRadius: const BorderRadius.all(Radius.circular(8)),
   );
 
   return base.copyWith(
-    colorScheme: base.colorScheme.copyWith(surface: LoreDubPalette.raised),
+    brightness: paint.dark ? Brightness.dark : Brightness.light,
+    colorScheme: base.colorScheme.copyWith(
+      brightness: paint.dark ? Brightness.dark : Brightness.light,
+      primary: paint.chosen,
+      onPrimary: paint.onChosen,
+      surface: paint.body,
+      onSurface: paint.ink,
+      outline: paint.rule,
+    ),
     // What a dropdown opens onto.
-    canvasColor: LoreDubPalette.raised,
-    cardTheme: base.cardTheme.copyWith(color: LoreDubPalette.raised),
-    // Sunk into the face of the panel rather than raised out of it: on the
-    // paper colour a field filled with the same is an outline and nothing
-    // else.
+    canvasColor: paint.sunk,
+    textTheme: base.textTheme
+        .apply(bodyColor: paint.ink, displayColor: paint.ink)
+        // What a label or a note is said in, which every one of them reads
+        // rather than naming a colour of its own.
+        .copyWith(bodySmall: base.textTheme.bodySmall?.copyWith(color: paint.muted)),
+    dividerColor: paint.rule,
+    cardTheme: base.cardTheme.copyWith(
+      color: paint.sunk,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: paint.rule),
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+      ),
+    ),
     inputDecorationTheme: base.inputDecorationTheme.copyWith(
-      fillColor: LoreDubPalette.panel,
+      // Sunk into the face of the panel rather than raised out of it: filled
+      // with the face's own colour a field is an outline and nothing else.
+      fillColor: paint.sunk,
+      labelStyle: TextStyle(color: paint.muted),
+      helperStyle: TextStyle(color: paint.muted),
       border: fieldBorder,
       enabledBorder: fieldBorder,
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: paint.chosen, width: 2),
+        borderRadius: const BorderRadius.all(Radius.circular(8)),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        foregroundColor: paint.onChosen,
+        backgroundColor: paint.chosen,
+        disabledBackgroundColor: paint.sunk,
+        disabledForegroundColor: paint.muted,
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        shape: controlShape,
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: paint.ink,
+        minimumSize: const Size(48, 48),
+        side: BorderSide(color: paint.rule),
+        shape: controlShape,
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: paint.chosen,
+        minimumSize: const Size(44, 44),
+        shape: controlShape,
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        foregroundColor: paint.ink,
+        minimumSize: const Size(48, 48),
+        shape: controlShape,
+      ),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(
         minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
-        foregroundColor: const WidgetStatePropertyAll(LoreDubPalette.ink),
-        backgroundColor: WidgetStateProperty.resolveWith(
-          (states) =>
-              states.contains(WidgetState.selected) ? LoreDubPalette.orange : LoreDubPalette.panel,
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? paint.onChosen : paint.ink,
         ),
-        side: const WidgetStatePropertyAll(BorderSide(color: LoreDubPalette.graphite)),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? paint.chosen : paint.sunk,
+        ),
+        side: WidgetStatePropertyAll(BorderSide(color: paint.rule)),
       ),
     ),
+    sliderTheme: base.sliderTheme.copyWith(
+      activeTrackColor: paint.chosen,
+      inactiveTrackColor: paint.rule,
+      thumbColor: paint.chosen,
+    ),
+    switchTheme: SwitchThemeData(
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (!states.contains(WidgetState.selected)) return paint.sunk;
+        return states.contains(WidgetState.disabled)
+            ? paint.chosen.withValues(alpha: 0.45)
+            : paint.chosen;
+      }),
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (!states.contains(WidgetState.selected)) return paint.muted;
+        return states.contains(WidgetState.disabled) ? paint.body : paint.onChosen;
+      }),
+      trackOutlineColor: WidgetStatePropertyAll(paint.rule),
+      overlayColor: WidgetStatePropertyAll(paint.chosen.withValues(alpha: 0.12)),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: paint.chosen,
+      linearTrackColor: paint.rule,
+    ),
+    focusColor: paint.chosen.withValues(alpha: 0.22),
   );
 }

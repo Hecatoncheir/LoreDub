@@ -96,8 +96,10 @@ radius.
 
 - One orange primary action per workspace; secondary actions use outlines.
 - The graph screen's node panel stands down the right edge of the canvas,
-  the whole height of it, in the colours a plain node is drawn in: it is a
-  card of the scheme rather than a page beside it.
+  the whole height of it, and carries the face of the node it opened on —
+  the same colours and the same icon, orange for the ends of the pipeline
+  and dark for a card of the cast. It is that node's panel rather than a
+  page the node opened.
 - Every interactive control has a minimum 44–48 px target and visible keyboard
   focus supplied by the Material theme.
 - Status is communicated with text and an indicator, never color alone.

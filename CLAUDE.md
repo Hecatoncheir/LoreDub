@@ -299,14 +299,19 @@ chosen node, clamping the whole group by whichever of them reaches
 place for card sizes and socket anchors, which the curves, the dots and the
 hit-testing all read) and fits the scheme into the window the first time it
 is drawn; `pipeline_inspector.dart` is the panel that stands over it, down the
-right edge and the whole height of the canvas, drawn in the colours a plain
-node is: `buildLoreDubPanelTheme` (`ui/theme.dart`) is the house theme with
-the paper colour for its face and the panel grey for its head and its
-fields, so the panel is a card of the scheme rather than a page beside it.
-It declares that theme and is built under it through a `Builder`, with a
-`Material` of its own: a line of text that asks for no colour is handed one
-by the nearest Material, and without those two the panel was written in the
-theme above it.
+right edge and the whole height of the canvas, drawn in the face of the node
+it opened on — `NodePaint` (`node_paint.dart`, which the canvas draws its
+cards from as well) hands it the same body, head, ink and rule, and
+`nodeIcon` the same icon, so the panel on the orange output is orange and
+the one on a card of the cast is dark with that card's own head. It is
+`buildLoreDubPanelTheme` (`ui/theme.dart`) that turns a face into a theme,
+so the Material widgets standing in the panel are the same widgets in
+another colour rather than a second set of them. The panel declares that
+theme and is built under it through a `Builder`, with a `Material` of its
+own: a line of text that asks for no colour is handed one by the nearest
+Material, and without those two the panel was written in the theme above
+it. Anything put in the panel should read its colours off the theme —
+`bodySmall` is what a label or a note is said in — rather than name one.
 
 A frame of that canvas is watched, because a drag and a pan are a new state
 sixty times a second: `test/graph_bench.dart` times one over a scheme of

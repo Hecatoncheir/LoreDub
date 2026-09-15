@@ -17,6 +17,7 @@ import '../theme.dart';
 import 'cubits/dashboard_cubits.dart';
 import 'cubits/pipeline_graph_bloc.dart';
 import 'cubits/shell_cubit.dart';
+import 'node_paint.dart';
 import 'pipeline_canvas.dart';
 import 'process_picker.dart';
 
@@ -50,18 +51,20 @@ class PipelineInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // The face the node itself carries: the panel that opens on the orange
+    // output is orange, the one that opens on a card of the cast is dark,
+    // and a card the mix hears gives the panel its orange head too.
+    final paint = NodePaint.of(node);
     // The whole height of the canvas, against its right edge: the panel is
     // a wall the scheme is worked against rather than a card lying on it.
-    // Drawn in the colours a plain node is — the paper for its face, the
-    // panel grey for its head — so it belongs to the scheme. Its right
-    // corners are the canvas card's own: it stands against that edge rather
-    // than inside it, so nothing else rounds them.
+    // Its right corners are the canvas card's own: it stands against that
+    // edge rather than inside it, so nothing else rounds them.
     const corners = BorderRadius.only(
       topRight: Radius.circular(12),
       bottomRight: Radius.circular(12),
     );
     return Theme(
-      data: buildLoreDubPanelTheme(),
+      data: buildLoreDubPanelTheme(paint),
       // Under the theme rather than beside it: what is written here reads
       // `Theme.of` for itself, and a Material of its own is what hands the
       // panel's own text colour to every line that does not ask.
@@ -69,12 +72,12 @@ class PipelineInspector extends StatelessWidget {
         builder: (context) => SizedBox(
           width: width,
           child: DecoratedBox(
-            decoration: const BoxDecoration(
-              color: LoreDubPalette.raised,
+            decoration: BoxDecoration(
+              color: paint.body,
               borderRadius: corners,
               // No line down the left: the shadow it casts on the canvas is
               // the edge, and a rule as well read as a second one.
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(color: Color(0x22171717), blurRadius: 24, offset: Offset(-8, 0)),
               ],
             ),
@@ -85,7 +88,7 @@ class PipelineInspector extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _header(context, l10n),
+                    _header(context, l10n, paint),
                     Expanded(
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
@@ -106,26 +109,29 @@ class PipelineInspector extends StatelessWidget {
     );
   }
 
-  Widget _header(BuildContext context, AppLocalizations l10n) => Container(
-    decoration: const BoxDecoration(
-      color: LoreDubPalette.panel,
-      border: Border(bottom: BorderSide(color: LoreDubPalette.outline)),
+  Widget _header(BuildContext context, AppLocalizations l10n, NodePaint paint) => Container(
+    decoration: BoxDecoration(
+      color: paint.header,
+      border: Border(bottom: BorderSide(color: paint.rule)),
     ),
     padding: const EdgeInsets.fromLTRB(16, 14, 8, 12),
     child: Row(
       children: [
+        // The node's own icon, as it is drawn in the node's own head.
+        Icon(nodeIcon(node.kind), size: 20, color: paint.ink),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 l10n.pipelineSelected.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: LoreDubFonts.mono,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
-                  color: LoreDubPalette.mutedInk,
+                  color: paint.muted,
                 ),
               ),
               const SizedBox(height: 4),
@@ -133,7 +139,7 @@ class PipelineInspector extends StatelessWidget {
                 _title(l10n),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: paint.ink),
               ),
             ],
           ),
@@ -529,11 +535,11 @@ class _Field extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: LoreDubPalette.mutedInk,
-          ),
+          // The colour comes from the panel's own theme, which carries the
+          // face of the node it opened on.
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
         child,
@@ -557,22 +563,29 @@ class _Choices<T> extends StatelessWidget {
   final bool enabled;
 
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 6,
-    runSpacing: 6,
-    children: [
-      for (final entry in options.entries)
-        ChoiceChip(
-          label: Text(entry.value),
-          selected: entry.key == value,
-          onSelected: enabled ? (_) => onChanged(entry.key) : null,
-          selectedColor: LoreDubPalette.orange,
-          backgroundColor: LoreDubPalette.panel,
-          side: const BorderSide(color: LoreDubPalette.outline),
-          showCheckmark: false,
-        ),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final entry in options.entries)
+          ChoiceChip(
+            label: Text(entry.value),
+            selected: entry.key == value,
+            onSelected: enabled ? (_) => onChanged(entry.key) : null,
+            selectedColor: scheme.primary,
+            backgroundColor: Theme.of(context).inputDecorationTheme.fillColor,
+            side: BorderSide(color: scheme.outline),
+            labelStyle: TextStyle(
+              color: entry.key == value ? scheme.onPrimary : scheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+            showCheckmark: false,
+          ),
+      ],
+    );
+  }
 }
 
 class _Toggle extends StatelessWidget {
@@ -610,7 +623,7 @@ class _Note extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 12),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 12, height: 1.4, color: LoreDubPalette.mutedInk),
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12, height: 1.4),
     ),
   );
 }
