@@ -810,7 +810,7 @@ class _NodeCard extends StatelessWidget {
     decoration: BoxDecoration(
       color: _paint.header,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-      border: Border(bottom: BorderSide(color: _paint.muted.withValues(alpha: 0.25))),
+      border: Border(bottom: BorderSide(color: _paint.rule)),
     ),
     child: Row(
       children: [
@@ -1035,6 +1035,8 @@ class _NodePaint {
     required this.header,
     required this.ink,
     required this.muted,
+    required this.port,
+    required this.rule,
     required this.chosen,
   });
 
@@ -1043,6 +1045,8 @@ class _NodePaint {
     header: LoreDubPalette.panel,
     ink: LoreDubPalette.ink,
     muted: LoreDubPalette.mutedInk,
+    port: LoreDubPalette.mutedInk,
+    rule: LoreDubPalette.outline,
     chosen: LoreDubPalette.orange,
   );
 
@@ -1054,6 +1058,11 @@ class _NodePaint {
     // and dark on orange left them sitting in the colour rather than on it.
     ink: LoreDubPalette.raised,
     muted: Color(0xCCF7F5F0),
+    // The sockets and the line under the title are the node's own
+    // markings rather than its words, and on the orange they read as
+    // markings in graphite -- the colour the open section is drawn in.
+    port: LoreDubPalette.graphite,
+    rule: LoreDubPalette.graphite,
     chosen: LoreDubPalette.ink,
   );
 
@@ -1062,6 +1071,8 @@ class _NodePaint {
     header: LoreDubPalette.graphite,
     ink: LoreDubPalette.raised,
     muted: Color(0xAAF7F5F0),
+    port: Color(0xAAF7F5F0),
+    rule: Color(0x33F7F5F0),
     chosen: LoreDubPalette.orange,
   );
 
@@ -1069,6 +1080,10 @@ class _NodePaint {
   final Color header;
   final Color ink;
   final Color muted;
+
+  /// What the socket labels and the line under the title are drawn in.
+  final Color port;
+  final Color rule;
 
   /// The border of a node the pointer has chosen. Orange on the orange ends
   /// would be no mark at all.
@@ -1107,7 +1122,7 @@ class _PortRow extends StatelessWidget {
       fontSize: 9,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.6,
-      color: paint.muted,
+      color: paint.port,
     ),
   );
 }
