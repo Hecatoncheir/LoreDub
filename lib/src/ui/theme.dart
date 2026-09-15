@@ -216,7 +216,24 @@ ThemeData buildLoreDubPanelTheme(NodePaint paint) {
       onPrimary: paint.onChosen,
       surface: paint.body,
       onSurface: paint.ink,
+      // What Material raises out of a surface of its own accord: the menu a
+      // dropdown opens, the sheet a dialog stands on. Left at the house
+      // theme's they came out paper-coloured under writing meant for the
+      // face of this panel, which on the orange nodes is barely there.
+      surfaceContainerLowest: paint.body,
+      surfaceContainerLow: paint.body,
+      surfaceContainer: paint.sunk,
+      surfaceContainerHigh: paint.sunk,
+      surfaceContainerHighest: paint.sunk,
+      surfaceTint: paint.body,
+      onSurfaceVariant: paint.muted,
+      secondaryContainer: paint.sunk,
+      onSecondaryContainer: paint.ink,
       outline: paint.rule,
+      outlineVariant: paint.rule,
+      // What Material turns over for a tooltip or a value bubble.
+      inverseSurface: paint.sunk,
+      onInverseSurface: paint.ink,
     ),
     // What a dropdown opens onto.
     canvasColor: paint.sunk,
@@ -238,7 +255,12 @@ ThemeData buildLoreDubPanelTheme(NodePaint paint) {
       // with the face's own colour a field is an outline and nothing else.
       fillColor: paint.sunk,
       labelStyle: TextStyle(color: paint.muted),
+      // A focused field floats its label in the colour that marks what is
+      // chosen, which on the orange nodes is the ink: the name of the field
+      // then sat in the orange rather than on it.
+      floatingLabelStyle: TextStyle(color: paint.ink),
       helperStyle: TextStyle(color: paint.muted),
+      hintStyle: TextStyle(color: paint.muted),
       border: fieldBorder,
       enabledBorder: fieldBorder,
       focusedBorder: OutlineInputBorder(
@@ -291,10 +313,31 @@ ThemeData buildLoreDubPanelTheme(NodePaint paint) {
         side: WidgetStatePropertyAll(BorderSide(color: paint.rule)),
       ),
     ),
+    // The list a dropdown opens: its own surface, and the entries written in
+    // the panel's ink rather than in the theme above it.
+    dropdownMenuTheme: DropdownMenuThemeData(
+      textStyle: TextStyle(color: paint.ink),
+      menuStyle: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(paint.sunk),
+        surfaceTintColor: WidgetStatePropertyAll(paint.sunk),
+        side: WidgetStatePropertyAll(BorderSide(color: paint.rule)),
+      ),
+    ),
+    menuButtonTheme: MenuButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStatePropertyAll(paint.ink),
+        overlayColor: WidgetStatePropertyAll(paint.chosen.withValues(alpha: 0.12)),
+      ),
+    ),
     sliderTheme: base.sliderTheme.copyWith(
       activeTrackColor: paint.chosen,
       inactiveTrackColor: paint.rule,
       thumbColor: paint.chosen,
+      // The number that rises over the thumb while it is dragged. Left to
+      // Material it came out of the theme above this panel, which on the
+      // orange nodes put pale text on a pale bubble.
+      valueIndicatorColor: paint.chosen,
+      valueIndicatorTextStyle: TextStyle(color: paint.onChosen, fontWeight: FontWeight.w700),
     ),
     switchTheme: SwitchThemeData(
       trackColor: WidgetStateProperty.resolveWith((states) {
