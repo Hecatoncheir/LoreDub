@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import 'dart:math' as math;
+import 'dart:ui' show PointMode;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -199,6 +200,18 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
   /// The cards taken off the canvas, kept until they have faded out.
   List<PipelineNode> _leaving = const [];
 
+  /// What each node's layer — its card and its sockets — was last drawn
+  /// from, and what came out. A dragged node hands the canvas a whole new
+  /// graph on every frame and a pan hands it a new state: without this,
+  /// thirty cards and ninety sockets were built again for one of them
+  /// moving, and for a pan that moved none of them at all.
+  final _drawn = <String, ({_NodeInputs from, List<Widget> layer})>{};
+
+  /// The badge on each line and where it sat when it was made. A badge
+  /// rides the middle of its curve, so it is the same badge until one of the
+  /// two cards it runs between moves.
+  var _badges = <PipelineLink, ({Offset at, Widget badge})>{};
+
   final _viewport = GlobalKey();
 
   /// The port the pointer is over while a link is being pulled, so it can
@@ -225,6 +238,10 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
     // A player who has turned animation off in Windows is shown the end of
     // every one of these at once.
     _drawing.duration = MediaQuery.disableAnimationsOf(context) ? Duration.zero : _motion;
+    // What is kept was built against the language and the theme that were
+    // around it, so a change of either throws all of it away.
+    _drawn.clear();
+    _badges = {};
   }
 
   @override
@@ -445,6 +462,10 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
   }
 
   Widget _canvas(BuildContext context, GraphView view) {
+    final filled = _filledSockets();
+    // Only the cards still drawn are worth remembering.
+    final drawn = {for (final node in _state.graph.nodes) node.id};
+    _drawn.removeWhere((id, _) => !drawn.contains(id));
     return ClipRect(
       child: Listener(
         key: _viewport,
@@ -538,7 +559,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
                       // that are still here, and answer to nothing while
                       // they fade.
                       for (final node in _leaving) ..._leavingLayer(context, node),
-                      for (final node in _state.graph.nodes) ..._nodeLayer(context, node),
+                      for (final node in _state.graph.nodes) ..._nodeLayer(context, node, filled),
                       ..._cutButtons(context),
                       if (_band case final band?)
                         Positioned.fromRect(
@@ -595,7 +616,56 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
     ];
   }
 
-  List<Widget> _nodeLayer(BuildContext context, PipelineNode node) {
+  /// The sockets a line reaches, by the node they belong to. Worked out
+  /// once for the frame: asked socket by socket, it is every line of the
+  /// scheme read again for each of ninety of them.
+  Map<String, Set<PipelineSocket>> _filledSockets() {
+    final filled = <String, Set<PipelineSocket>>{};
+    for (final link in _state.graph.links) {
+      (filled[link.from.nodeId] ??= <PipelineSocket>{}).add(link.from.socket);
+      (filled[link.to.nodeId] ??= <PipelineSocket>{}).add(link.to.socket);
+    }
+    return filled;
+  }
+
+  /// Which of [node]'s own sockets a line reaches, as one number: a record
+  /// is compared field by field, and a set of its own would be compared by
+  /// identity and never match.
+  int _filledOf(PipelineNode node, Map<String, Set<PipelineSocket>> filled) {
+    var mask = 0;
+    for (final socket in filled[node.id] ?? const <PipelineSocket>{}) {
+      mask |= 1 << socket.index;
+    }
+    return mask;
+  }
+
+  List<Widget> _nodeLayer(
+    BuildContext context,
+    PipelineNode node,
+    Map<String, Set<PipelineSocket>> filled,
+  ) {
+    final from = (
+      node: node,
+      selected: _state.chosen.contains(node.id),
+      zoom: _view.zoom,
+      facts: widget.facts,
+      availability: widget.availability,
+      filled: _filledOf(node, filled),
+      pulling: _state.drag?.from,
+      over: _over,
+    );
+    if (_drawn[node.id] case final kept? when kept.from == from) return kept.layer;
+    final layer = _built(context, node, filled: from.filled, selected: from.selected);
+    _drawn[node.id] = (from: from, layer: layer);
+    return layer;
+  }
+
+  List<Widget> _built(
+    BuildContext context,
+    PipelineNode node, {
+    required int filled,
+    required bool selected,
+  }) {
     final size = NodeMetrics.sizeOf(node.kind);
     return [
       Positioned(
@@ -607,45 +677,51 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
         top: node.position.y,
         width: size.width,
         height: size.height,
-        child: _Appearing(
-          key: ValueKey('rising/${node.id}'),
-          child: _NodeCard(
-            node: node,
-            facts: widget.facts,
-            availability: widget.availability,
-            selected: _state.chosen.contains(node.id),
-            onTap: () => widget.bloc.add(PipelineNodeSelected(node.id, add: _adding)),
-            onGrab: (at) {
-              _dragging = at;
-              widget.bloc.add(PipelineNodeGrabbed(node.id));
-            },
-            onDrag: (at) {
-              final from = _dragging ?? at;
-              _dragging = at;
-              widget.bloc.add(
-                PipelineNodeMoved(
-                  node.id,
-                  (at.dx - from.dx) / _view.zoom,
-                  (at.dy - from.dy) / _view.zoom,
-                ),
-              );
-            },
-            onDrop: () {
-              _dragging = null;
-              widget.bloc.add(const PipelineArrangementSettled());
-            },
-            onRemove: node.kind != PipelineNodeKind.character
-                ? null
-                : () => widget.bloc.add(PipelineCharacterRemoved(node.id)),
+        // A layer of its own: the canvas is panned and zoomed by a
+        // transform above every card, and without a boundary under it each
+        // of them is painted again on every frame of that.
+        child: RepaintBoundary(
+          child: _Appearing(
+            key: ValueKey('rising/${node.id}'),
+            child: _NodeCard(
+              node: node,
+              facts: widget.facts,
+              availability: widget.availability,
+              selected: selected,
+              onTap: () => widget.bloc.add(PipelineNodeSelected(node.id, add: _adding)),
+              onGrab: (at) {
+                _dragging = at;
+                widget.bloc.add(PipelineNodeGrabbed(node.id));
+              },
+              onDrag: (at) {
+                final from = _dragging ?? at;
+                _dragging = at;
+                widget.bloc.add(
+                  PipelineNodeMoved(
+                    node.id,
+                    (at.dx - from.dx) / _view.zoom,
+                    (at.dy - from.dy) / _view.zoom,
+                  ),
+                );
+              },
+              onDrop: () {
+                _dragging = null;
+                widget.bloc.add(const PipelineArrangementSettled());
+              },
+              onRemove: node.kind != PipelineNodeKind.character
+                  ? null
+                  : () => widget.bloc.add(PipelineCharacterRemoved(node.id)),
+            ),
           ),
         ),
       ),
       for (final socket in PipelineSocket.values)
-        if (socket.owner == node.kind) _port(node, socket),
+        if (socket.owner == node.kind)
+          _port(node, socket, filled: filled & (1 << socket.index) != 0),
     ];
   }
 
-  Widget _port(PipelineNode node, PipelineSocket socket) {
+  Widget _port(PipelineNode node, PipelineSocket socket, {required bool filled}) {
     final port = PipelinePort(node.id, socket);
     final at = NodeMetrics.portAt(node, socket);
     final drag = _state.drag;
@@ -669,9 +745,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
           cursor: SystemMouseCursors.precise,
           child: _PortDot(
             signal: socket.signal,
-            filled: socket.isInput
-                ? _state.graph.linkInto(port) != null
-                : _state.graph.links.any((link) => link.from == port),
+            filled: filled,
             offered: drag != null && drag.from != port && _accepts(drag.from, port),
             caught: _over == port,
           ),
@@ -689,6 +763,9 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
   List<Widget> _cutButtons(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final buttons = <Widget>[];
+    // Built afresh rather than pruned: a badge whose line is gone is simply
+    // not carried over.
+    final badges = <PipelineLink, ({Offset at, Widget badge})>{};
     for (final link in _state.graph.links) {
       // The way into the pipeline comes apart the same way a substitution
       // does, by the button on the line itself.
@@ -716,39 +793,45 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
         NodeMetrics.portAt(from, link.from.socket),
         NodeMetrics.portAt(to, link.to.socket),
       );
-      buttons.add(
-        Positioned(
-          left: middle.dx - 15,
-          top: middle.dy - 15,
-          width: 30,
-          height: 30,
-          child: Tooltip(
-            // Every kind of line parts with something of its own: the
-            // pipeline loses what feeds it, the translator leaves the line
-            // or comes back into it, the cast leaves the mix, a card stops
-            // being counted among the voices of the game, or one card takes
-            // its own part back.
-            message: switch ((route, cast, heard, translation, stepped)) {
-              (true, _, _, _, _) => l10n.pipelineCutRoute,
-              (_, true, _, _, _) => l10n.pipelineCutCast,
-              (_, _, true, _, _) => l10n.pipelineCutHeard,
-              (_, _, _, true, _) => l10n.pipelineCutTranslation,
-              (_, _, _, _, true) => l10n.pipelineCutTranslationBack,
-              _ => l10n.pipelineCutLink,
-            },
-            child: Material(
-              shape: const CircleBorder(side: BorderSide(color: LoreDubPalette.graphite)),
-              color: LoreDubPalette.raised,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () => widget.bloc.add(PipelineLinkCut(link)),
-                child: const Icon(Icons.link_off_rounded, size: 16),
-              ),
+      if (_badges[link] case final kept? when kept.at == middle) {
+        badges[link] = kept;
+        buttons.add(kept.badge);
+        continue;
+      }
+      final badge = Positioned(
+        left: middle.dx - 15,
+        top: middle.dy - 15,
+        width: 30,
+        height: 30,
+        child: Tooltip(
+          // Every kind of line parts with something of its own: the
+          // pipeline loses what feeds it, the translator leaves the line
+          // or comes back into it, the cast leaves the mix, a card stops
+          // being counted among the voices of the game, or one card takes
+          // its own part back.
+          message: switch ((route, cast, heard, translation, stepped)) {
+            (true, _, _, _, _) => l10n.pipelineCutRoute,
+            (_, true, _, _, _) => l10n.pipelineCutCast,
+            (_, _, true, _, _) => l10n.pipelineCutHeard,
+            (_, _, _, true, _) => l10n.pipelineCutTranslation,
+            (_, _, _, _, true) => l10n.pipelineCutTranslationBack,
+            _ => l10n.pipelineCutLink,
+          },
+          child: Material(
+            shape: const CircleBorder(side: BorderSide(color: LoreDubPalette.graphite)),
+            color: LoreDubPalette.raised,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => widget.bloc.add(PipelineLinkCut(link)),
+              child: const Icon(Icons.link_off_rounded, size: 16),
             ),
           ),
         ),
       );
+      badges[link] = (at: middle, badge: badge);
+      buttons.add(badge);
     }
+    _badges = badges;
     return buttons;
   }
 }
@@ -767,15 +850,24 @@ class _DotFieldPainter extends CustomPainter {
     canvas.drawRect(Offset.zero & size, Paint()..color = LoreDubPalette.canvas);
     final step = spacing * view.zoom;
     if (step < 6) return;
-    final dot = Paint()..color = LoreDubPalette.outline.withValues(alpha: 0.55);
     final radius = math.max(0.8, 1.1 * view.zoom);
-    final startX = view.x % step;
-    final startY = view.y % step;
-    for (var x = startX - step; x < size.width + step; x += step) {
-      for (var y = startY - step; y < size.height + step; y += step) {
-        canvas.drawCircle(Offset(x, y), radius, dot);
+    // One call rather than one per dot: a window this size holds a couple of
+    // thousand of them, and they are drawn again on every frame of a pan.
+    // Round caps make each point the dot it used to be drawn as.
+    final dots = <Offset>[];
+    for (var x = view.x % step - step; x < size.width + step; x += step) {
+      for (var y = view.y % step - step; y < size.height + step; y += step) {
+        dots.add(Offset(x, y));
       }
     }
+    canvas.drawPoints(
+      PointMode.points,
+      dots,
+      Paint()
+        ..color = LoreDubPalette.outline.withValues(alpha: 0.55)
+        ..strokeWidth = radius * 2
+        ..strokeCap = StrokeCap.round,
+    );
   }
 
   @override
@@ -964,6 +1056,21 @@ class _PortDot extends StatelessWidget {
     );
   }
 }
+
+/// Everything one node's layer is drawn from, other than the canvas under
+/// it. Compared field by field, so every one of them has to be a value: the
+/// sockets a line reaches are a number rather than a set, and what a drag
+/// carries is the socket it left rather than where the pointer has got to.
+typedef _NodeInputs = ({
+  PipelineNode node,
+  bool selected,
+  double zoom,
+  PipelineFacts facts,
+  ComputeAvailability availability,
+  int filled,
+  PipelinePort? pulling,
+  PipelinePort? over,
+});
 
 /// How long a change of face takes on the canvas — a card chosen, cut out
 /// of the mix, or gone dark — or nothing at all when the player has turned

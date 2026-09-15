@@ -17,6 +17,7 @@ flutter pub get
 dart run tool/ffigen.dart          # regenerate lib/src/native/*.g.dart (committed)
 flutter gen-l10n                   # after editing lib/l10n/*.arb (output is committed)
 flutter test test/screenshots.dart --update-goldens   # redraw docs/screenshots/
+flutter test test/graph_bench.dart  # what a frame of the graph screen costs
 dart format --output=none --set-exit-if-changed lib test tool hook
 flutter analyze --fatal-infos      # CI is --fatal-infos; infos must be zero
 flutter test
@@ -286,6 +287,23 @@ chosen node, clamping the whole group by whichever of them reaches
 place for card sizes and socket anchors, which the curves, the dots and the
 hit-testing all read) and fits the scheme into the window the first time it
 is drawn; `pipeline_inspector.dart` is the panel that floats over it.
+
+A frame of that canvas is watched, because a drag and a pan are a new state
+sixty times a second: `test/graph_bench.dart` times one over a scheme of
+twenty-four cards (by hand — it has no `_test` suffix). Three things keep it
+down, and all three can be undone by accident. The graph is listened to
+*innermost* in `_PipelinePanel`, under everything the scheme is drawn from,
+so `PipelineFacts` and `ModelSelection` are not built afresh for a frame that
+only moved the canvas; the toolbar has a listener of its own with a
+`buildWhen`, so it is not built again for a drag. And the canvas keeps what
+it drew: `_drawn` holds each node's card and sockets against `_NodeInputs`, a
+record of everything that layer is drawn from, and `_badges` holds each cut
+badge against the point it sits at. **Anything new a card is drawn from has
+to go into `_NodeInputs`**, or the card will go on showing what it showed
+before; anything inherited (the language, the theme) is handled by
+`didChangeDependencies` throwing both caches away. `PipelineNode` carries
+value equality for this, position and all, so one moved card is told from the
+twenty-three that did not.
 
 The Screen screen ("Экран", `DashboardSection.snapshot`) runs the second kind of
 session, `PipelineSession.screen`: `AppRepository.startScreenText` ->

@@ -2644,120 +2644,156 @@ class _PipelinePanel extends StatelessWidget {
 
   final DashboardCubits cubits;
 
+  /// The scheme is listened to innermost, under everything it is drawn
+  /// from. A pan or a dragged node is a new graph state every frame, and
+  /// with that listener on the outside each of those frames built a fresh
+  /// `ModelSelection` and `PipelineFacts` and handed the canvas cards it
+  /// could tell apart from the ones it already had. Under them, what the
+  /// scheme is drawn from keeps the instance it had between edits.
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
-    child: BlocBuilder<PipelineGraphBloc, PipelineGraphState>(
-      bloc: cubits.graph,
-      builder: (context, graph) => _SettingsBuilder(
+    child: _SettingsBuilder(
+      cubits: cubits,
+      builder: (context, settings) => _DownloadsBuilder(
         cubits: cubits,
-        builder: (context, settings) => _DownloadsBuilder(
+        // What is on disk and what the machine can run it on. A download
+        // ticking must not redraw the scheme.
+        watch: (downloads) =>
+            '${downloads.installedModelIds.join()}'
+            '|${downloads.availability.installedRuntimes.join()}',
+        builder: (context, downloads) => _PipelineBuilder(
           cubits: cubits,
-          // What is on disk and what the machine can run it on. A download
-          // ticking must not redraw the scheme.
-          watch: (downloads) =>
-              '${downloads.installedModelIds.join()}'
-              '|${downloads.availability.installedRuntimes.join()}',
-          builder: (context, downloads) => _PipelineBuilder(
+          watch: (pipeline) => (
+            pipeline.running,
+            pipeline.status,
+            pipeline.selectedProcess,
+            pipeline.processes,
+            pipeline.backendSignature,
+          ),
+          builder: (context, pipeline) => _CharactersBuilder(
             cubits: cubits,
-            watch: (pipeline) => (
-              pipeline.running,
-              pipeline.status,
-              pipeline.selectedProcess,
-              pipeline.processes,
-              pipeline.backendSignature,
-            ),
-            builder: (context, pipeline) => _CharactersBuilder(
-              cubits: cubits,
-              watch: (characters) => (characters.characters, characters.running),
-              builder: (context, characters) => _build(
-                context,
-                graph: graph,
-                availability: downloads.availability,
-                facts: PipelineFacts(
-                  settings: settings.settings,
-                  selection: ModelSelection(
-                    models: downloads.models,
-                    settings: settings.settings,
-                  ),
-                  process: pipeline.selectedProcess,
-                  characters: characters.characters,
-                  activeBackends: pipeline.activeBackends,
-                  running: pipeline.running,
-                  paused: pipeline.status == PipelineStatus.paused,
-                  recordingVoice: characters.running,
-                ),
-              ),
-            ),
+            watch: (characters) => (characters.characters, characters.running),
+            builder: (context, characters) {
+              final facts = PipelineFacts(
+                settings: settings.settings,
+                selection: ModelSelection(models: downloads.models, settings: settings.settings),
+                process: pipeline.selectedProcess,
+                characters: characters.characters,
+                activeBackends: pipeline.activeBackends,
+                running: pipeline.running,
+                paused: pipeline.status == PipelineStatus.paused,
+                recordingVoice: characters.running,
+              );
+              return _build(context, availability: downloads.availability, facts: facts);
+            },
           ),
         ),
       ),
     ),
   );
 
+  /// Whether the toolbar would draw itself differently. It reads what can
+  /// be undone, what a link came to, the schemes kept and which cards are on
+  /// the canvas: panning the scheme or dragging a node is none of those, and
+  /// both of those are a new state on every frame.
+  static bool _toolbarChanged(PipelineGraphState was, PipelineGraphState now) {
+    if (was.canUndo != now.canUndo ||
+        was.canRedo != now.canRedo ||
+        was.refusal != now.refusal ||
+        !identical(was.schemes, now.schemes)) {
+      return true;
+    }
+    final before = was.graph.ofKind(PipelineNodeKind.character);
+    final after = now.graph.ofKind(PipelineNodeKind.character);
+    if (before.length != after.length) return true;
+    for (var index = 0; index < after.length; index++) {
+      if (before[index].characterId != after[index].characterId) return true;
+    }
+    return false;
+  }
+
   Widget _build(
     BuildContext context, {
-    required PipelineGraphState graph,
     required PipelineFacts facts,
     required ComputeAvailability availability,
   }) {
-    final selected = graph.selectedNode;
     return Column(
       children: [
-        _GraphToolbar(cubits: cubits, state: graph, facts: facts),
+        // Two listeners rather than one over the pair: the canvas answers
+        // every frame of a drag, and the toolbar has no business being
+        // built again for it.
+        BlocBuilder<PipelineGraphBloc, PipelineGraphState>(
+          bloc: cubits.graph,
+          buildWhen: _toolbarChanged,
+          builder: (context, graph) => _GraphToolbar(cubits: cubits, state: graph, facts: facts),
+        ),
         const SizedBox(height: 12),
         // The panel floats over the canvas rather than beside it: opening it
         // must not move the scheme out from under the pointer that opened it.
         Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: PipelineCanvas(
-                    bloc: cubits.graph,
-                    state: graph,
+          child: BlocBuilder<PipelineGraphBloc, PipelineGraphState>(
+            bloc: cubits.graph,
+            builder: (context, graph) => _scheme(context, graph, facts, availability),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _scheme(
+    BuildContext context,
+    PipelineGraphState graph,
+    PipelineFacts facts,
+    ComputeAvailability availability,
+  ) {
+    final selected = graph.selectedNode;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            child: PipelineCanvas(
+              bloc: cubits.graph,
+              state: graph,
+              facts: facts,
+              availability: availability,
+            ),
+          ),
+        ),
+        // The panel comes in from the edge it sits on rather than
+        // appearing over the scheme: what opened it is a click on the
+        // canvas, and the eye should be able to follow one to the other.
+        // Switching from one node to another is not a transition — the same
+        // panel is answering about another card, and cross-fading two of
+        // them would say otherwise.
+        Positioned(
+          top: 12,
+          right: 12,
+          bottom: 12,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.06, 0),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: selected == null
+                ? const SizedBox.shrink()
+                : PipelineInspector(
+                    cubits: cubits,
+                    node: selected,
                     facts: facts,
                     availability: availability,
+                    chained: graph.graph.chained,
                   ),
-                ),
-              ),
-              // The panel comes in from the edge it sits on rather than
-              // appearing over the scheme: what opened it is a click on the
-              // canvas, and the eye should be able to follow one to the
-              // other. Switching from one node to another is not a
-              // transition — the same panel is answering about another
-              // card, and cross-fading two of them would say otherwise.
-              Positioned(
-                top: 12,
-                right: 12,
-                bottom: 12,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.06, 0),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    ),
-                  ),
-                  child: selected == null
-                      ? const SizedBox.shrink()
-                      : PipelineInspector(
-                          cubits: cubits,
-                          node: selected,
-                          facts: facts,
-                          availability: availability,
-                          chained: graph.graph.chained,
-                        ),
-                ),
-              ),
-            ],
           ),
         ),
       ],

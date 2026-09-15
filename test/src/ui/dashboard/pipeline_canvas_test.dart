@@ -163,6 +163,45 @@ void main() {
     expect(cardMotion(tester), Duration.zero);
   });
 
+  testWidgets('keeps the cards it drew, and draws again the one that changed', (tester) async {
+    final cubits = await pumpGraph(tester, const Size(1500, 950));
+    // The widget a node is drawn as, which is the same object while nothing
+    // about that node has changed.
+    Widget cardOf(String id) => tester.widget(find.byKey(ValueKey(id)));
+    final whisper = cardOf(PipelineNodeIds.recognition);
+    final source = cardOf(PipelineNodeIds.source);
+
+    cubits.graph.add(const PipelineViewPanned(40, 25));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      identical(cardOf(PipelineNodeIds.recognition), whisper),
+      isTrue,
+      reason: 'a pan moves the canvas under the cards and builds none of them',
+    );
+
+    cubits.graph.add(PipelineNodeMoved(PipelineNodeIds.source, 30, 0));
+    await tester.pump();
+    await tester.pump();
+
+    expect(identical(cardOf(PipelineNodeIds.source), source), isFalse, reason: 'that one moved');
+    expect(
+      identical(cardOf(PipelineNodeIds.recognition), whisper),
+      isTrue,
+      reason: 'and the rest of the scheme stood still',
+    );
+
+    // What a card says is another matter: a change to it is drawn.
+    expect(find.text('НЕ ПОДКЛЮЧЕНО'), findsNothing);
+    cubits.graph.add(PipelineLinkCut(routeOf(cubits)));
+    await tester.pump();
+    await tester.pump();
+
+    expect(identical(cardOf(PipelineNodeIds.recognition), whisper), isFalse);
+    expect(find.text('НЕ ПОДКЛЮЧЕНО'), findsWidgets);
+  });
+
   testWidgets('drops a link on a card rather than on its socket', (tester) async {
     // Aiming at a dot six pixels across is needless when the card has one
     // socket the link could go into: let go anywhere on it and that socket

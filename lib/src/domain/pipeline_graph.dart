@@ -230,6 +230,22 @@ class PipelineNode {
   /// card. Only a card that reaches the mix is heard as itself, so the
   /// canvas marks those and leaves the ones that hand their part on.
   final bool sendsToMix;
+
+  /// Two nodes are the same node when everything drawn of them is: the
+  /// canvas builds a fresh graph on every frame of a drag, and this is how
+  /// it tells the one card that moved from the rest that did not.
+  @override
+  bool operator ==(Object other) =>
+      other is PipelineNode &&
+      other.id == id &&
+      other.kind == kind &&
+      other.position == position &&
+      other.characterId == characterId &&
+      other.unrouted == unrouted &&
+      other.sendsToMix == sendsToMix;
+
+  @override
+  int get hashCode => Object.hash(id, kind, position, characterId, unrouted, sendsToMix);
 }
 
 /// The whole scheme: the nodes and the links between them.
