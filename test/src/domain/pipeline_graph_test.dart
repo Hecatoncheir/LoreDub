@@ -236,6 +236,34 @@ void main() {
 
       expect(graph.chained, {'guard'});
     });
+
+    test('marks the cards the mix hears rather than the ones handing a part on', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(),
+        characters: const [
+          Character(id: 'guard', name: 'Стражник', vector: [0.2], voicedBy: 'smith'),
+          smith,
+        ],
+        layout: PipelineLayout.drawing(['guard', 'smith']),
+      );
+
+      // What the player hears is the reader, and the canvas says so: the
+      // card handing its part on is not the voice that comes out.
+      expect(graph.node(PipelineNodeIds.character('smith'))?.sendsToMix, isTrue);
+      expect(graph.node(PipelineNodeIds.character('guard'))?.sendsToMix, isFalse);
+    });
+
+    test('marks nobody once the cast is cut out of the mix', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(castRouted: false),
+        characters: const [guard, smith],
+        layout: PipelineLayout.drawing(['guard', 'smith']),
+      );
+
+      for (final id in ['guard', 'smith']) {
+        expect(graph.node(PipelineNodeIds.character(id))?.sendsToMix, isFalse);
+      }
+    });
   });
 
   group('what a link would change', () {

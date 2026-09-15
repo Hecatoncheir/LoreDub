@@ -210,6 +210,7 @@ class PipelineNode {
     required this.position,
     this.characterId,
     this.unrouted = false,
+    this.sendsToMix = false,
   });
 
   final String id;
@@ -223,6 +224,11 @@ class PipelineNode {
   /// having been taken apart. It is still drawn where it stood, and a link
   /// dragged back to the source puts the route together again.
   final bool unrouted;
+
+  /// Whether this card's lines leave for the mix rather than for another
+  /// card. Only a card that reaches the mix is heard as itself, so the
+  /// canvas marks those and leaves the ones that hand their part on.
+  final bool sendsToMix;
 }
 
 /// The whole scheme: the nodes and the links between them.
@@ -576,6 +582,22 @@ PipelineGraph buildPipelineGraph({
     for (final placement in placed) placement.nodeId: _partOf(placement, byId, placed, where),
   };
   final carrying = _carrying(placed, byId, sends);
+  // A card whose line ends at the mix is heard as itself; one that hands
+  // its part to another card is not, and the canvas draws the two apart.
+  for (var index = 0; index < nodes.length; index++) {
+    final node = nodes[index];
+    if (node.kind != PipelineNodeKind.character) continue;
+    if (!cast || !carrying.contains(node.id)) continue;
+    if (sends[node.id]?.nodeId != PipelineNodeIds.mix) continue;
+    nodes[index] = PipelineNode(
+      id: node.id,
+      kind: node.kind,
+      position: node.position,
+      characterId: node.characterId,
+      unrouted: node.unrouted,
+      sendsToMix: true,
+    );
+  }
 
   const translation = PipelinePort(PipelineNodeIds.translation, PipelineSocket.translationIn);
   final links = <PipelineLink>[

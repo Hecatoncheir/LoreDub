@@ -135,6 +135,17 @@ void main() {
     await tester.pump();
   }
 
+  /// One page's own list. The navigation beside it scrolls too, so the first
+  /// scrollable in the tree is not the one a page's test means. Inside the
+  /// list, the first is: a card may hold a scroller of its own -- the
+  /// stage-by-device table scrolls sideways -- and the list's is above them.
+  Finder pageScroller(String key) =>
+      find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(Scrollable)).first;
+
+  Finder settingsScroller() => pageScroller('settingsList');
+
+  Finder modelsScroller() => pageScroller('modelsList');
+
   Future<void> pumpLoreDub(WidgetTester tester, Size size) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -169,6 +180,16 @@ void main() {
     await tester.pump();
 
     expect(tester.getSize(find.byType(DashboardView)), const Size(1120, 720));
+  });
+
+  testWidgets('scrolls the navigation rather than overflowing a short window', (tester) async {
+    // Six entries under two headings are taller than a short window, and the
+    // panel used to overflow rather than let them scroll. The pump itself is
+    // the assertion -- an overflow is an exception the test would fail on.
+    await pumpLoreDub(tester, const Size(1280, 560));
+
+    expect(find.text('Эфир'), findsOneWidget);
+    expect(find.text('Настройки'), findsOneWidget);
   });
 
   testWidgets('uses compact navigation in a narrow window', (tester) async {
@@ -325,7 +346,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Оригинальный звук'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: settingsScroller(),
       );
       await tester.pumpAndSettle();
       return tester.widget<Slider>(find.byKey(const ValueKey('originalVolume')));
@@ -652,9 +673,13 @@ void main() {
     expect(find.text('base'), findsOneWidget, reason: 'the whisper builds are bars on a chart');
 
     // The tiles sit below the fold of a lazy list.
-    await tester.scrollUntilVisible(find.text('ЯЗЫКИ ОЗВУЧКИ'), 400);
+    await tester.scrollUntilVisible(find.text('ЯЗЫКИ ОЗВУЧКИ'), 400, scrollable: modelsScroller());
     expect(find.text('ЯЗЫКИ ОЗВУЧКИ'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('ГОЛОС ОРИГИНАЛА'), 400);
+    await tester.scrollUntilVisible(
+      find.text('ГОЛОС ОРИГИНАЛА'),
+      400,
+      scrollable: modelsScroller(),
+    );
     expect(find.text('ГОЛОС ОРИГИНАЛА'), findsOneWidget);
     final selection = cubits.selection;
     expect(selection.recognitionModels.length, greaterThan(1), reason: 'the model is a choice');
@@ -676,7 +701,11 @@ void main() {
         status: status,
       );
       await pumpDashboard(tester, cubits, const Size(1280, 1000));
-      await tester.scrollUntilVisible(find.byKey(const ValueKey('languageTile-uk')), 300);
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('languageTile-uk')),
+        300,
+        scrollable: modelsScroller(),
+      );
       await tester.pumpAndSettle();
       return cubits;
     }
@@ -774,7 +803,7 @@ void main() {
     testWidgets('draws the converter as a tile in use with the original voice', (tester) async {
       await pumpTiles(tester, settings: const AppSettings().withVoiceMode(VoiceMode.original));
       final converter = find.byKey(const ValueKey('converterTile-$voiceConverterModelId'));
-      await tester.scrollUntilVisible(converter, 300);
+      await tester.scrollUntilVisible(converter, 300, scrollable: modelsScroller());
       await tester.pumpAndSettle();
 
       expect(
@@ -842,7 +871,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final downloads = find.text('ЗАГРУЗКА');
-    await tester.scrollUntilVisible(downloads, 300, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(downloads, 300, scrollable: settingsScroller());
     await tester.pumpAndSettle();
 
     expect(find.text('ПУТИ'), findsOneWidget);
@@ -865,7 +894,7 @@ void main() {
     );
     // Scrolled to rather than dragged by a fixed distance: the settings list
     // grows with every card added to it.
-    await tester.scrollUntilVisible(proxyField, 300, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(proxyField, 300, scrollable: settingsScroller());
     await tester.pumpAndSettle();
     await tester.enterText(
       proxyField,
@@ -887,7 +916,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final section = find.text('Вычислительное устройство');
-    await tester.scrollUntilVisible(section, 300, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(section, 300, scrollable: settingsScroller());
     await tester.pumpAndSettle();
 
     expect(section, findsOneWidget);
@@ -913,7 +942,7 @@ void main() {
       );
       await pumpDashboard(tester, cubits, const Size(1280, 1000));
       final section = find.text('Вычислительное устройство');
-      await tester.scrollUntilVisible(section, 300, scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(section, 300, scrollable: settingsScroller());
       await tester.pumpAndSettle();
     }
 
@@ -941,7 +970,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final speech = find.text('Озвучка');
-    await tester.scrollUntilVisible(speech, 300, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(speech, 300, scrollable: settingsScroller());
     await tester.pumpAndSettle();
 
     // Silero has no GPU build here, so only its processor cell is live.
@@ -989,7 +1018,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('runtimeTile-$torchCudaRuntimeId')),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: settingsScroller(),
       );
       await tester.pumpAndSettle();
       return cubits;
@@ -1056,7 +1085,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final section = find.text('Вычислительное устройство');
-    await tester.scrollUntilVisible(section, 300, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(section, 300, scrollable: settingsScroller());
     await tester.pumpAndSettle();
 
     final preset = find.descendant(
@@ -1118,7 +1147,7 @@ void main() {
     await pumpDashboard(tester, cubits, const Size(1280, 1000));
 
     final message = find.textContaining('Не удалось установить GPU-рантайм');
-    await tester.scrollUntilVisible(message, 300, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(message, 300, scrollable: settingsScroller());
     await tester.pumpAndSettle();
 
     expect(message, findsOneWidget);
@@ -1165,7 +1194,7 @@ void main() {
       await tester.scrollUntilVisible(
         removeButton(),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: settingsScroller(),
       );
       await tester.pumpAndSettle();
     }
@@ -1691,7 +1720,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Голос озвучки'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: settingsScroller(),
       );
       await tester.pumpAndSettle();
       return cubits;
@@ -1882,7 +1911,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.textContaining('Silero считается на процессоре'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: settingsScroller(),
       );
 
       expect(find.text('OpenVoice'), findsNothing);
@@ -1893,7 +1922,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('OpenVoice'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: settingsScroller(),
       );
       expect(find.text('OpenVoice'), findsOneWidget);
     });
@@ -1933,7 +1962,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('snapshotHotkey')),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: settingsScroller(),
       );
       await tester.pumpAndSettle();
       return cubits;
@@ -2811,6 +2840,16 @@ void main() {
         reason: 'only the cards put on the canvas are drawn',
       );
       expect(find.byType(ChoiceChip), findsNothing, reason: 'one route needs no presets');
+    });
+
+    testWidgets('asks for no game where the whole output is captured', (tester) async {
+      await pumpGraph(
+        tester,
+        settings: const AppSettings(audioCaptureSource: AudioCaptureSource.system),
+      );
+
+      expect(find.text('Игра не выбрана'), findsNothing);
+      expect(find.text('Устройство по умолчанию'), findsWidgets);
     });
 
     testWidgets('holds the game while a card is being recorded', (tester) async {

@@ -285,53 +285,59 @@ class _Navigation extends StatelessWidget {
             ],
           ),
         ),
-        _ShellBuilder(
-          cubits: cubits,
-          builder: (context, shell) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _NavigationGroup(label: AppLocalizations.of(context).navGroupDubbing),
-              _NavigationItem(
-                icon: (color) => LoreDubIcons.audioCapture(color: color, size: 21),
-                label: AppLocalizations.of(context).navLive,
-                selected: shell.section == DashboardSection.live,
-                onTap: () => cubits.shell.selectSection(DashboardSection.live),
+        // The list scrolls rather than pushing the version off the foot of
+        // the panel: six entries under two headings are taller than a short
+        // window, and taller still under a raised interface scale.
+        Expanded(
+          child: _ShellBuilder(
+            cubits: cubits,
+            builder: (context, shell) => SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _NavigationGroup(label: AppLocalizations.of(context).navGroupDubbing),
+                  _NavigationItem(
+                    icon: (color) => LoreDubIcons.audioCapture(color: color, size: 21),
+                    label: AppLocalizations.of(context).navLive,
+                    selected: shell.section == DashboardSection.live,
+                    onTap: () => cubits.shell.selectSection(DashboardSection.live),
+                  ),
+                  _NavigationItem(
+                    icon: (color) => Icon(Icons.highlight_alt_rounded, size: 21, color: color),
+                    label: AppLocalizations.of(context).navSnapshot,
+                    selected: shell.section == DashboardSection.snapshot,
+                    onTap: () => cubits.shell.selectSection(DashboardSection.snapshot),
+                  ),
+                  _NavigationGroup(label: AppLocalizations.of(context).navGroupSetup),
+                  _NavigationItem(
+                    icon: (color) => Icon(Icons.groups_rounded, size: 21, color: color),
+                    label: AppLocalizations.of(context).navCharacters,
+                    selected: shell.section == DashboardSection.characters,
+                    onTap: () => cubits.shell.selectSection(DashboardSection.characters),
+                  ),
+                  _NavigationItem(
+                    icon: (color) => Icon(Icons.account_tree_rounded, size: 21, color: color),
+                    label: AppLocalizations.of(context).navPipeline,
+                    selected: shell.section == DashboardSection.pipeline,
+                    onTap: () => cubits.shell.selectSection(DashboardSection.pipeline),
+                  ),
+                  _NavigationItem(
+                    icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
+                    label: AppLocalizations.of(context).navModels,
+                    selected: shell.section == DashboardSection.models,
+                    onTap: () => cubits.shell.selectSection(DashboardSection.models),
+                  ),
+                  _NavigationItem(
+                    icon: (color) => Icon(Icons.tune_rounded, size: 21, color: color),
+                    label: AppLocalizations.of(context).navSettings,
+                    selected: shell.section == DashboardSection.settings,
+                    onTap: () => cubits.shell.selectSection(DashboardSection.settings),
+                  ),
+                ],
               ),
-              _NavigationItem(
-                icon: (color) => Icon(Icons.highlight_alt_rounded, size: 21, color: color),
-                label: AppLocalizations.of(context).navSnapshot,
-                selected: shell.section == DashboardSection.snapshot,
-                onTap: () => cubits.shell.selectSection(DashboardSection.snapshot),
-              ),
-              _NavigationGroup(label: AppLocalizations.of(context).navGroupSetup),
-              _NavigationItem(
-                icon: (color) => Icon(Icons.groups_rounded, size: 21, color: color),
-                label: AppLocalizations.of(context).navCharacters,
-                selected: shell.section == DashboardSection.characters,
-                onTap: () => cubits.shell.selectSection(DashboardSection.characters),
-              ),
-              _NavigationItem(
-                icon: (color) => Icon(Icons.account_tree_rounded, size: 21, color: color),
-                label: AppLocalizations.of(context).navPipeline,
-                selected: shell.section == DashboardSection.pipeline,
-                onTap: () => cubits.shell.selectSection(DashboardSection.pipeline),
-              ),
-              _NavigationItem(
-                icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
-                label: AppLocalizations.of(context).navModels,
-                selected: shell.section == DashboardSection.models,
-                onTap: () => cubits.shell.selectSection(DashboardSection.models),
-              ),
-              _NavigationItem(
-                icon: (color) => Icon(Icons.tune_rounded, size: 21, color: color),
-                label: AppLocalizations.of(context).navSettings,
-                selected: shell.section == DashboardSection.settings,
-                onTap: () => cubits.shell.selectSection(DashboardSection.settings),
-              ),
-            ],
+            ),
           ),
         ),
-        const Spacer(),
         _VersionButton(cubits: cubits),
         const Padding(
           // Starts where the version's icon does, so the foot of the panel
@@ -3472,6 +3478,7 @@ class _ModelsPanel extends StatelessWidget {
     final selection = cubits.selection;
     final selected = selection.settings.targetLanguage;
     return ListView(
+      key: const ValueKey('modelsList'),
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
         _ModuleLabel(number: '01', label: l10n.sectionRecognition),
@@ -3889,6 +3896,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   Widget _build(BuildContext context, SettingsState state, {required bool running}) {
     final l10n = AppLocalizations.of(context);
     return ListView(
+      key: const ValueKey('settingsList'),
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
         _ModuleLabel(number: '01', label: l10n.settingsGroupInterface),

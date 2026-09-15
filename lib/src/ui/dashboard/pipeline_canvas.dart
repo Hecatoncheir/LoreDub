@@ -604,9 +604,11 @@ class _DotFieldPainter extends CustomPainter {
       old.view.x != view.x || old.view.y != view.y || old.view.zoom != view.zoom;
 }
 
-/// The curves. The route is a solid orange line; a voice given to another
-/// character is a dashed graphite one, so what is signal and what is casting
-/// are told apart without reading a label.
+/// The curves. The route is a solid orange line and the cast is drawn in
+/// graphite, so what is signal and what is casting are told apart without
+/// reading a label. Among the graphite ones, a voice given away from card to
+/// card is dashed; the line into a card from the voice that reads it is
+/// solid, being the way every card is joined to the pipeline.
 class _LinkPainter extends CustomPainter {
   const _LinkPainter({required this.graph, this.drag, this.over});
 
@@ -645,8 +647,11 @@ class _LinkPainter extends CustomPainter {
         NodeMetrics.portAt(to, link.to.socket),
       );
       final cast = link.signal == PipelineSignal.voice;
+      // The line the voice reaches a card by: solid, like the route it
+      // belongs to. What is dashed is a voice handed from card to card.
+      final given = cast && link.from.socket != PipelineSocket.voiceCast;
       canvas.drawPath(
-        cast ? _dashed(path) : path,
+        given ? _dashed(path) : path,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = cast ? 1.6 : 2.4
@@ -917,7 +922,7 @@ class _NodeCard extends StatelessWidget {
 
   _NodePaint get _paint => switch (node.kind) {
     PipelineNodeKind.source || PipelineNodeKind.output => _NodePaint.ends,
-    PipelineNodeKind.character => _NodePaint.cast,
+    PipelineNodeKind.character => node.sendsToMix ? _NodePaint.heard : _NodePaint.cast,
     _ => _NodePaint.plain,
   };
 
@@ -945,7 +950,12 @@ class _NodeCard extends StatelessWidget {
   String _headline(BuildContext context, AppLocalizations l10n) {
     final settings = facts.settings;
     return switch (node.kind) {
-      PipelineNodeKind.source => facts.process?.name ?? l10n.pipelineNoProcess,
+      // Capturing the whole output needs no game, so none is asked for
+      // here: what is listened to then is the device itself.
+      PipelineNodeKind.source =>
+        settings.audioCaptureSource == AudioCaptureSource.system
+            ? l10n.pipelineOutputDefault
+            : facts.process?.name ?? l10n.pipelineNoProcess,
       PipelineNodeKind.recognition => switch (facts.selection.recognition?.model) {
         final model? => whisperShortName(model),
         _ => l10n.pipelineNoModel,
@@ -1020,7 +1030,6 @@ class _NodeCard extends StatelessWidget {
   }
 }
 
-/// A row of the card that a socket sits on, labelled towards its own edge.
 /// What one node is drawn in.
 ///
 /// The two ends of the pipeline are orange -- where the game's sound comes
@@ -1066,6 +1075,18 @@ class _NodePaint {
     chosen: LoreDubPalette.ink,
   );
 
+  /// A card whose lines leave for the mix, which is the one the player
+  /// actually hears: its head is the orange of the path it ends in.
+  static const heard = _NodePaint(
+    body: LoreDubPalette.graphite,
+    header: LoreDubPalette.orange,
+    ink: LoreDubPalette.raised,
+    muted: Color(0xAAF7F5F0),
+    port: Color(0xAAF7F5F0),
+    rule: LoreDubPalette.graphite,
+    chosen: LoreDubPalette.orange,
+  );
+
   static const cast = _NodePaint(
     body: LoreDubPalette.graphite,
     header: LoreDubPalette.graphite,
@@ -1090,6 +1111,7 @@ class _NodePaint {
   final Color chosen;
 }
 
+/// A row of the card that a socket sits on, labelled towards its own edge.
 class _PortRow extends StatelessWidget {
   const _PortRow({required this.paint, this.left, this.right});
 
