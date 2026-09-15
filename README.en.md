@@ -880,6 +880,19 @@ being detected again for every phrase, which costs a full extra encoder pass.
   and is not worth the complexity.
 - **Subtitle overlay.** `AppSettings.showOverlay` is persisted but nothing
   reads it yet; the intent is to draw the translated lines over the game.
+- **A second speech engine, Piper.** Silero speaks six languages, Piper 57,
+  among them Italian, Polish, Portuguese, Turkish, Chinese, Dutch, Czech,
+  Swedish and Arabic — the ones Marian already translates into. A voice there
+  is a 60 MB `.onnx` file rather than a package per language, so a player
+  downloads the one voice they listen to; the pace is handed to the synthesis
+  (`length_scale`) instead of stretching a finished wave; its 22.05 kHz would
+  need resampling. The tone colour converter survives the move — it works on
+  the wave, not on the speech model. The one constraint that matters is the
+  licence: `piper1-gpl` is GPL-3 because it embeds espeak-ng, so it can only
+  be called as a separate process (`python -m piper.http_server`), the way
+  whisper already is — importing it into the worker would make the whole build
+  GPL. Russian stays on Silero: of Piper's four Russian voices two are CC0 and
+  both are men, and the one woman's voice states no licence at all.
 
 ## Development on Windows
 
@@ -998,8 +1011,35 @@ installer/                   Inno Setup definition
 scripts/                     Windows runtime and packaging scripts
 ```
 
-Project-owned code is MIT licensed. Downloaded runtime and model artifacts keep
-their upstream licenses and are not stored in this repository.
+## Licences
+
+Project-owned code is MIT licensed. Neither the models nor the runtime live in
+this repository or in the installer — the application downloads them onto the
+player's machine, and each keeps its upstream licence.
+
+| What is downloaded | Licence | Commercial use |
+| --- | --- | --- |
+| LoreDub code | MIT | yes |
+| whisper.cpp, the CPU, Vulkan and CUDA builds | MIT | yes |
+| Whisper weights (`ggml-*.bin`) | MIT | yes |
+| Marian `opus-mt-tc-big-en-zle` (Russian), `opus-mt-en-de` | CC-BY-4.0 | yes, with attribution |
+| Marian `opus-mt-en-es`, `opus-mt-en-fr`, `opus-mt-en-uk` | Apache-2.0 | yes |
+| Silero voices (`v5_3_ru`, `v3_de`, `v3_es`, `v3_fr`, `v4_ua`) | **CC BY-NC-SA 4.0** | **no** |
+| OpenVoice V2 tone colour converter | MIT | yes |
+| torch, including the CUDA build | BSD-3-Clause; NVIDIA libraries under the NVIDIA EULA | yes |
+| transformers, sentencepiece | Apache-2.0 | yes |
+| sacremoses | MIT | yes |
+| Embedded Python 3.11 | PSF License | yes |
+| Nunito, Nunito Sans and JetBrains Mono fonts | OFL 1.1 | yes |
+
+The one exception in that list is the Silero voices. **NC** means
+non-commercial use only, and **SA** means that anything derived from the
+weights — fine-tuning, conversion to another format, quantisation — has to be
+published under the same licence. For LoreDub itself nothing changes: the
+application is free and redistributes no weights. But if the dubbing earns
+money — a monetised stream, studio work, a paid product built on this code —
+the Silero voice needs a separate licence from its authors; the rest of the
+stack does not.
 
 ## Sponsors
 
