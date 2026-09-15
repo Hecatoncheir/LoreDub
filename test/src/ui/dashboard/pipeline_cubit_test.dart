@@ -471,6 +471,7 @@ class _SlowStartRepository extends AppRepository {
     required List<String> femaleVoices,
     required ComputeBackend recognitionBackend,
     required ComputeBackend translationBackend,
+    required ComputeBackend speechBackend,
     required ComputeBackend voiceConversionBackend,
     required String runtimeDirectory,
     String? voiceBank,
@@ -487,6 +488,7 @@ class _SlowStartRepository extends AppRepository {
     required String speaker,
     required String translationPrefix,
     required ComputeBackend translationBackend,
+    required ComputeBackend speechBackend,
     required String runtimeDirectory,
   }) async {
     snapshotStarts++;

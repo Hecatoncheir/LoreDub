@@ -122,6 +122,10 @@ class LocalInferenceService {
   String? _translationDevice;
   ComputeBackend? get translationBackend => _backendOf(_translationDevice);
 
+  /// Where the worker put the speech model, or null when it loaded none.
+  String? _speechDevice;
+  ComputeBackend? get speechBackend => _backendOf(_speechDevice);
+
   /// Where the worker put the voice converter, or null when it loaded none.
   String? _converterDevice;
   ComputeBackend? get voiceConversionBackend => _backendOf(_converterDevice);
@@ -184,6 +188,11 @@ class LocalInferenceService {
     ComputeBackend recognitionBackend = ComputeBackend.cpu,
     ComputeBackend translationBackend = ComputeBackend.cpu,
 
+    /// Where the voice reads. Its own answer rather than the translator's,
+    /// and the one stage a card barely changes: some 30 ms off a line, paid
+    /// for with a second of the session's start.
+    ComputeBackend speechBackend = ComputeBackend.cpu,
+
     /// Target-language token some translation models want in front of the
     /// text; empty for the pairs that serve one language.
     String translationPrefix = '',
@@ -228,6 +237,7 @@ class LocalInferenceService {
     // handle to it about to be overwritten and nobody left to end it.
     if (_worker != null) await stop();
     _workerReady = Completer<void>();
+    _speechDevice = null;
     _converterDevice = null;
     _diagnostics.clear();
     // A language the user named is used as is; anything else is detected once
@@ -247,10 +257,11 @@ class LocalInferenceService {
     final workerFile = await _extractScript('assets/runtime/inference_worker.py', work);
     // The converter is a module the worker imports from its own directory.
     await _extractScript('assets/runtime/tone_converter.py', work);
-    // The translator and the converter each ask for the CUDA build on their
-    // own, and whichever does brings it in for both.
+    // The translator, the voice and the converter each ask for the CUDA build
+    // on their own, and whichever does brings it in for all three.
     final cudaTorch =
         translationBackend == ComputeBackend.cuda ||
+        (ttsModel.isNotEmpty && speechBackend == ComputeBackend.cuda) ||
         (voiceConverter != null && voiceConversionBackend == ComputeBackend.cuda);
     onStartupProgress?.call(0.05, 'python');
     _worker = await Process.start(
@@ -261,7 +272,12 @@ class LocalInferenceService {
         if (embedOnly) '--embed-only',
         if (speechOnly) '--speech-only',
         if (translationModel.isNotEmpty) ...['--translation-model', translationModel],
-        if (ttsModel.isNotEmpty) ...['--tts-model', ttsModel],
+        if (ttsModel.isNotEmpty) ...[
+          '--tts-model',
+          ttsModel,
+          '--speech-device',
+          speechBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
+        ],
         '--speaker',
         speaker,
         '--work-directory',
@@ -376,6 +392,7 @@ class LocalInferenceService {
   /// The worker has loaded its models and says where it put them.
   void _onWorkerReady(Map<String, Object?> message) {
     _translationDevice = message['device'] as String?;
+    _speechDevice = message['speechDevice'] as String?;
     _converterDevice = message['converterDevice'] as String?;
     final ready = _workerReady;
     if (ready != null && !ready.isCompleted) ready.complete();

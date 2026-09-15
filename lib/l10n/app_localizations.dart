@@ -2577,6 +2577,12 @@ abstract class AppLocalizations {
   /// **'Нет подходящей видеокарты или драйвера'**
   String get computeBackendNoHardware;
 
+  /// No description provided for @computeBackendNotShipped.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этой сборки нет в вашей копии: сборка Whisper с Vulkan входит в установщик, только если её удалось собрать'**
+  String get computeBackendNotShipped;
+
   /// No description provided for @computeRuntimeMissing.
   ///
   /// In ru, this message translates to:
@@ -2652,7 +2658,7 @@ abstract class AppLocalizations {
   /// No description provided for @runtimeServesTorch.
   ///
   /// In ru, this message translates to:
-  /// **'перевод и OpenVoice'**
+  /// **'перевод, озвучка и OpenVoice'**
   String get runtimeServesTorch;
 
   /// No description provided for @runtimeHintInUse.
@@ -2703,11 +2709,11 @@ abstract class AppLocalizations {
   /// **'Устройство можно сменить, когда озвучка остановлена'**
   String get computeCellLocked;
 
-  /// No description provided for @computeSpeechCpuOnly.
+  /// No description provided for @computeSpeechNote.
   ///
   /// In ru, this message translates to:
-  /// **'Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.'**
-  String get computeSpeechCpuOnly;
+  /// **'Озвучка на видеокарте выигрывает немного: Silero держится 20-26 мс на строке любой длины против 23-66 мс на процессоре, а первая фраза сессии обходится на секунду дороже. Рядом с распознаванием, которое считается секундами, разницу почти не слышно.'**
+  String get computeSpeechNote;
 
   /// No description provided for @failureRuntimeIncomplete.
   ///

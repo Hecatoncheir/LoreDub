@@ -308,6 +308,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         femaleVoices: speech.voicesOf(VoiceGender.female),
         recognitionBackend: _backendFor(ComputeStage.recognition),
         translationBackend: _backendFor(ComputeStage.translation),
+        speechBackend: _backendFor(ComputeStage.speech),
         voiceConversionBackend: _backendFor(ComputeStage.voiceConversion),
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
         // Kept per game, so one game's cast does not answer for another's.
@@ -401,6 +402,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         speaker: selection.voice,
         translationPrefix: translation?.translationPrefix ?? '',
         translationBackend: _backendFor(ComputeStage.translation),
+        speechBackend: _backendFor(ComputeStage.speech),
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
       );
     } catch (exception) {

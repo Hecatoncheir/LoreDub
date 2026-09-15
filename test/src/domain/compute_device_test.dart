@@ -109,14 +109,38 @@ void main() {
     );
   });
 
-  test('keeps speech on the CPU whatever is asked for', () {
+  test('puts speech on the card with the same torch, and never on Vulkan', () {
+    final waiting = nvidiaMachine(runtimes: {'whisper-cuda'});
     final ready = nvidiaMachine(runtimes: {'whisper-cuda', 'torch-cuda'});
 
-    expect(stageBackends(ComputeStage.speech), [ComputeBackend.cpu]);
+    expect(stageBackends(ComputeStage.speech), [ComputeBackend.cuda, ComputeBackend.cpu]);
     expect(
-      resolve(ComputeStage.speech, ComputeDevice.gpu, ready, override: ComputeBackend.cuda),
+      resolve(ComputeStage.speech, ComputeDevice.auto, waiting),
+      ComputeBackend.cpu,
+      reason: 'the CUDA torch is not downloaded yet',
+    );
+    expect(resolve(ComputeStage.speech, ComputeDevice.gpu, ready), ComputeBackend.cuda);
+    // Silero rides on torch, which has no Vulkan backend on Windows, so an
+    // AMD card leaves the voice where it was.
+    expect(
+      resolve(
+        ComputeStage.speech,
+        ComputeDevice.gpu,
+        amdMachine(),
+        override: ComputeBackend.vulkan,
+      ),
       ComputeBackend.cpu,
     );
+  });
+
+  test('lets the voice be pinned apart from translation', () {
+    final ready = nvidiaMachine(runtimes: {'torch-cuda'});
+    final settings = const AppSettings()
+        .withBackend(ComputeStage.translation, ComputeBackend.cuda)
+        .withBackend(ComputeStage.speech, ComputeBackend.cpu);
+
+    expect(settings.backendFor(ComputeStage.translation, ready), ComputeBackend.cuda);
+    expect(settings.backendFor(ComputeStage.speech, ready), ComputeBackend.cpu);
   });
 
   test('puts the voice converter on the card with the same torch as translation', () {
@@ -193,6 +217,7 @@ void main() {
     expect(requiredRuntimeId(ComputeStage.recognition, ComputeBackend.vulkan), 'whisper-vulkan');
     expect(requiredRuntimeId(ComputeStage.translation, ComputeBackend.cuda), 'torch-cuda');
     expect(requiredRuntimeId(ComputeStage.voiceConversion, ComputeBackend.cuda), 'torch-cuda');
+    expect(requiredRuntimeId(ComputeStage.speech, ComputeBackend.cuda), 'torch-cuda');
     expect(requiredRuntimeId(ComputeStage.speech, ComputeBackend.cpu), isNull);
     expect(requiredRuntimeId(ComputeStage.recognition, ComputeBackend.cpu), isNull);
   });

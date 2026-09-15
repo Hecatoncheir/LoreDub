@@ -1498,6 +1498,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get computeBackendNoHardware => 'Нет подходящей видеокарты или драйвера';
 
   @override
+  String get computeBackendNotShipped =>
+      'Этой сборки нет в вашей копии: сборка Whisper с Vulkan входит в установщик, только если её удалось собрать';
+
+  @override
   String computeRuntimeMissing(String size) {
     return 'Нужен пакет $size';
   }
@@ -1538,7 +1542,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get runtimeServesWhisper => 'распознавание';
 
   @override
-  String get runtimeServesTorch => 'перевод и OpenVoice';
+  String get runtimeServesTorch => 'перевод, озвучка и OpenVoice';
 
   @override
   String get runtimeHintInUse => 'Сейчас используется';
@@ -1567,8 +1571,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get computeCellLocked => 'Устройство можно сменить, когда озвучка остановлена';
 
   @override
-  String get computeSpeechCpuOnly =>
-      'Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.';
+  String get computeSpeechNote =>
+      'Озвучка на видеокарте выигрывает немного: Silero держится 20-26 мс на строке любой длины против 23-66 мс на процессоре, а первая фраза сессии обходится на секунду дороже. Рядом с распознаванием, которое считается секундами, разницу почти не слышно.';
 
   @override
   String failureRuntimeIncomplete(String detail) {

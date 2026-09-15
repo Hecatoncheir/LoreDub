@@ -14,12 +14,23 @@ enum ComputeBackend { cuda, vulkan, cpu }
 
 /// The stages that can be moved between the CPU and the GPU independently.
 ///
-/// They differ because they are three different runtimes: whisper.cpp has both
-/// a CUDA and a Vulkan build, torch on Windows has only CUDA, and Silero is
-/// small enough that the transfer costs more than the work. The OpenVoice
-/// converter shares the worker's torch with translation but is placed on its
-/// own: on the CPU it adds about a second to every line, on a GPU next to
-/// nothing, while translation is quick on either.
+/// They differ because they are different runtimes: whisper.cpp has both a
+/// CUDA and a Vulkan build, while torch on Windows has only CUDA. The
+/// OpenVoice converter shares the worker's torch with translation but is
+/// placed on its own: on the CPU it adds about a second to every line, on a
+/// GPU next to nothing, while translation is quick on either.
+///
+/// Speech is offered the card as well, and is the one stage where the choice
+/// barely shows. Measured over nine lines on an RTX 3080 Ti at twelve
+/// threads, the processor grows with the line -- 23 ms for one word, 53 for
+/// eleven, 66 for fourteen -- while CUDA stands at 20 to 26 ms whatever the
+/// line is worth, the launch being all of it. That is some 30 ms off a line
+/// whose recognition alone runs 5 s (`medium-q5` on CUDA over a 4.7 s
+/// segment), and it is paid for at the start: the first phrase after loading
+/// takes 2.1 s against the processor's 1.1, and the model then holds 350 MB
+/// of the card. What makes it small is not the transfer -- that is 0.1 ms --
+/// but the work itself. The two devices say the same line to the sample,
+/// differing only as floats do.
 enum ComputeStage { recognition, translation, speech, voiceConversion }
 
 /// The backends a stage could use on ideal hardware, best first.
@@ -32,9 +43,10 @@ List<ComputeBackend> stageBackends(ComputeStage stage) => switch (stage) {
     ComputeBackend.vulkan,
     ComputeBackend.cpu,
   ],
-  // torch ships no Vulkan backend, and ROCm is not built for Windows.
-  ComputeStage.translation => const [ComputeBackend.cuda, ComputeBackend.cpu],
-  ComputeStage.speech => const [ComputeBackend.cpu],
+  // torch ships no Vulkan backend, and ROCm is not built for Windows, so the
+  // three stages that run inside the worker are offered CUDA or nothing.
+  ComputeStage.translation ||
+  ComputeStage.speech ||
   ComputeStage.voiceConversion => const [ComputeBackend.cuda, ComputeBackend.cpu],
 };
 
@@ -45,8 +57,11 @@ List<ComputeBackend> stageBackends(ComputeStage stage) => switch (stage) {
 String? requiredRuntimeId(ComputeStage stage, ComputeBackend backend) => switch ((stage, backend)) {
   (ComputeStage.recognition, ComputeBackend.cuda) => 'whisper-cuda',
   (ComputeStage.recognition, ComputeBackend.vulkan) => 'whisper-vulkan',
-  // Both run in the worker's torch, so one CUDA build serves the two.
-  (ComputeStage.translation || ComputeStage.voiceConversion, ComputeBackend.cuda) => 'torch-cuda',
+  // The translator, the voice and the converter all run in the worker's own
+  // torch, so one CUDA build serves the three.
+  (ComputeStage.translation, ComputeBackend.cuda) ||
+  (ComputeStage.speech, ComputeBackend.cuda) ||
+  (ComputeStage.voiceConversion, ComputeBackend.cuda) => 'torch-cuda',
   _ => null,
 };
 

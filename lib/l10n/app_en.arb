@@ -994,6 +994,7 @@
   "computeNoAdapter": "No usable graphics card found — everything runs on the processor",
   "computeBackendUnsupported": "This model has no such build",
   "computeBackendNoHardware": "No suitable graphics card or driver",
+  "computeBackendNotShipped": "This copy has no such build: the Vulkan build of Whisper is in the installer only when it could be compiled",
   "computeRuntimeMissing": "Needs a {size} package",
   "@computeRuntimeMissing": {
     "placeholders": {
@@ -1020,7 +1021,7 @@
   "runtimeWhisperCuda": "CUDA · Whisper",
   "runtimeTorchCuda": "CUDA · translation",
   "runtimeServesWhisper": "recognition",
-  "runtimeServesTorch": "translation and OpenVoice",
+  "runtimeServesTorch": "translation, speech and OpenVoice",
   "runtimeHintInUse": "In use now",
   "runtimeHintIdle": "Downloaded, but no stage uses it now",
   "runtimeRemoveLocked": "The package can be deleted once dubbing is stopped",
@@ -1036,7 +1037,7 @@
   "computeCellSelect": "Click to run this stage here",
   "computeCellSelected": "This stage runs here",
   "computeCellLocked": "The device can be changed once dubbing is stopped",
-  "computeSpeechCpuOnly": "Silero runs on the processor: moving it to the card costs more than the work itself.",
+  "computeSpeechNote": "Speech gains little from the card: Silero holds at 20-26 ms whatever the line is worth, against 23-66 ms on the processor, and the first phrase of a session costs a second more. Next to recognition, which is measured in seconds, the difference is hard to hear.",
   "failureRuntimeIncomplete": "The downloaded package has no {detail}",
   "@failureRuntimeIncomplete": {
     "placeholders": {

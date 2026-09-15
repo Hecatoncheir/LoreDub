@@ -702,7 +702,7 @@ but disabled, with a tooltip saying why.
 | --- | --- | --- | --- |
 | Whisper | yes, downloaded (436 MB) | yes, if built (see below) | always |
 | Translation (Marian) | yes, downloaded (~2.5 GB) | no: torch has no Vulkan backend | always |
-| Speech (Silero) | no | no | always |
+| Speech (Silero) | yes, the same torch package | no: torch has no Vulkan backend | always |
 
 The heavy GPU runtimes are **not in the installer**. They are fetched on demand
 by the same machinery as the models, with progress, SHA-256 verification and
@@ -730,8 +730,17 @@ pip resolves torch the old way, and only a cancel is offered there — it kills
 the process and clears the directory, so a half-installed runtime cannot pass
 for a finished one.
 
-Speech stays on the processor deliberately: Silero utterances are short, and
-moving them to the card costs more than the work itself.
+Speech has a row of its own so that it can be left on the processor: the card
+gains it little. Measured over nine lines on an RTX 3080 Ti at twelve threads,
+the processor grows with the line — 23 ms for one word, 53 for eleven, 66 for
+fourteen — while CUDA holds at 20-26 ms whatever the line is worth, being
+almost entirely the launch of the kernels. That is some 30 ms off a line, paid
+for with a second of the session's start (the first phrase after loading takes
+2.1 s against 1.1) and 350 MB of the card. The transfer back has nothing to do
+with it: that is 0.1 ms. Both devices say the same line to the sample,
+differing only as floating-point numbers do. A card too full to hold the voice
+quietly hands it back to the processor — without it there is nothing to dub
+with.
 
 Measured on an RTX 3080 Ti with a 5.6 s English line and `ggml-base`.
 Recognition:
@@ -759,7 +768,9 @@ compiles one (`-DGGML_VULKAN=ON`). That needs the Vulkan SDK and CMake on the
 build machine; without them the step is skipped with a warning, and
 `-RequireVulkan` turns that skip into an error, which is what a release build
 wants. The resulting binary is small and ships in the installer, so there is
-nothing to download for it.
+nothing to download for it. In a copy built without it the Vulkan cell of the
+Whisper row is faded, and its tooltip says why: there is nowhere to fetch that
+build from, it comes with the installer or not at all.
 
 ## Subtitle mode
 
@@ -941,6 +952,58 @@ being detected again for every phrase, which costs a full extra encoder pass.
   whisper already is — importing it into the worker would make the whole build
   GPL. Russian stays on Silero: of Piper's four Russian voices two are CC0 and
   both are men, and the one woman's voice states no licence at all.
+- **A release carrying the Vulkan build, which is to say a release for AMD and
+  Intel.** The installer goes out without it today: `scripts/build_setup.ps1`
+  calls `prepare_windows_runtime.ps1` without `-RequireVulkan`, the runner has
+  no Vulkan SDK, and the step is skipped with a single warning in the log. AMD
+  and Intel owners are left recognizing on the processor, and the Vulkan cell
+  of the device table is faded, saying this copy has no such build. Two edits
+  mend it. The first is a step in `.github/workflows/release.yml`, before the
+  installer is built:
+
+  ```yaml
+  - name: Install the Vulkan SDK
+    shell: pwsh
+    run: |
+      choco install vulkan-sdk --yes --no-progress
+      $sdk = (Get-ChildItem 'C:\VulkanSDK' | Sort-Object Name -Descending |
+        Select-Object -First 1).FullName
+      "VULKAN_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+  ```
+
+  The variable has to be set by hand: the installer writes it into the system,
+  while a workflow step is handed the environment as it stood when the job
+  started. The second edit is the flag on the call in
+  `scripts/build_setup.ps1`:
+
+  ```powershell
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prepare_windows_runtime.ps1 `
+    -Destination (Join-Path $ReleaseDirectory "runtime") -RequireVulkan
+  ```
+
+  The flag matters on its own: without it the skip stays a warning, and the
+  next release travels without Vulkan again, telling nobody.
+
+  What it costs. The per-branch CI (`windows.yml`) is untouched — it does not
+  build the installer. The release job gains the SDK install and a build of
+  `whisper.cpp` with `-DGGML_VULKAN=ON`, which compiles the shaders as well;
+  an estimate of 10-20 minutes on a runner, not measured. It is paid once:
+  `Build-VulkanWhisper` skips the build when the binary is already in the
+  `LoreDubBuildCache`. The cache wants narrowing then — as it stands the whole
+  `build-vulkan` tree would go into it, hundreds of megabytes against a 10 GB
+  limit per repository, where only the finished `.exe` and `.dll` are needed.
+  Besides the SDK the build wants CMake and MSVC; `windows-latest` carries
+  both, but that is worth confirming.
+
+  What it gives and what it does not. Only recognition moves to the card — but
+  that is the expensive stage: `medium-q5` over a 4.7 s segment took 5.0-6.0 s
+  on CUDA against 10.9-11.3 s on the processor. Translation, speech and
+  OpenVoice stay on the processor: they live in torch, which has no Vulkan
+  backend on Windows, and ROCm is not built for Windows either. The player
+  downloads nothing after installing — the binary travels inside the installer,
+  a few megabytes, and the application asks only that the file be in its place.
+  The machine needs the `vulkan-1.dll` loader, which comes with the graphics
+  driver.
 
 ## Development on Windows
 

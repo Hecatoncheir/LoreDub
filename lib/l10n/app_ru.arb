@@ -994,6 +994,7 @@
   "computeNoAdapter": "Подходящая видеокарта не найдена — всё считается на процессоре",
   "computeBackendUnsupported": "Не поддерживается этой моделью",
   "computeBackendNoHardware": "Нет подходящей видеокарты или драйвера",
+  "computeBackendNotShipped": "Этой сборки нет в вашей копии: сборка Whisper с Vulkan входит в установщик, только если её удалось собрать",
   "computeRuntimeMissing": "Нужен пакет {size}",
   "@computeRuntimeMissing": {
     "placeholders": {
@@ -1020,7 +1021,7 @@
   "runtimeWhisperCuda": "CUDA · Whisper",
   "runtimeTorchCuda": "CUDA · перевод",
   "runtimeServesWhisper": "распознавание",
-  "runtimeServesTorch": "перевод и OpenVoice",
+  "runtimeServesTorch": "перевод, озвучка и OpenVoice",
   "runtimeHintInUse": "Сейчас используется",
   "runtimeHintIdle": "Скачан, но сейчас ни одна стадия его не использует",
   "runtimeRemoveLocked": "Пакет можно удалить, когда озвучка остановлена",
@@ -1036,7 +1037,7 @@
   "computeCellSelect": "Нажмите, чтобы считать эту стадию здесь",
   "computeCellSelected": "Стадия считается здесь",
   "computeCellLocked": "Устройство можно сменить, когда озвучка остановлена",
-  "computeSpeechCpuOnly": "Silero считается на процессоре: перенос на видеокарту стоит дороже самой работы.",
+  "computeSpeechNote": "Озвучка на видеокарте выигрывает немного: Silero держится 20-26 мс на строке любой длины против 23-66 мс на процессоре, а первая фраза сессии обходится на секунду дороже. Рядом с распознаванием, которое считается секундами, разницу почти не слышно.",
   "failureRuntimeIncomplete": "В скачанном пакете нет {detail}",
   "@failureRuntimeIncomplete": {
     "placeholders": {

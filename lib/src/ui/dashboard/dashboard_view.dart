@@ -5187,7 +5187,7 @@ class _ComputeDeviceCard extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           Text(
-            l10n.computeSpeechCpuOnly,
+            l10n.computeSpeechNote,
             style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
           ),
         ],
@@ -5241,6 +5241,17 @@ class _ComputeDeviceCard extends StatelessWidget {
         detail: size,
         tooltip: '${l10n.computeRuntimeMissing(size)}\n${l10n.computeCellHintDownload}',
         onTap: running ? null : () => cubits.downloads.installRuntime(missing),
+      );
+    }
+    // A runtime that is missing and not in the catalogue either: the cell
+    // used to read as ready, and the press it invited stored a pin the
+    // resolver then refused, so nothing moved and nothing said why.
+    if (downloads.lacksBuiltInRuntime(stage, backend)) {
+      return BackendCell(
+        key: key,
+        label: label,
+        state: BackendCellState.unsupported,
+        tooltip: l10n.computeBackendNotShipped,
       );
     }
     // While dubbing runs this is what the stage really settled on.

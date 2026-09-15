@@ -557,6 +557,7 @@ class _CastRepository extends AppRepository {
     required AppSettings settings,
     required Map<String, String> modelDirectories,
     required String speaker,
+    required ComputeBackend speechBackend,
     required ComputeBackend converterBackend,
     required String runtimeDirectory,
   }) async => previewStarts++;

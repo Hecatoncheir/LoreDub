@@ -1490,6 +1490,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get computeBackendNoHardware => 'No suitable graphics card or driver';
 
   @override
+  String get computeBackendNotShipped =>
+      'This copy has no such build: the Vulkan build of Whisper is in the installer only when it could be compiled';
+
+  @override
   String computeRuntimeMissing(String size) {
     return 'Needs a $size package';
   }
@@ -1530,7 +1534,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runtimeServesWhisper => 'recognition';
 
   @override
-  String get runtimeServesTorch => 'translation and OpenVoice';
+  String get runtimeServesTorch => 'translation, speech and OpenVoice';
 
   @override
   String get runtimeHintInUse => 'In use now';
@@ -1559,8 +1563,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get computeCellLocked => 'The device can be changed once dubbing is stopped';
 
   @override
-  String get computeSpeechCpuOnly =>
-      'Silero runs on the processor: moving it to the card costs more than the work itself.';
+  String get computeSpeechNote =>
+      'Speech gains little from the card: Silero holds at 20-26 ms whatever the line is worth, against 23-66 ms on the processor, and the first phrase of a session costs a second more. Next to recognition, which is measured in seconds, the difference is hard to hear.';
 
   @override
   String failureRuntimeIncomplete(String detail) {

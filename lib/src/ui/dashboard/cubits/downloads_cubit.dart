@@ -75,6 +75,17 @@ class DownloadsState {
     return runtimeWithId(id);
   }
 
+  /// Whether a backend waits on a runtime this copy can never fetch.
+  ///
+  /// The Vulkan build of whisper.cpp travels inside the installer rather than
+  /// the catalogue, so a copy built without the Vulkan SDK carries none and
+  /// there is nothing to download that would mend it.
+  bool lacksBuiltInRuntime(ComputeStage stage, ComputeBackend backend) {
+    final id = requiredRuntimeId(stage, backend);
+    if (id == null || availability.installedRuntimes.contains(id)) return false;
+    return runtimeWithId(id) == null;
+  }
+
   RuntimeInstallState? runtimeWithId(String id) {
     for (final install in runtimes) {
       if (install.package.id == id) return install;

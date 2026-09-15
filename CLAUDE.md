@@ -753,6 +753,19 @@ backend that cannot start. Adding a backend means touching that resolver,
 each whisper.cpp build needs its own folder because they ship ggml libraries
 of the same name compiled against different backends.
 
+Three of the four stages run inside the worker's torch, so `torch-cuda` serves
+translation, speech and the converter alike and no stage of them has a Vulkan
+build to offer. Speech is the one where the card barely shows, and the numbers
+are in `ComputeStage`'s own comment rather than here: measured over nine lines
+on an RTX 3080 Ti at twelve threads, the processor grows with the line (23 ms
+for one word, 66 for fourteen) while CUDA stands at 20 to 26 ms whatever the
+line is worth. That is some 30 ms off a chain whose recognition alone runs
+seconds, bought with a second of the session's start and 350 MB of the card,
+so the row is offered and the note under the table says plainly what it buys.
+`--speech-device` carries it to the worker, which falls back to the processor
+both when torch cannot see the card and when `tts.to` is refused for want of
+memory — the voice being the stage nothing can be dubbed without.
+
 `RuntimeStorageService` fetches the GPU runtimes on demand into
 `<app support>/runtime/<id>/`: archives are downloaded, unpacked in an isolate
 and flattened to the probe file, while CUDA torch is installed by pip into its

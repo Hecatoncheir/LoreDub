@@ -696,6 +696,10 @@ class CharactersCubit extends Cubit<CharactersState> {
           'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
       },
       speaker: selection.voice,
+      speechBackend: _settings.settings.backendFor(
+        ComputeStage.speech,
+        _downloads.state.availability,
+      ),
       converterBackend: _settings.settings.backendFor(
         ComputeStage.voiceConversion,
         _downloads.state.availability,

@@ -1025,7 +1025,7 @@ void main() {
     expect(find.textContaining('Распознавание занимает'), findsOneWidget);
   });
 
-  testWidgets('never offers speech anything but the processor', (tester) async {
+  testWidgets('offers speech the card but never Vulkan', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 900));
     await tester.tap(find.text('Настройки'));
     await tester.pumpAndSettle();
@@ -1034,18 +1034,23 @@ void main() {
     await tester.scrollUntilVisible(speech, 300, scrollable: settingsScroller());
     await tester.pumpAndSettle();
 
-    // Silero has no GPU build here, so only its processor cell is live.
+    // Silero rides on the worker's torch, which has no Vulkan build at all.
+    // CUDA it would take; this machine simply has no card to give it.
     Finder cell(String backend) => find.byKey(ValueKey('backendCell-speech-$backend'));
-    for (final backend in ['cuda', 'vulkan']) {
-      expect(
-        find.descendant(
-          of: cell(backend),
-          matching: find.byTooltip('Не поддерживается этой моделью'),
-        ),
-        findsOneWidget,
-        reason: backend,
-      );
-    }
+    expect(
+      find.descendant(
+        of: cell('vulkan'),
+        matching: find.byTooltip('Не поддерживается этой моделью'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: cell('cuda'),
+        matching: find.byTooltip('Нет подходящей видеокарты или драйвера'),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.descendant(of: cell('cpu'), matching: find.byTooltip('Стадия считается здесь')),
       findsOneWidget,
@@ -1053,23 +1058,28 @@ void main() {
   });
 
   group('the stage-by-device table', () {
+    // The Vulkan whisper.cpp ships inside the installer rather than the
+    // catalogue, so it is named here the way the storage service names it.
     const nvidia = ComputeAvailability(
       adapters: [
         GraphicsAdapter(name: 'NVIDIA GeForce RTX 3080 Ti', vendor: GraphicsVendor.nvidia),
       ],
       cudaDriver: true,
       vulkanLoader: true,
-      installedRuntimes: {whisperCudaRuntimeId},
+      installedRuntimes: {whisperCudaRuntimeId, 'whisper-vulkan'},
     );
     late _RecordingRuntimeRepository runtimes;
 
-    Future<DashboardCubits> pumpTable(WidgetTester tester) async {
+    Future<DashboardCubits> pumpTable(
+      WidgetTester tester, {
+      ComputeAvailability availability = nvidia,
+    }) async {
       SharedPreferences.setMockInitialValues({});
       runtimes = _RecordingRuntimeRepository();
       final cubits = stage(
         buildCubits(runtimes: runtimes),
         section: DashboardSection.settings,
-        availability: nvidia,
+        availability: availability,
         runtimes: [
           RuntimeInstallState(package: runtimePackageById(whisperCudaRuntimeId)!, installed: true),
           RuntimeInstallState(package: runtimePackageById(torchCudaRuntimeId)!),
@@ -1126,6 +1136,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(runtimes.installed, [torchCudaRuntimeId]);
+    });
+
+    // A copy built without the Vulkan SDK carries no Vulkan whisper, and
+    // nothing in the catalogue would fetch one. The cell used to read as
+    // ready and swallow the press that followed.
+    testWidgets('says when a build this copy has not got is asked for', (tester) async {
+      final cubits = await pumpTable(
+        tester,
+        availability: nvidia.copyWith(installedRuntimes: const {whisperCudaRuntimeId}),
+      );
+
+      await tester.ensureVisible(cell('recognition', 'vulkan'));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: cell('recognition', 'vulkan'),
+          matching: find.byTooltip(
+            'Этой сборки нет в вашей копии: сборка Whisper с Vulkan входит в '
+            'установщик, только если её удалось собрать',
+          ),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(cell('recognition', 'vulkan'));
+      await tester.pumpAndSettle();
+      expect(
+        cubits.settings.settings.recognitionBackend,
+        isNull,
+        reason: 'a cell that cannot be chosen must not store a pin either',
+      );
     });
 
     testWidgets('draws the packages as tiles with their buttons', (tester) async {
@@ -1970,7 +2011,7 @@ void main() {
     testWidgets('leaves OpenVoice out of the devices without the original voice', (tester) async {
       await pumpSettings(tester);
       await tester.scrollUntilVisible(
-        find.textContaining('Silero считается на процессоре'),
+        find.textContaining('Silero держится'),
         300,
         scrollable: settingsScroller(),
       );

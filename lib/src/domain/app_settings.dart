@@ -254,8 +254,7 @@ class AppSettings {
 
   /// What a single stage was pinned to, overriding [computeDevice].
   ///
-  /// Null means the stage follows the preset. Speech has an entry only for
-  /// symmetry: torch offers it nothing but the CPU on Windows today.
+  /// Null means the stage follows the preset.
   final ComputeBackend? recognitionBackend;
   final ComputeBackend? translationBackend;
   final ComputeBackend? speechBackend;

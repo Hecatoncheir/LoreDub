@@ -923,6 +923,10 @@ def main():
     # The converter is placed apart from the translator: on the CPU it is
     # the slow half of a line, on a GPU next to nothing.
     parser.add_argument("--converter-device", default="cpu", choices=["cpu", "cuda"])
+    # The voice has its own answer too, and it is the stage the card changes
+    # least: measured, CUDA stands at 20 to 26 ms whatever the line is worth
+    # while the processor runs 23 to 66 ms with its length.
+    parser.add_argument("--speech-device", default="cpu", choices=["cpu", "cuda"])
     # The game's voice bank. With it, a character met before is voiced with
     # the fingerprint kept for them instead of the one of the current line.
     parser.add_argument("--voice-bank", default="")
@@ -958,6 +962,7 @@ def main():
     tokenizer = None
     translator = None
     tts = None
+    speech_device = None
     voices = []
     speaker = args.speaker
 
@@ -1005,7 +1010,20 @@ def main():
 
         report_progress(0.90, "speech")
         tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
-        tts.to(torch.device("cpu"))
+        # The same fallback as the translator's and the converter's: a card
+        # torch cannot see leaves the voice on the processor rather than the
+        # dubbing stopped at the line it was about to read.
+        speech_device = torch.device(
+            "cuda" if args.speech_device == "cuda" and torch.cuda.is_available() else "cpu"
+        )
+        try:
+            tts.to(speech_device)
+        except RuntimeError:
+            # A card too full to hold the voice is a working processor, and
+            # this is the stage nothing can be dubbed without: refusing here
+            # would cost the whole session what the card only saves 30 ms on.
+            speech_device = torch.device("cpu")
+            tts.to(speech_device)
         # Loading the Silero package drops torch to a single thread, and that
         # holds for everything after it: the translator ran on one core, and
         # the voice converter took three times as long. The count goes back.
@@ -1244,6 +1262,8 @@ def main():
     # The device is reported back rather than assumed: a CUDA build that fell
     # back to the CPU must not leave the interface claiming the GPU is in use.
     ready = {"type": "ready", "device": translation_device}
+    if speech_device is not None:
+        ready["speechDevice"] = speech_device.type
     if converter is not None:
         ready["converterDevice"] = converter.device.type
     reply(ready)

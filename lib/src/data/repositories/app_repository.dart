@@ -142,6 +142,7 @@ class AppRepository {
     required List<String> femaleVoices,
     required ComputeBackend recognitionBackend,
     required ComputeBackend translationBackend,
+    required ComputeBackend speechBackend,
     required ComputeBackend voiceConversionBackend,
     required String runtimeDirectory,
     String? voiceBank,
@@ -180,6 +181,7 @@ class AppRepository {
         'femaleVoices': femaleVoices.join(','),
         'recognitionBackend': recognitionBackend.name,
         'translationBackend': translationBackend.name,
+        'speechBackend': speechBackend.name,
         'voiceConversionBackend': voiceConversionBackend.name,
         'runtimeDirectory': runtimeDirectory,
         'voiceBank': ?voiceBank,
@@ -217,6 +219,7 @@ class AppRepository {
     required String speaker,
     required String translationPrefix,
     required ComputeBackend translationBackend,
+    required ComputeBackend speechBackend,
     required String runtimeDirectory,
   }) async {
     try {
@@ -244,6 +247,7 @@ class AppRepository {
         'models': modelDirectories,
         'translationPrefix': translationPrefix,
         'translationBackend': translationBackend.name,
+        'speechBackend': speechBackend.name,
         'runtimeDirectory': runtimeDirectory,
         'characters': await _characters.file(),
       });
@@ -280,6 +284,7 @@ class AppRepository {
     required AppSettings settings,
     required Map<String, String> modelDirectories,
     required String speaker,
+    required ComputeBackend speechBackend,
     required ComputeBackend converterBackend,
     required String runtimeDirectory,
   }) async {
@@ -290,6 +295,7 @@ class AppRepository {
         'cpuThreads': settings.cpuThreads,
         'pythonExecutable': settings.pythonExecutable,
         'models': modelDirectories,
+        'speechBackend': speechBackend.name,
         'voiceConversionBackend': converterBackend.name,
         'runtimeDirectory': runtimeDirectory,
       });

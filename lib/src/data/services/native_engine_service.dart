@@ -142,6 +142,7 @@ class NativeEngineService {
       femaleVoices: _voiceList(config['femaleVoices']),
       recognitionBackend: _backendFrom(config['recognitionBackend']),
       translationBackend: _backendFrom(config['translationBackend']),
+      speechBackend: _backendFrom(config['speechBackend']),
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
       voiceConverter: models['converter'],
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
@@ -153,6 +154,9 @@ class NativeEngineService {
     // What the worker settled on, which is not always what it was asked for.
     if (_inference.translationBackend case final actual?) {
       _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
+    }
+    if (_inference.speechBackend case final actual?) {
+      _events.add({'type': 'backend', 'stage': 'speech', 'backend': actual.name});
     }
     if (_inference.voiceConversionBackend case final actual?) {
       _events.add({'type': 'backend', 'stage': 'voiceConversion', 'backend': actual.name});
@@ -204,6 +208,7 @@ class NativeEngineService {
       requiresWhisper: false,
       translationPrefix: config['translationPrefix'] as String? ?? '',
       translationBackend: _backendFrom(config['translationBackend']),
+      speechBackend: _backendFrom(config['speechBackend']),
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
       voiceConverter: (config['models']! as Map<String, String>)['converter'],
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
@@ -212,6 +217,9 @@ class NativeEngineService {
     );
     if (_inference.translationBackend case final actual?) {
       _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
+    }
+    if (_inference.speechBackend case final actual?) {
+      _events.add({'type': 'backend', 'stage': 'speech', 'backend': actual.name});
     }
     _events.add({'type': 'startup', 'value': 0.98, 'stage': 'capture'});
     // No capture directory: the screen has no audio to cut into files, and
@@ -248,6 +256,7 @@ class NativeEngineService {
       speed: config['ttsSpeed']! as double,
       pythonExecutable: config['pythonExecutable']! as String,
       requiresWhisper: false,
+      speechBackend: _backendFrom(config['speechBackend']),
       voiceConverter: models['converter'],
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
