@@ -194,18 +194,25 @@ way in answers `RouteConnection(false)`: every stage is `unrouted` — faded,
 labelled, still in its place — and `canStart` refuses until it is joined
 again. There is one route on the canvas, the game's sound through whisper,
 because it is the only one this engine starts from here: reading the screen
-is the Screen page's own session and is not drawn at all. Cutting any of the lines into the mix's `mixCast`
-answers `CastConnection(false)` and takes the player's whole cast out the
-same way: the cards stay where they were put, drawn dark, who stands in for
-whom waits in them, and the worker is started with `--as-heard`, which makes
-`read_as` hand back the speaker it was given. Unlike the route it is not
+is the Screen page's own session and is not drawn at all. Cutting one of the lines into the mix's `mixCast`
+answers `CastConnection(<card>, false)` and takes that one card out:
+it stays where it was put, drawn dark, who stands in for whom waits in it,
+and the worker is started with `--as-heard <ids>`, which makes `read_as` hand
+back the speaker it was given for those cards — the card lends its voice to
+nobody and nobody stands in for it. The cut is the scheme's, not the
+settings': `PipelineLayout.silent` holds it by character (every drawing of a
+card answers together, the mix being told a character once), which is why
+`withoutNode` drops a card from it when the last drawing of that card leaves
+the canvas — a card the scheme does not draw is voiced the way it always
+was, whatever was cut while it was on it. Unlike the route it is not
 locked while a session runs — a paused session keeps its cast loaded, so
 this is the one branch the canvas may rewire mid-session, and the running
-worker is told rather than restarted: `_routeCast` writes `castRouted` and
-then `CharactersCubit.readAsHeard` sends `{"asHeard": ...}`, which rebinds the
-worker's own `as_heard` (not `args.as_heard`, which only seeds it). The flag
-is a session's, so `AppRepository.start`/`startSceneVoices` put
-`'asHeard': !settings.castRouted` in the config, and
+worker is told rather than restarted: `_voiceCard` writes the arrangement and
+then `CharactersCubit.readAsHeard` sends `{"asHeard": [...]}`, which rebinds the
+worker's own `as_heard` (not `args.as_heard`, which only seeds it). The set
+is a session's, so `AppRepository.start`/`startSceneVoices` read the
+arrangement off disk for `'asHeard': 'id,id'` — one flat string, the config
+crossing to the native side as JSON of flat values — and
 `NativeEngineService.readAsHeard` keeps `_activeConfig` in step with it. A card may be drawn more than once
 (`CastPlacement`, `PipelineLayout.cast`): the node id of the first copy is
 `character:<id>` — the name an arrangement written before copies already
@@ -234,7 +241,7 @@ session runs, while a substitution is not, the running worker being told of
 it rather than restarted — and keeps an undo history of layout,
 route and readers. Schemes the player keeps are a shelf beside that arrangement:
 `SavedPipeline` (`domain/saved_pipeline.dart`) holds the route
-(`captureRouted`, `castRouted`), the `PipelineLayout` and the
+(`captureRouted`), the `PipelineLayout` — which carries the cut cards — and the
 substitutions among the cards drawn, written to `<app support>/pipelines.json`
 by `PipelineLibraryService` and exported and imported as the same shape.
 Choosing one puts it back through the calls an edit makes — `SettingsCubit`

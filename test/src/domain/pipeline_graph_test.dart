@@ -253,11 +253,14 @@ void main() {
       expect(graph.node(PipelineNodeIds.character('guard'))?.sendsToMix, isFalse);
     });
 
-    test('marks nobody once the cast is cut out of the mix', () {
+    test('marks nobody once every card is cut out of the mix', () {
       final graph = buildPipelineGraph(
-        settings: const AppSettings(castRouted: false),
+        settings: const AppSettings(),
         characters: const [guard, smith],
-        layout: PipelineLayout.drawing(['guard', 'smith']),
+        layout: PipelineLayout.drawing([
+          'guard',
+          'smith',
+        ]).withVoiced('guard', false).withVoiced('smith', false),
       );
 
       for (final id in ['guard', 'smith']) {
@@ -429,7 +432,7 @@ void main() {
       expect((connection as RefusedConnection).reason, ConnectionRefusal.unsupported);
     });
 
-    test('takes the whole cast out of the mix, by any of its lines', () {
+    test('takes one card out of the mix, by the line that is cut', () {
       final connection = proposeDisconnect(
         PipelineLink(
           PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
@@ -437,48 +440,84 @@ void main() {
         ),
       );
 
-      expect((connection as CastConnection).routed, isFalse);
+      expect((connection as CastConnection).characterId, 'guard');
+      expect(connection.routed, isFalse);
     });
 
-    test('and one line drawn back wakes it again', () {
+    test('names the card a copy stands for, not the copy', () {
+      // Every drawing of a card answers together: the mix is told a
+      // character once however many times it is drawn.
+      final connection = proposeDisconnect(
+        PipelineLink(
+          PipelinePort(
+            PipelineNodeIds.characterCopy('guard', 2),
+            PipelineSocket.characterVoice,
+          ),
+          const PipelinePort(mix, PipelineSocket.mixCast),
+        ),
+      );
+
+      expect((connection as CastConnection).characterId, 'guard');
+    });
+
+    test('and the line drawn back wakes that card again', () {
       final connection = proposeConnection(
         buildPipelineGraph(
-          settings: const AppSettings(castRouted: false),
+          settings: const AppSettings(),
           characters: const [guard],
-          layout: PipelineLayout.drawing(['guard']),
+          layout: PipelineLayout.drawing(['guard']).withVoiced('guard', false),
         ),
         PipelinePort(PipelineNodeIds.character('guard'), PipelineSocket.characterVoice),
         const PipelinePort(mix, PipelineSocket.mixCast),
         characters: const [guard],
       );
 
-      expect((connection as CastConnection).routed, isTrue);
+      expect((connection as CastConnection).characterId, 'guard');
+      expect(connection.routed, isTrue);
     });
 
-    test('leaves the cast drawn but dark while it is out', () {
+    test('un-cuts a card taken off the canvas altogether', () {
+      // A card the scheme does not draw is voiced the way it always was:
+      // the cut is a line on the scheme, and there is no line to cut.
+      final layout = PipelineLayout.drawing(['guard', 'smith']).withVoiced('smith', false);
+
+      expect(layout.withoutNode(PipelineNodeIds.character('smith')).silent, isEmpty);
+      expect(
+        layout.withoutNode(PipelineNodeIds.character('guard')).silent,
+        {'smith'},
+        reason: 'the card that is still drawn keeps its cut',
+      );
+    });
+
+    test('leaves a cut card drawn but dark, and the rest of the cast alone', () {
       final graph = buildPipelineGraph(
-        settings: const AppSettings(castRouted: false),
+        settings: const AppSettings(),
         characters: const [
           Character(id: 'guard', name: 'Стражник', vector: [0.2], voicedBy: 'smith'),
           smith,
         ],
-        layout: PipelineLayout.drawing(['guard', 'smith']),
+        layout: PipelineLayout.drawing(['guard', 'smith']).withVoiced('smith', false),
       );
 
-      for (final id in ['guard', 'smith']) {
-        final node = graph.node(PipelineNodeIds.character(id));
-        expect(node, isNotNull, reason: 'the cards stay where they were put: $id');
-        expect(node!.unrouted, isTrue, reason: id);
-      }
+      final cut = graph.node(PipelineNodeIds.character('smith'))!;
+      expect(cut.unrouted, isTrue, reason: 'the card stays where it was put');
       expect(
-        graph.links.any((link) => link.from.socket.owner == PipelineNodeKind.character),
+        graph.links.any((link) => link.from.nodeId == cut.id || link.to.nodeId == cut.id),
         isFalse,
-        reason: 'nothing of the branch runs',
+        reason: 'and nothing runs through it',
       );
+
+      // The card it read is untouched and speaks for itself again: read by
+      // nobody, its own line goes on to the mix.
+      final left = graph.node(PipelineNodeIds.character('guard'))!;
+      expect(left.unrouted, isFalse);
       expect(
-        graph.links.any((link) => link.to.socket == PipelineSocket.characterIn),
-        isFalse,
-        reason: 'and the cast does not reach them either',
+        joined(
+          graph,
+          PipelinePort(left.id, PipelineSocket.characterVoice),
+          const PipelinePort(mix, PipelineSocket.mixCast),
+        ),
+        isTrue,
       );
     });
   });
@@ -731,6 +770,21 @@ void main() {
       final read = PipelineLayout.fromJson(layout.toJson());
 
       expect(read.cast, layout.cast);
+    });
+
+    test('keeps the cards cut out of the mix', () {
+      final layout = PipelineLayout.drawing(['guard', 'smith']).withVoiced('smith', false);
+
+      expect(PipelineLayout.fromJson(layout.toJson()).silent, {'smith'});
+      // A file from before the cut was a card's own names nobody: it had one
+      // switch for the whole cast, and it lived in the settings.
+      expect(
+        PipelineLayout.fromJson(const {
+          'version': 2,
+          'cast': ['guard'],
+        }).silent,
+        isEmpty,
+      );
     });
 
     test('reads a file from before a card could be drawn twice', () {

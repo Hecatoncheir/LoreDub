@@ -344,6 +344,7 @@ class PipelineLayout {
     this.positions = const {},
     this.cast = const [],
     this.view = const GraphView(),
+    this.silent = const {},
   });
 
   /// The arrangement a list of cards describes, each drawn once.
@@ -395,6 +396,16 @@ class PipelineLayout {
   final List<CastPlacement> cast;
   final GraphView view;
 
+  /// The cards on the canvas whose voice is cut out of the mix.
+  ///
+  /// Such a card is drawn where it was put and reads for nobody: it lends
+  /// its voice to no character, nobody stands in for it, and a session is
+  /// told to leave it as it is heard. It is held by character rather than by
+  /// drawing, the mix being told a character once however many times it is
+  /// drawn. A card that is not on the canvas at all is never in here: the
+  /// cast the player left off the scheme reads the way it always did.
+  final Set<String> silent;
+
   /// The cards on the canvas, one entry per drawing of one.
   List<String> get characters => [for (final placement in cast) placement.characterId];
 
@@ -402,10 +413,12 @@ class PipelineLayout {
     Map<String, GraphPoint>? positions,
     List<CastPlacement>? cast,
     GraphView? view,
+    Set<String>? silent,
   }) => PipelineLayout(
     positions: positions ?? this.positions,
     cast: cast ?? this.cast,
     view: view ?? this.view,
+    silent: silent ?? this.silent,
   );
 
   PipelineLayout withPosition(String nodeId, GraphPoint at) =>
@@ -437,14 +450,36 @@ class PipelineLayout {
 
   /// One drawing taken off the canvas. The card itself, and whoever reads
   /// it, are untouched: only this copy of it goes.
-  PipelineLayout withoutNode(String nodeId) => copyWith(
-    cast: [
+  ///
+  /// A card that was cut out of the mix and is now off the canvas altogether
+  /// is not cut any more: the cut is a line on the scheme, and a card the
+  /// scheme does not draw reads the way it always did.
+  PipelineLayout withoutNode(String nodeId) {
+    final left = [
       for (final placement in cast)
         if (placement.nodeId != nodeId) placement,
-    ],
-    positions: {
-      for (final entry in positions.entries)
-        if (entry.key != nodeId) entry.key: entry.value,
+    ];
+    final drawn = {for (final placement in left) placement.characterId};
+    return copyWith(
+      cast: left,
+      positions: {
+        for (final entry in positions.entries)
+          if (entry.key != nodeId) entry.key: entry.value,
+      },
+      silent: {
+        for (final id in silent)
+          if (drawn.contains(id)) id,
+      },
+    );
+  }
+
+  /// Whether the voice of [characterId] reaches the mix. Every drawing of
+  /// the card answers together: the mix is told a character once.
+  PipelineLayout withVoiced(String characterId, bool voiced) => copyWith(
+    silent: {
+      for (final id in silent)
+        if (id != characterId) id,
+      if (!voiced) characterId,
     },
   );
 
@@ -457,10 +492,12 @@ class PipelineLayout {
   );
 
   Map<String, Object?> toJson() => {
-    'version': 2,
+    'version': 3,
     'nodes': {for (final entry in positions.entries) entry.key: entry.value.toJson()},
     'cast': [for (final placement in cast) placement.toJson()],
     'view': view.toJson(),
+    // Sorted so the file is the same file when nothing was changed.
+    'silent': [...silent]..sort(),
   };
 
   /// The layout in [json], or the standard arrangement when the file is
@@ -482,6 +519,12 @@ class PipelineLayout {
         for (final value in cast as List<Object?>? ?? const []) ?CastPlacement.fromJson(value),
       ],
       view: GraphView.fromJson(json['view']),
+      // Version 2 and before had one switch for the whole cast, which lived
+      // in the settings rather than here: a file from then names nobody.
+      silent: {
+        for (final value in json['silent'] as List<Object?>? ?? const [])
+          if (value is String) value,
+      },
     );
   }
 }
@@ -552,7 +595,6 @@ PipelineGraph buildPipelineGraph({
   GraphPoint at(String nodeId, GraphPoint fallback) => layout.positions[nodeId] ?? fallback;
 
   final routed = settings.captureRouted;
-  final cast = settings.castRouted;
   final nodes = <PipelineNode>[
     for (final id in PipelineNodeIds.stages)
       PipelineNode(
@@ -574,20 +616,28 @@ PipelineGraph buildPipelineGraph({
         kind: PipelineNodeKind.character,
         characterId: placement.characterId,
         position: at(placement.nodeId, PipelineLayout.castPlace(index)),
-        unrouted: !cast,
+        unrouted: layout.silent.contains(placement.characterId),
       ),
+  ];
+  // A card cut out of the mix takes no part in the arrangement: it is drawn
+  // where it stands and nothing runs through it, so the lines are worked out
+  // over the rest. A card it used to read then speaks for itself, which is
+  // what falls out of looking for its reader among these.
+  final voiced = [
+    for (final placement in placed)
+      if (!layout.silent.contains(placement.characterId)) placement,
   ];
   final where = {for (final node in nodes) node.id: node.position};
   final sends = {
-    for (final placement in placed) placement.nodeId: _partOf(placement, byId, placed, where),
+    for (final placement in voiced) placement.nodeId: _partOf(placement, byId, voiced, where),
   };
-  final carrying = _carrying(placed, byId, sends);
+  final carrying = _carrying(voiced, byId, sends);
   // A card whose line ends at the mix is heard as itself; one that hands
   // its part to another card is not, and the canvas draws the two apart.
   for (var index = 0; index < nodes.length; index++) {
     final node = nodes[index];
     if (node.kind != PipelineNodeKind.character) continue;
-    if (!cast || !carrying.contains(node.id)) continue;
+    if (!carrying.contains(node.id)) continue;
     if (sends[node.id]?.nodeId != PipelineNodeIds.mix) continue;
     nodes[index] = PipelineNode(
       id: node.id,
@@ -625,29 +675,24 @@ PipelineGraph buildPipelineGraph({
       PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixOut),
       PipelinePort(PipelineNodeIds.output, PipelineSocket.streamIn),
     ),
-    // The whole branch goes dark when the cast is taken out of the mix: who
-    // stands in for whom is remembered in the cards and comes back with the
-    // link, but nothing of it runs meanwhile.
-    if (cast) ...[
-      // A note rather than a route: the dashed line says the game's own
-      // dialogue may hold this character. A card drawn only to lend its
-      // voice carries none, and the pipeline runs the same either way.
-      for (final placement in placed)
-        if (placement.heard)
-          PipelineLink(
-            const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
-            PipelinePort(placement.nodeId, PipelineSocket.characterIn),
-          ),
-      // A card's lines leave it one way only: into the card that speaks for
-      // it, which carries them on to the mix, or into the mix itself when it
-      // speaks for itself.
-      for (final placement in placed)
-        if (carrying.contains(placement.nodeId))
-          PipelineLink(
-            PipelinePort(placement.nodeId, PipelineSocket.characterVoice),
-            sends[placement.nodeId]!,
-          ),
-    ],
+    // A note rather than a route: the dashed line says the game's own
+    // dialogue may hold this character. A card drawn only to lend its
+    // voice carries none, and the pipeline runs the same either way.
+    for (final placement in voiced)
+      if (placement.heard)
+        PipelineLink(
+          const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
+          PipelinePort(placement.nodeId, PipelineSocket.characterIn),
+        ),
+    // A card's lines leave it one way only: into the card that speaks for
+    // it, which carries them on to the mix, or into the mix itself when it
+    // speaks for itself.
+    for (final placement in voiced)
+      if (carrying.contains(placement.nodeId))
+        PipelineLink(
+          PipelinePort(placement.nodeId, PipelineSocket.characterVoice),
+          sends[placement.nodeId]!,
+        ),
   ];
 
   return PipelineGraph(
@@ -784,11 +829,12 @@ final class RouteConnection extends GraphConnection {
   final bool routed;
 }
 
-/// Whether the player's cast is wired into the mix at all. Taken out, every
-/// character is read as themselves.
+/// Whether one card's voice is wired into the mix. Taken out, the card
+/// lends its voice to nobody and the character is read as themselves.
 final class CastConnection extends GraphConnection {
-  const CastConnection(this.routed);
+  const CastConnection(this.characterId, this.routed);
 
+  final String characterId;
   final bool routed;
 }
 
@@ -846,8 +892,14 @@ GraphConnection proposeConnection(
   if (graph.links.contains(PipelineLink(from, to))) return const UnchangedConnection();
   return switch ((from.socket, to.socket)) {
     (PipelineSocket.gameAudio, PipelineSocket.speechIn) => const RouteConnection(true),
-    // The cast, back into the mix: every card on the canvas speaks again.
-    (PipelineSocket.characterVoice, PipelineSocket.mixCast) => const CastConnection(true),
+    // A card back into the mix: this one speaks again, and the rest stand
+    // where they were left.
+    (PipelineSocket.characterVoice, PipelineSocket.mixCast) => switch (PipelineNodeIds.characterOf(
+      from.nodeId,
+    )) {
+      final character? => CastConnection(character, true),
+      _ => const RefusedConnection(ConnectionRefusal.unsupported),
+    },
     // A card counted among the voices the game speaks.
     (PipelineSocket.voiceCast, PipelineSocket.characterIn) => HeardConnection(to.nodeId, true),
     // The line runs from the character whose part it is to the card that
@@ -884,9 +936,15 @@ GraphConnection proposeDisconnect(PipelineLink link) {
   // The way into the pipeline comes apart: the stages stay where they are
   // with nothing reaching them, and the route is put back by drawing it.
   if (link.from.socket == PipelineSocket.gameAudio) return const RouteConnection(false);
-  // The cast comes out of the mix whole: the cards stay where they are with
-  // nobody standing in for anybody, and one line drawn back wakes them all.
-  if (link.to.socket == PipelineSocket.mixCast) return const CastConnection(false);
+  // One card comes out of the mix: it stays where it was put with nobody
+  // standing in for it, and the line drawn back wakes it again. The rest of
+  // the cast is not touched -- a scheme is cut a card at a time.
+  if (link.to.socket == PipelineSocket.mixCast) {
+    return switch (PipelineNodeIds.characterOf(link.from.nodeId)) {
+      final character? => CastConnection(character, false),
+      _ => const RefusedConnection(ConnectionRefusal.unsupported),
+    };
+  }
   // The card is no longer counted among the voices the game speaks. Nothing
   // of the pipeline changes with it: it is a note on the canvas.
   if (link.to.socket == PipelineSocket.characterIn) {

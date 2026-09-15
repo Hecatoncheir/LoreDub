@@ -145,7 +145,7 @@ class NativeEngineService {
       voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
       voiceBank: config['voiceBank'] as String?,
       characters: config['characters'] as String?,
-      asHeard: config['asHeard'] as bool? ?? false,
+      asHeard: _cutFromMix(config['asHeard']),
     );
     // What the worker settled on, which is not always what it was asked for.
     if (_inference.translationBackend case final actual?) {
@@ -417,7 +417,7 @@ class NativeEngineService {
       downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
       voiceBank: config['voiceBank'] as String?,
       characters: config['characters'] as String?,
-      asHeard: config['asHeard'] as bool? ?? false,
+      asHeard: _cutFromMix(config['asHeard']),
     );
     final work = await LocalInferenceService.createWorkDirectory();
     final capture = Directory('${work.path}${Platform.pathSeparator}capture');
@@ -501,11 +501,19 @@ class NativeEngineService {
   Future<void> voiceCharacterAs(String character, String? target) =>
       _inference.voiceCharacterAs(character, target);
 
-  /// Tells a running session that the cast is out of the mix, or back in it.
-  /// The config the session started with is kept in step, so what the canvas
-  /// says now is what a restart of it would be given.
-  Future<void> readAsHeard(bool value) async {
-    _activeConfig?['asHeard'] = value;
+  /// The cards a config names as cut out of the mix. They travel as one
+  /// comma-separated string: the config crosses to the native side as JSON
+  /// of flat values, so a list of its own would not survive the trip.
+  static Set<String> _cutFromMix(Object? value) => {
+    for (final id in (value as String? ?? '').split(','))
+      if (id.isNotEmpty) id,
+  };
+
+  /// Tells a running session which cards are out of the mix. The config the
+  /// session started with is kept in step, so what the canvas says now is
+  /// what a restart of it would be given.
+  Future<void> readAsHeard(Set<String> value) async {
+    _activeConfig?['asHeard'] = value.join(',');
     await _inference.readAsHeard(value);
   }
 

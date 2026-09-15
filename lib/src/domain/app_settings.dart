@@ -26,7 +26,6 @@ enum VoiceMode { automatic, chosen, original }
 class AppSettings {
   const AppSettings({
     this.captureRouted = true,
-    this.castRouted = true,
     this.targetLanguage = 'ru',
     this.originalVolume = 0.18,
     this.duckWhileSpeaking = true,
@@ -66,12 +65,6 @@ class AppSettings {
   /// the graph nothing is fed to the stages: the session cannot start until
   /// a link is drawn back.
   final bool captureRouted;
-
-  /// Whether the player's cast is wired into the mix. Taken apart on the
-  /// graph, every character is read as themselves: who stands in for whom is
-  /// remembered in the cards and comes back with the link, but nobody stands
-  /// in for anybody while the branch is dark.
-  final bool castRouted;
 
   /// Reserved for future language packs. Only Russian output is packaged, so
   /// nothing reads this value yet.
@@ -308,7 +301,6 @@ class AppSettings {
 
   AppSettings copyWith({
     bool? captureRouted,
-    bool? castRouted,
     String? targetLanguage,
     double? originalVolume,
     bool? duckWhileSpeaking,
@@ -349,7 +341,6 @@ class AppSettings {
     bool clearBackendOverrides = false,
   }) => AppSettings(
     captureRouted: captureRouted ?? this.captureRouted,
-    castRouted: castRouted ?? this.castRouted,
     targetLanguage: targetLanguage ?? this.targetLanguage,
     originalVolume: originalVolume ?? this.originalVolume,
     duckWhileSpeaking: duckWhileSpeaking ?? this.duckWhileSpeaking,

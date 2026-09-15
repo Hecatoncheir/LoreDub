@@ -30,8 +30,7 @@ void main() {
           id: 's1',
           name: 'Вечер в таверне',
           captureRouted: false,
-          castRouted: false,
-          layout: PipelineLayout.drawing(['guard']),
+          layout: PipelineLayout.drawing(['guard']).withVoiced('guard', false),
           readers: const {'guard': 'smith', 'smith': null},
         ),
       ],
@@ -43,7 +42,7 @@ void main() {
     final scheme = read.pipelines.single;
     expect(scheme.name, 'Вечер в таверне');
     expect(scheme.captureRouted, isFalse);
-    expect(scheme.castRouted, isFalse);
+    expect(scheme.layout.silent, {'guard'});
     expect(scheme.layout.characters, ['guard']);
     expect(scheme.readers, {'guard': 'smith', 'smith': null});
   });

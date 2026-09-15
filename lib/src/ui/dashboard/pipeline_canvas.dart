@@ -1128,7 +1128,9 @@ class _NodePaint {
     ink: LoreDubPalette.raised,
     muted: Color(0xAAF7F5F0),
     port: Color(0xAAF7F5F0),
-    rule: Color(0x33F7F5F0),
+    // The card's own colour: a line across it in any other reads as a
+    // crack rather than as the edge of its head, the same as on the ends.
+    rule: LoreDubPalette.graphite,
     chosen: LoreDubPalette.orange,
   );
 

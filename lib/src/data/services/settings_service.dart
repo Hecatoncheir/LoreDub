@@ -75,7 +75,6 @@ class SettingsService {
     final preferences = await SharedPreferences.getInstance();
     return AppSettings(
       captureRouted: preferences.getBool('captureRouted') ?? const AppSettings().captureRouted,
-      castRouted: preferences.getBool('castRouted') ?? const AppSettings().castRouted,
       targetLanguage: preferences.getString('targetLanguage') ?? 'ru',
       originalVolume: preferences.getDouble('originalVolume') ?? 0.18,
       duckWhileSpeaking:
@@ -128,7 +127,6 @@ class SettingsService {
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
       preferences.setBool('captureRouted', settings.captureRouted),
-      preferences.setBool('castRouted', settings.castRouted),
       preferences.setString('targetLanguage', settings.targetLanguage),
       preferences.setDouble('originalVolume', settings.originalVolume),
       preferences.setBool('duckWhileSpeaking', settings.duckWhileSpeaking),

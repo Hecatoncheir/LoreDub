@@ -621,15 +621,16 @@ def main():
     # The game's voice bank. With it, a character met before is voiced with
     # the fingerprint kept for them instead of the one of the current line.
     parser.add_argument("--voice-bank", default="")
-    # Read every character as themselves: the player has taken the cast out
-    # of the mix on the graph. Who stands in for whom is still in the cards;
-    # none of it is applied while the branch is dark.
-    parser.add_argument("--as-heard", action="store_true")
+    # The cards taken out of the mix on the graph, by id, comma separated.
+    # Each of them is read as it is heard: it lends its voice to nobody and
+    # nobody stands in for it. Who stands in for whom is still in the cards;
+    # none of it is applied to these while they are cut.
+    parser.add_argument("--as-heard", default="")
     args = parser.parse_args()
 
-    # Not a constant: the cast may be cut from the mix and joined back to it
+    # Not a constant: a card may be cut from the mix and joined back to it
     # while the session runs, and the worker is told rather than restarted.
-    as_heard = args.as_heard
+    as_heard = {name for name in args.as_heard.split(",") if name}
 
     speed = min(2.0, max(0.5, args.speed))
 
@@ -747,6 +748,10 @@ def main():
             return f"timbre:{index}"
         return None
 
+    def cut_from_mix(identifier):
+        """Whether the card named is out of the mix on the graph."""
+        return identifier is not None and identifier in as_heard
+
     def read_as(kind, index):
         """The character who reads this speaker: the card the graph gave them
         away to, or the speaker themselves.
@@ -755,10 +760,14 @@ def main():
         was heard, so the scene list keeps one row per voice of the game
         rather than gaining the character it is read in.
         """
-        # The cast is out of the mix: everybody speaks for themselves.
-        if as_heard:
+        own = cast.identifier(index) if kind == "character" and index is not None else None
+        # A card cut out of the mix speaks for itself and for nobody else.
+        if cut_from_mix(own):
             return kind, index
         target = cast.voiced_by(index) if kind == "character" and index is not None else None
+        # Nor does a card that was cut stand in for anybody.
+        if cut_from_mix(target):
+            return kind, index
         if target is None:
             return kind, index
         at = cast.index_of(target)
@@ -922,13 +931,13 @@ def main():
                 )
                 reply({"id": request_id, "voiced": True})
                 continue
-            # The cast taken out of the mix on the graph, or joined back to
-            # it. The cards keep who stands in for whom either way; this is
-            # only whether any of it is applied.
+            # The cards taken out of the mix on the graph, as the canvas
+            # now draws them. The cards keep who stands in for whom either
+            # way; this is only which of it is applied.
             heard_as_itself = request.get("asHeard")
             if heard_as_itself is not None:
-                as_heard = bool(heard_as_itself)
-                reply({"id": request_id, "asHeard": as_heard})
+                as_heard = {str(name) for name in heard_as_itself}
+                reply({"id": request_id, "asHeard": sorted(as_heard)})
                 continue
             # Who is speaking, and nothing else. Live asks this before the
             # dubbing itself runs, so the player can hand out the voices of

@@ -158,9 +158,9 @@ class AppRepository {
         'voiceBank': ?voiceBank,
         // The player's own characters, who speak in every game.
         'characters': await _characters.file(),
-        // The cast is out of the mix on the graph: the cards keep who stands
-        // in for whom, and none of it is applied.
-        'asHeard': !settings.castRouted,
+        // The cards cut out of the mix on the graph: each of them keeps who
+        // stands in for whom, and none of it is applied.
+        'asHeard': await _cutFromMix(),
       });
       await _duck(process, settings);
       _sessionProcess = process;
@@ -369,7 +369,7 @@ class AppRepository {
         'runtimeDirectory': runtimeDirectory,
         'voiceBank': ?voiceBank,
         'characters': await _characters.file(),
-        'asHeard': !settings.castRouted,
+        'asHeard': await _cutFromMix(),
       });
     } catch (_) {
       await _nativeEngine.stop();
@@ -380,7 +380,24 @@ class AppRepository {
   /// Tells a running session that the cast has been taken out of the mix on
   /// the graph, or joined back to it: out of it every voice is read as
   /// itself, and the cards keep who stands in for whom meanwhile.
-  Future<void> readAsHeard(bool value) => _nativeEngine.readAsHeard(value);
+  Future<void> readAsHeard(Set<String> value) => _nativeEngine.readAsHeard(value);
+
+  /// The cards the canvas has cut out of the mix, as one comma-separated
+  /// string: the config crosses to the native side as JSON of flat values.
+  ///
+  /// Read off the arrangement rather than out of the settings, the cut being
+  /// a card's own since a scheme is wired a card at a time. The canvas
+  /// writes the file as it is drawn on, so what a session starts with is
+  /// what the player last drew.
+  Future<String> _cutFromMix() async {
+    try {
+      return (await _graph.load()).silent.join(',');
+    } on Object {
+      // A scheme that cannot be read is no reason not to start: the cast
+      // then plays the way it does with nothing cut.
+      return '';
+    }
+  }
 
   /// Tells a running session that [character] is read in [target]'s voice
   /// from the next line on, as their card now says.

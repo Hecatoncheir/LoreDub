@@ -302,7 +302,6 @@ class _GraphMemento {
   const _GraphMemento({
     required this.layout,
     required this.routed,
-    required this.castRouted,
     required this.readers,
   });
 
@@ -312,9 +311,6 @@ class _GraphMemento {
   /// route puts the link there again.
   final bool routed;
 
-  /// Whether the cast was wired into the mix, which a step back puts back
-  /// the way it puts back the route.
-  final bool castRouted;
   final Map<String, String?> readers;
 }
 
@@ -444,7 +440,6 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       id: id,
       name: name,
       captureRouted: _settings.settings.captureRouted,
-      castRouted: _settings.settings.castRouted,
       layout: state.layout,
       readers: {
         for (final character in _cast)
@@ -478,6 +473,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       emit(state.copyWith(refusal: ConnectionRefusal.locked));
       return;
     }
+    final wasSilent = state.layout.silent;
     _remember();
     emit(
       _redrawn(
@@ -490,14 +486,13 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       ),
     );
     _persist();
-    final wasRouted = _settings.settings.castRouted;
-    await _settings.update(
-      _settings.settings.copyWith(
-        captureRouted: scheme.captureRouted,
-        castRouted: scheme.castRouted,
-      ),
-    );
-    if (scheme.castRouted != wasRouted) await _characters.readAsHeard(!scheme.castRouted);
+    await _settings.update(_settings.settings.copyWith(captureRouted: scheme.captureRouted));
+    // Which cards the scheme cuts out of the mix travels with its
+    // arrangement, so a session already running is told the moment it is put
+    // up rather than at the next start.
+    if (!_sameCards(wasSilent, scheme.layout.silent)) {
+      await _characters.readAsHeard(scheme.layout.silent);
+    }
     // The scheme is the whole picture of who reads whom, so it is put back
     // over the whole cast rather than over the cards it happens to name: a
     // card this scheme does not draw is read by nobody. Kept the other way,
@@ -669,12 +664,11 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         _remember();
         emit(state.copyWith(clearRefusal: true));
         await _settings.update(_settings.settings.copyWith(captureRouted: routed));
-      // The cast into the mix, or out of it. Not locked with the route: a
+      // A card into the mix, or out of it. Not locked with the route: a
       // session keeps its cast loaded either way, and the worker is told.
-      case CastConnection(:final routed):
+      case CastConnection(:final characterId, :final routed):
         _remember();
-        emit(state.copyWith(clearRefusal: true));
-        await _routeCast(routed);
+        await _voiceCard(characterId, routed, emit);
       case ReaderConnection(:final characterId, :final readerId):
         _remember();
         emit(state.copyWith(clearRefusal: true));
@@ -748,10 +742,11 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   /// Puts a remembered state back the way an edit makes one: the settings
   /// and the cast are written through, and the canvas follows them.
   Future<void> _restore(_GraphMemento memento, Emitter<PipelineGraphState> emit) async {
+    final wasSilent = state.layout.silent;
     emit(_redrawn(state.copyWith(layout: memento.layout, clearRefusal: true)));
     _persist();
-    if (_settings.settings.castRouted != memento.castRouted) {
-      await _routeCast(memento.castRouted);
+    if (!_sameCards(wasSilent, memento.layout.silent)) {
+      await _characters.readAsHeard(memento.layout.silent);
     }
     if (!routeLocked && _settings.settings.captureRouted != memento.routed) {
       await _settings.update(_settings.settings.copyWith(captureRouted: memento.routed));
@@ -768,19 +763,29 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     emit(_redrawn(state.copyWith(canUndo: _past.isNotEmpty, canRedo: _future.isNotEmpty)));
   }
 
-  /// Puts the cast in the mix or takes it out. The settings hold it for the
-  /// next session, and a session already running is told, so the cards fall
-  /// silent — or stand in again — from the next line rather than the next
-  /// start.
-  Future<void> _routeCast(bool routed) async {
-    await _settings.update(_settings.settings.copyWith(castRouted: routed));
-    await _characters.readAsHeard(!routed);
+  /// Puts one card's voice in the mix or takes it out. The arrangement
+  /// holds it for the next session, and a session already running is told,
+  /// so the card falls silent — or stands in again — from the next line
+  /// rather than the next start.
+  Future<void> _voiceCard(
+    String characterId,
+    bool routed,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    final layout = state.layout.withVoiced(characterId, routed);
+    emit(_redrawn(state.copyWith(layout: layout, clearRefusal: true)));
+    _persist();
+    await _characters.readAsHeard(layout.silent);
   }
+
+  /// Whether two sets name the same cards. The worker is told only when
+  /// they differ: a scheme put up over the same cut changes nothing.
+  static bool _sameCards(Set<String> first, Set<String> second) =>
+      first.length == second.length && first.every(second.contains);
 
   _GraphMemento _snapshot() => _GraphMemento(
     layout: state.layout,
     routed: _settings.settings.captureRouted,
-    castRouted: _settings.settings.castRouted,
     readers: {for (final character in _cast) character.id: character.voicedBy},
   );
 

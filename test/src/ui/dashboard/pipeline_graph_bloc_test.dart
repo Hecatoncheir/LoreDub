@@ -295,7 +295,7 @@ void main() {
       isNull,
       reason: 'a note on the canvas changes nothing of the cast',
     );
-    expect(cubits.settings.settings.castRouted, isTrue, reason: 'nor of the settings');
+    expect(graph.state.layout.silent, isEmpty, reason: 'nor of who is in the mix');
     expect(repository.layout.cast.first.heard, isFalse);
 
     graph.add(const PipelineGraphUndone());
@@ -699,8 +699,9 @@ void main() {
       expect(repository.told.last, ('guard', null));
     });
 
-    test('the cast comes out of the mix, and goes back in', () async {
+    test('one card comes out of the mix, and goes back in', () async {
       const intoTheMix = PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast);
+      // Guard's part runs to smith, so smith is the card the mix hears.
       await drawLink(voiceOf('guard'), readBy('smith'));
       repository.heard.clear();
 
@@ -711,26 +712,34 @@ void main() {
       );
       await pumpEvents();
 
-      expect(cubits.settings.settings.castRouted, isFalse);
+      expect(graph.state.layout.silent, {'smith'});
       expect(
         repository.heard,
-        [true],
-        reason: 'the session keeps its cast loaded, so it is told to read every voice as itself',
+        [
+          {'smith'},
+        ],
+        reason: 'the session keeps its cast loaded, so it is told which card fell silent',
       );
       expect(graph.state.refusal, isNull, reason: 'the cast is not locked with the route');
-      // The cards stay where they were put, dark, and who stands in for whom
-      // waits in them for the link to come back.
-      expect(graph.state.graph.node(PipelineNodeIds.character('guard'))?.unrouted, isTrue);
+      // The card stays where it was put, dark, and who stands in for whom
+      // waits in it for the link to come back.
+      expect(graph.state.graph.node(PipelineNodeIds.character('smith'))?.unrouted, isTrue);
       expect(repository.stored.characters.first.voicedBy, 'smith');
-      expect(
-        graph.state.graph.links.any((link) => link.to == intoTheMix),
-        isFalse,
-      );
+      // The card it was reading is untouched and speaks for itself again.
+      expect(graph.state.graph.node(PipelineNodeIds.character('guard'))?.unrouted, isFalse);
+      expect(graph.state.graph.linkInto(intoTheMix)?.from, voiceOf('guard'));
 
       await drawLink(voiceOf('smith'), intoTheMix);
 
-      expect(cubits.settings.settings.castRouted, isTrue);
-      expect(repository.heard, [true, false], reason: 'and told again when it is joined back');
+      expect(graph.state.layout.silent, isEmpty);
+      expect(
+        repository.heard,
+        [
+          {'smith'},
+          <String>{},
+        ],
+        reason: 'and told again when it is joined back',
+      );
       expect(graph.state.graph.linkInto(readBy('smith'))?.from, voiceOf('guard'));
     });
 
@@ -742,12 +751,13 @@ void main() {
         ),
       );
       await pumpEvents();
-      expect(cubits.settings.settings.castRouted, isFalse);
+      expect(graph.state.layout.silent, isNotEmpty);
 
       graph.add(const PipelineGraphUndone());
       await pumpEvents();
 
-      expect(cubits.settings.settings.castRouted, isTrue);
+      expect(graph.state.layout.silent, isEmpty);
+      expect(repository.heard.last, isEmpty, reason: 'and the worker hears of the step back');
     });
 
     test('one step back still undoes what was done', () async {
@@ -810,11 +820,10 @@ class _GraphRepository extends AppRepository {
   final told = <(String, String?)>[];
 
   @override
-  Future<void> readAsHeard(bool value) async => heard.add(value);
+  Future<void> readAsHeard(Set<String> value) async => heard.add(value);
 
-  /// Every time a running worker was told the cast had left the mix, or
-  /// joined it again.
-  final heard = <bool>[];
+  /// Every time a running worker was told which cards had left the mix.
+  final heard = <Set<String>>[];
 
   @override
   Future<void> stop() async {}

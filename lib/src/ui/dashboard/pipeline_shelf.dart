@@ -217,10 +217,7 @@ class _SchemeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final graph = buildPipelineGraph(
-      settings: AppSettings(
-        captureRouted: scheme.captureRouted,
-        castRouted: scheme.castRouted,
-      ),
+      settings: AppSettings(captureRouted: scheme.captureRouted),
       characters: cast,
       layout: scheme.layout,
     );

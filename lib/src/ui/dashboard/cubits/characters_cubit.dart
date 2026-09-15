@@ -247,13 +247,13 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
   }
 
-  /// Takes the whole cast out of the mix, or puts it back: the branch from
-  /// the cards into the mix, cut or drawn on the graph.
+  /// The cards that are out of the mix, as the graph now draws them: each
+  /// of them lends its voice to nobody and is read as it is heard.
   ///
   /// Nothing of the cards changes — who stands in for whom waits in them —
   /// so there is nothing to write; only a session already running has to be
   /// told, or it would go on reading the cast until the next start.
-  Future<void> readAsHeard(bool value) async {
+  Future<void> readAsHeard(Set<String> value) async {
     try {
       await _appRepository.readAsHeard(value);
     } catch (exception) {

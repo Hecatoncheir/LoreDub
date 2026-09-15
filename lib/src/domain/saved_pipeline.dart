@@ -18,7 +18,6 @@ class SavedPipeline {
     required this.id,
     required this.name,
     this.captureRouted = true,
-    this.castRouted = true,
     this.layout = PipelineLayout.standard,
     this.readers = const {},
   });
@@ -26,13 +25,11 @@ class SavedPipeline {
   final String id;
   final String name;
 
-  /// Whether the way into the pipeline is drawn, and whether the cast is
-  /// wired into the mix.
+  /// Whether the way into the pipeline is drawn.
   final bool captureRouted;
-  final bool castRouted;
 
-  /// Where the nodes sit, which cards are drawn and which of them the game
-  /// is expected to speak.
+  /// Where the nodes sit, which cards are drawn, which of them the game is
+  /// expected to speak and which of them are cut out of the mix.
   final PipelineLayout layout;
 
   /// Whose voice reads whom, by card id, among the cards on the canvas. A
@@ -44,7 +41,6 @@ class SavedPipeline {
     id: id,
     name: name ?? this.name,
     captureRouted: captureRouted,
-    castRouted: castRouted,
     layout: layout ?? this.layout,
     readers: readers,
   );
@@ -53,7 +49,6 @@ class SavedPipeline {
     'id': id,
     'name': name,
     'captureRouted': captureRouted,
-    'castRouted': castRouted,
     'layout': layout.toJson(),
     'readers': readers,
   };
@@ -68,8 +63,15 @@ class SavedPipeline {
       // A scheme written before the subtitles moved off the graph carries a
       // `captureMode` as well; there is one route now, and it is ignored.
       captureRouted: json['captureRouted'] as bool? ?? true,
-      castRouted: json['castRouted'] as bool? ?? true,
-      layout: PipelineLayout.fromJson(json['layout']),
+      // A scheme written while the cast was one switch says so with a
+      // `castRouted` of its own: every card it draws comes back cut out of
+      // the mix, which is the same scheme a card at a time.
+      layout: switch (PipelineLayout.fromJson(json['layout'])) {
+        final layout when json['castRouted'] == false => layout.copyWith(
+          silent: {for (final placement in layout.cast) placement.characterId},
+        ),
+        final layout => layout,
+      },
       readers: {
         for (final entry in (json['readers'] as Map<Object?, Object?>? ?? const {}).entries)
           if (entry.key case final String character)

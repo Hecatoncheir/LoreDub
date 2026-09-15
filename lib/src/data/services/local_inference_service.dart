@@ -212,9 +212,10 @@ class LocalInferenceService {
     /// game rather than one.
     String? characters,
 
-    /// Read every voice as itself: the cast is out of the mix on the graph,
-    /// so who stands in for whom waits in the cards without being applied.
-    bool asHeard = false,
+    /// The cards cut out of the mix on the graph, by id. Each of them is
+    /// read as it is heard: it lends its voice to nobody, and nobody stands
+    /// in for it, though what the cards say waits in them.
+    Set<String> asHeard = const {},
   }) async {
     // A worker left over from a session that was not stopped would go on
     // holding its models — and its share of a graphics card — with the
@@ -287,7 +288,7 @@ class LocalInferenceService {
           if (revoice) '--revoice',
           if (voiceBank != null) ...['--voice-bank', voiceBank],
           if (characters != null) ...['--characters', characters],
-          if (asHeard) '--as-heard',
+          if (asHeard.isNotEmpty) ...['--as-heard', asHeard.join(',')],
         ],
       ],
       environment: const {'PYTHONIOENCODING': 'utf-8'},
@@ -610,14 +611,19 @@ class LocalInferenceService {
   ///
   /// The cards keep who stands in for whom either way; this is only whether
   /// any of it is applied.
-  Future<void> readAsHeard(bool value) async {
+  Future<void> readAsHeard(Set<String> value) async {
     final worker = _worker;
     if (worker == null) return;
 
     final id = ++_requestId;
     final completer = Completer<Map<String, Object?>>();
     _pending[id] = completer;
-    worker.stdin.writeln(jsonEncode({'id': id, 'asHeard': value}));
+    worker.stdin.writeln(
+      jsonEncode({
+        'id': id,
+        'asHeard': [...value],
+      }),
+    );
     final response = await completer.future.timeout(
       const Duration(seconds: 10),
       onTimeout: () {
