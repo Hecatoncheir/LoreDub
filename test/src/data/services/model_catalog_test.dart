@@ -97,10 +97,32 @@ void main() {
         expect(artifact.url.scheme, 'https', reason: model.id);
         expect(
           artifact.url.host,
-          anyOf('huggingface.co', 'models.silero.ai'),
+          // github.com is this project's own releases: the translators are
+          // converted here rather than fetched as their authors published
+          // them.
+          anyOf('huggingface.co', 'models.silero.ai', 'github.com'),
           reason: model.id,
         );
       }
+    }
+  });
+
+  test('pins every file of a translator we converted ourselves', () {
+    // Nothing published upstream can be pinned harder than its author pins
+    // it, and OPUS-MT publishes no digests. What we convert we measure, so
+    // every file of it carries a size and a SHA-256.
+    for (final model in modelCatalog) {
+      if (model.kind != ModelKind.translation) continue;
+      if (!model.artifacts.first.url.host.contains('github.com')) continue;
+      for (final artifact in model.artifacts) {
+        expect(artifact.byteSize, greaterThan(0), reason: '${model.id}/${artifact.fileName}');
+        expect(artifact.hash, isNotNull, reason: '${model.id}/${artifact.fileName}');
+      }
+      expect(
+        model.artifacts.map((artifact) => artifact.fileName),
+        containsAll(['model.bin', 'source.spm', 'vocab.json', 'NOTICE']),
+        reason: '${model.id} needs the model, its tokenizer and its attribution',
+      );
     }
   });
 

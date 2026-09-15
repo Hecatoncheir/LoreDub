@@ -769,9 +769,9 @@
       }
     }
   },
-  "failurePythonStoreAlias": "PATH holds only the Microsoft Store alias instead of Python. It never starts an interpreter. Choose the bundled runtime, or name a python.exe that has torch and transformers.",
+  "failurePythonStoreAlias": "PATH holds only the Microsoft Store alias instead of Python. It never starts an interpreter. Choose the bundled runtime, or name a python.exe that has torch, transformers and ctranslate2.",
   "failurePythonSearchEmpty": "No Python in PATH or in the standard installation directories. Name a python.exe yourself, or use the bundled runtime.",
-  "failurePythonSearchNoDependencies": "No Python with torch and transformers. Inspected: {detail}.",
+  "failurePythonSearchNoDependencies": "No Python with torch, transformers and ctranslate2. Inspected: {detail}.",
   "@failurePythonSearchNoDependencies": {
     "placeholders": {
       "detail": {
@@ -787,7 +787,7 @@
       }
     }
   },
-  "pythonCandidateWithoutDependencies": "{path} (Python {version}, no torch/transformers)",
+  "pythonCandidateWithoutDependencies": "{path} (Python {version}, no torch/transformers/ctranslate2)",
   "@pythonCandidateWithoutDependencies": {
     "placeholders": {
       "path": {
@@ -817,7 +817,7 @@
       }
     }
   },
-  "failureWorkerExitedSilently": "The Marian/Silero worker exited with code {code} without a word. Check the python.exe you picked: it needs torch and transformers.",
+  "failureWorkerExitedSilently": "The Marian/Silero worker exited with code {code} without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.",
   "@failureWorkerExitedSilently": {
     "placeholders": {
       "code": {

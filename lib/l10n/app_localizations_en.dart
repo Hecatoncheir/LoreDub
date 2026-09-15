@@ -1214,7 +1214,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get failurePythonStoreAlias =>
-      'PATH holds only the Microsoft Store alias instead of Python. It never starts an interpreter. Choose the bundled runtime, or name a python.exe that has torch and transformers.';
+      'PATH holds only the Microsoft Store alias instead of Python. It never starts an interpreter. Choose the bundled runtime, or name a python.exe that has torch, transformers and ctranslate2.';
 
   @override
   String get failurePythonSearchEmpty =>
@@ -1222,7 +1222,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String failurePythonSearchNoDependencies(String detail) {
-    return 'No Python with torch and transformers. Inspected: $detail.';
+    return 'No Python with torch, transformers and ctranslate2. Inspected: $detail.';
   }
 
   @override
@@ -1232,7 +1232,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String pythonCandidateWithoutDependencies(String path, String version) {
-    return '$path (Python $version, no torch/transformers)';
+    return '$path (Python $version, no torch/transformers/ctranslate2)';
   }
 
   @override
@@ -1247,7 +1247,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String failureWorkerExitedSilently(int code) {
-    return 'The Marian/Silero worker exited with code $code without a word. Check the python.exe you picked: it needs torch and transformers.';
+    return 'The Marian/Silero worker exited with code $code without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.';
   }
 
   @override

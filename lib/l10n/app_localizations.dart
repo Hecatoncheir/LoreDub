@@ -2124,7 +2124,7 @@ abstract class AppLocalizations {
   /// No description provided for @failurePythonStoreAlias.
   ///
   /// In ru, this message translates to:
-  /// **'В PATH найден только ярлык Microsoft Store вместо Python. Он не запускает интерпретатор. Выберите встроенный runtime или укажите полный путь к python.exe с установленными torch и transformers.'**
+  /// **'В PATH найден только ярлык Microsoft Store вместо Python. Он не запускает интерпретатор. Выберите встроенный runtime или укажите полный путь к python.exe с установленными torch, transformers и ctranslate2.'**
   String get failurePythonStoreAlias;
 
   /// No description provided for @failurePythonSearchEmpty.
@@ -2136,7 +2136,7 @@ abstract class AppLocalizations {
   /// No description provided for @failurePythonSearchNoDependencies.
   ///
   /// In ru, this message translates to:
-  /// **'Не найден Python с torch и transformers. Проверено: {detail}.'**
+  /// **'Не найден Python с torch, transformers и ctranslate2. Проверено: {detail}.'**
   String failurePythonSearchNoDependencies(String detail);
 
   /// No description provided for @failurePythonSearchFailed.
@@ -2148,7 +2148,7 @@ abstract class AppLocalizations {
   /// No description provided for @pythonCandidateWithoutDependencies.
   ///
   /// In ru, this message translates to:
-  /// **'{path} (Python {version}, нет torch/transformers)'**
+  /// **'{path} (Python {version}, нет torch/transformers/ctranslate2)'**
   String pythonCandidateWithoutDependencies(String path, String version);
 
   /// No description provided for @pythonCandidateUnusable.
@@ -2166,7 +2166,7 @@ abstract class AppLocalizations {
   /// No description provided for @failureWorkerExitedSilently.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Silero worker завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch и transformers.'**
+  /// **'Marian/Silero worker завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.'**
   String failureWorkerExitedSilently(int code);
 
   /// No description provided for @failureWorkerTimeout.

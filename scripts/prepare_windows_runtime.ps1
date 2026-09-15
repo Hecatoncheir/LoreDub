@@ -113,6 +113,14 @@ if (-not (Test-Path (Join-Path $PythonCache "Lib\site-packages\sacremoses"))) {
   & (Join-Path $PythonCache "python.exe") -m pip install --no-cache-dir `
     --no-warn-script-location sacremoses==0.2.0
 }
+
+# CTranslate2 runs the translator: the same Marian weights in int8, read in
+# about half the time transformers took for them. transformers stays for the
+# tokenizer alone. Checked on its own for the same reason sacremoses is.
+if (-not (Test-Path (Join-Path $PythonCache "Lib\site-packages\ctranslate2"))) {
+  & (Join-Path $PythonCache "python.exe") -m pip install --no-cache-dir `
+    --no-warn-script-location ctranslate2==4.8.2
+}
 $PythonDestination = Join-Path $Destination "python"
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $PythonDestination
 Copy-Item $PythonCache $PythonDestination -Recurse

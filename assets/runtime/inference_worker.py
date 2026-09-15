@@ -646,6 +646,10 @@ def main():
     # A CUDA build that cannot see the card is a working CPU build. Falling
     # back beats refusing to start over a driver the user cannot fix here.
     device = torch.device("cuda" if args.device == "cuda" and torch.cuda.is_available() else "cpu")
+    # Translation has its own library now, so it has its own answer to where
+    # it runs: it starts where torch did and drops to the processor on its
+    # own if the card is not there for it.
+    translation_device = device.type
     tokenizer = None
     translator = None
     tts = None
@@ -663,17 +667,36 @@ def main():
         # and handed it over, so no model is named and none is loaded.
         if not args.speech_only and args.translation_model:
             report_progress(0.35, "transformers")
-            from transformers import MarianMTModel, MarianTokenizer
+            import ctranslate2
+            from transformers import MarianTokenizer
 
             report_progress(0.80, "translator")
+            # The tokenizer is still Marian's: the text has to be cut into the
+            # pieces these weights were trained on. The weights themselves are
+            # int8 CTranslate2 rather than a PyTorch checkpoint -- the same
+            # model, read in about half the time and half the disk.
             tokenizer = MarianTokenizer.from_pretrained(
                 args.translation_model, local_files_only=True
             )
-            translator = MarianMTModel.from_pretrained(
-                args.translation_model, local_files_only=True
-            )
-            translator.eval()
-            translator.to(device)
+            # A card the library cannot start on is a working CPU, the way a
+            # CUDA torch that cannot see the card is.
+            try:
+                translator = ctranslate2.Translator(
+                    args.translation_model,
+                    device=translation_device,
+                    compute_type="auto",
+                    inter_threads=1,
+                    intra_threads=max(1, args.threads),
+                )
+            except (RuntimeError, ValueError):
+                translation_device = "cpu"
+                translator = ctranslate2.Translator(
+                    args.translation_model,
+                    device="cpu",
+                    compute_type="auto",
+                    inter_threads=1,
+                    intra_threads=max(1, args.threads),
+                )
 
         report_progress(0.90, "speech")
         tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
@@ -716,10 +739,12 @@ def main():
     }
     def translate(source):
         prompt = f"{args.translation_prefix} {source}".strip() if args.translation_prefix else source
-        inputs = tokenizer([prompt], return_tensors="pt", padding=True).to(device)
-        with torch.inference_mode():
-            generated = translator.generate(**inputs, num_beams=1, max_new_tokens=160)
-        return tokenizer.batch_decode(generated, skip_special_tokens=True)[0].strip()
+        # CTranslate2 works in tokens rather than in ids, so the tokenizer is
+        # asked for both directions around it.
+        pieces = tokenizer.convert_ids_to_tokens(tokenizer.encode(prompt))
+        answered = translator.translate_batch([pieces], beam_size=1, max_decoding_length=160)
+        spoken = tokenizer.convert_tokens_to_ids(answered[0].hypotheses[0])
+        return tokenizer.decode(spoken, skip_special_tokens=True).strip()
 
     following = args.follow_speaker and by_gender["male"] and by_gender["female"]
     # Sticky: an unclear phrase keeps the voice the last clear one settled on,
@@ -879,7 +904,7 @@ def main():
     pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
     # The device is reported back rather than assumed: a CUDA build that fell
     # back to the CPU must not leave the interface claiming the GPU is in use.
-    ready = {"type": "ready", "device": device.type}
+    ready = {"type": "ready", "device": translation_device}
     if converter is not None:
         ready["converterDevice"] = converter.device.type
     reply(ready)

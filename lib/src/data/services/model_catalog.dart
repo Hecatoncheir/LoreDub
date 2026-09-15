@@ -40,31 +40,45 @@ ModelPackage _whisper({
   ],
 );
 
-ModelPackage _marian({
+/// Where the converted translators are published: an asset of the release
+/// that carries them. Release assets are flat, so a file is named by its
+/// package and its own name together.
+const convertedTranslatorRelease =
+    'https://github.com/Hecatoncheir/LoreDub/releases/download/translators-ct2-v1';
+
+/// A translator of the OPUS-MT project, converted to CTranslate2 int8 and
+/// published by this project rather than fetched from its authors.
+///
+/// What Helsinki-NLP publishes is a PyTorch checkpoint for transformers. The
+/// same weights under CTranslate2 read a line in about half the time and take
+/// half the disk, and the conversion wants a transformers newer than the
+/// shipped runtime carries -- so it is made once, here, rather than on every
+/// machine. CC-BY-4.0 allows both the conversion and its distribution; the
+/// NOTICE that travels in every package names the authors and the change.
+///
+/// `scripts/convert_translators.py` builds them and prints these entries.
+/// Each file carries its size and its SHA-256, which the upstream checkpoints
+/// could not: only a hash the authors publish can be pinned, and they publish
+/// none. Converting them ourselves means measuring them ourselves.
+ModelPackage _converted({
   required String id,
   required String language,
-  required String pair,
-  required Map<String, int> sizes,
-  String? weightsHash,
-  String? translationPrefix,
 
-  /// Repository name under Helsinki-NLP, when it is not `opus-mt-<pair>`.
-  String? repository,
+  /// File name to its size in bytes and its SHA-256.
+  required Map<String, (int, String)> files,
+  String? translationPrefix,
 }) => ModelPackage(
   id: id,
   kind: ModelKind.translation,
   language: language,
   translationPrefix: translationPrefix,
   artifacts: [
-    for (final entry in sizes.entries)
+    for (final entry in files.entries)
       ModelArtifact(
         fileName: entry.key,
-        url: Uri.parse(
-          'https://huggingface.co/Helsinki-NLP/${repository ?? 'opus-mt-$pair'}'
-          '/resolve/main/${entry.key}',
-        ),
-        byteSize: entry.value,
-        hash: entry.key == 'pytorch_model.bin' ? weightsHash : null,
+        url: Uri.parse('$convertedTranslatorRelease/$id-${entry.key}'),
+        byteSize: entry.value.$1,
+        hash: entry.value.$2,
       ),
   ],
 );
@@ -254,77 +268,105 @@ final modelCatalog = <ModelPackage>[
   // replaced: on the same newstest sets it scores 4 to 7 BLEU higher, which
   // is the difference between a line that parses and one that does not. It
   // serves the East Slavic languages together, hence the target token.
-  _marian(
+  _converted(
     id: 'opus-mt-tc-big-en-zle',
     language: 'ru',
-    pair: 'en-zle',
-    repository: 'opus-mt-tc-big-en-zle',
     translationPrefix: '>>rus<<',
-    sizes: const {
-      'config.json': 1076,
-      'generation_config.json': 301,
-      'pytorch_model.bin': 479034117,
-      'source.spm': 802747,
-      'special_tokens_map.json': 65,
-      'target.spm': 1017004,
-      'tokenizer_config.json': 339,
-      'vocab.json': 2510527,
+    files: const {
+      'config.json': (233, '72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee'),
+      'model.bin': (242630403, 'fbd24e6fdfa27fb69d4bbce7968eccef693b7a6249ec09733269e96cf2d1a319'),
+      'NOTICE': (585, '1d1e628c4559cff17a077fef9d0c847f614a9e185ecb7e22323d5928ffc07058'),
+      'shared_vocabulary.json': (
+        2152164,
+        '558fb7414f75540fc3e9f272dac90cb85272083014978e5a8f81c7e35ae2a49b',
+      ),
+      'source.spm': (802747, '3612abfe04bf08344ba91115f0e15e228a7a15a621ea856bfd548097dbaeb43c'),
+      'target.spm': (1017004, '22940e744b3a9fd166a04880938fb61f7dfa8ba4b5d2d3f6371a6c4ba8f3b019'),
+      'tokenizer_config.json': (
+        339,
+        '41deeedfc0e3ce366d6bde180dee025a8ca1bcd62b1451889301e8ea4bcbb609',
+      ),
+      'vocab.json': (2510527, '41dbdff4a0b5a6ab125715c3342c5ce6516e93ffd49608813240403f036c5efb'),
     },
   ),
-  _marian(
+  _converted(
     id: 'marian-en-de',
     language: 'de',
-    pair: 'en-de',
-    sizes: const {
-      'config.json': 1335,
-      'generation_config.json': 293,
-      'pytorch_model.bin': 297928209,
-      'source.spm': 768489,
-      'target.spm': 796845,
-      'tokenizer_config.json': 42,
-      'vocab.json': 1273232,
+    files: const {
+      'config.json': (233, '72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee'),
+      'model.bin': (75979635, '3cad348e65aa400a0fce83b2b89a876030092e108ebc5a824ac1def6c76957b2'),
+      'NOTICE': (569, 'a0af054f2180db4e0cd071db94a3fa2887cbff13ce77535b017d3cbf31873ded'),
+      'shared_vocabulary.json': (
+        1051929,
+        'c32eadf3db9b4884a959858d7294f7c61e20067fc47564ae3c56d180c1ee6178',
+      ),
+      'source.spm': (768489, '678f2a1177d8389f67b66299762dcc4fc567e89b07e212ba91b0c56daecf47ce'),
+      'target.spm': (796845, 'bbd1f495eea99c8e21ae086d9146e0fa7b096c3dfdd9ba07ab8b631889df5c9b'),
+      'tokenizer_config.json': (
+        42,
+        '052c28be2c51ea3398bf9b9de92004270e29a51f8404f9921ec025986ffbefae',
+      ),
+      'vocab.json': (1273232, '0d70d89fee4a8b4ef99a56d712163baadcabd5600a597f71515547ee70306329'),
     },
   ),
-  _marian(
+  _converted(
     id: 'marian-en-es',
     language: 'es',
-    pair: 'en-es',
-    sizes: const {
-      'config.json': 1473,
-      'generation_config.json': 293,
-      'pytorch_model.bin': 312087523,
-      'source.spm': 801636,
-      'target.spm': 825924,
-      'tokenizer_config.json': 44,
-      'vocab.json': 1590040,
+    files: const {
+      'config.json': (233, '72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee'),
+      'model.bin': (79567635, '30c5c2de08329c61860777fbe471e2dd413f64adbde543b2848b5ac3b5d6f865'),
+      'NOTICE': (569, 'd589b8d5b129e95bec670b2ce7dd44fe1127e3fdd0ec60c570dae86233f75d24'),
+      'shared_vocabulary.json': (
+        1341137,
+        '5d57da3a8899ca0a45f085eff04c41553d784a981544702996001911b9dd0af1',
+      ),
+      'source.spm': (801636, '4dd547c24816a335e7b0b2e63376a8f1b3cbfc671eda5ab808dd44fdadaa8791'),
+      'target.spm': (825924, 'e236ee6d866b635c0142114f8647f39831f9d92534aa2aad75c942f6a78ad0e3'),
+      'tokenizer_config.json': (
+        44,
+        '9859e3f8f73e2f50ab3e5cc2de432645347432956df4772d33209a346dd97f3b',
+      ),
+      'vocab.json': (1590040, '257f346d7a6b2ecceafcca8ba05648ce2fd68dfaf105fb0e913dca7198f3f6d5'),
     },
   ),
-  _marian(
+  _converted(
     id: 'marian-en-fr',
     language: 'fr',
-    pair: 'en-fr',
-    sizes: const {
-      'config.json': 1416,
-      'generation_config.json': 293,
-      'pytorch_model.bin': 300827685,
-      'source.spm': 778395,
-      'target.spm': 802397,
-      'tokenizer_config.json': 42,
-      'vocab.json': 1339166,
+    files: const {
+      'config.json': (233, '72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee'),
+      'model.bin': (76714395, '236b63e3029611a328693d704067ebdd75b800e5b3011cdec3dad4287fd29a36'),
+      'NOTICE': (569, '3a76b5f5a1c95b848595772ddc736e7277b0f66c4543bc6a4894d3bc446cd049'),
+      'shared_vocabulary.json': (
+        1112211,
+        '528a527b3504bda364600f8bd7a2db1b0d7f82ef97a33ba0e80c289c4ae63c24',
+      ),
+      'source.spm': (778395, '173e9f493a668fe396d599e28d414a201193094e6ffd7a4678e5aab0f6d3d838'),
+      'target.spm': (802397, '78d0e717c77053f1c4b856d8661d9cb87c64f083a35418c087b9146300e4f585'),
+      'tokenizer_config.json': (
+        42,
+        '3492a8555368d21fc116cac84bdf551aee16783413be3afbfe4823de045960cf',
+      ),
+      'vocab.json': (1339166, '945c604346ce15ce4aff9001001e7f925e336d942c4087017f191871162cbdc4'),
     },
   ),
-  _marian(
+  _converted(
     id: 'marian-en-uk',
     language: 'uk',
-    pair: 'en-uk',
-    sizes: const {
-      'config.json': 1381,
-      'generation_config.json': 293,
-      'pytorch_model.bin': 305081481,
-      'source.spm': 808645,
-      'target.spm': 1007605,
-      'tokenizer_config.json': 42,
-      'vocab.json': 2367710,
+    files: const {
+      'config.json': (233, '72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee'),
+      'model.bin': (77792355, '48294770fc750ac5ef9f998d46c99e30eddda60e8267a23ed7c3420ce7976e00'),
+      'NOTICE': (569, '22f2fe24971d0a4af13020cb7996dca0c8548a8ce54d27085d6c0bf956011cdc'),
+      'shared_vocabulary.json': (
+        2132463,
+        '7c3e274a6272691b85fd24075451d3abd4c72052c89bf672e571185ee44e311a',
+      ),
+      'source.spm': (808645, '4dc9157e60a15b157c2f3d5f892379b03aed111c9fe8ac7cecba5f2aa56379ef'),
+      'target.spm': (1007605, '7abd810b2df512e6fe177f8732f6a0b3107614c84cc52aba20d805b4cb0d7b6b'),
+      'tokenizer_config.json': (
+        42,
+        '33e70590c12ca4b2de861bec63a06eb2a884a1d835ecc6301122d77eb66b959f',
+      ),
+      'vocab.json': (2367710, '992107700c8d5f9c1f41fefa5f72ac99050852b39d75f979c4e59344e6d14770'),
     },
   ),
 

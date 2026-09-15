@@ -63,10 +63,14 @@ class PythonDiscovery {
        _probe = probe ?? _runProbe,
        _bundledExecutable = bundledExecutable ?? bundledPythonExecutablePath();
 
+  // torch runs the voice and the converter, transformers the tokenizer, and
+  // ctranslate2 the translator itself. An interpreter without the last one
+  // would start and then fail on the first line it had to translate.
   static const _probeScript =
       'import sys, importlib.util as u; '
       'print(sys.version.split()[0]); '
-      "print(bool(u.find_spec('torch') and u.find_spec('transformers')))";
+      "print(bool(u.find_spec('torch') and u.find_spec('transformers') "
+      "and u.find_spec('ctranslate2')))";
 
   final Map<String, String> _environment;
   final PythonProbe _probe;

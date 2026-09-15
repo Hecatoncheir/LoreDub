@@ -118,9 +118,18 @@ than one of them.
    Marian and Silero loaded, which is why the first start takes minutes.
    Startup uses the bundled embedded Python (`runtime/python/python.exe`,
    see `resolvePythonExecutable`), which `scripts/prepare_windows_runtime.ps1`
-   fills with torch, transformers, sentencepiece and sacremoses — the last one
-   is what the Marian tokenizer normalizes punctuation with, and transformers
-   prints a recommendation on every start without it.
+   fills with torch, transformers, sentencepiece, sacremoses and ctranslate2 —
+   sacremoses is what the Marian tokenizer normalizes punctuation with, and
+   transformers prints a recommendation on every start without it.
+   Translation runs under **CTranslate2** rather than transformers: the same
+   Marian weights in int8 read a line in about half the time (262 ms to 107 ms
+   over twelve lines) and load in 0.3 s rather than 4.1 s, and transformers is
+   left holding the tokenizer alone. `translation_device` is therefore the
+   worker's own answer for where translation runs — it starts where torch did
+   and falls back to the processor on its own — and it is what the `ready`
+   line reports as `device`. `python_discovery.dart` asks an interpreter for
+   ctranslate2 along with torch and transformers, since one without it would
+   start and then fail on the first line it had to translate.
 
 Segments are processed strictly sequentially — `NativeEngineService._processing`
 is a chained `Future` — so a small CPU is never asked to run two inferences at
@@ -406,6 +415,19 @@ A dubbing language is a voice and, unless it is English, a translator:
 `dubbingLanguages` counts over the voice packages, so a language with two of
 them (Russian has `v5_3_ru` and the MIT CIS package) is still offered once,
 and English is offered with no Marian behind it at all.
+
+The translators are the one thing the catalogue does not fetch from its
+authors: `_converted` points at this project's own release, because the
+CTranslate2 conversion is made once here rather than on every machine — it
+wants a transformers newer than the runtime carries.
+`scripts/convert_translators.py` builds them and prints the entries, sizes
+and SHA-256 filled in for every file, which the upstream checkpoints could
+never be (OPUS-MT publishes no digests). CC-BY-4.0 allows the conversion and
+its distribution and asks for attribution and a statement of what changed:
+that is the NOTICE travelling in each package, and it is downloaded with the
+weights rather than written afterwards. `ModelStorageService` sweeps files a
+package no longer names once a download completes, so the PyTorch checkpoint
+of the old shape does not sit beside the new one forever.
 
 The recognition model is a choice, not a constant: `AppSettings.whisperModel`
 names a catalogue id and the pipeline is handed that package's file path.

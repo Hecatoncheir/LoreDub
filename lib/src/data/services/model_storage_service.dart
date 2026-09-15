@@ -84,16 +84,41 @@ class ModelStorageService {
     DownloadControl? control,
   }) async {
     final client = _client ?? await createDownloadClient(proxyUrl);
+    final directory = await modelDirectory(model);
     try {
-      return await downloadArtifacts(
+      final outcome = await downloadArtifacts(
         model.artifacts,
-        directory: await modelDirectory(model),
+        directory: directory,
         client: client,
         onProgress: onProgress,
         control: control,
       );
+      if (outcome == DownloadOutcome.completed) await _removeStrangers(model, directory);
+      return outcome;
     } finally {
       if (_client == null) client.close();
+    }
+  }
+
+  /// Files left in a package's directory that the package no longer names.
+  ///
+  /// A model that changes shape leaves its old self behind otherwise: the
+  /// translators became CTranslate2 models rather than PyTorch checkpoints,
+  /// and the checkpoint would sit in the same folder afterwards -- hundreds
+  /// of megabytes with nothing to read them and nothing to remove them but a
+  /// hand. Swept only after a download finished, so a paused one keeps its
+  /// parts.
+  Future<void> _removeStrangers(ModelPackage model, Directory directory) async {
+    final kept = {for (final artifact in model.artifacts) artifact.fileName};
+    await for (final entry in directory.list()) {
+      if (entry is! File) continue;
+      final name = path.basename(entry.path);
+      if (kept.contains(name) || name.endsWith('.part')) continue;
+      try {
+        await entry.delete();
+      } on FileSystemException {
+        // Best effort: a file still held open is swept the next time.
+      }
     }
   }
 }

@@ -622,6 +622,30 @@ Now and then it leaves a proper noun in Latin script, which Silero cannot
 read. The worker catches that and translates again with the line lower-cased;
 over those 25 lines it happened once, and the retry fixed it.
 
+The translator runs through **CTranslate2** rather than transformers: the
+same weights, quantized to int8. Measured over twelve lines of game dialogue
+at 12 threads, both sides warm:
+
+| | transformers | CTranslate2 int8 |
+| --- | --- | --- |
+| median a line | 262 ms | 107 ms |
+| loading the model | 4.1 s | 0.3 s |
+| on disk | 461 MB | 234 MB |
+
+The text came out identical in eleven of the twelve. In the twelfth int8 read
+closer to the original: «Три лета назад колодец высох» against «Три года
+назад» for *The well ran dry three summers ago*.
+
+The conversion is made once here rather than on every player's machine: it
+wants a transformers newer than the runtime carries, and it would cost each
+of them a minute and the peak memory of a float32 load. The translators are
+therefore downloaded from this project's own release rather than from their
+authors — `scripts/convert_translators.py` builds them and prints the
+catalogue entries. CC-BY-4.0 allows that and asks two things in return: name
+the authors, and say what was changed. Both travel as a NOTICE file beside
+the weights. Every file is pinned by size and SHA-256 as well, which the
+upstream never could be: OPUS-MT publishes no digests of its own.
+
 Dubbing into English needs no translator at all: whisper runs with `-tr` and
 hands English over whatever the game speaks, so the line reaches the voice
 already in it. The English language in the catalogue is therefore a voice on

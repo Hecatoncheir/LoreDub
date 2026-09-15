@@ -1221,7 +1221,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get failurePythonStoreAlias =>
-      'В PATH найден только ярлык Microsoft Store вместо Python. Он не запускает интерпретатор. Выберите встроенный runtime или укажите полный путь к python.exe с установленными torch и transformers.';
+      'В PATH найден только ярлык Microsoft Store вместо Python. Он не запускает интерпретатор. Выберите встроенный runtime или укажите полный путь к python.exe с установленными torch, transformers и ctranslate2.';
 
   @override
   String get failurePythonSearchEmpty =>
@@ -1229,7 +1229,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String failurePythonSearchNoDependencies(String detail) {
-    return 'Не найден Python с torch и transformers. Проверено: $detail.';
+    return 'Не найден Python с torch, transformers и ctranslate2. Проверено: $detail.';
   }
 
   @override
@@ -1239,7 +1239,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String pythonCandidateWithoutDependencies(String path, String version) {
-    return '$path (Python $version, нет torch/transformers)';
+    return '$path (Python $version, нет torch/transformers/ctranslate2)';
   }
 
   @override
@@ -1254,7 +1254,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String failureWorkerExitedSilently(int code) {
-    return 'Marian/Silero worker завершился с кодом $code без вывода. Проверьте выбранный python.exe: в нём должны быть torch и transformers.';
+    return 'Marian/Silero worker завершился с кодом $code без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.';
   }
 
   @override
