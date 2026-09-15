@@ -269,6 +269,9 @@ route and readers. Schemes the player keeps are a shelf beside that arrangement:
 (`captureRouted`), the `PipelineLayout` — which carries the cut cards — and the
 substitutions among the cards drawn, written to `<app support>/pipelines.json`
 by `PipelineLibraryService` and exported and imported as the same shape.
+A scheme is worked on rather than written once:
+`PipelineSchemeReplaced` writes what the canvas says now into the scheme it
+names, which keeps the name and the place on the shelf it already had.
 Choosing one puts it back through the calls an edit makes — `SettingsCubit`
 for the route, `CharactersCubit.voiceAs` for the substitutions — so the other
 screens follow and one step back restores the scheme that was up; a scheme

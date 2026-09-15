@@ -33,6 +33,7 @@ import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
+import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart'
     show PipelineSession, PipelineStatus, SceneSpeaker, TranscriptEntry;
@@ -3241,6 +3242,30 @@ void main() {
 
       expect(cubits.graph.state.layout.characters, ['guard', 'guard']);
       expect(find.text('Стражник'), findsWidgets);
+    });
+
+    testWidgets('offers to write the canvas over a scheme it has kept', (tester) async {
+      final cubits = await pumpGraph(tester);
+      // A scheme kept when the canvas held nothing, which the canvas has
+      // moved on from since. What choosing the item does is the bloc's, and
+      // is pinned there; this is that the shelf offers it at all.
+      cubits.graph.seed(
+        cubits.graph.state.copyWith(
+          schemes: const [SavedPipeline(id: 's1', name: 'Вечер в таверне')],
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.textContaining('СОХРАНЁННЫЕ СХЕМЫ'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Вечер в таверне'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Перезаписать'), findsOneWidget);
+      expect(find.text('Переименовать'), findsOneWidget);
     });
 
     testWidgets('takes a card out of the voices the game speaks', (tester) async {

@@ -1613,6 +1613,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineSchemeDelete => 'Delete the scheme';
 
   @override
+  String get pipelineSchemeReplace => 'Overwrite';
+
+  @override
   String get pipelineSchemeRename => 'Rename';
 
   @override

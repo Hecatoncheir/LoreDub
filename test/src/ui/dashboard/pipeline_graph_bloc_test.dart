@@ -413,6 +413,43 @@ void main() {
       expect(graph.state.refusal, ConnectionRefusal.locked);
     });
 
+    test('writes the canvas over a scheme already kept', () async {
+      graph.add(const PipelineNodeGrabbed(PipelineNodeIds.voice));
+      graph.add(const PipelineNodeMoved(PipelineNodeIds.voice, 30, 40));
+      await pumpEvents();
+      final scheme = await keep('Вечер в таверне');
+      final was = scheme.layout.positions[PipelineNodeIds.voice];
+
+      // The scheme goes on being worked on: a node moved and a card given
+      // away since it was kept.
+      graph.add(const PipelineNodeMoved(PipelineNodeIds.voice, 40, 25));
+      await drawLink(voiceOf('guard'), readBy('smith'));
+      graph.add(PipelineSchemeReplaced(scheme.id));
+      await pumpEvents();
+
+      final written = repository.shelf.pipelines.single;
+      expect(written.id, scheme.id, reason: 'the same scheme, not another one beside it');
+      expect(written.name, 'Вечер в таверне', reason: 'under the name it was given');
+      expect(written.readers['guard'], 'smith');
+      expect(written.layout.positions[PipelineNodeIds.voice], isNot(was));
+      expect(graph.state.schemes.single.readers['guard'], 'smith');
+    });
+
+    test('writes over nothing when the scheme is no longer on the shelf', () async {
+      await keep('Схема');
+      await drawLink(voiceOf('guard'), readBy('smith'));
+
+      graph.add(const PipelineSchemeReplaced('gone'));
+      await pumpEvents();
+
+      expect(graph.state.schemes.single.name, 'Схема');
+      expect(
+        graph.state.schemes.single.readers['guard'],
+        isNull,
+        reason: 'the shelf is left as it was rather than written somewhere else',
+      );
+    });
+
     test('renames and throws away a scheme', () async {
       final scheme = await keep('Схема');
 

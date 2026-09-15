@@ -2781,6 +2781,12 @@ abstract class AppLocalizations {
   /// **'Удалить схему'**
   String get pipelineSchemeDelete;
 
+  /// No description provided for @pipelineSchemeReplace.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перезаписать'**
+  String get pipelineSchemeReplace;
+
   /// No description provided for @pipelineSchemeRename.
   ///
   /// In ru, this message translates to:

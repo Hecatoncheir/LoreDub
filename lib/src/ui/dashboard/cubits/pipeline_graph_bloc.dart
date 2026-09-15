@@ -170,6 +170,16 @@ final class PipelineSchemeChosen extends PipelineGraphEvent {
   final String id;
 }
 
+/// Writes what is on the canvas over a scheme already kept, under the name
+/// it already carries. A scheme is worked on rather than written once: the
+/// alternative was keeping it again under the same name and throwing the
+/// old one away by hand.
+final class PipelineSchemeReplaced extends PipelineGraphEvent {
+  const PipelineSchemeReplaced(this.id);
+
+  final String id;
+}
+
 final class PipelineSchemeRenamed extends PipelineGraphEvent {
   const PipelineSchemeRenamed(this.id, this.name);
 
@@ -364,6 +374,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     on<PipelineGraphSeeded>((event, emit) => emit(_redrawn(event.state)));
     on<PipelineSchemeSaved>(_onSchemeSaved);
     on<PipelineSchemeChosen>(_onSchemeChosen);
+    on<PipelineSchemeReplaced>(_onSchemeReplaced);
     on<PipelineSchemeRenamed>(_onSchemeRenamed);
     on<PipelineSchemeRemoved>(_onSchemeRemoved);
     on<PipelineSchemeExported>(_onSchemeExported);
@@ -504,6 +515,21 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       if (character.voicedBy == reader) continue;
       await _characters.voiceAs(character.id, reader);
     }
+  }
+
+  /// The scheme keeps its name and its place on the shelf; everything the
+  /// canvas says now is written into it.
+  Future<void> _onSchemeReplaced(
+    PipelineSchemeReplaced event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    final kept = state.schemes.where((value) => value.id == event.id).firstOrNull;
+    if (kept == null) return;
+    final written = _asScheme(kept.id, kept.name);
+    await _keep([
+      for (final scheme in state.schemes)
+        if (scheme.id == kept.id) written else scheme,
+    ], emit);
   }
 
   Future<void> _onSchemeRenamed(

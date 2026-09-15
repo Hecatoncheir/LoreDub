@@ -1102,6 +1102,7 @@
   "pipelineSchemeExport": "Выгрузить схему в файл",
   "pipelineSchemeImport": "Загрузить схему из файла",
   "pipelineSchemeDelete": "Удалить схему",
+  "pipelineSchemeReplace": "Перезаписать",
   "pipelineSchemeRename": "Переименовать",
   "pipelineSchemeCancel": "Отмена",
   "pipelineSchemeAudio": "Маршрут собран",

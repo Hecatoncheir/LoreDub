@@ -28,6 +28,7 @@ class PipelineShelf extends StatefulWidget {
     required this.schemes,
     required this.cast,
     required this.onChoose,
+    required this.onReplace,
     required this.onRename,
     required this.onRemove,
     required this.onExport,
@@ -42,6 +43,10 @@ class PipelineShelf extends StatefulWidget {
   final List<Character> cast;
 
   final ValueChanged<String> onChoose;
+
+  /// Writes what is on the canvas over the scheme, which keeps its name and
+  /// its place on the shelf.
+  final ValueChanged<String> onReplace;
   final void Function(String id, String name) onRename;
   final ValueChanged<String> onRemove;
   final ValueChanged<String> onExport;
@@ -133,6 +138,7 @@ class _PipelineShelfState extends State<PipelineShelf> {
                       scheme: widget.schemes[index],
                       cast: widget.cast,
                       onChoose: () => widget.onChoose(widget.schemes[index].id),
+                      onReplace: () => widget.onReplace(widget.schemes[index].id),
                       onRename: (name) => widget.onRename(widget.schemes[index].id, name),
                       onRemove: () => widget.onRemove(widget.schemes[index].id),
                       onExport: () => widget.onExport(widget.schemes[index].id),
@@ -199,6 +205,7 @@ class _SchemeCard extends StatelessWidget {
     required this.scheme,
     required this.cast,
     required this.onChoose,
+    required this.onReplace,
     required this.onRename,
     required this.onRemove,
     required this.onExport,
@@ -209,6 +216,7 @@ class _SchemeCard extends StatelessWidget {
   final SavedPipeline scheme;
   final List<Character> cast;
   final VoidCallback onChoose;
+  final VoidCallback onReplace;
   final ValueChanged<String> onRename;
   final VoidCallback onRemove;
   final VoidCallback onExport;
@@ -276,6 +284,7 @@ class _SchemeCard extends StatelessWidget {
                       ),
                       _SchemeMenu(
                         scheme: scheme,
+                        onReplace: onReplace,
                         onRename: onRename,
                         onRemove: onRemove,
                         onExport: onExport,
@@ -303,12 +312,14 @@ class _SchemeCard extends StatelessWidget {
 class _SchemeMenu extends StatelessWidget {
   const _SchemeMenu({
     required this.scheme,
+    required this.onReplace,
     required this.onRename,
     required this.onRemove,
     required this.onExport,
   });
 
   final SavedPipeline scheme;
+  final VoidCallback onReplace;
   final ValueChanged<String> onRename;
   final VoidCallback onRemove;
   final VoidCallback onExport;
@@ -325,11 +336,15 @@ class _SchemeMenu extends StatelessWidget {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       onSelected: (choice) => switch (choice) {
+        'replace' => onReplace(),
         'rename' => _rename(context, l10n),
         'export' => onExport(),
         _ => onRemove(),
       },
       itemBuilder: (context) => [
+        // First of them: a scheme is worked on, and this is what the menu
+        // is opened for once it has been kept.
+        PopupMenuItem(value: 'replace', child: Text(l10n.pipelineSchemeReplace)),
         PopupMenuItem(value: 'rename', child: Text(l10n.pipelineSchemeRename)),
         PopupMenuItem(value: 'export', child: Text(l10n.pipelineSchemeExport)),
         PopupMenuItem(value: 'delete', child: Text(l10n.pipelineSchemeDelete)),

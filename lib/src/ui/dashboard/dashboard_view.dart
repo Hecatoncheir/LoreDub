@@ -2908,6 +2908,7 @@ class _GraphToolbar extends StatelessWidget {
               schemes: state.schemes,
               cast: facts.characters,
               onChoose: (id) => cubits.graph.add(PipelineSchemeChosen(id)),
+              onReplace: (id) => cubits.graph.add(PipelineSchemeReplaced(id)),
               onRename: (id, name) => cubits.graph.add(PipelineSchemeRenamed(id, name)),
               onRemove: (id) => cubits.graph.add(PipelineSchemeRemoved(id)),
               onExport: (id) => _exportScheme(id, l10n),

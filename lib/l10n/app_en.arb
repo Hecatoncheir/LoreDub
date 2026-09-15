@@ -1102,6 +1102,7 @@
   "pipelineSchemeExport": "Write the scheme to a file",
   "pipelineSchemeImport": "Read a scheme from a file",
   "pipelineSchemeDelete": "Delete the scheme",
+  "pipelineSchemeReplace": "Overwrite",
   "pipelineSchemeRename": "Rename",
   "pipelineSchemeCancel": "Cancel",
   "pipelineSchemeAudio": "Route drawn",

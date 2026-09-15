@@ -1621,6 +1621,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineSchemeDelete => 'Удалить схему';
 
   @override
+  String get pipelineSchemeReplace => 'Перезаписать';
+
+  @override
   String get pipelineSchemeRename => 'Переименовать';
 
   @override
