@@ -1049,10 +1049,11 @@ class _NodePaint {
   static const ends = _NodePaint(
     body: LoreDubPalette.orange,
     header: LoreDubPalette.orange,
-    ink: LoreDubPalette.ink,
-    // The orange carries a darker shade of its own text rather than the
-    // grey of the panels, which it swallows.
-    muted: Color(0xCC171717),
+    // Light on the orange, as on the graphite of a card: the process name
+    // and the strap under it are what a glance at these two nodes is for,
+    // and dark on orange left them sitting in the colour rather than on it.
+    ink: LoreDubPalette.raised,
+    muted: Color(0xCCF7F5F0),
     chosen: LoreDubPalette.ink,
   );
 
