@@ -211,7 +211,7 @@ is a session's, so `AppRepository.start`/`startSceneVoices` put
 `character:<id>` — the name an arrangement written before copies already
 files its position under — and later ones carry `#2`, `#3`, which
 `PipelineNodeIds.characterOf` strips, so every copy answers with the same
-card. `CastPlacement.heard` is the line from `voiceCast`: a note that
+card. `CastPlacement.heard` is the dashed line from `voiceCast`: a note that
 the game's dialogue may hold this character, cut and drawn through
 `HeardConnection`, kept with the arrangement and read by nothing else — the
 worker matches every line against the whole cast whatever the canvas says. It

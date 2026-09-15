@@ -604,11 +604,11 @@ class _DotFieldPainter extends CustomPainter {
       old.view.x != view.x || old.view.y != view.y || old.view.zoom != view.zoom;
 }
 
-/// The curves. The route is a solid orange line and the cast is drawn in
-/// graphite, so what is signal and what is casting are told apart without
-/// reading a label. Among the graphite ones, a voice given away from card to
-/// card is dashed; the line into a card from the voice that reads it is
-/// solid, being the way every card is joined to the pipeline.
+/// The curves. The route is a solid orange line and the cast is dashed, so
+/// what is signal and what is casting are told apart without reading a
+/// label. Among the dashed ones, the voice a card sends to the mix is orange
+/// as well -- that one is heard, and it ends in the orange path out -- while
+/// the lines among the cards themselves stay graphite.
 class _LinkPainter extends CustomPainter {
   const _LinkPainter({required this.graph, this.drag, this.over});
 
@@ -647,16 +647,17 @@ class _LinkPainter extends CustomPainter {
         NodeMetrics.portAt(to, link.to.socket),
       );
       final cast = link.signal == PipelineSignal.voice;
-      // The line the voice reaches a card by: solid, like the route it
-      // belongs to. What is dashed is a voice handed from card to card.
-      final given = cast && link.from.socket != PipelineSocket.voiceCast;
+      // A voice going into the mix is the one the player hears, so it
+      // carries the orange of the path it joins; the casting among the
+      // cards is graphite, being an arrangement rather than a signal.
+      final heard = cast && link.to.socket == PipelineSocket.mixCast;
       canvas.drawPath(
-        given ? _dashed(path) : path,
+        cast ? _dashed(path) : path,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = cast ? 1.6 : 2.4
           ..strokeCap = StrokeCap.round
-          ..color = cast ? LoreDubPalette.graphite : LoreDubPalette.orange,
+          ..color = cast && !heard ? LoreDubPalette.graphite : LoreDubPalette.orange,
       );
     }
     if (drag case final pulling?) {
