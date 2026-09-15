@@ -1128,7 +1128,6 @@
   "pipelineNodeVoice": "Реплики",
   "pipelineNodeOutput": "Поток",
   "pipelineSocketGameAudio": "Звук",
-  "pipelineSocketScreenText": "Текст с экрана",
   "pipelineSocketSpeech": "Речь",
   "pipelineSocketText": "Текст",
   "pipelineSocketAudio": "Аудио",

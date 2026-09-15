@@ -1693,9 +1693,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineSocketGameAudio => 'Звук';
 
   @override
-  String get pipelineSocketScreenText => 'Текст с экрана';
-
-  @override
   String get pipelineSocketSpeech => 'Речь';
 
   @override

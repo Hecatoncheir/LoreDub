@@ -39,10 +39,7 @@ abstract final class NodeMetrics {
 
   /// How many port rows a node of this kind has.
   static int rowsOf(PipelineNodeKind kind) => switch (kind) {
-    PipelineNodeKind.source ||
-    PipelineNodeKind.voice ||
-    PipelineNodeKind.mix ||
-    PipelineNodeKind.character => 2,
+    PipelineNodeKind.voice || PipelineNodeKind.mix || PipelineNodeKind.character => 2,
     _ => 1,
   };
 
@@ -777,10 +774,10 @@ class _NodeCard extends StatelessWidget {
           opacity: node.unrouted ? 0.55 : 1,
           child: Container(
             decoration: BoxDecoration(
-              color: LoreDubPalette.raised,
+              color: _paint.body,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: selected ? LoreDubPalette.orange : LoreDubPalette.outline,
+                color: selected ? _paint.chosen : LoreDubPalette.outline,
                 width: selected ? 2 : 1,
               ),
               boxShadow: selected
@@ -810,21 +807,21 @@ class _NodeCard extends StatelessWidget {
   Widget _header(BuildContext context, AppLocalizations l10n) => Container(
     height: NodeMetrics.headerHeight,
     padding: const EdgeInsets.symmetric(horizontal: 12),
-    decoration: const BoxDecoration(
-      color: LoreDubPalette.panel,
-      borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
-      border: Border(bottom: BorderSide(color: LoreDubPalette.outline)),
+    decoration: BoxDecoration(
+      color: _paint.header,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+      border: Border(bottom: BorderSide(color: _paint.muted.withValues(alpha: 0.25))),
     ),
     child: Row(
       children: [
-        Icon(_icon, size: 18, color: LoreDubPalette.graphite),
+        Icon(_icon, size: 18, color: _paint.ink),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             _title(l10n),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _paint.ink),
           ),
         ),
         if (onRemove case final remove?)
@@ -837,7 +834,7 @@ class _NodeCard extends StatelessWidget {
               padding: EdgeInsets.zero,
               iconSize: 16,
               tooltip: l10n.pipelineRemoveNode,
-              color: LoreDubPalette.mutedInk,
+              color: _paint.muted,
               icon: const Icon(Icons.close_rounded),
               onPressed: remove,
             ),
@@ -845,12 +842,12 @@ class _NodeCard extends StatelessWidget {
         if (node.unrouted)
           Text(
             l10n.pipelineUnrouted.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: LoreDubFonts.mono,
               fontSize: 8,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.8,
-              color: LoreDubPalette.mutedInk,
+              color: _paint.muted,
             ),
           ),
       ],
@@ -860,27 +857,26 @@ class _NodeCard extends StatelessWidget {
   /// One row per port row, labelled on the side its socket is on.
   List<Widget> _rows(AppLocalizations l10n) => switch (node.kind) {
     PipelineNodeKind.source => [
-      _PortRow(right: l10n.pipelineSocketGameAudio),
-      _PortRow(right: l10n.pipelineSocketScreenText),
+      _PortRow(paint: _paint, right: l10n.pipelineSocketGameAudio),
     ],
     PipelineNodeKind.recognition => [
-      _PortRow(left: l10n.pipelineSocketSpeech, right: l10n.pipelineSocketText),
+      _PortRow(paint: _paint, left: l10n.pipelineSocketSpeech, right: l10n.pipelineSocketText),
     ],
     PipelineNodeKind.translation => [
-      _PortRow(left: l10n.pipelineSocketText, right: l10n.pipelineSocketText),
+      _PortRow(paint: _paint, left: l10n.pipelineSocketText, right: l10n.pipelineSocketText),
     ],
     PipelineNodeKind.voice => [
-      _PortRow(left: l10n.pipelineSocketText, right: l10n.pipelineSocketAudio),
-      _PortRow(right: l10n.pipelineSocketCast),
+      _PortRow(paint: _paint, left: l10n.pipelineSocketText, right: l10n.pipelineSocketAudio),
+      _PortRow(paint: _paint, right: l10n.pipelineSocketCast),
     ],
     PipelineNodeKind.mix => [
-      _PortRow(left: l10n.pipelineSocketAudio, right: l10n.pipelineSocketAudio),
-      _PortRow(left: l10n.pipelineSocketCast),
+      _PortRow(paint: _paint, left: l10n.pipelineSocketAudio, right: l10n.pipelineSocketAudio),
+      _PortRow(paint: _paint, left: l10n.pipelineSocketCast),
     ],
-    PipelineNodeKind.output => [_PortRow(left: l10n.pipelineSocketAudio)],
+    PipelineNodeKind.output => [_PortRow(paint: _paint, left: l10n.pipelineSocketAudio)],
     PipelineNodeKind.character => [
-      _PortRow(left: l10n.pipelineSocketCharacter, right: l10n.pipelineSocketVoice),
-      _PortRow(left: l10n.pipelineSocketVoice),
+      _PortRow(paint: _paint, left: l10n.pipelineSocketCharacter, right: l10n.pipelineSocketVoice),
+      _PortRow(paint: _paint, left: l10n.pipelineSocketVoice),
     ],
   };
 
@@ -894,25 +890,36 @@ class _NodeCard extends StatelessWidget {
           _headline(context, l10n),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 13, height: 1.25, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.25,
+            fontWeight: FontWeight.w600,
+            color: _paint.ink,
+          ),
         ),
         const SizedBox(height: 3),
         Text(
           _note(context, l10n),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: LoreDubFonts.mono,
             fontSize: 9,
             height: 1.2,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.4,
-            color: LoreDubPalette.mutedInk,
+            color: _paint.muted,
           ),
         ),
       ],
     ),
   );
+
+  _NodePaint get _paint => switch (node.kind) {
+    PipelineNodeKind.source || PipelineNodeKind.output => _NodePaint.ends,
+    PipelineNodeKind.character => _NodePaint.cast,
+    _ => _NodePaint.plain,
+  };
 
   IconData get _icon => switch (node.kind) {
     PipelineNodeKind.source => Icons.videogame_asset_rounded,
@@ -1014,9 +1021,63 @@ class _NodeCard extends StatelessWidget {
 }
 
 /// A row of the card that a socket sits on, labelled towards its own edge.
-class _PortRow extends StatelessWidget {
-  const _PortRow({this.left, this.right});
+/// What one node is drawn in.
+///
+/// The two ends of the pipeline are orange -- where the game's sound comes
+/// in and where the dubbing leaves -- so the eye finds them without reading
+/// them, and a card of the cast is dark, the way the open section is drawn
+/// in the navigation. Everything between them keeps the raised face the
+/// model tiles use, and only what is written on a node changes with the
+/// face under it.
+class _NodePaint {
+  const _NodePaint({
+    required this.body,
+    required this.header,
+    required this.ink,
+    required this.muted,
+    required this.chosen,
+  });
 
+  static const plain = _NodePaint(
+    body: LoreDubPalette.raised,
+    header: LoreDubPalette.panel,
+    ink: LoreDubPalette.ink,
+    muted: LoreDubPalette.mutedInk,
+    chosen: LoreDubPalette.orange,
+  );
+
+  static const ends = _NodePaint(
+    body: LoreDubPalette.orange,
+    header: LoreDubPalette.orange,
+    ink: LoreDubPalette.ink,
+    // The orange carries a darker shade of its own text rather than the
+    // grey of the panels, which it swallows.
+    muted: Color(0xCC171717),
+    chosen: LoreDubPalette.ink,
+  );
+
+  static const cast = _NodePaint(
+    body: LoreDubPalette.graphite,
+    header: LoreDubPalette.graphite,
+    ink: LoreDubPalette.raised,
+    muted: Color(0xAAF7F5F0),
+    chosen: LoreDubPalette.orange,
+  );
+
+  final Color body;
+  final Color header;
+  final Color ink;
+  final Color muted;
+
+  /// The border of a node the pointer has chosen. Orange on the orange ends
+  /// would be no mark at all.
+  final Color chosen;
+}
+
+class _PortRow extends StatelessWidget {
+  const _PortRow({required this.paint, this.left, this.right});
+
+  final _NodePaint paint;
   final String? left;
   final String? right;
 
@@ -1040,12 +1101,12 @@ class _PortRow extends StatelessWidget {
     textAlign: align,
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
-    style: const TextStyle(
+    style: TextStyle(
       fontFamily: LoreDubFonts.mono,
       fontSize: 9,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.6,
-      color: LoreDubPalette.mutedInk,
+      color: paint.muted,
     ),
   );
 }

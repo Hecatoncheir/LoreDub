@@ -1684,9 +1684,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineSocketGameAudio => 'Audio';
 
   @override
-  String get pipelineSocketScreenText => 'Screen text';
-
-  @override
   String get pipelineSocketSpeech => 'Speech';
 
   @override

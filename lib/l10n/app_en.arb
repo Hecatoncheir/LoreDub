@@ -1128,7 +1128,6 @@
   "pipelineNodeVoice": "Lines",
   "pipelineNodeOutput": "Stream",
   "pipelineSocketGameAudio": "Audio",
-  "pipelineSocketScreenText": "Screen text",
   "pipelineSocketSpeech": "Speech",
   "pipelineSocketText": "Text",
   "pipelineSocketAudio": "Audio",

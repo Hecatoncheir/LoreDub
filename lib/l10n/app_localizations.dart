@@ -2907,12 +2907,6 @@ abstract class AppLocalizations {
   /// **'Звук'**
   String get pipelineSocketGameAudio;
 
-  /// No description provided for @pipelineSocketScreenText.
-  ///
-  /// In ru, this message translates to:
-  /// **'Текст с экрана'**
-  String get pipelineSocketScreenText;
-
   /// No description provided for @pipelineSocketSpeech.
   ///
   /// In ru, this message translates to:
