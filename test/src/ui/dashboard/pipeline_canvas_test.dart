@@ -31,12 +31,18 @@ import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   /// The graph screen at [size], with every package in place.
-  Future<DashboardCubits> pumpGraph(WidgetTester tester, Size size) async {
+  Future<DashboardCubits> pumpGraph(
+    WidgetTester tester,
+    Size size, {
+    AppSettings settings = const AppSettings(),
+  }) async {
+    SharedPreferences.setMockInitialValues(const {});
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -64,7 +70,7 @@ void main() {
     );
     addTearDown(cubits.dispose);
     cubits.shell.seed(const ShellState(section: DashboardSection.pipeline, initializing: false));
-    cubits.settings.seed(const SettingsState(settings: AppSettings()));
+    cubits.settings.seed(SettingsState(settings: settings));
     cubits.downloads.seed(
       DownloadsState(
         models: [
@@ -97,6 +103,61 @@ void main() {
             .evaluate())
       tester.getRect(find.byElementPredicate((other) => other == element)),
   ];
+
+  /// The middle of the one socket of «Оригинальный поток», which is the
+  /// port box nearest its title -- the node has no other.
+  Offset sourcePort(WidgetTester tester) {
+    final title = tester.getCenter(find.text('Оригинальный поток'));
+    final boxes = [...ports(tester)]
+      ..sort((a, b) => (a.center - title).distance.compareTo((b.center - title).distance));
+    return boxes.first.center;
+  }
+
+  testWidgets('drops a link on a card rather than on its socket', (tester) async {
+    // Aiming at a dot six pixels across is needless when the card has one
+    // socket the link could go into: let go anywhere on it and that socket
+    // catches the link.
+    final cubits = await pumpGraph(
+      tester,
+      const Size(1500, 950),
+      settings: const AppSettings(captureRouted: false),
+    );
+
+    final gesture = await tester.startGesture(sourcePort(tester), kind: PointerDeviceKind.mouse);
+    // Past the slop, then onto the title of Whisper -- the far side of the
+    // card from the socket that answers, which sits on its left edge.
+    await gesture.moveBy(const Offset(8, 8));
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(find.text('Whisper')));
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+    await tester.pump();
+
+    expect(cubits.settings.state.settings.captureRouted, isTrue);
+  });
+
+  testWidgets('leaves a card alone when nothing on it takes the link', (tester) async {
+    // The output has one socket and it carries audio of the finished
+    // dubbing: the game's sound has no business in it, and the card says so
+    // rather than swallowing the link.
+    final cubits = await pumpGraph(
+      tester,
+      const Size(1500, 950),
+      settings: const AppSettings(captureRouted: false),
+    );
+
+    final gesture = await tester.startGesture(sourcePort(tester), kind: PointerDeviceKind.mouse);
+    await gesture.moveBy(const Offset(8, 8));
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(find.text('Поток')));
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+    await tester.pump();
+
+    expect(cubits.settings.state.settings.captureRouted, isFalse);
+  });
 
   testWidgets('holds the grab target to one size on screen at any zoom', (tester) async {
     // A scheme fitted into a small window is drawn small, but the pointer is

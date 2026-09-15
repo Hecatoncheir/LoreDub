@@ -71,6 +71,10 @@ abstract final class NodeMetrics {
   static Offset portAt(PipelineNode node, PipelineSocket socket) =>
       Offset(node.position.x, node.position.y) + anchorOf(socket);
 
+  /// The card itself on the canvas, which a link may be let go anywhere on.
+  static Rect boundsOf(PipelineNode node) =>
+      Offset(node.position.x, node.position.y) & sizeOf(node.kind);
+
   /// How near the pointer has to be let go for a port to catch the link,
   /// and how near it has to be pressed to pick one up. Both are distances on
   /// the screen rather than on the canvas: the scheme shrinks to fit a small
@@ -227,8 +231,20 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
     return _view.toCanvas(GraphPoint(local.dx, local.dy));
   }
 
-  /// The socket near [point], if the link let go there should catch one.
+  /// The socket a link from [from] let go at [point] should catch.
+  ///
+  /// The socket aimed at, when one was and it takes the link; otherwise the
+  /// first socket of the card let go on that would take it, so a card may be
+  /// dropped on anywhere rather than aimed at through a dot. A socket aimed
+  /// at that refuses is answered with all the same, since the reason it
+  /// gives is worth more than nothing happening.
   PipelinePort? _portNear(GraphPoint point, {required PipelinePort from}) {
+    final aimed = _portAimedAt(point, from: from);
+    if (aimed != null && _accepts(from, aimed)) return aimed;
+    return _portOn(point, from: from) ?? aimed;
+  }
+
+  PipelinePort? _portAimedAt(GraphPoint point, {required PipelinePort from}) {
     final at = Offset(point.x, point.y);
     PipelinePort? best;
     var nearest = NodeMetrics.catchRadius / _view.zoom;
@@ -244,6 +260,24 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
       }
     }
     return best;
+  }
+
+  /// The first socket of the card under [point] that would take a link from
+  /// [from]. The cards are looked through backwards, the last drawn being
+  /// the one on top where two of them overlap.
+  PipelinePort? _portOn(GraphPoint point, {required PipelinePort from}) {
+    final at = Offset(point.x, point.y);
+    for (final node in _state.graph.nodes.reversed) {
+      if (!NodeMetrics.boundsOf(node).contains(at)) continue;
+      for (final socket in PipelineSocket.values) {
+        if (socket.owner != node.kind) continue;
+        final port = PipelinePort(node.id, socket);
+        if (port == from || !_accepts(from, port)) continue;
+        return port;
+      }
+      return null;
+    }
+    return null;
   }
 
   /// Whether a link from [from] would be accepted by [port] — what the ring
@@ -1068,10 +1102,11 @@ class _NodePaint {
     // and dark on orange left them sitting in the colour rather than on it.
     ink: LoreDubPalette.raised,
     muted: Color(0xCCF7F5F0),
-    // The sockets and the line under the title are light as well: graphite
-    // markings read as a crack across the orange rather than as part of it.
+    // The sockets are light, as the words are. The line under the title is
+    // the orange itself: drawn in any other colour it reads as a crack
+    // across the node rather than as the edge of its head.
     port: LoreDubPalette.raised,
-    rule: LoreDubPalette.raised,
+    rule: LoreDubPalette.orange,
     chosen: LoreDubPalette.ink,
   );
 
