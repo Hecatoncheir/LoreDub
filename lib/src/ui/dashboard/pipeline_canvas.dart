@@ -532,6 +532,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
               // less of it, so it closes behind them rather than snapping
               // shut.
               nodes: [..._state.graph.nodes, ..._leaving],
+              chosen: _state.chosen,
               arriving: _arriving,
               leaving: {for (final node in _leaving) node.id},
               grown: _grown,
@@ -853,6 +854,17 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
   }
 }
 
+/// One card as the field behind it sees it: where it stands, how much of it
+/// is there — a card arriving or leaving is only partly — and whether the
+/// player has it picked out.
+class _FieldCard {
+  const _FieldCard({required this.rect, required this.strength, required this.chosen});
+
+  final Rect rect;
+  final double strength;
+  final bool chosen;
+}
+
 /// The field the scheme sits on: dots that move and grow with the canvas, so
 /// panning is visible even where there is no node.
 class _DotFieldPainter extends CustomPainter {
@@ -860,6 +872,7 @@ class _DotFieldPainter extends CustomPainter {
     required this.view,
     required this.nodes,
     required this.grown,
+    this.chosen = const {},
     this.arriving = const {},
     this.leaving = const {},
   }) : super(repaint: grown);
@@ -870,20 +883,35 @@ class _DotFieldPainter extends CustomPainter {
   /// them. Each of them holds the dots off.
   final List<PipelineNode> nodes;
 
+  /// The cards the player has picked out. The field lights towards them:
+  /// the nearer a dot is to one, the more of the orange it carries, so a
+  /// card that is chosen is found without hunting for its border.
+  final Set<String> chosen;
+
   /// A card arriving parts the field as it comes, and one leaving lets it
   /// close again: [grown] is how far along both of those are.
   final Set<String> arriving;
   final Set<String> leaving;
   final Animation<double> grown;
 
-  static const double spacing = 26;
+  static const double spacing = 18;
 
   /// How far from a card the field is disturbed, and how far the dot
   /// nearest it is moved. Both in dots rather than in pixels, so the field
   /// parts the same way at any zoom: near enough a dot's width, which reads
   /// as the lattice giving way rather than as a hole in it.
-  static const double reach = 2.2;
-  static const double push = 0.44;
+  static const double reach = 3.2;
+  static const double push = 0.62;
+
+  /// How far the light of a chosen card carries, and how far towards the
+  /// orange the dot against its edge is taken. Not the whole way: a field
+  /// of orange would say more than the card being chosen is worth.
+  static const double glow = 7;
+  static const double lit = 0.85;
+
+  /// How many shades the light is drawn in. Every dot of a shade is drawn
+  /// in one call, so this is the number of calls the field costs.
+  static const int shades = 6;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -893,46 +921,54 @@ class _DotFieldPainter extends CustomPainter {
     final radius = math.max(0.8, 1.1 * view.zoom);
     final held = _cards(step);
     final reachPx = reach * step;
-    // One call rather than one per dot: a window this size holds a couple of
-    // thousand of them, and they are drawn again on every frame of a pan.
-    // Round caps make each point the dot it used to be drawn as.
-    final dots = <Offset>[];
+    final glowPx = glow * step;
+    // Drawn a shade at a time rather than a dot at a time: a window this
+    // size holds thousands of them, and they are drawn again on every frame
+    // of a pan. Round caps make each point the dot it used to be drawn as.
+    final byShade = List.generate(shades + 1, (_) => <Offset>[], growable: false);
     // The cards the column being drawn runs through. Kept between columns
     // rather than made again: most columns run through none, and a dot
-    // asked against every card on the canvas is two thousand of them times
-    // the whole cast on every frame of a drag.
-    final near = <({Rect rect, double strength})>[];
+    // asked against every card on the canvas is thousands of them times the
+    // whole cast on every frame of a drag.
+    final near = <_FieldCard>[];
     for (var x = view.x % step - step; x < size.width + step; x += step) {
       near.clear();
       for (final card in held) {
-        if (x > card.rect.left - reachPx && x < card.rect.right + reachPx) near.add(card);
+        final span = card.chosen ? math.max(reachPx, glowPx) : reachPx;
+        if (x > card.rect.left - span && x < card.rect.right + span) near.add(card);
       }
       for (var y = view.y % step - step; y < size.height + step; y += step) {
         if (near.isEmpty) {
-          dots.add(Offset(x, y));
+          byShade[0].add(Offset(x, y));
           continue;
         }
         // A dot the card stands on is not drawn at all: the card holds the
         // ground it covers, and a faded one would show the field through it.
-        if (_shoved(Offset(x, y), near, reachPx, push * step) case final moved?) {
-          dots.add(moved);
-        }
+        final dot = _shoved(Offset(x, y), near, reachPx, push * step, glowPx);
+        if (dot != null) byShade[dot.shade].add(dot.at);
       }
     }
-    canvas.drawPoints(
-      PointMode.points,
-      dots,
-      Paint()
-        ..color = LoreDubPalette.outline.withValues(alpha: 0.55)
-        ..strokeWidth = radius * 2
-        ..strokeCap = StrokeCap.round,
-    );
+    final plain = LoreDubPalette.outline.withValues(alpha: 0.55);
+    for (var shade = 0; shade <= shades; shade++) {
+      if (byShade[shade].isEmpty) continue;
+      final share = shade / shades;
+      canvas.drawPoints(
+        PointMode.points,
+        byShade[shade],
+        Paint()
+          ..color = Color.lerp(plain, LoreDubPalette.orange, share * lit)!
+          // The lit ones stand a little prouder as well, so the light reads
+          // on a screen that has been turned down.
+          ..strokeWidth = radius * 2 * (1 + 0.45 * share)
+          ..strokeCap = StrokeCap.round,
+      );
+    }
   }
 
   /// Where the cards stand on the screen, with how hard each of them holds
   /// the field off. Worked out once for the frame.
-  List<({Rect rect, double strength})> _cards(double step) {
-    final drawn = <({Rect rect, double strength})>[];
+  List<_FieldCard> _cards(double step) {
+    final drawn = <_FieldCard>[];
     for (final node in nodes) {
       final strength = switch (node.id) {
         final id when arriving.contains(id) => grown.value,
@@ -941,15 +977,18 @@ class _DotFieldPainter extends CustomPainter {
       };
       if (strength <= 0.01) continue;
       final size = NodeMetrics.sizeOf(node.kind);
-      drawn.add((
-        rect: Rect.fromLTWH(
-          view.x + node.position.x * view.zoom,
-          view.y + node.position.y * view.zoom,
-          size.width * view.zoom,
-          size.height * view.zoom,
+      drawn.add(
+        _FieldCard(
+          rect: Rect.fromLTWH(
+            view.x + node.position.x * view.zoom,
+            view.y + node.position.y * view.zoom,
+            size.width * view.zoom,
+            size.height * view.zoom,
+          ),
+          strength: strength.clamp(0.0, 1.0),
+          chosen: chosen.contains(node.id),
         ),
-        strength: strength.clamp(0.0, 1.0),
-      ));
+      );
     }
     return drawn;
   }
@@ -957,34 +996,47 @@ class _DotFieldPainter extends CustomPainter {
   /// [at] moved out of the way of the cards, or null where a card stands on
   /// it. A dot answers every card near it, so the field parts rather than
   /// snapping from one card's push to the next's.
-  Offset? _shoved(
+  ({Offset at, int shade})? _shoved(
     Offset at,
-    List<({Rect rect, double strength})> cards,
+    List<_FieldCard> cards,
     double reachPx,
     double pushPx,
+    double glowPx,
   ) {
     var dx = 0.0;
     var dy = 0.0;
+    var light = 0.0;
     for (final card in cards) {
-      if (at.dy <= card.rect.top - reachPx || at.dy >= card.rect.bottom + reachPx) continue;
+      final span = card.chosen ? math.max(reachPx, glowPx) : reachPx;
+      if (at.dy <= card.rect.top - span || at.dy >= card.rect.bottom + span) continue;
       final awayX = at.dx - at.dx.clamp(card.rect.left, card.rect.right);
       final awayY = at.dy - at.dy.clamp(card.rect.top, card.rect.bottom);
-      final span = math.sqrt(awayX * awayX + awayY * awayY);
-      if (span >= reachPx) continue;
-      if (span < 0.01) return null;
+      final away = math.sqrt(awayX * awayX + awayY * awayY);
+      if (away < 0.01) return null;
+      if (card.chosen && away < glowPx) {
+        // The light of the nearest chosen card, rather than the sum of
+        // them: two cards chosen side by side are not twice as chosen.
+        final falls = 1 - away / glowPx;
+        light = math.max(light, falls * falls * card.strength);
+      }
+      if (away >= reachPx) continue;
       // Hardest against the edge and gone by the end of its reach, squared
       // so the field bends rather than breaks.
-      final falls = 1 - span / reachPx;
-      final shove = pushPx * falls * falls * card.strength / span;
+      final falls = 1 - away / reachPx;
+      final shove = pushPx * falls * falls * card.strength / away;
       dx += awayX * shove;
       dy += awayY * shove;
     }
-    return dx == 0 && dy == 0 ? at : Offset(at.dx + dx, at.dy + dy);
+    return (
+      at: dx == 0 && dy == 0 ? at : Offset(at.dx + dx, at.dy + dy),
+      shade: (light * shades).round(),
+    );
   }
 
   @override
   bool shouldRepaint(_DotFieldPainter old) {
     if (old.view.x != view.x || old.view.y != view.y || old.view.zoom != view.zoom) return true;
+    if (old.chosen.length != chosen.length || !old.chosen.containsAll(chosen)) return true;
     if (old.nodes.length != nodes.length) return true;
     for (var index = 0; index < nodes.length; index++) {
       if (old.nodes[index] != nodes[index]) return true;
