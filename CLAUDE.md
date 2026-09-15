@@ -258,12 +258,20 @@ placeholder put in the source so the name could be substituted afterwards is
 transliterated like any other Latin ("Zorvax" survived one sentence of eight,
 and a short one like "Qqq" was dropped outright, taking the name with it), and
 `target_prefix` only holds the start of the line -- forced "Мегатон", the
-decoder wrote "Мегатонн" anyway. What does work, and is not built, is
-`suppress_sequences`: forbidden the form it got wrong, the model finds another
-and declines it properly ("Megaton is gone." became "Мегатонна больше нет",
-"leaving Rapture" became "из Раптуры") -- but deciding that a rendering is
-wrong means telling a mangled form from a declined one, and that needs
-morphology this has none of. Matching ignores case and spacing on both kinds.
+decoder wrote "Мегатонн" anyway. `suppress_sequences` looked promising on the
+first two lines tried and does not survive forty-two: forbidding a rendering
+puts the model's *second* choice in its place, so where the first was right
+the answer gets worse -- "Добро пожаловать в Мегатон" became "в Мегафон",
+"Уайтран ушел" became "Уайтрун ушла", "Жители Мегатона" became "Жители
+Мегатонна". It helps only where the first choice was already broken
+("из Рапта" became "из Раптуры"), and telling a broken form from a
+declined one is the morphology this has none of. Do not reach for it again.
+What those forty-two lines did show is a larger thing nothing here fixes: the
+model translates a name it reads as a word, and differently from line to line
+-- "Vault" is "Убежище" in one line and "Хранилище" in the next,
+"Rapture" runs "Восторг", "Восхищение", "в восторге", and "Whiterun"
+reaches "Жители Белгорода". No Latin is left to hook onto, so the only
+lever the player has over it is a phrase entry on the line itself. Matching ignores case and spacing on both kinds.
 An entry is usually written from the transcript rather than
 on this screen: a line is only known to have gone wrong the moment it is
 heard, and `_CorrectLineButton` beside its latency badge on Эфир opens on
