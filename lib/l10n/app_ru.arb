@@ -258,7 +258,7 @@
   },
   "screenSourceWindow": "Окно игры",
   "screenSourceScreen": "Весь экран",
-  "screenWholeNote": "Загружаются только переводчик и голос ({language}), без распознавания речи. Читается всё, что на экране, какое бы окно ни было впереди — подходит и для игры без обычного окна. Процесс игры нужен здесь только для того, чтобы её приглушить.",
+  "screenWholeNote": "Загружаются только переводчик и голос ({language}), без распознавания речи. Читается всё, что на экране, какое бы окно ни было впереди — подходит и для игры без обычного окна. Игру выбирать не нужно.",
   "@screenWholeNote": {
     "placeholders": {
       "language": {
@@ -1125,7 +1125,7 @@
   "pipelineNodeSource": "Оригинальный поток",
   "pipelineNodeRecognition": "Whisper",
   "pipelineNodeTranslation": "Перевод",
-  "pipelineNodeVoice": "Голос",
+  "pipelineNodeVoice": "Реплики",
   "pipelineNodeOutput": "Поток",
   "pipelineSocketGameAudio": "Звук",
   "pipelineSocketScreenText": "Текст с экрана",

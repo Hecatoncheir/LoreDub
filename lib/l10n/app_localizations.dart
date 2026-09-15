@@ -894,7 +894,7 @@ abstract class AppLocalizations {
   /// No description provided for @screenWholeNote.
   ///
   /// In ru, this message translates to:
-  /// **'Загружаются только переводчик и голос ({language}), без распознавания речи. Читается всё, что на экране, какое бы окно ни было впереди — подходит и для игры без обычного окна. Процесс игры нужен здесь только для того, чтобы её приглушить.'**
+  /// **'Загружаются только переводчик и голос ({language}), без распознавания речи. Читается всё, что на экране, какое бы окно ни было впереди — подходит и для игры без обычного окна. Игру выбирать не нужно.'**
   String screenWholeNote(String language);
 
   /// No description provided for @snapshotStart.
@@ -2892,7 +2892,7 @@ abstract class AppLocalizations {
   /// No description provided for @pipelineNodeVoice.
   ///
   /// In ru, this message translates to:
-  /// **'Голос'**
+  /// **'Реплики'**
   String get pipelineNodeVoice;
 
   /// No description provided for @pipelineNodeOutput.

@@ -2140,6 +2140,12 @@ void main() {
       expect(startButton(tester).onPressed, isNotNull);
       expect(find.textContaining('Читается всё, что на экране'), findsOneWidget);
       expect(find.textContaining('% экрана'), findsOneWidget, reason: 'the frame says of what');
+      // There is no window to read out of, so no game is asked for.
+      expect(find.text('Выберите игру, чтобы читать её экран'), findsNothing);
+      expect(
+        tester.widget<DropdownMenu<GameProcess>>(find.byType(DropdownMenu<GameProcess>)).enabled,
+        isFalse,
+      );
     });
 
     testWidgets('stacks the language and its note where the card is narrow', (tester) async {
@@ -2871,6 +2877,34 @@ void main() {
       expect(find.text('С какого языка'), findsOneWidget);
       expect(find.text('На какой язык'), findsOneWidget);
       expect(find.textContaining('Whisper отдаёт английский текст'), findsOneWidget);
+    });
+
+    testWidgets('never offers a card the voice of one it already reads', (tester) async {
+      // The canvas refuses that line, but the card's own panel used to list
+      // the whole cast, so the two could be set to read each other there.
+      final cubits = await pumpGraph(tester);
+      cubits.characters.seed(
+        const CharactersState(
+          loading: false,
+          characters: [
+            Character(id: 'guard', name: 'Стражник', vector: [0.2, 0.4]),
+            Character(id: 'smith', name: 'Кузнец', vector: [0.1, 0.9], voicedBy: 'guard'),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Стражник').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('graph-reader-guard-null')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Своим голосом'), findsWidgets);
+      expect(
+        find.text('Кузнец'),
+        findsNothing,
+        reason: 'the smith is already read by the guard',
+      );
     });
 
     testWidgets('says what each line parts with when it is cut', (tester) async {

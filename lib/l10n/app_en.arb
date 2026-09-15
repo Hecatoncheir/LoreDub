@@ -258,7 +258,7 @@
   },
   "screenSourceWindow": "Game window",
   "screenSourceScreen": "Whole screen",
-  "screenWholeNote": "Only the translator and the voice ({language}) are loaded, no speech recognition. Everything on the screen is read, whichever window is in front — which is what a game without an ordinary window needs. The game process is named here only to turn it down.",
+  "screenWholeNote": "Only the translator and the voice ({language}) are loaded, no speech recognition. Everything on the screen is read, whichever window is in front — which is what a game without an ordinary window needs. No game has to be named.",
   "@screenWholeNote": {
     "placeholders": {
       "language": {
@@ -1125,7 +1125,7 @@
   "pipelineNodeSource": "Original stream",
   "pipelineNodeRecognition": "Whisper",
   "pipelineNodeTranslation": "Translation",
-  "pipelineNodeVoice": "Voice",
+  "pipelineNodeVoice": "Lines",
   "pipelineNodeOutput": "Stream",
   "pipelineSocketGameAudio": "Audio",
   "pipelineSocketScreenText": "Screen text",

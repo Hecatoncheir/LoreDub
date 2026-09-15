@@ -848,10 +848,11 @@ GraphConnection _readerConnection({
   // between the copies would say nothing else.
   if (reader == character) return const RefusedConnection(ConnectionRefusal.loop);
   for (final known in characters) {
-    // Two cards reading each other would leave neither a voice to start from.
-    if (known.id == reader && known.voicedBy == character) {
-      return const RefusedConnection(ConnectionRefusal.loop);
-    }
+    if (known.id != character) continue;
+    // The same rule the card's own panel offers its readers by: two cards
+    // reading each other would leave neither a voice to start from.
+    final allowed = readersFor(known, characters).any((other) => other.id == reader);
+    if (!allowed) return const RefusedConnection(ConnectionRefusal.loop);
   }
   return ReaderConnection(character, reader);
 }

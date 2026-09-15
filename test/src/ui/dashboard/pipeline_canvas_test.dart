@@ -144,7 +144,7 @@ void main() {
       'Оригинальный поток': PipelineNodeIds.source,
       'Whisper': PipelineNodeIds.recognition,
       'Перевод': PipelineNodeIds.translation,
-      'Голос': PipelineNodeIds.voice,
+      'Реплики': PipelineNodeIds.voice,
       'Сведение': PipelineNodeIds.mix,
       'Поток': PipelineNodeIds.output,
     };

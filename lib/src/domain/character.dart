@@ -272,3 +272,19 @@ class CharacterLibrary {
 
   Map<String, Object?> toJson() => characterLibraryToJson(characters, packs);
 }
+
+/// The cards that may be made the voice of [character].
+///
+/// Not the card itself, and not one this card already reads: two cards
+/// reading each other leave neither a voice to start from, and the graph
+/// refuses that line for the same reason. [keeping] is put back into the
+/// list whatever the rule says, so a pair made before the rule existed
+/// still shows in the field it has to be changed away in.
+List<Character> readersFor(
+  Character character,
+  List<Character> cast, {
+  String? keeping,
+}) => [
+  for (final other in cast)
+    if (other.id == keeping || (other.id != character.id && other.voicedBy != character.id)) other,
+];

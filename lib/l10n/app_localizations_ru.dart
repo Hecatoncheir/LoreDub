@@ -484,7 +484,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String screenWholeNote(String language) {
-    return 'Загружаются только переводчик и голос ($language), без распознавания речи. Читается всё, что на экране, какое бы окно ни было впереди — подходит и для игры без обычного окна. Процесс игры нужен здесь только для того, чтобы её приглушить.';
+    return 'Загружаются только переводчик и голос ($language), без распознавания речи. Читается всё, что на экране, какое бы окно ни было впереди — подходит и для игры без обычного окна. Игру выбирать не нужно.';
   }
 
   @override
@@ -1684,7 +1684,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineNodeTranslation => 'Перевод';
 
   @override
-  String get pipelineNodeVoice => 'Голос';
+  String get pipelineNodeVoice => 'Реплики';
 
   @override
   String get pipelineNodeOutput => 'Поток';

@@ -481,7 +481,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String screenWholeNote(String language) {
-    return 'Only the translator and the voice ($language) are loaded, no speech recognition. Everything on the screen is read, whichever window is in front — which is what a game without an ordinary window needs. The game process is named here only to turn it down.';
+    return 'Only the translator and the voice ($language) are loaded, no speech recognition. Everything on the screen is read, whichever window is in front — which is what a game without an ordinary window needs. No game has to be named.';
   }
 
   @override
@@ -1675,7 +1675,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineNodeTranslation => 'Translation';
 
   @override
-  String get pipelineNodeVoice => 'Voice';
+  String get pipelineNodeVoice => 'Lines';
 
   @override
   String get pipelineNodeOutput => 'Stream';

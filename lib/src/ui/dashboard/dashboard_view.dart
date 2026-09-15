@@ -1558,14 +1558,16 @@ class _SnapshotControls extends StatelessWidget {
   Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
     final l10n = AppLocalizations.of(context);
     final hotkey = settings.snapshotHotkey;
-    final status = _status(l10n, pipeline);
+    final status = _status(l10n, pipeline, settings);
     final button = _SnapshotStartButton(cubits: cubits);
     // The frame is read out of one window, so this session needs the game
     // named even though nothing of its sound is listened to.
     final picker = ProcessPicker(
       processes: pipeline.processes,
       selected: pipeline.selectedProcess,
-      enabled: !pipeline.running,
+      // Nothing is read out of that window while the whole screen is what
+      // is read, so there is nothing to choose.
+      enabled: !pipeline.running && !settings.readsWholeScreen,
       onSelected: cubits.pipeline.selectProcess,
       onRefresh: cubits.pipeline.refreshProcesses,
     );
@@ -1666,7 +1668,7 @@ class _SnapshotControls extends StatelessWidget {
   }
 
   /// What became of the last selection, or that live dubbing holds the key.
-  Widget? _status(AppLocalizations l10n, LivePipelineState pipeline) {
+  Widget? _status(AppLocalizations l10n, LivePipelineState pipeline, AppSettings settings) {
     final (icon, text, color) = switch (pipeline) {
       _ when pipeline.snapshotReading => (
         Icons.hourglass_top_rounded,
@@ -1688,7 +1690,10 @@ class _SnapshotControls extends StatelessWidget {
         l10n.frameMissed,
         LoreDubPalette.warning,
       ),
-      _ when pipeline.selectedProcess == null => (
+      // Reading the whole screen waits for no window, so there is no game
+      // to ask for -- the picker beside this line is shut for the same
+      // reason.
+      _ when pipeline.selectedProcess == null && !settings.readsWholeScreen => (
         Icons.videogame_asset_off_rounded,
         l10n.screenPickGame,
         LoreDubPalette.warning,

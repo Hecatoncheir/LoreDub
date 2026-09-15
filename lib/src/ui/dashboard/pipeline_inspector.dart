@@ -360,9 +360,15 @@ class PipelineInspector extends StatelessWidget {
           isExpanded: true,
           items: [
             DropdownMenuItem(value: null, child: Text(l10n.charactersOwnVoice)),
-            for (final other in facts.characters)
-              if (other.id != character.id)
-                DropdownMenuItem(value: other.id, child: Text(other.name, maxLines: 1)),
+            // A card this one already reads is not offered: the panel used
+            // to list the whole cast, so two cards could be set to read each
+            // other here even though the canvas refuses that line.
+            for (final other in readersFor(
+              character,
+              facts.characters,
+              keeping: character.voicedBy,
+            ))
+              DropdownMenuItem(value: other.id, child: Text(other.name, maxLines: 1)),
           ],
           onChanged: (value) => cubits.characters.voiceAs(character.id, value),
         ),
