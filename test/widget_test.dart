@@ -30,6 +30,7 @@ import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/download_control.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
+import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
@@ -491,6 +492,65 @@ void main() {
     expect(find.text('Ворота закрыты.'), findsOneWidget);
     expect(find.text('1325 мс'), findsOneWidget);
     expect(find.byType(CustomPaint), findsWidgets, reason: 'the bubble tail is painted');
+  });
+
+  testWidgets('writes a line of the transcript into the glossary', (tester) async {
+    final cubits = stage(
+      buildCubits(),
+      transcript: const [
+        TranscriptEntry(
+          original: 'Fire in the hole!',
+          english: 'Fire in the hole!',
+          translated: '\u041e\u0433\u043e\u043d\u044c \u0432 \u0434\u044b\u0440\u0443!',
+          latency: Duration(milliseconds: 900),
+        ),
+      ],
+    );
+    // Taller than the usual test window: the badge and the button sit under
+    // the bubble, and a short one puts them past the bottom edge.
+    await pumpDashboard(tester, cubits, const Size(1280, 1000));
+
+    await tester.tap(find.byKey(const ValueKey('transcript-correct-Fire in the hole!')));
+    await tester.pumpAndSettle();
+    // Opened on what was said, so a correction is a word changed rather than
+    // a line retyped.
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('transcript-correction')))
+          .controller
+          ?.text,
+      '\u041e\u0433\u043e\u043d\u044c \u0432 \u0434\u044b\u0440\u0443!',
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('transcript-correction')),
+      '\u041b\u043e\u0436\u0438\u0441\u044c!',
+    );
+    await tester.tap(find.text('\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c'));
+    await tester.pumpAndSettle();
+
+    final written = cubits.glossary.state.glossary.match(
+      GlossaryKind.phrase,
+      'Fire in the hole!',
+    );
+    expect(written?.reading, '\u041b\u043e\u0436\u0438\u0441\u044c!');
+  });
+
+  testWidgets('offers no correction for a line that was never translated', (tester) async {
+    final cubits = stage(
+      buildCubits(),
+      transcript: const [
+        TranscriptEntry(
+          original: '',
+          english: '',
+          translated: '\u041e\u0442\u043a\u0440\u043e\u0439 \u0434\u0432\u0435\u0440\u044c.',
+          latency: Duration(milliseconds: 300),
+        ),
+      ],
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
+
+    expect(find.byKey(const ValueKey('transcript-correct-')), findsNothing);
   });
 
   testWidgets('clears the transcript on request', (tester) async {

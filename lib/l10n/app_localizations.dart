@@ -237,6 +237,24 @@ abstract class AppLocalizations {
   /// **'СЛОВАРЬ ИГРЫ'**
   String get headerGlossary;
 
+  /// No description provided for @transcriptCorrect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записать в словарь'**
+  String get transcriptCorrect;
+
+  /// No description provided for @transcriptCorrectTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как говорить эту реплику'**
+  String get transcriptCorrectTitle;
+
+  /// No description provided for @transcriptCorrectNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ляжет в «Словарь» как фраза и будет звучать так всякий раз, когда игра скажет эту строку — в любой игре и с ближайшей реплики, а не со следующего запуска.'**
+  String get transcriptCorrectNote;
+
   /// No description provided for @navGlossary.
   ///
   /// In ru, this message translates to:

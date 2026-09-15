@@ -14,6 +14,7 @@ import '../../domain/app_release.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
+import '../../domain/glossary.dart';
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
 import '../../domain/model_selection.dart';
@@ -998,6 +999,18 @@ class _TranscriptCard extends StatelessWidget {
                       itemBuilder: (context, index) => _TranscriptBubble(
                         entry: pipeline.transcript[index],
                         characters: characters.characters,
+                        // A line is corrected where it was heard going
+                        // wrong, which is the only moment the player knows
+                        // it did. The glossary screen is then the list of
+                        // what was collected rather than a place to
+                        // remember to visit.
+                        onCorrect: (entry, reading) => cubits.glossary.write(
+                          GlossaryEntry(
+                            kind: GlossaryKind.phrase,
+                            source: entry.english,
+                            reading: reading,
+                          ),
+                        ),
                       ),
                     ),
             ),
@@ -2435,7 +2448,7 @@ class _ModuleLabel extends StatelessWidget {
 /// icon: the text on the dark signal surface, and the time it took beside the
 /// tail on the orange accent.
 class _TranscriptBubble extends StatelessWidget {
-  const _TranscriptBubble({required this.entry, this.characters = const []});
+  const _TranscriptBubble({required this.entry, this.characters = const [], this.onCorrect});
 
   static const double _tailInset = 28;
   static const Size _tailSize = Size(26, 14);
@@ -2445,6 +2458,10 @@ class _TranscriptBubble extends StatelessWidget {
   /// The cast, so a line matched to a card is named rather than numbered,
   /// and so a line read by another card can say whose voice it was.
   final List<Character> characters;
+
+  /// What to do with a correction the player writes for this line. Null
+  /// where there is nothing to write it into.
+  final void Function(TranscriptEntry entry, String reading)? onCorrect;
 
   @override
   Widget build(BuildContext context) {
@@ -2539,7 +2556,120 @@ class _TranscriptBubble extends StatelessWidget {
               padding: const EdgeInsets.only(top: 6),
               child: _LatencyBadge(milliseconds: entry.latency.inMilliseconds),
             ),
+            // Only where there is an English line to file the correction
+            // under: what came back in the dubbing language was never
+            // translated, and has nothing for the glossary to match on.
+            if (onCorrect != null && entry.english.trim().isNotEmpty)
+              _CorrectLineButton(entry: entry, onCorrect: onCorrect!),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Writes this line into the glossary as a phrase, with whatever the player
+/// would rather have heard.
+class _CorrectLineButton extends StatelessWidget {
+  const _CorrectLineButton({required this.entry, required this.onCorrect});
+
+  final TranscriptEntry entry;
+  final void Function(TranscriptEntry entry, String reading) onCorrect;
+
+  Future<void> _ask(BuildContext context) async {
+    final written = await showDialog<String>(
+      context: context,
+      builder: (context) => _CorrectLineDialog(entry: entry),
+    );
+    final said = written?.trim() ?? '';
+    if (said.isEmpty || said == entry.translated) return;
+    onCorrect(entry, said);
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 2, left: 2),
+    child: IconButton(
+      key: ValueKey('transcript-correct-${entry.english}'),
+      iconSize: 16,
+      visualDensity: VisualDensity.compact,
+      tooltip: AppLocalizations.of(context).transcriptCorrect,
+      icon: const Icon(Icons.edit_note_rounded, color: LoreDubPalette.mutedInk),
+      onPressed: () => _ask(context),
+    ),
+  );
+}
+
+/// The correction itself.
+///
+/// A widget of its own rather than a controller held by the button: the
+/// field outlives the call that opened it -- the dialog is still animating
+/// out when [showDialog] returns -- so whoever owns it has to be disposed by
+/// the framework rather than by hand.
+class _CorrectLineDialog extends StatefulWidget {
+  const _CorrectLineDialog({required this.entry});
+
+  final TranscriptEntry entry;
+
+  @override
+  State<_CorrectLineDialog> createState() => _CorrectLineDialogState();
+}
+
+class _CorrectLineDialogState extends State<_CorrectLineDialog> {
+  // Opened on what was said, not on an empty field: a correction is usually
+  // a word of the line changed rather than a line rewritten.
+  late final _reading = TextEditingController(text: widget.entry.translated);
+
+  @override
+  void dispose() {
+    _reading.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.transcriptCorrectTitle),
+      content: SizedBox(
+        // A dialog gives its content the width it asks for and no height at
+        // all, so a field free to grow would stretch the column past the
+        // screen. Three lines is a long line of dialogue and then some.
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.entry.english,
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              key: const ValueKey('transcript-correction'),
+              controller: _reading,
+              autofocus: true,
+              minLines: 1,
+              maxLines: 3,
+              decoration: InputDecoration(labelText: l10n.glossaryPhraseReading),
+              onSubmitted: (value) => Navigator.of(context).pop(value),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              l10n.transcriptCorrectNote,
+              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.charactersDeleteCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_reading.text),
+          child: Text(l10n.save),
         ),
       ],
     );

@@ -264,6 +264,12 @@ and declines it properly ("Megaton is gone." became "Мегатонна боль
 "leaving Rapture" became "из Раптуры") -- but deciding that a rendering is
 wrong means telling a mangled form from a declined one, and that needs
 morphology this has none of. Matching ignores case and spacing on both kinds.
+An entry is usually written from the transcript rather than
+on this screen: a line is only known to have gone wrong the moment it is
+heard, and `_CorrectLineButton` beside its latency badge on Эфир opens on
+what was said with `TranscriptEntry.english` as the source, so the screen is
+the list of what was collected rather than a place to remember to visit. It
+is offered only where that English is there to file the correction under.
 `AppRepository.saveGlossary` writes the file and then tells a running worker
 (`{"glossary": {...}}`, the same shape the file holds, so the worker has one
 parser): the player writes an entry down because they just heard the line go

@@ -86,6 +86,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get headerGlossary => 'GAME GLOSSARY';
 
   @override
+  String get transcriptCorrect => 'Write into the glossary';
+
+  @override
+  String get transcriptCorrectTitle => 'How to say this line';
+
+  @override
+  String get transcriptCorrectNote =>
+      'It goes into the Glossary as a phrase and is said this way whenever the game says this line -- in any game, and from the next line rather than the next start.';
+
+  @override
   String get navGlossary => 'Glossary';
 
   @override

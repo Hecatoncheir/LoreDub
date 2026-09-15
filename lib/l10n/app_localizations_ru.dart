@@ -86,6 +86,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get headerGlossary => 'СЛОВАРЬ ИГРЫ';
 
   @override
+  String get transcriptCorrect => 'Записать в словарь';
+
+  @override
+  String get transcriptCorrectTitle => 'Как говорить эту реплику';
+
+  @override
+  String get transcriptCorrectNote =>
+      'Ляжет в «Словарь» как фраза и будет звучать так всякий раз, когда игра скажет эту строку — в любой игре и с ближайшей реплики, а не со следующего запуска.';
+
+  @override
   String get navGlossary => 'Словарь';
 
   @override
