@@ -32,8 +32,11 @@ class Win32Window {
   // |origin| and |size|. New windows are created on the default monitor. Window
   // sizes are specified to the OS in physical pixels, hence to ensure a
   // consistent size this function will scale the inputted width and height as
-  // as appropriate for the default monitor. The window is invisible until
-  // |Show| is called. Returns true if the window was created successfully.
+  // as appropriate for the default monitor. |origin| and |size| are the
+  // fallback: a window that was closed once opens at the frame saved then,
+  // which is in physical pixels already and is scaled no second time. The
+  // window is invisible until |Show| is called. Returns true if the window was
+  // created successfully.
   bool Create(const std::wstring& title, const Point& origin, const Size& size);
 
   // Show the current window. Returns true if the window was successfully shown.
@@ -91,6 +94,9 @@ class Win32Window {
   static void UpdateTheme(HWND const window);
 
   bool quit_on_close_ = false;
+
+  // Whether |Show| opens the window maximized, as it was left on close.
+  bool maximized_ = false;
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;

@@ -29,6 +29,14 @@ RestartApplications=no
 [Files]
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[Registry]
+; Where the runner remembers the window's frame (windows/runner/
+; window_placement.cpp), the one thing LoreDub keeps outside its own
+; directories. It is not created here: the application writes it when it is
+; first closed, and an uninstall takes it away again.
+Root: HKCU; Subkey: "Software\LoreDub"; Flags: dontcreatekey uninsdeletekeyifempty
+Root: HKCU; Subkey: "Software\LoreDub\Window"; Flags: dontcreatekey uninsdeletekey
+
 [Icons]
 ; AppUserModelID is what Windows matches a desktop application's toasts
 ; against. Without a Start Menu shortcut carrying it, the update notification

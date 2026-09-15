@@ -3,7 +3,10 @@
 #include <dwmapi.h>
 #include <flutter_windows.h>
 
+#include <optional>
+
 #include "resource.h"
+#include "window_placement.h"
 
 namespace {
 
@@ -25,6 +28,12 @@ constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 constexpr const wchar_t kGetPreferredBrightnessRegKey[] =
   L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
 constexpr const wchar_t kGetPreferredBrightnessRegValue[] = L"AppsUseLightTheme";
+
+/// The smallest the dashboard is laid out for. A frame read back from a
+/// previous run is held to it as well, whatever wrote it: neither CreateWindow
+/// nor the registry asks WM_GETMINMAXINFO anything.
+constexpr LONG kMinimumWidth = 960;
+constexpr LONG kMinimumHeight = 640;
 
 // The number of Win32Window objects that currently exist.
 static int g_active_window_count = 0;
@@ -128,17 +137,39 @@ bool Win32Window::Create(const std::wstring& title,
   const wchar_t* window_class =
       WindowClassRegistrar::GetInstance()->GetWindowClass();
 
-  const POINT target_point = {static_cast<LONG>(origin.x),
-                              static_cast<LONG>(origin.y)};
-  HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
-  UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
-  double scale_factor = dpi / 96.0;
+  // A window sized once opens that size again. The frame saved on close is
+  // already in physical pixels, so it goes to CreateWindow as it stands rather
+  // than through the scaling |origin| and |size| ask for -- and the window is
+  // created there outright rather than moved there afterwards, since a move
+  // onto a monitor of another DPI brings a WM_DPICHANGED that would scale the
+  // remembered frame a second time, growing the window on every start.
+  RECT frame = {};
+  const std::optional<WindowFrame> saved = LoadWindowFrame();
+  if (saved) {
+    frame = saved->bounds;
+    if (frame.right - frame.left < kMinimumWidth) {
+      frame.right = frame.left + kMinimumWidth;
+    }
+    if (frame.bottom - frame.top < kMinimumHeight) {
+      frame.bottom = frame.top + kMinimumHeight;
+    }
+    maximized_ = saved->maximized;
+  } else {
+    const POINT target_point = {static_cast<LONG>(origin.x),
+                                static_cast<LONG>(origin.y)};
+    HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
+    UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
+    double scale_factor = dpi / 96.0;
+    frame.left = Scale(origin.x, scale_factor);
+    frame.top = Scale(origin.y, scale_factor);
+    frame.right = frame.left + Scale(size.width, scale_factor);
+    frame.bottom = frame.top + Scale(size.height, scale_factor);
+  }
 
   HWND window = CreateWindow(
-      window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
-      nullptr, nullptr, GetModuleHandle(nullptr), this);
+      window_class, title.c_str(), WS_OVERLAPPEDWINDOW, frame.left, frame.top,
+      frame.right - frame.left, frame.bottom - frame.top, nullptr, nullptr,
+      GetModuleHandle(nullptr), this);
 
   if (!window) {
     return false;
@@ -150,7 +181,10 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  // Filling the screen is a size too: a window closed maximized opens
+  // maximized rather than at the frame it would be restored to.
+  return ShowWindow(window_handle_,
+                    maximized_ ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
 }
 
 // static
@@ -181,11 +215,18 @@ Win32Window::MessageHandler(HWND hwnd,
   switch (message) {
     case WM_GETMINMAXINFO: {
       auto* min_max_info = reinterpret_cast<MINMAXINFO*>(lparam);
-      min_max_info->ptMinTrackSize.x = 960;
-      min_max_info->ptMinTrackSize.y = 640;
+      min_max_info->ptMinTrackSize.x = kMinimumWidth;
+      min_max_info->ptMinTrackSize.y = kMinimumHeight;
       return 0;
     }
+    case WM_EXITSIZEMOVE:
+      // Closing is not the only way out: the update installs itself by ending
+      // the process outright, and no window message comes before that.
+      SaveWindowFrame(hwnd);
+      break;
+
     case WM_DESTROY:
+      SaveWindowFrame(hwnd);
       window_handle_ = nullptr;
       Destroy();
       if (quit_on_close_) {
