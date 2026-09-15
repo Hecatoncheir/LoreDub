@@ -230,6 +230,56 @@ final modelCatalog = <ModelPackage>[
       _female('xenia'),
     ],
   ),
+  // The same Silero under MIT instead of CC BY-NC-SA, which is the whole
+  // reason it is here: every voice of the CIS package also reads Russian, so
+  // this is the Russian voice a build that earns money could carry. The
+  // `nostress` build is the one that fits the pipeline -- plain
+  // `v5_cis_base` expects the stress marked in the text (`в н+едрах`), and
+  // what arrives here is Marian's output, unmarked.
+  //
+  // The voices are the package's own CIS speakers reading Russian, so
+  // whatever accent they carry is theirs. The genders are measured the way
+  // the others are; `ru_albina`, `ru_gamat` and `ru_igor` are left out
+  // rather than guessed, sitting between the thresholds at 159 to 171 Hz
+  // over four phrases each -- one phrase alone had put `ru_igor` on the
+  // women's side at 180.
+  _silero(
+    id: 'silero-ru-cis-v5',
+    version: 'v5 cis base',
+    language: 'ru',
+    fileName: 'v5_cis_base_nostress.pt',
+    directory: 'ru',
+    byteSize: 91685438,
+    speaker: 'ru_ekaterina',
+    voices: [
+      _female('ru_aigul'),
+      _male('ru_alexandr'),
+      _female('ru_alfia'),
+      _female('ru_alfia2'),
+      _male('ru_bogdan'),
+      _male('ru_dmitriy'),
+      _female('ru_ekaterina'),
+      _female('ru_vika'),
+      _female('ru_karina'),
+      _male('ru_kejilgan'),
+      _female('ru_kermen'),
+      _male('ru_marat'),
+      _male('ru_miyau'),
+      _female('ru_nurgul'),
+      _female('ru_oksana'),
+      _female('ru_onaoy'),
+      _female('ru_ramilia'),
+      _male('ru_roman'),
+      _male('ru_safarhuja'),
+      _female('ru_saida'),
+      _male('ru_sibday'),
+      _female('ru_zara'),
+      _female('ru_zhadyra'),
+      _female('ru_zhazira'),
+      _female('ru_zinaida'),
+      _male('ru_eduard'),
+    ],
+  ),
   _silero(
     id: 'silero-de-v3',
     version: 'v3',
