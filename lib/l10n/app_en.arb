@@ -1122,6 +1122,8 @@
   "pipelineCutRoute": "Take the original stream out",
   "pipelineCutCast": "Take the cast out of the mix",
   "pipelineCutHeard": "Stop counting this one among the voices of the game",
+  "pipelineCutTranslation": "Take the translator out — the dubbing becomes English",
+  "pipelineCutTranslationBack": "Put the translator back in the line",
   "pipelineNodeSource": "Original stream",
   "pipelineNodeRecognition": "Whisper",
   "pipelineNodeTranslation": "Translation",

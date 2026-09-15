@@ -550,9 +550,12 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
     );
   }
 
-  /// The badge that cuts a substitution, sitting on the curve it cuts. Only
-  /// the links between characters carry one: the route is never cut, it is
-  /// drawn elsewhere.
+  /// The badge that cuts a line, sitting on the curve it cuts. Every line
+  /// that means something carries one: what feeds the pipeline, the
+  /// translator, the cast in the mix, who reads whom, and the note that the
+  /// game speaks a card. The lines between stages that say nothing on their
+  /// own -- the voice into the mix, the mix into the output -- carry none,
+  /// there being nothing to answer with.
   List<Widget> _cutButtons(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final buttons = <Widget>[];
@@ -567,7 +570,15 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
       final cast = link.to.socket == PipelineSocket.mixCast;
       // The dashed line that counts a card among the voices of the game.
       final heard = link.to.socket == PipelineSocket.characterIn;
-      if (!route && !reader && !cast && !heard) continue;
+      // Either half of the translator's line: cutting it dubs into English,
+      // which is the language whisper hands over anyway.
+      final translation =
+          link.to.socket == PipelineSocket.translationIn ||
+          link.from.socket == PipelineSocket.translatedText;
+      // The line that steps over the translator, whose cut puts it back.
+      final stepped =
+          link.from.socket == PipelineSocket.speechText && link.to.socket == PipelineSocket.voiceIn;
+      if (!route && !reader && !cast && !heard && !translation && !stepped) continue;
       final from = _state.graph.node(link.from.nodeId);
       final to = _state.graph.node(link.to.nodeId);
       if (from == null || to == null) continue;
@@ -582,14 +593,17 @@ class _PipelineCanvasState extends State<PipelineCanvas> {
           width: 30,
           height: 30,
           child: Tooltip(
-            // Four kinds of line come apart here and they part with
-            // different things: one card takes its own part back, a card
-            // stops being counted among the voices of the game, the cast
-            // leaves the mix, the pipeline loses what feeds it.
-            message: switch ((route, cast, heard)) {
-              (true, _, _) => l10n.pipelineCutRoute,
-              (_, true, _) => l10n.pipelineCutCast,
-              (_, _, true) => l10n.pipelineCutHeard,
+            // Every kind of line parts with something of its own: the
+            // pipeline loses what feeds it, the translator leaves the line
+            // or comes back into it, the cast leaves the mix, a card stops
+            // being counted among the voices of the game, or one card takes
+            // its own part back.
+            message: switch ((route, cast, heard, translation, stepped)) {
+              (true, _, _, _, _) => l10n.pipelineCutRoute,
+              (_, true, _, _, _) => l10n.pipelineCutCast,
+              (_, _, true, _, _) => l10n.pipelineCutHeard,
+              (_, _, _, true, _) => l10n.pipelineCutTranslation,
+              (_, _, _, _, true) => l10n.pipelineCutTranslationBack,
               _ => l10n.pipelineCutLink,
             },
             child: Material(

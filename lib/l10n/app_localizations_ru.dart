@@ -1675,6 +1675,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineCutHeard => 'Не слышать этого персонажа в игре';
 
   @override
+  String get pipelineCutTranslation => 'Убрать перевод — озвучка пойдёт на английском';
+
+  @override
+  String get pipelineCutTranslationBack => 'Вернуть перевод в линию';
+
+  @override
   String get pipelineNodeSource => 'Оригинальный поток';
 
   @override

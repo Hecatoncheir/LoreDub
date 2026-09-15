@@ -2871,6 +2871,18 @@ abstract class AppLocalizations {
   /// **'Не слышать этого персонажа в игре'**
   String get pipelineCutHeard;
 
+  /// No description provided for @pipelineCutTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать перевод — озвучка пойдёт на английском'**
+  String get pipelineCutTranslation;
+
+  /// No description provided for @pipelineCutTranslationBack.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вернуть перевод в линию'**
+  String get pipelineCutTranslationBack;
+
   /// No description provided for @pipelineNodeSource.
   ///
   /// In ru, this message translates to:

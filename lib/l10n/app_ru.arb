@@ -1122,6 +1122,8 @@
   "pipelineCutRoute": "Отсоединить оригинальный поток",
   "pipelineCutCast": "Убрать персонажей из сведения",
   "pipelineCutHeard": "Не слышать этого персонажа в игре",
+  "pipelineCutTranslation": "Убрать перевод — озвучка пойдёт на английском",
+  "pipelineCutTranslationBack": "Вернуть перевод в линию",
   "pipelineNodeSource": "Оригинальный поток",
   "pipelineNodeRecognition": "Whisper",
   "pipelineNodeTranslation": "Перевод",

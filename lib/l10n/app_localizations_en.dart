@@ -1666,6 +1666,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineCutHeard => 'Stop counting this one among the voices of the game';
 
   @override
+  String get pipelineCutTranslation => 'Take the translator out — the dubbing becomes English';
+
+  @override
+  String get pipelineCutTranslationBack => 'Put the translator back in the line';
+
+  @override
   String get pipelineNodeSource => 'Original stream';
 
   @override
