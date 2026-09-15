@@ -57,12 +57,10 @@ class PipelineInspector extends StatelessWidget {
     final paint = NodePaint.of(node);
     // The whole height of the canvas, against its right edge: the panel is
     // a wall the scheme is worked against rather than a card lying on it.
-    // Its right corners are the canvas card's own: it stands against that
-    // edge rather than inside it, so nothing else rounds them.
-    const corners = BorderRadius.only(
-      topRight: Radius.circular(12),
-      bottomRight: Radius.circular(12),
-    );
+    // Its own corners are square. It is drawn inside the card the scheme is
+    // drawn in, which clips: that frame rounds the two corners that show and
+    // cuts the panel off at the edge while it is still coming out from under
+    // it, so the radius is written once, where the card's shape is.
     return Theme(
       data: buildLoreDubPanelTheme(paint),
       // Under the theme rather than beside it: what is written here reads
@@ -74,33 +72,29 @@ class PipelineInspector extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: paint.body,
-              borderRadius: corners,
               // No line down the left: the shadow it casts on the canvas is
               // the edge, and a rule as well read as a second one.
               boxShadow: const [
                 BoxShadow(color: Color(0x22171717), blurRadius: 24, offset: Offset(-8, 0)),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: corners,
-              child: Material(
-                type: MaterialType.transparency,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _header(context, l10n, paint),
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-                        children: [
-                          if (facts.running && node.kind != PipelineNodeKind.character)
-                            _Note(text: l10n.pipelineLockedNote),
-                          ..._fields(context, l10n),
-                        ],
-                      ),
+            child: Material(
+              type: MaterialType.transparency,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _header(context, l10n, paint),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                      children: [
+                        if (facts.running && node.kind != PipelineNodeKind.character)
+                          _Note(text: l10n.pipelineLockedNote),
+                        ..._fields(context, l10n),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

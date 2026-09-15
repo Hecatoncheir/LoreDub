@@ -2923,6 +2923,41 @@ void main() {
       expect(find.textContaining('Whisper отдаёт английский текст'), findsOneWidget);
     });
 
+    testWidgets('slides the panel in from under the frame of the canvas', (tester) async {
+      // The panel stood beside the card the scheme is drawn in, and came in
+      // from a place to the right of that card which the screen has not got.
+      // It is inside the card now, and the card clips: halfway in it is cut
+      // off at the frame rather than lying over the page beyond it. It is
+      // also moving by then — a panel opening on a canvas with none on it
+      // used to wait out the half of the run kept for the one it replaces,
+      // and that wait read as a click that had missed the node.
+      await pumpGraph(tester);
+
+      await tester.tap(find.text('Перевод').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+
+      final frame = find
+          .ancestor(of: find.byType(PipelineCanvas), matching: find.byType(Card))
+          .first;
+      expect(
+        find.descendant(of: frame, matching: find.byType(PipelineInspector)),
+        findsOneWidget,
+        reason: 'the panel is drawn inside the card that clips the canvas',
+      );
+      final edge = tester.getRect(frame).right;
+      final onItsWay = tester.getRect(find.byType(PipelineInspector));
+      expect(onItsWay.left, lessThan(edge), reason: 'part of the panel is out');
+      expect(onItsWay.right, greaterThan(edge), reason: 'and the rest is under the frame');
+
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byType(PipelineInspector)).right,
+        moreOrLessEquals(edge, epsilon: 0.01),
+        reason: 'it comes to rest against that same edge',
+      );
+    });
+
     testWidgets('never offers a card the voice of one it already reads', (tester) async {
       // The canvas refuses that line, but the card's own panel used to list
       // the whole cast, so the two could be set to read each other there.
