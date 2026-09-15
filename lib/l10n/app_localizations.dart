@@ -339,6 +339,30 @@ abstract class AppLocalizations {
   /// **'Как его говорить'**
   String get glossaryNameReading;
 
+  /// No description provided for @glossaryWords.
+  ///
+  /// In ru, this message translates to:
+  /// **'СЛОВА'**
+  String get glossaryWords;
+
+  /// No description provided for @glossaryWordsNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слово из уже переведённой реплики, заменённое на ваше — единственная запись, которая смотрит на язык озвучки, а не на английский. Модель обычно переводит имя одинаково и правильно склоняет: на восьми проверенных строках Vault семь раз стал «Убежищем», а на восьмой — «Хранилищем», и достать до этого больше нечем. Меняется слово целиком: перенос окончания на другое слово давал «Восторге» и «Восторгя», так что склонённую форму запись пропустит, зато несуществующую не придумает. Короткое обиходное слово сюда лучше не писать: оно встретится там, где вы его не ждали.'**
+  String get glossaryWordsNote;
+
+  /// No description provided for @glossaryWordSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как говорится сейчас'**
+  String get glossaryWordSource;
+
+  /// No description provided for @glossaryWordReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как говорить'**
+  String get glossaryWordReading;
+
   /// No description provided for @glossaryEmpty.
   ///
   /// In ru, this message translates to:

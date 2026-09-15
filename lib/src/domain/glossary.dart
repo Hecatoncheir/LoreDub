@@ -18,6 +18,19 @@ enum GlossaryKind {
   /// model is not wrong about "Fire in the hole!" so much as ignorant of the
   /// game, and no better model fixes that.
   phrase,
+
+  /// A word of what was said, replaced by the player's. This is the one kind
+  /// matched on the dubbing language rather than on English: the model is
+  /// mostly steady about a name it renders -- over eight frames "Vault" came
+  /// back as "Убежище" seven times, declined correctly each time -- but the
+  /// eighth was "Хранилище", and nothing else here can reach that. The whole
+  /// word is matched and nothing less: swapping a stem and carrying the
+  /// ending over was measured turning "Восхищение сгорит" into "Восторге
+  /// сгорит" and "Ворота Восхищения" into "Ворота Восторгя", because two
+  /// words that mean the same thing need not decline the same way. Missing a
+  /// declined form is a line said the way the model said it; inventing one
+  /// is a word that does not exist, spoken aloud.
+  word,
 }
 
 /// One thing the player has said about their games.
@@ -54,7 +67,12 @@ class GlossaryEntry {
     final reading = value['reading'];
     if (source is! String || reading is! String) return null;
     final entry = GlossaryEntry(
-      kind: value['kind'] == GlossaryKind.phrase.name ? GlossaryKind.phrase : GlossaryKind.name,
+      // By name rather than by a pair of questions, so a kind added later is
+      // read back as itself rather than quietly as a name.
+      kind: GlossaryKind.values.firstWhere(
+        (kind) => kind.name == value['kind'],
+        orElse: () => GlossaryKind.name,
+      ),
       source: source,
       reading: reading,
     );

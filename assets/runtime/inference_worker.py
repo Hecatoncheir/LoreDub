@@ -475,6 +475,7 @@ class Glossary:
     def __init__(self, path=""):
         self.names = {}
         self.phrases = {}
+        self.words = []
         if not path:
             return
         try:
@@ -491,15 +492,22 @@ class Glossary:
     def replace(self, written):
         """Reads what the interface keeps, which is also what it sends when
         the player edits an entry while a session runs."""
-        names, phrases = {}, {}
+        names, phrases, words = {}, {}, []
         for entry in (written or {}).get("entries") or []:
             source = str(entry.get("source") or "").strip()
             reading = str(entry.get("reading") or "").strip()
             if not source or not reading:
                 continue
-            kept = phrases if entry.get("kind") == "phrase" else names
-            kept[self._key(source)] = reading
-        self.names, self.phrases = names, phrases
+            kind = entry.get("kind")
+            if kind == "word":
+                # Compiled once: this runs over every line, and a word is
+                # looked for whether or not it is there.
+                words.append((re.compile(rf"\b{re.escape(source)}\b", re.IGNORECASE), reading))
+            elif kind == "phrase":
+                phrases[self._key(source)] = reading
+            else:
+                names[self._key(source)] = reading
+        self.names, self.phrases, self.words = names, phrases, words
 
     def reading(self, word):
         """How the player says this Latin word, or None."""
@@ -509,8 +517,25 @@ class Glossary:
         """The player's own translation of this sentence, or None."""
         return self.phrases.get(self._key(sentence))
 
+    def worded(self, text):
+        """[text] with the words the player renamed said their way.
+
+        The whole word and nothing less, with the capital it was found under
+        kept: a word at the head of a sentence is still at the head of it.
+        """
+        for pattern, reading in self.words:
+            text = pattern.sub(lambda found: _like(reading, found.group(0)), text)
+        return text
+
     def __len__(self):
-        return len(self.names) + len(self.phrases)
+        return len(self.names) + len(self.phrases) + len(self.words)
+
+
+def _like(word, found):
+    """[word] written with the capital [found] carried."""
+    if found[:1].isupper():
+        return word[:1].upper() + word[1:]
+    return word[:1].lower() + word[1:]
 
 
 # Games repeat themselves -- "Take cover!", "Reloading!", the quest line read
@@ -1374,6 +1399,10 @@ def main():
                     translated = readable(translated, text, translate, glossary)
             else:
                 translated = text
+            # Whatever is about to be said, translated here or read off the
+            # screen already in the dubbing language: these are words of that
+            # language either way.
+            translated = glossary.worded(translated)
             # Who is speaking is settled first: the character decides both the
             # voice they are read in and the timbre laid over it.
             heard_kind, heard_index, fingerprint = identify(request)

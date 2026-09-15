@@ -109,6 +109,20 @@ void main() {
     expect(written.match(GlossaryKind.phrase, 'FIRE IN THE HOLE!')?.reading, 'Граната!');
   });
 
+  test('keeps a word of the dubbing beside the two matched on English', () async {
+    const spoken = GlossaryEntry(
+      kind: GlossaryKind.word,
+      source: 'Хранилище',
+      reading: 'Убежище',
+    );
+    await service.save(const Glossary(entries: [grenade, rapture, spoken]));
+
+    final stored = await service.load();
+    expect(stored.of(GlossaryKind.word).single, spoken);
+    expect(stored.of(GlossaryKind.name).single, rapture);
+    expect(stored.match(GlossaryKind.word, 'хранилище')?.reading, 'Убежище');
+  });
+
   test('a name and a phrase of the same spelling are two entries', () {
     const spoken = GlossaryEntry(
       kind: GlossaryKind.phrase,

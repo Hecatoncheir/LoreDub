@@ -243,8 +243,8 @@ The Glossary screen ("Словарь", `DashboardSection.glossary`, `GlossaryCub
 `glossary_screen.dart`) is where the player writes down what no better model
 would know. `GlossaryService` keeps it in one `<app support>/glossary.json`
 for every game, like the cast and unlike the per-game bank, and every session
-that translates is handed the path (`--glossary`). Two kinds, kept apart
-because they reach a line at different moments and neither can do the other's
+that translates is handed the path (`--glossary`). Three kinds, kept apart
+because they reach a line at different moments and none can do another's
 work. A `GlossaryKind.phrase` is a whole sentence with the player's own
 translation, answered before the model is asked: the model is not wrong about
 "Fire in the hole!" so much as ignorant of the game. A `GlossaryKind.name`
@@ -271,7 +271,21 @@ model translates a name it reads as a word, and differently from line to line
 -- "Vault" is "Убежище" in one line and "Хранилище" in the next,
 "Rapture" runs "Восторг", "Восхищение", "в восторге", and "Whiterun"
 reaches "Жители Белгорода". No Latin is left to hook onto, so the only
-lever the player has over it is a phrase entry on the line itself. Matching ignores case and spacing on both kinds.
+lever the player has over it is a phrase entry on the line itself. A `GlossaryKind.word` is the third and the only one matched on the dubbing
+language rather than on English: it replaces a word of what was said, after
+the translation and whether or not there was one, which is how the screen's
+own text is reached as well. It exists for the case nothing else can touch --
+the model's rendering wandering between lines -- and that case is rarer than
+one small sample suggested: over eight frames "Vault" came back as "Убежище"
+seven times, declined correctly each time, and "Хранилище" once; "Whiterun"
+ran seven to one the same way. The whole word is replaced and nothing less.
+Swapping a stem and carrying the match's ending onto it was measured and
+rejected: it turns "Восхищение сгорит" into "Восторге сгорит" and
+"Ворота Восхищения" into "Ворота Восторгя", two words that mean the
+same thing not having to decline the same way. Passing a declined form by
+leaves the line as the model said it; inventing one puts a word that does not
+exist into the player's ears. Matching ignores case and spacing on all three,
+and a word entry carries the capital it was found under.
 Export and import are `file_selector` dialogs over that same
 file, so a glossary of a game is passed on whole and read back merged by what
 an entry is filed under -- the same file imported twice leaves one of each,

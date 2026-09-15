@@ -144,6 +144,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get glossaryNameReading => 'How to say it';
 
   @override
+  String get glossaryWords => 'WORDS';
+
+  @override
+  String get glossaryWordsNote =>
+      'A word of a line already translated, replaced by yours -- the one entry matched on the dubbing language rather than on English. The model is usually steady about a name and declines it correctly: over eight lines measured, Vault came back as «Убежище» seven times and «Хранилище» once, and nothing else here reaches that eighth line. The whole word is replaced and nothing less: carrying an ending over to another word was measured producing «Восторге» and «Восторгя», so an entry passes a declined form by rather than invent one that does not exist. Do not write a short everyday word here: it will turn up where you did not expect it.';
+
+  @override
+  String get glossaryWordSource => 'As it is said now';
+
+  @override
+  String get glossaryWordReading => 'How to say it';
+
+  @override
   String get glossaryEmpty => 'Nothing here yet.';
 
   @override

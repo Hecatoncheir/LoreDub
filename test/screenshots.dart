@@ -133,6 +133,11 @@ const glossaryRu = Glossary(
       source: 'Hollowvale',
       reading: '\u0425\u043e\u043b\u043b\u043e\u0443\u0432\u0435\u0439\u043b',
     ),
+    GlossaryEntry(
+      kind: GlossaryKind.word,
+      source: '\u0425\u0440\u0430\u043d\u0438\u043b\u0438\u0449\u0435',
+      reading: '\u0423\u0431\u0435\u0436\u0438\u0449\u0435',
+    ),
   ],
 );
 
@@ -149,6 +154,7 @@ const glossaryEn = Glossary(
       reading: 'Behind you!',
     ),
     GlossaryEntry(kind: GlossaryKind.name, source: 'Hollowvale', reading: 'Hollow Vale'),
+    GlossaryEntry(kind: GlossaryKind.word, source: 'Vault', reading: 'Shelter'),
   ],
 );
 
