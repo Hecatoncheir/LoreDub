@@ -102,6 +102,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get titleGlossary => 'Что дубляж знать не может';
 
   @override
+  String get glossaryExport => 'Выгрузить';
+
+  @override
+  String get glossaryImport => 'Импорт';
+
+  @override
+  String failureGlossaryExportFailed(String detail) {
+    return 'Не удалось выгрузить словарь: $detail';
+  }
+
+  @override
+  String failureGlossaryImportFailed(String detail) {
+    return 'В файле $detail нет словаря';
+  }
+
+  @override
   String get glossaryPhrases => 'ФРАЗЫ';
 
   @override

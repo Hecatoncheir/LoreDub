@@ -102,6 +102,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get titleGlossary => 'What the dubbing cannot know';
 
   @override
+  String get glossaryExport => 'Export';
+
+  @override
+  String get glossaryImport => 'Import';
+
+  @override
+  String failureGlossaryExportFailed(String detail) {
+    return 'The glossary could not be exported: $detail';
+  }
+
+  @override
+  String failureGlossaryImportFailed(String detail) {
+    return 'The file $detail holds no glossary';
+  }
+
+  @override
   String get glossaryPhrases => 'PHRASES';
 
   @override

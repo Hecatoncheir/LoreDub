@@ -267,6 +267,30 @@ abstract class AppLocalizations {
   /// **'Что дубляж знать не может'**
   String get titleGlossary;
 
+  /// No description provided for @glossaryExport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выгрузить'**
+  String get glossaryExport;
+
+  /// No description provided for @glossaryImport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт'**
+  String get glossaryImport;
+
+  /// No description provided for @failureGlossaryExportFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось выгрузить словарь: {detail}'**
+  String failureGlossaryExportFailed(String detail);
+
+  /// No description provided for @failureGlossaryImportFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'В файле {detail} нет словаря'**
+  String failureGlossaryImportFailed(String detail);
+
   /// No description provided for @glossaryPhrases.
   ///
   /// In ru, this message translates to:

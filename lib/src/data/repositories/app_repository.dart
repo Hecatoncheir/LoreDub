@@ -59,6 +59,14 @@ class AppRepository {
   /// game's, so every session that translates is handed the same file.
   Future<Glossary> loadGlossary() => _glossary.load();
 
+  /// Writes the glossary where the player asked.
+  Future<void> exportGlossary(String destination, Glossary glossary) =>
+      _glossary.exportTo(destination, glossary);
+
+  /// What the files the player chose hold, for the screen to merge into what
+  /// is already written down.
+  Future<Glossary> readGlossaryFiles(List<String> sources) => _glossary.readFiles(sources);
+
   /// Keeps it, and tells a session already running: the player writes an
   /// entry because they just heard the line, and mean the next one to be
   /// said their way rather than the next session.

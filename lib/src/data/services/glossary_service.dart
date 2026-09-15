@@ -44,6 +44,44 @@ class GlossaryService {
     }
   }
 
+  /// Writes [glossary] where the player asked, as an import reads back. The
+  /// whole of it or one entry is the same file with different contents.
+  Future<void> exportTo(String destination, Glossary glossary) async {
+    try {
+      await File(destination).writeAsString(jsonEncode(glossary.toJson()), flush: true);
+    } on FileSystemException catch (error) {
+      throw LoreDubFailure(FailureCode.glossaryExportFailed, detail: error.message);
+    }
+  }
+
+  /// What the files the player chose hold, in the order they were named. A
+  /// file with nothing in it -- the wrong file, or a damaged one -- is
+  /// reported rather than passed over in silence, which is the difference
+  /// between this and [load]: one is the player asking for a file, the other
+  /// is the application opening its own.
+  Future<Glossary> readFiles(List<String> sources) async {
+    var read = Glossary.empty;
+    for (final source in sources) {
+      try {
+        final incoming = Glossary.fromJson(decodeJsonText(await File(source).readAsString()));
+        if (incoming.isEmpty) {
+          throw LoreDubFailure(
+            FailureCode.glossaryImportFailed,
+            detail: path.basename(source),
+          );
+        }
+        for (final entry in incoming.entries) {
+          read = read.keeping(entry);
+        }
+      } on FormatException {
+        throw LoreDubFailure(FailureCode.glossaryImportFailed, detail: path.basename(source));
+      } on FileSystemException {
+        throw LoreDubFailure(FailureCode.glossaryImportFailed, detail: path.basename(source));
+      }
+    }
+    return read;
+  }
+
   /// Writes it whole, renamed into place in one step so a crash mid-write
   /// leaves what was there before.
   Future<void> save(Glossary glossary) async {

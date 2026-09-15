@@ -272,7 +272,14 @@ model translates a name it reads as a word, and differently from line to line
 "Rapture" runs "Восторг", "Восхищение", "в восторге", and "Whiterun"
 reaches "Жители Белгорода". No Latin is left to hook onto, so the only
 lever the player has over it is a phrase entry on the line itself. Matching ignores case and spacing on both kinds.
-An entry is usually written from the transcript rather than
+Export and import are `file_selector` dialogs over that same
+file, so a glossary of a game is passed on whole and read back merged by what
+an entry is filed under -- the same file imported twice leaves one of each,
+and a file that disagrees wins, the player having chosen it just now. A file
+holding no entries is reported by name rather than passed over, which is the
+difference between an import and a start: one is the player naming a file,
+the other the application opening its own. An entry is usually written from
+the transcript rather than
 on this screen: a line is only known to have gone wrong the moment it is
 heard, and `_CorrectLineButton` beside its latency badge on Эфир opens on
 what was said with `TranscriptEntry.english` as the source, so the screen is

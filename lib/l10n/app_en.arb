@@ -43,6 +43,24 @@
   "transcriptCorrectNote": "It goes into the Glossary as a phrase and is said this way whenever the game says this line -- in any game, and from the next line rather than the next start.",
   "navGlossary": "Glossary",
   "titleGlossary": "What the dubbing cannot know",
+  "glossaryExport": "Export",
+  "glossaryImport": "Import",
+  "failureGlossaryExportFailed": "The glossary could not be exported: {detail}",
+  "@failureGlossaryExportFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureGlossaryImportFailed": "The file {detail} holds no glossary",
+  "@failureGlossaryImportFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryPhrases": "PHRASES",
   "glossaryPhrasesNote": "A whole line with your own translation: the answer comes from here and the model is not asked at all. This is where idioms belong -- the model is not wrong about \"Fire in the hole!\" so much as ignorant of the game. The match is on the whole sentence, and neither case nor spacing counts.",
   "glossaryPhraseSource": "The line in English",

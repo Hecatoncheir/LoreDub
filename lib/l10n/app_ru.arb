@@ -43,6 +43,24 @@
   "transcriptCorrectNote": "Ляжет в «Словарь» как фраза и будет звучать так всякий раз, когда игра скажет эту строку — в любой игре и с ближайшей реплики, а не со следующего запуска.",
   "navGlossary": "Словарь",
   "titleGlossary": "Что дубляж знать не может",
+  "glossaryExport": "Выгрузить",
+  "glossaryImport": "Импорт",
+  "failureGlossaryExportFailed": "Не удалось выгрузить словарь: {detail}",
+  "@failureGlossaryExportFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureGlossaryImportFailed": "В файле {detail} нет словаря",
+  "@failureGlossaryImportFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryPhrases": "ФРАЗЫ",
   "glossaryPhrasesNote": "Целая реплика с вашим переводом: ответ берётся отсюда, модель даже не спрашивают. Здесь место идиомам, в которых модель не ошибается, а просто не знает игры: «Fire in the hole!» она переводит как «Огонь в дыру!». Сравнение идёт по предложению целиком, без оглядки на регистр и пробелы.",
   "glossaryPhraseSource": "Реплика по-английски",

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -23,6 +24,25 @@ class GlossaryPanel extends StatelessWidget {
 
   final DashboardCubits cubits;
 
+  static const _json = [
+    XTypeGroup(label: 'LoreDub', extensions: ['json']),
+  ];
+
+  Future<void> _export() async {
+    final location = await getSaveLocation(
+      suggestedName: 'loredub-glossary.json',
+      acceptedTypeGroups: _json,
+    );
+    if (location == null) return;
+    await cubits.glossary.export(location.path);
+  }
+
+  Future<void> _import() async {
+    final chosen = await openFiles(acceptedTypeGroups: _json);
+    if (chosen.isEmpty) return;
+    await cubits.glossary.import([for (final file in chosen) file.path]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -33,6 +53,31 @@ class GlossaryPanel extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
+            // Over both lists rather than beside either: one file holds them
+            // together, and a glossary of a game is worth passing on whole.
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    key: const ValueKey('glossary-import'),
+                    onPressed: _import,
+                    icon: const Icon(Icons.file_download_outlined, size: 18),
+                    label: Text(l10n.glossaryImport),
+                    style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                  ),
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    key: const ValueKey('glossary-export'),
+                    onPressed: state.glossary.isEmpty ? null : _export,
+                    icon: const Icon(Icons.file_upload_outlined, size: 18),
+                    label: Text(l10n.glossaryExport),
+                    style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                  ),
+                ],
+              ),
+            ),
             _GlossarySection(
               number: '01',
               label: l10n.glossaryPhrases,
@@ -178,19 +223,13 @@ class _EntryRowState extends State<_EntryRow> {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // The source is shown rather than edited: it is what the entry is
         // filed under, and editing it in place would silently found a second
         // entry while the first went on answering.
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 14),
-            child: Text(widget.entry.source, style: const TextStyle(fontSize: 14)),
-          ),
-        ),
+        Expanded(child: Text(widget.entry.source, style: const TextStyle(fontSize: 14))),
         const Padding(
-          padding: EdgeInsets.only(top: 14, left: 8, right: 8),
+          padding: EdgeInsets.symmetric(horizontal: 8),
           child: Icon(Icons.arrow_forward_rounded, size: 16, color: LoreDubPalette.mutedInk),
         ),
         Expanded(
@@ -257,7 +296,6 @@ class _AddRowState extends State<_AddRow> {
 
   @override
   Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Expanded(
         child: TextField(
@@ -269,7 +307,7 @@ class _AddRowState extends State<_AddRow> {
         ),
       ),
       const Padding(
-        padding: EdgeInsets.only(top: 14, left: 8, right: 8),
+        padding: EdgeInsets.symmetric(horizontal: 8),
         child: Icon(Icons.arrow_forward_rounded, size: 16, color: LoreDubPalette.mutedInk),
       ),
       Expanded(
@@ -282,7 +320,7 @@ class _AddRowState extends State<_AddRow> {
         ),
       ),
       Padding(
-        padding: const EdgeInsets.only(top: 6, left: 4),
+        padding: const EdgeInsets.only(left: 4),
         child: IconButton.filled(
           key: ValueKey('glossary-add-${widget.kind.name}'),
           tooltip: AppLocalizations.of(context).glossaryAdd,

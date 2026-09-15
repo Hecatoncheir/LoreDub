@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/glossary_service.dart';
+import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:path/path.dart' as path;
 
@@ -57,6 +58,41 @@ void main() {
       '{"kind":"name","source":"Megaton","reading":""}]}',
     );
     expect((await service.load()).entries, [rapture]);
+  });
+
+  test('writes a file an import reads back', () async {
+    final carried = path.join(temp.path, 'carried.json');
+    await service.exportTo(carried, const Glossary(entries: [grenade, rapture]));
+
+    expect((await service.readFiles([carried])).entries, [grenade, rapture]);
+  });
+
+  test('merges several files, the last word winning', () async {
+    const louder = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Fire in the hole!',
+      reading: 'Граната!',
+    );
+    final first = path.join(temp.path, 'first.json');
+    final second = path.join(temp.path, 'second.json');
+    await service.exportTo(first, const Glossary(entries: [grenade, rapture]));
+    await service.exportTo(second, const Glossary(entries: [louder]));
+
+    expect((await service.readFiles([first, second])).entries, [louder, rapture]);
+  });
+
+  test('says which file held no glossary rather than importing nothing', () async {
+    final empty = path.join(temp.path, 'empty.json');
+    await File(empty).writeAsString('{"version":1,"entries":[]}');
+
+    await expectLater(
+      service.readFiles([empty]),
+      throwsA(
+        isA<LoreDubFailure>()
+            .having((failure) => failure.code, 'code', FailureCode.glossaryImportFailed)
+            .having((failure) => failure.detail, 'detail', 'empty.json'),
+      ),
+    );
   });
 
   test('a source written twice replaces the first and keeps its place', () {

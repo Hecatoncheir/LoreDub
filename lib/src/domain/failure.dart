@@ -119,6 +119,12 @@ enum FailureCode {
   /// What the player wrote down about their games could not be saved.
   glossarySaveFailed,
 
+  /// The glossary could not be written where the player asked.
+  glossaryExportFailed,
+
+  /// A file the player chose holds no glossary; the detail is its name.
+  glossaryImportFailed,
+
   /// The shelf of saved schemes could not be written.
   pipelinesSaveFailed,
 

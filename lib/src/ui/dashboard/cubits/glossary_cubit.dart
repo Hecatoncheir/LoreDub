@@ -62,6 +62,32 @@ class GlossaryCubit extends Cubit<GlossaryState> {
   Future<void> remove(GlossaryKind kind, String source) =>
       _keep(state.glossary.without(kind, source));
 
+  /// Writes everything down where the player asked.
+  Future<void> export(String destination) async {
+    try {
+      await _appRepository.exportGlossary(destination, state.glossary);
+    } catch (error) {
+      _errors.report(error);
+    }
+  }
+
+  /// Reads the files the player chose into what is already here. Merged by
+  /// what an entry is filed under, so importing the same file twice leaves
+  /// one of each rather than two, and a file that disagrees wins -- the
+  /// player chose it just now.
+  Future<void> import(List<String> sources) async {
+    try {
+      final incoming = await _appRepository.readGlossaryFiles(sources);
+      var merged = state.glossary;
+      for (final entry in incoming.entries) {
+        merged = merged.keeping(entry);
+      }
+      await _keep(merged);
+    } catch (error) {
+      _errors.report(error);
+    }
+  }
+
   /// Stages a state a widget test wants to render without reading a file.
   @visibleForTesting
   void seed(GlossaryState value) => emit(value);
