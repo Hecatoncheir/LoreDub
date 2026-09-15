@@ -832,9 +832,14 @@ final class RouteConnection extends GraphConnection {
 /// Whether one card's voice is wired into the mix. Taken out, the card
 /// lends its voice to nobody and the character is read as themselves.
 final class CastConnection extends GraphConnection {
-  const CastConnection(this.characterId, this.routed);
+  const CastConnection(this.characterId, this.nodeId, this.routed);
 
   final String characterId;
+
+  /// The drawing the line was pulled from. Joined to the mix, that drawing
+  /// is the one the game is expected to speak: a card sends a line on only
+  /// when it has one, and this is where it would come from.
+  final String nodeId;
   final bool routed;
 }
 
@@ -897,7 +902,7 @@ GraphConnection proposeConnection(
     (PipelineSocket.characterVoice, PipelineSocket.mixCast) => switch (PipelineNodeIds.characterOf(
       from.nodeId,
     )) {
-      final character? => CastConnection(character, true),
+      final character? => CastConnection(character, from.nodeId, true),
       _ => const RefusedConnection(ConnectionRefusal.unsupported),
     },
     // A card counted among the voices the game speaks.
@@ -941,7 +946,7 @@ GraphConnection proposeDisconnect(PipelineLink link) {
   // the cast is not touched -- a scheme is cut a card at a time.
   if (link.to.socket == PipelineSocket.mixCast) {
     return switch (PipelineNodeIds.characterOf(link.from.nodeId)) {
-      final character? => CastConnection(character, false),
+      final character? => CastConnection(character, link.from.nodeId, false),
       _ => const RefusedConnection(ConnectionRefusal.unsupported),
     };
   }

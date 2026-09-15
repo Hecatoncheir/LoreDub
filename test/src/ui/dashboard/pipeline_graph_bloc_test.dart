@@ -48,6 +48,8 @@ void main() {
       PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterVoice);
   PipelinePort readBy(String id) =>
       PipelinePort(PipelineNodeIds.character(id), PipelineSocket.readBy);
+  PipelinePort heardIn(String id) =>
+      PipelinePort(PipelineNodeIds.character(id), PipelineSocket.characterIn);
 
   /// Pulls a link from one socket and lets it go over another, the way the
   /// canvas does: the events are what the gesture sends.
@@ -741,6 +743,57 @@ void main() {
         reason: 'and told again when it is joined back',
       );
       expect(graph.state.graph.linkInto(readBy('smith'))?.from, voiceOf('guard'));
+    });
+
+    test('a card the game does not speak is joined by the line drawn to it', () async {
+      const intoTheMix = PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast);
+      // Taken out of the voices the game speaks, a card has no part of its
+      // own: nothing of it reaches the mix, and there is no line to cut.
+      graph.add(PipelineLinkCut(graph.state.graph.linkInto(heardIn('guard'))!));
+      await pumpEvents();
+      expect(
+        graph.state.graph.links.any((link) => link.from == voiceOf('guard')),
+        isFalse,
+        reason: 'it lends its voice and speaks nothing of its own',
+      );
+
+      await drawLink(voiceOf('guard'), intoTheMix);
+
+      // The line the player drew is the line they get: the card is one of
+      // the voices the game speaks again, which is where its part comes
+      // from, and that part goes to the mix.
+      expect(graph.state.layout.cast.first.heard, isTrue);
+      expect(
+        graph.state.graph.links.any(
+          (link) => link.from == voiceOf('guard') && link.to == intoTheMix,
+        ),
+        isTrue,
+      );
+    });
+
+    test('a line drawn to a cut card puts that card back in the mix', () async {
+      const intoTheMix = PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixCast);
+      graph.add(
+        PipelineLinkCut(
+          graph.state.graph.links.firstWhere(
+            (link) => link.from == voiceOf('guard') && link.to == intoTheMix,
+          ),
+        ),
+      );
+      await pumpEvents();
+      expect(graph.state.layout.silent, {'guard'});
+
+      // Not the line that cut it, and not even one out of the card: a line
+      // drawn to a card is the player wiring that card up.
+      await drawLink(
+        const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
+        heardIn('guard'),
+      );
+
+      expect(graph.state.layout.silent, isEmpty);
+      expect(graph.state.graph.node(PipelineNodeIds.character('guard'))?.unrouted, isFalse);
+      expect(graph.state.graph.linkInto(heardIn('guard'))?.from.nodeId, PipelineNodeIds.voice);
+      expect(repository.heard.last, isEmpty, reason: 'and a running session is told');
     });
 
     test('and a step back puts it back too', () async {

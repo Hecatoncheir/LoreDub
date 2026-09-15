@@ -199,7 +199,12 @@ answers `CastConnection(<card>, false)` and takes that one card out:
 it stays where it was put, drawn dark, who stands in for whom waits in it,
 and the worker is started with `--as-heard <ids>`, which makes `read_as` hand
 back the speaker it was given for those cards — the card lends its voice to
-nobody and nobody stands in for it. The cut is the scheme's, not the
+nobody and nobody stands in for it. A line drawn to a card or away from
+one joins that card back (`_joined` in the bloc, over both ends of what was
+drawn), and a line into the mix makes the drawing it came from one the game
+speaks: a card with no part of its own and nobody to read for has nothing to
+send, so the line would otherwise be taken and show nothing. The cut is the
+scheme's, not the
 settings': `PipelineLayout.silent` holds it by character (every drawing of a
 card answers together, the mix being told a character once), which is why
 `withoutNode` drops a card from it when the last drawing of that card leaves

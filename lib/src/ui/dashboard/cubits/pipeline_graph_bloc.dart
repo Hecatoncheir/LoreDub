@@ -643,14 +643,37 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     await _apply(
       proposeConnection(state.graph, drag.from, target, characters: _cast),
       emit,
+      joining: {drag.from.nodeId, target.nodeId},
     );
   }
 
   Future<void> _onCut(PipelineLinkCut event, Emitter<PipelineGraphState> emit) =>
       _apply(proposeDisconnect(event.link), emit);
 
+  /// [layout] with every card [nodeIds] names back in the mix.
+  ///
+  /// A line drawn to a card or away from one is the player wiring that card
+  /// up, whichever end they started at: a card left cut would take the line
+  /// and show nothing for it, which reads as a drop that missed.
+  PipelineLayout _joined(PipelineLayout layout, Set<String> nodeIds) {
+    var next = layout;
+    for (final nodeId in nodeIds) {
+      if (PipelineNodeIds.characterOf(nodeId) case final character?) {
+        next = next.withVoiced(character, true);
+      }
+    }
+    return next;
+  }
+
   /// Carries out what the canvas proposed, or says why it could not.
-  Future<void> _apply(GraphConnection connection, Emitter<PipelineGraphState> emit) async {
+  ///
+  /// [joining] is the two ends of a line just drawn, which is what tells a
+  /// link the player made from one the canvas is taking apart.
+  Future<void> _apply(
+    GraphConnection connection,
+    Emitter<PipelineGraphState> emit, {
+    Set<String> joining = const {},
+  }) async {
     switch (connection) {
       case UnchangedConnection():
         return;
@@ -666,23 +689,27 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         await _settings.update(_settings.settings.copyWith(captureRouted: routed));
       // A card into the mix, or out of it. Not locked with the route: a
       // session keeps its cast loaded either way, and the worker is told.
-      case CastConnection(:final characterId, :final routed):
+      //
+      // Joined, the drawing the line came from is one the game is expected
+      // to speak: a card with no part of its own and nobody to read for has
+      // nothing to send, and the line would come to nothing.
+      case CastConnection(:final characterId, :final nodeId, :final routed):
         _remember();
-        await _voiceCard(characterId, routed, emit);
+        await _voiceCard(
+          characterId,
+          routed,
+          routed ? _joined(state.layout, joining).withHeard(nodeId, true) : state.layout,
+          emit,
+        );
       case ReaderConnection(:final characterId, :final readerId):
         _remember();
-        emit(state.copyWith(clearRefusal: true));
+        await _relayout(_joined(state.layout, joining), emit);
         await _characters.voiceAs(characterId, readerId);
       // A note on the card, kept with the arrangement: nothing of the
       // pipeline changes with it, so nothing is written through.
       case HeardConnection(:final nodeId, :final heard):
         _remember();
-        emit(
-          _redrawn(
-            state.copyWith(layout: state.layout.withHeard(nodeId, heard), clearRefusal: true),
-          ),
-        );
-        _persist();
+        await _relayout(_joined(state.layout, joining).withHeard(nodeId, heard), emit);
     }
   }
 
@@ -770,12 +797,22 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   Future<void> _voiceCard(
     String characterId,
     bool routed,
+    PipelineLayout from,
     Emitter<PipelineGraphState> emit,
   ) async {
-    final layout = state.layout.withVoiced(characterId, routed);
+    final layout = from.withVoiced(characterId, routed);
     emit(_redrawn(state.copyWith(layout: layout, clearRefusal: true)));
     _persist();
     await _characters.readAsHeard(layout.silent);
+  }
+
+  /// Draws the canvas on [layout] and keeps it, telling a running session
+  /// when the cards it hears have changed.
+  Future<void> _relayout(PipelineLayout layout, Emitter<PipelineGraphState> emit) async {
+    final was = state.layout.silent;
+    emit(_redrawn(state.copyWith(layout: layout, clearRefusal: true)));
+    _persist();
+    if (!_sameCards(was, layout.silent)) await _characters.readAsHeard(layout.silent);
   }
 
   /// Whether two sets name the same cards. The worker is told only when
