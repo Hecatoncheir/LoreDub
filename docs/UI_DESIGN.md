@@ -117,7 +117,9 @@ radius.
   follows one that is dragged — which is the one piece of motion
   there that is not a change of state but the weight of what is on the
   canvas. It also lights towards a card the player has picked out: the nearer
-  a dot stands to a chosen card the more of the orange it carries, which is
-  the same orange its border is drawn in. Every one of these reads
+  a dot stands to a chosen card the bigger it is drawn and the more of the
+  orange it carries, which is the same orange its border is drawn in. The
+  size is what carries it — colour alone, on dots this small, is barely
+  there. Every one of these reads
   `MediaQuery.disableAnimationsOf` and is handed no duration at all where
   Windows says animation is off.

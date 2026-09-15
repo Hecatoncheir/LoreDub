@@ -903,11 +903,15 @@ class _DotFieldPainter extends CustomPainter {
   static const double reach = 3.2;
   static const double push = 0.62;
 
-  /// How far the light of a chosen card carries, and how far towards the
-  /// orange the dot against its edge is taken. Not the whole way: a field
-  /// of orange would say more than the card being chosen is worth.
+  /// How far the light of a chosen card carries, how far towards the
+  /// orange the dot against its edge is taken, and how much bigger it is
+  /// drawn there. Not the whole way to the orange: a field of orange would
+  /// say more than the card being chosen is worth. The size is what the
+  /// light is read by at a glance — colour alone, on dots this small, is
+  /// barely there.
   static const double glow = 7;
   static const double lit = 0.85;
+  static const double swells = 1.3;
 
   /// How near a card a dot may come before it starts to go out, in dots.
   /// The card covers the ground it stands on, and a dot that went between
@@ -917,8 +921,10 @@ class _DotFieldPainter extends CustomPainter {
 
   /// How many shades the light is drawn in, and how many steps there are
   /// between a dot and nothing. Every dot of a shade is drawn in one call,
-  /// so the two together are the calls the field can cost.
-  static const int shades = 6;
+  /// so the two together are the calls the field can cost. Ten shades
+  /// rather than six because the dots grow as well as brighten, and a size
+  /// that goes up in six jumps is seen to jump.
+  static const int shades = 10;
   static const int steps = 5;
 
   @override
@@ -970,10 +976,10 @@ class _DotFieldPainter extends CustomPainter {
           dots,
           Paint()
             ..color = colour.withValues(alpha: colour.a * showing)
-            // A dot on its way out draws in as it goes, and the lit ones
-            // stand a little prouder, so the light reads on a screen that
-            // has been turned down.
-            ..strokeWidth = radius * 2 * (1 + 0.45 * share) * (0.55 + 0.45 * showing)
+            // A dot on its way out draws in as it goes, and one near a
+            // chosen card swells: the nearer it stands the bigger it is
+            // drawn, which is what the light is read by.
+            ..strokeWidth = radius * 2 * (1 + swells * share) * (0.55 + 0.45 * showing)
             ..strokeCap = StrokeCap.round,
         );
       }
