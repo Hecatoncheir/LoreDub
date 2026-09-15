@@ -72,7 +72,8 @@ class PipelineInspector extends StatelessWidget {
             decoration: const BoxDecoration(
               color: LoreDubPalette.raised,
               borderRadius: corners,
-              border: Border(left: BorderSide(color: LoreDubPalette.outline)),
+              // No line down the left: the shadow it casts on the canvas is
+              // the edge, and a rule as well read as a second one.
               boxShadow: [
                 BoxShadow(color: Color(0x22171717), blurRadius: 24, offset: Offset(-8, 0)),
               ],
