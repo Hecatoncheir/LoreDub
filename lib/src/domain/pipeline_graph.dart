@@ -378,9 +378,14 @@ class PipelineLayout {
   /// What a canvas that was never arranged looks like.
   static const standard = PipelineLayout(positions: standardPositions);
 
+  /// The six stages in one line, in the order the work is done in: the
+  /// pipeline is a line, and a scheme nobody has arranged yet should say so
+  /// before it says anything else. Whisper stood raised above the rest while
+  /// a line ran past it to the voice; that line is drawn through the
+  /// translator now, and the step over it is the player's to make.
   static const standardPositions = {
     PipelineNodeIds.source: GraphPoint(40, 220),
-    PipelineNodeIds.recognition: GraphPoint(325, 40),
+    PipelineNodeIds.recognition: GraphPoint(325, 220),
     PipelineNodeIds.translation: GraphPoint(610, 220),
     PipelineNodeIds.voice: GraphPoint(895, 220),
     PipelineNodeIds.mix: GraphPoint(1180, 220),
