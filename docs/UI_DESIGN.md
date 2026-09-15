@@ -116,7 +116,9 @@ radius.
   out of the socket it leaves, a line cut fades where it lay, a card arrives
   on the canvas and goes off it rather than blinking on and off, a card going
   dark or gaining an orange head eases into it, and the panel comes in from
-  the edge it sits on. The field of dots behind the scheme gives way to the
+  the edge it sits on — and out again before the panel of the node clicked
+  next comes in, so one node's settings are never seen dissolving into
+  another's. The field of dots behind the scheme gives way to the
   cards — it parts around each of them, goes out as one comes over it rather
   than between two frames, closes again behind one that is taken off, and
   follows one that is dragged — which is the one piece of motion

@@ -2764,17 +2764,22 @@ class _PipelinePanel extends StatelessWidget {
         // The panel comes in from the edge it sits on rather than
         // appearing over the scheme: what opened it is a click on the
         // canvas, and the eye should be able to follow one to the other.
-        // Switching from one node to another is not a transition — the same
-        // panel is answering about another card, and cross-fading two of
-        // them would say otherwise.
+        //
+        // Another node is another panel, keyed by the node so the switcher
+        // sees it as one, and the two halves take turns rather than
+        // crossing: the panel of the node let go of leaves first, and the
+        // one clicked comes in behind it. Each curve holds its child still
+        // for the half of the run that is not its own, which is what puts
+        // one after the other in a widget that would otherwise dissolve
+        // them into each other.
         Positioned(
           top: 0,
           right: 0,
           bottom: 0,
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
+            duration: const Duration(milliseconds: 360),
+            switchInCurve: const Interval(0.5, 1, curve: Curves.easeOutCubic),
+            switchOutCurve: const Interval(0.5, 1, curve: Curves.easeInCubic),
             transitionBuilder: (child, animation) => FadeTransition(
               opacity: animation,
               child: SlideTransition(
@@ -2788,6 +2793,7 @@ class _PipelinePanel extends StatelessWidget {
             child: selected == null
                 ? const SizedBox.shrink()
                 : PipelineInspector(
+                    key: ValueKey(selected.id),
                     cubits: cubits,
                     node: selected,
                     facts: facts,

@@ -29,6 +29,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/pipeline_canvas.dart';
+import 'package:lore_dub/src/ui/dashboard/pipeline_inspector.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -200,6 +201,26 @@ void main() {
 
     expect(identical(cardOf(PipelineNodeIds.recognition), whisper), isFalse);
     expect(find.text('НЕ ПОДКЛЮЧЕНО'), findsWidgets);
+  });
+
+  testWidgets('sees the panel of another node out before the next one in', (tester) async {
+    final cubits = await pumpGraph(tester, const Size(1500, 950));
+
+    cubits.graph.add(const PipelineNodeSelected(PipelineNodeIds.source));
+    await tester.pumpAndSettle();
+    expect(find.byType(PipelineInspector), findsOneWidget);
+
+    cubits.graph.add(const PipelineNodeSelected(PipelineNodeIds.recognition));
+    await tester.pump();
+    await tester.pump();
+
+    // Two panels stand in the tree while the one let go of leaves and the
+    // one clicked arrives: keyed by the node, another node is another panel
+    // rather than the same one handed new words.
+    expect(find.byType(PipelineInspector), findsNWidgets(2));
+
+    await tester.pumpAndSettle();
+    expect(find.byType(PipelineInspector), findsOneWidget);
   });
 
   testWidgets('drops a link on a card rather than on its socket', (tester) async {
