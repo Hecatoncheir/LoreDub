@@ -2893,6 +2893,9 @@ void main() {
       expect(volume.min, AppSettings.audibleDuck);
       expect(volume.max, AppSettings.loudestDuck);
       expect(volume.divisions, AppSettings.duckDivisions);
+      // Material draws no value over a thumb that carries no label, and the
+      // number under the pointer is what the hand watches while it drags.
+      expect(volume.label, isNotNull);
       expect(find.text('Приглушать только под перевод'), findsOneWidget);
 
       cubits.graph.add(const PipelineNodeSelected(PipelineNodeIds.voice));
@@ -2902,6 +2905,7 @@ void main() {
       expect(pace.min, AppSettings.slowestSpeech);
       expect(pace.max, AppSettings.fastestSpeech);
       expect(pace.divisions, AppSettings.speechDivisions);
+      expect(pace.label, isNotNull);
       expect(find.text('Ускорять озвучку, когда реплики ждут очереди'), findsOneWidget);
     });
 

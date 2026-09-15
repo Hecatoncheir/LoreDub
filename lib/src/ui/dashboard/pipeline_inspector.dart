@@ -322,6 +322,10 @@ class PipelineInspector extends StatelessWidget {
         min: AppSettings.slowestSpeech,
         max: AppSettings.fastestSpeech,
         divisions: AppSettings.speechDivisions,
+        // What rises over the thumb while it is dragged: without it Material
+        // draws no value at all, and the number over the pointer is what the
+        // hand is watching rather than the caption above the slider.
+        label: l10n.speedValue(_settings.chosenSpeed.toStringAsFixed(2)),
         onChanged: _locked ? null : (value) => _update(_settings.copyWith(ttsSpeed: value)),
       ),
     ),
@@ -365,6 +369,7 @@ class PipelineInspector extends StatelessWidget {
         min: AppSettings.audibleDuck,
         max: AppSettings.loudestDuck,
         divisions: AppSettings.duckDivisions,
+        label: '${(_settings.duckedVolume * 100).round()}%',
         onChanged: _locked ? null : (value) => _update(_settings.copyWith(originalVolume: value)),
       ),
     ),
