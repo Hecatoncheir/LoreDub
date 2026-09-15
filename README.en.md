@@ -43,7 +43,9 @@ sent anywhere, and there is no account to make.
 - **The voice matches the character.** A man's or a woman's, chosen from the
   pitch of the original, line by line — and in [Original voice](#dubbing-voice)
   mode the dubbing takes on the speaker's timbre too.
-- **Five dubbing languages:** Russian, German, Spanish, French and Ukrainian.
+- **Six dubbing languages:** Russian, German, Spanish, French, Ukrainian and
+  English. English needs no translator at all — whisper hands English over
+  already — so it is a voice on its own and starts quicker than the rest.
 - **A graphics card is optional.** NVIDIA roughly halves the recognition time,
   but everything works on the processor without one.
 - **There is a [subtitle mode](#subtitle-mode).** When the lines are written
@@ -413,7 +415,8 @@ confirmation). A click on a downloaded bar picks it.
 Below it are the dubbing languages, a tile each. A tile holds the pair: the
 translator and the voice, each with its size and a tick once on disk. The pair
 is downloaded, picked and deleted as one, with one ring for both while it
-downloads. A click on a tile picks the language. At the bottom is the voice
+downloads. The English tile holds one half: it has no translator, so only the
+voice is fetched. A click on a tile picks the language. At the bottom is the voice
 converter's tile: one for every language, needed only by Original voice mode.
 The tiles speak the Whisper bars' language: light is missing, ticked is
 downloaded, dark with an orange edge is in use, a fill from the bottom is
@@ -531,6 +534,7 @@ and its median fundamental taken.
 | French | fr_0…fr_3, fr_5 | fr_4 | yes |
 | Spanish | es_0, es_1, es_2 | — | no |
 | Ukrainian | mykyta | — | no |
+| English | 48 `en_*` voices | 57 `en_*` voices | yes |
 
 Automatic is unavailable where a package ships voices of one gender only. It
 says so in Settings and falls back to the chosen voice.
