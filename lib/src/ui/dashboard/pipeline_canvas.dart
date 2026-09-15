@@ -1068,11 +1068,10 @@ class _NodePaint {
     // and dark on orange left them sitting in the colour rather than on it.
     ink: LoreDubPalette.raised,
     muted: Color(0xCCF7F5F0),
-    // The sockets and the line under the title are the node's own
-    // markings rather than its words, and on the orange they read as
-    // markings in graphite -- the colour the open section is drawn in.
-    port: LoreDubPalette.graphite,
-    rule: LoreDubPalette.graphite,
+    // The sockets and the line under the title are light as well: graphite
+    // markings read as a crack across the orange rather than as part of it.
+    port: LoreDubPalette.raised,
+    rule: LoreDubPalette.raised,
     chosen: LoreDubPalette.ink,
   );
 
