@@ -298,7 +298,12 @@ chosen node, clamping the whole group by whichever of them reaches
 `GraphWorld` first so it keeps its shape. `pipeline_canvas.dart` owns the geometry (`NodeMetrics`, one
 place for card sizes and socket anchors, which the curves, the dots and the
 hit-testing all read) and fits the scheme into the window the first time it
-is drawn; `pipeline_inspector.dart` is the panel that floats over it.
+is drawn; `pipeline_inspector.dart` is the panel that stands over it, down the
+right edge and the whole height of the canvas, drawn dark:
+`buildLoreDubPanelTheme` (`ui/theme.dart`) is the house theme read the other
+way up — the ink is the ground, the graphite is what a field is raised out
+of, the paper colour is the writing — so the Material widgets in the panel
+are the same widgets in another light rather than a second set of them.
 
 A frame of that canvas is watched, because a drag and a pan are a new state
 sixty times a second: `test/graph_bench.dart` times one over a scheme of

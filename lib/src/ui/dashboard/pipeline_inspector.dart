@@ -50,27 +50,38 @@ class PipelineInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return SizedBox(
-      width: width,
-      child: Card(
-        elevation: 3,
-        shadowColor: const Color(0x22171717),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _header(context, l10n),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-                children: [
-                  if (facts.running && node.kind != PipelineNodeKind.character)
-                    _Note(text: l10n.pipelineLockedNote),
-                  ..._fields(context, l10n),
-                ],
+    // Dark, and the whole height of the canvas: the panel is a wall the
+    // scheme is worked against rather than a card lying on it, which is
+    // also what keeps the writing off the dots.
+    return Theme(
+      data: buildLoreDubPanelTheme(),
+      child: SizedBox(
+        width: width,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: LoreDubPalette.ink,
+            border: Border(left: BorderSide(color: LoreDubPalette.graphite)),
+            boxShadow: [
+              BoxShadow(color: Color(0x33171717), blurRadius: 24, offset: Offset(-8, 0)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _header(context, l10n),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                  children: [
+                    if (facts.running && node.kind != PipelineNodeKind.character)
+                      _Note(text: l10n.pipelineLockedNote),
+                    ..._fields(context, l10n),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -91,7 +102,7 @@ class PipelineInspector extends StatelessWidget {
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
-                  color: LoreDubPalette.mutedInk,
+                  color: LoreDubPalette.outline,
                 ),
               ),
               const SizedBox(height: 4),
@@ -498,7 +509,9 @@ class _Field extends StatelessWidget {
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: LoreDubPalette.mutedInk,
+            // The outline grey rather than the muted ink: the panel is dark,
+            // and what is muted on paper is barely there on it.
+            color: LoreDubPalette.outline,
           ),
         ),
         const SizedBox(height: 6),
@@ -533,8 +546,11 @@ class _Choices<T> extends StatelessWidget {
           selected: entry.key == value,
           onSelected: enabled ? (_) => onChanged(entry.key) : null,
           selectedColor: LoreDubPalette.orange,
-          backgroundColor: LoreDubPalette.raised,
+          backgroundColor: LoreDubPalette.graphite,
           side: const BorderSide(color: LoreDubPalette.outline),
+          labelStyle: TextStyle(
+            color: entry.key == value ? LoreDubPalette.ink : LoreDubPalette.raised,
+          ),
           showCheckmark: false,
         ),
     ],
@@ -576,7 +592,7 @@ class _Note extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 12),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 12, height: 1.4, color: LoreDubPalette.mutedInk),
+      style: const TextStyle(fontSize: 12, height: 1.4, color: LoreDubPalette.outline),
     ),
   );
 }

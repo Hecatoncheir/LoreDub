@@ -95,6 +95,10 @@ radius.
 ## Interaction rules
 
 - One orange primary action per workspace; secondary actions use outlines.
+- Light on paper everywhere but the graph screen's node panel, which is dark
+  down the right edge of the canvas, and the cards of the cast, which are
+  dark on it. The dark is the same ink those cards are drawn in, so what is
+  dark on that screen is what is chosen or what belongs to the player.
 - Every interactive control has a minimum 44–48 px target and visible keyboard
   focus supplied by the Material theme.
 - Status is communicated with text and an indicator, never color alone.

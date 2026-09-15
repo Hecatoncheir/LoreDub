@@ -2768,9 +2768,9 @@ class _PipelinePanel extends StatelessWidget {
         // panel is answering about another card, and cross-fading two of
         // them would say otherwise.
         Positioned(
-          top: 12,
-          right: 12,
-          bottom: 12,
+          top: 0,
+          right: 0,
+          bottom: 0,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
             switchInCurve: Curves.easeOutCubic,

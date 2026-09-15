@@ -187,3 +187,98 @@ ThemeData buildLoreDubTheme() {
     focusColor: LoreDubPalette.orange.withValues(alpha: 0.22),
   );
 }
+
+/// The same interface, in the dark.
+///
+/// The node panel on the graph screen stands over the canvas rather than on
+/// a page of its own, and is drawn in the ink the cast cards are. The house
+/// palette is read the other way up for it: the ink is the ground, the
+/// graphite is what a field is raised out of, the paper colour is the
+/// writing, and the outline grey — too pale to write with on paper — is
+/// what a label is said in. Everything else is the theme's own, so the panel
+/// is this interface in another light rather than a second one.
+ThemeData buildLoreDubPanelTheme() {
+  final base = buildLoreDubTheme();
+  const scheme = ColorScheme.dark(
+    primary: LoreDubPalette.orange,
+    onPrimary: LoreDubPalette.ink,
+    secondary: LoreDubPalette.raised,
+    onSecondary: LoreDubPalette.ink,
+    surface: LoreDubPalette.ink,
+    onSurface: LoreDubPalette.raised,
+    error: LoreDubPalette.error,
+    onError: Colors.white,
+    outline: LoreDubPalette.mutedInk,
+  );
+  const controlShape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+  );
+  const fieldBorder = OutlineInputBorder(
+    borderSide: BorderSide(color: LoreDubPalette.mutedInk),
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+  );
+
+  return base.copyWith(
+    brightness: Brightness.dark,
+    colorScheme: scheme,
+    // What a dropdown opens onto.
+    canvasColor: LoreDubPalette.ink,
+    textTheme: base.textTheme.apply(
+      bodyColor: LoreDubPalette.raised,
+      displayColor: LoreDubPalette.raised,
+    ),
+    dividerColor: LoreDubPalette.mutedInk,
+    cardTheme: base.cardTheme.copyWith(
+      color: LoreDubPalette.graphite,
+      shape: const RoundedRectangleBorder(
+        side: BorderSide(color: LoreDubPalette.mutedInk),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+    ),
+    inputDecorationTheme: base.inputDecorationTheme.copyWith(
+      fillColor: LoreDubPalette.graphite,
+      labelStyle: const TextStyle(color: LoreDubPalette.outline),
+      helperStyle: const TextStyle(color: LoreDubPalette.outline),
+      border: fieldBorder,
+      enabledBorder: fieldBorder,
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: LoreDubPalette.raised,
+        minimumSize: const Size(48, 48),
+        side: const BorderSide(color: LoreDubPalette.outline),
+        shape: controlShape,
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: LoreDubPalette.orange,
+        minimumSize: const Size(44, 44),
+        shape: controlShape,
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        foregroundColor: LoreDubPalette.raised,
+        minimumSize: const Size(48, 48),
+        shape: controlShape,
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? LoreDubPalette.ink : LoreDubPalette.raised,
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? LoreDubPalette.orange
+              : LoreDubPalette.graphite,
+        ),
+        side: const WidgetStatePropertyAll(BorderSide(color: LoreDubPalette.outline)),
+      ),
+    ),
+    sliderTheme: base.sliderTheme.copyWith(inactiveTrackColor: LoreDubPalette.mutedInk),
+  );
+}
