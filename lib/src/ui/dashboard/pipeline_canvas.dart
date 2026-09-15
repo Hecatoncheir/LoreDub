@@ -180,6 +180,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
         _appearing = const {};
         _fading = const {};
         _leaving = const [];
+        _arriving = const {};
       });
     });
 
@@ -197,8 +198,11 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
   Set<PipelineLink> _appearing = const {};
   Set<PipelineLink> _fading = const {};
 
-  /// The cards taken off the canvas, kept until they have faded out.
+  /// The cards taken off the canvas, kept until they have faded out, and
+  /// the ones just put on it — the field of dots parts for a card as it
+  /// arrives and closes again behind one that goes.
   List<PipelineNode> _leaving = const [];
+  Set<String> _arriving = const {};
 
   /// What each node's layer — its card and its sockets — was last drawn
   /// from, and what came out. A dragged node hands the canvas a whole new
@@ -266,6 +270,10 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
     _appearing = appearing;
     _fading = fading;
     _leaving = leaving;
+    _arriving = {
+      for (final node in now.nodes)
+        if (!was.nodes.any((other) => other.id == node.id)) node.id,
+    };
     _drawing.forward(from: 0);
   }
 
@@ -518,7 +526,16 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
             widget.bloc.add(const PipelineArrangementSettled());
           },
           child: CustomPaint(
-            painter: _DotFieldPainter(view),
+            painter: _DotFieldPainter(
+              view: view,
+              // The cards on their way off still part the field, less and
+              // less of it, so it closes behind them rather than snapping
+              // shut.
+              nodes: [..._state.graph.nodes, ..._leaving],
+              arriving: _arriving,
+              leaving: {for (final node in _leaving) node.id},
+              grown: _grown,
+            ),
             // The nodes sit on a box of their own rather than on the window:
             // a child drawn outside its parent is painted but not hit, and
             // the far end of the pipeline could be seen, dragged, and never
@@ -839,11 +856,34 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
 /// The field the scheme sits on: dots that move and grow with the canvas, so
 /// panning is visible even where there is no node.
 class _DotFieldPainter extends CustomPainter {
-  const _DotFieldPainter(this.view);
+  _DotFieldPainter({
+    required this.view,
+    required this.nodes,
+    required this.grown,
+    this.arriving = const {},
+    this.leaving = const {},
+  }) : super(repaint: grown);
 
   final GraphView view;
 
+  /// The cards standing on the field, the ones on their way off it among
+  /// them. Each of them holds the dots off.
+  final List<PipelineNode> nodes;
+
+  /// A card arriving parts the field as it comes, and one leaving lets it
+  /// close again: [grown] is how far along both of those are.
+  final Set<String> arriving;
+  final Set<String> leaving;
+  final Animation<double> grown;
+
   static const double spacing = 26;
+
+  /// How far from a card the field is disturbed, and how far the dot
+  /// nearest it is moved. Both in dots rather than in pixels, so the field
+  /// parts the same way at any zoom: near enough a dot's width, which reads
+  /// as the lattice giving way rather than as a hole in it.
+  static const double reach = 2.2;
+  static const double push = 0.44;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -851,13 +891,32 @@ class _DotFieldPainter extends CustomPainter {
     final step = spacing * view.zoom;
     if (step < 6) return;
     final radius = math.max(0.8, 1.1 * view.zoom);
+    final held = _cards(step);
+    final reachPx = reach * step;
     // One call rather than one per dot: a window this size holds a couple of
     // thousand of them, and they are drawn again on every frame of a pan.
     // Round caps make each point the dot it used to be drawn as.
     final dots = <Offset>[];
+    // The cards the column being drawn runs through. Kept between columns
+    // rather than made again: most columns run through none, and a dot
+    // asked against every card on the canvas is two thousand of them times
+    // the whole cast on every frame of a drag.
+    final near = <({Rect rect, double strength})>[];
     for (var x = view.x % step - step; x < size.width + step; x += step) {
+      near.clear();
+      for (final card in held) {
+        if (x > card.rect.left - reachPx && x < card.rect.right + reachPx) near.add(card);
+      }
       for (var y = view.y % step - step; y < size.height + step; y += step) {
-        dots.add(Offset(x, y));
+        if (near.isEmpty) {
+          dots.add(Offset(x, y));
+          continue;
+        }
+        // A dot the card stands on is not drawn at all: the card holds the
+        // ground it covers, and a faded one would show the field through it.
+        if (_shoved(Offset(x, y), near, reachPx, push * step) case final moved?) {
+          dots.add(moved);
+        }
       }
     }
     canvas.drawPoints(
@@ -870,9 +929,68 @@ class _DotFieldPainter extends CustomPainter {
     );
   }
 
+  /// Where the cards stand on the screen, with how hard each of them holds
+  /// the field off. Worked out once for the frame.
+  List<({Rect rect, double strength})> _cards(double step) {
+    final drawn = <({Rect rect, double strength})>[];
+    for (final node in nodes) {
+      final strength = switch (node.id) {
+        final id when arriving.contains(id) => grown.value,
+        final id when leaving.contains(id) => 1 - grown.value,
+        _ => 1.0,
+      };
+      if (strength <= 0.01) continue;
+      final size = NodeMetrics.sizeOf(node.kind);
+      drawn.add((
+        rect: Rect.fromLTWH(
+          view.x + node.position.x * view.zoom,
+          view.y + node.position.y * view.zoom,
+          size.width * view.zoom,
+          size.height * view.zoom,
+        ),
+        strength: strength.clamp(0.0, 1.0),
+      ));
+    }
+    return drawn;
+  }
+
+  /// [at] moved out of the way of the cards, or null where a card stands on
+  /// it. A dot answers every card near it, so the field parts rather than
+  /// snapping from one card's push to the next's.
+  Offset? _shoved(
+    Offset at,
+    List<({Rect rect, double strength})> cards,
+    double reachPx,
+    double pushPx,
+  ) {
+    var dx = 0.0;
+    var dy = 0.0;
+    for (final card in cards) {
+      if (at.dy <= card.rect.top - reachPx || at.dy >= card.rect.bottom + reachPx) continue;
+      final awayX = at.dx - at.dx.clamp(card.rect.left, card.rect.right);
+      final awayY = at.dy - at.dy.clamp(card.rect.top, card.rect.bottom);
+      final span = math.sqrt(awayX * awayX + awayY * awayY);
+      if (span >= reachPx) continue;
+      if (span < 0.01) return null;
+      // Hardest against the edge and gone by the end of its reach, squared
+      // so the field bends rather than breaks.
+      final falls = 1 - span / reachPx;
+      final shove = pushPx * falls * falls * card.strength / span;
+      dx += awayX * shove;
+      dy += awayY * shove;
+    }
+    return dx == 0 && dy == 0 ? at : Offset(at.dx + dx, at.dy + dy);
+  }
+
   @override
-  bool shouldRepaint(_DotFieldPainter old) =>
-      old.view.x != view.x || old.view.y != view.y || old.view.zoom != view.zoom;
+  bool shouldRepaint(_DotFieldPainter old) {
+    if (old.view.x != view.x || old.view.y != view.y || old.view.zoom != view.zoom) return true;
+    if (old.nodes.length != nodes.length) return true;
+    for (var index = 0; index < nodes.length; index++) {
+      if (old.nodes[index] != nodes[index]) return true;
+    }
+    return false;
+  }
 }
 
 /// The curves. The route is a solid orange line and the cast is dashed, so
