@@ -286,7 +286,7 @@ Recording and dubbing never run at once: one worker serves both.
 </p>
 
 The same pipeline drawn as nodes on a dotted canvas: **Original stream**,
-**Whisper**, **Translation**, **Voice**, **Mix** and **Stream**, joined by
+**Whisper**, **Translation**, **Lines**, **Mix** and **Stream**, joined by
 links. Empty space drags the canvas, the wheel zooms, and the scheme is fitted
 into the window the first time it is opened.
 
@@ -321,22 +321,30 @@ on the first downloaded language that has a translator; with none downloaded
 the link is refused and asks for one first. Like the route, it cannot be
 switched mid-session: the models are loaded for the session that runs.
 
-Clicking a node opens its own settings in a panel over the canvas: the game
-and where its sound is taken from, the recognition model, the dubbing
-language, the voice and its speed, how loud the original stays, whether lines
-overlap, and which device the stage runs on. These are the same settings the
-other screens hold — the graph keeps nothing of its own — so the two can never
-disagree.
+Clicking a node opens its own settings in a panel down the right edge of the
+canvas, the whole height of it: the game and where its sound is taken from,
+the recognition model, the dubbing language, the voice and its speed, how loud
+the original stays, whether lines overlap, and which device the stage runs on.
+The panel wears the face of the node it opened on — that node's icon in its
+head and that node's colours — so whose settings they are is plain: orange at
+the ends of the pipeline, dark on a card of the cast. These are the same
+settings the other screens hold — the graph keeps nothing of its own — so the
+two can never disagree.
+
+<p align="center">
+  <img src="docs/screenshots/inspector-en.png" width="900" alt="The node panel on the Graph screen: a character card is chosen and the panel stands down the right edge in that card's colours">
+</p>
 
 **Mix** is the playback queue: the pipeline's own voice and the voices of every
 character on the canvas enter it, and what leaves is what reaches the output
 device. Whether lines may overlap is set there too — no more than two voices
-sound together, and one character never talks over themselves. Cutting its
-**Characters** input takes the whole cast out of the mix: the cards stay on
-the canvas but go dark, and every character is read in their own voice again —
-who stands in for whom waits in the cards and comes back with the link. It
-takes hold at once, even mid-session or under a pause: the running worker is
-told rather than restarted.
+sound together, and one character never talks over themselves. Cutting a
+card's link to the **Mix** takes that one card out of it: the card stays on
+the canvas but goes dark, lends its voice to nobody and is read as it is
+heard — who stands in for it waits in the card and comes back with the link.
+The rest of the cast is left alone, and a character that is not on the canvas
+is voiced as before. It takes hold at once, even mid-session or under a pause:
+the running worker is told rather than restarted.
 
 The person button puts a character card on the canvas. A card has three
 sockets: **Character** coming in, an optional **Voice** coming in, and
@@ -347,7 +355,7 @@ man for a woman's part or the other way about. A card's voice leaves it one
 way only: lent to another card it goes there rather than to the mix, and the
 card that took the part carries it on.
 
-The dashed line from the voice node's **Characters** output into a card's
+The dashed line from the lines node's **Characters** output into a card's
 **Character** input is a note rather than a route: it says this character may
 be met in the original track. The button on it takes the note off. A card put
 on the canvas only to lend its voice — the character may never be spoken by
@@ -386,8 +394,9 @@ canvas and whose voice reads whom. One step back brings the old one up.
 A scheme holds only what this screen draws. The models, the languages and the
 volumes are not in it — those belong to the machine the dubbing runs on
 rather than to the drawing, so somebody else's scheme does not drag their
-downloads in with it. The menu on a card renames the scheme, deletes it and
-writes it to a file, and **Read a scheme from a file** reads one back: a
+downloads in with it. The menu on a card writes the canvas over the scheme,
+renames it, deletes it and writes it to a file, and **Read a scheme from a
+file** reads one back: a
 scheme carrying an id already on the shelf lands on the one it came from
 rather than beside it. The route is locked for the length of a session as it
 is everywhere else: a scheme with another way in cannot be put up mid-run,
@@ -779,13 +788,6 @@ monitor that stands for the game window. Drag across it to draw a frame, then
 move it and pull its corners and sides. From the keyboard, the arrows move the
 frame and Shift with the arrows resizes it. **Reset** puts back the default,
 the bottom 45% of the window.
-
-The frame lands best drawn in the game itself rather than here: hold
-**Ctrl+Alt+F** (changed in **Settings** → **Hotkeys** → **Subtitle frame**),
-draw around the place the game writes its lines and let go. The selection
-disappears and the reading goes on inside the new frame — the session is not
-restarted, and the card shows at once where the frame moved to. A selection
-that missed the game window changes nothing and says so.
 
 The frame lands best drawn in the game itself rather than here: hold
 **Ctrl+Alt+F** (changed in **Settings** → **Hotkeys** → **Subtitle frame**),

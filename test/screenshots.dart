@@ -292,6 +292,7 @@ void main() {
     List<TranscriptEntry> snapshots = const [],
     List<CastPlacement> placed = const [],
     Map<String, GraphPoint> where = const {},
+    String? chosen,
   }) {
     final cubits = buildCubits();
     cubits.shell.seed(
@@ -355,6 +356,9 @@ void main() {
             layout: PipelineLayout.standard,
           ),
         ],
+        // The node the panel is open on, where a shot wants one.
+        selected: chosen,
+        chosen: {?chosen},
         layout: PipelineLayout(
           cast: placed,
           // Placed by hand, so the wire runs the way the signal does: the
@@ -391,6 +395,33 @@ void main() {
           },
         ),
         'pipeline',
+        language,
+      );
+    });
+
+    testWidgets('the node panel, in $language', (tester) async {
+      // The same scheme with a card chosen, which is what the panel is
+      // drawn from: it stands down the right edge in that card's own
+      // colours, with that card's icon in its head.
+      const copy = 'character:guard#2';
+      await shoot(
+        tester,
+        stage(
+          language,
+          section: DashboardSection.pipeline,
+          placed: [
+            CastPlacement.of('smith'),
+            const CastPlacement(nodeId: copy, characterId: 'guard', heard: false),
+            CastPlacement.of('guard'),
+          ],
+          where: {
+            PipelineNodeIds.character('smith'): PipelineLayout.castPlace(0),
+            copy: PipelineLayout.castPlace(1),
+            PipelineNodeIds.character('guard'): PipelineLayout.castPlace(2),
+          },
+          chosen: PipelineNodeIds.character('guard'),
+        ),
+        'inspector',
         language,
       );
     });
