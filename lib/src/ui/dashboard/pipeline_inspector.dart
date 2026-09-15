@@ -52,35 +52,53 @@ class PipelineInspector extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     // Dark, and the whole height of the canvas: the panel is a wall the
     // scheme is worked against rather than a card lying on it, which is
-    // also what keeps the writing off the dots.
+    // also what keeps the writing off the dots. Its right corners are the
+    // canvas card's own: it stands against that edge rather than inside it,
+    // so nothing else rounds them.
+    const corners = BorderRadius.only(
+      topRight: Radius.circular(12),
+      bottomRight: Radius.circular(12),
+    );
     return Theme(
       data: buildLoreDubPanelTheme(),
-      child: SizedBox(
-        width: width,
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            color: LoreDubPalette.ink,
-            border: Border(left: BorderSide(color: LoreDubPalette.graphite)),
-            boxShadow: [
-              BoxShadow(color: Color(0x33171717), blurRadius: 24, offset: Offset(-8, 0)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _header(context, l10n),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+      // Under the theme rather than beside it: what is written here reads
+      // `Theme.of` for itself, and a Material of its own is what hands the
+      // panel's own text colour to every line that does not ask.
+      child: Builder(
+        builder: (context) => SizedBox(
+          width: width,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: LoreDubPalette.ink,
+              borderRadius: corners,
+              border: Border(left: BorderSide(color: LoreDubPalette.graphite)),
+              boxShadow: [
+                BoxShadow(color: Color(0x33171717), blurRadius: 24, offset: Offset(-8, 0)),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: corners,
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (facts.running && node.kind != PipelineNodeKind.character)
-                      _Note(text: l10n.pipelineLockedNote),
-                    ..._fields(context, l10n),
+                    _header(context, l10n),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                        children: [
+                          if (facts.running && node.kind != PipelineNodeKind.character)
+                            _Note(text: l10n.pipelineLockedNote),
+                          ..._fields(context, l10n),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
