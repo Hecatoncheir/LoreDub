@@ -909,9 +909,17 @@ class _DotFieldPainter extends CustomPainter {
   static const double glow = 7;
   static const double lit = 0.85;
 
-  /// How many shades the light is drawn in. Every dot of a shade is drawn
-  /// in one call, so this is the number of calls the field costs.
+  /// How near a card a dot may come before it starts to go out, in dots.
+  /// The card covers the ground it stands on, and a dot that went between
+  /// one frame and the next was seen to go: it thins as the card comes over
+  /// it instead, and comes back the same way.
+  static const double dims = 1.4;
+
+  /// How many shades the light is drawn in, and how many steps there are
+  /// between a dot and nothing. Every dot of a shade is drawn in one call,
+  /// so the two together are the calls the field can cost.
   static const int shades = 6;
+  static const int steps = 5;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -925,7 +933,8 @@ class _DotFieldPainter extends CustomPainter {
     // Drawn a shade at a time rather than a dot at a time: a window this
     // size holds thousands of them, and they are drawn again on every frame
     // of a pan. Round caps make each point the dot it used to be drawn as.
-    final byShade = List.generate(shades + 1, (_) => <Offset>[], growable: false);
+    // One list per shade of light and step of fading; most stay empty.
+    final byShade = List.generate((shades + 1) * (steps + 1), (_) => <Offset>[], growable: false);
     // The cards the column being drawn runs through. Kept between columns
     // rather than made again: most columns run through none, and a dot
     // asked against every card on the canvas is thousands of them times the
@@ -939,29 +948,35 @@ class _DotFieldPainter extends CustomPainter {
       }
       for (var y = view.y % step - step; y < size.height + step; y += step) {
         if (near.isEmpty) {
-          byShade[0].add(Offset(x, y));
+          byShade[steps].add(Offset(x, y));
           continue;
         }
         // A dot the card stands on is not drawn at all: the card holds the
         // ground it covers, and a faded one would show the field through it.
-        final dot = _shoved(Offset(x, y), near, reachPx, push * step, glowPx);
-        if (dot != null) byShade[dot.shade].add(dot.at);
+        final dot = _shoved(Offset(x, y), near, reachPx, push * step, glowPx, dims * step);
+        if (dot != null) byShade[dot.shade * (steps + 1) + dot.left].add(dot.at);
       }
     }
     final plain = LoreDubPalette.outline.withValues(alpha: 0.55);
     for (var shade = 0; shade <= shades; shade++) {
-      if (byShade[shade].isEmpty) continue;
       final share = shade / shades;
-      canvas.drawPoints(
-        PointMode.points,
-        byShade[shade],
-        Paint()
-          ..color = Color.lerp(plain, LoreDubPalette.orange, share * lit)!
-          // The lit ones stand a little prouder as well, so the light reads
-          // on a screen that has been turned down.
-          ..strokeWidth = radius * 2 * (1 + 0.45 * share)
-          ..strokeCap = StrokeCap.round,
-      );
+      final colour = Color.lerp(plain, LoreDubPalette.orange, share * lit)!;
+      for (var left = 1; left <= steps; left++) {
+        final dots = byShade[shade * (steps + 1) + left];
+        if (dots.isEmpty) continue;
+        final showing = left / steps;
+        canvas.drawPoints(
+          PointMode.points,
+          dots,
+          Paint()
+            ..color = colour.withValues(alpha: colour.a * showing)
+            // A dot on its way out draws in as it goes, and the lit ones
+            // stand a little prouder, so the light reads on a screen that
+            // has been turned down.
+            ..strokeWidth = radius * 2 * (1 + 0.45 * share) * (0.55 + 0.45 * showing)
+            ..strokeCap = StrokeCap.round,
+        );
+      }
     }
   }
 
@@ -996,16 +1011,18 @@ class _DotFieldPainter extends CustomPainter {
   /// [at] moved out of the way of the cards, or null where a card stands on
   /// it. A dot answers every card near it, so the field parts rather than
   /// snapping from one card's push to the next's.
-  ({Offset at, int shade})? _shoved(
+  ({Offset at, int shade, int left})? _shoved(
     Offset at,
     List<_FieldCard> cards,
     double reachPx,
     double pushPx,
     double glowPx,
+    double dimsPx,
   ) {
     var dx = 0.0;
     var dy = 0.0;
     var light = 0.0;
+    var showing = 1.0;
     for (final card in cards) {
       final span = card.chosen ? math.max(reachPx, glowPx) : reachPx;
       if (at.dy <= card.rect.top - span || at.dy >= card.rect.bottom + span) continue;
@@ -1019,6 +1036,11 @@ class _DotFieldPainter extends CustomPainter {
         final falls = 1 - away / glowPx;
         light = math.max(light, falls * falls * card.strength);
       }
+      if (away < dimsPx) {
+        // Measured where the dot started rather than where it is pushed to:
+        // what puts it out is the card coming over it.
+        showing = math.min(showing, 1 - card.strength * (1 - away / dimsPx));
+      }
       if (away >= reachPx) continue;
       // Hardest against the edge and gone by the end of its reach, squared
       // so the field bends rather than breaks.
@@ -1027,9 +1049,12 @@ class _DotFieldPainter extends CustomPainter {
       dx += awayX * shove;
       dy += awayY * shove;
     }
+    final left = (showing * steps).round();
+    if (left <= 0) return null;
     return (
       at: dx == 0 && dy == 0 ? at : Offset(at.dx + dx, at.dy + dy),
       shade: (light * shades).round(),
+      left: left,
     );
   }
 

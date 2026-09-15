@@ -112,8 +112,9 @@ radius.
   on the canvas and goes off it rather than blinking on and off, a card going
   dark or gaining an orange head eases into it, and the panel comes in from
   the edge it sits on. The field of dots behind the scheme gives way to the
-  cards — it parts around each of them, closes again behind one that is taken
-  off, and follows one that is dragged — which is the one piece of motion
+  cards — it parts around each of them, goes out as one comes over it rather
+  than between two frames, closes again behind one that is taken off, and
+  follows one that is dragged — which is the one piece of motion
   there that is not a change of state but the weight of what is on the
   canvas. It also lights towards a card the player has picked out: the nearer
   a dot stands to a chosen card the more of the orange it carries, which is
