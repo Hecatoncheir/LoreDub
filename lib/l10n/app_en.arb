@@ -406,6 +406,8 @@
   "emptyTranscript": "Recognized and translated lines will appear here",
   "transcriptClear": "Clear",
   "transcriptClearTooltip": "Remove every line from the list",
+  "pipelineSummaryDirect": "Whisper → English → Silero",
+  "pipelineSummaryOcrDirect": "Windows OCR → English → Silero",
   "pipelineSummary": "Whisper → English → Marian → {language} → Silero",
   "@pipelineSummary": {
     "placeholders": {

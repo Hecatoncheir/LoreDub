@@ -674,6 +674,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get transcriptClearTooltip => 'Убрать все реплики из списка';
 
   @override
+  String get pipelineSummaryDirect => 'Whisper → English → Silero';
+
+  @override
+  String get pipelineSummaryOcrDirect => 'Windows OCR → English → Silero';
+
+  @override
   String pipelineSummary(String language) {
     return 'Whisper → English → Marian → $language → Silero';
   }

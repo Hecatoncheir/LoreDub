@@ -2606,11 +2606,20 @@ class _EmptyTranscript extends StatelessWidget {
               Text(AppLocalizations.of(context).emptyTranscript),
               const SizedBox(height: 6),
               Text(
-                (fromScreen
-                    ? AppLocalizations.of(context).pipelineSummaryOcr
-                    : AppLocalizations.of(context).pipelineSummary)(
-                  spokenLanguageName(AppLocalizations.of(context), targetLanguage),
-                ),
+                // Dubbing into English has no translator in the line at all:
+                // what whisper hands over is the language it is read in, and
+                // naming Marian here would describe a stage that is not
+                // loaded.
+                switch ((fromScreen, targetLanguage == untranslatedDubbingLanguage)) {
+                  (true, true) => AppLocalizations.of(context).pipelineSummaryOcrDirect,
+                  (false, true) => AppLocalizations.of(context).pipelineSummaryDirect,
+                  (true, false) => AppLocalizations.of(context).pipelineSummaryOcr(
+                    spokenLanguageName(AppLocalizations.of(context), targetLanguage),
+                  ),
+                  (false, false) => AppLocalizations.of(context).pipelineSummary(
+                    spokenLanguageName(AppLocalizations.of(context), targetLanguage),
+                  ),
+                },
                 style: const TextStyle(color: LoreDubPalette.mutedInk),
               ),
             ],

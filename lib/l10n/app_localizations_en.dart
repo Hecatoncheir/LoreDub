@@ -670,6 +670,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptClearTooltip => 'Remove every line from the list';
 
   @override
+  String get pipelineSummaryDirect => 'Whisper → English → Silero';
+
+  @override
+  String get pipelineSummaryOcrDirect => 'Windows OCR → English → Silero';
+
+  @override
   String pipelineSummary(String language) {
     return 'Whisper → English → Marian → $language → Silero';
   }

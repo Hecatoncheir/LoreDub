@@ -406,6 +406,8 @@
   "emptyTranscript": "Здесь появятся распознанные и переведённые реплики",
   "transcriptClear": "Очистить",
   "transcriptClearTooltip": "Убрать все реплики из списка",
+  "pipelineSummaryDirect": "Whisper → English → Silero",
+  "pipelineSummaryOcrDirect": "Windows OCR → English → Silero",
   "pipelineSummary": "Whisper → English → Marian → {language} → Silero",
   "@pipelineSummary": {
     "placeholders": {

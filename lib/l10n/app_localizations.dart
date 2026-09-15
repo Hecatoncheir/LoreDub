@@ -1191,6 +1191,18 @@ abstract class AppLocalizations {
   /// **'Убрать все реплики из списка'**
   String get transcriptClearTooltip;
 
+  /// No description provided for @pipelineSummaryDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Whisper → English → Silero'**
+  String get pipelineSummaryDirect;
+
+  /// No description provided for @pipelineSummaryOcrDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Windows OCR → English → Silero'**
+  String get pipelineSummaryOcrDirect;
+
   /// No description provided for @pipelineSummary.
   ///
   /// In ru, this message translates to:
