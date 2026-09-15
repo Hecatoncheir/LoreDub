@@ -395,6 +395,10 @@ class LocalInferenceService {
     /// The pace to read this one line at, when the queue asks for more than
     /// the session's own.
     double? speed,
+
+    /// Whether what whisper heard still has to be translated. Dubbing into
+    /// English does not: whisper was asked for English and handed it over.
+    bool translate = true,
   }) async {
     final whisper = _whisperExecutable ?? await resolveWhisperExecutable();
     final model = whisperModel;
@@ -438,7 +442,7 @@ class LocalInferenceService {
 
     // The captured audio is still on disk here: the worker reads its pitch to
     // decide whose voice to answer in.
-    return processText(english, originalWavePath: wavePath, speed: speed);
+    return processText(english, originalWavePath: wavePath, speed: speed, translate: translate);
   }
 
   /// The voice in [wavePath], as a character's card keeps it: the

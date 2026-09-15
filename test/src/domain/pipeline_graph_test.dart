@@ -269,6 +269,65 @@ void main() {
     });
   });
 
+  group('the translator', () {
+    const english = AppSettings(targetLanguage: 'en');
+
+    test('stands aside, with the text going past it, when nothing translates', () {
+      final graph = buildPipelineGraph(settings: english, characters: const []);
+
+      expect(graph.node(translation)?.unrouted, isTrue);
+      expect(
+        joined(
+          graph,
+          const PipelinePort(recognition, PipelineSocket.speechText),
+          const PipelinePort(voice, PipelineSocket.voiceIn),
+        ),
+        isTrue,
+      );
+      expect(
+        joined(
+          graph,
+          const PipelinePort(recognition, PipelineSocket.speechText),
+          const PipelinePort(translation, PipelineSocket.translationIn),
+        ),
+        isFalse,
+      );
+      expect(
+        joined(
+          graph,
+          const PipelinePort(translation, PipelineSocket.translatedText),
+          const PipelinePort(voice, PipelineSocket.voiceIn),
+        ),
+        isFalse,
+      );
+    });
+
+    test('stands in the line for a language that has one', () {
+      final graph = buildPipelineGraph(settings: const AppSettings(), characters: const []);
+
+      expect(graph.node(translation)?.unrouted, isFalse);
+    });
+
+    test('is drawn faded with the rest while the way in is cut', () {
+      final graph = buildPipelineGraph(
+        settings: const AppSettings(targetLanguage: 'en', captureRouted: false),
+        characters: const [],
+      );
+
+      // Nothing reaches the stages at all, so the line that steps over the
+      // translator is not drawn either.
+      expect(graph.node(translation)?.unrouted, isTrue);
+      expect(
+        joined(
+          graph,
+          const PipelinePort(recognition, PipelineSocket.speechText),
+          const PipelinePort(voice, PipelineSocket.voiceIn),
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('what a link would change', () {
     PipelineGraph cutGraph() => buildPipelineGraph(
       settings: const AppSettings(captureRouted: false),
@@ -331,11 +390,45 @@ void main() {
     test('is refused where the engine has no route', () {
       final connection = proposeConnection(
         cutGraph(),
+        const PipelinePort(source, PipelineSocket.gameAudio),
+        const PipelinePort(mix, PipelineSocket.mixIn),
+      );
+
+      expect((connection as RefusedConnection).reason, ConnectionRefusal.unsupported);
+    });
+
+    test('the translator stepped over, when whisper is taken to the voice', () {
+      final connection = proposeConnection(
+        cutGraph(),
         const PipelinePort(recognition, PipelineSocket.speechText),
         const PipelinePort(voice, PipelineSocket.voiceIn),
       );
 
-      expect((connection as RefusedConnection).reason, ConnectionRefusal.unsupported);
+      expect((connection as TranslationConnection).routed, isFalse);
+    });
+
+    test('the translator back in the line, drawn at either end of it', () {
+      final english = buildPipelineGraph(
+        settings: const AppSettings(targetLanguage: 'en'),
+        characters: const [],
+      );
+
+      expect(
+        (proposeConnection(
+          english,
+          const PipelinePort(recognition, PipelineSocket.speechText),
+          const PipelinePort(translation, PipelineSocket.translationIn),
+        ) as TranslationConnection).routed,
+        isTrue,
+      );
+      expect(
+        (proposeConnection(
+          english,
+          const PipelinePort(translation, PipelineSocket.translatedText),
+          const PipelinePort(voice, PipelineSocket.voiceIn),
+        ) as TranslationConnection).routed,
+        isTrue,
+      );
     });
 
     test('whose voice reads whom, between two cards', () {
@@ -421,15 +514,32 @@ void main() {
       expect(connection.readerId, isNull);
     });
 
-    test('is refused on the route, which is changed by drawing the other one', () {
+    test('the translator out of the line, by either half of it', () {
+      for (final link in const [
+        PipelineLink(
+          PipelinePort(recognition, PipelineSocket.speechText),
+          PipelinePort(translation, PipelineSocket.translationIn),
+        ),
+        PipelineLink(
+          PipelinePort(translation, PipelineSocket.translatedText),
+          PipelinePort(voice, PipelineSocket.voiceIn),
+        ),
+      ]) {
+        expect((proposeDisconnect(link) as TranslationConnection).routed, isFalse);
+      }
+    });
+
+    test('the translator back in, rather than a voice with nothing to read', () {
+      // The line that steps over the stage carries the only text the voice
+      // gets, so cutting it can only mean putting the stage back.
       final connection = proposeDisconnect(
         const PipelineLink(
-          PipelinePort(translation, PipelineSocket.translatedText),
+          PipelinePort(recognition, PipelineSocket.speechText),
           PipelinePort(voice, PipelineSocket.voiceIn),
         ),
       );
 
-      expect((connection as RefusedConnection).reason, ConnectionRefusal.unsupported);
+      expect((connection as TranslationConnection).routed, isTrue);
     });
 
     test('takes one card out of the mix, by the line that is cut', () {

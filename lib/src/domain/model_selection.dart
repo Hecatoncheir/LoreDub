@@ -4,6 +4,7 @@
 import 'app_settings.dart';
 import 'language_pair.dart';
 import 'model_package.dart';
+import 'spoken_language.dart';
 
 export 'language_pair.dart';
 
@@ -114,6 +115,13 @@ class ModelSelection {
       !settings.detectSourceLanguage &&
       settings.sourceLanguage != 'en';
 
+  /// Whether a phrase has to be translated before it is read.
+  ///
+  /// Dubbing into English does not: whisper is asked for English whatever the
+  /// game speaks, so the line arrives in it and the translator is left out of
+  /// the session entirely rather than run over its own language.
+  bool get translates => settings.targetLanguage != untranslatedDubbingLanguage;
+
   ModelPackage? get speechPackage => forTargetLanguage(ModelKind.speech)?.model;
 
   /// Every voice that package offers, the catalogue default first.
@@ -143,7 +151,7 @@ class ModelSelection {
     if (models.isEmpty) return false;
     if (!(recognition?.installed ?? false)) return false;
     final pairInstalled =
-        (forTargetLanguage(ModelKind.translation)?.installed ?? false) &&
+        (!translates || (forTargetLanguage(ModelKind.translation)?.installed ?? false)) &&
         (forTargetLanguage(ModelKind.speech)?.installed ?? false);
     return pairInstalled && (!clonesVoice || (voiceConverter?.installed ?? false));
   }
@@ -153,10 +161,11 @@ class ModelSelection {
   /// text on a screen has no audio for the original voice to follow.
   bool get screenModelsInstalled =>
       models.isNotEmpty &&
-      (forTargetLanguage(ModelKind.translation)?.installed ?? false) &&
+      (!translates || (forTargetLanguage(ModelKind.translation)?.installed ?? false)) &&
       (forTargetLanguage(ModelKind.speech)?.installed ?? false);
 
-  /// Whether both halves of a language's pair are on disk.
+  /// Whether a language is ready to dub into: its voice on disk, and its
+  /// translator too where it has one. English has none to wait for.
   bool isLanguageReady(String language) {
     var translation = false;
     var speech = false;
@@ -165,7 +174,7 @@ class ModelSelection {
       translation |= state.model.kind == ModelKind.translation;
       speech |= state.model.kind == ModelKind.speech;
     }
-    return translation && speech;
+    return (translation || language == untranslatedDubbingLanguage) && speech;
   }
 
   /// Whether live dubbing needs a game window chosen before it can start.

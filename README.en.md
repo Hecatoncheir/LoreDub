@@ -310,6 +310,15 @@ stage goes dark, labelled «not routed» and still in its place, while Live
 refuses to start and says why. The mode is remembered, so any link drawn back
 picks up the route it had.
 
+The **Translation** link comes off as well, and taking it off means dubbing
+into English. Whisper hands English over anyway, so the text runs from it
+straight into the voice and the translation node fades with «nothing to
+translate» under it -- the same state as choosing English on the models
+screen, not a second setting beside it. A line drawn back puts the translation
+on the first downloaded language that has a translator; with none downloaded
+the link is refused and asks for one first. Like the route, it cannot be
+switched mid-session: the models are loaded for the session that runs.
+
 Clicking a node opens its own settings in a panel over the canvas: the game
 and where its sound is taken from, the recognition model, the dubbing
 language, the voice and its speed, how loud the original stays, whether lines
@@ -608,6 +617,15 @@ formally more often. It also costs more — about 400 ms a line against 260 ms.
 Now and then it leaves a proper noun in Latin script, which Silero cannot
 read. The worker catches that and translates again with the line lower-cased;
 over those 25 lines it happened once, and the retry fixed it.
+
+Dubbing into English needs no translator at all: whisper runs with `-tr` and
+hands English over whatever the game speaks, so the line reaches the voice
+already in it. The English language in the catalogue is therefore a voice on
+its own, the session comes up without Marian, and on a machine too small for
+the translator it is the one language left. Silero's `v3_en` ships 118 voices;
+105 are listed -- 57 women and 48 men -- and the thirteen whose pitch fell
+between the thresholds are not named at all, as everywhere else in the
+catalogue.
 
 ## Recognition model
 

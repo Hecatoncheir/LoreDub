@@ -691,7 +691,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionLanguagesNote =>
-      'A language\'s translator and voice are downloaded, picked and deleted together. Only the language you play in is needed.';
+      'A language\'s translator and voice are downloaded, picked and deleted together. Only the language you play in is needed. English needs no translator: whisper hands English over already.';
 
   @override
   String get modelPartTranslation => 'translation';
@@ -1675,6 +1675,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineNodeTranslation => 'Translation';
 
   @override
+  String get pipelineNoTranslation => 'Nothing to translate';
+
+  @override
   String get pipelineNodeVoice => 'Lines';
 
   @override
@@ -1755,6 +1758,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pipelineRefusalLocked => 'The route cannot change while a session is running.';
+
+  @override
+  String get pipelineRefusalTranslatorMissing => 'Download a language with a translator first.';
 
   @override
   String failurePipelineLayoutSaveFailed(String detail) {

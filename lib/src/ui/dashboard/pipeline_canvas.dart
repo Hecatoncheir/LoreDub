@@ -140,6 +140,7 @@ String describeConnectionRefusal(AppLocalizations l10n, ConnectionRefusal reason
       ConnectionRefusal.unsupported => l10n.pipelineRefusalUnsupported,
       ConnectionRefusal.loop => l10n.pipelineRefusalLoop,
       ConnectionRefusal.locked => l10n.pipelineRefusalLocked,
+      ConnectionRefusal.translatorMissing => l10n.pipelineRefusalTranslatorMissing,
     };
 
 /// The scheme: a dotted field the nodes sit on, the links between them, and
@@ -998,9 +999,13 @@ class _NodeCard extends StatelessWidget {
       // Whisper is run with -tr, so what reaches the translator is English
       // whatever the game speaks; the language Live listens in says nothing
       // about this stage and used to be written here as if it did.
+      // Dubbing into English stands this stage aside: whisper has handed
+      // English over and the line is read as it arrived.
       PipelineNodeKind.translation =>
-        '${spokenLanguageName(l10n, fallbackSpokenLanguage)}'
-            ' → ${translationTargetName(l10n, settings.targetLanguage)}',
+        settings.targetLanguage == untranslatedDubbingLanguage
+            ? l10n.pipelineNoTranslation
+            : '${spokenLanguageName(l10n, fallbackSpokenLanguage)}'
+                  ' → ${translationTargetName(l10n, settings.targetLanguage)}',
       PipelineNodeKind.voice => switch (settings.voiceMode) {
         VoiceMode.original => l10n.voiceOriginal,
         VoiceMode.automatic => l10n.voiceAutomatic,

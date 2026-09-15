@@ -6,6 +6,7 @@ import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/model_selection.dart';
+import 'package:lore_dub/src/domain/spoken_language.dart';
 
 void main() {
   /// Every package on disk, except the voice converter unless asked for.
@@ -34,10 +35,15 @@ void main() {
     test('pairs each language with its translator and voice, in catalogue order', () {
       final pairs = selectionWith(const AppSettings()).languagePairs;
 
-      expect(pairs.map((pair) => pair.language), ['ru', 'de', 'es', 'fr', 'uk']);
+      expect(pairs.map((pair) => pair.language), ['ru', 'de', 'es', 'fr', 'uk', 'en']);
       for (final pair in pairs) {
-        expect(pair.translation?.model.kind, ModelKind.translation, reason: pair.language);
         expect(pair.speech?.model.kind, ModelKind.speech, reason: pair.language);
+        // English is half a pair on purpose: whisper hands it over already.
+        if (pair.language == untranslatedDubbingLanguage) {
+          expect(pair.translation, isNull);
+          continue;
+        }
+        expect(pair.translation?.model.kind, ModelKind.translation, reason: pair.language);
       }
     });
 

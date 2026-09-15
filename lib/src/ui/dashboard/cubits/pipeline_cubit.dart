@@ -213,7 +213,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// start and cancel at once and leave "Stopped" with nothing to explain it.
   DateTime? _startRequestedAt;
 
-  ModelSelection get _selection =>
+  /// What the settings and the downloads together say a session will use.
+  /// Read from the graph as well, which asks it what a link would change.
+  ModelSelection get selection =>
       ModelSelection(models: _downloads.state.models, settings: _settings.settings);
 
   void listen() => _events = _appRepository.events.listen(_handleEvent);
@@ -244,7 +246,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     if (_pressedTwice) return;
     _errors.report(null);
     if (state.liveRunning) return stop();
-    final selection = _selection;
+    final selection = this.selection;
     if (!state.canStart(selection, initializing: initializing)) return;
     // The snapshot session holds the worker loaded without whisper, so live
     // dubbing takes it over by starting afresh.
@@ -287,14 +289,17 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   Future<void> _startLive(ModelSelection selection) async {
     try {
       final settings = _settings.settings;
-      final translation = selection.forTargetLanguage(ModelKind.translation)!.model;
+      // Dubbing into English has no translator to carry a target token.
+      final translation = selection.translates
+          ? selection.forTargetLanguage(ModelKind.translation)!.model
+          : null;
       final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
       await _appRepository.start(
         process: selection.requiresProcess ? state.selectedProcess : null,
         settings: settings,
         modelDirectories: await _modelDirectories(selection),
         speaker: selection.voice,
-        translationPrefix: translation.translationPrefix ?? '',
+        translationPrefix: translation?.translationPrefix ?? '',
         translateSpeech: selection.recognitionTranslatesSpeech,
         followSpeaker: selection.followsSpeaker,
         // The converter may be loaded only to hear who is speaking.
@@ -321,14 +326,17 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// speech model are named by file, the other two by directory.
   Future<Map<String, String>> _modelDirectories(ModelSelection selection) async {
     final recognition = selection.recognition!.model;
-    final translation = selection.forTargetLanguage(ModelKind.translation)!.model;
+    // Dubbing into English names no translator: the session runs without one.
+    final translation = selection.translates
+        ? selection.forTargetLanguage(ModelKind.translation)!.model
+        : null;
     final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
     return {
       'whisper': path.join(
         await _modelRepository.directoryFor(recognition),
         recognition.primaryFileName,
       ),
-      'translation': await _modelRepository.directoryFor(translation),
+      if (translation != null) 'translation': await _modelRepository.directoryFor(translation),
       'speech': path.join(
         await _modelRepository.directoryFor(speech),
         speech.primaryFileName,
@@ -352,7 +360,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       if (state.session == PipelineSession.screen) await stop();
       return;
     }
-    final selection = _selection;
+    final selection = this.selection;
     if (!state.canStartScreen(selection, initializing: initializing)) return;
     _startRequestedAt = _clock();
     // The worker the characters screen holds has neither the translator nor
@@ -375,19 +383,23 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     );
     try {
       final settings = _settings.settings;
-      final translation = selection.forTargetLanguage(ModelKind.translation)!.model;
+      // Read into English, there is nothing to translate: the same session
+      // without Marian in it.
+      final translation = selection.translates
+          ? selection.forTargetLanguage(ModelKind.translation)!.model
+          : null;
       final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
       final speechDirectory = await _modelRepository.directoryFor(speech);
       await _appRepository.startScreenText(
         process: state.selectedProcess,
         settings: settings,
         modelDirectories: {
-          'translation': await _modelRepository.directoryFor(translation),
+          if (translation != null) 'translation': await _modelRepository.directoryFor(translation),
           'speech': path.join(speechDirectory, speech.primaryFileName),
         },
         // A selected line has no audio to follow the speaker by.
         speaker: selection.voice,
-        translationPrefix: translation.translationPrefix ?? '',
+        translationPrefix: translation?.translationPrefix ?? '',
         translationBackend: _backendFor(ComputeStage.translation),
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
       );
@@ -413,7 +425,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       if (state.session == PipelineSession.scene) await stop();
       return;
     }
-    final selection = _selection;
+    final selection = this.selection;
     if (!state.canStartScene(selection, initializing: initializing)) return;
     _startRequestedAt = _clock();
     // Both sessions listen through the converter, but only one may hold the

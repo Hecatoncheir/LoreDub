@@ -10,6 +10,7 @@ import '../../../data/repositories/app_repository.dart';
 import '../../../domain/character.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
+import '../../../domain/spoken_language.dart';
 import 'characters_cubit.dart';
 import 'pipeline_cubit.dart';
 import 'settings_cubit.dart';
@@ -665,6 +666,21 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     return next;
   }
 
+  /// The language the translator is put back on: the first one downloaded
+  /// that has a translator at all, in the order the models screen lists them.
+  ///
+  /// The canvas cannot ask which language was meant -- a line has no room for
+  /// the question -- and a player who has downloaded one pair means that one.
+  /// The models screen shows at once which it was, and one step back undoes
+  /// it, so the guess costs nothing when it is wrong.
+  String? get _languageToTranslateInto {
+    for (final pair in _pipeline.selection.languagePairs) {
+      if (pair.language == untranslatedDubbingLanguage) continue;
+      if (pair.installed) return pair.language;
+    }
+    return null;
+  }
+
   /// Carries out what the canvas proposed, or says why it could not.
   ///
   /// [joining] is the two ends of a line just drawn, which is what tells a
@@ -687,6 +703,24 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         _remember();
         emit(state.copyWith(clearRefusal: true));
         await _settings.update(_settings.settings.copyWith(captureRouted: routed));
+      // The translator out of the line, or back into it. There is no setting
+      // of its own behind this: dubbing into English is what has nothing to
+      // translate, so taking the stage out chooses English and putting it
+      // back chooses a language that has a translator. Locked with the
+      // route, the models being loaded for the session that runs.
+      case TranslationConnection(:final routed):
+        if (routeLocked) {
+          emit(state.copyWith(refusal: ConnectionRefusal.locked));
+          return;
+        }
+        final language = routed ? _languageToTranslateInto : untranslatedDubbingLanguage;
+        if (language == null) {
+          emit(state.copyWith(refusal: ConnectionRefusal.translatorMissing));
+          return;
+        }
+        _remember();
+        emit(state.copyWith(clearRefusal: true));
+        await _settings.selectTargetLanguage(language);
       // A card into the mix, or out of it. Not locked with the route: a
       // session keeps its cast loaded either way, and the worker is told.
       //

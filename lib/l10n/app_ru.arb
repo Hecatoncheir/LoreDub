@@ -425,7 +425,7 @@
   "sectionRecognition": "РАСПОЗНАВАНИЕ РЕЧИ",
   "sectionRecognitionNote": "Whisper переводит речь любого языка в английский текст. Нужна одна модель — чем больше, тем точнее и медленнее.",
   "sectionLanguages": "ЯЗЫКИ ОЗВУЧКИ",
-  "sectionLanguagesNote": "Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете.",
+  "sectionLanguagesNote": "Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете. Английскому переводчик не нужен: whisper и так отдаёт английский.",
   "modelPartTranslation": "перевод",
   "modelPartVoice": "голос",
   "modelPartConverter": "конвертер голоса",
@@ -1125,6 +1125,7 @@
   "pipelineNodeSource": "Оригинальный поток",
   "pipelineNodeRecognition": "Whisper",
   "pipelineNodeTranslation": "Перевод",
+  "pipelineNoTranslation": "Переводить нечего",
   "pipelineNodeVoice": "Реплики",
   "pipelineNodeOutput": "Поток",
   "pipelineSocketGameAudio": "Звук",
@@ -1158,6 +1159,7 @@
   "pipelineRefusalUnsupported": "Такого маршрута у движка нет.",
   "pipelineRefusalLoop": "Тогда персонажи озвучивали бы друг друга.",
   "pipelineRefusalLocked": "Пока идёт сессия, маршрут менять нельзя.",
+  "pipelineRefusalTranslatorMissing": "Сначала скачайте язык с переводчиком.",
   "failurePipelineLayoutSaveFailed": "Не удалось сохранить схему: {detail}",
   "@failurePipelineLayoutSaveFailed": {
     "placeholders": {

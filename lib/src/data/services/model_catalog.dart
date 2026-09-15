@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../../domain/model_package.dart';
+import '../../domain/spoken_language.dart';
 
 /// Recognition needs nothing but Whisper: it turns speech in any language
 /// into English on its own. Everything after that comes in pairs — a Marian
@@ -74,6 +75,119 @@ ModelPackage _marian({
 /// synthesized and its median fundamental taken, which separates the two
 /// groups by a wide margin. Packages whose voices are named by number are
 /// left [VoiceGender.unknown], and the automatic choice then stays out of it.
+/// The English voices that read as women and as men, by the median
+/// fundamental of one phrase each -- the same measurement the worker makes
+/// of a game's speaker.
+const _englishWomen = [
+  0,
+  4,
+  5,
+  6,
+  10,
+  11,
+  12,
+  14,
+  16,
+  18,
+  21,
+  24,
+  25,
+  26,
+  28,
+  33,
+  36,
+  37,
+  38,
+  39,
+  41,
+  43,
+  44,
+  45,
+  47,
+  49,
+  50,
+  51,
+  52,
+  53,
+  54,
+  55,
+  56,
+  60,
+  61,
+  62,
+  65,
+  67,
+  72,
+  75,
+  82,
+  83,
+  85,
+  86,
+  92,
+  94,
+  95,
+  96,
+  97,
+  98,
+  99,
+  101,
+  107,
+  108,
+  109,
+  116,
+  117,
+];
+const _englishMen = [
+  2,
+  13,
+  15,
+  17,
+  19,
+  20,
+  22,
+  23,
+  27,
+  29,
+  30,
+  31,
+  32,
+  34,
+  35,
+  40,
+  42,
+  46,
+  57,
+  58,
+  63,
+  66,
+  69,
+  70,
+  71,
+  73,
+  77,
+  78,
+  79,
+  80,
+  81,
+  84,
+  87,
+  89,
+  90,
+  91,
+  93,
+  100,
+  102,
+  103,
+  104,
+  105,
+  106,
+  110,
+  112,
+  113,
+  114,
+  115,
+];
+
 VoiceOption _male(String id) => VoiceOption(id, gender: VoiceGender.male);
 VoiceOption _female(String id) => VoiceOption(id, gender: VoiceGender.female);
 
@@ -337,6 +451,31 @@ final modelCatalog = <ModelPackage>[
     voices: [_male('mykyta')],
   ),
 
+  // The one language with a voice and no translator: whisper is already
+  // asked for English, so a phrase arrives in it and Marian is left out of
+  // the session entirely -- a stage less to load, and a machine too small
+  // for the translator can still dub.
+  //
+  // The package ships 118 numbered voices of uneven quality. All 118 were
+  // synthesized and measured; the 13 that landed between the thresholds
+  // (156 to 174 Hz) are left off the list rather than guessed at, which is
+  // what the rest of the catalogue does. They are grouped by gender rather
+  // than left in numeric order: a picker of a hundred names is read by
+  // looking for a man's or a woman's voice first.
+  _silero(
+    id: 'silero-en-v3',
+    version: 'v3',
+    language: 'en',
+    fileName: 'v3_en.pt',
+    directory: 'en',
+    byteSize: 57194546,
+    speaker: 'en_0',
+    voices: [
+      for (final number in _englishWomen) _female('en_$number'),
+      for (final number in _englishMen) _male('en_$number'),
+    ],
+  ),
+
   ModelPackage(
     id: voiceConverterModelId,
     kind: ModelKind.voiceConversion,
@@ -362,15 +501,29 @@ final modelCatalog = <ModelPackage>[
   ),
 ];
 
-/// Languages the pipeline can dub into: those with both a translator and a
-/// voice, in catalogue order.
-List<String> get dubbingLanguages => [
-  for (final model in modelCatalog)
-    if (model.kind == ModelKind.translation &&
-        model.language != null &&
-        speechModelFor(model.language!) != null)
-      model.language!,
-];
+/// Languages the pipeline can dub into, in catalogue order: those with a
+/// voice and either a translator or nothing to translate.
+///
+/// English is the second kind. Whisper hands English over whatever the game
+/// speaks, so dubbing into it asks for a voice and no Marian at all -- which
+/// is also why it is the one language a machine too small for the translator
+/// can still dub into.
+///
+/// Counted over the voices rather than the translators, because a language
+/// may have more than one voice package and every one of them names it.
+List<String> get dubbingLanguages {
+  final languages = <String>[];
+  for (final model in modelCatalog) {
+    final language = model.language;
+    if (model.kind != ModelKind.speech || language == null) continue;
+    if (languages.contains(language)) continue;
+    if (translationModelFor(language) == null && language != untranslatedDubbingLanguage) {
+      continue;
+    }
+    languages.add(language);
+  }
+  return languages;
+}
 
 ModelPackage? _modelFor(ModelKind kind, String language) {
   for (final model in modelCatalog) {

@@ -28,12 +28,27 @@ void main() {
     expect(transcribeOnly.map((model) => model.id), ['whisper-large-v3-turbo-q5']);
   });
 
-  test('every dubbing language has both a translator and a voice', () {
+  test('every dubbing language has a voice, and a translator unless it is English', () {
     expect(dubbingLanguages, isNotEmpty);
     for (final language in dubbingLanguages) {
-      expect(translationModelFor(language), isNotNull, reason: language);
       expect(speechModelFor(language), isNotNull, reason: language);
+      if (language == untranslatedDubbingLanguage) continue;
+      expect(translationModelFor(language), isNotNull, reason: language);
     }
+  });
+
+  test('dubs into English with a voice and no translator at all', () {
+    // Whisper is asked for English whatever the game speaks, so the phrase
+    // arrives in it: the one language whose pair is a voice on its own.
+    expect(dubbingLanguages, contains(untranslatedDubbingLanguage));
+    expect(speechModelFor(untranslatedDubbingLanguage), isNotNull);
+    expect(translationModelFor(untranslatedDubbingLanguage), isNull);
+  });
+
+  test('offers a language once however many voices the catalogue has for it', () {
+    // Russian has two voice packages; the models screen shows one language.
+    expect(dubbingLanguages.where((language) => language == 'ru'), hasLength(1));
+    expect(dubbingLanguages.toSet(), hasLength(dubbingLanguages.length));
   });
 
   test('every voice names the speaker to synthesize with', () {

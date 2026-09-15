@@ -695,7 +695,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sectionLanguagesNote =>
-      'Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете.';
+      'Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете. Английскому переводчик не нужен: whisper и так отдаёт английский.';
 
   @override
   String get modelPartTranslation => 'перевод';
@@ -1684,6 +1684,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineNodeTranslation => 'Перевод';
 
   @override
+  String get pipelineNoTranslation => 'Переводить нечего';
+
+  @override
   String get pipelineNodeVoice => 'Реплики';
 
   @override
@@ -1763,6 +1766,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pipelineRefusalLocked => 'Пока идёт сессия, маршрут менять нельзя.';
+
+  @override
+  String get pipelineRefusalTranslatorMissing => 'Сначала скачайте язык с переводчиком.';
 
   @override
   String failurePipelineLayoutSaveFailed(String detail) {

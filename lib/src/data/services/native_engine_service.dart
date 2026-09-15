@@ -18,6 +18,7 @@ import '../../domain/ocr_text_delta.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/sound_captions.dart';
+import '../../domain/spoken_language.dart';
 import '../../domain/speech_pace.dart';
 import '../../domain/wave_slices.dart';
 import '../../native/lore_dub_native.g.dart';
@@ -125,7 +126,7 @@ class NativeEngineService {
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
     await _inference.start(
-      translationModel: models['translation']!,
+      translationModel: models['translation'] ?? '',
       ttsModel: models['speech']!,
       speaker: config['speaker']! as String,
       threads: config['cpuThreads']! as int,
@@ -192,7 +193,7 @@ class NativeEngineService {
     await LocalInferenceService.removeStaleAudio();
     final models = config['models']! as Map<String, String>;
     await _inference.start(
-      translationModel: models['translation']!,
+      translationModel: models['translation'] ?? '',
       ttsModel: models['speech']!,
       speaker: config['speaker']! as String,
       threads: config['cpuThreads']! as int,
@@ -824,6 +825,9 @@ class NativeEngineService {
         whisperModel: models['whisper']!,
         threads: config['cpuThreads']! as int,
         translateSpeech: config['translateSpeech'] as bool? ?? true,
+        // What whisper hands over is English; dubbing into English reads it
+        // as it is, and the worker was started without a translator anyway.
+        translate: config['targetLanguage'] != untranslatedDubbingLanguage,
         speed: _pace(config),
       );
       _publishSpokenLanguage();

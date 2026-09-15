@@ -425,7 +425,7 @@
   "sectionRecognition": "SPEECH RECOGNITION",
   "sectionRecognitionNote": "Whisper turns speech in any language into English text. One model covers everything — larger is more accurate and slower.",
   "sectionLanguages": "DUBBING LANGUAGES",
-  "sectionLanguagesNote": "A language's translator and voice are downloaded, picked and deleted together. Only the language you play in is needed.",
+  "sectionLanguagesNote": "A language's translator and voice are downloaded, picked and deleted together. Only the language you play in is needed. English needs no translator: whisper hands English over already.",
   "modelPartTranslation": "translation",
   "modelPartVoice": "voice",
   "modelPartConverter": "voice converter",
@@ -1125,6 +1125,7 @@
   "pipelineNodeSource": "Original stream",
   "pipelineNodeRecognition": "Whisper",
   "pipelineNodeTranslation": "Translation",
+  "pipelineNoTranslation": "Nothing to translate",
   "pipelineNodeVoice": "Lines",
   "pipelineNodeOutput": "Stream",
   "pipelineSocketGameAudio": "Audio",
@@ -1158,6 +1159,7 @@
   "pipelineRefusalUnsupported": "The engine has no such route.",
   "pipelineRefusalLoop": "The characters would then voice each other.",
   "pipelineRefusalLocked": "The route cannot change while a session is running.",
+  "pipelineRefusalTranslatorMissing": "Download a language with a translator first.",
   "failurePipelineLayoutSaveFailed": "The graph could not be saved: {detail}",
   "@failurePipelineLayoutSaveFailed": {
     "placeholders": {

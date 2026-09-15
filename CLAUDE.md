@@ -192,7 +192,17 @@ what the link would change (`RouteConnection` -> `AppSettings.captureRouted`,
 `ReaderConnection` -> `Character.voicedBy`) or why it is refused. Cutting the
 way in answers `RouteConnection(false)`: every stage is `unrouted` — faded,
 labelled, still in its place — and `canStart` refuses until it is joined
-again. There is one route on the canvas, the game's sound through whisper,
+again. Cutting either half of the translator's line answers
+`TranslationConnection(false)`, which is not a setting of its own but the
+dubbing language: whisper hands English over whatever the game speaks, so a
+session dubbing into English (`untranslatedDubbingLanguage`) has nothing to
+translate, and the canvas draws the stage faded with the text running from
+recognition straight into the voice. Joining it back asks for the first
+installed language that has a translator and refuses with `translatorMissing`
+when there is none; cutting the line that steps over the stage puts the stage
+back, a voice with nothing to read being no state at all. `ModelSelection.translates`
+is the same rule for the services, which then start the worker with no
+`--translation-model` and send `"translate": false`. There is one route on the canvas, the game's sound through whisper,
 because it is the only one this engine starts from here: reading the screen
 is the Screen page's own session and is not drawn at all. Cutting one of the lines into the mix's `mixCast`
 answers `CastConnection(<card>, false)` and takes that one card out:
@@ -373,6 +383,11 @@ app it dies before running a line. A setup already downloaded and verified
 is picked up by the startup check, so the line opens on Restart. It
 only offers this when `unins000.exe` sits beside the executable, i.e. the
 per-user setup put this copy there; otherwise the line opens the release page.
+
+A dubbing language is a voice and, unless it is English, a translator:
+`dubbingLanguages` counts over the voice packages, so a language with two of
+them (Russian has `v5_3_ru` and the MIT CIS package) is still offered once,
+and English is offered with no Marian behind it at all.
 
 The recognition model is a choice, not a constant: `AppSettings.whisperModel`
 names a catalogue id and the pipeline is handed that package's file path.

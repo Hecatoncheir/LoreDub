@@ -12,6 +12,7 @@ library;
 
 import 'app_settings.dart';
 import 'character.dart';
+import 'spoken_language.dart';
 
 /// How far the scheme may spread from the corner it starts in.
 ///
@@ -595,6 +596,12 @@ PipelineGraph buildPipelineGraph({
   GraphPoint at(String nodeId, GraphPoint fallback) => layout.positions[nodeId] ?? fallback;
 
   final routed = settings.captureRouted;
+  // Dubbing into English has nothing to translate -- whisper has handed
+  // English over already -- so the stage stands out of the line with the
+  // text going past it. The canvas reads that off the language rather than
+  // off a setting of its own: there is one answer to where the dubbing is
+  // going, and it is chosen on the models screen or here.
+  final translates = settings.targetLanguage != untranslatedDubbingLanguage;
   final nodes = <PipelineNode>[
     for (final id in PipelineNodeIds.stages)
       PipelineNode(
@@ -608,7 +615,7 @@ PipelineGraph buildPipelineGraph({
           _ => PipelineNodeKind.output,
         },
         position: at(id, PipelineLayout.standardPositions[id] ?? GraphPoint.zero),
-        unrouted: !routed,
+        unrouted: !routed || (id == PipelineNodeIds.translation && !translates),
       ),
     for (final (index, placement) in placed.indexed)
       PipelineNode(
@@ -650,6 +657,8 @@ PipelineGraph buildPipelineGraph({
   }
 
   const translation = PipelinePort(PipelineNodeIds.translation, PipelineSocket.translationIn);
+  const speechText = PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechText);
+  const voiceIn = PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceIn);
   final links = <PipelineLink>[
     // Nothing feeds the stages while the way in is taken apart. What runs
     // between them is the pipeline itself and stays drawn, faded with them.
@@ -658,15 +667,18 @@ PipelineGraph buildPipelineGraph({
         PipelinePort(PipelineNodeIds.source, PipelineSocket.gameAudio),
         PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn),
       ),
-      const PipelineLink(
-        PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechText),
-        translation,
-      ),
+      // What whisper heard goes to the translator, or straight to the voice
+      // when there is nothing to translate.
+      if (translates)
+        const PipelineLink(speechText, translation)
+      else
+        const PipelineLink(speechText, voiceIn),
     ],
-    const PipelineLink(
-      PipelinePort(PipelineNodeIds.translation, PipelineSocket.translatedText),
-      PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceIn),
-    ),
+    if (translates)
+      const PipelineLink(
+        PipelinePort(PipelineNodeIds.translation, PipelineSocket.translatedText),
+        voiceIn,
+      ),
     const PipelineLink(
       PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceAudio),
       PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixIn),
@@ -812,6 +824,10 @@ enum ConnectionRefusal {
   /// The route cannot be changed while a session is running: the models are
   /// loaded for the one it started with. Whose voice reads whom still can.
   locked,
+
+  /// The translator was drawn back into the line with no language to put it
+  /// on: every pair the catalogue offers is still to be downloaded.
+  translatorMissing,
 }
 
 /// What making a link would change. The canvas asks before it draws, and
@@ -826,6 +842,17 @@ final class RouteConnection extends GraphConnection {
 
   /// Whether the game's sound reaches the stages at all. Taken apart, every
   /// stage stands with nothing coming into it until a link is drawn back.
+  final bool routed;
+}
+
+/// Whether the translator stands in the line.
+///
+/// Taken out, what whisper heard goes straight to the voice, and what whisper
+/// hands over is English -- so cutting this link is choosing to dub into
+/// English, and drawing it back is choosing a language to translate into.
+final class TranslationConnection extends GraphConnection {
+  const TranslationConnection(this.routed);
+
   final bool routed;
 }
 
@@ -897,6 +924,12 @@ GraphConnection proposeConnection(
   if (graph.links.contains(PipelineLink(from, to))) return const UnchangedConnection();
   return switch ((from.socket, to.socket)) {
     (PipelineSocket.gameAudio, PipelineSocket.speechIn) => const RouteConnection(true),
+    // The translator back into the line, drawn at either end of it.
+    (PipelineSocket.speechText, PipelineSocket.translationIn) ||
+    (PipelineSocket.translatedText, PipelineSocket.voiceIn) => const TranslationConnection(true),
+    // Recognition straight into the voice: the stage is stepped over, which
+    // is what dubbing into English does.
+    (PipelineSocket.speechText, PipelineSocket.voiceIn) => const TranslationConnection(false),
     // A card back into the mix: this one speaks again, and the rest stand
     // where they were left.
     (PipelineSocket.characterVoice, PipelineSocket.mixCast) => switch (PipelineNodeIds.characterOf(
@@ -944,6 +977,18 @@ GraphConnection proposeDisconnect(PipelineLink link) {
   // One card comes out of the mix: it stays where it was put with nobody
   // standing in for it, and the line drawn back wakes it again. The rest of
   // the cast is not touched -- a scheme is cut a card at a time.
+  // Either half of the translator's line takes the whole stage out: the text
+  // goes past it, and the dubbing is the English whisper already hands over.
+  if (link.to.socket == PipelineSocket.translationIn ||
+      link.from.socket == PipelineSocket.translatedText) {
+    return const TranslationConnection(false);
+  }
+  // The line that steps over the translator is the only text the voice gets.
+  // Cutting it cannot leave the voice with nothing to read, so it means the
+  // other thing it can mean: the stage goes back into the line.
+  if (link.from.socket == PipelineSocket.speechText && link.to.socket == PipelineSocket.voiceIn) {
+    return const TranslationConnection(true);
+  }
   if (link.to.socket == PipelineSocket.mixCast) {
     return switch (PipelineNodeIds.characterOf(link.from.nodeId)) {
       final character? => CastConnection(character, link.from.nodeId, false),

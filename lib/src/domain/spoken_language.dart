@@ -39,4 +39,11 @@ const autoSpokenLanguage = 'auto';
 
 const fallbackSpokenLanguage = 'en';
 
+/// The dubbing language that needs no translator.
+///
+/// Whisper is asked for English whatever the game speaks, so a phrase dubbed
+/// into English reaches the voice already in it and Marian has nothing to do.
+/// Every other language goes through the translator first.
+const untranslatedDubbingLanguage = 'en';
+
 bool isSupportedSpokenLanguage(String code) => spokenLanguages.contains(code);

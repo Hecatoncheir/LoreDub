@@ -658,8 +658,10 @@ def main():
     if not args.embed_only:
         # A voice preview has nothing to translate: it speaks a line the
         # application already wrote, so the translator is left out and the
-        # screen waits seconds instead of a minute.
-        if not args.speech_only:
+        # screen waits seconds instead of a minute. Dubbing into English
+        # leaves it out for the other reason -- whisper was asked for English
+        # and handed it over, so no model is named and none is loaded.
+        if not args.speech_only and args.translation_model:
             report_progress(0.35, "transformers")
             from transformers import MarianMTModel, MarianTokenizer
 
@@ -1014,8 +1016,9 @@ def main():
                 continue
             text = request["text"].strip()
             # Text read off the screen in the dubbing language itself has
-            # nothing to be translated and is voiced as it is.
-            if request.get("translate", True):
+            # nothing to be translated and is voiced as it is, and so is
+            # everything in a session started without a translator at all.
+            if request.get("translate", True) and translator is not None:
                 translated = translate(text)
                 # A capitalised name is occasionally carried over untranslated,
                 # and the speech model cannot read Latin script. Asking again

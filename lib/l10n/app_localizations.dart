@@ -1224,7 +1224,7 @@ abstract class AppLocalizations {
   /// No description provided for @sectionLanguagesNote.
   ///
   /// In ru, this message translates to:
-  /// **'Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете.'**
+  /// **'Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете. Английскому переводчик не нужен: whisper и так отдаёт английский.'**
   String get sectionLanguagesNote;
 
   /// No description provided for @modelPartTranslation.
@@ -2889,6 +2889,12 @@ abstract class AppLocalizations {
   /// **'Перевод'**
   String get pipelineNodeTranslation;
 
+  /// No description provided for @pipelineNoTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переводить нечего'**
+  String get pipelineNoTranslation;
+
   /// No description provided for @pipelineNodeVoice.
   ///
   /// In ru, this message translates to:
@@ -3044,6 +3050,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Пока идёт сессия, маршрут менять нельзя.'**
   String get pipelineRefusalLocked;
+
+  /// No description provided for @pipelineRefusalTranslatorMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сначала скачайте язык с переводчиком.'**
+  String get pipelineRefusalTranslatorMissing;
 
   /// No description provided for @failurePipelineLayoutSaveFailed.
   ///
