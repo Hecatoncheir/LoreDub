@@ -305,8 +305,10 @@ parser): the player writes an entry down because they just heard the line go
 wrong, and mean the next one to be said their way rather than the next
 session.
 
-`glossary_catalog.dart` is the pack LoreDub brings with it, laid over the
-file once by `GlossaryService.withBuiltIn` and marked by a
+`glossary_catalog.dart` is the two packs LoreDub brings with it -- the
+general one and the lines a player knows by heart, where being literally
+right is not enough and a fresh translation lands wrong however correct it
+is -- laid over the file once by `GlossaryService.withBuiltIn` and marked by a
 `glossary.builtin` file beside it, so a pack the player threw away does not
 come back. It carries phrases and nothing else, and that is measured rather
 than chosen: every line in it was put through the same Marian the pipeline

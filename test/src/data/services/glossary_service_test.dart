@@ -70,16 +70,19 @@ void main() {
   });
 
   group('the pack LoreDub brings', () {
-    test('lays it over an empty glossary, switched off', () async {
+    test('lays both packs over an empty glossary, switched off', () async {
       final offered = await service.withBuiltIn(Glossary.empty, builtInGlossary());
 
-      expect(offered.packs.single.id, builtInGlossaryPackId);
-      expect(offered.packs.single.active, isFalse);
+      expect(
+        offered.packs.map((pack) => pack.id),
+        [builtInGlossaryPackId, builtInQuotesPackId],
+      );
+      expect(offered.packs.every((pack) => !pack.active), isTrue);
       expect(offered.entries, isNotEmpty);
       expect(
-        offered.packs.single.entryKeys.length,
+        offered.packs.fold(0, (count, pack) => count + pack.entryKeys.length),
         offered.entries.length,
-        reason: 'every entry it brings is in the pack it brings',
+        reason: 'every entry it brings is in one of the packs it brings',
       );
     });
 
@@ -102,6 +105,16 @@ void main() {
       final offered = await service.withBuiltIn(const Glossary(entries: [mine]), builtInGlossary());
 
       expect(offered.match(GlossaryKind.phrase, 'Fire in the hole!')?.reading, 'Граната!');
+    });
+
+    test('keeps an apostrophe, which the key is matched on', () {
+      // Whisper writes "You're" and "'em"; an entry filed without them would
+      // never answer the line it was written for.
+      final sources = builtInGlossary().entries.map((entry) => entry.source).toList();
+
+      expect(sources, contains("We're taking fire!"));
+      expect(sources, contains("Light 'em up."));
+      expect(sources, contains("Hey, you. You're finally awake."));
     });
 
     test('brings phrases only, and every one of them readable', () {

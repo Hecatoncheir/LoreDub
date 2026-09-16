@@ -313,12 +313,18 @@ checked against those alone — which is the whole point of packs: one game's
 glossary does not drag another game's names along. Several may be on at once
 and what they hold adds together.
 
-LoreDub brings a pack of its own, **LoreDub · English → Русский**: 35 lines
+LoreDub brings two packs of its own. **LoreDub · English → Русский** is 74 lines
 the translator is measurably wrong about -- "Weapons free." came back as
 «Оружие бесплатно.», "Tango down." as «Танго вниз.», "Objective updated." as
 «Объектив обновлен.». What the model already says well is not in it, since an
 entry that never fires is noise in a list. The pack arrives switched off and
 is offered once: delete it and it stays deleted.
+
+The second, **LoreDub · Крылатые фразы**, is 27 lines a player knows by
+heart. Being literally right is not enough there: the line is remembered as
+it was localized, and a fresh translation lands wrong however correct it is.
+"Requiescat in pace." came back as «Требуем в темпе.», "The Vault Dweller
+has returned." as «Домой Домовладельцы вернулись.».
 
 Phrases only, and that is a measurement too. A name entry reaches a word the
 translator left in Latin script, and over sixteen proper nouns in two frames
