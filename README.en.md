@@ -300,6 +300,15 @@ and files what you wrote here as a phrase. The glossary is one list for every
 game, as the character cards are, and it takes effect from the next line
 rather than the next session.
 
+A line can be left unsaid altogether: every phrase carries a speaker button,
+and switched on it means "pass this line over". A shout the game repeats
+every half minute is then heard once. The line is still recognized and still
+shown in the transcript, marked, so the quiet does not look like a fault.
+Only a whole sentence matched exactly is passed over: "Reloading!" goes
+quiet, "We are reloading the truck." does not, and "Reloading! Cover me!"
+loses its first half only. An empty reading does not mean silence -- that is
+an entry with a half missing, and it is deleted.
+
 Beside the lists — under them in a narrow window — sit the **packs**. A
 pack is a way of reading the glossary
 rather than a place entries are moved to: an entry stays in its list whether

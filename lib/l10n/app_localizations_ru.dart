@@ -160,6 +160,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get glossaryEmpty => 'Пока пусто.';
 
   @override
+  String get transcriptSilenced => 'не озвучено по словарю';
+
+  @override
+  String get glossarySilence => 'Не озвучивать эту реплику';
+
+  @override
+  String get glossarySpeakAgain => 'Озвучивать снова';
+
+  @override
+  String get glossarySilenced => 'не озвучивается';
+
+  @override
   String get glossaryPacks => 'ПАКЕТЫ';
 
   @override

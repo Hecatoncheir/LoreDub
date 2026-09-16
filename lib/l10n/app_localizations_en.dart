@@ -160,6 +160,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get glossaryEmpty => 'Nothing here yet.';
 
   @override
+  String get transcriptSilenced => 'passed over by the glossary';
+
+  @override
+  String get glossarySilence => 'Pass this line over';
+
+  @override
+  String get glossarySpeakAgain => 'Say it again';
+
+  @override
+  String get glossarySilenced => 'passed over';
+
+  @override
   String get glossaryPacks => 'PACKS';
 
   @override

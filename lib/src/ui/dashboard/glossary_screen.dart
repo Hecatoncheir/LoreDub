@@ -348,11 +348,35 @@ class _EntryRowState extends State<_EntryRow> {
             },
             child: TextField(
               controller: _reading,
-              decoration: InputDecoration(labelText: widget.readingLabel, isDense: true),
+              // A silenced line has no reading to write: the field is left
+              // standing so the row keeps its shape, and says what it is.
+              enabled: !widget.entry.silent,
+              decoration: InputDecoration(
+                labelText: widget.readingLabel,
+                hintText: widget.entry.silent
+                    ? AppLocalizations.of(context).glossarySilenced
+                    : null,
+                isDense: true,
+              ),
               onSubmitted: (_) => _commit(),
             ),
           ),
         ),
+        // Only a phrase can be passed over: a name and a word stand inside a
+        // line rather than being one.
+        if (widget.entry.silences)
+          IconButton(
+            key: ValueKey('glossary-silence-${widget.entry.packKey}'),
+            tooltip: widget.entry.silent
+                ? AppLocalizations.of(context).glossarySpeakAgain
+                : AppLocalizations.of(context).glossarySilence,
+            icon: Icon(
+              widget.entry.silent ? Icons.volume_off_rounded : Icons.volume_up_outlined,
+              size: 20,
+              color: widget.entry.silent ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
+            ),
+            onPressed: () => widget.onWrite(widget.entry.copyWith(silent: !widget.entry.silent)),
+          ),
         Padding(
           padding: const EdgeInsets.only(left: 4),
           child: IconButton(

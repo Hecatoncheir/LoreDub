@@ -25,6 +25,7 @@ class TranscriptEntry {
     required this.translated,
     required this.latency,
     this.speaker,
+    this.silenced = false,
   });
 
   final String original;
@@ -37,6 +38,11 @@ class TranscriptEntry {
   /// nothing could tell the speakers apart. Null in a snapshot, which is
   /// read off the screen and has no voice at all.
   final String? speaker;
+
+  /// Whether the player silenced this line in the glossary. It was heard and
+  /// shown, and only the voice was left out -- so a silence the player asked
+  /// for does not look like one the pipeline dropped.
+  final bool silenced;
 }
 
 /// A voice this session has heard, as the scene list shows it.

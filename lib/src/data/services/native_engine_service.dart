@@ -934,6 +934,9 @@ class NativeEngineService {
       'translated': result.translated,
       'latencyMs': latencyMs,
       if (snapshot) 'snapshot': true,
+      // Shown as heard and passed over, rather than as a line that arrived
+      // with nothing in it.
+      if (result.silenced) 'silenced': true,
       // Who said it, so the scene list can offer the voice a replacement.
       'speaker': ?result.speaker,
     });
@@ -951,13 +954,17 @@ class NativeEngineService {
     // A line that was already being translated when the pause came is shown
     // in the transcript, but the pause means quiet. A selection is the
     // exception: the player asked for that one.
+    final wavePath = result.wavePath;
+    // A line the player silenced has no audio at all: it was never
+    // synthesized, so there is nothing to play and nothing to delete.
+    if (wavePath == null) return;
     if (_paused && !snapshot) {
-      unawaited(_deleteIfPresent(result.wavePath));
+      unawaited(_deleteIfPresent(wavePath));
       return;
     }
     // The worker says who is speaking, so a different character may start
     // while the last one is still talking — when the settings allow it.
-    _playback.add(result.wavePath, speaker: result.speaker);
+    _playback.add(wavePath, speaker: result.speaker);
   }
 
   /// Turns the game down for as long as the dubbing speaks, when the session

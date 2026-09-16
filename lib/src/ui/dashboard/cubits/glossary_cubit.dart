@@ -52,6 +52,7 @@ class GlossaryCubit extends Cubit<GlossaryState> {
           kind: entry.kind,
           source: entry.source.trim(),
           reading: entry.reading.trim(),
+          silent: entry.silent,
         ),
       ),
     );

@@ -35,7 +35,12 @@ enum GlossaryKind {
 
 /// One thing the player has said about their games.
 class GlossaryEntry {
-  const GlossaryEntry({required this.kind, required this.source, required this.reading});
+  const GlossaryEntry({
+    required this.kind,
+    required this.source,
+    required this.reading,
+    this.silent = false,
+  });
 
   /// What is matched, as the player wrote it: a Latin word for a [name], an
   /// English sentence for a [phrase].
@@ -46,6 +51,16 @@ class GlossaryEntry {
 
   final GlossaryKind kind;
 
+  /// Whether the line is passed over instead of being said at all.
+  ///
+  /// A phrase the player would rather not hear -- a shout the game repeats
+  /// every few seconds, a line they know by heart -- is answered with
+  /// nothing, and the sentence leaves the dubbing. It is still recognized and
+  /// still shown, so the player can see what was passed over rather than
+  /// wonder what the silence was. Only a phrase can be silenced: a name and a
+  /// word stand inside a line rather than being one.
+  final bool silent;
+
   /// What the match is made on. Whitespace and case say nothing here: whisper
   /// capitalizes a line by where it falls in a sentence, and a shout comes
   /// back in capitals.
@@ -55,15 +70,33 @@ class GlossaryEntry {
   /// phrase may be written the same and are still two entries.
   String get packKey => '${kind.name}:$key';
 
-  bool get isEmpty => source.trim().isEmpty || reading.trim().isEmpty;
+  /// A silenced entry needs no reading -- that is the point of it.
+  bool get isEmpty =>
+      source.trim().isEmpty || (!silent && reading.trim().isEmpty) || (silent && !silences);
 
-  GlossaryEntry copyWith({GlossaryKind? kind, String? source, String? reading}) => GlossaryEntry(
+  /// Whether this kind can be passed over at all.
+  bool get silences => kind == GlossaryKind.phrase;
+
+  GlossaryEntry copyWith({
+    GlossaryKind? kind,
+    String? source,
+    String? reading,
+    bool? silent,
+  }) => GlossaryEntry(
     kind: kind ?? this.kind,
     source: source ?? this.source,
     reading: reading ?? this.reading,
+    silent: silent ?? this.silent,
   );
 
-  Map<String, Object?> toJson() => {'kind': kind.name, 'source': source, 'reading': reading};
+  /// The flag is written only where it is set, so a file of ordinary entries
+  /// reads the same as it always did.
+  Map<String, Object?> toJson() => {
+    'kind': kind.name,
+    'source': source,
+    'reading': reading,
+    if (silent) 'silent': true,
+  };
 
   static GlossaryEntry? fromJson(Object? value) {
     if (value is! Map) return null;
@@ -79,6 +112,7 @@ class GlossaryEntry {
       ),
       source: source,
       reading: reading,
+      silent: value['silent'] == true,
     );
     return entry.isEmpty ? null : entry;
   }
@@ -88,10 +122,11 @@ class GlossaryEntry {
       other is GlossaryEntry &&
       other.kind == kind &&
       other.source == source &&
-      other.reading == reading;
+      other.reading == reading &&
+      other.silent == silent;
 
   @override
-  int get hashCode => Object.hash(kind, source, reading);
+  int get hashCode => Object.hash(kind, source, reading, silent);
 }
 
 /// What is punctuation at the edge of a line rather than part of it.

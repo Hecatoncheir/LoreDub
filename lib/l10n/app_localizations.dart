@@ -369,6 +369,30 @@ abstract class AppLocalizations {
   /// **'Пока пусто.'**
   String get glossaryEmpty;
 
+  /// No description provided for @transcriptSilenced.
+  ///
+  /// In ru, this message translates to:
+  /// **'не озвучено по словарю'**
+  String get transcriptSilenced;
+
+  /// No description provided for @glossarySilence.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не озвучивать эту реплику'**
+  String get glossarySilence;
+
+  /// No description provided for @glossarySpeakAgain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Озвучивать снова'**
+  String get glossarySpeakAgain;
+
+  /// No description provided for @glossarySilenced.
+  ///
+  /// In ru, this message translates to:
+  /// **'не озвучивается'**
+  String get glossarySilenced;
+
   /// No description provided for @glossaryPacks.
   ///
   /// In ru, this message translates to:

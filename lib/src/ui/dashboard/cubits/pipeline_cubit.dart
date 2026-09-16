@@ -628,6 +628,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       translated: event['translated'] as String? ?? '',
       latency: Duration(milliseconds: event['latencyMs'] as int? ?? 0),
       speaker: event['speaker'] as String?,
+      silenced: event['silenced'] == true,
     );
     // A selection answers the player's request, not the running capture, so
     // it has a list of its own.

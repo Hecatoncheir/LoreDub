@@ -47,6 +47,53 @@ void main() {
     expect(normalizedGlossaryKey('...'), '...');
   });
 
+  group('a line passed over', () {
+    const silenced = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Reloading!',
+      reading: '',
+      silent: true,
+    );
+
+    test('needs no reading, which is the whole of it', () {
+      expect(silenced.isEmpty, isFalse);
+      expect(
+        const GlossaryEntry(kind: GlossaryKind.phrase, source: 'Reloading!', reading: ''),
+        predicate<GlossaryEntry>((entry) => entry.isEmpty),
+        reason: 'an ordinary entry still needs both halves',
+      );
+    });
+
+    test('is a phrase and nothing else', () {
+      // A name and a word stand inside a line rather than being one, so
+      // there is nothing about them to pass over.
+      expect(silenced.silences, isTrue);
+      expect(megaton.silences, isFalse);
+      expect(vault.silences, isFalse);
+      expect(
+        const GlossaryEntry(
+          kind: GlossaryKind.name,
+          source: 'Megaton',
+          reading: '',
+          silent: true,
+        ).isEmpty,
+        isTrue,
+      );
+    });
+
+    test('survives a write and a read', () {
+      final read = Glossary.fromJson(const Glossary(entries: [silenced]).toJson());
+
+      expect(read.entries.single.silent, isTrue);
+      expect(read.entries.single, silenced);
+    });
+
+    test('is written down only where it is set', () {
+      expect(fire.toJson().containsKey('silent'), isFalse);
+      expect(silenced.toJson()['silent'], isTrue);
+    });
+  });
+
   group('packs', () {
     test('reads everything written down while no pack is switched on', () {
       final glossary = written().keepingPack(

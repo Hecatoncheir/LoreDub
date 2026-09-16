@@ -305,6 +305,18 @@ parser): the player writes an entry down because they just heard the line go
 wrong, and mean the next one to be said their way rather than the next
 session.
 
+`GlossaryEntry.silent` is a phrase the player would rather not hear: the
+worker files it with an empty reading, `said()` answers the empty string
+rather than None, and the sentence leaves the line where the pieces are
+joined. A line left with nothing at all is answered `{"silenced": true}` with
+no wave, so `InferenceResult.wavePath` is null, nothing is queued for the
+voice, and the transcript shows the line as passed over rather than as one
+that arrived empty. It is matched as any phrase is -- a whole sentence, so
+"Reloading!" is silenced while "We are reloading the truck." is not, and one
+sentence of a line may go while the rest is voiced. Only a phrase can be
+silenced (`GlossaryEntry.silences`); a name and a word stand inside a line
+rather than being one.
+
 `glossary_catalog.dart` is the two packs LoreDub brings with it -- the
 general one and the lines a player knows by heart, where being literally
 right is not enough and a fresh translation lands wrong however correct it

@@ -2532,15 +2532,40 @@ class _TranscriptBubble extends StatelessWidget {
                 ),
                 const SizedBox(height: 7),
               ],
-              Text(
-                entry.translated,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  height: 1.25,
+              // A line the player silenced has no translation to show, and
+              // saying so is the point: the quiet was asked for rather than
+              // something the pipeline lost.
+              if (entry.silenced)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.volume_off_rounded,
+                      size: 16,
+                      color: LoreDubPalette.mutedInk,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      AppLocalizations.of(context).transcriptSilenced,
+                      style: const TextStyle(
+                        color: LoreDubPalette.mutedInk,
+                        fontSize: 15,
+                        fontStyle: FontStyle.italic,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Text(
+                  entry.translated,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
+                  ),
                 ),
-              ),
             ],
           ),
         ),

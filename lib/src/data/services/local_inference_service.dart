@@ -26,11 +26,18 @@ class InferenceResult {
     this.voice = '',
     this.bankSize,
     this.speaker,
+    this.silenced = false,
   });
 
   final String english;
   final String translated;
-  final String wavePath;
+
+  /// Null for a line that was passed over: there is nothing to play.
+  final String? wavePath;
+
+  /// Whether the player silenced this line in the glossary. It is still
+  /// recognized and still shown -- what is missing is the voice.
+  final bool silenced;
 
   /// The voice that read the line, which the automatic choice can change
   /// from phrase to phrase.
@@ -791,10 +798,12 @@ class LocalInferenceService {
     if (response['error'] case final String error) {
       throw LoreDubFailure(FailureCode.workerFailed, detail: error);
     }
+    final silenced = response['silenced'] == true;
     return InferenceResult(
       english: normalized,
       translated: response['translated']! as String,
-      wavePath: response['wave']! as String,
+      silenced: silenced,
+      wavePath: silenced ? null : response['wave']! as String,
       voice: response['voice'] as String? ?? '',
       bankSize: (response['bankSize'] as num?)?.toInt(),
       speaker: response['speaker'] as String?,

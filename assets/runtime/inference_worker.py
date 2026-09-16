@@ -504,9 +504,16 @@ class Glossary:
         for entry in (written or {}).get("entries") or []:
             source = str(entry.get("source") or "").strip()
             reading = str(entry.get("reading") or "").strip()
-            if not source or not reading:
-                continue
             kind = entry.get("kind")
+            # A phrase the player silenced carries no reading, and that is
+            # the whole of it: the sentence leaves the line rather than being
+            # said. Everything else needs both halves to mean anything.
+            silent = kind == "phrase" and entry.get("silent") is True
+            if not source or (not reading and not silent):
+                continue
+            if silent:
+                phrases[self._key(source)] = ""
+                continue
             if kind == "word":
                 # Compiled once: this runs over every line, and a word is
                 # looked for whether or not it is there.
@@ -1094,7 +1101,12 @@ def main():
         # The player's own answer stands above both the model and what it
         # said last time, and is never written into the memory: it is already
         # an answer, and keeping it there would only age it.
-        said = [glossary.said(piece) or memory.get(piece) for piece in pieces]
+        # Asked rather than taken with `or`: a silenced phrase answers with an
+        # empty string on purpose, and `or` would fall through to the model.
+        said = []
+        for piece in pieces:
+            written = glossary.said(piece)
+            said.append(written if written is not None else memory.get(piece))
         asking = [piece for piece, kept in zip(pieces, said) if kept is None]
         if asking:
             answers = iter(translated_sentences(asking))
@@ -1431,6 +1443,12 @@ def main():
             # screen already in the dubbing language: these are words of that
             # language either way.
             translated = glossary.worded(translated)
+            # A line the player silenced has nothing left to say. It is
+            # answered rather than voiced, so the interface can show what was
+            # passed over instead of leaving a silence with no reason.
+            if not translated.strip():
+                reply({"id": request_id, "translated": "", "silenced": True})
+                continue
             # Who is speaking is settled first: the character decides both the
             # voice they are read in and the timbre laid over it.
             heard_kind, heard_index, fingerprint = identify(request)

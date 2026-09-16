@@ -681,6 +681,35 @@ void main() {
     expect(await widthAt(tester, const Size(1000, 1000)), greaterThan(600));
   });
 
+  // A shout the game repeats every few seconds is worth hearing once.
+  testWidgets('passes a phrase over from the glossary, and only a phrase', (tester) async {
+    const fire = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Reloading!',
+      reading: 'Перезарядка!',
+    );
+    const megaton = GlossaryEntry(
+      kind: GlossaryKind.name,
+      source: 'Megaton',
+      reading: 'Мегатон',
+    );
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      const GlossaryState(loaded: true, glossary: Glossary(entries: [fire, megaton])),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+    expect(find.byKey(ValueKey('glossary-silence-${megaton.packKey}')), findsNothing);
+
+    final silence = find.byKey(ValueKey('glossary-silence-${fire.packKey}'));
+    await tester.scrollUntilVisible(silence, 300, scrollable: glossaryScroller());
+    await tester.pumpAndSettle();
+    await tester.tap(silence);
+    await tester.pumpAndSettle();
+
+    expect(cubits.glossary.state.glossary.match(GlossaryKind.phrase, 'Reloading!')?.silent, isTrue);
+  });
+
   testWidgets('offers no correction for a line that was never translated', (tester) async {
     final cubits = stage(
       buildCubits(),
