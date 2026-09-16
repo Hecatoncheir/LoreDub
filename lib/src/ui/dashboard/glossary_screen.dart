@@ -238,8 +238,13 @@ class _EntryRowState extends State<_EntryRow> {
       children: [
         // The source is shown rather than edited: it is what the entry is
         // filed under, and editing it in place would silently found a second
-        // entry while the first went on answering.
-        Expanded(child: Text(widget.entry.source, style: const TextStyle(fontSize: 14))),
+        // entry while the first went on answering. Selectable all the same --
+        // a phrase written down here came from somewhere and is wanted
+        // elsewhere, and the reading beside it has always been copyable
+        // simply by being a field.
+        Expanded(
+          child: SelectableText(widget.entry.source, style: const TextStyle(fontSize: 14)),
+        ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Icon(Icons.arrow_forward_rounded, size: 16, color: LoreDubPalette.mutedInk),

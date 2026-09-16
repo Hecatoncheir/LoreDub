@@ -2582,7 +2582,12 @@ class _CorrectLineButton extends StatelessWidget {
       builder: (context) => _CorrectLineDialog(entry: entry),
     );
     final said = written?.trim() ?? '';
-    if (said.isEmpty || said == entry.translated) return;
+    // A reading left as it was heard is still written down. A phrase is
+    // answered before the model is asked, so keeping what it said this time
+    // pins the line -- the same words next time rather than the wandering
+    // the model is free to do. Refusing it made a button that did nothing
+    // and said nothing, which is how the player found it.
+    if (said.isEmpty) return;
     onCorrect(entry, said);
   }
 

@@ -290,14 +290,14 @@ void main() {
     expect((await service.load()).roughRecognition, isTrue);
   });
 
-  test('lets characters overlap until told otherwise', () async {
+  test('reads one line after another until told to overlap', () async {
     SharedPreferences.setMockInitialValues({});
     final service = SettingsService();
 
-    expect((await service.load()).overlapVoices, isTrue);
-
-    await service.save(const AppSettings(overlapVoices: false));
-
     expect((await service.load()).overlapVoices, isFalse);
+
+    await service.save(const AppSettings(overlapVoices: true));
+
+    expect((await service.load()).overlapVoices, isTrue);
   });
 }

@@ -50,7 +50,7 @@ class AppSettings {
     this.voice = '',
     this.originalVoice = false,
     this.voiceBank = true,
-    this.overlapVoices = true,
+    this.overlapVoices = false,
     this.pauseHotkey = Hotkey.defaultPause,
     this.resumeHotkey = Hotkey.defaultResume,
     this.snapshotHotkey = Hotkey.defaultSnapshot,
@@ -220,6 +220,12 @@ class AppSettings {
 
   /// Whether a line of another character may start while the current one is
   /// still being spoken. A character never talks over themselves either way.
+  ///
+  /// Off by default. Overlapping keeps the dubbing closer to a quick
+  /// exchange, but two voices at once is two lines the player has to follow
+  /// at once, and a scene read one line after another is the one that can be
+  /// understood. The player who would rather be current than clear turns it
+  /// on.
   final bool overlapVoices;
 
   /// The system-wide combinations that pause and resume a running session;

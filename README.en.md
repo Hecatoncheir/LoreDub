@@ -592,9 +592,11 @@ by 0.34 in cosine, while within one voice, at the seam of two phrases, they
 differ by at most 0.11; the cut is made at 0.25. On a pair of joined voices
 the cut landed 20 ms from the real boundary.
 
-The **Let different characters overlap** switch (on by default) lets another
+The **Let different characters overlap** switch (off by default) lets another
 character's new line start at once while the previous one is still sounding,
-so the dubbing falls behind less in a quick exchange. A character never talks
+so the dubbing falls behind less in a quick exchange. It is off to begin with:
+two voices at once are two lines to follow at once, and a scene read one line
+after another is the one that can be understood. A character never talks
 over themselves: their next line waits for the last to end. No more than two
 voices sound together; a third waits. Who is speaking is told apart
 differently by mode:

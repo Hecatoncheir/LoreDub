@@ -46,6 +46,7 @@ import 'package:lore_dub/src/ui/dashboard/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/dashboard/pipeline_inspector.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
@@ -534,6 +535,64 @@ void main() {
       'Fire in the hole!',
     );
     expect(written?.reading, '\u041b\u043e\u0436\u0438\u0441\u044c!');
+  });
+
+  // The player opens the dialog on a line that came out right and presses
+  // save without touching it: that pins the reading, and it used to write
+  // nothing at all and say nothing either.
+  testWidgets('writes a reading the player left as it was heard', (tester) async {
+    final cubits = stage(
+      buildCubits(),
+      transcript: const [
+        TranscriptEntry(
+          original: 'Fire in the hole!',
+          english: 'Fire in the hole!',
+          translated: 'Огонь в дыру!',
+          latency: Duration(milliseconds: 900),
+        ),
+      ],
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 1000));
+
+    await tester.tap(find.byKey(const ValueKey('transcript-correct-Fire in the hole!')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Сохранить'));
+    await tester.pumpAndSettle();
+
+    final written = cubits.glossary.state.glossary.match(
+      GlossaryKind.phrase,
+      'Fire in the hole!',
+    );
+    expect(written?.reading, 'Огонь в дыру!');
+  });
+
+  // What the entry is filed under is shown rather than edited, but a phrase
+  // written down here is wanted elsewhere, so it can be selected and copied.
+  testWidgets('lets a glossary phrase be selected', (tester) async {
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      const GlossaryState(
+        loaded: true,
+        glossary: Glossary(
+          entries: [
+            GlossaryEntry(
+              kind: GlossaryKind.phrase,
+              source: 'Fire in the hole!',
+              reading: 'Ложись!',
+            ),
+          ],
+        ),
+      ),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 1000));
+
+    expect(
+      find.descendant(
+        of: find.byType(SelectableText),
+        matching: find.text('Fire in the hole!'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('offers no correction for a line that was never translated', (tester) async {
@@ -1950,7 +2009,8 @@ void main() {
       await tester.tap(find.descendant(of: row.first, matching: find.byType(Switch)));
       await tester.pumpAndSettle();
 
-      expect((await SettingsService().load()).overlapVoices, isFalse);
+      // Off to begin with, so the press is what turns overlapping on.
+      expect((await SettingsService().load()).overlapVoices, isTrue);
     });
 
     testWidgets('hides overlapping when one voice reads every line', (tester) async {

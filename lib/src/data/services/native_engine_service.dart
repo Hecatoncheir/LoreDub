@@ -564,6 +564,14 @@ class NativeEngineService {
     for (final wavePath in _playback.clear()) {
       unawaited(_deleteIfPresent(wavePath));
     }
+    // The game gets its own volume back, whichever duck took it: the
+    // session-long one, or the one that lasts a line. Only the pause used to
+    // do this, so a stopped session left the game quiet for good -- and the
+    // next session then had nothing left to turn down, which is how it was
+    // found: the dubbing seemed not to duck the original at all.
+    // `_duckForSpeech` cannot do it either, since the line still sounding as
+    // the session ends finishes after `_activeConfig` is already null.
+    ld_restore_process_volumes();
     await _inference.stop();
   }
 
