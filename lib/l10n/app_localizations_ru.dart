@@ -195,6 +195,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get glossaryPackDropHint => 'Перетащите сюда записи из списков выше.';
 
   @override
+  String get glossaryPackNothingFound => 'В этом пакете ничего не нашлось.';
+
+  @override
   String get glossaryPackDragHint => 'Перетащить запись в пакет';
 
   @override

@@ -205,6 +205,8 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
                 final packs = _GlossaryPacksSection(
                   glossary: state.glossary,
                   cubits: widget.cubits,
+                  matches: _matches,
+                  searching: _looking.isNotEmpty,
                   onImport: _importPack,
                   onExport: _exportPack,
                 );
@@ -604,12 +606,22 @@ class _GlossaryPacksSection extends StatelessWidget {
   const _GlossaryPacksSection({
     required this.glossary,
     required this.cubits,
+    required this.matches,
+    required this.searching,
     required this.onImport,
     required this.onExport,
   });
 
   final Glossary glossary;
   final DashboardCubits cubits;
+
+  /// The same filter the three lists are under: a search narrows what a pack
+  /// shows as well, so a line can be found and dragged in one motion.
+  final bool Function(GlossaryEntry entry) matches;
+
+  /// Whether a search is on, which is what tells an empty pack from one whose
+  /// entries are all filtered away.
+  final bool searching;
   final VoidCallback onImport;
   final ValueChanged<GlossaryPack> onExport;
 
@@ -672,8 +684,12 @@ class _GlossaryPacksSection extends StatelessWidget {
                     pack: pack,
                     members: [
                       for (final entry in glossary.entries)
-                        if (pack.holds(entry.packKey)) entry,
+                        if (pack.holds(entry.packKey) && matches(entry)) entry,
                     ],
+                    // The count is the pack's own, not what the search left:
+                    // the pack did not change, only what is shown of it.
+                    held: pack.entryKeys.length,
+                    searching: searching,
                     onRename: (name) => cubits.glossary.renamePack(pack.id, name),
                     onActive: (active) => cubits.glossary.activatePack(pack.id, active: active),
                     onExport: pack.entryKeys.isEmpty ? null : () => onExport(pack),
@@ -700,6 +716,8 @@ class _GlossaryPackArea extends StatefulWidget {
     super.key,
     required this.pack,
     required this.members,
+    required this.held,
+    required this.searching,
     required this.onRename,
     required this.onActive,
     required this.onExport,
@@ -709,7 +727,14 @@ class _GlossaryPackArea extends StatefulWidget {
   });
 
   final GlossaryPack pack;
+
+  /// What the pack shows: its entries, narrowed by the search when there is
+  /// one.
   final List<GlossaryEntry> members;
+
+  /// How many it actually holds, which the count says whatever is shown.
+  final int held;
+  final bool searching;
   final ValueChanged<String> onRename;
   final ValueChanged<bool> onActive;
 
@@ -797,7 +822,7 @@ class _GlossaryPackAreaState extends State<_GlossaryPackArea> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    l10n.glossaryPackCount(widget.members.length),
+                    l10n.glossaryPackCount(widget.held),
                     style: const TextStyle(
                       fontFamily: LoreDubFonts.mono,
                       fontSize: 11,
@@ -848,7 +873,12 @@ class _GlossaryPackAreaState extends State<_GlossaryPackArea> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
                   child: Text(
-                    l10n.glossaryPackDropHint,
+                    // A pack with nothing in it asks to be filled; one whose
+                    // entries the search hid says so instead, or the player
+                    // would read it as empty.
+                    widget.searching && widget.held > 0
+                        ? l10n.glossaryPackNothingFound
+                        : l10n.glossaryPackDropHint,
                     style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
                   ),
                 )

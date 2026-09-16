@@ -300,6 +300,12 @@ and files what you wrote here as a phrase. The glossary is one list for every
 game, as the character cards are, and it takes effect from the next line
 rather than the next session.
 
+A search sits over the lists. It narrows all three at once and answers on
+both halves of an entry: the English that was heard or the Russian that was
+written. Packs are narrowed with them, so a line found can be dragged into
+a pack in one motion, while a pack's count still says what it holds rather
+than what is shown.
+
 A line can be left unsaid altogether: every phrase carries a speaker button,
 and switched on it means "pass this line over". A shout the game repeats
 every half minute is then heard once. The line is still recognized and still

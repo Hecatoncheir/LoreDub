@@ -435,6 +435,12 @@ abstract class AppLocalizations {
   /// **'Перетащите сюда записи из списков выше.'**
   String get glossaryPackDropHint;
 
+  /// No description provided for @glossaryPackNothingFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'В этом пакете ничего не нашлось.'**
+  String get glossaryPackNothingFound;
+
   /// No description provided for @glossaryPackDragHint.
   ///
   /// In ru, this message translates to:

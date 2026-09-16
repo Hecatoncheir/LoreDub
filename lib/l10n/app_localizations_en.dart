@@ -195,6 +195,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get glossaryPackDropHint => 'Drag entries from the lists above here.';
 
   @override
+  String get glossaryPackNothingFound => 'Nothing in this pack matches.';
+
+  @override
   String get glossaryPackDragHint => 'Drag the entry into a pack';
 
   @override

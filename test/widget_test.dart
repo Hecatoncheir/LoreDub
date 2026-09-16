@@ -753,6 +753,58 @@ void main() {
     expect(find.text('Reloading!'), findsNothing);
   });
 
+  // The search narrows a pack as well, so a line can be found and dragged in
+  // one motion -- and the count still says what the pack holds.
+  testWidgets('narrows a pack to the search without changing what it holds', (tester) async {
+    const fire = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Fire in the hole!',
+      reading: 'Ложись!',
+    );
+    const reloading = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Reloading!',
+      reading: 'Перезарядка!',
+    );
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      GlossaryState(
+        loaded: true,
+        glossary: Glossary(
+          entries: const [fire, reloading],
+          packs: [
+            GlossaryPack(
+              id: 'p1',
+              name: 'Shooters',
+              entryKeys: [fire.packKey, reloading.packKey],
+            ),
+          ],
+        ),
+      ),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+    final pack = find.byKey(const ValueKey('glossary-pack-p1'));
+    final search = find.byKey(const ValueKey('glossary-search'));
+    await tester.scrollUntilVisible(pack, 300, scrollable: glossaryScroller());
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: pack, matching: find.text('Fire in the hole!')), findsOneWidget);
+    expect(find.descendant(of: pack, matching: find.text('Reloading!')), findsOneWidget);
+
+    // The field stands at the head of the page, which the scroll left above.
+    await tester.scrollUntilVisible(search, -300, scrollable: glossaryScroller());
+    await tester.pumpAndSettle();
+    await tester.enterText(search, 'reload');
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(pack, 300, scrollable: glossaryScroller());
+    await tester.pumpAndSettle();
+
+    expect(find.descendant(of: pack, matching: find.text('Fire in the hole!')), findsNothing);
+    expect(find.descendant(of: pack, matching: find.text('Reloading!')), findsOneWidget);
+    // Two, not one: the search hid a chip, it did not take an entry out.
+    expect(find.descendant(of: pack, matching: find.textContaining('2')), findsWidgets);
+  });
+
   testWidgets('passes a line over from the transcript', (tester) async {
     final cubits = stage(
       buildCubits(),
