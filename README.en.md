@@ -300,6 +300,13 @@ and files what you wrote here as a phrase. The glossary is one list for every
 game, as the character cards are, and it takes effect from the next line
 rather than the next session.
 
+Two ready filters sit beside the search. **In no pack** is on from the
+start: the built-in packs put a hundred entries into the lists, and the few
+the player wrote would be lost among them -- switch it off and the glossary
+is whole again. **Passed over** leaves only the lines that are not said.
+Both narrow the lists and not the packs: a pack showing none of its own
+members would read as empty.
+
 A search sits over the lists. It narrows all three at once and answers on
 both halves of an entry: the English that was heard or the Russian that was
 written. Packs are narrowed with them, so a line found can be dragged into

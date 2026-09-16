@@ -805,6 +805,60 @@ void main() {
     expect(find.descendant(of: pack, matching: find.textContaining('2')), findsWidgets);
   });
 
+  // The packs that come with the application put a hundred entries into the
+  // lists, and the handful the player wrote would be lost among them.
+  testWidgets('opens on what no pack holds, and shows the rest when asked', (tester) async {
+    const packed = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Fire in the hole!',
+      reading: 'Ложись!',
+    );
+    const mine = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Open the gate.',
+      reading: 'Открой ворота.',
+    );
+    const hushed = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Reloading!',
+      reading: '',
+      silent: true,
+    );
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      GlossaryState(
+        loaded: true,
+        glossary: Glossary(
+          entries: const [packed, mine, hushed],
+          packs: [
+            GlossaryPack(id: 'p1', name: 'Shooters', entryKeys: [packed.packKey]),
+          ],
+        ),
+      ),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+    // By the row's own key rather than by its text: the same line also shows
+    // as a chip inside the pack, which the presets deliberately leave alone.
+    Finder row(GlossaryEntry entry) => find.byKey(ValueKey('${entry.kind.name}:${entry.key}'));
+
+    // The preset is on to begin with, so the packed line is not in the list.
+    expect(row(mine), findsOneWidget);
+    expect(row(hushed), findsOneWidget);
+    expect(row(packed), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('glossary-preset-loose')));
+    await tester.pumpAndSettle();
+    expect(row(packed), findsOneWidget);
+
+    // And the other preset leaves only the lines that are passed over.
+    await tester.tap(find.byKey(const ValueKey('glossary-preset-silent')));
+    await tester.pumpAndSettle();
+    expect(row(hushed), findsOneWidget);
+    expect(row(mine), findsNothing);
+    expect(row(packed), findsNothing);
+  });
+
   testWidgets('passes a line over from the transcript', (tester) async {
     final cubits = stage(
       buildCubits(),

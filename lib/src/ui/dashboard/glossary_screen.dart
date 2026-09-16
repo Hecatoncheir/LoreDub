@@ -52,6 +52,15 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
   /// rather than by where it stands.
   String _looking = '';
 
+  /// Show only what no pack holds. On to begin with: the packs that come
+  /// with the application put a hundred entries into these lists, and the
+  /// handful the player wrote themselves would be lost among them. Turning
+  /// it off shows the glossary whole.
+  bool _looseOnly = true;
+
+  /// Show only the lines that are passed over rather than said.
+  bool _silentOnly = false;
+
   @override
   void dispose() {
     _search.dispose();
@@ -66,10 +75,33 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
         entry.reading.toLowerCase().contains(_looking);
   }
 
+  /// The presets narrow the lists and not the packs: a pack showing none of
+  /// its own members would read as empty, which it is not.
+  bool _listed(Glossary glossary, GlossaryEntry entry) {
+    if (!_matches(entry)) return false;
+    if (_silentOnly && !entry.silent) return false;
+    if (_looseOnly && glossary.packsHolding(entry).isNotEmpty) return false;
+    return true;
+  }
+
   List<GlossaryEntry> _of(Glossary glossary, GlossaryKind kind) => [
     for (final entry in glossary.of(kind))
-      if (_matches(entry)) entry,
+      if (_listed(glossary, entry)) entry,
   ];
+
+  Widget _preset({
+    required String label,
+    required bool chosen,
+    required ValueChanged<bool> onChanged,
+    required String id,
+  }) => FilterChip(
+    key: ValueKey('glossary-preset-$id'),
+    label: Text(label),
+    selected: chosen,
+    onSelected: onChanged,
+    showCheckmark: true,
+    visualDensity: VisualDensity.compact,
+  );
 
   Future<void> _export() async {
     final location = await getSaveLocation(
@@ -154,6 +186,29 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
                     icon: const Icon(Icons.file_upload_outlined, size: 18),
                     label: Text(l10n.glossaryExport),
                     style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                  ),
+                ],
+              ),
+            ),
+            // Two ready answers to questions the player asks often enough to
+            // deserve a press rather than a typed word.
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _preset(
+                    id: 'loose',
+                    label: l10n.glossaryOnlyLoose,
+                    chosen: _looseOnly,
+                    onChanged: (value) => setState(() => _looseOnly = value),
+                  ),
+                  _preset(
+                    id: 'silent',
+                    label: l10n.glossaryOnlySilent,
+                    chosen: _silentOnly,
+                    onChanged: (value) => setState(() => _silentOnly = value),
                   ),
                 ],
               ),

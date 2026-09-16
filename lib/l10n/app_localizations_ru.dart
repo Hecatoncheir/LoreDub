@@ -178,6 +178,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get glossarySearch => 'Поиск по словарю';
 
   @override
+  String get glossaryOnlyLoose => 'Не в пакетах';
+
+  @override
+  String get glossaryOnlySilent => 'Не озвучиваемые';
+
+  @override
   String get glossarySearchClear => 'Очистить поиск';
 
   @override

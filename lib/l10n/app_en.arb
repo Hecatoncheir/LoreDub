@@ -80,6 +80,8 @@
   "glossarySpeakAgain": "Say it again",
   "glossarySilenced": "passed over",
   "glossarySearch": "Search the glossary",
+  "glossaryOnlyLoose": "In no pack",
+  "glossaryOnlySilent": "Passed over",
   "glossarySearchClear": "Clear the search",
   "glossaryPacks": "PACKS",
   "glossaryPacksNote": "A pack is a way of reading the glossary rather than a place entries are moved to: an entry stays in its list whether or not a pack names it. With no pack switched on, the dubbing is checked against everything written down. With one or more on, it is checked against those alone -- so a pack made for one game does not drag another game's names along. Several may be on at once and what they hold adds together.",

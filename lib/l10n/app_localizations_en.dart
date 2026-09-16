@@ -178,6 +178,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get glossarySearch => 'Search the glossary';
 
   @override
+  String get glossaryOnlyLoose => 'In no pack';
+
+  @override
+  String get glossaryOnlySilent => 'Passed over';
+
+  @override
   String get glossarySearchClear => 'Clear the search';
 
   @override

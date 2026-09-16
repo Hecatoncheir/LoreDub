@@ -405,6 +405,18 @@ abstract class AppLocalizations {
   /// **'Поиск по словарю'**
   String get glossarySearch;
 
+  /// No description provided for @glossaryOnlyLoose.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не в пакетах'**
+  String get glossaryOnlyLoose;
+
+  /// No description provided for @glossaryOnlySilent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не озвучиваемые'**
+  String get glossaryOnlySilent;
+
   /// No description provided for @glossarySearchClear.
   ///
   /// In ru, this message translates to:
