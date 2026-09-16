@@ -160,6 +160,51 @@ class AppLocalizationsRu extends AppLocalizations {
   String get glossaryEmpty => 'Пока пусто.';
 
   @override
+  String get glossaryPacks => 'ПАКЕТЫ';
+
+  @override
+  String get glossaryPacksNote =>
+      'Пакет — это способ прочитать словарь, а не место, куда записи переносятся: запись остаётся в своём списке, даже когда пакет её называет. Пока не включён ни один пакет, озвучка сверяется со всем, что записано. Как только включён хотя бы один, она сверяется только с включёнными — так пакет одной игры не тащит за собой имена другой. Включённых может быть несколько, их записи складываются.';
+
+  @override
+  String get glossaryPacksEmpty =>
+      'Пакетов пока нет. Создайте пакет и перетащите в него записи за рукоятку слева — так набор для одной игры передаётся одним файлом.';
+
+  @override
+  String get glossaryPackDropHint => 'Перетащите сюда записи из списков выше.';
+
+  @override
+  String get glossaryPackDragHint => 'Перетащить запись в пакет';
+
+  @override
+  String get glossaryPackImport => 'Загрузить пакет';
+
+  @override
+  String get glossaryPackActive => 'Активен';
+
+  @override
+  String get glossaryPackActiveHint =>
+      'Пока включён хотя бы один пакет, озвучка сверяется только с включёнными';
+
+  @override
+  String glossaryPackCount(num count) {
+    final intl.NumberFormat countNumberFormat = intl.NumberFormat.compact(
+      locale: localeName,
+    );
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString записей',
+      few: '$countString записи',
+      one: '$countString запись',
+      zero: 'пусто',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get glossaryAdd => 'Добавить';
 
   @override

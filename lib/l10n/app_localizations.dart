@@ -369,6 +369,60 @@ abstract class AppLocalizations {
   /// **'Пока пусто.'**
   String get glossaryEmpty;
 
+  /// No description provided for @glossaryPacks.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПАКЕТЫ'**
+  String get glossaryPacks;
+
+  /// No description provided for @glossaryPacksNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакет — это способ прочитать словарь, а не место, куда записи переносятся: запись остаётся в своём списке, даже когда пакет её называет. Пока не включён ни один пакет, озвучка сверяется со всем, что записано. Как только включён хотя бы один, она сверяется только с включёнными — так пакет одной игры не тащит за собой имена другой. Включённых может быть несколько, их записи складываются.'**
+  String get glossaryPacksNote;
+
+  /// No description provided for @glossaryPacksEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакетов пока нет. Создайте пакет и перетащите в него записи за рукоятку слева — так набор для одной игры передаётся одним файлом.'**
+  String get glossaryPacksEmpty;
+
+  /// No description provided for @glossaryPackDropHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перетащите сюда записи из списков выше.'**
+  String get glossaryPackDropHint;
+
+  /// No description provided for @glossaryPackDragHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перетащить запись в пакет'**
+  String get glossaryPackDragHint;
+
+  /// No description provided for @glossaryPackImport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузить пакет'**
+  String get glossaryPackImport;
+
+  /// No description provided for @glossaryPackActive.
+  ///
+  /// In ru, this message translates to:
+  /// **'Активен'**
+  String get glossaryPackActive;
+
+  /// No description provided for @glossaryPackActiveHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока включён хотя бы один пакет, озвучка сверяется только с включёнными'**
+  String get glossaryPackActiveHint;
+
+  /// No description provided for @glossaryPackCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, =0{пусто} one{{count} запись} few{{count} записи} other{{count} записей}}'**
+  String glossaryPackCount(num count);
+
   /// No description provided for @glossaryAdd.
   ///
   /// In ru, this message translates to:

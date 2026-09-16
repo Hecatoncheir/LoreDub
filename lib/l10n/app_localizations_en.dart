@@ -160,6 +160,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get glossaryEmpty => 'Nothing here yet.';
 
   @override
+  String get glossaryPacks => 'PACKS';
+
+  @override
+  String get glossaryPacksNote =>
+      'A pack is a way of reading the glossary rather than a place entries are moved to: an entry stays in its list whether or not a pack names it. With no pack switched on, the dubbing is checked against everything written down. With one or more on, it is checked against those alone -- so a pack made for one game does not drag another game\'s names along. Several may be on at once and what they hold adds together.';
+
+  @override
+  String get glossaryPacksEmpty =>
+      'No packs yet. Make one and drag entries into it by the handle on the left -- a set collected for one game is then handed on as a single file.';
+
+  @override
+  String get glossaryPackDropHint => 'Drag entries from the lists above here.';
+
+  @override
+  String get glossaryPackDragHint => 'Drag the entry into a pack';
+
+  @override
+  String get glossaryPackImport => 'Load a pack';
+
+  @override
+  String get glossaryPackActive => 'Active';
+
+  @override
+  String get glossaryPackActiveHint =>
+      'While any pack is switched on, the dubbing is checked against the switched-on packs alone';
+
+  @override
+  String glossaryPackCount(num count) {
+    final intl.NumberFormat countNumberFormat = intl.NumberFormat.compact(
+      locale: localeName,
+    );
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString entries',
+      one: '$countString entry',
+      zero: 'empty',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get glossaryAdd => 'Add';
 
   @override

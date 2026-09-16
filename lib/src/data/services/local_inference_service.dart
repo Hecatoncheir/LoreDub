@@ -302,6 +302,11 @@ class LocalInferenceService {
           '--extra-packages',
           path.join(downloadedRuntimeDirectory, torchCudaRuntimeId),
         ],
+        // Outside the converter's own arguments: what the player wrote down
+        // is read whether or not the original voice is carried over, and
+        // nesting it there left a session without the original voice with no
+        // glossary at all until the next entry was written.
+        if (glossary != null) ...['--glossary', glossary],
         if (voiceConverter != null) ...[
           '--voice-converter',
           voiceConverter,
@@ -310,7 +315,6 @@ class LocalInferenceService {
           if (revoice) '--revoice',
           if (voiceBank != null) ...['--voice-bank', voiceBank],
           if (characters != null) ...['--characters', characters],
-          if (glossary != null) ...['--glossary', glossary],
           if (asHeard.isNotEmpty) ...['--as-heard', asHeard.join(',')],
         ],
       ],

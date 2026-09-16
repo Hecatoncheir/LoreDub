@@ -71,6 +71,47 @@ class GlossaryCubit extends Cubit<GlossaryState> {
     }
   }
 
+  /// Opens a pack with no entries in it. The player fills it by dragging
+  /// what they have already written down into it.
+  Future<GlossaryPack> addPack(String name) async {
+    final pack = GlossaryPack(id: _newId(), name: name);
+    await _keep(state.glossary.keepingPack(pack));
+    return pack;
+  }
+
+  Future<void> renamePack(String id, String name) async {
+    final pack = state.glossary.packWithId(id);
+    if (pack == null) return;
+    await _keep(state.glossary.keepingPack(pack.copyWith(name: name)));
+  }
+
+  /// Throws the grouping away and leaves the entries. The player wrote them
+  /// down; only the grouping was ever the pack's.
+  Future<void> removePack(String id) => _keep(state.glossary.withoutPack(id));
+
+  /// Switches a pack on or off. With any pack on, the dubbing reads only
+  /// what the switched-on packs hold.
+  Future<void> activatePack(String id, {required bool active}) =>
+      _keep(state.glossary.activating(id, active: active));
+
+  /// Where an entry dragged onto a pack lands. [from] is the pack it was
+  /// dragged out of, if it came from one rather than from a list.
+  Future<void> fileInPack(GlossaryEntry entry, {required String into, String? from}) =>
+      _keep(state.glossary.filing(entry, into: into, from: from));
+
+  Future<void> takeFromPack(GlossaryEntry entry, {required String from}) =>
+      _keep(state.glossary.unfiling(entry, from: from));
+
+  /// Writes one pack out with the entries it names, so it can be read back
+  /// on another machine where those entries do not exist yet.
+  Future<void> exportPack(String destination, String packId) async {
+    try {
+      await _appRepository.exportGlossary(destination, state.glossary.onlyPack(packId));
+    } catch (error) {
+      _errors.report(error);
+    }
+  }
+
   /// Reads the files the player chose into what is already here. Merged by
   /// what an entry is filed under, so importing the same file twice leaves
   /// one of each rather than two, and a file that disagrees wins -- the
@@ -82,6 +123,13 @@ class GlossaryCubit extends Cubit<GlossaryState> {
       for (final entry in incoming.entries) {
         merged = merged.keeping(entry);
       }
+      for (final pack in incoming.packs) {
+        // A pack already here keeps whether it was switched on: the file
+        // brings entries and a name, and must not quietly change which
+        // glossary the next line is read against.
+        final here = merged.packWithId(pack.id);
+        merged = merged.keepingPack(pack.copyWith(active: here?.active ?? false));
+      }
       await _keep(merged);
     } catch (error) {
       _errors.report(error);
@@ -91,6 +139,16 @@ class GlossaryCubit extends Cubit<GlossaryState> {
   /// Stages a state a widget test wants to render without reading a file.
   @visibleForTesting
   void seed(GlossaryState value) => emit(value);
+
+  /// The same scheme the cast uses: the clock, never going backwards inside
+  /// one run, in base 36.
+  String _newId() {
+    final now = DateTime.now().microsecondsSinceEpoch;
+    _lastId = now > _lastId ? now : _lastId + 1;
+    return _lastId.toRadixString(36);
+  }
+
+  int _lastId = 0;
 
   Future<void> _keep(Glossary glossary) async {
     final previous = state.glossary;

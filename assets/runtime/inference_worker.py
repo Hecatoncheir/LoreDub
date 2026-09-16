@@ -485,9 +485,17 @@ class Glossary:
             # A damaged file is a glossary the player has not written yet.
             pass
 
-    @staticmethod
-    def _key(source):
-        return " ".join(str(source).lower().split())
+    # What is punctuation at the edge of a line rather than part of it.
+    # The interface files an entry under the same rule: a shout arrives
+    # with a full stop as often as with an exclamation, and an entry
+    # written under one spelling would otherwise miss the other.
+    EDGE = """.!?,;:…"'«»“”-–—"""
+
+    @classmethod
+    def _key(cls, source):
+        collapsed = " ".join(str(source).lower().split())
+        # A source that is punctuation and nothing else keeps what it had.
+        return collapsed.strip(cls.EDGE).strip() or collapsed
 
     def replace(self, written):
         """Reads what the interface keeps, which is also what it sends when

@@ -10,6 +10,7 @@ import '../../domain/glossary.dart';
 import '../../domain/pipeline_graph.dart';
 import '../../domain/saved_pipeline.dart';
 import '../services/character_service.dart';
+import '../services/glossary_catalog.dart';
 import '../services/glossary_service.dart';
 import '../services/native_engine_service.dart';
 import '../services/pipeline_graph_service.dart';
@@ -57,7 +58,14 @@ class AppRepository {
 
   /// What the player wrote down about their games. Theirs rather than one
   /// game's, so every session that translates is handed the same file.
-  Future<Glossary> loadGlossary() => _glossary.load();
+  /// What is written down, with the pack LoreDub brings laid over it the
+  /// first time the screen is opened.
+  Future<Glossary> loadGlossary() async {
+    final kept = await _glossary.load();
+    final offered = await _glossary.withBuiltIn(kept, builtInGlossary());
+    if (!identical(offered, kept)) await _glossary.save(offered);
+    return offered;
+  }
 
   /// Writes the glossary where the player asked.
   Future<void> exportGlossary(String destination, Glossary glossary) =>
@@ -72,7 +80,9 @@ class AppRepository {
   /// said their way rather than the next session.
   Future<void> saveGlossary(Glossary glossary) async {
     await _glossary.save(glossary);
-    await _nativeEngine.writeGlossary(glossary);
+    // What the active packs leave in use, not the whole shelf: the worker
+    // applies what it is given and knows nothing of packs.
+    await _nativeEngine.writeGlossary(glossary.inUse);
   }
 
   /// The clip recorded for a card, when it kept one. An imported card
@@ -161,7 +171,7 @@ class AppRepository {
         'duckWhileSpeaking': settings.duckWhileSpeaking,
         'hurryWhenQueued': settings.hurryWhenQueued,
         'roughRecognition': settings.roughRecognition,
-        'glossary': await _glossary.file(),
+        'glossary': await _glossary.sessionFile(),
         'textLanguage': settings.textLanguage,
         'ocrLanguage': settings.textLanguage,
         'ttsSpeed': settings.chosenSpeed,
@@ -241,7 +251,7 @@ class AppRepository {
         'duckWhileSpeaking': settings.duckWhileSpeaking,
         'ttsSpeed': settings.chosenSpeed,
         'hurryWhenQueued': settings.hurryWhenQueued,
-        'glossary': await _glossary.file(),
+        'glossary': await _glossary.sessionFile(),
         'cpuThreads': settings.cpuThreads,
         'pythonExecutable': settings.pythonExecutable,
         'models': modelDirectories,

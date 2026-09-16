@@ -279,6 +279,60 @@ and **Export all** writes the whole cast at once.
 
 Recording and dubbing never run at once: one worker serves both.
 
+### Glossary
+
+This is where you write down what no model can know. Three lists, because an
+entry of each kind reaches a line at its own moment and cannot do another's
+work.
+
+**Phrases** are a whole line with your translation, answered before the model
+is asked at all: "Fire in the hole!" is no longer "Огонь в дыру!". **Names**
+are the words the translator left in Latin script — your spelling goes in
+where it would otherwise transliterate, and only inside the line rather than
+over it, since a name the model does render it usually declines correctly as
+well. **Words** are the one kind matched on the dubbing language rather than
+on English: when the model calls a place "Хранилище" and you call it
+"Убежище", that is mended here. The whole word is replaced and nothing less.
+
+An entry is usually written somewhere else — on **Live**: a line is heard
+once, and the button beside its latency opens its translation for correcting
+and files what you wrote here as a phrase. The glossary is one list for every
+game, as the character cards are, and it takes effect from the next line
+rather than the next session.
+
+Beside the lists — under them in a narrow window — sit the **packs**. A
+pack is a way of reading the glossary
+rather than a place entries are moved to: an entry stays in its list whether
+or not a pack names it, and one entry may lie in several packs. Entries are
+dragged into a pack by the handle at the left of the row, and out of it by
+the chip itself or the cross on it.
+
+The **Active** switch decides what the dubbing reads. With no pack switched
+on it is checked against everything written down. With one or more on, it is
+checked against those alone — which is the whole point of packs: one game's
+glossary does not drag another game's names along. Several may be on at once
+and what they hold adds together.
+
+LoreDub brings a pack of its own, **LoreDub · English → Русский**: 35 lines
+the translator is measurably wrong about -- "Weapons free." came back as
+«Оружие бесплатно.», "Tango down." as «Танго вниз.», "Objective updated." as
+«Объектив обновлен.». What the model already says well is not in it, since an
+entry that never fires is noise in a list. The pack arrives switched off and
+is offered once: delete it and it stays deleted.
+
+Phrases only, and that is a measurement too. A name entry reaches a word the
+translator left in Latin script, and over sixteen proper nouns in two frames
+each **none** fired -- the model renders every one of them itself. A word
+entry is matched on the dubbing language and would replace that word wherever
+it stood. Both belong in a pack made for one game rather than a general one.
+
+A pack is written to a file together with the entries it names, so someone
+else's file only has to be loaded and its entries appear both in the pack and
+in the lists. A pack that arrives is always switched off: a file must not
+quietly change what the next line is checked against. Deleting a pack leaves
+the entries where they were, and deleting an entry takes it out of every pack
+at once.
+
 ### Graph
 
 <p align="center">

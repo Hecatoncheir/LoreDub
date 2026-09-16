@@ -74,6 +74,23 @@
   "glossaryWordSource": "As it is said now",
   "glossaryWordReading": "How to say it",
   "glossaryEmpty": "Nothing here yet.",
+  "glossaryPacks": "PACKS",
+  "glossaryPacksNote": "A pack is a way of reading the glossary rather than a place entries are moved to: an entry stays in its list whether or not a pack names it. With no pack switched on, the dubbing is checked against everything written down. With one or more on, it is checked against those alone -- so a pack made for one game does not drag another game's names along. Several may be on at once and what they hold adds together.",
+  "glossaryPacksEmpty": "No packs yet. Make one and drag entries into it by the handle on the left -- a set collected for one game is then handed on as a single file.",
+  "glossaryPackDropHint": "Drag entries from the lists above here.",
+  "glossaryPackDragHint": "Drag the entry into a pack",
+  "glossaryPackImport": "Load a pack",
+  "glossaryPackActive": "Active",
+  "glossaryPackActiveHint": "While any pack is switched on, the dubbing is checked against the switched-on packs alone",
+  "glossaryPackCount": "{count, plural, =0{empty} one{{count} entry} other{{count} entries}}",
+  "@glossaryPackCount": {
+    "placeholders": {
+      "count": {
+        "type": "num",
+        "format": "compact"
+      }
+    }
+  },
   "glossaryAdd": "Add",
   "glossaryRemove": "Remove",
   "navCharacters": "Characters",

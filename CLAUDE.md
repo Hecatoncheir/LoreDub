@@ -305,6 +305,43 @@ parser): the player writes an entry down because they just heard the line go
 wrong, and mean the next one to be said their way rather than the next
 session.
 
+`glossary_catalog.dart` is the pack LoreDub brings with it, laid over the
+file once by `GlossaryService.withBuiltIn` and marked by a
+`glossary.builtin` file beside it, so a pack the player threw away does not
+come back. It carries phrases and nothing else, and that is measured rather
+than chosen: every line in it was put through the same Marian the pipeline
+runs and kept only where the answer was wrong, while a name entry was tried
+against sixteen proper nouns in two frames each and fired **none** -- the
+model renders every one of them and leaves no Latin for that path to catch.
+A word entry is matched on the dubbing language and would reach lines that
+have nothing to do with a game, so both belong in a pack made for one game
+rather than in a general one. `normalizedGlossaryKey` and the worker's
+`Glossary._key` both drop the marks at either end of a line, so an entry
+written under "Fire in the hole!" answers the same shout heard with a full
+stop; the two must be changed together.
+
+Beside the three lists, or under them below `_packsBesideListsWidth` where
+a column of its own would leave neither side readable, sit the packs
+(`GlossaryPack`, file version 2 -- a
+version 1 file has no `packs` key and reads as entries in none), filled the
+way the cast's are, by dragging: the row carries a handle rather than being
+draggable whole, since it holds a field and a selectable source that both
+want the pointer. A pack is a way of reading the glossary rather than a place
+entries are moved to, so it holds `GlossaryEntry.packKey` (`<kind>:<key>` --
+a name and a phrase may be spelled the same and are still two entries) and
+every entry stays in its list whatever names it. `Glossary.inUse` is the
+whole rule: with no pack switched on it is everything written down, and with
+one or more on it is only what they hold, several adding together. That is
+the one place the rule lives -- the worker is handed the answer and knows
+nothing of packs, through `{"glossary": ...}` while a session runs and
+through `GlossaryService.sessionFile` when one starts, which writes `inUse`
+to `<app support>/glossary.session.json` beside the shelf itself. Exporting a
+pack writes it with the entries it names and switched off, an imported pack
+keeping whatever it was switched to here: a file must not quietly change
+which glossary the next line is read against. Deleting a pack leaves the
+entries, deleting an entry takes it out of every pack, and a pack naming an
+entry that is gone is pruned when the file is read.
+
 The Graph screen ("Схема", `DashboardSection.pipeline`) draws the pipeline as
 nodes and is the second way to the same settings, not a second set of them.
 `buildPipelineGraph` (`domain/pipeline_graph.dart`) is a pure function of

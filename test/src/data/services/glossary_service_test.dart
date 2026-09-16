@@ -1,9 +1,11 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lore_dub/src/data/services/glossary_catalog.dart';
 import 'package:lore_dub/src/data/services/glossary_service.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/glossary.dart';
@@ -65,6 +67,83 @@ void main() {
     await service.exportTo(carried, const Glossary(entries: [grenade, rapture]));
 
     expect((await service.readFiles([carried])).entries, [grenade, rapture]);
+  });
+
+  group('the pack LoreDub brings', () {
+    test('lays it over an empty glossary, switched off', () async {
+      final offered = await service.withBuiltIn(Glossary.empty, builtInGlossary());
+
+      expect(offered.packs.single.id, builtInGlossaryPackId);
+      expect(offered.packs.single.active, isFalse);
+      expect(offered.entries, isNotEmpty);
+      expect(
+        offered.packs.single.entryKeys.length,
+        offered.entries.length,
+        reason: 'every entry it brings is in the pack it brings',
+      );
+    });
+
+    test('offers it once, so a pack thrown away stays away', () async {
+      final first = await service.withBuiltIn(Glossary.empty, builtInGlossary());
+      await service.save(first.withoutPack(builtInGlossaryPackId));
+
+      final again = await service.withBuiltIn(await service.load(), builtInGlossary());
+
+      expect(again.packWithId(builtInGlossaryPackId), isNull);
+    });
+
+    test('leaves an entry the player wrote under the same line', () async {
+      const mine = GlossaryEntry(
+        kind: GlossaryKind.phrase,
+        source: 'Fire in the hole!',
+        reading: 'Граната!',
+      );
+
+      final offered = await service.withBuiltIn(const Glossary(entries: [mine]), builtInGlossary());
+
+      expect(offered.match(GlossaryKind.phrase, 'Fire in the hole!')?.reading, 'Граната!');
+    });
+
+    test('brings phrases only, and every one of them readable', () {
+      final glossary = builtInGlossary();
+
+      expect(glossary.entries.every((entry) => entry.kind == GlossaryKind.phrase), isTrue);
+      expect(glossary.entries.every((entry) => !entry.isEmpty), isTrue);
+      // Two entries filed under one key would leave the pack naming a line
+      // that is no longer there.
+      final keys = glossary.entries.map((entry) => entry.packKey).toSet();
+      expect(keys, hasLength(glossary.entries.length));
+    });
+  });
+
+  test('carries a pack and its entries between machines', () async {
+    final shelf = const Glossary(entries: [grenade, rapture]).keepingPack(
+      GlossaryPack(id: 'p1', name: 'BioShock', entryKeys: [rapture.packKey]),
+    );
+    final carried = path.join(temp.path, 'pack.json');
+
+    // Only the pack and what it names, so the file is worth passing on.
+    await service.exportTo(carried, shelf.onlyPack('p1'));
+    final read = await service.readFiles([carried]);
+
+    expect(read.entries, [rapture]);
+    expect(read.packs.single.name, 'BioShock');
+    expect(read.packs.single.entryKeys, [rapture.packKey]);
+  });
+
+  test('hands a session only what the switched-on packs hold', () async {
+    final shelf = const Glossary(entries: [grenade, rapture])
+        .keepingPack(GlossaryPack(id: 'p1', name: 'BioShock', entryKeys: [rapture.packKey]))
+        .activating('p1', active: true);
+    await service.save(shelf);
+
+    final handed = Glossary.fromJson(
+      jsonDecode(await File(await service.sessionFile()).readAsString()),
+    );
+
+    expect(handed.entries, [rapture], reason: 'the file a worker reads holds no more than this');
+    expect(await service.file(), isNot(await service.sessionFile()));
+    expect((await service.load()).entries, [grenade, rapture], reason: 'the shelf keeps both');
   });
 
   test('merges several files, the last word winning', () async {

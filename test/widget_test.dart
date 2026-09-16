@@ -149,6 +149,8 @@ void main() {
 
   Finder modelsScroller() => pageScroller('modelsList');
 
+  Finder glossaryScroller() => pageScroller('glossaryList');
+
   Future<void> pumpLoreDub(WidgetTester tester, Size size) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -593,6 +595,90 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('makes a glossary pack and fills it from the lists', (tester) async {
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      const GlossaryState(
+        loaded: true,
+        glossary: Glossary(
+          entries: [
+            GlossaryEntry(
+              kind: GlossaryKind.phrase,
+              source: 'Fire in the hole!',
+              reading: 'Ложись!',
+            ),
+          ],
+        ),
+      ),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+    final add = find.byKey(const ValueKey('glossary-pack-add'));
+    await tester.scrollUntilVisible(add, 300, scrollable: glossaryScroller());
+    await tester.pumpAndSettle();
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+
+    expect(cubits.glossary.state.glossary.packs, hasLength(1));
+    // A new pack is empty and switched off: it must not narrow the glossary
+    // the moment it is made.
+    expect(cubits.glossary.state.glossary.packs.single.entryKeys, isEmpty);
+    expect(cubits.glossary.state.glossary.inUse.entries, hasLength(1));
+  });
+
+  // The whole point of the switch: with a pack on, the dubbing is checked
+  // against that pack and nothing else.
+  testWidgets('narrows the glossary to the pack that is switched on', (tester) async {
+    const fire = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Fire in the hole!',
+      reading: 'Ложись!',
+    );
+    const megaton = GlossaryEntry(
+      kind: GlossaryKind.name,
+      source: 'Megaton',
+      reading: 'Мегатон',
+    );
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      GlossaryState(
+        loaded: true,
+        glossary: Glossary(
+          entries: const [fire, megaton],
+          packs: [
+            GlossaryPack(id: 'p1', name: 'Fallout', entryKeys: [megaton.packKey]),
+          ],
+        ),
+      ),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+    final toggle = find.byKey(const ValueKey('glossary-pack-active-p1'));
+    await tester.scrollUntilVisible(toggle, 300, scrollable: glossaryScroller());
+    await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(cubits.glossary.state.glossary.inUse.entries, [megaton]);
+  });
+
+  // A pack is chosen while looking at what goes into it, so it stands beside
+  // the lists where the window is wide enough to hold both.
+  testWidgets('stands the packs beside the lists and under them when narrow', (tester) async {
+    Future<double> widthAt(WidgetTester tester, Size size) async {
+      final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+      cubits.glossary.seed(const GlossaryState(loaded: true));
+      await pumpDashboard(tester, cubits, size);
+      final packs = find.byKey(const ValueKey('glossaryPacks'));
+      await tester.scrollUntilVisible(packs, 300, scrollable: glossaryScroller());
+      await tester.pumpAndSettle();
+      return tester.getSize(packs).width;
+    }
+
+    expect(await widthAt(tester, const Size(1400, 1000)), lessThan(400));
+    expect(await widthAt(tester, const Size(1000, 1000)), greaterThan(600));
   });
 
   testWidgets('offers no correction for a line that was never translated', (tester) async {
