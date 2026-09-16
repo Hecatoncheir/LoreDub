@@ -163,6 +163,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptSilenced => 'passed over by the glossary';
 
   @override
+  String get transcriptCorrectSilence => 'Pass over';
+
+  @override
   String get glossarySilence => 'Pass this line over';
 
   @override
@@ -170,6 +173,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get glossarySilenced => 'passed over';
+
+  @override
+  String get glossarySearch => 'Search the glossary';
+
+  @override
+  String get glossarySearchClear => 'Clear the search';
 
   @override
   String get glossaryPacks => 'PACKS';

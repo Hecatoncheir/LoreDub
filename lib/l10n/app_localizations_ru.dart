@@ -163,6 +163,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get transcriptSilenced => 'не озвучено по словарю';
 
   @override
+  String get transcriptCorrectSilence => 'Не озвучивать';
+
+  @override
   String get glossarySilence => 'Не озвучивать эту реплику';
 
   @override
@@ -170,6 +173,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get glossarySilenced => 'не озвучивается';
+
+  @override
+  String get glossarySearch => 'Поиск по словарю';
+
+  @override
+  String get glossarySearchClear => 'Очистить поиск';
 
   @override
   String get glossaryPacks => 'ПАКЕТЫ';

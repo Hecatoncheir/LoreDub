@@ -375,6 +375,12 @@ abstract class AppLocalizations {
   /// **'не озвучено по словарю'**
   String get transcriptSilenced;
 
+  /// No description provided for @transcriptCorrectSilence.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не озвучивать'**
+  String get transcriptCorrectSilence;
+
   /// No description provided for @glossarySilence.
   ///
   /// In ru, this message translates to:
@@ -392,6 +398,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'не озвучивается'**
   String get glossarySilenced;
+
+  /// No description provided for @glossarySearch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поиск по словарю'**
+  String get glossarySearch;
+
+  /// No description provided for @glossarySearchClear.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить поиск'**
+  String get glossarySearchClear;
 
   /// No description provided for @glossaryPacks.
   ///

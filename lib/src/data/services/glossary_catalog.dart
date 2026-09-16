@@ -3,6 +3,13 @@
 
 import '../../domain/glossary.dart';
 
+/// The dubbing language the built-in packs are written in. Their readings
+/// are Russian, so they are offered to a player dubbing into Russian and to
+/// nobody else: laid over a German session they would put Cyrillic in front
+/// of a voice that cannot read it, and clutter the lists of a player they
+/// can never help.
+const builtInGlossaryLanguage = 'ru';
+
 /// The built-in packs' ids. Stable, so a pack is recognised on a machine that
 /// already has it rather than added a second time.
 const builtInGlossaryPackId = 'loredub-en-ru';
@@ -31,6 +38,10 @@ const builtInQuotesPackId = 'loredub-quotes';
 Glossary builtInGlossary() => Glossary(
   entries: [..._general, ..._quotes],
   packs: [
+    // Off, like any pack that arrives rather than being made here: an active
+    // pack replaces the glossary rather than adding to it, and a pack that
+    // came with the application must not quietly narrow what the player has
+    // written down for themselves.
     GlossaryPack(
       id: builtInGlossaryPackId,
       name: 'LoreDub · English → Русский',

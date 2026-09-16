@@ -31,13 +31,44 @@ class GlossaryDrag {
 /// Latin script. Kept apart so that neither is expected to do the other's
 /// work -- a name written here does not rewrite the Russian the model
 /// already declined for itself.
-class GlossaryPanel extends StatelessWidget {
+class GlossaryPanel extends StatefulWidget {
   const GlossaryPanel({super.key, required this.cubits});
 
   final DashboardCubits cubits;
 
+  @override
+  State<GlossaryPanel> createState() => _GlossaryPanelState();
+}
+
+class _GlossaryPanelState extends State<GlossaryPanel> {
   static const _json = [
     XTypeGroup(label: 'LoreDub', extensions: ['json']),
+  ];
+
+  final _search = TextEditingController();
+
+  /// What the lists are narrowed to. A glossary grows to hundreds of lines,
+  /// and the one being looked for is usually remembered by a word of it
+  /// rather than by where it stands.
+  String _looking = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  /// Either half answers: the player may remember the English they heard or
+  /// the Russian they wrote.
+  bool _matches(GlossaryEntry entry) {
+    if (_looking.isEmpty) return true;
+    return entry.source.toLowerCase().contains(_looking) ||
+        entry.reading.toLowerCase().contains(_looking);
+  }
+
+  List<GlossaryEntry> _of(Glossary glossary, GlossaryKind kind) => [
+    for (final entry in glossary.of(kind))
+      if (_matches(entry)) entry,
   ];
 
   Future<void> _export() async {
@@ -46,13 +77,13 @@ class GlossaryPanel extends StatelessWidget {
       acceptedTypeGroups: _json,
     );
     if (location == null) return;
-    await cubits.glossary.export(location.path);
+    await widget.cubits.glossary.export(location.path);
   }
 
   Future<void> _import() async {
     final chosen = await openFiles(acceptedTypeGroups: _json);
     if (chosen.isEmpty) return;
-    await cubits.glossary.import([for (final file in chosen) file.path]);
+    await widget.cubits.glossary.import([for (final file in chosen) file.path]);
   }
 
   /// A pack read back is merged the way the whole glossary is -- the entries
@@ -65,14 +96,14 @@ class GlossaryPanel extends StatelessWidget {
       acceptedTypeGroups: _json,
     );
     if (location == null) return;
-    await cubits.glossary.exportPack(location.path, pack.id);
+    await widget.cubits.glossary.exportPack(location.path, pack.id);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return BlocBuilder<GlossaryCubit, GlossaryState>(
-      bloc: cubits.glossary,
+      bloc: widget.cubits.glossary,
       builder: (context, state) => Padding(
         padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
         child: ListView(
@@ -84,8 +115,31 @@ class GlossaryPanel extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  Expanded(
+                    child: TextField(
+                      key: const ValueKey('glossary-search'),
+                      controller: _search,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: l10n.glossarySearch,
+                        prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                        suffixIcon: _looking.isEmpty
+                            ? null
+                            : IconButton(
+                                key: const ValueKey('glossary-search-clear'),
+                                tooltip: l10n.glossarySearchClear,
+                                icon: const Icon(Icons.close_rounded, size: 18),
+                                onPressed: () {
+                                  _search.clear();
+                                  setState(() => _looking = '');
+                                },
+                              ),
+                      ),
+                      onChanged: (value) => setState(() => _looking = value.trim().toLowerCase()),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   TextButton.icon(
                     key: const ValueKey('glossary-import'),
                     onPressed: _import,
@@ -119,9 +173,9 @@ class GlossaryPanel extends StatelessWidget {
                     sourceLabel: l10n.glossaryPhraseSource,
                     readingLabel: l10n.glossaryPhraseReading,
                     kind: GlossaryKind.phrase,
-                    entries: state.glossary.of(GlossaryKind.phrase).toList(),
+                    entries: _of(state.glossary, GlossaryKind.phrase),
                     loaded: state.loaded,
-                    cubits: cubits,
+                    cubits: widget.cubits,
                   ),
                   const SizedBox(height: 16),
                   _GlossarySection(
@@ -133,7 +187,7 @@ class GlossaryPanel extends StatelessWidget {
                     kind: GlossaryKind.name,
                     entries: state.glossary.of(GlossaryKind.name).toList(),
                     loaded: state.loaded,
-                    cubits: cubits,
+                    cubits: widget.cubits,
                   ),
                   const SizedBox(height: 16),
                   _GlossarySection(
@@ -145,12 +199,12 @@ class GlossaryPanel extends StatelessWidget {
                     kind: GlossaryKind.word,
                     entries: state.glossary.of(GlossaryKind.word).toList(),
                     loaded: state.loaded,
-                    cubits: cubits,
+                    cubits: widget.cubits,
                   ),
                 ];
                 final packs = _GlossaryPacksSection(
                   glossary: state.glossary,
-                  cubits: cubits,
+                  cubits: widget.cubits,
                   onImport: _importPack,
                   onExport: _exportPack,
                 );
@@ -186,6 +240,10 @@ class GlossaryPanel extends StatelessWidget {
 /// empty row at the foot of a list leaves the same width blank, so the
 /// arrows down a list stand in one line.
 const _dragHandleWidth = 24.0;
+
+/// And what the button that passes a line over takes on the right of one.
+/// Only a phrase carries it, so only the phrase list leaves room for it.
+const _silenceSlotWidth = 48.0;
 
 /// Beyond this the packs stand beside the lists rather than under them.
 /// Below it the entry rows -- a source, an arrow and a field -- would be left
@@ -458,6 +516,9 @@ class _AddRowState extends State<_AddRow> {
           onSubmitted: (_) => _add(),
         ),
       ),
+      // The width the rows above give to the button that passes a line over,
+      // so that the arrows down the list stand in one line.
+      if (widget.kind == GlossaryKind.phrase) const SizedBox(width: _silenceSlotWidth),
       Padding(
         padding: const EdgeInsets.only(left: 4),
         child: IconButton.filled(
@@ -520,9 +581,14 @@ class _DragChip extends StatelessWidget {
     elevation: 6,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: Text(
-        label,
-        style: const TextStyle(color: LoreDubPalette.raised, fontSize: 13),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 320),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: LoreDubPalette.raised, fontSize: 13),
+        ),
       ),
     ),
   );
@@ -787,17 +853,23 @@ class _GlossaryPackAreaState extends State<_GlossaryPackArea> {
                   ),
                 )
               else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final member in widget.members)
-                      _PackedEntry(
-                        entry: member,
-                        packId: widget.pack.id,
-                        onRemove: () => widget.onRemoveMember(member),
-                      ),
-                  ],
+                // A Wrap gives its children all the room they ask for, and a
+                // phrase asks for the whole of itself: without a cap the
+                // chips run off the side of the card.
+                LayoutBuilder(
+                  builder: (context, room) => Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final member in widget.members)
+                        _PackedEntry(
+                          entry: member,
+                          packId: widget.pack.id,
+                          maxWidth: room.maxWidth,
+                          onRemove: () => widget.onRemoveMember(member),
+                        ),
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -810,11 +882,23 @@ class _GlossaryPackAreaState extends State<_GlossaryPackArea> {
 /// An entry inside a pack: what it is filed under, a handle to drag it out
 /// by, and the cross that takes it out without dragging.
 class _PackedEntry extends StatelessWidget {
-  const _PackedEntry({required this.entry, required this.packId, required this.onRemove});
+  const _PackedEntry({
+    required this.entry,
+    required this.packId,
+    required this.maxWidth,
+    required this.onRemove,
+  });
 
   final GlossaryEntry entry;
   final String packId;
+
+  /// What the row it sits in can spare. A quotation runs to a line and a
+  /// half, and the chip is cut to fit rather than allowed to run off.
+  final double maxWidth;
   final VoidCallback onRemove;
+
+  /// The icon, the spacing and the cross the text stands beside.
+  static const _furniture = 74.0;
 
   static IconData _iconOf(GlossaryKind kind) => switch (kind) {
     GlossaryKind.phrase => Icons.format_quote_rounded,
@@ -838,9 +922,14 @@ class _PackedEntry extends StatelessWidget {
           children: [
             Icon(_iconOf(entry.kind), size: 16, color: LoreDubPalette.mutedInk),
             const SizedBox(width: 8),
-            Text(
-              entry.source,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: (maxWidth - _furniture).clamp(40.0, 520.0)),
+              child: Text(
+                entry.source,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
             IconButton(
               tooltip: l10n.packsRemoveMember,
@@ -862,7 +951,8 @@ class _PackedEntry extends StatelessWidget {
       dragAnchorStrategy: pointerDragAnchorStrategy,
       feedback: _DragChip(label: entry.source),
       childWhenDragging: Opacity(opacity: 0.4, child: chip),
-      child: chip,
+      // The whole of it where the chip shows only the head.
+      child: Tooltip(message: entry.source, child: chip),
     );
   }
 }

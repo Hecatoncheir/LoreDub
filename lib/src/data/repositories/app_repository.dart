@@ -58,10 +58,17 @@ class AppRepository {
 
   /// What the player wrote down about their games. Theirs rather than one
   /// game's, so every session that translates is handed the same file.
-  /// What is written down, with the pack LoreDub brings laid over it the
+  /// What is written down, with the packs LoreDub brings laid over it the
   /// first time the screen is opened.
+  ///
+  /// Only where the dubbing is into the language they are written in. A
+  /// player dubbing into German is not offered a hundred Russian readings,
+  /// and is offered them if they ever switch: nothing is marked as offered
+  /// until it actually has been.
   Future<Glossary> loadGlossary() async {
     final kept = await _glossary.load();
+    final settings = await _settingsService.load();
+    if (settings.targetLanguage != builtInGlossaryLanguage) return kept;
     final offered = await _glossary.withBuiltIn(kept, builtInGlossary());
     if (!identical(offered, kept)) await _glossary.save(offered);
     return offered;

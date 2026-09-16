@@ -710,6 +710,72 @@ void main() {
     expect(cubits.glossary.state.glossary.match(GlossaryKind.phrase, 'Reloading!')?.silent, isTrue);
   });
 
+  // A glossary grows to hundreds of lines and the one being looked for is
+  // remembered by a word of it, not by where it stands.
+  testWidgets('narrows the lists to what the search asks for', (tester) async {
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      const GlossaryState(
+        loaded: true,
+        glossary: Glossary(
+          entries: [
+            GlossaryEntry(
+              kind: GlossaryKind.phrase,
+              source: 'Fire in the hole!',
+              reading: 'Ложись!',
+            ),
+            GlossaryEntry(
+              kind: GlossaryKind.phrase,
+              source: 'Reloading!',
+              reading: 'Перезарядка!',
+            ),
+          ],
+        ),
+      ),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+    expect(find.text('Fire in the hole!'), findsOneWidget);
+    expect(find.text('Reloading!'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const ValueKey('glossary-search')), 'reload');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fire in the hole!'), findsNothing);
+    expect(find.text('Reloading!'), findsOneWidget);
+
+    // The Russian half answers too: the player may remember what they wrote
+    // rather than what they heard.
+    await tester.enterText(find.byKey(const ValueKey('glossary-search')), 'ложись');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fire in the hole!'), findsOneWidget);
+    expect(find.text('Reloading!'), findsNothing);
+  });
+
+  testWidgets('passes a line over from the transcript', (tester) async {
+    final cubits = stage(
+      buildCubits(),
+      transcript: const [
+        TranscriptEntry(
+          original: 'Reloading!',
+          english: 'Reloading!',
+          translated: 'Перезарядка!',
+          latency: Duration(milliseconds: 900),
+        ),
+      ],
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 1000));
+
+    await tester.tap(find.byKey(const ValueKey('transcript-correct-Reloading!')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('transcript-correction-silence')));
+    await tester.pumpAndSettle();
+
+    final written = cubits.glossary.state.glossary.match(GlossaryKind.phrase, 'Reloading!');
+    expect(written?.silent, isTrue);
+  });
+
   testWidgets('offers no correction for a line that was never translated', (tester) async {
     final cubits = stage(
       buildCubits(),

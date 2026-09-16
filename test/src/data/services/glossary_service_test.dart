@@ -77,6 +77,8 @@ void main() {
         offered.packs.map((pack) => pack.id),
         [builtInGlossaryPackId, builtInQuotesPackId],
       );
+      // Off: an active pack replaces the glossary rather than adding to it,
+      // and one that arrived must not narrow what the player wrote.
       expect(offered.packs.every((pack) => !pack.active), isTrue);
       expect(offered.entries, isNotEmpty);
       expect(

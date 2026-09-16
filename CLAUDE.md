@@ -305,6 +305,12 @@ parser): the player writes an entry down because they just heard the line go
 wrong, and mean the next one to be said their way rather than the next
 session.
 
+The built-in packs are offered only where `AppSettings.targetLanguage` is
+`builtInGlossaryLanguage`: their readings are Russian, and a session dubbing
+into German would be handed Cyrillic for a voice that cannot read it.
+Nothing is marked as offered until it has been, so a player who switches to
+Russian later is offered them then.
+
 `GlossaryEntry.silent` is a phrase the player would rather not hear: the
 worker files it with an empty reading, `said()` answers the empty string
 rather than None, and the sentence leaves the line where the pieces are

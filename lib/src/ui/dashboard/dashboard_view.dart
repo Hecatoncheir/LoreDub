@@ -1004,11 +1004,12 @@ class _TranscriptCard extends StatelessWidget {
                         // it did. The glossary screen is then the list of
                         // what was collected rather than a place to
                         // remember to visit.
-                        onCorrect: (entry, reading) => cubits.glossary.write(
+                        onCorrect: (entry, reading, {silent = false}) => cubits.glossary.write(
                           GlossaryEntry(
                             kind: GlossaryKind.phrase,
                             source: entry.english,
                             reading: reading,
+                            silent: silent,
                           ),
                         ),
                       ),
@@ -2461,7 +2462,7 @@ class _TranscriptBubble extends StatelessWidget {
 
   /// What to do with a correction the player writes for this line. Null
   /// where there is nothing to write it into.
-  final void Function(TranscriptEntry entry, String reading)? onCorrect;
+  final void Function(TranscriptEntry entry, String reading, {bool silent})? onCorrect;
 
   @override
   Widget build(BuildContext context) {
@@ -2599,14 +2600,21 @@ class _CorrectLineButton extends StatelessWidget {
   const _CorrectLineButton({required this.entry, required this.onCorrect});
 
   final TranscriptEntry entry;
-  final void Function(TranscriptEntry entry, String reading) onCorrect;
+  final void Function(TranscriptEntry entry, String reading, {bool silent}) onCorrect;
 
   Future<void> _ask(BuildContext context) async {
-    final written = await showDialog<String>(
+    final answer = await showDialog<_Correction>(
       context: context,
       builder: (context) => _CorrectLineDialog(entry: entry),
     );
-    final said = written?.trim() ?? '';
+    if (answer == null) return;
+    // A line the player would rather not hear again is written down with no
+    // reading at all: that is what passes it over.
+    if (answer.silent) {
+      onCorrect(entry, '', silent: true);
+      return;
+    }
+    final said = answer.reading.trim();
     // A reading left as it was heard is still written down. A phrase is
     // answered before the model is asked, so keeping what it said this time
     // pins the line -- the same words next time rather than the wandering
@@ -2628,6 +2636,15 @@ class _CorrectLineButton extends StatelessWidget {
       onPressed: () => _ask(context),
     ),
   );
+}
+
+/// What the correction dialog answers with: the reading the player typed, or
+/// the word that the line should not be said at all.
+class _Correction {
+  const _Correction({this.reading = '', this.silent = false});
+
+  final String reading;
+  final bool silent;
 }
 
 /// The correction itself.
@@ -2682,7 +2699,7 @@ class _CorrectLineDialogState extends State<_CorrectLineDialog> {
               minLines: 1,
               maxLines: 3,
               decoration: InputDecoration(labelText: l10n.glossaryPhraseReading),
-              onSubmitted: (value) => Navigator.of(context).pop(value),
+              onSubmitted: (value) => Navigator.of(context).pop(_Correction(reading: value)),
             ),
             const SizedBox(height: 10),
             Text(
@@ -2697,8 +2714,17 @@ class _CorrectLineDialogState extends State<_CorrectLineDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.charactersDeleteCancel),
         ),
+        // The line is worth writing down even when the answer is that it
+        // should not be said at all.
+        TextButton.icon(
+          key: const ValueKey('transcript-correction-silence'),
+          onPressed: () => Navigator.of(context).pop(const _Correction(silent: true)),
+          icon: const Icon(Icons.volume_off_rounded, size: 18),
+          label: Text(l10n.transcriptCorrectSilence),
+          style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+        ),
         FilledButton(
-          onPressed: () => Navigator.of(context).pop(_reading.text),
+          onPressed: () => Navigator.of(context).pop(_Correction(reading: _reading.text)),
           child: Text(l10n.save),
         ),
       ],
