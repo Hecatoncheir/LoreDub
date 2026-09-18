@@ -6,6 +6,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "invoke_native.ps1")
 $CommitSuffix = if ($env:CI_COMMIT_SHORT_SHA) { $env:CI_COMMIT_SHORT_SHA } else { "local" }
 $EffectiveTag = if ($ReleaseTag) {
   $ReleaseTag
@@ -23,16 +24,21 @@ if (-not $PubspecVersion) {
 $PackageVersion = if ($EffectiveTag) { $EffectiveTag.TrimStart("v") } else { "$PubspecVersion-$CommitSuffix" }
 $BuildVersion = $PubspecVersion
 
-flutter config --enable-windows-desktop
-flutter pub get
-dart run tool/ffigen.dart
-flutter analyze --fatal-infos
-flutter test
-flutter build windows --release --build-name $BuildVersion
+# Each of these is a program, and a program's exit code stops nothing by
+# itself: unchecked, a tag whose analysis or tests failed went on to be built
+# and published. A line added here goes through Invoke-Native as well.
+Invoke-Native { flutter config --enable-windows-desktop }
+Invoke-Native { flutter pub get }
+Invoke-Native { dart run tool/ffigen.dart }
+Invoke-Native { flutter analyze --fatal-infos }
+Invoke-Native { flutter test }
+Invoke-Native { flutter build windows --release --build-name $BuildVersion }
 
 $ReleaseDirectory = "build\windows\x64\runner\Release"
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prepare_windows_runtime.ps1 `
-  -Destination (Join-Path $ReleaseDirectory "runtime")
+Invoke-Native {
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prepare_windows_runtime.ps1 `
+    -Destination (Join-Path $ReleaseDirectory "runtime")
+}
 
 $IsccCandidates = @(
   "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
@@ -44,4 +50,4 @@ if (-not $Iscc) {
 }
 
 New-Item -ItemType Directory -Force -Path dist | Out-Null
-& $Iscc "/DAppVersion=$PackageVersion" "installer\lore_dub.iss"
+Invoke-Native { & $Iscc "/DAppVersion=$PackageVersion" "installer\lore_dub.iss" }

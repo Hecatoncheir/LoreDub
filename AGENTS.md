@@ -27,7 +27,9 @@ notes live in `docs/`.
 - `flutter build windows --debug` builds a local Windows executable. Prepare its runtime with
   `scripts/prepare_windows_runtime.ps1` before exercising inference.
 - `powershell -ExecutionPolicy Bypass -File scripts/build_setup.ps1` validates and produces the
-  release installer in `dist/`.
+  release installer in `dist/`. Every program it and `prepare_windows_runtime.ps1` start goes
+  through `Invoke-Native` (`scripts/invoke_native.ps1`): PowerShell does not stop on a non-zero
+  exit code by itself, so an unwrapped call lets a failed step through to a published installer.
 
 ## Coding Style & Naming Conventions
 

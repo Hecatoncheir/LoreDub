@@ -23,7 +23,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/AppData/Local/LoreDubBuildCache
-          key: loredub-runtime-whisper-1.8.2-python-3.11.9-torch-2.7.1-v1
+          # The suffix is turned over when a cache already saved cannot be
+          # trusted: -v1 was kept by a script that did not notice pip failing.
+          key: loredub-runtime-whisper-1.8.2-python-3.11.9-torch-2.7.1-v2
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --yes --no-progress

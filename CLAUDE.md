@@ -921,6 +921,30 @@ publishes the release with that single `.exe`. `pubspec.yaml` version, the
 `v<major>.<minor>.<patch>` git tag, and a matching `## [x.y.z] - date` section
 in `CHANGELOG.md` must agree, or `prepare_release.dart` fails the workflow.
 
+Every program the two build scripts start goes through `Invoke-Native`
+(`scripts/invoke_native.ps1`, dot-sourced by both), and a line added to either
+has to as well. `$ErrorActionPreference = "Stop"` stops a script on a failing
+cmdlet and says nothing about an exit code — always in Windows PowerShell
+5.1, which the GitLab job and the child call run under, and in PowerShell 7
+unless `$PSNativeCommandUseErrorActionPreference` is on — while a CI step
+sees the exit code of the last command only, which was ISCC. So a tag whose
+`flutter test` had failed was still built and published. Do not redirect a
+program's stderr inside the block: under 5.1 with `Stop`, a `2>&1` turns the
+first line written there into a terminating error, and git and pip both
+report progress on stderr.
+
+The bundled Python is cached under `%LOCALAPPDATA%\LoreDubBuildCache`, and
+what vouches for that cache is `python-3.11.9\.complete`, written after the
+last install and holding the pins it was filled from. It used to be the
+`torch` folder, which pip makes first, so a run that lost a later package to
+the network left a cache the next run took for whole. Because the marker
+names the pins, adding a package to `$Packages` in
+`prepare_windows_runtime.ps1` rebuilds a cache made before it, which is what
+checking `sacremoses` and `ctranslate2` folder by folder used to be for; the
+marker is taken back out of the copy the installer packs. The `-vN` on the
+cache key in `release.yml` is turned over only when a cache already saved
+cannot be trusted.
+
 The screenshots in `docs/screenshots/` that carry the interface are drawn by
 `test/screenshots.dart`, not captured by hand: it stages the cubits, loads the
 real fonts and writes each screen as a golden at 1400x920 in both languages.

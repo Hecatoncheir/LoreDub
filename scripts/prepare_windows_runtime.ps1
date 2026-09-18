@@ -14,8 +14,19 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "invoke_native.ps1")
 $RuntimeCache = Join-Path $env:LOCALAPPDATA "LoreDubBuildCache"
 New-Item -ItemType Directory -Force -Path $RuntimeCache, $Destination | Out-Null
+
+# Remove-Item -ErrorAction SilentlyContinue was how a folder that is not there
+# was passed over, and it passed over one that could not be removed as well. A
+# worker still running out of the destination holds its python.exe: the folder
+# stayed, gutted of everything else, Copy-Item put the new runtime inside it as
+# python\python-3.11.9, and the script reported nothing.
+function Remove-Tree {
+  param([string]$Path)
+  if (Test-Path $Path) { Remove-Item -Recurse -Force $Path }
+}
 
 function Get-Download {
   param([string]$Url, [string]$FileName, [string]$Sha256 = "")
@@ -37,7 +48,7 @@ $WhisperZip = Get-Download `
   "b1514ebc099765e39fa37eb780b92a140a94c86bb0b3b3d98226b38825979732"
 $WhisperExtract = Join-Path $RuntimeCache "whisper-v1.8.2"
 if (-not (Test-Path (Join-Path $WhisperExtract "whisper-cli.exe"))) {
-  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $WhisperExtract
+  Remove-Tree $WhisperExtract
   Expand-Archive -Path $WhisperZip -DestinationPath $WhisperExtract
   $WhisperCli = Get-ChildItem $WhisperExtract -Recurse -Filter whisper-cli.exe | Select-Object -First 1
   if (-not $WhisperCli) { throw "whisper-cli.exe is missing from the official archive" }
@@ -64,19 +75,20 @@ function Build-VulkanWhisper {
 
   $Source = Join-Path $RuntimeCache "whisper.cpp-$Tag"
   if (-not (Test-Path (Join-Path $Source "CMakeLists.txt"))) {
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $Source
-    git clone --depth 1 --branch $Tag https://github.com/ggml-org/whisper.cpp $Source
-    if ($LASTEXITCODE -ne 0) { throw "Failed to clone whisper.cpp $Tag" }
+    Remove-Tree $Source
+    Invoke-Native {
+      git clone --depth 1 --branch $Tag https://github.com/ggml-org/whisper.cpp $Source
+    }
   }
 
   $Build = Join-Path $Source "build-vulkan"
   $Binary = Join-Path $Build "bin\Release\whisper-cli.exe"
   if (-not (Test-Path $Binary)) {
-    cmake -S $Source -B $Build -DGGML_VULKAN=ON -DBUILD_SHARED_LIBS=ON `
-      -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
-    if ($LASTEXITCODE -ne 0) { throw "Failed to configure the Vulkan whisper build" }
-    cmake --build $Build --config Release --target whisper-cli
-    if ($LASTEXITCODE -ne 0) { throw "Failed to build the Vulkan whisper binary" }
+    Invoke-Native {
+      cmake -S $Source -B $Build -DGGML_VULKAN=ON -DBUILD_SHARED_LIBS=ON `
+        -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
+    }
+    Invoke-Native { cmake --build $Build --config Release --target whisper-cli }
   }
 
   $Target = Join-Path $Destination "whisper-vulkan"
@@ -91,36 +103,58 @@ $PythonZip = Get-Download `
   "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip" `
   "python-3.11.9-embed-amd64.zip"
 $PythonCache = Join-Path $RuntimeCache "python-3.11.9"
-if (-not (Test-Path (Join-Path $PythonCache "Lib\site-packages\torch"))) {
-  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $PythonCache
+$Python = Join-Path $PythonCache "python.exe"
+
+# What the bundled interpreter is filled with. torch stands apart because it
+# comes from an index of its own, the processor-only build.
+$TorchIndex = "https://download.pytorch.org/whl/cpu"
+$TorchPackage = "torch==2.7.1"
+$Packages = @(
+  "numpy==2.2.6",
+  "transformers==4.53.3",
+  "sentencepiece==0.2.0",
+  # sacremoses is what the Marian tokenizer normalizes punctuation with. It is
+  # optional, and without it transformers prints a recommendation on every
+  # start and leaves quotes and dashes as the text had them.
+  "sacremoses==0.2.0",
+  # CTranslate2 runs the translator: the same Marian weights in int8, read in
+  # about half the time transformers took for them. transformers stays for the
+  # tokenizer alone.
+  "ctranslate2==4.8.2"
+)
+
+# The cache is vouched for by a marker written after the last install, and by
+# nothing else. It used to be the torch folder, which is the first thing pip
+# makes: a run that lost transformers or ctranslate2 to the network left a
+# cache the next run took for whole, and the installer carried an interpreter
+# the worker could not start on. The marker holds what it vouches for, so a
+# cache filled before a package was added here, or before a pin moved, is
+# rebuilt too -- which is what sacremoses and ctranslate2 used to be checked
+# folder by folder for. The price is torch downloaded again on that day.
+$PythonComplete = Join-Path $PythonCache ".complete"
+$PythonWanted = @($TorchIndex, $TorchPackage) + $Packages
+$PythonKept = if (Test-Path $PythonComplete) { @(Get-Content $PythonComplete) } else { @() }
+if (($PythonKept -join "`n") -ne ($PythonWanted -join "`n")) {
+  Remove-Tree $PythonCache
   Expand-Archive -Path $PythonZip -DestinationPath $PythonCache
   $Pth = Join-Path $PythonCache "python311._pth"
   (Get-Content $Pth) -replace '#import site', 'import site' | Set-Content -Encoding ascii $Pth
   Add-Content -Encoding ascii $Pth "Lib\site-packages"
   $GetPip = Get-Download "https://bootstrap.pypa.io/get-pip.py" "get-pip.py"
-  & (Join-Path $PythonCache "python.exe") $GetPip --no-warn-script-location
-  & (Join-Path $PythonCache "python.exe") -m pip install --no-cache-dir `
-    --index-url https://download.pytorch.org/whl/cpu torch==2.7.1
-  & (Join-Path $PythonCache "python.exe") -m pip install --no-cache-dir `
-    numpy==2.2.6 transformers==4.53.3 sentencepiece==0.2.0
+  Invoke-Native { & $Python $GetPip --no-warn-script-location }
+  Invoke-Native {
+    & $Python -m pip install --no-cache-dir --no-warn-script-location `
+      --index-url $TorchIndex $TorchPackage
+  }
+  Invoke-Native {
+    & $Python -m pip install --no-cache-dir --no-warn-script-location @Packages
+  }
+  Set-Content -Encoding ascii $PythonComplete $PythonWanted
 }
 
-# sacremoses is what the Marian tokenizer normalizes punctuation with. It is
-# optional, and without it transformers prints a recommendation on every start
-# and leaves quotes and dashes as the text had them. Checked on its own so a
-# cache filled by an earlier build gains it without downloading torch again.
-if (-not (Test-Path (Join-Path $PythonCache "Lib\site-packages\sacremoses"))) {
-  & (Join-Path $PythonCache "python.exe") -m pip install --no-cache-dir `
-    --no-warn-script-location sacremoses==0.2.0
-}
-
-# CTranslate2 runs the translator: the same Marian weights in int8, read in
-# about half the time transformers took for them. transformers stays for the
-# tokenizer alone. Checked on its own for the same reason sacremoses is.
-if (-not (Test-Path (Join-Path $PythonCache "Lib\site-packages\ctranslate2"))) {
-  & (Join-Path $PythonCache "python.exe") -m pip install --no-cache-dir `
-    --no-warn-script-location ctranslate2==4.8.2
-}
 $PythonDestination = Join-Path $Destination "python"
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $PythonDestination
+Remove-Tree $PythonDestination
 Copy-Item $PythonCache $PythonDestination -Recurse
+# The marker speaks for the cache. The installer packs everything under the
+# destination, and a player's disk is no place for it.
+Remove-Item (Join-Path $PythonDestination ".complete")
