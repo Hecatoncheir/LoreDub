@@ -6,17 +6,52 @@ on:
       - "**"
   pull_request:
 
+# A newer push to the same branch makes the run for the older one moot.
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The complexity ratchet compares against the commit before the push.
+          fetch-depth: 0
       - uses: subosito/flutter-action@v2
         with:
+          # Pinned: the goldens below are drawn by one version of the engine.
+          flutter-version: 3.47.4
           channel: stable
           cache: true
       - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test tool hook
       - run: dart run tool/ffigen.dart
+      - run: flutter gen-l10n
+      - name: Generated code is committed as generated
+        run: git diff --exit-code -- lib/src/native lib/l10n
       - run: flutter analyze --fatal-infos
       - run: flutter test
+      - name: Screenshots still match the interface
+        run: flutter test test/screenshots.dart
+      - name: Cognitive complexity does not grow
+        shell: pwsh
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          dart pub global activate cognitive_complexity 0.2.4
+          if ($env:BASE_REF) { $base = "origin/$env:BASE_REF" }
+          elseif ($env:BEFORE -and $env:BEFORE -notmatch '^0+$') { $base = $env:BEFORE }
+          else { $base = 'origin/main' }
+          dart pub global run cognitive_complexity --git-diff=$base --fail-on-increase --fail-threshold 15 --format github lib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Widget structure and hand-written styles do not grow
+        shell: pwsh
+        run: |
+          dart pub global activate dart_code_linter 4.4.0
+          dart pub global run dart_code_linter:metrics analyze lib --reporter=json --json-path=build/metrics.json --no-fatal-warnings
+          dart run tool/ratchet.dart --metrics build/metrics.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - run: flutter build windows --release

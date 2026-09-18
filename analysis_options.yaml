@@ -39,3 +39,13 @@ linter:
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
+
+# Read by `dart_code_linter:metrics analyze` alone -- the analyzer plugin is
+# not enabled, so these do not reach `flutter analyze`. `tool/structure.dart`
+# counts what they find per rule and fails on any count above
+# `tool/structure_baseline.json`, which is only ever lowered.
+dart_code_linter:
+  rules:
+    - prefer-single-widget-per-file
+    - avoid-returning-widgets
+    - avoid-nested-conditional-expressions

@@ -957,12 +957,24 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
 ## CI and releasing
 
 `.github/workflows/windows.yml` runs on every branch and pull request: `pub
-get`, `dart run tool/ffigen.dart`, `analyze --fatal-infos`, `flutter test`,
-`flutter build windows --release`. It regenerates the bindings itself, so a
-`lib/src/native/*.g.dart` left behind by a header change fails there. It does
-not check formatting — `.gitlab-ci.yml` is the one that runs `dart format
---set-exit-if-changed`, so run the formatter before pushing rather than
-trusting the GitHub build to catch it.
+get`, `dart format --set-exit-if-changed`, `dart run tool/ffigen.dart` and
+`flutter gen-l10n` followed by `git diff --exit-code` over what they write (a
+`lib/src/native/*.g.dart` or `app_localizations*.dart` left behind fails
+there), `analyze --fatal-infos`, `flutter test`, `flutter test
+test/screenshots.dart` **without** `--update-goldens` (so the Flutter version
+is pinned in the workflow: the goldens are one engine's drawing), two
+ratchets, and `flutter build windows --release`. The ratchets are the
+engineering plan's (`TODO.md`, stage 0) guard against regressions while the
+interface is taken apart: `cognitive_complexity` over the diff against the
+commit before the push fails a function that is new above 15 or already
+above it and growing, and `tool/ratchet.dart` holds the `dart_code_linter`
+counts (`prefer-single-widget-per-file`, `avoid-returning-widgets`,
+`avoid-nested-conditional-expressions`, configured under `dart_code_linter:`
+in `analysis_options.yaml`, which `flutter analyze` does not read) and the
+`LoreDubPalette.`/`Color(0x`/`TextStyle(` uses outside the theme to
+`tool/ratchet_baseline.json`. A count that falls is written back with
+`--update` and committed in the same change, so it cannot creep up again.
+`.gitlab-ci.yml` runs format, analysis and tests on Linux.
 
 A `v*` tag starts `.github/workflows/release.yml`: `tool/prepare_release.dart`
 validates the tag against `pubspec.yaml` and cuts the release notes out of

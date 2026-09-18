@@ -171,7 +171,7 @@
 
 Прежде чем двигать код, сделать так, чтобы регресс был виден сразу.
 
-- [ ] **Когнитивная сложность в CI.** Штатный анализатор её не считает.
+- [x] **Когнитивная сложность в CI.** Штатный анализатор её не считает.
       Первым попробовать пакет `cognitive_complexity` 0.2.4 (kevmoo, методика
       SonarSource, понимает switch-выражения, guard'ы и `if`/`for` в
       коллекциях, Dart ≥ 3.12): у него есть храповик по git-diff
@@ -181,7 +181,7 @@
       (~300 строк на `package:analyzer`, цифры раздела 1 получены им) кладётся
       в `tool/complexity.dart` с базой `tool/complexity_baseline.json`,
       которую можно только уменьшать.
-- [ ] **Правила 2 и 3 — линтером, а не глазами.** `dart_code_linter` 4.3.0
+- [x] **Правила 2 и 3 — линтером, а не глазами.** `dart_code_linter` 4.3.0
       (живой форк dart_code_metrics; на этом SDK отработал, проверено при
       аудите) содержит `prefer-single-widget-per-file` — приватные виджеты
       он считает по умолчанию, опция `ignore-private-widgets` выключена — и
@@ -191,11 +191,11 @@
       (`dart run dart_code_linter:metrics analyze lib`) со счётчиком-храповиком:
       плагином анализатора он сразу дал бы сотни замечаний, а CI идёт с
       `--fatal-infos`. Плагином — когда счётчик дойдёт до нуля.
-- [ ] Храповик на `LoreDubPalette.` / `Color(0x` / `TextStyle(` вне
+- [x] Храповик на `LoreDubPalette.` / `Color(0x` / `TextStyle(` вне
       `lib/src/ui/theme/` — десять строк в `tool/`, готового правила нет.
-- [ ] Эти проверки и `dart format --set-exit-if-changed` — в
+- [x] Эти проверки и `dart format --set-exit-if-changed` — в
       `.github/workflows/windows.yml` (сейчас формат проверяет только GitLab).
-- [ ] `flutter test test/screenshots.dart` **без** `--update-goldens` —
+- [x] `flutter test test/screenshots.dart` **без** `--update-goldens` —
       отдельным шагом CI: перенос виджетов не должен сдвинуть ни пикселя.
       Это главная страховка этапа 2.
 - [ ] Линты — см. этап 7.
@@ -931,7 +931,7 @@ abstract final class AppTheme {
 
 ### CI
 
-- [ ] `windows.yml`: проверка формата; `git diff --exit-code` после
+- [x] `windows.yml`: проверка формата; `git diff --exit-code` после
       `ffigen` и `flutter gen-l10n` (сейчас устаревший сгенерированный файл
       ловится, только если ломает анализ); `concurrency:` с отменой
       устаревших прогонов; закреплённая версия Flutter вместо голого

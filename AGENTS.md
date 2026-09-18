@@ -24,6 +24,14 @@ notes live in `docs/`.
   focused test.
 - `flutter test test/screenshots.dart --update-goldens` redraws `docs/screenshots/` from the
   real widgets; it carries no `_test` suffix, so the suite above leaves it alone.
+- `dart pub global run cognitive_complexity --git-diff=origin/main --fail-on-increase
+  --fail-threshold 15 lib` is the complexity ratchet CI runs (after `dart pub global activate
+  cognitive_complexity 0.2.4`): a new function above 15, or one already above it growing, fails.
+- `dart pub global run dart_code_linter:metrics analyze lib --reporter=json
+  --json-path=build/metrics.json --no-fatal-warnings`, then `dart run tool/ratchet.dart --metrics
+  build/metrics.json`, counts private widgets, methods returning widgets, nested conditionals and
+  palette/`TextStyle(` uses outside the theme against `tool/ratchet_baseline.json`. A count may
+  only fall; when it does, rerun with `--update` and commit the baseline.
 - `flutter build windows --debug` builds a local Windows executable. Prepare its runtime with
   `scripts/prepare_windows_runtime.ps1` before exercising inference.
 - `powershell -ExecutionPolicy Bypass -File scripts/build_setup.ps1` validates and produces the
