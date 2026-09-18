@@ -4,5 +4,5 @@
   "TextStyle(": 111,
   "avoid-nested-conditional-expressions": 50,
   "avoid-returning-widgets": 55,
-  "prefer-single-widget-per-file": 97
+  "prefer-single-widget-per-file": 89
 }

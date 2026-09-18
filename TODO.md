@@ -242,6 +242,10 @@
       поверх стримов репозиториев), экран его только читает. Ограничения по
       кадру из `CLAUDE.md` сохраняются: граф слушается innermost, у тулбара
       свой `buildWhen`.
+      *Отложено до этапа 4:* без `Stream<AppSettings>` и прочих стримов у
+      репозиториев производное состояние пришлось бы собирать подписками
+      блоков друг на друга — ровно то, что запрещает правило 6. Делается
+      вместе с развязкой блоков.
 
 ---
 
@@ -288,7 +292,7 @@ lib/src/ui/
 Каждый шаг — отдельный коммит «перенос без изменения поведения»; после
 каждого: `flutter analyze`, `flutter test`, goldens без обновления.
 
-- [ ] **Атомы в `common/`:** `_ModuleLabel`, `_AreaHeading`, `_SettingCard`,
+- [x] **Атомы в `common/`:** `_ModuleLabel`, `_AreaHeading`, `_SettingCard`,
       `_SectionNote`, `_ErrorBanner`, `_StatusChip`, `_ClearListButton`,
       `_LanguageRow`. От них зависят все экраны.
 - [ ] **`shell/`:** `_Navigation`, `_NavigationGroup`, `_NavigationItem`,
@@ -307,6 +311,10 @@ lib/src/ui/
 - [ ] `app.dart`: `_Scaled` → `app/interface_scale.dart`.
 
 ### Снижение сложности по ходу переноса
+
+Храповик `cognitive_complexity` сопоставляет функции по файлу и имени, так
+что перенесённая функция для него — новая. Функцию сложнее 15 поэтому нельзя
+перенести как есть: её упрощают в том же коммите, где она переезжает.
 
 - [ ] `_CharacterCast.build` (CC 76): правила доступности действий
       (`onPlay`, `onPreview`, `onRecord`, `onFilesDropped`) → методы

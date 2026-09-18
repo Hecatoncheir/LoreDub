@@ -52,6 +52,14 @@ import 'pipeline_canvas.dart';
 import 'pipeline_inspector.dart';
 import 'pipeline_shelf.dart';
 import 'whisper_model_chart.dart';
+import '../common/module_label.dart';
+import '../common/area_heading.dart';
+import '../common/setting_card.dart';
+import '../common/section_note.dart';
+import '../common/error_banner.dart';
+import '../common/status_chip.dart';
+import '../common/clear_list_button.dart';
+import '../common/language_row.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key, required this.cubits});
@@ -90,7 +98,7 @@ class _Dashboard extends StatelessWidget {
               _Header(),
               BlocBuilder<ShellCubit, ShellState>(
                 builder: (context, shell) => switch (shell.error) {
-                  final error? => _ErrorBanner(
+                  final error? => ErrorBanner(
                     message: describeFailure(AppLocalizations.of(context), error),
                   ),
                   _ => const SizedBox.shrink(),
@@ -682,60 +690,11 @@ class _Header extends StatelessWidget {
             pipeline.session == PipelineSession.screen,
           ),
           builder: (context, chip) =>
-              _StatusChip(status: chip.$1, stage: chip.$2, snapshot: chip.$3),
+              StatusChip(status: chip.$1, stage: chip.$2, snapshot: chip.$3),
         ),
       ],
     ),
   );
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status, this.stage = '', this.snapshot = false});
-
-  final PipelineStatus status;
-
-  /// What the startup is doing right now, shown instead of a bare "Запуск…".
-  final String stage;
-
-  /// The snapshot session listens for nothing: it waits for a selection.
-  final bool snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final (label, color) = switch (status) {
-      PipelineStatus.idle => (l10n.statusIdle, LoreDubPalette.mutedInk),
-      PipelineStatus.starting => (
-        stage.isEmpty ? l10n.statusStarting : describeStartupStage(l10n, stage),
-        LoreDubPalette.warning,
-      ),
-      PipelineStatus.listening => (
-        snapshot ? l10n.statusSnapshotReady : l10n.statusListening,
-        LoreDubPalette.success,
-      ),
-      PipelineStatus.paused => (l10n.statusPaused, LoreDubPalette.warning),
-      PipelineStatus.stopping => (l10n.statusStopping, LoreDubPalette.warning),
-      PipelineStatus.error => (l10n.statusError, LoreDubPalette.error),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.circle, size: 8, color: color),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _LivePanel extends StatelessWidget {
@@ -764,7 +723,7 @@ class _LivePanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ModuleLabel(number: '01', label: AppLocalizations.of(context).areaGameInput),
+                ModuleLabel(number: '01', label: AppLocalizations.of(context).areaGameInput),
                 const SizedBox(height: 14),
                 LayoutBuilder(
                   builder: (context, constraints) => _SourceControls(
@@ -867,12 +826,12 @@ class _TranscriptCard extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
                       child: Row(
                         children: [
-                          _ModuleLabel(
+                          ModuleLabel(
                             number: number,
                             label: label ?? AppLocalizations.of(context).areaTranscript,
                           ),
                           const Spacer(),
-                          _ClearListButton(
+                          ClearListButton(
                             tooltip: AppLocalizations.of(context).transcriptClearTooltip,
                             onPressed: transcript.isEmpty
                                 ? null
@@ -973,7 +932,7 @@ class _SceneVoicesCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-            child: _ModuleLabel(
+            child: ModuleLabel(
               number: '03',
               label: AppLocalizations.of(context).areaSceneVoices,
             ),
@@ -1201,40 +1160,6 @@ class _StartStepRow extends StatelessWidget {
   );
 }
 
-/// Clears the list under a card's header.
-class _ClearListButton extends StatelessWidget {
-  const _ClearListButton({required this.tooltip, required this.onPressed});
-
-  final String tooltip;
-
-  /// Null when there is nothing to clear, so the button never claims work it
-  /// will not do.
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) => Tooltip(
-    message: tooltip,
-    child: TextButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.backspace_outlined, size: 16),
-      label: Text(AppLocalizations.of(context).transcriptClear),
-      style: TextButton.styleFrom(
-        foregroundColor: LoreDubPalette.mutedInk,
-        minimumSize: const Size(0, 28),
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
-        textStyle: const TextStyle(
-          fontFamily: LoreDubFonts.mono,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-        ),
-      ),
-    ),
-  );
-}
-
 /// The snapshot screen: a session that loads only the translator and the
 /// voice, and translates what the player frames over the game while the
 /// snapshot key is held.
@@ -1360,7 +1285,7 @@ class _ScreenCaptureCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _ModuleLabel(number: '01', label: AppLocalizations.of(context).areaScreenCapture),
+          ModuleLabel(number: '01', label: AppLocalizations.of(context).areaScreenCapture),
           const SizedBox(height: 14),
           _SnapshotControls(),
         ],
@@ -1393,7 +1318,7 @@ class _SubtitleFrameCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ModuleLabel(number: '02', label: l10n.areaSubtitleFrame),
+            ModuleLabel(number: '02', label: l10n.areaSubtitleFrame),
             const SizedBox(height: 14),
             OcrRegionPicker(
               key: const ValueKey('ocrRegion'),
@@ -1595,7 +1520,7 @@ class _SnapshotControls extends StatelessWidget {
                 children: [
                   Expanded(child: picker),
                   const SizedBox(width: 24),
-                  SizedBox(width: _LanguageRow.actionWidth, child: button),
+                  SizedBox(width: LanguageRow.actionWidth, child: button),
                 ],
               ),
             ),
@@ -1734,12 +1659,12 @@ class _SnapshotHistory extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
             child: Row(
               children: [
-                _ModuleLabel(
+                ModuleLabel(
                   number: '04',
                   label: AppLocalizations.of(context).areaSelectedText,
                 ),
                 const Spacer(),
-                _ClearListButton(
+                ClearListButton(
                   tooltip: AppLocalizations.of(context).snapshotClearTooltip,
                   onPressed: pipeline.snapshots.isEmpty
                       ? null
@@ -1944,7 +1869,7 @@ class _TargetLanguagePicker extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final languages = dubbingLanguages;
     final selection = context.selection;
-    return _LanguageRow(
+    return LanguageRow(
       field: DropdownButtonFormField<String>(
         key: const ValueKey('targetLanguage'),
         // A value stored by an older build may no longer be on offer.
@@ -2130,7 +2055,7 @@ class _LanguageControls extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final locked = pipeline.running;
     final detected = settings.detectSourceLanguage ? pipeline.detectedLanguage : null;
-    return _LanguageRow(
+    return LanguageRow(
       field: DropdownButtonFormField<String>(
         key: const ValueKey('sourceLanguage'),
         initialValue: settings.sourceLanguage,
@@ -2200,7 +2125,7 @@ class _TextLanguagePicker extends StatelessWidget {
   Widget _build(BuildContext context, AppSettings settings, {required bool locked}) {
     final l10n = AppLocalizations.of(context);
     final languages = {fallbackSpokenLanguage, settings.targetLanguage};
-    return _LanguageRow(
+    return LanguageRow(
       field: DropdownButtonFormField<String>(
         // Keyed by the value: a new dubbing language can change it from
         // outside the field.
@@ -2229,95 +2154,6 @@ class _TextLanguagePicker extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The two language pickers sit in different rows, so they are laid out
-/// identically — same field width, same gap, same trailing width — to line up
-/// exactly one under the other.
-class _LanguageRow extends StatelessWidget {
-  const _LanguageRow({required this.field, required this.action});
-
-  static const double fieldWidth = 210;
-
-  /// Wide enough for the detected language to replace the toggle's label
-  /// without being cut short.
-  static const double actionWidth = 240;
-
-  /// What the two of them need side by side.
-  static const double _sideBySide = fieldWidth + 12 + actionWidth;
-
-  final Widget field;
-  final Widget action;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    // Both halves were fixed and the row refused to shrink, so a card
-    // narrower than the two of them -- the screen page's controls beside
-    // the subtitle frame -- was overflowed by whatever was missing. Given
-    // less than they need, they go one under the other and take the width
-    // there is.
-    builder: (context, constraints) =>
-        !constraints.hasBoundedWidth || constraints.maxWidth >= _sideBySide
-        ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(width: fieldWidth, child: field),
-              const SizedBox(width: 12),
-              SizedBox(width: actionWidth, child: action),
-            ],
-          )
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [field, const SizedBox(height: 10), action],
-          ),
-  );
-}
-
-class _ModuleLabel extends StatelessWidget {
-  const _ModuleLabel({required this.number, required this.label});
-
-  final String number;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    // As wide as the number and the name, and no wider: given room to
-    // spread — a heading that wraps — a row of its full width would leave
-    // nothing to sit beside it.
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 28,
-        height: 22,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: LoreDubPalette.orange,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: LoreDubPalette.ink),
-        ),
-        child: Text(
-          number,
-          style: const TextStyle(
-            fontFamily: LoreDubFonts.mono,
-            color: LoreDubPalette.ink,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-      const SizedBox(width: 9),
-      Text(
-        label,
-        style: const TextStyle(
-          fontFamily: LoreDubFonts.mono,
-          color: LoreDubPalette.ink,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.1,
-        ),
-      ),
-    ],
-  );
 }
 
 /// One recognized phrase, shaped like the speech bubble on the application
@@ -3140,7 +2976,7 @@ class _CharactersPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ModuleLabel(
+                ModuleLabel(
                   number: '01',
                   label: AppLocalizations.of(context).areaVoiceRecording,
                 ),
@@ -3195,28 +3031,6 @@ class _CharactersPanel extends StatelessWidget {
         ),
       ],
     ),
-  );
-}
-
-/// The head of an area: its number and name on one side, what can be done
-/// to it on the other. In a column too narrow to hold both, the buttons
-/// drop to a line of their own rather than off the edge.
-class _AreaHeading extends StatelessWidget {
-  const _AreaHeading({required this.label, required this.actions});
-
-  final Widget label;
-  final List<Widget> actions;
-
-  @override
-  Widget build(BuildContext context) => Wrap(
-    alignment: WrapAlignment.spaceBetween,
-    crossAxisAlignment: WrapCrossAlignment.center,
-    spacing: 8,
-    runSpacing: 4,
-    children: [
-      label,
-      Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: actions),
-    ],
   );
 }
 
@@ -3275,7 +3089,7 @@ class _CharacterSessionControls extends StatelessWidget {
             Expanded(child: picker),
             const SizedBox(width: 16),
             SizedBox(
-              width: _LanguageRow.actionWidth,
+              width: LanguageRow.actionWidth,
               child: FilledButton.icon(
                 key: const ValueKey('charactersSession'),
                 onPressed: !canRecord || initializing || pipeline.running
@@ -3398,8 +3212,8 @@ class _CharacterCast extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-            child: _AreaHeading(
-              label: _ModuleLabel(number: '02', label: l10n.areaCast),
+            child: AreaHeading(
+              label: ModuleLabel(number: '02', label: l10n.areaCast),
               actions: [
                 TextButton.icon(
                   onPressed: state.characters.isEmpty
@@ -3588,8 +3402,8 @@ class _CharacterPacks extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-              child: _AreaHeading(
-                label: _ModuleLabel(number: '03', label: l10n.areaPacks),
+              child: AreaHeading(
+                label: ModuleLabel(number: '03', label: l10n.areaPacks),
                 actions: [
                   TextButton.icon(
                     key: const ValueKey('charactersImport'),
@@ -3703,12 +3517,12 @@ class _ModelsPanel extends StatelessWidget {
       key: const ValueKey('modelsList'),
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
-        _ModuleLabel(number: '01', label: l10n.sectionRecognition),
+        ModuleLabel(number: '01', label: l10n.sectionRecognition),
         const SizedBox(height: 4),
-        _SectionNote(l10n.sectionRecognitionNote),
+        SectionNote(l10n.sectionRecognitionNote),
         if (selection.recognitionNeedsEnglish) ...[
           const SizedBox(height: 8),
-          _SectionNote(l10n.recognitionNeedsEnglish),
+          SectionNote(l10n.recognitionNeedsEnglish),
         ],
         // Size against quality is the whole choice, so it is drawn as a chart;
         // a window too narrow for the bars gets the plain cards instead.
@@ -3760,9 +3574,9 @@ class _ModelsPanel extends StatelessWidget {
         const SizedBox(height: 26),
         // A translator and a voice are only ever useful together, so a
         // language is one tile: downloaded, picked and deleted as a pair.
-        _ModuleLabel(number: '02', label: l10n.sectionLanguages),
+        ModuleLabel(number: '02', label: l10n.sectionLanguages),
         const SizedBox(height: 4),
-        _SectionNote(l10n.sectionLanguagesNote),
+        SectionNote(l10n.sectionLanguagesNote),
         const SizedBox(height: 12),
         ModelTileGrid(
           children: [
@@ -3790,9 +3604,9 @@ class _ModelsPanel extends StatelessWidget {
               ModelFailureRow(state: part),
             ],
         const SizedBox(height: 26),
-        _ModuleLabel(number: '03', label: l10n.sectionVoiceConversion),
+        ModuleLabel(number: '03', label: l10n.sectionVoiceConversion),
         const SizedBox(height: 4),
-        _SectionNote(l10n.sectionVoiceConversionNote),
+        SectionNote(l10n.sectionVoiceConversionNote),
         const SizedBox(height: 12),
         ModelTileGrid(
           children: [
@@ -3818,18 +3632,6 @@ class _ModelsPanel extends StatelessWidget {
       ],
     );
   }
-}
-
-class _SectionNote extends StatelessWidget {
-  const _SectionNote(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(left: 2, bottom: 2),
-    child: Text(text, style: Theme.of(context).textTheme.bodySmall),
-  );
 }
 
 /// Pause/resume and cancel for a download in flight.
@@ -4122,15 +3924,15 @@ class _SettingsPanelState extends State<_SettingsPanel> {
       key: const ValueKey('settingsList'),
       padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
       children: [
-        _ModuleLabel(number: '01', label: l10n.settingsGroupInterface),
+        ModuleLabel(number: '01', label: l10n.settingsGroupInterface),
         const SizedBox(height: 12),
         ..._theInterface(context, l10n, state, running: running),
         const SizedBox(height: _settingsGroupGap),
-        _ModuleLabel(number: '02', label: l10n.settingsGroupDubbing),
+        ModuleLabel(number: '02', label: l10n.settingsGroupDubbing),
         const SizedBox(height: 12),
         ..._howItSounds(context, l10n, state, running: running),
         const SizedBox(height: _settingsGroupGap),
-        _ModuleLabel(number: '03', label: l10n.settingsGroupCompute),
+        ModuleLabel(number: '03', label: l10n.settingsGroupCompute),
         const SizedBox(height: 12),
         _ComputeDeviceCard(),
         const SizedBox(height: _settingsGroupGap),
@@ -4174,7 +3976,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     required bool running,
   }) {
     final settings = state.settings;
-    final language = _SettingCard(
+    final language = SettingCard(
       title: l10n.settingsInterfaceLanguage,
       subtitle: l10n.interfaceLanguageNote,
       child: SizedBox(
@@ -4220,13 +4022,13 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   /// of them start on the same line.
   Widget _areaHeading(String label, {required String number}) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
-    child: _ModuleLabel(number: number, label: label),
+    child: ModuleLabel(number: number, label: label),
   );
 
   /// How large the interface itself is drawn, beside the language it speaks:
   /// the two things a player sets once, for their own eyes rather than for
   /// the dubbing.
-  Widget _scaleCard(AppLocalizations l10n, AppSettings settings) => _SettingCard(
+  Widget _scaleCard(AppLocalizations l10n, AppSettings settings) => SettingCard(
     title: l10n.settingsScale,
     subtitle: l10n.scaleValue((settings.chosenScale * 100).round()),
     child: Column(
@@ -4290,7 +4092,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     required bool running,
   }) {
     final settings = state.settings;
-    final volume = _SettingCard(
+    final volume = SettingCard(
       title: l10n.settingsOriginalVolume,
       subtitle: l10n.originalVolumeValue((settings.duckedVolume * 100).round()),
       // The floor is the capture's: the game is heard through this same
@@ -4335,7 +4137,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ],
       ),
     );
-    final pace = _SettingCard(
+    final pace = SettingCard(
       title: l10n.settingsTtsSpeed,
       subtitle: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
       child: Column(
@@ -4411,7 +4213,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }) {
     final settings = state.settings;
     return [
-      _SettingCard(
+      SettingCard(
         title: l10n.settingsHotkeys,
         subtitle: l10n.hotkeysNote,
         child: Column(
@@ -4516,7 +4318,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   /// Where the parts come from and where they are kept.
   Widget _pythonCard(BuildContext context, AppLocalizations l10n) =>
       BlocBuilder<SettingsCubit, SettingsState>(
-        builder: (context, state) => _SettingCard(
+        builder: (context, state) => SettingCard(
           title: l10n.settingsPython,
           subtitle: l10n.pythonNote,
           child: Form(
@@ -4578,7 +4380,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         ),
       );
 
-  Widget _proxyCard(BuildContext context, AppLocalizations l10n) => _SettingCard(
+  Widget _proxyCard(BuildContext context, AppLocalizations l10n) => SettingCard(
     title: l10n.settingsModelDownloads,
     subtitle: l10n.proxyNote,
     child: Form(
@@ -4630,7 +4432,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     ),
   );
 
-  Widget _modelDirectoryCard(BuildContext context, AppLocalizations l10n) => _SettingCard(
+  Widget _modelDirectoryCard(BuildContext context, AppLocalizations l10n) => SettingCard(
     title: l10n.settingsModelDirectory,
     subtitle: l10n.modelDirectoryNote,
     child: LayoutBuilder(
@@ -4744,7 +4546,7 @@ class _VoiceCard extends StatelessWidget {
       _ => VoiceMode.chosen,
     };
     final converterInstalled = selection.voiceConverter?.installed ?? false;
-    return _SettingCard(
+    return SettingCard(
       title: l10n.settingsVoice,
       subtitle: l10n.voiceNote,
       child: Column(
@@ -4991,7 +4793,7 @@ class _ComputeDeviceCard extends StatelessWidget {
             _servesHardware(runtime.package.id, availability))
           runtime,
     ];
-    return _SettingCard(
+    return SettingCard(
       title: l10n.settingsComputeDevice,
       subtitle: l10n.computeDeviceNote,
       child: Column(
@@ -5264,60 +5066,5 @@ class _HotkeyRow extends StatelessWidget {
       ),
       Expanded(child: field),
     ],
-  );
-}
-
-class _SettingCard extends StatelessWidget {
-  const _SettingCard({required this.title, required this.child, this.subtitle});
-
-  final String title;
-  final String? subtitle;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          if (subtitle case final value?) ...[
-            const SizedBox(height: 5),
-            Text(
-              value,
-              style: const TextStyle(color: LoreDubPalette.mutedInk),
-            ),
-          ],
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    ),
-  );
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    margin: const EdgeInsets.fromLTRB(28, 0, 28, 4),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.error.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.55)),
-    ),
-    child: Row(
-      children: [
-        Icon(Icons.error_outline_rounded, color: Theme.of(context).colorScheme.error),
-        const SizedBox(width: 10),
-        Expanded(child: Text(message)),
-      ],
-    ),
   );
 }
