@@ -24,6 +24,7 @@ import 'cubits/shell_cubit.dart';
 import 'node_paint.dart';
 import 'pipeline_canvas.dart';
 import 'process_picker.dart';
+import '../common/committed_text_field.dart';
 
 /// What the node the player clicked is set to, and the controls that change
 /// it.
@@ -401,12 +402,12 @@ class PipelineInspector extends StatelessWidget {
     return [
       _Field(
         label: l10n.charactersNameLabel,
-        child: _NameField(
+        child: CommittedTextField(
           // Keyed by the card, so opening another node starts a field on
           // that one's name rather than carrying this one's over.
           key: ValueKey('graph-name-${character.id}'),
-          character: character,
-          onRename: (name) => context.read<CharactersCubit>().rename(character.id, name),
+          value: character.name,
+          onCommitted: (name) => context.read<CharactersCubit>().rename(character.id, name),
         ),
       ),
       _Field(
@@ -496,50 +497,6 @@ class PipelineInspector extends StatelessWidget {
 /// A widget of its own because the field needs a controller of its own: the
 /// panel is rebuilt whenever anything on the canvas moves, and a name half
 /// typed must not be thrown away by that.
-class _NameField extends StatefulWidget {
-  const _NameField({super.key, required this.character, required this.onRename});
-
-  final Character character;
-  final ValueChanged<String> onRename;
-
-  @override
-  State<_NameField> createState() => _NameFieldState();
-}
-
-class _NameFieldState extends State<_NameField> {
-  late final TextEditingController _name = TextEditingController(text: widget.character.name);
-
-  @override
-  void didUpdateWidget(_NameField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // A name changed elsewhere — on the characters screen, or by an import
-    // landing on this card — is shown; what is being typed is left alone.
-    if (widget.character.name != oldWidget.character.name && !_name.selection.isValid) {
-      _name.text = widget.character.name;
-    }
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
-
-  void _rename() {
-    final name = _name.text.trim();
-    if (name.isEmpty || name == widget.character.name) return;
-    widget.onRename(name);
-  }
-
-  @override
-  Widget build(BuildContext context) => TextField(
-    controller: _name,
-    decoration: const InputDecoration(isDense: true),
-    onEditingComplete: _rename,
-    onTapOutside: (_) => _rename(),
-  );
-}
-
 class _Field extends StatelessWidget {
   const _Field({required this.label, required this.child});
 

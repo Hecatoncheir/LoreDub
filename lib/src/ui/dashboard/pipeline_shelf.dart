@@ -21,6 +21,7 @@ import '../../domain/pipeline_graph.dart';
 import '../../domain/saved_pipeline.dart';
 import '../theme.dart';
 import 'pipeline_canvas.dart' show NodeMetrics;
+import '../common/module_number.dart';
 
 class PipelineShelf extends StatefulWidget {
   const PipelineShelf({
@@ -167,25 +168,7 @@ class _ShelfLabel extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(
-        width: 28,
-        height: 22,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: LoreDubPalette.orange,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: LoreDubPalette.ink),
-        ),
-        child: Text(
-          '$count',
-          style: const TextStyle(
-            fontFamily: LoreDubFonts.mono,
-            color: LoreDubPalette.ink,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+      ModuleNumber('$count'),
       const SizedBox(width: 9),
       Text(
         label,

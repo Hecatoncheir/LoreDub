@@ -12,6 +12,7 @@ import '../../domain/character.dart';
 import '../../domain/pipeline_state.dart';
 import '../theme.dart';
 import 'model_visuals.dart';
+import '../common/committed_text_field.dart';
 
 /// A card on its way from one place to another: which character, and the
 /// pack it was picked up from, if it was picked up from one.
@@ -186,32 +187,8 @@ class CharacterTile extends StatefulWidget {
 }
 
 class _CharacterTileState extends State<CharacterTile> {
-  late final TextEditingController _name = TextEditingController(text: widget.character.name);
-
   /// Whether files are being held over this card right now.
   bool _over = false;
-
-  @override
-  void didUpdateWidget(CharacterTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // A name changed elsewhere — an import landing on this card — is shown,
-    // but what the player is typing is left alone.
-    if (widget.character.name != oldWidget.character.name && !_name.selection.isValid) {
-      _name.text = widget.character.name;
-    }
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
-
-  void _rename() {
-    final name = _name.text.trim();
-    if (name.isEmpty || name == widget.character.name) return;
-    widget.onRename(name);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -308,16 +285,15 @@ class _CharacterTileState extends State<CharacterTile> {
     );
   }
 
-  Widget _nameField(AppLocalizations l10n) => TextField(
-    controller: _name,
+  Widget _nameField(AppLocalizations l10n) => CommittedTextField(
+    value: widget.character.name,
+    onCommitted: widget.onRename,
     style: const TextStyle(
       fontFamily: LoreDubFonts.display,
       fontSize: 17,
       fontWeight: FontWeight.w700,
     ),
     decoration: InputDecoration(labelText: l10n.charactersNameLabel, isDense: true),
-    onEditingComplete: _rename,
-    onTapOutside: (_) => _rename(),
   );
 
   /// What the card carries, a line each.
@@ -542,7 +518,7 @@ class _DragCard extends StatelessWidget {
 /// The cards inside are drawn small — the whole card, with its name field
 /// and buttons, already stands in the cast above; here what matters is who
 /// is in the group.
-class CharacterPackArea extends StatefulWidget {
+class CharacterPackArea extends StatelessWidget {
   const CharacterPackArea({
     super.key,
     required this.pack,
@@ -565,39 +541,12 @@ class CharacterPackArea extends StatefulWidget {
   final ValueChanged<Character> onRemoveMember;
 
   @override
-  State<CharacterPackArea> createState() => _CharacterPackAreaState();
-}
-
-class _CharacterPackAreaState extends State<CharacterPackArea> {
-  late final TextEditingController _name = TextEditingController(text: widget.pack.name);
-
-  @override
-  void didUpdateWidget(CharacterPackArea oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.pack.name != oldWidget.pack.name && !_name.selection.isValid) {
-      _name.text = widget.pack.name;
-    }
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
-
-  void _rename() {
-    final name = _name.text.trim();
-    if (name.isEmpty || name == widget.pack.name) return;
-    widget.onRename(name);
-  }
-
-  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return DragTarget<CharacterDrag>(
       // A card already in this pack is not offered a place in it again.
-      onWillAcceptWithDetails: (details) => !widget.pack.holds(details.data.character.id),
-      onAcceptWithDetails: (details) => widget.onDrop(details.data),
+      onWillAcceptWithDetails: (details) => !pack.holds(details.data.character.id),
+      onAcceptWithDetails: (details) => onDrop(details.data),
       builder: (context, candidate, _) {
         final inviting = candidate.isNotEmpty;
         return AnimatedContainer(
@@ -619,8 +568,9 @@ class _CharacterPackAreaState extends State<CharacterPackArea> {
                   const Icon(Icons.inventory_2_outlined, size: 18),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: TextField(
-                      controller: _name,
+                    child: CommittedTextField(
+                      value: pack.name,
+                      onCommitted: onRename,
                       style: const TextStyle(
                         fontFamily: LoreDubFonts.display,
                         fontSize: 16,
@@ -630,13 +580,11 @@ class _CharacterPackAreaState extends State<CharacterPackArea> {
                         labelText: l10n.packsNameLabel,
                         isDense: true,
                       ),
-                      onEditingComplete: _rename,
-                      onTapOutside: (_) => _rename(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    l10n.packsCount(widget.members.length),
+                    l10n.packsCount(members.length),
                     style: const TextStyle(
                       fontFamily: LoreDubFonts.mono,
                       fontSize: 11,
@@ -648,7 +596,7 @@ class _CharacterPackAreaState extends State<CharacterPackArea> {
                     action: ModelAction(
                       icon: Icons.file_upload_outlined,
                       tooltip: l10n.packsExportHint,
-                      onPressed: widget.onExport,
+                      onPressed: onExport,
                     ),
                   ),
                   ModelActionButton(
@@ -656,13 +604,13 @@ class _CharacterPackAreaState extends State<CharacterPackArea> {
                     action: ModelAction(
                       icon: Icons.delete_outline_rounded,
                       tooltip: l10n.packsDelete,
-                      onPressed: widget.onDelete,
+                      onPressed: onDelete,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
-              if (widget.members.isEmpty)
+              if (members.isEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
                   child: Text(
@@ -678,11 +626,11 @@ class _CharacterPackAreaState extends State<CharacterPackArea> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final member in widget.members)
+                    for (final member in members)
                       _PackMember(
                         character: member,
-                        packId: widget.pack.id,
-                        onRemove: () => widget.onRemoveMember(member),
+                        packId: pack.id,
+                        onRemove: () => onRemoveMember(member),
                       ),
                   ],
                 ),

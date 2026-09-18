@@ -408,13 +408,18 @@ lib/src/ui/
       `cubits.pipeline.state` (`:180`) и `cubits.downloads.state` (`:456`)
       в `build` без подписки — сейчас спасает то, что перестраивается
       родитель; после этапа 1 это `BlocSelector`.
-- [ ] **`glossary_screen.dart`:** `build` на 159 строк → `GlossaryToolbar`,
+- [x] **`glossary_screen.dart`:** `build` на 159 строк → `GlossaryToolbar`,
       `GlossaryPresetChips`, `GlossaryLists` по `GlossaryKind.values`
       (это же закрывает дефект из 1а: три секции перестают быть копипастой).
       `_matches` / `_listed` / `_of` → чистая `GlossaryView.of(glossary,
       filter)` с `Set` ключей, лежащих в паках: сейчас на каждое нажатие
       клавиши идёт `List.contains` на запись на пак.
-- [ ] Поле имени «сохранить при потере фокуса» написано четырежды
+      *Сделано:* каталог `ui/glossary/`, чистые `GlossaryFilter` /
+      `GlossaryView` в `domain/glossary_view.dart` с тестами; область пака
+      без состояния, из `GlossaryPackControls` и `GlossaryPackMembers`.
+      Значок номера — общий `ModuleNumber` (им же рисуют `ModuleLabel` и
+      полка схем).
+- [x] Поле имени «сохранить при потере фокуса» написано четырежды
       (`character_tiles.dart:182–207`, `:563–583`,
       `glossary_screen.dart:807–827`, `pipeline_inspector.dart:496–527`) →
       `CommittedTextField`; три хозяина из четырёх станут `StatelessWidget`.

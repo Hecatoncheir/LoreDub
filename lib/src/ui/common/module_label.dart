@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'module_number.dart';
 
 /// The number and name an area of a screen is known by: the numeral on
 /// the orange accent, the name in capitals beside it.
@@ -20,25 +21,7 @@ class ModuleLabel extends StatelessWidget {
     // nothing to sit beside it.
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(
-        width: 28,
-        height: 22,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: LoreDubPalette.orange,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: LoreDubPalette.ink),
-        ),
-        child: Text(
-          number,
-          style: const TextStyle(
-            fontFamily: LoreDubFonts.mono,
-            color: LoreDubPalette.ink,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+      ModuleNumber(number),
       const SizedBox(width: 9),
       Text(
         label,
