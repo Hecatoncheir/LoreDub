@@ -10,7 +10,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
-import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
 import '../../domain/model_selection.dart';
 import '../../domain/pipeline_graph.dart';
@@ -21,7 +20,6 @@ import '../../../l10n/app_localizations.dart';
 import '../compute_names.dart';
 import '../failure_messages.dart';
 import '../language_names.dart';
-import '../model_names.dart';
 import '../theme.dart';
 import 'cubits/characters_cubit.dart';
 import 'cubits/dashboard_cubits.dart';
@@ -35,14 +33,11 @@ import 'compute_matrix.dart';
 import 'dashboard_context.dart';
 import 'hotkey_field.dart';
 import 'model_tiles.dart';
-import 'model_visuals.dart';
 import 'pipeline_canvas.dart';
 import 'pipeline_inspector.dart';
 import 'pipeline_shelf.dart';
-import 'whisper_model_chart.dart';
 import '../common/module_label.dart';
 import '../common/setting_card.dart';
-import '../common/section_note.dart';
 import '../common/error_banner.dart';
 import '../shell/side_navigation.dart';
 import '../shell/bottom_navigation.dart';
@@ -51,6 +46,7 @@ import '../live/live_panel.dart';
 import '../screen_text/snapshot_panel.dart';
 import '../common/confirm_dialog.dart';
 import '../characters/characters_panel.dart';
+import '../models/models_panel.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key, required this.cubits});
@@ -109,7 +105,7 @@ class _Dashboard extends StatelessWidget {
                       DashboardSection.snapshot => SnapshotPanel(
                         key: const ValueKey('snapshot'),
                       ),
-                      DashboardSection.models => _ModelsPanel(
+                      DashboardSection.models => ModelsPanel(
                         key: const ValueKey('models'),
                       ),
                       DashboardSection.characters => CharactersPanel(
@@ -562,327 +558,6 @@ class _GraphToolbar extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-class _ModelsPanel extends StatelessWidget {
-  const _ModelsPanel({super.key});
-
-  @override
-  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
-    builder: (context, downloads) => BlocBuilder<SettingsCubit, SettingsState>(
-      builder: (context, settings) => BlocBuilder<PipelineCubit, LivePipelineState>(
-        buildWhen: whenChanged((pipeline) => pipeline.running),
-        builder: (context, pipeline) => _build(context, downloads, running: pipeline.running),
-      ),
-    ),
-  );
-
-  Widget _build(BuildContext context, DownloadsState downloads, {required bool running}) {
-    final l10n = AppLocalizations.of(context);
-    final selection = context.selection;
-    final selected = selection.settings.targetLanguage;
-    return ListView(
-      key: const ValueKey('modelsList'),
-      padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
-      children: [
-        ModuleLabel(number: '01', label: l10n.sectionRecognition),
-        const SizedBox(height: 4),
-        SectionNote(l10n.sectionRecognitionNote),
-        if (selection.recognitionNeedsEnglish) ...[
-          const SizedBox(height: 8),
-          SectionNote(l10n.recognitionNeedsEnglish),
-        ],
-        // Size against quality is the whole choice, so it is drawn as a chart;
-        // a window too narrow for the bars gets the plain cards instead.
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth >= WhisperModelChart.minimumWidth) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 18),
-                child: WhisperModelChart(
-                  models: selection.recognitionModels,
-                  selectedId: selection.recognition?.model.id,
-                  running: running,
-                  isStopping: downloads.isStopping,
-                  onInstall: context.read<DownloadsCubit>().installModel,
-                  onPause: (state) => context.read<DownloadsCubit>().pauseDownload(state.model.id),
-                  onCancel: (state) =>
-                      context.read<DownloadsCubit>().cancelDownload(state.model.id),
-                  onRemove: context.read<DownloadsCubit>().removeModel,
-                  onSelect: running
-                      ? null
-                      : (state) =>
-                            context.read<SettingsCubit>().selectRecognitionModel(state.model.id),
-                ),
-              );
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final state in selection.recognitionModels) ...[
-                  const SizedBox(height: 12),
-                  _ModelCard(
-                    state: state,
-                    onInstall: () => context.read<DownloadsCubit>().installModel(state),
-                    onPause: () => context.read<DownloadsCubit>().pauseDownload(state.model.id),
-                    onCancel: () => context.read<DownloadsCubit>().cancelDownload(state.model.id),
-                    stopping: downloads.isStopping(state.model.id),
-                    choosable: true,
-                    selected: state.model.id == selection.recognition?.model.id,
-                    onSelect: running
-                        ? null
-                        : () =>
-                              context.read<SettingsCubit>().selectRecognitionModel(state.model.id),
-                  ),
-                ],
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 26),
-        // A translator and a voice are only ever useful together, so a
-        // language is one tile: downloaded, picked and deleted as a pair.
-        ModuleLabel(number: '02', label: l10n.sectionLanguages),
-        const SizedBox(height: 4),
-        SectionNote(l10n.sectionLanguagesNote),
-        const SizedBox(height: 12),
-        ModelTileGrid(
-          children: [
-            for (final pair in selection.languagePairs)
-              LanguagePairTile(
-                key: ValueKey('languageTile-${pair.language}'),
-                pair: pair,
-                selected: pair.language == selected,
-                running: running,
-                isStopping: downloads.isStopping,
-                onSelect: running
-                    ? null
-                    : () => context.read<SettingsCubit>().selectTargetLanguage(pair.language),
-                onInstall: context.read<DownloadsCubit>().installModel,
-                onPause: (state) => context.read<DownloadsCubit>().pauseDownload(state.model.id),
-                onCancel: (state) => context.read<DownloadsCubit>().cancelDownload(state.model.id),
-                onRemove: context.read<DownloadsCubit>().removeModel,
-              ),
-          ],
-        ),
-        for (final pair in selection.languagePairs)
-          for (final part in pair.parts)
-            if (part.error != null) ...[
-              const SizedBox(height: 10),
-              ModelFailureRow(state: part),
-            ],
-        const SizedBox(height: 26),
-        ModuleLabel(number: '03', label: l10n.sectionVoiceConversion),
-        const SizedBox(height: 4),
-        SectionNote(l10n.sectionVoiceConversionNote),
-        const SizedBox(height: 12),
-        ModelTileGrid(
-          children: [
-            for (final state in selection.voiceConverters)
-              ConverterTile(
-                key: ValueKey('converterTile-${state.model.id}'),
-                state: state,
-                inUse: selection.clonesVoice,
-                running: running,
-                isStopping: downloads.isStopping,
-                onInstall: context.read<DownloadsCubit>().installModel,
-                onPause: (state) => context.read<DownloadsCubit>().pauseDownload(state.model.id),
-                onCancel: (state) => context.read<DownloadsCubit>().cancelDownload(state.model.id),
-                onRemove: context.read<DownloadsCubit>().removeModel,
-              ),
-          ],
-        ),
-        for (final state in selection.voiceConverters)
-          if (state.error != null) ...[
-            const SizedBox(height: 10),
-            ModelFailureRow(state: state),
-          ],
-      ],
-    );
-  }
-}
-
-/// Pause/resume and cancel for a download in flight.
-///
-/// Kept to two small buttons so it fits the Whisper cards a narrow window
-/// falls back to.
-class _DownloadControls extends StatelessWidget {
-  const _DownloadControls({
-    required this.paused,
-    required this.stopping,
-    required this.onPause,
-    required this.onResume,
-    required this.onCancel,
-  });
-
-  final bool paused;
-  final bool stopping;
-  final VoidCallback onPause;
-  final VoidCallback onResume;
-  final VoidCallback onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: stopping
-              ? l10n.downloadStopping
-              : (paused ? l10n.downloadResume : l10n.downloadPause),
-          onPressed: stopping ? null : (paused ? onResume : onPause),
-          icon: Icon(paused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 20),
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-          padding: EdgeInsets.zero,
-        ),
-        IconButton(
-          tooltip: l10n.downloadCancel,
-          onPressed: stopping ? null : onCancel,
-          icon: const Icon(Icons.close_rounded, size: 20),
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-          padding: EdgeInsets.zero,
-        ),
-      ],
-    );
-  }
-}
-
-class _ModelCard extends StatelessWidget {
-  const _ModelCard({
-    required this.state,
-    required this.onInstall,
-    required this.onPause,
-    required this.onCancel,
-    this.stopping = false,
-    this.choosable = false,
-    this.selected = false,
-    this.onSelect,
-  });
-
-  final ModelInstallState state;
-  final VoidCallback onInstall;
-
-  /// Stopping keeps what arrived; cancelling throws it away.
-  final VoidCallback onPause;
-  final VoidCallback onCancel;
-
-  /// A stop has been asked for and the download has not noticed yet.
-  final bool stopping;
-
-  /// Whether this card is one of a set the player picks between. Only the
-  /// Whisper builds are drawn as cards now, in a window too narrow for
-  /// their chart; such a card shows which one is chosen.
-  final bool choosable;
-  final bool selected;
-  final VoidCallback? onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final details = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (choosable)
-          Icon(
-            selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-            color: selected ? LoreDubPalette.orange : LoreDubPalette.outline,
-          )
-        else
-          Icon(
-            state.installed ? Icons.check_circle_rounded : Icons.memory_rounded,
-            color: state.installed ? LoreDubPalette.success : LoreDubPalette.mutedInk,
-          ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                modelTitle(l10n, state.model),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                modelDescription(l10n, state.model),
-                style: const TextStyle(color: LoreDubPalette.mutedInk),
-              ),
-              if (state.progress case final progress?) ...[
-                const SizedBox(height: 12),
-                LinearProgressIndicator(value: progress),
-                const SizedBox(height: 5),
-                Row(
-                  children: [
-                    Text(
-                      state.paused
-                          ? '${(progress * 100).round()}% · ${l10n.downloadPaused}'
-                          : '${(progress * 100).round()}%',
-                    ),
-                    const Spacer(),
-                    _DownloadControls(
-                      paused: state.paused,
-                      stopping: stopping,
-                      onPause: onPause,
-                      onResume: onInstall,
-                      onCancel: onCancel,
-                    ),
-                  ],
-                ),
-              ],
-              if (state.error case final error?) ...[
-                const SizedBox(height: 8),
-                Text(
-                  describeFailure(l10n, error),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-    final action = OutlinedButton.icon(
-      onPressed: state.installed || state.stoppable ? null : onInstall,
-      icon: Icon(state.installed ? Icons.check_rounded : Icons.download_rounded),
-      label: Text(state.installed ? l10n.modelInstalled : l10n.modelDownload),
-    );
-    final body = Padding(
-      padding: const EdgeInsets.all(20),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth < 600) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                details,
-                const SizedBox(height: 16),
-                Align(alignment: Alignment.centerRight, child: action),
-              ],
-            );
-          }
-          return Row(
-            children: [
-              Expanded(child: details),
-              const SizedBox(width: 20),
-              action,
-            ],
-          );
-        },
-      ),
-    );
-    return Card(
-      // The whole card picks the language, not just the small indicator.
-      child: onSelect == null
-          ? body
-          : InkWell(
-              onTap: onSelect,
-              borderRadius: BorderRadius.circular(12),
-              child: body,
-            ),
     );
   }
 }
