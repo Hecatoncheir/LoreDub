@@ -345,8 +345,8 @@ lib/src/ui/
       нему, по виджету на вариант.
       *Сделано для таблицы настроек:* sealed `StageBackendStatus` +
       `stageBackendStatus()` с тестами, ячейку рисует `StageBackendCell`.
-      `BackendCell.build` (36) в `compute_matrix.dart` ещё ждёт своей
-      очереди — вместе с остальными файлами `dashboard/`.
+      `BackendCell.build` (36) разобран на `BackendCellLook` (вид из
+      состояния) и `BackendCellLabel`; файл уехал в `settings/`.
 - [x] `_VoiceCard._build` (29), `_ModelsPanel._build` (24),
       `_ModelCard.build` (21), `modelActions` (30), `ModelTile.build` (26),
       `_ModelBarState._content` (26): тот же приём — sealed-состояние

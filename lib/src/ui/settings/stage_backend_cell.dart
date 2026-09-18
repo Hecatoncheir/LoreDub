@@ -7,10 +7,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/compute_device.dart';
 import '../compute_names.dart';
-import '../dashboard/compute_matrix.dart';
+import 'backend_cell.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import 'stage_backend_status.dart';
+import 'backend_cell_look.dart';
 
 /// One cell of the stage-by-device table: [status] drawn as a
 /// [BackendCell], with the press it allows.
