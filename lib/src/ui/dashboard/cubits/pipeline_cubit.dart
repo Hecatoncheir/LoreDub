@@ -94,6 +94,15 @@ class LivePipelineState extends Equatable {
   /// Live dubbing is up, starting or resting.
   bool get liveRunning => running && session == PipelineSession.live;
 
+  /// A live session up and answering to pause or stop, which is when the
+  /// start button gives its place to the session's two controls.
+  bool get liveUp =>
+      session == PipelineSession.live &&
+      (status == PipelineStatus.listening || status == PipelineStatus.paused);
+
+  /// A live session still loading its models.
+  bool get liveStarting => session == PipelineSession.live && status == PipelineStatus.starting;
+
   /// The snapshot session is up and waiting for a selection.
   bool get screenRunning => session == PipelineSession.screen && status == PipelineStatus.listening;
 
