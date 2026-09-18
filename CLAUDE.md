@@ -193,7 +193,14 @@ never says `ready` inside that limit is ended and reported as
 `workerStartTimeout`. `AppRepository._sessions` is the same counter a layer
 up: a failed start clears the engine only while the session is still its own,
 and otherwise ends as `pipelineStopped`, which the cubits pass over
-(`isPipelineStopped`) — a stop that was asked for is not an error. A worker
+(`isPipelineStopped`) — a stop that was asked for is not an error. Its
+starts write their config out before calling the engine (the session's
+glossary, the cast, the cut read off the graph), so each builds the map
+first and asks `_throwIfSuperseded` before the engine call and after every
+wait that follows — the engine start, the duck — rather than letting a stop
+landing there start a worker for nobody, or register hotkeys `ld_stop` had
+just dropped. Thrown inside the start's `try`, it reaches `_endFailedStart`,
+which leaves the engine to the stop or the newer start. A worker
 that dies under a running session lets go of `_worker`, so the next phrase is
 told there is none rather than written into a dead pipe, and calls
 `onWorkerLost`, on which `NativeEngineService` reports why and stops the

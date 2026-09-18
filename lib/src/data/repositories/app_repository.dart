@@ -153,8 +153,24 @@ class AppRepository {
   /// failed with, it failed after nobody wanted it, so it ends as stopped,
   /// which the screens pass over.
   Future<void> _endFailedStart(int session) async {
-    if (session != _sessions) throw const LoreDubFailure(FailureCode.pipelineStopped);
+    _throwIfSuperseded(session);
     await _nativeEngine.stop();
+  }
+
+  /// Ends the start numbered [session] as stopped once a stop or a newer
+  /// start has come after it.
+  ///
+  /// Asked before the engine is called and after every wait of a start's
+  /// own. The config is written out first — the session's glossary, the
+  /// cast, the cut read off the graph — and a stop landing in those waits
+  /// found an engine with nothing to cancel, which then started a worker and
+  /// a capture for a session already stopped; one landing once the engine
+  /// was up had its hotkeys registered again and the game turned down.
+  /// Thrown inside the start's `try`, it reaches [_endFailedStart], which
+  /// leaves the engine alone: the stop has ended it already, and a newer
+  /// start owns it.
+  void _throwIfSuperseded(int session) {
+    if (session != _sessions) throw const LoreDubFailure(FailureCode.pipelineStopped);
   }
 
   /// [modelDirectories] carries the three paths the pipeline needs for the
@@ -186,7 +202,7 @@ class AppRepository {
   }) async {
     final session = ++_sessions;
     try {
-      await _nativeEngine.start({
+      final config = <String, Object?>{
         'speaker': speaker,
         'processId': process?.pid ?? 0,
         'captureMode': 'audio',
@@ -228,8 +244,12 @@ class AppRepository {
         // The cards cut out of the mix on the graph: each of them keeps who
         // stands in for whom, and none of it is applied.
         'asHeard': await _cutFromMix(),
-      });
+      };
+      _throwIfSuperseded(session);
+      await _nativeEngine.start(config);
+      _throwIfSuperseded(session);
       await _duck(process, settings);
+      _throwIfSuperseded(session);
       _sessionProcess = process;
       _sessionSettings = settings;
       _nativeEngine.setHotkeys(
@@ -262,7 +282,7 @@ class AppRepository {
   }) async {
     final session = ++_sessions;
     try {
-      await _nativeEngine.startScreenText({
+      final config = <String, Object?>{
         'speaker': speaker,
         // Named even when the screen is what is read: nothing is taken out
         // of that window then, but it is still the game to turn down.
@@ -289,8 +309,12 @@ class AppRepository {
         'speechBackend': speechBackend.name,
         'runtimeDirectory': runtimeDirectory,
         'characters': await _characters.file(),
-      });
+      };
+      _throwIfSuperseded(session);
+      await _nativeEngine.startScreenText(config);
+      _throwIfSuperseded(session);
       await _duckScreen(process, settings);
+      _throwIfSuperseded(session);
       _sessionProcess = process;
       _sessionSettings = settings;
       _nativeEngine.setHotkeys(
@@ -339,6 +363,7 @@ class AppRepository {
         'voiceConversionBackend': converterBackend.name,
         'runtimeDirectory': runtimeDirectory,
       });
+      _throwIfSuperseded(session);
     } catch (_) {
       await _endFailedStart(session);
       rethrow;
@@ -374,6 +399,7 @@ class AppRepository {
         'voiceConversionBackend': converterBackend.name,
         'runtimeDirectory': runtimeDirectory,
       });
+      _throwIfSuperseded(session);
     } catch (_) {
       await _endFailedStart(session);
       rethrow;
@@ -401,6 +427,7 @@ class AppRepository {
         'voiceConversionBackend': converterBackend.name,
         'runtimeDirectory': runtimeDirectory,
       });
+      _throwIfSuperseded(session);
       return session;
     } catch (_) {
       await _endFailedStart(session);
@@ -456,7 +483,7 @@ class AppRepository {
   }) async {
     final session = ++_sessions;
     try {
-      await _nativeEngine.startScene({
+      final config = <String, Object?>{
         'processId': process?.pid ?? 0,
         'captureMode': 'audio',
         'audioSource': settings.audioCaptureSource.name,
@@ -468,7 +495,10 @@ class AppRepository {
         'voiceBank': ?voiceBank,
         'characters': await _characters.file(),
         'asHeard': await _cutFromMix(),
-      });
+      };
+      _throwIfSuperseded(session);
+      await _nativeEngine.startScene(config);
+      _throwIfSuperseded(session);
     } catch (_) {
       await _endFailedStart(session);
       rethrow;

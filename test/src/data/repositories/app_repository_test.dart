@@ -5,21 +5,36 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/services/character_service.dart';
+import 'package:lore_dub/src/data/services/glossary_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
+import 'package:lore_dub/src/data/services/pipeline_graph_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/built_voice.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
+import 'package:lore_dub/src/domain/game_process.dart';
+import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/voice_files.dart';
 
 void main() {
   late _SlowEngine engine;
+  late _SlowGlossary glossary;
   late AppRepository repository;
 
   setUp(() {
     engine = _SlowEngine();
-    repository = AppRepository(engine, SettingsService());
+    glossary = _SlowGlossary();
+    repository = AppRepository(
+      engine,
+      SettingsService(),
+      null,
+      null,
+      _Characters(),
+      glossary,
+      _Graph(),
+    );
   });
 
   /// The start with the least to it: the converter alone, and no game. It
@@ -28,6 +43,39 @@ void main() {
     settings: const AppSettings(),
     converterDirectory: 'converter',
     converterBackend: ComputeBackend.cpu,
+    runtimeDirectory: 'runtime',
+  );
+
+  const game = GameProcess(pid: 42, name: 'game.exe', path: r'C:\game.exe');
+
+  /// Live dubbing, whose config is written out — the glossary among it —
+  /// before the engine is called.
+  Future<void> dub({AppSettings settings = const AppSettings()}) => repository.start(
+    process: game,
+    settings: settings,
+    modelDirectories: const {},
+    speaker: 'aidar',
+    translationPrefix: '',
+    translateSpeech: true,
+    followSpeaker: false,
+    revoice: false,
+    maleVoices: const [],
+    femaleVoices: const [],
+    recognitionBackend: ComputeBackend.cpu,
+    translationBackend: ComputeBackend.cpu,
+    speechBackend: ComputeBackend.cpu,
+    voiceConversionBackend: ComputeBackend.cpu,
+    runtimeDirectory: 'runtime',
+  );
+
+  Future<void> readScreen() => repository.startScreenText(
+    process: game,
+    settings: const AppSettings(),
+    modelDirectories: const {},
+    speaker: 'aidar',
+    translationPrefix: '',
+    translationBackend: ComputeBackend.cpu,
+    speechBackend: ComputeBackend.cpu,
     runtimeDirectory: 'runtime',
   );
 
@@ -65,6 +113,97 @@ void main() {
     await stopped;
 
     expect(engine.stops, 1, reason: 'the stop that was asked for, and not a second one');
+  });
+
+  test('ends a start stopped as its engine came up as stopped', () async {
+    final stopped = expectLater(start(), failsWith(FailureCode.pipelineStopped));
+
+    engine.starts.single.complete();
+    // Before the start hears that its engine is up.
+    final stopping = repository.stop();
+    await stopped;
+    await stopping;
+
+    expect(engine.stops, 1, reason: 'the stop that was asked for, and not a second one');
+  });
+
+  group('a stop landing while the config is still written out', () {
+    for (final (name, begin) in [('live dubbing', dub), ('the screen session', readScreen)]) {
+      test('keeps $name from reaching the engine at all', () async {
+        final stopped = expectLater(begin(), failsWith(FailureCode.pipelineStopped));
+
+        await repository.stop();
+        glossary.written.complete('glossary.session.json');
+        await stopped;
+
+        expect(engine.starts, isEmpty, reason: 'no worker and no capture for a stopped session');
+        expect(engine.stops, 1, reason: 'the stop that was asked for, and not a second one');
+        expect(engine.hotkeys, 0);
+      });
+    }
+
+    test('leaves the start that replaced it to run', () async {
+      final replaced = expectLater(dub(), failsWith(FailureCode.pipelineStopped));
+      final current = start();
+
+      glossary.written.complete('glossary.session.json');
+      await replaced;
+      engine.starts.single.complete();
+      await current;
+
+      expect(engine.starts, hasLength(1), reason: 'only the newer start reached the engine');
+      expect(engine.stops, 0);
+    });
+  });
+
+  group('a stop landing once the engine has come up', () {
+    test('registers no hotkeys for the session it ended', () async {
+      glossary.written.complete('glossary.session.json');
+      final stopped = expectLater(dub(), failsWith(FailureCode.pipelineStopped));
+      await pumpEventQueue();
+
+      engine.starts.single.complete();
+      // Before the start hears that its engine is up.
+      final stopping = repository.stop();
+      await stopped;
+      await stopping;
+
+      expect(engine.hotkeys, 0, reason: 'ld_stop dropped them, and nothing may bring them back');
+      expect(engine.volumes, isEmpty, reason: 'nor is the game turned down for it');
+      expect(engine.stops, 1, reason: 'the stop has ended the engine; the start must not again');
+    });
+
+    test('while the game is turned down registers no hotkeys either', () async {
+      glossary.written.complete('glossary.session.json');
+      engine.volume = Completer<void>();
+      final stopped = expectLater(
+        dub(settings: const AppSettings(duckWhileSpeaking: false)),
+        failsWith(FailureCode.pipelineStopped),
+      );
+      await pumpEventQueue();
+      engine.starts.single.complete();
+      await pumpEventQueue();
+      expect(engine.volumes, [game.pid]);
+
+      final stopping = repository.stop();
+      engine.volume!.complete();
+      await stopped;
+      await stopping;
+
+      expect(engine.hotkeys, 0);
+      expect(engine.stops, 1);
+    });
+
+    test('and not landing at all lets the session run whole', () async {
+      glossary.written.complete('glossary.session.json');
+      final running = dub();
+      await pumpEventQueue();
+      engine.starts.single.complete();
+      await running;
+
+      expect(engine.hotkeys, 1);
+      expect(engine.stops, 0);
+    });
   });
 
   group('a session that was borrowed', () {
@@ -150,13 +289,42 @@ void main() {
 class _SlowEngine extends NativeEngineService {
   final starts = <Completer<void>>[];
   int stops = 0;
+  int hotkeys = 0;
 
-  @override
-  Future<void> startVoiceFiles(Map<String, Object?> config) {
+  /// The processes turned down, and — when set — the wait that takes.
+  final volumes = <int>[];
+  Completer<void>? volume;
+
+  Future<void> _starting() {
     final starting = Completer<void>();
     starts.add(starting);
     return starting.future;
   }
+
+  @override
+  Future<void> start(Map<String, Object?> config) => _starting();
+
+  @override
+  Future<void> startScreenText(Map<String, Object?> config) => _starting();
+
+  @override
+  Future<void> startVoiceFiles(Map<String, Object?> config) => _starting();
+
+  @override
+  Future<void> setProcessVolume(int processId, double volume) async {
+    volumes.add(processId);
+    await this.volume?.future;
+  }
+
+  @override
+  void setHotkeys({
+    Hotkey? pause,
+    Hotkey? resume,
+    Hotkey? snapshot,
+    Hotkey? frame,
+    int frameOf = 0,
+    String textLanguage = 'en',
+  }) => hotkeys++;
 
   @override
   Future<void> stop() async => stops++;
@@ -182,4 +350,23 @@ class _SlowEngine extends NativeEngineService {
 
   @override
   Future<void> discardVoiceFiles(VoiceFiles files, {String? keeping}) async => discarded.add(files);
+}
+
+/// A glossary whose session file is written when the test says so: the one
+/// wait a start makes before it calls the engine that a test can hold.
+class _SlowGlossary extends GlossaryService {
+  final written = Completer<String>();
+
+  @override
+  Future<String> sessionFile() => written.future;
+}
+
+class _Characters extends CharacterService {
+  @override
+  Future<String> file() async => 'characters.json';
+}
+
+class _Graph extends PipelineGraphService {
+  @override
+  Future<PipelineLayout> load() async => const PipelineLayout();
 }
