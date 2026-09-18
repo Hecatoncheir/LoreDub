@@ -29,6 +29,10 @@ import 'playback_scheduler.dart';
 
 typedef NativeStringReader = int Function(Pointer<Char> output, int capacity);
 
+/// Where the work directory is: what a start sweeps of stale audio, and what
+/// the capture cuts the game's sound into.
+typedef WorkDirectoryProvider = Future<Directory> Function();
+
 class NativeEngineException implements Exception {
   const NativeEngineException(this.code, this.message);
 
@@ -39,8 +43,45 @@ class NativeEngineException implements Exception {
   String toString() => 'NativeEngineException($code): $message';
 }
 
+/// What every start and every stop ask of the native library.
+///
+/// The tests load no native library, so these few calls are made through
+/// here, where a test can answer in its place. Everything else the engine
+/// asks of the library — volumes, hotkeys, a take, playback — it still asks
+/// directly.
+class NativeSessionCalls {
+  const NativeSessionCalls();
+
+  /// `ld_start`, given the config as the JSON it crosses the boundary as.
+  int start(String configJson) {
+    final pointer = configJson.toNativeUtf8();
+    try {
+      return ld_start(pointer.cast());
+    } finally {
+      malloc.free(pointer);
+    }
+  }
+
+  /// `ld_stop`: ends the capture and drops the hotkeys with it.
+  int stop() => ld_stop();
+
+  /// `ld_poll_event_json`, read the way every native string is.
+  int pollEvent(Pointer<Char> output, int capacity) => ld_poll_event_json(output, capacity);
+
+  /// `ld_restore_process_volumes`.
+  int restoreProcessVolumes() => ld_restore_process_volumes();
+
+  /// `ld_error_message`: what a negative answer from any of them means.
+  String errorMessage(int code) => ld_error_message(code).cast<Utf8>().toDartString();
+}
+
 class NativeEngineService {
-  NativeEngineService() {
+  NativeEngineService({
+    LocalInferenceService? inference,
+    this._native = const NativeSessionCalls(),
+    WorkDirectoryProvider? workDirectory,
+  }) : _inference = inference ?? LocalInferenceService(),
+       _workDirectory = workDirectory ?? LocalInferenceService.createWorkDirectory {
     _inference.onStartupProgress = (value, stage) =>
         _events.add(_ofSession({'type': 'startup', 'value': value, 'stage': stage}));
     _inference.onWorkerLost = _onWorkerLost;
@@ -48,7 +89,9 @@ class NativeEngineService {
   }
 
   final _events = StreamController<Map<String, Object?>>.broadcast();
-  final _inference = LocalInferenceService();
+  final LocalInferenceService _inference;
+  final NativeSessionCalls _native;
+  final WorkDirectoryProvider _workDirectory;
   Timer? _pollTimer;
   late final _phrases = PhraseQueue(process: _processPhrase);
 
@@ -74,6 +117,29 @@ class NativeEngineService {
   /// rather than a flag per session, so that a start can never leave the
   /// session before it set.
   PipelineSession? _session;
+
+  /// Goes up with every start and every stop, so that a start coming back
+  /// from one of its waits can tell whether it is still the one wanted.
+  ///
+  /// The minutes of a start are the worker's, and [LocalInferenceService]
+  /// counts those itself. Counted here are the moments on either side of
+  /// them: the stale audio cleared before the worker is asked for, and the
+  /// capture directory made once it is up. A stop landing in the first found
+  /// no start to cancel, so the start went on to bring a worker up and begin
+  /// a capture for a session already stopped — under no session's name by
+  /// then, which every screen took for its own. One landing in the second
+  /// ended the worker and left the start to begin a capture with nothing
+  /// behind it, where every phrase failed for want of a worker.
+  var _starts = 0;
+
+  /// The start whose worker the inference service holds or is bringing up;
+  /// null once the engine has ended it.
+  ///
+  /// A start that fails after its worker came up ends that worker only while
+  /// this still names it. Stopped, the worker is gone already; replaced, a
+  /// later start may have the service by now, and stopping it would end a
+  /// worker that was never this start's to end.
+  int? _workerOf;
 
   /// Whether a card is recording right now. Between recordings what the game
   /// says is thrown away.
@@ -118,69 +184,50 @@ class NativeEngineService {
   static List<String> _voiceList(Object? joined) =>
       (joined as String? ?? '').split(',').where((name) => name.isNotEmpty).toList();
 
-  Future<void> start(Map<String, Object?> config) async {
-    _reportedLanguage = null;
-    _reportedVoice = null;
-    _reportedBankSize = null;
-    _paused = false;
-    _session = PipelineSession.live;
-    _playback.maxVoices = config['overlapVoices'] == true ? overlappingVoices : 1;
-    await LocalInferenceService.removeStaleAudio();
-    final models = config['models']! as Map<String, String>;
-    await _inference.start(
-      translationModel: models['translation'] ?? '',
-      ttsModel: models['speech']!,
-      speaker: config['speaker']! as String,
-      threads: config['cpuThreads']! as int,
-      speed: config['ttsSpeed']! as double,
-      pythonExecutable: config['pythonExecutable']! as String,
-      requiresWhisper: config['captureMode'] != 'ocr',
-      sourceLanguage: config['sourceLanguage']! as String,
-      translationPrefix: config['translationPrefix'] as String? ?? '',
-      followSpeaker: config['followSpeaker'] as bool? ?? false,
-      revoice: config['revoice'] as bool? ?? false,
-      maleVoices: _voiceList(config['maleVoices']),
-      femaleVoices: _voiceList(config['femaleVoices']),
-      recognitionBackend: _backendFrom(config['recognitionBackend']),
-      translationBackend: _backendFrom(config['translationBackend']),
-      speechBackend: _backendFrom(config['speechBackend']),
-      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-      voiceConverter: models['converter'],
-      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-      voiceBank: config['voiceBank'] as String?,
-      characters: config['characters'] as String?,
-      glossary: config['glossary'] as String?,
-      asHeard: _cutFromMix(config['asHeard']),
-    );
-    // What the worker settled on, which is not always what it was asked for.
-    if (_inference.translationBackend case final actual?) {
-      _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
-    }
-    if (_inference.speechBackend case final actual?) {
-      _events.add({'type': 'backend', 'stage': 'speech', 'backend': actual.name});
-    }
-    if (_inference.voiceConversionBackend case final actual?) {
-      _events.add({'type': 'backend', 'stage': 'voiceConversion', 'backend': actual.name});
-    }
-    _events.add({'type': 'startup', 'value': 0.98, 'stage': 'capture'});
-    final work = await LocalInferenceService.createWorkDirectory();
-    final capture = Directory('${work.path}${Platform.pathSeparator}capture');
-    await capture.create(recursive: true);
-    _activeConfig = {...config, 'captureDirectory': capture.path};
-    final pointer = jsonEncode(_activeConfig).toNativeUtf8();
-    try {
-      _throwIfError(ld_start(pointer.cast()));
-    } catch (_) {
-      await _inference.stop();
-      rethrow;
-    } finally {
-      malloc.free(pointer);
-    }
-    _pollTimer ??= Timer.periodic(
-      const Duration(milliseconds: 80),
-      (_) => _pollEvents(),
-    );
-  }
+  Future<void> start(Map<String, Object?> config) =>
+      _startSession(PipelineSession.live, (start) async {
+        _reportedLanguage = null;
+        _reportedVoice = null;
+        _reportedBankSize = null;
+        _playback.maxVoices = config['overlapVoices'] == true ? overlappingVoices : 1;
+        await _removeStaleAudio(start);
+        final models = config['models']! as Map<String, String>;
+        await _bringUpWorker(
+          start,
+          () => _inference.start(
+            translationModel: models['translation'] ?? '',
+            ttsModel: models['speech']!,
+            speaker: config['speaker']! as String,
+            threads: config['cpuThreads']! as int,
+            speed: config['ttsSpeed']! as double,
+            pythonExecutable: config['pythonExecutable']! as String,
+            requiresWhisper: config['captureMode'] != 'ocr',
+            sourceLanguage: config['sourceLanguage']! as String,
+            translationPrefix: config['translationPrefix'] as String? ?? '',
+            followSpeaker: config['followSpeaker'] as bool? ?? false,
+            revoice: config['revoice'] as bool? ?? false,
+            maleVoices: _voiceList(config['maleVoices']),
+            femaleVoices: _voiceList(config['femaleVoices']),
+            recognitionBackend: _backendFrom(config['recognitionBackend']),
+            translationBackend: _backendFrom(config['translationBackend']),
+            speechBackend: _backendFrom(config['speechBackend']),
+            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+            voiceConverter: models['converter'],
+            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+            voiceBank: config['voiceBank'] as String?,
+            characters: config['characters'] as String?,
+            glossary: config['glossary'] as String?,
+            asHeard: _cutFromMix(config['asHeard']),
+          ),
+        );
+        _reportWorkerUp(start, {
+          'translation': _inference.translationBackend,
+          'speech': _inference.speechBackend,
+          'voiceConversion': _inference.voiceConversionBackend,
+        });
+        final capture = await _captureDirectory(start);
+        _beginCapture(start, {...config, 'captureDirectory': capture});
+      });
 
   /// Loads the translator and the voice for the screen session, and starts
   /// the capture that reads the subtitle frame.
@@ -189,114 +236,92 @@ class NativeEngineService {
   /// gains as the game writes in it, and what the player picks out by hand
   /// while holding the snapshot key. Whisper takes no part in either --
   /// nothing here is heard -- so it is ready in seconds.
-  Future<void> startScreenText(Map<String, Object?> config) async {
-    _reportedLanguage = null;
-    _reportedVoice = null;
-    _reportedBankSize = null;
-    _paused = false;
-    _session = PipelineSession.screen;
-    // One line at a time is read, so there is no one to talk over.
-    _playback.maxVoices = 1;
-    await LocalInferenceService.removeStaleAudio();
-    final models = config['models']! as Map<String, String>;
-    await _inference.start(
-      translationModel: models['translation'] ?? '',
-      ttsModel: models['speech']!,
-      speaker: config['speaker']! as String,
-      threads: config['cpuThreads']! as int,
-      speed: config['ttsSpeed']! as double,
-      pythonExecutable: config['pythonExecutable']! as String,
-      requiresWhisper: false,
-      translationPrefix: config['translationPrefix'] as String? ?? '',
-      translationBackend: _backendFrom(config['translationBackend']),
-      speechBackend: _backendFrom(config['speechBackend']),
-      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-      voiceConverter: (config['models']! as Map<String, String>)['converter'],
-      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-      characters: config['characters'] as String?,
-      glossary: config['glossary'] as String?,
-    );
-    if (_inference.translationBackend case final actual?) {
-      _events.add({'type': 'backend', 'stage': 'translation', 'backend': actual.name});
-    }
-    if (_inference.speechBackend case final actual?) {
-      _events.add({'type': 'backend', 'stage': 'speech', 'backend': actual.name});
-    }
-    _events.add({'type': 'startup', 'value': 0.98, 'stage': 'capture'});
-    // No capture directory: the screen has no audio to cut into files, and
-    // the native side asks for one only when it listens.
-    _activeConfig = config;
-    final pointer = jsonEncode(_activeConfig).toNativeUtf8();
-    try {
-      _throwIfError(ld_start(pointer.cast()));
-    } catch (_) {
-      await _inference.stop();
-      rethrow;
-    } finally {
-      malloc.free(pointer);
-    }
-    _pollTimer ??= Timer.periodic(
-      const Duration(milliseconds: 80),
-      (_) => _pollEvents(),
-    );
-  }
+  Future<void> startScreenText(Map<String, Object?> config) =>
+      _startSession(PipelineSession.screen, (start) async {
+        _reportedLanguage = null;
+        _reportedVoice = null;
+        _reportedBankSize = null;
+        // One line at a time is read, so there is no one to talk over.
+        _playback.maxVoices = 1;
+        await _removeStaleAudio(start);
+        final models = config['models']! as Map<String, String>;
+        await _bringUpWorker(
+          start,
+          () => _inference.start(
+            translationModel: models['translation'] ?? '',
+            ttsModel: models['speech']!,
+            speaker: config['speaker']! as String,
+            threads: config['cpuThreads']! as int,
+            speed: config['ttsSpeed']! as double,
+            pythonExecutable: config['pythonExecutable']! as String,
+            requiresWhisper: false,
+            translationPrefix: config['translationPrefix'] as String? ?? '',
+            translationBackend: _backendFrom(config['translationBackend']),
+            speechBackend: _backendFrom(config['speechBackend']),
+            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+            voiceConverter: models['converter'],
+            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+            characters: config['characters'] as String?,
+            glossary: config['glossary'] as String?,
+          ),
+        );
+        _reportWorkerUp(start, {
+          'translation': _inference.translationBackend,
+          'speech': _inference.speechBackend,
+        });
+        // No capture directory: the screen has no audio to cut into files, and
+        // the native side asks for one only when it listens.
+        _beginCapture(start, config);
+      });
 
   /// Loads the speech model and the converter, and nothing else: the
   /// characters screen plays a sample of a card's voice with them. Neither
   /// whisper nor the translator is wanted — the line is one the application
   /// wrote — so the screen waits seconds rather than a minute.
-  Future<void> startPreview(Map<String, Object?> config) async {
-    _paused = false;
-    _session = PipelineSession.preview;
-    final models = config['models']! as Map<String, String>;
-    await _inference.start(
-      speechOnly: true,
-      ttsModel: models['speech']!,
-      speaker: config['speaker']! as String,
-      threads: config['cpuThreads']! as int,
-      speed: config['ttsSpeed']! as double,
-      pythonExecutable: config['pythonExecutable']! as String,
-      requiresWhisper: false,
-      speechBackend: _backendFrom(config['speechBackend']),
-      voiceConverter: models['converter'],
-      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-    );
-    _activeConfig = config;
-    _pollTimer ??= Timer.periodic(
-      const Duration(milliseconds: 80),
-      (_) => _pollEvents(),
-    );
-    // Nothing native starts here to say so itself.
-    _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
-  }
+  Future<void> startPreview(Map<String, Object?> config) =>
+      _startSession(PipelineSession.preview, (start) async {
+        final models = config['models']! as Map<String, String>;
+        await _bringUpWorker(
+          start,
+          () => _inference.start(
+            speechOnly: true,
+            ttsModel: models['speech']!,
+            speaker: config['speaker']! as String,
+            threads: config['cpuThreads']! as int,
+            speed: config['ttsSpeed']! as double,
+            pythonExecutable: config['pythonExecutable']! as String,
+            requiresWhisper: false,
+            speechBackend: _backendFrom(config['speechBackend']),
+            voiceConverter: models['converter'],
+            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+          ),
+        );
+        _listenWithoutCapture(start, config);
+      });
 
   /// Loads the converter and nothing else, with no capture at all: the
   /// files a card is built from are already on disk, and there is no game
   /// to listen to. The screen waits seconds rather than a minute.
-  Future<void> startVoiceFiles(Map<String, Object?> config) async {
-    _paused = false;
-    _session = PipelineSession.characters;
-    _recordingVoice = false;
-    final models = config['models']! as Map<String, String>;
-    await _inference.start(
-      embedOnly: true,
-      threads: config['cpuThreads']! as int,
-      speed: 1,
-      pythonExecutable: config['pythonExecutable']! as String,
-      requiresWhisper: false,
-      voiceConverter: models['converter'],
-      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-    );
-    _activeConfig = config;
-    _pollTimer ??= Timer.periodic(
-      const Duration(milliseconds: 80),
-      (_) => _pollEvents(),
-    );
-    // Nothing native starts here to say so itself.
-    _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
-  }
+  Future<void> startVoiceFiles(Map<String, Object?> config) =>
+      _startSession(PipelineSession.characters, (start) async {
+        _recordingVoice = false;
+        final models = config['models']! as Map<String, String>;
+        await _bringUpWorker(
+          start,
+          () => _inference.start(
+            embedOnly: true,
+            threads: config['cpuThreads']! as int,
+            speed: 1,
+            pythonExecutable: config['pythonExecutable']! as String,
+            requiresWhisper: false,
+            voiceConverter: models['converter'],
+            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+          ),
+        );
+        _listenWithoutCapture(start, config);
+      });
 
   /// Turns the files at [paths] into recordings the converter can measure
   /// and hands them to the worker as one voice.
@@ -306,7 +331,7 @@ class NativeEngineService {
   /// the loudness the capture writes at, or a fingerprint from a file would
   /// not answer for the same character a fingerprint from the game does.
   Future<BuiltVoice> buildVoice(List<String> paths) async {
-    final work = await LocalInferenceService.createWorkDirectory();
+    final work = await _workDirectory();
     final decoded = <String>[];
     final unreadable = <String>[];
     for (final (index, source) in paths.indexed) {
@@ -374,40 +399,27 @@ class NativeEngineService {
   /// Starts the session the characters screen records through: the game's
   /// audio and the converter that measures a voice, with neither the
   /// translator nor the speech model loaded.
-  Future<void> startCharacters(Map<String, Object?> config) async {
-    _paused = false;
-    _session = PipelineSession.characters;
-    _recordingVoice = false;
-    await LocalInferenceService.removeStaleAudio();
-    final models = config['models']! as Map<String, String>;
-    await _inference.start(
-      embedOnly: true,
-      threads: config['cpuThreads']! as int,
-      speed: 1,
-      pythonExecutable: config['pythonExecutable']! as String,
-      requiresWhisper: false,
-      voiceConverter: models['converter'],
-      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-    );
-    final work = await LocalInferenceService.createWorkDirectory();
-    final capture = Directory('${work.path}${Platform.pathSeparator}capture');
-    await capture.create(recursive: true);
-    _activeConfig = {...config, 'captureDirectory': capture.path};
-    final pointer = jsonEncode(_activeConfig).toNativeUtf8();
-    try {
-      _throwIfError(ld_start(pointer.cast()));
-    } catch (_) {
-      await _inference.stop();
-      rethrow;
-    } finally {
-      malloc.free(pointer);
-    }
-    _pollTimer ??= Timer.periodic(
-      const Duration(milliseconds: 80),
-      (_) => _pollEvents(),
-    );
-  }
+  Future<void> startCharacters(Map<String, Object?> config) =>
+      _startSession(PipelineSession.characters, (start) async {
+        _recordingVoice = false;
+        await _removeStaleAudio(start);
+        final models = config['models']! as Map<String, String>;
+        await _bringUpWorker(
+          start,
+          () => _inference.start(
+            embedOnly: true,
+            threads: config['cpuThreads']! as int,
+            speed: 1,
+            pythonExecutable: config['pythonExecutable']! as String,
+            requiresWhisper: false,
+            voiceConverter: models['converter'],
+            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+          ),
+        );
+        final capture = await _captureDirectory(start);
+        _beginCapture(start, {...config, 'captureDirectory': capture});
+      });
 
   /// Starts the session the voices of a scene are gathered through: the
   /// game's audio and the converter that hears who is speaking, with neither
@@ -415,41 +427,134 @@ class NativeEngineService {
   ///
   /// It is the characters session with the bank and the cast added and the
   /// recording gate left open: every phrase is placed, none is dubbed.
-  Future<void> startScene(Map<String, Object?> config) async {
+  Future<void> startScene(Map<String, Object?> config) =>
+      _startSession(PipelineSession.scene, (start) async {
+        await _removeStaleAudio(start);
+        final models = config['models']! as Map<String, String>;
+        await _bringUpWorker(
+          start,
+          () => _inference.start(
+            embedOnly: true,
+            threads: config['cpuThreads']! as int,
+            speed: 1,
+            pythonExecutable: config['pythonExecutable']! as String,
+            requiresWhisper: false,
+            voiceConverter: models['converter'],
+            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
+            voiceBank: config['voiceBank'] as String?,
+            characters: config['characters'] as String?,
+            asHeard: _cutFromMix(config['asHeard']),
+          ),
+        );
+        final capture = await _captureDirectory(start);
+        _beginCapture(start, {...config, 'captureDirectory': capture});
+      });
+
+  /// Runs one start from its first line to its last.
+  ///
+  /// The session is named and the start numbered before anything is waited
+  /// for, and [steps] is handed that number: every step asks, as it begins
+  /// and after everything it waits for, whether the start is still the one
+  /// wanted ([_throwIfSuperseded]).
+  ///
+  /// Whatever a start fails with — stopped, replaced, a capture that would
+  /// not begin — the worker it brought up is ended here, while it is still
+  /// this start's to end.
+  Future<void> _startSession(
+    PipelineSession session,
+    Future<void> Function(int start) steps,
+  ) async {
+    final start = ++_starts;
     _paused = false;
-    _session = PipelineSession.scene;
-    await LocalInferenceService.removeStaleAudio();
-    final models = config['models']! as Map<String, String>;
-    await _inference.start(
-      embedOnly: true,
-      threads: config['cpuThreads']! as int,
-      speed: 1,
-      pythonExecutable: config['pythonExecutable']! as String,
-      requiresWhisper: false,
-      voiceConverter: models['converter'],
-      voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-      downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-      voiceBank: config['voiceBank'] as String?,
-      characters: config['characters'] as String?,
-      asHeard: _cutFromMix(config['asHeard']),
-    );
-    final work = await LocalInferenceService.createWorkDirectory();
+    _session = session;
+    try {
+      await steps(start);
+    } catch (_) {
+      if (_workerOf == start) await _endWorker();
+      rethrow;
+    }
+  }
+
+  /// A start that was stopped, or replaced by a later one, ends here: what
+  /// it was waiting for came back to nobody.
+  void _throwIfSuperseded(int start) {
+    if (start != _starts) throw const LoreDubFailure(FailureCode.pipelineStopped);
+  }
+
+  /// Clears away the audio a previous run left behind.
+  Future<void> _removeStaleAudio(int start) async {
+    _throwIfSuperseded(start);
+    final work = await _workDirectory();
+    // Asked before the sweep as well as after it: the start that took this
+    // one's place may be cutting phrases into that directory by now.
+    _throwIfSuperseded(start);
+    await LocalInferenceService.removeStaleAudio(work);
+    _throwIfSuperseded(start);
+  }
+
+  /// Brings the worker up through [load], as the start numbered [start].
+  Future<void> _bringUpWorker(int start, Future<void> Function() load) async {
+    _throwIfSuperseded(start);
+    // Named before the service is asked, which is the moment it becomes this
+    // start's: asking ends whatever worker an earlier start left in it.
+    _workerOf = start;
+    await load();
+    _throwIfSuperseded(start);
+  }
+
+  /// Says where the worker put each stage in [settled] — which is not always
+  /// where it was asked to — and that the capture is what is left to start.
+  void _reportWorkerUp(int start, Map<String, ComputeBackend?> settled) {
+    _throwIfSuperseded(start);
+    for (final MapEntry(key: stage, value: backend) in settled.entries) {
+      if (backend == null) continue;
+      _events.add({'type': 'backend', 'stage': stage, 'backend': backend.name});
+    }
+    _events.add({'type': 'startup', 'value': 0.98, 'stage': 'capture'});
+  }
+
+  /// The directory the capture cuts the game's sound into, made if need be.
+  Future<String> _captureDirectory(int start) async {
+    _throwIfSuperseded(start);
+    final work = await _workDirectory();
+    _throwIfSuperseded(start);
     final capture = Directory('${work.path}${Platform.pathSeparator}capture');
     await capture.create(recursive: true);
-    _activeConfig = {...config, 'captureDirectory': capture.path};
-    final pointer = jsonEncode(_activeConfig).toNativeUtf8();
-    try {
-      _throwIfError(ld_start(pointer.cast()));
-    } catch (_) {
-      await _inference.stop();
-      rethrow;
-    } finally {
-      malloc.free(pointer);
-    }
+    _throwIfSuperseded(start);
+    return capture.path;
+  }
+
+  /// Starts the native capture [config] describes, and the reading of what
+  /// it reports.
+  void _beginCapture(int start, Map<String, Object?> config) {
+    _throwIfSuperseded(start);
+    _activeConfig = config;
+    _throwIfError(_native.start(jsonEncode(config)));
+    _pollRegularly();
+  }
+
+  /// Comes up with no capture at all: the session is its worker and nothing
+  /// else, so nothing native starts to say it is listening, and the engine
+  /// says so itself.
+  void _listenWithoutCapture(int start, Map<String, Object?> config) {
+    _throwIfSuperseded(start);
+    _activeConfig = config;
+    _pollRegularly();
+    _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
+  }
+
+  void _pollRegularly() {
     _pollTimer ??= Timer.periodic(
       const Duration(milliseconds: 80),
       (_) => _pollEvents(),
     );
+  }
+
+  /// Ends the worker, whichever start brought it up.
+  Future<void> _endWorker() {
+    _workerOf = null;
+    return _inference.stop();
   }
 
   /// Whether what the game says is measured for a card, or thrown away.
@@ -537,6 +642,10 @@ class NativeEngineService {
   }
 
   Future<void> stop() async {
+    // First, and before anything here can fail: whichever start is still in
+    // one of its waits is no longer wanted, and finds that out when it comes
+    // back from it.
+    _starts++;
     // A take left open belongs to a session that is ending.
     if (_recordingVoice) {
       ld_hold_take(0);
@@ -554,7 +663,7 @@ class NativeEngineService {
     _dropRecordedClips();
     _previousOcrText = null;
     // ld_stop drops the hotkeys too; nothing is left for them to pause.
-    _throwIfError(ld_stop());
+    _throwIfError(_native.stop());
     _pollEvents();
     _pollTimer?.cancel();
     _pollTimer = null;
@@ -572,8 +681,8 @@ class NativeEngineService {
     // found: the dubbing seemed not to duck the original at all.
     // `_duckForSpeech` cannot do it either, since the line still sounding as
     // the session ends finishes after `_activeConfig` is already null.
-    ld_restore_process_volumes();
-    await _inference.stop();
+    _native.restoreProcessVolumes();
+    await _endWorker();
   }
 
   Future<void> setProcessVolume(int processId, double volume) async {
@@ -598,7 +707,7 @@ class NativeEngineService {
     // The game plays at its own volume while dubbing rests. A device that
     // cannot be reached is no reason to refuse the pause, so the result is
     // not checked.
-    ld_restore_process_volumes();
+    _native.restoreProcessVolumes();
   }
 
   /// Registers the system-wide combinations that pause and resume the
@@ -643,7 +752,7 @@ class NativeEngineService {
   /// event to the part that knows what to do with it.
   void _pollEvents() {
     for (var index = 0; index < 16; index++) {
-      final json = _readNativeString(ld_poll_event_json, emptyAllowed: true);
+      final json = _readNativeString(_native.pollEvent, emptyAllowed: true);
       if (json.isEmpty) break;
       final event = jsonDecode(json) as Map<String, Object?>;
       switch (event['type']) {
@@ -1001,7 +1110,7 @@ class NativeEngineService {
     if (speaking) {
       ld_set_process_volume(processId, (config['duckVolume'] as num?)?.toDouble() ?? 0.18);
     } else {
-      ld_restore_process_volumes();
+      _native.restoreProcessVolumes();
     }
   }
 
@@ -1071,14 +1180,15 @@ class NativeEngineService {
 
   void _throwIfError(int code) {
     if (code >= 0) return;
-    final message = ld_error_message(code).cast<Utf8>().toDartString();
-    throw NativeEngineException(code, message);
+    throw NativeEngineException(code, _native.errorMessage(code));
   }
 
   void dispose() {
+    // A start still on its way has nobody left to start for.
+    _starts++;
     _pollTimer?.cancel();
-    ld_stop();
-    unawaited(_inference.stop());
+    _native.stop();
+    unawaited(_endWorker());
     _events.close();
   }
 }

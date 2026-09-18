@@ -11,6 +11,7 @@ import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../support/fake_worker.dart';
 import '../../../support/temporary_directory.dart';
 
 void main() {
@@ -138,12 +139,12 @@ void main() {
     /// A machine with everything in place, and the workers it hands out in
     /// the order they are asked for.
     LocalInferenceService serviceWith(
-      List<_FakeWorker> workers, {
+      List<FakeWorker> workers, {
       Duration startupLimit = const Duration(minutes: 5),
     }) {
       final waiting = [...workers];
       return LocalInferenceService(
-        prepare: _everythingInPlace,
+        prepare: everythingInPlace,
         startWorker: (executable, arguments) async => waiting.removeAt(0),
         startupLimit: startupLimit,
       );
@@ -160,11 +161,11 @@ void main() {
         throwsA(isA<LoreDubFailure>().having((failure) => failure.code, 'code', code));
 
     test('comes up once the worker says it is ready', () async {
-      final worker = _FakeWorker();
+      final worker = FakeWorker();
       final service = serviceWith([worker]);
 
       final starting = startOn(service);
-      await _settle();
+      await settle();
       worker.say({'type': 'ready', 'device': 'cuda', 'speechDevice': 'cpu'});
       await starting;
 
@@ -175,11 +176,11 @@ void main() {
     });
 
     test('a stop during the handshake ends the start at once, as stopped', () async {
-      final worker = _FakeWorker();
+      final worker = FakeWorker();
       final service = serviceWith([worker]);
 
       final starting = expectLater(startOn(service), failsWith(FailureCode.pipelineStopped));
-      await _settle();
+      await settle();
       await service.stop();
 
       // The limit is five minutes here: waited out, this would never return.
@@ -190,14 +191,14 @@ void main() {
     test('a stop while the interpreter is coming up ends the worker it never saw', () async {
       final spawning = Completer<Process>();
       final service = LocalInferenceService(
-        prepare: _everythingInPlace,
+        prepare: everythingInPlace,
         startWorker: (executable, arguments) => spawning.future,
       );
 
       final starting = expectLater(startOn(service), failsWith(FailureCode.pipelineStopped));
-      await _settle();
+      await settle();
       await service.stop();
-      final worker = _FakeWorker();
+      final worker = FakeWorker();
       spawning.complete(worker);
       await starting;
 
@@ -217,28 +218,28 @@ void main() {
         }) => preparing.future,
         startWorker: (executable, arguments) async {
           spawned++;
-          return _FakeWorker();
+          return FakeWorker();
         },
       );
 
       final starting = expectLater(startOn(service), failsWith(FailureCode.pipelineStopped));
       await service.stop();
-      preparing.complete(_files);
+      preparing.complete(workerFiles);
       await starting;
 
       expect(spawned, 0);
     });
 
     test('a later start takes over from one still waiting for its worker', () async {
-      final first = _FakeWorker();
-      final second = _FakeWorker();
+      final first = FakeWorker();
+      final second = FakeWorker();
       final service = serviceWith([first, second]);
 
       final replaced = expectLater(startOn(service), failsWith(FailureCode.pipelineStopped));
-      await _settle();
+      await settle();
       final starting = startOn(service);
       await replaced;
-      await _settle();
+      await settle();
       second.say({'type': 'ready', 'device': 'cpu'});
       await starting;
 
@@ -248,11 +249,11 @@ void main() {
     });
 
     test('a worker on its way out answers for nobody, and takes nothing with it', () async {
-      final first = _FakeWorker(lingers: true);
-      final second = _FakeWorker();
+      final first = FakeWorker(lingers: true);
+      final second = FakeWorker();
       final service = serviceWith([first, second]);
       final cancelled = expectLater(startOn(service), failsWith(FailureCode.pipelineStopped));
-      await _settle();
+      await settle();
 
       // The stop is still waiting for the first worker to die when the next
       // start brings its own up, so for a while there are two of them.
@@ -260,9 +261,9 @@ void main() {
       await cancelled;
       var ready = false;
       final starting = startOn(service).then((_) => ready = true);
-      await _settle();
+      await settle();
       first.say({'type': 'ready', 'device': 'cuda'});
-      await _settle();
+      await settle();
       expect(ready, isFalse, reason: 'the handshake of the worker being replaced is not ours');
 
       second.say({'type': 'ready', 'device': 'cpu'});
@@ -274,7 +275,7 @@ void main() {
       // The stop has finished with the first worker; the second one is
       // still listened to, which is what answers this line.
       final line = service.processText('Hello');
-      await _settle();
+      await settle();
       second.say({'id': second.lastRequestId, 'translated': 'Привет', 'wave': 'speech-1.wav'});
 
       expect((await line).translated, 'Привет');
@@ -282,7 +283,7 @@ void main() {
     });
 
     test('a worker that never says it is ready fails the start by name', () async {
-      final worker = _FakeWorker();
+      final worker = FakeWorker();
       final service = serviceWith([worker], startupLimit: const Duration(milliseconds: 50));
 
       final starting = startOn(service);
@@ -294,7 +295,7 @@ void main() {
               .having((failure) => failure.detail, 'detail', contains('loading torch')),
         ),
       );
-      await _settle();
+      await settle();
       worker.complain('loading torch');
       await outcome;
 
@@ -302,14 +303,14 @@ void main() {
     });
 
     test('a worker that dies while starting fails the start with its reason', () async {
-      final worker = _FakeWorker();
+      final worker = FakeWorker();
       final lost = <LoreDubFailure>[];
       final service = serviceWith([worker])..onWorkerLost = lost.add;
 
       final starting = expectLater(startOn(service), failsWith(FailureCode.workerExited));
-      await _settle();
+      await settle();
       worker.complain('ModuleNotFoundError: torch');
-      await _settle();
+      await settle();
       worker.exit(1);
       await starting;
 
@@ -317,11 +318,11 @@ void main() {
     });
 
     test('a worker that dies under a session is let go of, and says why', () async {
-      final worker = _FakeWorker();
+      final worker = FakeWorker();
       final lost = <LoreDubFailure>[];
       final service = serviceWith([worker])..onWorkerLost = lost.add;
       final starting = startOn(service);
-      await _settle();
+      await settle();
       worker.say({'type': 'ready', 'device': 'cpu'});
       await starting;
 
@@ -329,7 +330,7 @@ void main() {
         service.processText('Hello'),
         failsWith(FailureCode.workerExitedSilently),
       );
-      await _settle();
+      await settle();
       worker.exit(3);
       await line;
 
@@ -340,84 +341,4 @@ void main() {
       await expectLater(service.processText('Anyone?'), failsWith(FailureCode.workerNotRunning));
     });
   });
-}
-
-/// Lets what is already on its way arrive: a line through the decoder, a
-/// start as far as its next wait.
-Future<void> _settle() async {
-  for (var turn = 0; turn < 5; turn++) {
-    await Future<void>.delayed(Duration.zero);
-  }
-}
-
-const WorkerFiles _files = (
-  python: 'python.exe',
-  script: 'inference_worker.py',
-  work: 'work',
-  whisper: null,
-);
-
-Future<WorkerFiles> _everythingInPlace({
-  required String pythonExecutable,
-  required bool requiresWhisper,
-  required ComputeBackend recognitionBackend,
-  String? downloadedRuntimeDirectory,
-}) async => _files;
-
-/// A worker that says what the test tells it to and dies when it is killed —
-/// or, with [lingers], only once the test lets it, the way Windows takes a
-/// moment over a process that has been ended.
-class _FakeWorker implements Process {
-  _FakeWorker({this.lingers = false}) {
-    _stdin.stream
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((line) => _requests.add(jsonDecode(line) as Map<String, Object?>));
-  }
-
-  final bool lingers;
-  final _stdout = StreamController<List<int>>();
-  final _stderr = StreamController<List<int>>();
-  final _stdin = StreamController<List<int>>();
-  final _requests = <Map<String, Object?>>[];
-  final _exit = Completer<int>();
-  late final IOSink _sink = IOSink(_stdin);
-
-  bool killed = false;
-
-  /// The id of the request the service wrote last, which a reply repeats.
-  int get lastRequestId => _requests.last['id']! as int;
-
-  void say(Map<String, Object?> message) => _stdout.add(utf8.encode('${jsonEncode(message)}\n'));
-
-  void complain(String line) => _stderr.add(utf8.encode('$line\n'));
-
-  void exit(int code) {
-    if (_exit.isCompleted) return;
-    _exit.complete(code);
-    unawaited(_stdout.close());
-    unawaited(_stderr.close());
-  }
-
-  @override
-  Future<int> get exitCode => _exit.future;
-
-  @override
-  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
-    killed = true;
-    if (!lingers) exit(-1);
-    return true;
-  }
-
-  @override
-  int get pid => 4242;
-
-  @override
-  IOSink get stdin => _sink;
-
-  @override
-  Stream<List<int>> get stdout => _stdout.stream;
-
-  @override
-  Stream<List<int>> get stderr => _stderr.stream;
 }

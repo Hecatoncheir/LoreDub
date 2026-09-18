@@ -198,7 +198,35 @@ that dies under a running session lets go of `_worker`, so the next phrase is
 told there is none rather than written into a dead pipe, and calls
 `onWorkerLost`, on which `NativeEngineService` reports why and stops the
 session. The seams for all of this are `WorkerPreparation` and
-`WorkerStarter`, with a fake `Process` in the service's test.
+`WorkerStarter`, with a fake `Process` (`test/support/fake_worker.dart`)
+in the service's test.
+
+`NativeEngineService._starts` is that counter once more, for the moments on
+either side of the worker's minutes: the stale audio cleared before it is
+asked for, and the capture directory made once it is up. A stop landing in
+the first found no start to cancel, and the start went on to bring a worker
+up and call `ld_start` for a session already stopped — with `_session`
+cleared, so `_ofSession` named nobody and every screen took its events for
+its own. One landing in the second ended the worker and left the start to
+begin a capture with nothing behind it, every phrase failing as
+`workerNotRunning`; a worker dying there did the same through
+`_onWorkerLost`. Every start method therefore runs through `_startSession`,
+which numbers the start and names the session before anything is waited for,
+and each step it is made of — `_removeStaleAudio`, `_bringUpWorker`,
+`_reportWorkerUp`, `_captureDirectory`, `_beginCapture`,
+`_listenWithoutCapture` — asks `_throwIfSuperseded` as it begins and after
+every wait of its own, so a step added to a start takes the number and asks
+the same way. `stop()` and `dispose()` bump the counter before anything
+else. A start that fails after its worker came up — stopped, replaced, or
+refused by `ld_start` — ends that worker in `_startSession`'s one `catch`,
+and only while `_workerOf` still names it: stopped, the worker is gone
+already, and replaced, a later start may hold the inference service by then,
+where a blind `_inference.stop()` would end a worker that was never this
+start's. The engine's seams are its constructor's: `inference`, `native`
+(`NativeSessionCalls` — `ld_start`, `ld_stop`, the poll, the volumes given
+back and the error text, which is all a start and a stop ask of the
+library) and `workDirectory`, which the engine's test holds back so that a
+stop can land inside either wait.
 
 Playback is not sequential in the same way. Every worker reply carries a
 `speaker` key (`timbre:<n>` from the voice fingerprints with the converter,
@@ -897,6 +925,7 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `native/`; `domain/` holds plain value types with no Flutter imports.
 - Tests use no real native library or network: services take injectable
   seams (`ModelStorageService({http.Client?, ModelRootProvider?})`,
+  `NativeEngineService({inference, native, workDirectory})`,
   `SharedPreferences.setMockInitialValues`, the exported
   `readNativeUtf8String` helper).
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`) with an

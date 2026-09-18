@@ -1,12 +1,20 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:ffi';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lore_dub/src/data/services/local_inference_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/domain/failure.dart';
+import 'package:path/path.dart' as path;
+
+import '../../../support/fake_worker.dart';
+import '../../../support/temporary_directory.dart';
 
 void main() {
   test('turns a native capture error into a failure the banner can show', () {
@@ -81,4 +89,363 @@ void main() {
     expect(result, grownValue);
     expect(calls, 3);
   });
+
+  group('a start that is stopped or replaced', () {
+    late Directory work;
+    late _HeldWorkDirectory held;
+    late _FakeNative native;
+    late List<FakeWorker> workers;
+    late NativeEngineService engine;
+    late List<Map<String, Object?>> events;
+    var disposed = false;
+
+    setUp(() async {
+      work = await Directory.systemTemp.createTemp('lore-dub-engine');
+      addTearDown(() => deleteOnceReleased(work));
+      held = _HeldWorkDirectory(work);
+      native = _FakeNative();
+      workers = [];
+      disposed = false;
+      engine = NativeEngineService(
+        inference: LocalInferenceService(
+          prepare: everythingInPlace,
+          startWorker: (executable, arguments) async {
+            final worker = FakeWorker();
+            workers.add(worker);
+            return worker;
+          },
+        ),
+        native: native,
+        workDirectory: held.call,
+      );
+      events = [];
+      engine.events.listen(events.add);
+    });
+
+    tearDown(() async {
+      // Ends the poll timer of a session a test left running.
+      if (!disposed) await engine.stop();
+    });
+
+    /// The session that waits on both sides of its worker: stale audio is
+    /// cleared before it, and the capture directory made after it.
+    Map<String, Object?> sceneOf(int processId) => {
+      'processId': processId,
+      'captureMode': 'audio',
+      'cpuThreads': 2,
+      'pythonExecutable': 'python.exe',
+      'models': {'converter': 'converter'},
+    };
+
+    /// The session with no wait of its own: the worker, and nothing native.
+    const preview = <String, Object?>{
+      'speaker': 'xenia',
+      'ttsSpeed': 1.0,
+      'cpuThreads': 2,
+      'pythonExecutable': 'python.exe',
+      'models': {'speech': 'speech.pt'},
+    };
+
+    Matcher failsWith(FailureCode code) =>
+        throwsA(isA<LoreDubFailure>().having((failure) => failure.code, 'code', code));
+
+    /// Takes a start past its stale audio and its worker, and leaves it
+    /// waiting for the capture directory — the [asked]th time the work
+    /// directory is asked for.
+    Future<FakeWorker> untilCaptureDirectory({
+      int worker = 1,
+      int asked = 2,
+      Map<String, Object?> ready = const {'type': 'ready', 'device': 'cpu'},
+    }) async {
+      held.handOver();
+      await _until(() => workers.length == worker);
+      await settle();
+      workers.last.say(ready);
+      await _until(() => held.asked == asked);
+      return workers.last;
+    }
+
+    List<Map<String, Object?>> eventsOf(String type) => [
+      for (final event in events)
+        if (event['type'] == type) event,
+    ];
+
+    test('starts the capture in the directory it made, once the worker is up', () async {
+      final starting = engine.startScene(sceneOf(7));
+      final worker = await untilCaptureDirectory();
+      expect(native.started, isEmpty, reason: 'the directory it captures into is not there yet');
+      held.handOver();
+      await starting;
+
+      final capture = path.join(work.path, 'capture');
+      expect(native.started.single, containsPair('captureDirectory', capture));
+      expect(Directory(capture).existsSync(), isTrue);
+      // What the capture reports is read, and named for the session it is.
+      await _until(() => eventsOf('state').length == 2);
+      expect(eventsOf('state').last, {'type': 'state', 'state': 'listening', 'session': 'scene'});
+
+      await engine.stop();
+      expect(worker.killed, isTrue);
+      expect(native.stops, 1);
+    });
+
+    test('says where the worker put each stage before the capture starts', () async {
+      final starting = engine.start({
+        ...sceneOf(7),
+        'speaker': 'xenia',
+        'ttsSpeed': 1.0,
+        'sourceLanguage': 'en',
+        'models': {'whisper': 'ggml.bin', 'speech': 'speech.pt', 'converter': 'converter'},
+      });
+      await untilCaptureDirectory(
+        ready: {
+          'type': 'ready',
+          'device': 'cuda',
+          'speechDevice': 'cpu',
+          'converterDevice': 'cuda',
+        },
+      );
+      held.handOver();
+      await starting;
+
+      expect(
+        [
+          for (final event in events)
+            if (event['type'] == 'backend' || event['stage'] == 'capture') event,
+        ],
+        [
+          {'type': 'backend', 'stage': 'translation', 'backend': 'cuda'},
+          {'type': 'backend', 'stage': 'speech', 'backend': 'cpu'},
+          {'type': 'backend', 'stage': 'voiceConversion', 'backend': 'cuda'},
+          // Said once the last of them is: the capture is what is left.
+          {'type': 'startup', 'value': 0.98, 'stage': 'capture'},
+        ],
+      );
+    });
+
+    test('a stop while stale audio is cleared brings up no worker and no capture', () async {
+      final starting = expectLater(
+        engine.startScene(sceneOf(7)),
+        failsWith(FailureCode.pipelineStopped),
+      );
+      // The stop finds no worker, and no start of the worker's to cancel, so
+      // nothing but the engine's own count tells the start it is over.
+      await engine.stop();
+      held.handOver();
+      await starting;
+      await settle();
+
+      expect(workers, isEmpty);
+      expect(native.started, isEmpty);
+      // The engine came to rest once, under nobody's name, and the start
+      // said nothing after that for a screen to take as its own.
+      expect(eventsOf('state'), [
+        {'type': 'state', 'state': 'idle'},
+      ]);
+      expect(eventsOf('startup'), isEmpty);
+    });
+
+    test('a stop while the capture directory is made begins no capture', () async {
+      final starting = expectLater(
+        engine.startScene(sceneOf(7)),
+        failsWith(FailureCode.pipelineStopped),
+      );
+      final worker = await untilCaptureDirectory();
+
+      await engine.stop();
+      expect(worker.killed, isTrue);
+      held.handOver();
+      await starting;
+
+      expect(native.started, isEmpty, reason: 'a capture with no worker fails every phrase');
+    });
+
+    test('a worker that dies while the capture directory is made ends the start', () async {
+      final starting = expectLater(
+        engine.startScene(sceneOf(7)),
+        failsWith(FailureCode.pipelineStopped),
+      );
+      final worker = await untilCaptureDirectory();
+
+      worker.complain('CUDA out of memory');
+      await settle();
+      worker.exit(1);
+      await _until(() => native.stops == 1);
+      held.handOver();
+      await starting;
+
+      expect(native.started, isEmpty);
+      // The start ends as stopped, which the screens pass over; what the
+      // player is told is what the worker said.
+      expect(
+        eventsOf('error').single['failure'],
+        isA<LoreDubFailure>()
+            .having((failure) => failure.code, 'code', FailureCode.workerExited)
+            .having((failure) => failure.detail, 'detail', contains('CUDA out of memory')),
+      );
+    });
+
+    test('a later start takes the engine over from one whose worker had just come up', () async {
+      final replaced = expectLater(
+        engine.startScene(sceneOf(7)),
+        failsWith(FailureCode.pipelineStopped),
+      );
+      final first = await untilCaptureDirectory();
+
+      // Asks for its worker at once, which ends the first one's.
+      final starting = engine.startPreview(preview);
+      held.handOver();
+      await replaced;
+      await _until(() => workers.length == 2);
+      await settle();
+      workers.last.say({'type': 'ready', 'speechDevice': 'cpu'});
+      await starting;
+      await settle();
+
+      expect(first.killed, isTrue);
+      expect(workers.last.killed, isFalse, reason: 'not the replaced start to end');
+      expect(
+        native.started,
+        isEmpty,
+        reason: 'the scene was replaced, and a sample captures nothing',
+      );
+      expect(eventsOf('state').last, {'type': 'state', 'state': 'listening', 'session': 'preview'});
+    });
+
+    test('a replaced start ends its worker while nobody else has asked for one', () async {
+      final replaced = expectLater(
+        engine.startScene(sceneOf(7)),
+        failsWith(FailureCode.pipelineStopped),
+      );
+      final first = await untilCaptureDirectory();
+
+      // Still clearing stale audio: it has not reached the worker, so the
+      // first start's is left running with nobody holding it.
+      final starting = engine.startCharacters(sceneOf(9));
+      expect(held.asked, 3);
+      held.handOver();
+      await replaced;
+      expect(first.killed, isTrue);
+
+      final second = await untilCaptureDirectory(worker: 2, asked: 4);
+      held.handOver();
+      await starting;
+
+      expect(second.killed, isFalse);
+      expect(native.started.single, containsPair('processId', 9));
+    });
+
+    test('a capture that will not start ends the worker brought up for it', () async {
+      native.startCode = -6;
+      final starting = expectLater(
+        engine.startScene(sceneOf(7)),
+        throwsA(
+          isA<NativeEngineException>()
+              .having((error) => error.code, 'code', -6)
+              .having((error) => error.message, 'message', 'native error -6'),
+        ),
+      );
+      final worker = await untilCaptureDirectory();
+      held.handOver();
+      await starting;
+
+      expect(worker.killed, isTrue);
+    });
+
+    test('a start still on its way when the engine is disposed of goes no further', () async {
+      final starting = expectLater(
+        engine.startScene(sceneOf(7)),
+        failsWith(FailureCode.pipelineStopped),
+      );
+      final worker = await untilCaptureDirectory();
+
+      engine.dispose();
+      disposed = true;
+      held.handOver();
+      await starting;
+
+      expect(native.started, isEmpty);
+      // Disposing does not wait for the worker to go, so neither can this.
+      await _until(() => worker.killed);
+    });
+  });
+}
+
+/// Waits for what a start only reaches through real file work, which no
+/// count of turns can promise. The test's own timeout is what ends a wait
+/// for something that never comes.
+Future<void> _until(bool Function() reached) async {
+  while (!reached()) {
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+  }
+}
+
+/// A work directory the test hands over when it chooses, so that a stop can
+/// land while a start is still waiting for it.
+class _HeldWorkDirectory {
+  _HeldWorkDirectory(this.directory);
+
+  final Directory directory;
+  final _waiting = Queue<Completer<Directory>>();
+
+  /// How many times it has been asked for.
+  int asked = 0;
+
+  Future<Directory> call() {
+    asked++;
+    final answer = Completer<Directory>();
+    _waiting.add(answer);
+    return answer.future;
+  }
+
+  /// Answers whoever has waited longest.
+  void handOver() => _waiting.removeFirst().complete(directory);
+}
+
+/// The native library as a start and a stop see it: `ld_start` and `ld_stop`
+/// queue the states the real ones do, and the poll hands them out.
+class _FakeNative implements NativeSessionCalls {
+  /// The configs `ld_start` was given, in the order it was given them.
+  final started = <Map<String, Object?>>[];
+
+  /// What `ld_start` answers; negative is a capture that would not start.
+  int startCode = 0;
+  int stops = 0;
+  final _events = Queue<String>();
+
+  @override
+  int start(String configJson) {
+    started.add(jsonDecode(configJson) as Map<String, Object?>);
+    if (startCode < 0) return startCode;
+    _events
+      ..add('{"type":"state","state":"starting"}')
+      ..add('{"type":"state","state":"listening"}');
+    return 0;
+  }
+
+  @override
+  int stop() {
+    stops++;
+    _events.add('{"type":"state","state":"idle"}');
+    return 0;
+  }
+
+  @override
+  int pollEvent(Pointer<Char> output, int capacity) {
+    if (_events.isEmpty) return 0;
+    final bytes = utf8.encode(_events.first);
+    // Asked how long it is, or handed too little: the event stays queued.
+    if (output == nullptr || capacity <= bytes.length) return bytes.length;
+    _events.removeFirst();
+    output.cast<Uint8>().asTypedList(capacity)
+      ..setRange(0, bytes.length, bytes)
+      ..[bytes.length] = 0;
+    return bytes.length;
+  }
+
+  @override
+  int restoreProcessVolumes() => 0;
+
+  @override
+  String errorMessage(int code) => 'native error $code';
 }
