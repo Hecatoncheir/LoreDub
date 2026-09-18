@@ -298,7 +298,7 @@ lib/src/ui/
 - [x] **`shell/`:** `_Navigation`, `_NavigationGroup`, `_NavigationItem`,
       `_BottomNavigation`, `_Header`, `_VersionButton`, `_UpdateRow`;
       `_sectionMark` → расширение над `DashboardSection` в `shell/`.
-- [ ] **`live/`**, затем **`screen_text/`**, **`characters/`**, **`models/`**.
+- [x] **`live/`**, затем **`screen_text/`**, **`characters/`**, **`models/`**.
 - [ ] **`settings/`:** `_SettingsPanelState` (650 строк, ~20 методов
       `Widget _x(...)`) распадается на `InterfaceSettingsGroup`, `ScaleCard`,
       `HotkeysCard`, `DubbingSettingsGroup`, `ProxyCard`, `PythonCard`,
