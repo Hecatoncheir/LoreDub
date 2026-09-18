@@ -5,6 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../data/services/local_inference_service.dart';
 import '../data/services/python_discovery.dart';
 import '../domain/failure.dart';
+import '../domain/hotkey.dart';
 import 'language_names.dart';
 
 /// Turns what the services raised into a sentence in the interface language.
@@ -54,11 +55,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.voiceBankClearFailed => l10n.failureVoiceBankClearFailed(detail),
     FailureCode.modelRemoveFailed => l10n.failureModelRemoveFailed(detail),
     FailureCode.updateInstallFailed => l10n.failureUpdateInstallFailed(detail),
-    FailureCode.hotkeyTaken => l10n.failureHotkeyTaken(switch (detail) {
-      'resume' => l10n.hotkeyResume,
-      'snapshot' => l10n.hotkeySnapshot,
-      _ => l10n.hotkeyPause,
-    }),
+    FailureCode.hotkeyTaken => l10n.failureHotkeyTaken(_hotkeyName(l10n, detail)),
     FailureCode.ocrLanguageMissing => l10n.failureOcrLanguageMissing(
       spokenLanguageName(l10n, detail),
     ),
@@ -74,6 +71,16 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.pipelineLayoutSaveFailed => l10n.failurePipelineLayoutSaveFailed(detail),
   };
 }
+
+/// The action a refused combination was meant for. One this build does not
+/// know is named as the native side sent it rather than passed off as another.
+String _hotkeyName(AppLocalizations l10n, String detail) => switch (HotkeyAction.named(detail)) {
+  HotkeyAction.pause => l10n.hotkeyPause,
+  HotkeyAction.resume => l10n.hotkeyResume,
+  HotkeyAction.snapshot => l10n.hotkeySnapshot,
+  HotkeyAction.frame => l10n.hotkeyFrame,
+  null => detail,
+};
 
 String _describeWorkerExit(AppLocalizations l10n, String detail) {
   final parts = detail.split(exitDetailSeparator);

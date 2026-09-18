@@ -58,6 +58,8 @@ void main() {
     await updates.create(recursive: true);
     final stale = File(path.join(updates.path, 'LoreDub-0.8.0-windows-x64-setup.exe'));
     await stale.writeAsString('old');
+    final unfinished = File(path.join(updates.path, 'LoreDub-0.9.0-windows-x64-setup.exe.part'));
+    await unfinished.writeAsString('half');
     final script = File(path.join(updates.path, 'apply_update.ps1'));
     await script.writeAsString('old');
     final service = UpdateInstaller(
@@ -72,6 +74,7 @@ void main() {
     expect(setup, path.join(updates.path, installer.name));
     expect(await File(setup).length(), bytes.length);
     expect(await stale.exists(), isFalse);
+    expect(await unfinished.exists(), isFalse, reason: 'a version never finished');
     expect(await script.exists(), isFalse, reason: 'left by earlier versions');
     expect(progress.last, 1);
   });

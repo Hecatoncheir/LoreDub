@@ -1,6 +1,18 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+/// What a combination is bound to, named as the native side names it in its
+/// `hotkey` and `hotkeyTaken` events.
+enum HotkeyAction {
+  pause,
+  resume,
+  snapshot,
+  frame;
+
+  /// The action an event names, or null for one this build does not know.
+  static HotkeyAction? named(Object? name) => values.asNameMap()[name];
+}
+
 /// A key combination bound to an action, in the terms Windows registers it.
 class Hotkey {
   const Hotkey({

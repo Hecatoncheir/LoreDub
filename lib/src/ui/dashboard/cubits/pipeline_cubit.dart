@@ -723,11 +723,14 @@ class PipelineCubit extends Cubit<LivePipelineState> {
 
   /// A system-wide combination, pressed from inside the game.
   void _onHotkey(Map<String, Object?> event) {
-    switch (event['action']) {
-      case 'pause':
+    switch (HotkeyAction.named(event['action'])) {
+      case HotkeyAction.pause:
         unawaited(pause());
-      case 'resume':
+      case HotkeyAction.resume:
         unawaited(resume());
+      // Held rather than pressed: the native side answers them itself.
+      case HotkeyAction.snapshot || HotkeyAction.frame || null:
+        break;
     }
   }
 

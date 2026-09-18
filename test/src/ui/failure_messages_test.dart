@@ -38,6 +38,17 @@ void main() {
     expect(describeFailure(en, failure), 'The Marian/Silero worker is not running');
   });
 
+  test('names the action a taken combination was meant for', () {
+    String taken(String action) =>
+        describeFailure(en, LoreDubFailure(FailureCode.hotkeyTaken, detail: action));
+
+    expect(taken('frame'), contains(en.hotkeyFrame));
+    expect(taken('snapshot'), contains(en.hotkeySnapshot));
+    expect(taken('resume'), contains(en.hotkeyResume));
+    expect(taken('pause'), contains(en.hotkeyPause));
+    expect(taken('zoom'), allOf(contains('zoom'), isNot(contains(en.hotkeyPause))));
+  });
+
   test('keeps the technical detail as it came', () {
     final failure = LoreDubFailure(
       FailureCode.whisperMissing,

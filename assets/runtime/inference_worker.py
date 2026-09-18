@@ -1121,7 +1121,12 @@ def main():
     # word is one, and everything in a Russian line, where the voice cannot
     # read it -- and the rule that catches it ran over both, putting every
     # German line through the model a second time to throw the answer away.
-    dubbed_in_latin = translator is None or bool(LATIN_RUN.search(translate("Open the door.")))
+    # The model is asked directly rather than through [translate]: the
+    # player's glossary answers first there, and a probe line the player
+    # wrote down -- or silenced -- would decide the script of every line after.
+    dubbed_in_latin = translator is None or bool(
+        LATIN_RUN.search(translated_sentences(["Open the door."])[0])
+    )
 
     following = args.follow_speaker and by_gender["male"] and by_gender["female"]
     # Sticky: an unclear phrase keeps the voice the last clear one settled on,

@@ -89,12 +89,15 @@ class UpdateInstaller {
     final directory = await _root();
     await directory.create(recursive: true);
     // The setups of versions already installed are only dead weight, and so
-    // is the script earlier versions handed the update to.
+    // are the halves of ones never finished and the script earlier versions
+    // handed the update to. The part of this very setup stays to be resumed.
     await for (final entry in directory.list(followLinks: false)) {
       if (entry is! File) continue;
       final name = path.basename(entry.path);
+      final setup = name.endsWith('.part') ? name.substring(0, name.length - 5) : name;
       final stale =
-          name == 'apply_update.ps1' || (path.extension(name) == '.exe' && name != installer.name);
+          name == 'apply_update.ps1' ||
+          (path.extension(setup) == '.exe' && setup != installer.name);
       if (!stale) continue;
       try {
         await entry.delete();
