@@ -753,6 +753,52 @@ void main() {
     expect(find.text('Reloading!'), findsNothing);
   });
 
+  // All three lists, not the first of them: a name is remembered by a piece
+  // of it as often as a phrase is, and a list the search passed by would go
+  // on showing everything beside two that had been narrowed.
+  testWidgets('narrows the names and the words to the search as well', (tester) async {
+    const fire = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Fire in the hole!',
+      reading: 'Ложись!',
+    );
+    const megaton = GlossaryEntry(kind: GlossaryKind.name, source: 'Megaton', reading: 'Мегатон');
+    const rapture = GlossaryEntry(kind: GlossaryKind.name, source: 'Rapture', reading: 'Рапчер');
+    const vault = GlossaryEntry(kind: GlossaryKind.word, source: 'Хранилище', reading: 'Убежище');
+    const whiterun = GlossaryEntry(kind: GlossaryKind.word, source: 'Белгород', reading: 'Вайтран');
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      const GlossaryState(
+        loaded: true,
+        glossary: Glossary(entries: [fire, megaton, rapture, vault, whiterun]),
+      ),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+    Finder row(GlossaryEntry entry) => find.byKey(ValueKey('${entry.kind.name}:${entry.key}'));
+
+    for (final entry in [fire, megaton, rapture, vault, whiterun]) {
+      expect(row(entry), findsOneWidget);
+    }
+
+    await tester.enterText(find.byKey(const ValueKey('glossary-search')), 'mega');
+    await tester.pumpAndSettle();
+
+    expect(row(megaton), findsOneWidget);
+    for (final entry in [fire, rapture, vault, whiterun]) {
+      expect(row(entry), findsNothing);
+    }
+
+    // What was written answers for a word as it does for a phrase.
+    await tester.enterText(find.byKey(const ValueKey('glossary-search')), 'убежищ');
+    await tester.pumpAndSettle();
+
+    expect(row(vault), findsOneWidget);
+    for (final entry in [fire, megaton, rapture, whiterun]) {
+      expect(row(entry), findsNothing);
+    }
+  });
+
   // The search narrows a pack as well, so a line can be found and dragged in
   // one motion -- and the count still says what the pack holds.
   testWidgets('narrows a pack to the search without changing what it holds', (tester) async {
@@ -857,6 +903,70 @@ void main() {
     expect(row(hushed), findsOneWidget);
     expect(row(mine), findsNothing);
     expect(row(packed), findsNothing);
+  });
+
+  // A pack made for a game is mostly that game's names, so these are the two
+  // lists the first preset has the most to say about.
+  testWidgets('holds the names and the words to the presets as well', (tester) async {
+    const packedName = GlossaryEntry(
+      kind: GlossaryKind.name,
+      source: 'Megaton',
+      reading: 'Мегатон',
+    );
+    const looseName = GlossaryEntry(
+      kind: GlossaryKind.name,
+      source: 'Rapture',
+      reading: 'Рапчер',
+    );
+    const packedWord = GlossaryEntry(
+      kind: GlossaryKind.word,
+      source: 'Хранилище',
+      reading: 'Убежище',
+    );
+    const looseWord = GlossaryEntry(
+      kind: GlossaryKind.word,
+      source: 'Белгород',
+      reading: 'Вайтран',
+    );
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      GlossaryState(
+        loaded: true,
+        glossary: Glossary(
+          entries: const [packedName, looseName, packedWord, looseWord],
+          packs: [
+            GlossaryPack(
+              id: 'p1',
+              name: 'Fallout',
+              entryKeys: [packedName.packKey, packedWord.packKey],
+            ),
+          ],
+        ),
+      ),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+    Finder row(GlossaryEntry entry) => find.byKey(ValueKey('${entry.kind.name}:${entry.key}'));
+
+    // "In no pack" is on to begin with, here as over the phrases.
+    expect(row(looseName), findsOneWidget);
+    expect(row(looseWord), findsOneWidget);
+    expect(row(packedName), findsNothing);
+    expect(row(packedWord), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('glossary-preset-loose')));
+    await tester.pumpAndSettle();
+    for (final entry in [packedName, looseName, packedWord, looseWord]) {
+      expect(row(entry), findsOneWidget);
+    }
+
+    // Only a phrase can be passed over, so the other preset leaves nothing
+    // of either list.
+    await tester.tap(find.byKey(const ValueKey('glossary-preset-silent')));
+    await tester.pumpAndSettle();
+    for (final entry in [packedName, looseName, packedWord, looseWord]) {
+      expect(row(entry), findsNothing);
+    }
   });
 
   testWidgets('passes a line over from the transcript', (tester) async {
