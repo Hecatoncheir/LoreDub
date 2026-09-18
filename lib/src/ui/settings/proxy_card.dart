@@ -8,6 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/model_proxy.dart';
 import '../common/setting_card.dart';
 import '../dashboard/cubits/settings_cubit.dart';
+import 'settings_layout.dart';
 
 /// The proxy the downloads go through. It is written down only once it
 /// parses, so a half-typed address never reaches a download.
@@ -83,7 +84,8 @@ class _ProxyCardState extends State<ProxyCard> with AutomaticKeepAliveClientMixi
       child: Form(
         key: _form,
         child: LayoutBuilder(
-          builder: (context, constraints) => constraints.maxWidth < 620
+          builder: (context, constraints) =>
+              constraints.maxWidth < SettingsLayout.fieldBesideButtonWidth
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

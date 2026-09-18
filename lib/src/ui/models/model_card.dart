@@ -40,6 +40,9 @@ class ModelCard extends StatelessWidget {
   final bool selected;
   final VoidCallback? onSelect;
 
+  /// Narrower than this the download button goes under the description.
+  static const _actionBesideWidth = 600.0;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -60,7 +63,7 @@ class ModelCard extends StatelessWidget {
     final body = Padding(
       padding: const EdgeInsets.all(20),
       child: LayoutBuilder(
-        builder: (context, constraints) => constraints.maxWidth < 600
+        builder: (context, constraints) => constraints.maxWidth < _actionBesideWidth
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

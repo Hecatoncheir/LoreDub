@@ -308,9 +308,15 @@ lib/src/ui/
 - [x] **`graph/`:** `_PipelinePanel`, `_InspectorSlot`, `_GraphToolbar`.
       `dashboard_view.dart` переехал в `shell/` и держит только
       `DashboardView` с провайдерами; каркас экрана — `DashboardScaffold`.
-- [ ] Контрольные точки вёрстки (`900`, `860`, `880`, `1000`, `920 + 320`…),
+- [x] Контрольные точки вёрстки (`900`, `860`, `880`, `1000`, `920 + 320`…),
       разбросанные приватными константами, → `theme/tokens/breakpoints.dart`.
-- [ ] `app.dart`: `_Scaled` → `app/interface_scale.dart`.
+      *Сделано иначе:* не одним файлом в `theme/`, а классом на экран рядом
+      с его виджетами (`ShellLayout`, `LiveLayout`, `ScreenLayout`,
+      `CharactersLayout`, `SettingsLayout`) — каждая точка задокументирована
+      тем, что ломалось без неё, и это описание живёт рядом с тем, что оно
+      описывает. От темы они не зависят. Файлы `dashboard/`, которые ещё не
+      разобраны (словарь, холст, график), держат свои пока при себе.
+- [x] `app.dart`: `_Scaled` → `app/interface_scale.dart`.
 
 ### Снижение сложности по ходу переноса
 

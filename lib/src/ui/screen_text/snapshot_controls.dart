@@ -16,6 +16,7 @@ import '../dashboard/process_picker.dart';
 import '../common/language_row.dart';
 import 'snapshot_start_button.dart';
 import 'text_language_picker.dart';
+import 'screen_layout.dart';
 
 /// How to select, what the last selection came to, and the session's button.
 class SnapshotControls extends StatelessWidget {
@@ -132,7 +133,7 @@ class SnapshotControls extends StatelessWidget {
       // at the middle of a paragraph, level with nothing and moving with
       // every line the text below it wrapped to. Narrower than this the
       // picker would be squeezed to a stub, so the button goes under it.
-      builder: (context, constraints) => constraints.maxWidth < 760
+      builder: (context, constraints) => constraints.maxWidth < ScreenLayout.startBesidePickerWidth
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

@@ -18,7 +18,11 @@ import '../characters/characters_panel.dart';
 import '../models/models_panel.dart';
 import '../settings/settings_panel.dart';
 import '../graph/pipeline_panel.dart';
+import 'shell_layout.dart';
 
+/// The frame every screen stands in: the sidebar, or the bottom bar in a
+/// narrow window, the header, the failure banner, and the screen of the
+/// section chosen.
 class DashboardScaffold extends StatelessWidget {
   const DashboardScaffold({super.key});
 
@@ -26,7 +30,7 @@ class DashboardScaffold extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     body: LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 900;
+        final compact = constraints.maxWidth < ShellLayout.compactWidth;
         final content = SafeArea(
           child: Column(
             children: [

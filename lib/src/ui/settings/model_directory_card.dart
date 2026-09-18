@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../common/setting_card.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
+import 'settings_layout.dart';
 
 /// Where the downloaded models are kept, and a way to open that folder.
 class ModelDirectoryCard extends StatelessWidget {
@@ -29,7 +30,8 @@ class ModelDirectoryCard extends StatelessWidget {
       title: l10n.settingsModelDirectory,
       subtitle: l10n.modelDirectoryNote,
       child: LayoutBuilder(
-        builder: (context, constraints) => constraints.maxWidth < 620
+        builder: (context, constraints) =>
+            constraints.maxWidth < SettingsLayout.fieldBesideButtonWidth
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

@@ -12,6 +12,10 @@ abstract final class SettingsLayout {
   /// gap.
   static const groupGap = 28.0;
 
+  /// Narrower than this a card's field and its button stand one under the
+  /// other rather than side by side.
+  static const fieldBesideButtonWidth = 620.0;
+
   /// The gap between two cards of one group.
   static const cardGap = 12.0;
 }

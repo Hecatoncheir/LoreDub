@@ -4,6 +4,10 @@
 /// Where the screen session's page changes its arrangement, measured on the
 /// window it is given.
 abstract final class ScreenLayout {
+  /// Narrower than this the start button goes under the game picker rather
+  /// than beside it, which would squeeze the picker to a stub.
+  static const startBesidePickerWidth = 760.0;
+
   /// What the screen session keeps for itself before it starts scrolling: the
   /// controls beside the frame, and a list under them worth looking at.
   static const minHeight = 980.0;
