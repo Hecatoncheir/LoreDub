@@ -664,6 +664,45 @@ void main() {
     expect(cubits.glossary.state.glossary.inUse.entries, [megaton]);
   });
 
+  testWidgets('asks before a glossary pack is thrown away, and keeps its entries', (tester) async {
+    const megaton = GlossaryEntry(
+      kind: GlossaryKind.name,
+      source: 'Megaton',
+      reading: 'Мегатон',
+    );
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      GlossaryState(
+        loaded: true,
+        glossary: Glossary(
+          entries: const [megaton],
+          packs: [
+            GlossaryPack(id: 'p1', name: 'Fallout', entryKeys: [megaton.packKey]),
+          ],
+        ),
+      ),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+    final l10n = await AppLocalizations.delegate.load(const Locale('ru'));
+
+    final delete = find.byKey(const ValueKey('glossary-pack-delete-p1'));
+    await tester.scrollUntilVisible(delete, 300, scrollable: glossaryScroller());
+    await tester.pumpAndSettle();
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.glossaryPackDeleteMessage('Fallout')), findsOneWidget);
+    await tester.tap(find.text(l10n.charactersDeleteCancel));
+    await tester.pumpAndSettle();
+    expect(cubits.glossary.state.glossary.packs, hasLength(1));
+
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.charactersDeleteConfirm));
+    await tester.pumpAndSettle();
+    expect(cubits.glossary.state.glossary.packs, isEmpty);
+    expect(cubits.glossary.state.glossary.entries, [megaton]);
+  });
+
   // A pack is chosen while looking at what goes into it, so it stands beside
   // the lists where the window is wide enough to hold both.
   testWidgets('stands the packs beside the lists and under them when narrow', (tester) async {

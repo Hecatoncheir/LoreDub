@@ -9,6 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
 import '../theme.dart';
 import 'cubits/glossary_cubit.dart';
+import '../common/confirm_dialog.dart';
 
 /// An entry on its way to a pack, and the pack it was dragged out of.
 ///
@@ -688,6 +689,22 @@ class _GlossaryPacksSection extends StatelessWidget {
   final VoidCallback onImport;
   final ValueChanged<GlossaryPack> onExport;
 
+  /// A pack is only a way of reading the glossary, so throwing one away
+  /// leaves every entry in its list -- but the grouping took the player
+  /// dragging to make, and is asked about like a pack of cards is.
+  Future<void> _confirmDelete(BuildContext context, GlossaryPack pack) async {
+    final glossary = context.read<GlossaryCubit>();
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await confirmRemoval(
+      context,
+      title: l10n.packsDeleteTitle,
+      message: l10n.glossaryPackDeleteMessage(pack.name),
+      cancelLabel: l10n.charactersDeleteCancel,
+      confirmLabel: l10n.charactersDeleteConfirm,
+    );
+    if (confirmed) await glossary.removePack(pack.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -757,7 +774,7 @@ class _GlossaryPacksSection extends StatelessWidget {
                     onActive: (active) =>
                         context.read<GlossaryCubit>().activatePack(pack.id, active: active),
                     onExport: pack.entryKeys.isEmpty ? null : () => onExport(pack),
-                    onDelete: () => context.read<GlossaryCubit>().removePack(pack.id),
+                    onDelete: () => _confirmDelete(context, pack),
                     onDrop: (drag) => context.read<GlossaryCubit>().fileInPack(
                       drag.entry,
                       into: pack.id,
@@ -927,6 +944,7 @@ class _GlossaryPackAreaState extends State<_GlossaryPackArea> {
                     icon: const Icon(Icons.file_upload_outlined, size: 20),
                   ),
                   IconButton(
+                    key: ValueKey('glossary-pack-delete-${widget.pack.id}'),
                     tooltip: l10n.packsDelete,
                     onPressed: widget.onDelete,
                     icon: const Icon(Icons.delete_outline_rounded, size: 20),

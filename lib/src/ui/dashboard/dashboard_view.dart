@@ -55,6 +55,7 @@ import '../shell/dashboard_header.dart';
 import '../live/live_panel.dart';
 import '../live/models_needed_notice.dart';
 import '../screen_text/snapshot_panel.dart';
+import '../common/confirm_dialog.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key, required this.cubits});
@@ -771,32 +772,14 @@ class _CharacterCast extends StatelessWidget {
   Future<void> _confirmDelete(BuildContext context, Character character) async {
     final characters = context.read<CharactersCubit>();
     final l10n = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(l10n.charactersDeleteTitle),
-        content: Text(
-          l10n.charactersDeleteMessage(character.name),
-          style: const TextStyle(fontSize: 16, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.charactersDeleteCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(l10n.charactersDeleteConfirm),
-          ),
-        ],
-      ),
+    final confirmed = await confirmRemoval(
+      context,
+      title: l10n.charactersDeleteTitle,
+      message: l10n.charactersDeleteMessage(character.name),
+      cancelLabel: l10n.charactersDeleteCancel,
+      confirmLabel: l10n.charactersDeleteConfirm,
     );
-    if (confirmed ?? false) await characters.remove(character.id);
+    if (confirmed) await characters.remove(character.id);
   }
 
   @override
@@ -970,32 +953,14 @@ class _CharacterPacks extends StatelessWidget {
   Future<void> _confirmDelete(BuildContext context, CharacterPack pack) async {
     final characters = context.read<CharactersCubit>();
     final l10n = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(l10n.packsDeleteTitle),
-        content: Text(
-          l10n.packsDeleteMessage(pack.name),
-          style: const TextStyle(fontSize: 16, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.charactersDeleteCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(l10n.charactersDeleteConfirm),
-          ),
-        ],
-      ),
+    final confirmed = await confirmRemoval(
+      context,
+      title: l10n.packsDeleteTitle,
+      message: l10n.packsDeleteMessage(pack.name),
+      cancelLabel: l10n.charactersDeleteCancel,
+      confirmLabel: l10n.charactersDeleteConfirm,
     );
-    if (confirmed ?? false) await characters.removePack(pack.id);
+    if (confirmed) await characters.removePack(pack.id);
   }
 
   @override
@@ -2285,32 +2250,14 @@ class _VoiceBankControls extends StatelessWidget {
   Future<void> _confirmClear(BuildContext context) async {
     final settings = context.read<SettingsCubit>();
     final l10n = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(l10n.voiceBankClearTitle),
-        content: Text(
-          l10n.voiceBankClearMessage,
-          style: const TextStyle(fontSize: 16, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.voiceBankClearCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(l10n.voiceBankClearConfirm),
-          ),
-        ],
-      ),
+    final confirmed = await confirmRemoval(
+      context,
+      title: l10n.voiceBankClearTitle,
+      message: l10n.voiceBankClearMessage,
+      cancelLabel: l10n.voiceBankClearCancel,
+      confirmLabel: l10n.voiceBankClearConfirm,
     );
-    if (confirmed ?? false) await settings.clearVoiceBank();
+    if (confirmed) await settings.clearVoiceBank();
   }
 
   @override

@@ -10,6 +10,7 @@ import '../../domain/model_package.dart';
 import '../failure_messages.dart';
 import '../model_names.dart';
 import '../theme.dart';
+import '../common/confirm_dialog.dart';
 
 /// The pieces every model on the Models screen is drawn with — the Whisper
 /// bars and the tiles alike — so a download, a pause or a delete looks and
@@ -263,31 +264,15 @@ Future<bool> confirmModelRemoval(
   required String title,
   required String message,
   String? confirmLabel,
-}) async {
+}) {
   final l10n = AppLocalizations.of(context);
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      title: Text(title),
-      content: Text(message, style: const TextStyle(fontSize: 16, height: 1.4)),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l10n.modelRemoveCancel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.error,
-            foregroundColor: Colors.white,
-          ),
-          child: Text(confirmLabel ?? l10n.modelRemoveConfirm),
-        ),
-      ],
-    ),
+  return confirmRemoval(
+    context,
+    title: title,
+    message: message,
+    cancelLabel: l10n.modelRemoveCancel,
+    confirmLabel: confirmLabel ?? l10n.modelRemoveConfirm,
   );
-  return confirmed ?? false;
 }
 
 /// A download that failed. Its model went back to "not downloaded", so its

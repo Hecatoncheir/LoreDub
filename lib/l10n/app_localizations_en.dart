@@ -220,6 +220,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'While any pack is switched on, the dubbing is checked against the switched-on packs alone';
 
   @override
+  String glossaryPackDeleteMessage(String name) {
+    return 'The pack “$name” will be deleted. Its entries stay in their lists.';
+  }
+
+  @override
   String glossaryPackCount(num count) {
     final intl.NumberFormat countNumberFormat = intl.NumberFormat.compact(
       locale: localeName,

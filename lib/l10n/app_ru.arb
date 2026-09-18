@@ -93,6 +93,14 @@
   "glossaryPackImport": "Загрузить пакет",
   "glossaryPackActive": "Активен",
   "glossaryPackActiveHint": "Пока включён хотя бы один пакет, озвучка сверяется только с включёнными",
+  "glossaryPackDeleteMessage": "Пакет «{name}» будет удалён. Записи останутся в своих списках.",
+  "@glossaryPackDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryPackCount": "{count, plural, =0{пусто} one{{count} запись} few{{count} записи} other{{count} записей}}",
   "@glossaryPackCount": {
     "placeholders": {

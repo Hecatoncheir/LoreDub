@@ -220,6 +220,11 @@ class AppLocalizationsRu extends AppLocalizations {
       'Пока включён хотя бы один пакет, озвучка сверяется только с включёнными';
 
   @override
+  String glossaryPackDeleteMessage(String name) {
+    return 'Пакет «$name» будет удалён. Записи останутся в своих списках.';
+  }
+
+  @override
   String glossaryPackCount(num count) {
     final intl.NumberFormat countNumberFormat = intl.NumberFormat.compact(
       locale: localeName,

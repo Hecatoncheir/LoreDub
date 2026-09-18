@@ -483,6 +483,12 @@ abstract class AppLocalizations {
   /// **'Пока включён хотя бы один пакет, озвучка сверяется только с включёнными'**
   String get glossaryPackActiveHint;
 
+  /// No description provided for @glossaryPackDeleteMessage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакет «{name}» будет удалён. Записи останутся в своих списках.'**
+  String glossaryPackDeleteMessage(String name);
+
   /// No description provided for @glossaryPackCount.
   ///
   /// In ru, this message translates to:

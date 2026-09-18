@@ -93,6 +93,14 @@
   "glossaryPackImport": "Load a pack",
   "glossaryPackActive": "Active",
   "glossaryPackActiveHint": "While any pack is switched on, the dubbing is checked against the switched-on packs alone",
+  "glossaryPackDeleteMessage": "The pack “{name}” will be deleted. Its entries stay in their lists.",
+  "@glossaryPackDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryPackCount": "{count, plural, =0{empty} one{{count} entry} other{{count} entries}}",
   "@glossaryPackCount": {
     "placeholders": {
