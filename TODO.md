@@ -316,7 +316,7 @@ lib/src/ui/
 что перенесённая функция для него — новая. Функцию сложнее 15 поэтому нельзя
 перенести как есть: её упрощают в том же коммите, где она переезжает.
 
-- [ ] `_CharacterCast.build` (CC 76): правила доступности действий
+- [x] `_CharacterCast.build` (CC 76): правила доступности действий
       (`onPlay`, `onPreview`, `onRecord`, `onFilesDropped`) → методы
       `CharactersState` (`canPlayClip(id)`, `canPreview(id)`,
       `recordAction(id)`), которые собирают `CharacterTileModel`. Плитка
@@ -325,6 +325,11 @@ lib/src/ui/
       `CharacterTile` остаётся чистым листом — `CharacterTileModel` плюс
       связка колбэков `CharacterTileActions` вместо 19 параметров. Заодно
       тик записи перестраивает одну плитку, а не весь состав.
+      *Сделано частично:* правила — `canPlayClip`, `canPreview`,
+      `recordActionFor` (`RecordAction`), `takesFiles` в `CharactersState`
+      с тестами; карточку собирает `CastCard`, сетку — `CastDropArea`.
+      `CharacterTileModel` вместо 19 параметров и подписка одной плитки
+      через `BlocSelector` — впереди, вместе с `character_tiles.dart`.
 - [ ] `_ComputeDeviceCard._build` (35), `_cell` (17), `BackendCell.build`
       (36): состояние ячейки — sealed `BackendCellState` (`ready` /
       `needsRuntime(install)` / `downloading(progress)` / `noHardware` /

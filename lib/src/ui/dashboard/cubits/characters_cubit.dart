@@ -23,6 +23,9 @@ import 'downloads_cubit.dart';
 import 'settings_cubit.dart';
 import 'shell_cubit.dart';
 
+/// What a card's record button does when pressed.
+enum RecordAction { start, stop }
+
 /// The characters screen: the player's cast, and the session that records a
 /// voice for one of them.
 class CharactersState extends Equatable {
@@ -98,6 +101,31 @@ class CharactersState extends Equatable {
 
   /// Nothing is played over anything else: one clip or one sample at a time.
   bool get sounding => playingId != null || previewingId != null;
+
+  /// Whether [id]'s own clip can be played now: it has one, and nothing
+  /// else is sounding.
+  bool canPlayClip(String id) => canPlay(id) && !sounding;
+
+  /// Whether a card can be read aloud in the voice the dubbing would give
+  /// it. A sample brings up a worker of its own, so it waits for a dubbing
+  /// session ([dubbing]) as well as for this screen's own sessions, and it
+  /// needs the voice package ([speechInstalled]).
+  bool canPreview({required bool dubbing, required bool speechInstalled}) =>
+      speechInstalled && !dubbing && !sounding && !running && !building;
+
+  /// What the record button on [id] does now, or null when it does nothing:
+  /// only a running session records, and only one card at a time.
+  RecordAction? recordActionFor(String id) {
+    if (!running) return null;
+    if (recordingId == id) return RecordAction.stop;
+    return recording ? null : RecordAction.start;
+  }
+
+  /// Whether files dropped on a card are measured into its voice. Like a
+  /// sample, it brings up a worker of its own; it needs the converter
+  /// ([converterInstalled]) to measure with.
+  bool takesFiles({required bool dubbing, required bool converterInstalled}) =>
+      converterInstalled && !dubbing && !building && !recording;
 
   /// The cards [pack] holds, in the order they were dropped into it. An id
   /// no card answers to is passed over rather than drawn as a gap.

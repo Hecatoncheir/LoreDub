@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/app_settings.dart';
-import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
@@ -31,31 +30,27 @@ import 'cubits/pipeline_cubit.dart';
 import 'cubits/pipeline_graph_bloc.dart';
 import 'cubits/settings_cubit.dart';
 import 'cubits/shell_cubit.dart';
-import 'character_tiles.dart';
 import 'glossary_screen.dart';
 import 'compute_matrix.dart';
 import 'dashboard_context.dart';
 import 'hotkey_field.dart';
 import 'model_tiles.dart';
 import 'model_visuals.dart';
-import 'process_picker.dart';
 import 'pipeline_canvas.dart';
 import 'pipeline_inspector.dart';
 import 'pipeline_shelf.dart';
 import 'whisper_model_chart.dart';
 import '../common/module_label.dart';
-import '../common/area_heading.dart';
 import '../common/setting_card.dart';
 import '../common/section_note.dart';
 import '../common/error_banner.dart';
-import '../common/language_row.dart';
 import '../shell/side_navigation.dart';
 import '../shell/bottom_navigation.dart';
 import '../shell/dashboard_header.dart';
 import '../live/live_panel.dart';
-import '../live/models_needed_notice.dart';
 import '../screen_text/snapshot_panel.dart';
 import '../common/confirm_dialog.dart';
+import '../characters/characters_panel.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key, required this.cubits});
@@ -117,7 +112,7 @@ class _Dashboard extends StatelessWidget {
                       DashboardSection.models => _ModelsPanel(
                         key: const ValueKey('models'),
                       ),
-                      DashboardSection.characters => _CharactersPanel(
+                      DashboardSection.characters => CharactersPanel(
                         key: const ValueKey('characters'),
                       ),
                       DashboardSection.glossary => GlossaryPanel(
@@ -157,8 +152,6 @@ class _Dashboard extends StatelessWidget {
 /// the other. Below it a slider and its own notes would be squeezed.
 const _pairedCardsWidth = 900.0;
 
-/// The characters screen: the player's cast, and the session their voices
-/// are recorded through.
 /// The pipeline as a scheme: the stages as nodes, the route between them,
 /// and the cards of the cast that take a voice from one another.
 ///
@@ -571,504 +564,6 @@ class _GraphToolbar extends StatelessWidget {
       ],
     );
   }
-}
-
-class _CharactersPanel extends StatelessWidget {
-  const _CharactersPanel({super.key});
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
-    child: Column(
-      children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ModuleLabel(
-                  number: '01',
-                  label: AppLocalizations.of(context).areaVoiceRecording,
-                ),
-                const SizedBox(height: 14),
-                _CharacterSessionControls(),
-              ],
-            ),
-          ),
-        ),
-        ModelsNeededNotice(
-          ready: (selection) => selection.voiceConverter?.installed ?? false,
-        ),
-        const SizedBox(height: 16),
-        // The cast on the left, the packs beside it on the right: a card is
-        // carried across rather than down a scroll, and both ends of the
-        // journey stay in sight the whole way. A window too narrow to hold
-        // the two side by side puts the packs back underneath, where a drag
-        // is longer but possible.
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) => constraints.maxWidth < _packsBeside
-                ? ListView(
-                    padding: EdgeInsets.zero,
-                    children: [
-                      _CharacterCast(),
-                      const SizedBox(height: 16),
-                      _CharacterPacks(),
-                    ],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Each side scrolls on its own, so reaching for a pack
-                      // does not move the cards under the pointer.
-                      Expanded(
-                        child: ListView(
-                          padding: EdgeInsets.zero,
-                          children: [_CharacterCast()],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      SizedBox(
-                        width: (constraints.maxWidth * 0.36).clamp(340.0, 480.0),
-                        child: ListView(
-                          padding: EdgeInsets.zero,
-                          children: [_CharacterPacks()],
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-/// How much room the characters screen needs before the packs stand beside
-/// the cast rather than under it: two columns of cards, and the gap.
-const _packsBeside = 880.0;
-
-/// Which game to listen to, and whether the session that measures voices is
-/// running. Live dubbing holds the same worker, so the two never run at once.
-class _CharacterSessionControls extends StatelessWidget {
-  const _CharacterSessionControls();
-
-  @override
-  Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
-    builder: (context, shell) => BlocBuilder<DownloadsCubit, DownloadsState>(
-      buildWhen: whenChanged((downloads) => downloads.installed),
-      builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
-        buildWhen: whenChanged(
-          (pipeline) => (pipeline.processes, pipeline.selectedProcess, pipeline.running),
-        ),
-        builder: (context, pipeline) => BlocBuilder<CharactersCubit, CharactersState>(
-          buildWhen: whenChanged((characters) => (characters.status, characters.recordingId)),
-          builder: (context, characters) =>
-              _build(context, pipeline, characters, initializing: shell.initializing),
-        ),
-      ),
-    ),
-  );
-
-  Widget _build(
-    BuildContext context,
-    LivePipelineState pipeline,
-    CharactersState characters, {
-    required bool initializing,
-  }) {
-    final l10n = AppLocalizations.of(context);
-    final canRecord = context.read<CharactersCubit>().canRecord;
-    final locked = characters.running || pipeline.running;
-    final picker = ProcessPicker(
-      processes: pipeline.processes,
-      selected: pipeline.selectedProcess,
-      enabled: !locked,
-      onSelected: context.read<PipelineCubit>().selectProcess,
-      onRefresh: context.read<PipelineCubit>().refreshProcesses,
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${l10n.charactersNote} ${l10n.voicesOnTheGraph}',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(child: picker),
-            const SizedBox(width: 16),
-            SizedBox(
-              width: LanguageRow.actionWidth,
-              child: FilledButton.icon(
-                key: const ValueKey('charactersSession'),
-                onPressed: !canRecord || initializing || pipeline.running
-                    ? null
-                    : () => context.read<CharactersCubit>().toggleSession(
-                        initializing: initializing,
-                        process: pipeline.selectedProcess,
-                      ),
-                icon: characters.status == PipelineStatus.starting
-                    ? SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      )
-                    : Icon(
-                        characters.running ? Icons.stop_rounded : Icons.fiber_manual_record_rounded,
-                      ),
-                label: Text(
-                  characters.running ? l10n.charactersSessionStop : l10n.charactersSessionStart,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          !canRecord
-              ? l10n.charactersNeedsConverter
-              : pipeline.running
-              ? l10n.snapshotInLive
-              : l10n.charactersHowTo,
-          style: TextStyle(
-            color: canRecord ? LoreDubPalette.mutedInk : LoreDubPalette.warning,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// The cards themselves, with what it takes to add them and hand them on.
-///
-/// A card dropped here from a pack leaves that pack: the cast holds every
-/// character whether a pack names them or not, so this is where a card goes
-/// back to being in none.
-class _CharacterCast extends StatelessWidget {
-  const _CharacterCast();
-
-  Future<void> _exportAll(BuildContext context, List<Character> characters) async {
-    final charactersCubit = context.read<CharactersCubit>();
-    final location = await getSaveLocation(suggestedName: 'loredub-characters.json');
-    if (location == null) return;
-    await charactersCubit.export(location.path, characters);
-  }
-
-  Future<void> _export(BuildContext context, Character character) async {
-    final characters = context.read<CharactersCubit>();
-    final location = await getSaveLocation(
-      suggestedName: '${character.name.trim().isEmpty ? 'character' : character.name}.json',
-    );
-    if (location == null) return;
-    await characters.export(location.path, [character]);
-  }
-
-  Future<void> _confirmDelete(BuildContext context, Character character) async {
-    final characters = context.read<CharactersCubit>();
-    final l10n = AppLocalizations.of(context);
-    final confirmed = await confirmRemoval(
-      context,
-      title: l10n.charactersDeleteTitle,
-      message: l10n.charactersDeleteMessage(character.name),
-      cancelLabel: l10n.charactersDeleteCancel,
-      confirmLabel: l10n.charactersDeleteConfirm,
-    );
-    if (confirmed) await characters.remove(character.id);
-  }
-
-  @override
-  Widget build(BuildContext context) => BlocSelector<PipelineCubit, LivePipelineState, bool>(
-    // Whether a dubbing session holds the worker, and nothing more of it: a
-    // recognized phrase must not redraw every card.
-    selector: (pipeline) => pipeline.running,
-    builder: (context, dubbing) => BlocBuilder<CharactersCubit, CharactersState>(
-      builder: (context, state) => _build(context, state, dubbing: dubbing),
-    ),
-  );
-
-  /// [dubbing] is a dubbing session holding the worker. A sample and a card
-  /// measured from files each bring up a worker of their own, which would be
-  /// taken from under that session, so both wait for it to end — the way the
-  /// button that starts the recording does.
-  Widget _build(BuildContext context, CharactersState state, {required bool dubbing}) {
-    final l10n = AppLocalizations.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-            child: AreaHeading(
-              label: ModuleLabel(number: '02', label: l10n.areaCast),
-              actions: [
-                TextButton.icon(
-                  onPressed: state.characters.isEmpty
-                      ? null
-                      : () => _exportAll(context, state.characters),
-                  icon: const Icon(Icons.file_upload_outlined, size: 18),
-                  label: Text(l10n.charactersExportAll),
-                  style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
-                ),
-                FilledButton.icon(
-                  key: const ValueKey('charactersAdd'),
-                  onPressed: () => context.read<CharactersCubit>().add(l10n.charactersNewName),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(l10n.charactersAdd),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          DragTarget<CharacterDrag>(
-            // Only a card that came out of a pack has anywhere to land
-            // here; one dragged from the cast is already where it is.
-            onWillAcceptWithDetails: (details) => details.data.fromPackId != null,
-            onAcceptWithDetails: (details) => context.read<CharactersCubit>().removeFromPack(
-              details.data.fromPackId!,
-              details.data.character.id,
-            ),
-            builder: (context, candidate, _) => ColoredBox(
-              color: candidate.isEmpty
-                  ? Colors.transparent
-                  : LoreDubPalette.orange.withValues(alpha: 0.08),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
-                child: state.characters.isEmpty
-                    ? _EmptyCast(loading: state.loading)
-                    : CharacterTileGrid(
-                        children: [
-                          for (final character in state.characters)
-                            CharacterTile(
-                              key: ValueKey(character.id),
-                              character: character,
-                              recording: state.recordingId == character.id,
-                              heardSeconds: state.heardSeconds,
-                              packNames: [
-                                for (final pack in state.packs)
-                                  if (pack.holds(character.id)) pack.name,
-                              ],
-                              cast: [
-                                for (final other in state.characters)
-                                  if (other.id != character.id) other,
-                              ],
-                              onRename: (name) =>
-                                  context.read<CharactersCubit>().rename(character.id, name),
-                              playing: state.playingId == character.id,
-                              onPlay: !state.canPlay(character.id) || state.sounding
-                                  ? null
-                                  : () => context.read<CharactersCubit>().playClip(character.id),
-                              previewing: state.previewingId == character.id,
-                              onStopSound: context.read<CharactersCubit>().stopSounding,
-                              carriesTimbre: context.read<CharactersCubit>().carriesTimbre,
-                              dubbing: dubbing,
-                              onPreview:
-                                  dubbing ||
-                                      state.sounding ||
-                                      state.running ||
-                                      state.building ||
-                                      !context.read<CharactersCubit>().canPreview
-                                  ? null
-                                  : () => context.read<CharactersCubit>().preview(character.id),
-                              onRecord:
-                                  !state.running ||
-                                      (state.recording && state.recordingId != character.id)
-                                  ? null
-                                  : () => state.recordingId == character.id
-                                        ? context.read<CharactersCubit>().stopRecording()
-                                        : context.read<CharactersCubit>().startRecording(
-                                            character.id,
-                                          ),
-                              building: state.buildingId == character.id,
-                              built: state.builtId == character.id ? state.built : null,
-                              onFilesDropped:
-                                  dubbing ||
-                                      state.building ||
-                                      state.recording ||
-                                      !context.read<CharactersCubit>().canRecord
-                                  ? null
-                                  : (paths) => context.read<CharactersCubit>().voiceFromFiles(
-                                      character.id,
-                                      paths,
-                                    ),
-                              onExport: character.vector.isEmpty
-                                  ? null
-                                  : () => _export(context, character),
-                              onDelete: () => _confirmDelete(context, character),
-                            ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The packs: named areas cards are dropped into, handed on and thrown away
-/// as a group. Throwing one away leaves the cards in the cast — the player
-/// recorded them, and only the grouping was ever the pack's.
-class _CharacterPacks extends StatelessWidget {
-  const _CharacterPacks();
-
-  Future<void> _import(BuildContext context) async {
-    final charactersCubit = context.read<CharactersCubit>();
-    final l10n = AppLocalizations.of(context);
-    final chosen = await openFiles(
-      acceptedTypeGroups: const [
-        XTypeGroup(label: 'LoreDub', extensions: ['json']),
-      ],
-    );
-    if (chosen.isEmpty) return;
-    final added = await charactersCubit.import([for (final file in chosen) file.path]);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          added.packs == 0
-              ? l10n.charactersImported(added.characters)
-              : l10n.packsImported(added.packs, added.characters),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _export(BuildContext context, CharacterPack pack, List<Character> members) async {
-    final characters = context.read<CharactersCubit>();
-    final location = await getSaveLocation(
-      suggestedName: '${pack.name.trim().isEmpty ? 'pack' : pack.name}.json',
-    );
-    if (location == null) return;
-    await characters.export(location.path, members, pack: pack);
-  }
-
-  Future<void> _confirmDelete(BuildContext context, CharacterPack pack) async {
-    final characters = context.read<CharactersCubit>();
-    final l10n = AppLocalizations.of(context);
-    final confirmed = await confirmRemoval(
-      context,
-      title: l10n.packsDeleteTitle,
-      message: l10n.packsDeleteMessage(pack.name),
-      cancelLabel: l10n.charactersDeleteCancel,
-      confirmLabel: l10n.charactersDeleteConfirm,
-    );
-    if (confirmed) await characters.removePack(pack.id);
-  }
-
-  @override
-  Widget build(BuildContext context) => BlocBuilder<CharactersCubit, CharactersState>(
-    buildWhen: whenChanged(
-      (characters) => (characters.characters, characters.packs, characters.loading),
-    ),
-    builder: (context, state) {
-      final l10n = AppLocalizations.of(context);
-      return Card(
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-              child: AreaHeading(
-                label: ModuleLabel(number: '03', label: l10n.areaPacks),
-                actions: [
-                  TextButton.icon(
-                    key: const ValueKey('charactersImport'),
-                    onPressed: () => _import(context),
-                    icon: const Icon(Icons.file_download_outlined, size: 18),
-                    label: Text(l10n.charactersImport),
-                    style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
-                  ),
-                  FilledButton.icon(
-                    key: const ValueKey('packsAdd'),
-                    onPressed: () => context.read<CharactersCubit>().addPack(l10n.packsNewName),
-                    icon: const Icon(Icons.create_new_folder_outlined, size: 18),
-                    label: Text(l10n.packsAdd),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
-              child: state.packs.isEmpty
-                  ? Row(
-                      children: [
-                        const Icon(
-                          Icons.inventory_2_outlined,
-                          size: 20,
-                          color: LoreDubPalette.mutedInk,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(l10n.packsEmpty)),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final pack in state.packs) ...[
-                          CharacterPackArea(
-                            key: ValueKey(pack.id),
-                            pack: pack,
-                            members: state.membersOf(pack),
-                            onRename: (name) =>
-                                context.read<CharactersCubit>().renamePack(pack.id, name),
-                            onExport: pack.characterIds.isEmpty
-                                ? null
-                                : () => _export(context, pack, state.membersOf(pack)),
-                            onDelete: () => _confirmDelete(context, pack),
-                            onDrop: (drag) => context.read<CharactersCubit>().addToPack(
-                              pack.id,
-                              drag.character.id,
-                            ),
-                            onRemoveMember: (character) => context
-                                .read<CharactersCubit>()
-                                .removeFromPack(pack.id, character.id),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                      ],
-                    ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-class _EmptyCast extends StatelessWidget {
-  const _EmptyCast({required this.loading});
-
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: loading
-        ? const SizedBox.shrink()
-        : Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.groups_rounded, size: 42, color: LoreDubPalette.mutedInk),
-                const SizedBox(height: 14),
-                Text(
-                  AppLocalizations.of(context).charactersEmpty,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-  );
 }
 
 class _ModelsPanel extends StatelessWidget {
