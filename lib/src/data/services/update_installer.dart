@@ -93,12 +93,7 @@ class UpdateInstaller {
     // handed the update to. The part of this very setup stays to be resumed.
     await for (final entry in directory.list(followLinks: false)) {
       if (entry is! File) continue;
-      final name = path.basename(entry.path);
-      final setup = name.endsWith('.part') ? name.substring(0, name.length - 5) : name;
-      final stale =
-          name == 'apply_update.ps1' ||
-          (path.extension(setup) == '.exe' && setup != installer.name);
-      if (!stale) continue;
+      if (!_isStale(path.basename(entry.path), installer.name)) continue;
       try {
         await entry.delete();
       } on FileSystemException {
@@ -140,4 +135,13 @@ class UpdateInstaller {
     byteSize: installer.size,
     hash: installer.sha256,
   );
+}
+
+/// Whether [name] in the updates folder is something other than [setup] or
+/// its part: an older setup, whole or half-fetched, or the script earlier
+/// versions handed the update to.
+bool _isStale(String name, String setup) {
+  if (name == 'apply_update.ps1') return true;
+  final whole = name.endsWith('.part') ? path.withoutExtension(name) : name;
+  return path.extension(whole) == '.exe' && whole != setup;
 }
