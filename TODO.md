@@ -295,7 +295,7 @@ lib/src/ui/
 - [x] **Атомы в `common/`:** `_ModuleLabel`, `_AreaHeading`, `_SettingCard`,
       `_SectionNote`, `_ErrorBanner`, `_StatusChip`, `_ClearListButton`,
       `_LanguageRow`. От них зависят все экраны.
-- [ ] **`shell/`:** `_Navigation`, `_NavigationGroup`, `_NavigationItem`,
+- [x] **`shell/`:** `_Navigation`, `_NavigationGroup`, `_NavigationItem`,
       `_BottomNavigation`, `_Header`, `_VersionButton`, `_UpdateRow`;
       `_sectionMark` → расширение над `DashboardSection` в `shell/`.
 - [ ] **`live/`**, затем **`screen_text/`**, **`characters/`**, **`models/`**.

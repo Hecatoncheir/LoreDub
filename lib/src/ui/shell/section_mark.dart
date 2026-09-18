@@ -1,0 +1,25 @@
+// Copyright (c) 2026 LoreDub contributors.
+// SPDX-License-Identifier: MIT
+
+import '../../../l10n/app_localizations.dart';
+import '../dashboard/cubits/shell_cubit.dart';
+
+/// The strap over the title: where the section stands in the order the work
+/// is done in, and the name of its area.
+///
+/// Numbered off [DashboardSection] rather than by hand, so a screen put
+/// between two others renumbers the rest by itself.
+extension SectionMark on DashboardSection {
+  String mark(AppLocalizations l10n) {
+    final area = switch (this) {
+      DashboardSection.live => l10n.headerLive,
+      DashboardSection.snapshot => l10n.headerScreen,
+      DashboardSection.characters => l10n.headerCharacters,
+      DashboardSection.glossary => l10n.headerGlossary,
+      DashboardSection.pipeline => l10n.headerPipeline,
+      DashboardSection.models => l10n.headerModels,
+      DashboardSection.settings => l10n.headerSettings,
+    };
+    return '${(index + 1).toString().padLeft(2, '0')}  /  $area';
+  }
+}
