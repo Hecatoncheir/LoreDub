@@ -13,7 +13,7 @@ import '../theme.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/pipeline_graph_bloc.dart';
 import '../dashboard/pipeline_canvas.dart';
-import '../dashboard/pipeline_shelf.dart';
+import 'pipeline_shelf.dart';
 
 /// The presets, the steps back, and the cards waiting to be put on the
 /// canvas. Under them, whatever the last attempt at a link came to.

@@ -15,15 +15,15 @@ import '../compute_names.dart';
 import '../language_names.dart';
 import '../model_names.dart';
 import '../theme.dart';
-import 'cubits/characters_cubit.dart';
-import 'cubits/downloads_cubit.dart';
-import 'cubits/pipeline_cubit.dart';
-import 'cubits/settings_cubit.dart';
-import 'cubits/pipeline_graph_bloc.dart';
-import 'cubits/shell_cubit.dart';
+import '../dashboard/cubits/characters_cubit.dart';
+import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/pipeline_graph_bloc.dart';
+import '../dashboard/cubits/shell_cubit.dart';
 import 'node_paint.dart';
-import 'pipeline_canvas.dart';
-import 'process_picker.dart';
+import '../dashboard/pipeline_canvas.dart';
+import '../common/process_picker.dart';
 import '../common/committed_text_field.dart';
 
 /// What the node the player clicked is set to, and the controls that change

@@ -20,7 +20,7 @@ import '../../domain/character.dart';
 import '../../domain/pipeline_graph.dart';
 import '../../domain/saved_pipeline.dart';
 import '../theme.dart';
-import 'pipeline_canvas.dart' show NodeMetrics;
+import '../dashboard/pipeline_canvas.dart' show NodeMetrics;
 import '../common/module_number.dart';
 
 class PipelineShelf extends StatefulWidget {

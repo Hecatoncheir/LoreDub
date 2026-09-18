@@ -3,7 +3,7 @@
 
 import 'package:flutter/material.dart';
 
-import 'dashboard/node_paint.dart';
+import 'graph/node_paint.dart';
 
 /// Nunito carries the headings, its wider sibling sets the running text, and
 /// JetBrains Mono is reserved for the instrument markings — module numbers,

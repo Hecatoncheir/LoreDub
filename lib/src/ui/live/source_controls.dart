@@ -10,7 +10,7 @@ import '../dashboard/cubits/characters_cubit.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
-import '../dashboard/process_picker.dart';
+import '../common/process_picker.dart';
 import 'language_controls.dart';
 import 'target_language_picker.dart';
 

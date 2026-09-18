@@ -12,7 +12,7 @@ import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
-import '../dashboard/process_picker.dart';
+import '../common/process_picker.dart';
 import '../common/language_row.dart';
 
 /// Which game to listen to, and whether the session that measures voices is

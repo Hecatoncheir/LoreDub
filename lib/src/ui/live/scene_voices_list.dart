@@ -7,10 +7,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/character.dart';
 import '../../domain/pipeline_state.dart';
-import '../dashboard/character_tiles.dart';
 import '../dashboard/cubits/characters_cubit.dart';
 import '../speaker_names.dart';
 import '../theme.dart';
+import 'scene_voice_row.dart';
 
 /// Every voice the session has heard, each named as the cast knows it and
 /// with who reads it now.

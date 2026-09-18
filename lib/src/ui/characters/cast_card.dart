@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/character.dart';
 import '../common/confirm_dialog.dart';
-import '../dashboard/character_tiles.dart';
+import 'character_tile.dart';
 import '../dashboard/cubits/characters_cubit.dart';
 
 /// One card of the cast, wired to what can be done to it right now.

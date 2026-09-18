@@ -4,11 +4,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../dashboard/character_tiles.dart';
 import '../dashboard/cubits/characters_cubit.dart';
 import '../theme.dart';
 import 'cast_card.dart';
 import 'empty_cast.dart';
+import 'character_drag.dart';
+import 'character_tile_grid.dart';
 
 /// The cards of the cast, laid out in a grid that a card dragged out of a
 /// pack can be dropped back on -- which takes it out of that pack.

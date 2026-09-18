@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../dashboard/cubits/settings_cubit.dart';
-import '../dashboard/hotkey_field.dart';
+import 'hotkey_field.dart';
 import '../hotkey_names.dart';
 
 /// One action and the field that binds its combination.

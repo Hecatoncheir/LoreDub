@@ -11,7 +11,7 @@ import '../theme.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
-import '../dashboard/ocr_region_picker.dart';
+import 'ocr_region_picker.dart';
 import '../common/module_label.dart';
 
 /// The frame the subtitles are read out of, drawn on a picture of the game's

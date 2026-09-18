@@ -22,7 +22,7 @@ import '../language_names.dart';
 import '../model_names.dart';
 import '../theme.dart';
 import 'cubits/pipeline_graph_bloc.dart';
-import 'node_paint.dart';
+import '../graph/node_paint.dart';
 
 /// How big every node is, and where its sockets sit on it.
 ///

@@ -38,12 +38,13 @@ import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart'
     show PipelineSession, PipelineStatus, SceneSpeaker, TranscriptEntry;
-import 'package:lore_dub/src/ui/dashboard/character_tiles.dart';
+import 'package:lore_dub/src/ui/characters/character_pack_area.dart';
+import 'package:lore_dub/src/ui/characters/character_tile.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/pipeline_canvas.dart';
-import 'package:lore_dub/src/ui/dashboard/pipeline_inspector.dart';
+import 'package:lore_dub/src/ui/graph/pipeline_inspector.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';

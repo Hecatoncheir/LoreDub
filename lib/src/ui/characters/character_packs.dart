@@ -11,11 +11,11 @@ import '../../domain/character.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/characters_cubit.dart';
-import '../dashboard/character_tiles.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/module_label.dart';
 import '../common/area_heading.dart';
 import '../common/confirm_dialog.dart';
+import 'character_pack_area.dart';
 
 /// The packs: named areas cards are dropped into, handed on and thrown away
 /// as a group. Throwing one away leaves the cards in the cast — the player
