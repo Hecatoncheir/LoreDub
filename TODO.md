@@ -299,7 +299,7 @@ lib/src/ui/
       `_BottomNavigation`, `_Header`, `_VersionButton`, `_UpdateRow`;
       `_sectionMark` → расширение над `DashboardSection` в `shell/`.
 - [x] **`live/`**, затем **`screen_text/`**, **`characters/`**, **`models/`**.
-- [ ] **`settings/`:** `_SettingsPanelState` (650 строк, ~20 методов
+- [x] **`settings/`:** `_SettingsPanelState` (650 строк, ~20 методов
       `Widget _x(...)`) распадается на `InterfaceSettingsGroup`, `ScaleCard`,
       `HotkeysCard`, `DubbingSettingsGroup`, `ProxyCard`, `PythonCard`,
       `ModelDirectoryCard`. Контроллеры и ключи форм уезжают в карточки,
@@ -330,11 +330,15 @@ lib/src/ui/
       с тестами; карточку собирает `CastCard`, сетку — `CastDropArea`.
       `CharacterTileModel` вместо 19 параметров и подписка одной плитки
       через `BlocSelector` — впереди, вместе с `character_tiles.dart`.
-- [ ] `_ComputeDeviceCard._build` (35), `_cell` (17), `BackendCell.build`
+- [x] `_ComputeDeviceCard._build` (35), `_cell` (17), `BackendCell.build`
       (36): состояние ячейки — sealed `BackendCellState` (`ready` /
       `needsRuntime(install)` / `downloading(progress)` / `noHardware` /
       `notBuiltIn`), вычисляется в `DownloadsState`; виджет — `switch` по
       нему, по виджету на вариант.
+      *Сделано для таблицы настроек:* sealed `StageBackendStatus` +
+      `stageBackendStatus()` с тестами, ячейку рисует `StageBackendCell`.
+      `BackendCell.build` (36) в `compute_matrix.dart` ещё ждёт своей
+      очереди — вместе с остальными файлами `dashboard/`.
 - [ ] `_VoiceCard._build` (29), `_ModelsPanel._build` (24),
       `_ModelCard.build` (21), `modelActions` (30), `ModelTile.build` (26),
       `_ModelBarState._content` (26): тот же приём — sealed-состояние

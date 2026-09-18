@@ -180,4 +180,10 @@ void main() {
       ),
     );
   });
+
+  test('offers the thread counts a machine has, with the chosen and the default', () {
+    expect(cpuThreadOptions(4, 8), [2, 3, 4, 6, 8]);
+    // Carried over from a larger processor, the choice still shows.
+    expect(cpuThreadOptions(16, 4), [2, 3, 4, 16]);
+  });
 }

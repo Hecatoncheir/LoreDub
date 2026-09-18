@@ -6,6 +6,7 @@ import '../data/services/local_inference_service.dart';
 import '../data/services/python_discovery.dart';
 import '../domain/failure.dart';
 import '../domain/hotkey.dart';
+import 'hotkey_names.dart';
 import 'language_names.dart';
 
 /// Turns what the services raised into a sentence in the interface language.
@@ -75,10 +76,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
 /// The action a refused combination was meant for. One this build does not
 /// know is named as the native side sent it rather than passed off as another.
 String _hotkeyName(AppLocalizations l10n, String detail) => switch (HotkeyAction.named(detail)) {
-  HotkeyAction.pause => l10n.hotkeyPause,
-  HotkeyAction.resume => l10n.hotkeyResume,
-  HotkeyAction.snapshot => l10n.hotkeySnapshot,
-  HotkeyAction.frame => l10n.hotkeyFrame,
+  final action? => hotkeyActionName(l10n, action),
   null => detail,
 };
 

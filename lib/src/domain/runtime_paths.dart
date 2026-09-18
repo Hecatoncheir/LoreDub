@@ -20,6 +20,17 @@ int defaultCpuThreads([int? logicalProcessors]) {
   return (available ~/ 2).clamp(4, 12);
 }
 
+/// Thread counts worth offering on a machine with [logicalProcessors],
+/// always including [selected] -- so a setting carried over from another
+/// processor still shows -- and the default.
+List<int> cpuThreadOptions(int selected, [int? logicalProcessors]) {
+  final available = logicalProcessors ?? Platform.numberOfProcessors;
+  final options = {2, 3, 4, 6, 8, 12, 16}.where((value) => value <= available).toSet()
+    ..add(selected)
+    ..add(defaultCpuThreads(available));
+  return options.toList()..sort();
+}
+
 String bundledRuntimeDirectory() =>
     path.join(File(Platform.resolvedExecutable).parent.path, 'runtime');
 

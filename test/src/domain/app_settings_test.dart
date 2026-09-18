@@ -53,4 +53,18 @@ void main() {
     expect(settings.copyWith(duckWhileSpeaking: false).duckWhileSpeaking, isFalse);
     expect(settings.copyWith(hurryWhenQueued: false).hurryWhenQueued, isFalse);
   });
+
+  test('binds and unbinds a combination by the action it answers to', () {
+    const settings = AppSettings();
+
+    for (final action in HotkeyAction.values) {
+      final unbound = settings.withHotkey(action, null);
+      expect(unbound.hotkeyFor(action), isNull, reason: action.name);
+      final other = HotkeyAction.values.firstWhere((each) => each != action);
+      expect(unbound.hotkeyFor(other), settings.hotkeyFor(other), reason: action.name);
+
+      const f9 = Hotkey(keyCode: 0x78, label: 'F9');
+      expect(unbound.withHotkey(action, f9).hotkeyFor(action), f9, reason: action.name);
+    }
+  });
 }

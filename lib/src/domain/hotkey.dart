@@ -99,3 +99,31 @@ class Hotkey {
 /// bound without a modifier.
 bool standsAlone(int keyCode) =>
     (keyCode >= 0x70 && keyCode <= 0x87) || keyCode == 0x13 || keyCode == 0x91;
+
+/// Why a combination cannot be bound.
+sealed class HotkeyProblem {
+  const HotkeyProblem();
+}
+
+/// A bare letter, or Shift with one: Windows would hand it to LoreDub alone,
+/// and the game and every chat in it would stop receiving it.
+final class HotkeyTakesGameKey extends HotkeyProblem {
+  const HotkeyTakesGameKey();
+}
+
+/// Another action already answers to the same combination.
+final class HotkeyAlreadyBound extends HotkeyProblem {
+  const HotkeyAlreadyBound(this.action);
+
+  final HotkeyAction action;
+}
+
+/// Why [hotkey] cannot be bound, or null when it can. [others] is every other
+/// action's combination, unbound ones as null.
+HotkeyProblem? bindingProblem(Hotkey hotkey, Map<HotkeyAction, Hotkey?> others) {
+  if (!hotkey.leavesGameKeys) return const HotkeyTakesGameKey();
+  for (final MapEntry(key: action, value: other) in others.entries) {
+    if (other != null && other.sameCombination(hotkey)) return HotkeyAlreadyBound(action);
+  }
+  return null;
+}

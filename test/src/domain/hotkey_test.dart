@@ -37,4 +37,36 @@ void main() {
     expect(pause.sameCombination(const Hotkey(keyCode: 0x50, label: 'p', control: true)), isTrue);
     expect(pause.sameCombination(const Hotkey(keyCode: 0x50, label: 'P', alt: true)), isFalse);
   });
+
+  group('binding a combination', () {
+    const pause = Hotkey.defaultPause;
+
+    test('refuses one that takes a key from the game', () {
+      const bare = Hotkey(keyCode: 0x50, label: 'P');
+
+      expect(bindingProblem(bare, const {}), isA<HotkeyTakesGameKey>());
+    });
+
+    test('names the action that already holds it', () {
+      final problem = bindingProblem(pause, const {
+        HotkeyAction.resume: Hotkey.defaultResume,
+        HotkeyAction.frame: Hotkey(keyCode: 0x50, label: 'P', control: true, alt: true),
+      });
+
+      expect(
+        problem,
+        isA<HotkeyAlreadyBound>().having((p) => p.action, 'action', HotkeyAction.frame),
+      );
+    });
+
+    test('lets a free combination through, unbound actions included', () {
+      expect(bindingProblem(pause, const {HotkeyAction.resume: null}), isNull);
+    });
+  });
+
+  test('reads an action named by the native side, and nothing it does not know', () {
+    expect(HotkeyAction.named('frame'), HotkeyAction.frame);
+    expect(HotkeyAction.named('zoom'), isNull);
+    expect(HotkeyAction.named(null), isNull);
+  });
 }

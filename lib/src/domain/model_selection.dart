@@ -131,6 +131,21 @@ class ModelSelection {
   /// a woman's voice to choose between.
   bool get canFollowSpeaker => speechPackage?.canFollowSpeaker ?? false;
 
+  /// The voice mode that will run. A mode this setup cannot honour -- the
+  /// automatic choice with a package of one voice -- is shown as the one
+  /// that replaces it.
+  VoiceMode get voiceMode => switch (settings.voiceMode) {
+    VoiceMode.original => VoiceMode.original,
+    VoiceMode.automatic when canFollowSpeaker => VoiceMode.automatic,
+    _ => VoiceMode.chosen,
+  };
+
+  /// Whether the voice is picked by hand: always with one voice for every
+  /// line, and for the original voice too when the package cannot follow the
+  /// speaker, since its timbre needs a base to be laid over.
+  bool get picksVoiceByHand =>
+      voiceMode == VoiceMode.chosen || (voiceMode == VoiceMode.original && !canFollowSpeaker);
+
   /// Whether it actually will, given what the user asked for. The original
   /// voice builds on the automatic choice: a base of the right gender leaves
   /// the converter less to move.

@@ -249,6 +249,25 @@ class AppSettings {
 
   /// Switches the voice mode. The original voice keeps [automaticVoice] as
   /// it was: it only decides the base voice under the original's timbre.
+  /// The combination bound to [action], or null when it has none.
+  Hotkey? hotkeyFor(HotkeyAction action) => switch (action) {
+    HotkeyAction.pause => pauseHotkey,
+    HotkeyAction.resume => resumeHotkey,
+    HotkeyAction.snapshot => snapshotHotkey,
+    HotkeyAction.frame => frameHotkey,
+  };
+
+  /// These settings with [action] bound to [hotkey], or unbound for null.
+  AppSettings withHotkey(HotkeyAction action, Hotkey? hotkey) => switch (action) {
+    HotkeyAction.pause => copyWith(pauseHotkey: hotkey, clearPauseHotkey: hotkey == null),
+    HotkeyAction.resume => copyWith(resumeHotkey: hotkey, clearResumeHotkey: hotkey == null),
+    HotkeyAction.snapshot => copyWith(
+      snapshotHotkey: hotkey,
+      clearSnapshotHotkey: hotkey == null,
+    ),
+    HotkeyAction.frame => copyWith(frameHotkey: hotkey, clearFrameHotkey: hotkey == null),
+  };
+
   AppSettings withVoiceMode(VoiceMode mode) => switch (mode) {
     VoiceMode.automatic => copyWith(automaticVoice: true, originalVoice: false),
     VoiceMode.chosen => copyWith(automaticVoice: false, originalVoice: false),

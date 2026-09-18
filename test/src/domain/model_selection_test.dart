@@ -140,4 +140,29 @@ void main() {
       isFalse,
     );
   });
+
+  group('voice mode', () {
+    test('runs the automatic choice where the package can follow the speaker', () {
+      final selection = selectionWith(const AppSettings(automaticVoice: true));
+
+      expect(selection.canFollowSpeaker, isTrue);
+      expect(selection.voiceMode, VoiceMode.automatic);
+      expect(selection.picksVoiceByHand, isFalse);
+    });
+
+    test('shows a choice it cannot honour as the one that replaces it', () {
+      const settings = AppSettings(automaticVoice: true);
+      final bare = ModelSelection(models: const [], settings: settings);
+
+      expect(bare.voiceMode, VoiceMode.chosen);
+      expect(bare.picksVoiceByHand, isTrue);
+    });
+
+    test('picks the base of the original voice by hand when nothing follows the speaker', () {
+      const settings = AppSettings(originalVoice: true);
+
+      expect(selectionWith(settings).picksVoiceByHand, isFalse);
+      expect(ModelSelection(models: const [], settings: settings).picksVoiceByHand, isTrue);
+    });
+  });
 }
