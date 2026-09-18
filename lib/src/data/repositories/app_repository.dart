@@ -419,8 +419,25 @@ class AppRepository {
   Future<List<SavedPipeline>> importPipelines(List<String> sources) =>
       _pipelines.readFiles(sources);
 
-  /// One voice from the files at [paths], however they are encoded.
-  Future<BuiltVoice> buildVoice(List<String> paths) => _nativeEngine.buildVoice(paths);
+  /// One voice from the files at [paths], however they are encoded, measured
+  /// through the session that was up when they were handed over or not at
+  /// all.
+  ///
+  /// The files take a while to decode, and Live starting meanwhile takes the
+  /// worker over without a word to the characters screen. Measured anyway,
+  /// the files went into the dubbing's worker — a second inference beside
+  /// its own lines — or, with that worker still coming up, failed into a
+  /// banner over a session that was fine. So they end as stopped instead,
+  /// which the screen passes over.
+  Future<BuiltVoice> buildVoice(List<String> paths) async {
+    final session = _sessions;
+    final files = await _nativeEngine.decodeVoiceFiles(paths);
+    if (session != _sessions) {
+      await _nativeEngine.discardVoiceFiles(files);
+      throw const LoreDubFailure(FailureCode.pipelineStopped);
+    }
+    return _nativeEngine.measureVoiceFiles(files);
+  }
 
   /// Starts the session Live gathers the voices of a scene through: the
   /// game's audio and the converter that hears who is speaking, with neither

@@ -8,8 +8,10 @@ import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
+import 'package:lore_dub/src/domain/built_voice.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
+import 'package:lore_dub/src/domain/voice_files.dart';
 
 void main() {
   late _SlowEngine engine;
@@ -104,6 +106,43 @@ void main() {
       expect(engine.stops, 2);
     });
   });
+
+  group('files a card is built from', () {
+    Future<void> borrow() async {
+      final borrowing = start();
+      engine.starts.last.complete();
+      await borrowing;
+    }
+
+    test('are measured through the session they were handed to', () async {
+      await borrow();
+
+      final building = repository.buildVoice(['line.ogg']);
+      engine.decoding.single.complete(engine.files);
+
+      expect((await building).used, 1);
+      expect(engine.measured, [engine.files]);
+      expect(engine.discarded, isEmpty);
+    });
+
+    test('are dropped unmeasured once Live has taken the worker over', () async {
+      await borrow();
+
+      final building = expectLater(
+        repository.buildVoice(['line.ogg']),
+        failsWith(FailureCode.pipelineStopped),
+      );
+      // Live stops the session the files were meant for and starts its own
+      // while they are still being decoded.
+      await repository.stop();
+      await borrow();
+      engine.decoding.single.complete(engine.files);
+      await building;
+
+      expect(engine.measured, isEmpty, reason: 'the worker is the dubbing\'s by now');
+      expect(engine.discarded, [engine.files], reason: 'the decoded files are not left behind');
+    });
+  });
 }
 
 /// An engine whose starts end when the test says so, the way a real one ends
@@ -121,4 +160,26 @@ class _SlowEngine extends NativeEngineService {
 
   @override
   Future<void> stop() async => stops++;
+
+  /// The files every decoding answers with, once the test lets it finish.
+  final files = const VoiceFiles(decoded: {'dropped_0.wav': 'line.ogg'});
+  final decoding = <Completer<VoiceFiles>>[];
+  final measured = <VoiceFiles>[];
+  final discarded = <VoiceFiles>[];
+
+  @override
+  Future<VoiceFiles> decodeVoiceFiles(List<String> paths) {
+    final decoded = Completer<VoiceFiles>();
+    decoding.add(decoded);
+    return decoded.future;
+  }
+
+  @override
+  Future<BuiltVoice> measureVoiceFiles(VoiceFiles files) async {
+    measured.add(files);
+    return const BuiltVoice(vector: [1], used: 1);
+  }
+
+  @override
+  Future<void> discardVoiceFiles(VoiceFiles files, {String? keeping}) async => discarded.add(files);
 }

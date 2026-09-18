@@ -21,6 +21,7 @@ import '../../domain/pipeline_state.dart';
 import '../../domain/sound_captions.dart';
 import '../../domain/spoken_language.dart';
 import '../../domain/speech_pace.dart';
+import '../../domain/voice_files.dart';
 import '../../domain/wave_slices.dart';
 import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
@@ -323,44 +324,48 @@ class NativeEngineService {
         _listenWithoutCapture(start, config);
       });
 
-  /// Turns the files at [paths] into recordings the converter can measure
-  /// and hands them to the worker as one voice.
+  /// Turns the files at [paths] into recordings the converter can measure.
   ///
   /// Windows does the decoding, so a card takes whatever the machine can
   /// play -- ogg and opus included. Each file is brought to the rate and
   /// the loudness the capture writes at, or a fingerprint from a file would
   /// not answer for the same character a fingerprint from the game does.
-  Future<BuiltVoice> buildVoice(List<String> paths) async {
+  Future<VoiceFiles> decodeVoiceFiles(List<String> paths) async {
     final work = await _workDirectory();
-    final decoded = <String>[];
+    final decoded = <String, String>{};
     final unreadable = <String>[];
     for (final (index, source) in paths.indexed) {
       final target = '${work.path}${Platform.pathSeparator}dropped_$index.wav';
       final milliseconds = await Isolate.run(() => _decodeAudio(source, target));
       if (milliseconds < 0) {
         unreadable.add(source);
-        continue;
+      } else {
+        decoded[target] = source;
       }
-      decoded.add(target);
     }
     if (decoded.isEmpty) {
       throw const LoreDubFailure(FailureCode.audioNotDecoded);
     }
+    return VoiceFiles(decoded: decoded, unreadable: unreadable);
+  }
+
+  /// Hands the decoded [files] to the worker as one voice, and drops them
+  /// once it has answered.
+  Future<BuiltVoice> measureVoiceFiles(VoiceFiles files) async {
+    String? anchor;
     try {
-      final built = await _inference.buildVoice(decoded);
-      _anchorKept = built.anchor;
+      final built = await _inference.buildVoice([...files.decoded.keys]);
+      anchor = built.anchor;
       // The worker answers about the files it was handed; the player knows
       // the ones they dropped, so the two are put back together here.
-      final ofSource = {for (final (index, path) in decoded.indexed) path: index};
       return BuiltVoice(
         vector: built.vector,
         gender: built.gender,
         seconds: built.seconds,
         used: built.used,
         skipped: [
-          ...unreadable,
-          for (final path in built.skipped)
-            if (ofSource[path] case final index?) paths[index] else path,
+          ...files.unreadable,
+          for (final path in built.skipped) files.decoded[path] ?? path,
         ],
         agreement: built.agreement,
         weakest: built.weakest,
@@ -368,18 +373,19 @@ class NativeEngineService {
         anchor: built.anchor,
       );
     } finally {
-      for (final path in decoded) {
-        // The one the fingerprint stands closest to is left where it is:
-        // the card keeps it to play back, and the caller drops it once it
-        // has been copied there.
-        if (path != _anchorKept) await _deleteIfPresent(path);
-      }
-      _anchorKept = null;
+      // The one the fingerprint stands closest to is left where it is: the
+      // card keeps it to play back, and the caller drops it once it has been
+      // copied there.
+      await discardVoiceFiles(files, keeping: anchor);
     }
   }
 
-  /// The decoded file the last build left for the caller to keep.
-  String? _anchorKept;
+  /// Drops the decoded [files] from the work directory, all but [keeping].
+  Future<void> discardVoiceFiles(VoiceFiles files, {String? keeping}) async {
+    for (final path in files.decoded.keys) {
+      if (path != keeping) await _deleteIfPresent(path);
+    }
+  }
 
   /// Speaks [text] in [voice], over [timbre] when the converter is loaded,
   /// and plays it. The file is the worker's and is dropped afterwards.
