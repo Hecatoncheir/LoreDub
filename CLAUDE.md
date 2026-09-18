@@ -57,8 +57,13 @@ covers. Build the native library first, and leave the test window in front.
 Four processes cooperate; changing the pipeline usually means touching more
 than one of them.
 
-1. **Flutter/Dart UI** — `lib/src/ui/dashboard/`. State lives in five cubits
-   (`cubits/`): `ShellCubit` (section, first load, the failure banner, the
+1. **Flutter/Dart UI** — `lib/src/ui/`, a folder per screen (`live/`,
+   `screen_text/`, `characters/`, `models/`, `settings/`, `graph/`), `shell/`
+   for the frame around them (`DashboardView`, navigation, header) and
+   `common/` for what every screen uses; one public widget per file and no
+   private ones. `dashboard/` still holds the cubits and the files not yet
+   taken apart (`TODO.md`, stage 2). State lives in five cubits
+   (`dashboard/cubits/`): `ShellCubit` (section, first load, the failure banner, the
    update check), `SettingsCubit`, `DownloadsCubit` (models, GPU runtimes,
    what the machine can run), `PipelineCubit` (status, transcript,
    processes) and `CharactersCubit` (the player's cast and the session that
@@ -355,7 +360,7 @@ difference between an import and a start: one is the player naming a file,
 the other the application opening its own. An entry is usually written from
 the transcript rather than
 on this screen: a line is only known to have gone wrong the moment it is
-heard, and `_CorrectLineButton` beside its latency badge on Эфир opens on
+heard, and `CorrectLineButton` beside its latency badge on Эфир opens on
 what was said with `TranscriptEntry.english` as the source, so the screen is
 the list of what was collected rather than a place to remember to visit. It
 is offered only where that English is there to file the correction under.
@@ -547,7 +552,7 @@ A frame of that canvas is watched, because a drag and a pan are a new state
 sixty times a second: `test/graph_bench.dart` times one over a scheme of
 twenty-four cards (by hand — it has no `_test` suffix). Three things keep it
 down, and all three can be undone by accident. The graph is listened to
-*innermost* in `_PipelinePanel`, under everything the scheme is drawn from,
+*innermost* in `PipelinePanel`, under everything the scheme is drawn from,
 so `PipelineFacts` and `ModelSelection` are not built afresh for a frame that
 only moved the canvas; the toolbar has a listener of its own with a
 `buildWhen`, so it is not built again for a drag. And the canvas keeps what

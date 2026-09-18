@@ -27,7 +27,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/dashboard_view.dart';
+import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
 import 'package:lore_dub/src/ui/dashboard/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/dashboard/pipeline_inspector.dart';
 import 'package:lore_dub/src/ui/theme.dart';

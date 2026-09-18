@@ -305,7 +305,9 @@ lib/src/ui/
       `ModelDirectoryCard`. Контроллеры и ключи форм уезжают в карточки,
       которым принадлежат; `_hotkeyProblem` → `domain/hotkey.dart`;
       `_threadOptions` → домен.
-- [ ] **`graph/`:** `_PipelinePanel`, `_InspectorSlot`, `_GraphToolbar`.
+- [x] **`graph/`:** `_PipelinePanel`, `_InspectorSlot`, `_GraphToolbar`.
+      `dashboard_view.dart` переехал в `shell/` и держит только
+      `DashboardView` с провайдерами; каркас экрана — `DashboardScaffold`.
 - [ ] Контрольные точки вёрстки (`900`, `860`, `880`, `1000`, `920 + 320`…),
       разбросанные приватными константами, → `theme/tokens/breakpoints.dart`.
 - [ ] `app.dart`: `_Scaled` → `app/interface_scale.dart`.

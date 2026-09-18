@@ -20,7 +20,7 @@ import 'data/services/update_service.dart';
 import 'data/services/settings_service.dart';
 import 'ui/dashboard/cubits/dashboard_cubits.dart';
 import 'ui/dashboard/cubits/settings_cubit.dart';
-import 'ui/dashboard/dashboard_view.dart';
+import 'ui/shell/dashboard_view.dart';
 import 'ui/theme.dart';
 
 /// Draws [child] larger or smaller than the window it is given.
