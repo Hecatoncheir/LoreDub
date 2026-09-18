@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter/foundation.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/app_repository.dart';
@@ -13,7 +14,7 @@ import 'shell_cubit.dart';
 
 /// Everything the user configured, plus the interpreter search that writes
 /// into it.
-class SettingsState {
+class SettingsState extends Equatable {
   const SettingsState({
     this.settings = const AppSettings(),
     this.searchingPython = false,
@@ -42,6 +43,14 @@ class SettingsState {
     rejectedPython: rejectedPython ?? this.rejectedPython,
     voiceBankSize: voiceBankSize ?? this.voiceBankSize,
   );
+
+  @override
+  List<Object?> get props => [
+    settings,
+    searchingPython,
+    rejectedPython,
+    voiceBankSize,
+  ];
 }
 
 class SettingsCubit extends Cubit<SettingsState> {

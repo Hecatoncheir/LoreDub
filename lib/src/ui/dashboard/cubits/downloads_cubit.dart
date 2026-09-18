@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/model_repository.dart';
@@ -38,7 +39,7 @@ class InstalledPackages {
 
 /// What is on disk and what is on its way there: the model packages, the
 /// optional GPU runtimes, and what the machine can run them on.
-class DownloadsState {
+class DownloadsState extends Equatable {
   const DownloadsState({
     this.models = const [],
     this.runtimes = const [],
@@ -134,6 +135,16 @@ class DownloadsState {
     runtimeDirectoryPath: runtimeDirectoryPath ?? this.runtimeDirectoryPath,
     stopping: stopping ?? this.stopping,
   );
+
+  @override
+  List<Object?> get props => [
+    models,
+    runtimes,
+    availability,
+    modelDirectoryPath,
+    runtimeDirectoryPath,
+    stopping,
+  ];
 }
 
 class DownloadsCubit extends Cubit<DownloadsState> {

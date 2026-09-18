@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
@@ -29,7 +30,7 @@ abstract class FailureSink {
 
 /// The frame around the work: which section is open, whether the first load
 /// is still running, the failure banner, and the update check.
-class ShellState {
+class ShellState extends Equatable {
   const ShellState({
     this.section = DashboardSection.live,
     this.initializing = true,
@@ -58,6 +59,14 @@ class ShellState {
     error: clearError ? null : error ?? this.error,
     updates: updates ?? this.updates,
   );
+
+  @override
+  List<Object?> get props => [
+    section,
+    initializing,
+    error,
+    updates,
+  ];
 }
 
 class ShellCubit extends Cubit<ShellState> implements FailureSink {

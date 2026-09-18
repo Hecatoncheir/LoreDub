@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
 
@@ -23,7 +24,7 @@ import 'shell_cubit.dart';
 
 /// The running session: what it is doing, what it heard, and what it chose
 /// to run on.
-class LivePipelineState {
+class LivePipelineState extends Equatable {
   const LivePipelineState({
     this.status = PipelineStatus.idle,
     this.transcript = const [],
@@ -178,6 +179,25 @@ class LivePipelineState {
     snapshotMissed: snapshotMissed ?? this.snapshotMissed,
     frameMissed: frameMissed ?? this.frameMissed,
   );
+
+  @override
+  List<Object?> get props => [
+    status,
+    transcript,
+    processes,
+    selectedProcess,
+    speakers,
+    startupProgress,
+    startupStage,
+    detectedLanguage,
+    spokenVoice,
+    activeBackends,
+    session,
+    snapshots,
+    snapshotReading,
+    snapshotMissed,
+    frameMissed,
+  ];
 }
 
 class PipelineCubit extends Cubit<LivePipelineState> {

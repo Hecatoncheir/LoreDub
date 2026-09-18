@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter/foundation.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/app_repository.dart';
@@ -10,7 +11,7 @@ import 'shell_cubit.dart';
 
 /// What the player has written down about their games, and whether it has
 /// been read off disk yet.
-class GlossaryState {
+class GlossaryState extends Equatable {
   const GlossaryState({this.glossary = Glossary.empty, this.loaded = false});
 
   final Glossary glossary;
@@ -21,6 +22,12 @@ class GlossaryState {
 
   GlossaryState copyWith({Glossary? glossary, bool? loaded}) =>
       GlossaryState(glossary: glossary ?? this.glossary, loaded: loaded ?? this.loaded);
+
+  @override
+  List<Object?> get props => [
+    glossary,
+    loaded,
+  ];
 }
 
 /// The glossary screen.

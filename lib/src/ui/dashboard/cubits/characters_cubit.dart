@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
 
@@ -24,7 +25,7 @@ import 'shell_cubit.dart';
 
 /// The characters screen: the player's cast, and the session that records a
 /// voice for one of them.
-class CharactersState {
+class CharactersState extends Equatable {
   const CharactersState({
     this.characters = const [],
     this.packs = const [],
@@ -140,6 +141,23 @@ class CharactersState {
     built: clearBuilt ? null : built ?? this.built,
     previewReady: previewReady ?? this.previewReady,
   );
+
+  @override
+  List<Object?> get props => [
+    characters,
+    packs,
+    loading,
+    status,
+    recordingId,
+    heardSeconds,
+    clips,
+    playingId,
+    buildingId,
+    builtId,
+    built,
+    previewingId,
+    previewReady,
+  ];
 }
 
 class CharactersCubit extends Cubit<CharactersState> {

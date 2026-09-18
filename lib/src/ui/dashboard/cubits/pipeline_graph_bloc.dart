@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/app_repository.dart';
@@ -233,7 +234,7 @@ class PipelineLinkDrag {
   final GraphPoint at;
 }
 
-class PipelineGraphState {
+class PipelineGraphState extends Equatable {
   const PipelineGraphState({
     this.loading = true,
     this.graph = const PipelineGraph(),
@@ -301,6 +302,20 @@ class PipelineGraphState {
     canUndo: canUndo ?? this.canUndo,
     canRedo: canRedo ?? this.canRedo,
   );
+
+  @override
+  List<Object?> get props => [
+    loading,
+    graph,
+    layout,
+    selected,
+    chosen,
+    schemes,
+    drag,
+    refusal,
+    canUndo,
+    canRedo,
+  ];
 }
 
 /// What one step back restores: where the nodes were, whether the way in

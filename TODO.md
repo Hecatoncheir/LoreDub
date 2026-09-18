@@ -223,11 +223,13 @@
 - [x] Удалить `_ShellBuilder`, `_PipelineBuilder`, `_SettingsBuilder`,
       `_DownloadsBuilder`, `_CharactersBuilder` и параметр `cubits` у всех
       виджетов.
-- [ ] Состояниям — сравнение по значению (`equatable` либо вручную; кодогенерации
+- [x] Состояниям — сравнение по значению (`equatable` либо вручную; кодогенерации
       в проекте нет, и ради этого заводить `freezed` не стоит). После этого
       `watch`, склеивающий строку
       (`'${installedModelIds.join()}|${installedRuntimes.join()}'`), заменяется
-      записью из двух множеств.
+      записью из двух множеств. *Сделано:* все семь состояний — `Equatable`
+      (`equatable` 3); вместо склеенной строки — `InstalledPackages` со
+      сравнением множеств.
 - [x] Репозитории — через `MultiRepositoryProvider` в `app.dart`, с
       `dispose:`; `PipelineCubit.close()` перестаёт трогать `AppRepository`.
       *Сделано так:* репозитории создаёт и отдаёт через
