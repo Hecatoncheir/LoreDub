@@ -8,7 +8,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
 import '../theme.dart';
-import 'cubits/dashboard_cubits.dart';
 import 'cubits/glossary_cubit.dart';
 
 /// An entry on its way to a pack, and the pack it was dragged out of.
@@ -32,9 +31,7 @@ class GlossaryDrag {
 /// work -- a name written here does not rewrite the Russian the model
 /// already declined for itself.
 class GlossaryPanel extends StatefulWidget {
-  const GlossaryPanel({super.key, required this.cubits});
-
-  final DashboardCubits cubits;
+  const GlossaryPanel({super.key});
 
   @override
   State<GlossaryPanel> createState() => _GlossaryPanelState();
@@ -104,18 +101,20 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
   );
 
   Future<void> _export() async {
+    final glossary = context.read<GlossaryCubit>();
     final location = await getSaveLocation(
       suggestedName: 'loredub-glossary.json',
       acceptedTypeGroups: _json,
     );
     if (location == null) return;
-    await widget.cubits.glossary.export(location.path);
+    await glossary.export(location.path);
   }
 
   Future<void> _import() async {
+    final glossary = context.read<GlossaryCubit>();
     final chosen = await openFiles(acceptedTypeGroups: _json);
     if (chosen.isEmpty) return;
-    await widget.cubits.glossary.import([for (final file in chosen) file.path]);
+    await glossary.import([for (final file in chosen) file.path]);
   }
 
   /// A pack read back is merged the way the whole glossary is -- the entries
@@ -123,19 +122,19 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
   Future<void> _importPack() => _import();
 
   Future<void> _exportPack(GlossaryPack pack) async {
+    final glossary = context.read<GlossaryCubit>();
     final location = await getSaveLocation(
       suggestedName: 'loredub-${pack.name.trim().isEmpty ? 'pack' : pack.name.trim()}.json',
       acceptedTypeGroups: _json,
     );
     if (location == null) return;
-    await widget.cubits.glossary.exportPack(location.path, pack.id);
+    await glossary.exportPack(location.path, pack.id);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return BlocBuilder<GlossaryCubit, GlossaryState>(
-      bloc: widget.cubits.glossary,
       builder: (context, state) => Padding(
         padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
         child: ListView(
@@ -231,7 +230,6 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
                     entries: _of(state.glossary, GlossaryKind.phrase),
                     held: state.glossary.of(GlossaryKind.phrase).length,
                     loaded: state.loaded,
-                    cubits: widget.cubits,
                   ),
                   const SizedBox(height: 16),
                   _GlossarySection(
@@ -244,7 +242,6 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
                     entries: _of(state.glossary, GlossaryKind.name),
                     held: state.glossary.of(GlossaryKind.name).length,
                     loaded: state.loaded,
-                    cubits: widget.cubits,
                   ),
                   const SizedBox(height: 16),
                   _GlossarySection(
@@ -257,12 +254,10 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
                     entries: _of(state.glossary, GlossaryKind.word),
                     held: state.glossary.of(GlossaryKind.word).length,
                     loaded: state.loaded,
-                    cubits: widget.cubits,
                   ),
                 ];
                 final packs = _GlossaryPacksSection(
                   glossary: state.glossary,
-                  cubits: widget.cubits,
                   matches: _matches,
                   searching: _looking.isNotEmpty,
                   onImport: _importPack,
@@ -325,7 +320,6 @@ class _GlossarySection extends StatelessWidget {
     required this.entries,
     required this.held,
     required this.loaded,
-    required this.cubits,
   });
 
   final String number;
@@ -343,7 +337,6 @@ class _GlossarySection extends StatelessWidget {
   /// tells a list with nothing in it from one narrowed to nothing.
   final int held;
   final bool loaded;
-  final DashboardCubits cubits;
 
   @override
   Widget build(BuildContext context) {
@@ -384,15 +377,15 @@ class _GlossarySection extends StatelessWidget {
                 entry: entry,
                 sourceLabel: sourceLabel,
                 readingLabel: readingLabel,
-                onWrite: (written) => cubits.glossary.write(written),
-                onRemove: () => cubits.glossary.remove(kind, entry.source),
+                onWrite: (written) => context.read<GlossaryCubit>().write(written),
+                onRemove: () => context.read<GlossaryCubit>().remove(kind, entry.source),
               ),
             const SizedBox(height: 6),
             _AddRow(
               kind: kind,
               sourceLabel: sourceLabel,
               readingLabel: readingLabel,
-              onWrite: (written) => cubits.glossary.write(written),
+              onWrite: (written) => context.read<GlossaryCubit>().write(written),
             ),
           ],
         ),
@@ -677,7 +670,6 @@ class _DragChip extends StatelessWidget {
 class _GlossaryPacksSection extends StatelessWidget {
   const _GlossaryPacksSection({
     required this.glossary,
-    required this.cubits,
     required this.matches,
     required this.searching,
     required this.onImport,
@@ -685,7 +677,6 @@ class _GlossaryPacksSection extends StatelessWidget {
   });
 
   final Glossary glossary;
-  final DashboardCubits cubits;
 
   /// The same filter the three lists are under: a search narrows what a pack
   /// shows as well, so a line can be found and dragged in one motion.
@@ -729,7 +720,7 @@ class _GlossaryPacksSection extends StatelessWidget {
                 ),
                 TextButton.icon(
                   key: const ValueKey('glossary-pack-add'),
-                  onPressed: () => cubits.glossary.addPack(l10n.packsNewName),
+                  onPressed: () => context.read<GlossaryCubit>().addPack(l10n.packsNewName),
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(l10n.packsAdd),
                   style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
@@ -762,16 +753,18 @@ class _GlossaryPacksSection extends StatelessWidget {
                     // the pack did not change, only what is shown of it.
                     held: pack.entryKeys.length,
                     searching: searching,
-                    onRename: (name) => cubits.glossary.renamePack(pack.id, name),
-                    onActive: (active) => cubits.glossary.activatePack(pack.id, active: active),
+                    onRename: (name) => context.read<GlossaryCubit>().renamePack(pack.id, name),
+                    onActive: (active) =>
+                        context.read<GlossaryCubit>().activatePack(pack.id, active: active),
                     onExport: pack.entryKeys.isEmpty ? null : () => onExport(pack),
-                    onDelete: () => cubits.glossary.removePack(pack.id),
-                    onDrop: (drag) => cubits.glossary.fileInPack(
+                    onDelete: () => context.read<GlossaryCubit>().removePack(pack.id),
+                    onDrop: (drag) => context.read<GlossaryCubit>().fileInPack(
                       drag.entry,
                       into: pack.id,
                       from: drag.fromPackId,
                     ),
-                    onRemoveMember: (entry) => cubits.glossary.takeFromPack(entry, from: pack.id),
+                    onRemoveMember: (entry) =>
+                        context.read<GlossaryCubit>().takeFromPack(entry, from: pack.id),
                   ),
                 ),
           ],

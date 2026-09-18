@@ -1,0 +1,20 @@
+// Copyright (c) 2026 LoreDub contributors.
+// SPDX-License-Identifier: MIT
+
+import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../domain/model_selection.dart';
+import 'cubits/downloads_cubit.dart';
+import 'cubits/settings_cubit.dart';
+
+/// What the dashboard's widgets read off the cubits [DashboardView] provides
+/// and that no one cubit owns.
+extension DashboardContext on BuildContext {
+  /// What the settings and the installed packages together decided, read
+  /// without subscribing: whoever draws it listens to both for itself.
+  ModelSelection get selection => ModelSelection(
+    models: read<DownloadsCubit>().state.models,
+    settings: read<SettingsCubit>().settings,
+  );
+}

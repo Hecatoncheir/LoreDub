@@ -35,6 +35,7 @@ import '../theme.dart';
 import 'cubits/characters_cubit.dart';
 import 'cubits/dashboard_cubits.dart';
 import 'cubits/downloads_cubit.dart';
+import 'cubits/glossary_cubit.dart';
 import 'cubits/pipeline_cubit.dart';
 import 'cubits/pipeline_graph_bloc.dart';
 import 'cubits/settings_cubit.dart';
@@ -42,6 +43,7 @@ import 'cubits/shell_cubit.dart';
 import 'character_tiles.dart';
 import 'glossary_screen.dart';
 import 'compute_matrix.dart';
+import 'dashboard_context.dart';
 import 'hotkey_field.dart';
 import 'model_tiles.dart';
 import 'model_visuals.dart';
@@ -55,14 +57,12 @@ import 'whisper_model_chart.dart';
 /// Rebuilds only when the shell changes, which is the section, the banner
 /// and the version. Every other part of the screen listens for itself.
 class _ShellBuilder extends StatelessWidget {
-  const _ShellBuilder({required this.cubits, required this.builder});
+  const _ShellBuilder({required this.builder});
 
-  final DashboardCubits cubits;
   final Widget Function(BuildContext context, ShellState shell) builder;
 
   @override
   Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
-    bloc: cubits.shell,
     builder: builder,
   );
 }
@@ -70,9 +70,8 @@ class _ShellBuilder extends StatelessWidget {
 /// Rebuilds with the running session: its state, what it heard, and the
 /// process list.
 class _PipelineBuilder extends StatelessWidget {
-  const _PipelineBuilder({required this.cubits, required this.builder, this.watch});
+  const _PipelineBuilder({required this.builder, this.watch});
 
-  final DashboardCubits cubits;
   final Widget Function(BuildContext context, LivePipelineState pipeline) builder;
 
   /// The part of the session this widget draws, as a value that can be
@@ -82,7 +81,6 @@ class _PipelineBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<PipelineCubit, LivePipelineState>(
-    bloc: cubits.pipeline,
     buildWhen: watch == null ? null : (previous, current) => watch!(previous) != watch!(current),
     builder: builder,
   );
@@ -90,14 +88,12 @@ class _PipelineBuilder extends StatelessWidget {
 
 /// Rebuilds when the configuration changes.
 class _SettingsBuilder extends StatelessWidget {
-  const _SettingsBuilder({required this.cubits, required this.builder});
+  const _SettingsBuilder({required this.builder});
 
-  final DashboardCubits cubits;
   final Widget Function(BuildContext context, SettingsState settings) builder;
 
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
-    bloc: cubits.settings,
     builder: builder,
   );
 }
@@ -106,13 +102,11 @@ class _SettingsBuilder extends StatelessWidget {
 /// download ticking must not redraw the transcript.
 class _DownloadsBuilder extends StatelessWidget {
   const _DownloadsBuilder({
-    required this.cubits,
     required this.builder,
     this.onlyWhatIsInstalled = false,
     this.watch,
   });
 
-  final DashboardCubits cubits;
   final Widget Function(BuildContext context, DownloadsState downloads) builder;
 
   /// Set by the parts that care whether a package is there, not how far its
@@ -125,7 +119,6 @@ class _DownloadsBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
-    bloc: cubits.downloads,
     buildWhen: switch ((watch, onlyWhatIsInstalled)) {
       (final watch?, _) => (previous, current) => watch(previous) != watch(current),
       (_, true) => (previous, current) => !setEquals(
@@ -140,9 +133,8 @@ class _DownloadsBuilder extends StatelessWidget {
 
 /// Rebuilds with the player's cast and the session that records a voice.
 class _CharactersBuilder extends StatelessWidget {
-  const _CharactersBuilder({required this.cubits, required this.builder, this.watch});
+  const _CharactersBuilder({required this.builder, this.watch});
 
-  final DashboardCubits cubits;
   final Widget Function(BuildContext context, CharactersState characters) builder;
 
   /// The part of the screen this widget draws; a recording ticking must not
@@ -151,7 +143,6 @@ class _CharactersBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<CharactersCubit, CharactersState>(
-    bloc: cubits.characters,
     buildWhen: watch == null ? null : (previous, current) => watch!(previous) != watch!(current),
     builder: builder,
   );
@@ -162,6 +153,27 @@ class DashboardView extends StatelessWidget {
 
   final DashboardCubits cubits;
 
+  /// Everything below reads the cubits it needs off the context, so a
+  /// widget's dependencies are the providers it looks up rather than one bag
+  /// handed down through every constructor.
+  @override
+  Widget build(BuildContext context) => MultiBlocProvider(
+    providers: [
+      BlocProvider.value(value: cubits.shell),
+      BlocProvider.value(value: cubits.settings),
+      BlocProvider.value(value: cubits.downloads),
+      BlocProvider.value(value: cubits.pipeline),
+      BlocProvider.value(value: cubits.characters),
+      BlocProvider.value(value: cubits.glossary),
+      BlocProvider.value(value: cubits.graph),
+    ],
+    child: const _Dashboard(),
+  );
+}
+
+class _Dashboard extends StatelessWidget {
+  const _Dashboard();
+
   @override
   Widget build(BuildContext context) => Scaffold(
     body: LayoutBuilder(
@@ -170,9 +182,8 @@ class DashboardView extends StatelessWidget {
         final content = SafeArea(
           child: Column(
             children: [
-              _Header(cubits: cubits),
+              _Header(),
               _ShellBuilder(
-                cubits: cubits,
                 builder: (context, shell) => switch (shell.error) {
                   final error? => _ErrorBanner(
                     message: describeFailure(AppLocalizations.of(context), error),
@@ -182,37 +193,29 @@ class DashboardView extends StatelessWidget {
               ),
               Expanded(
                 child: _ShellBuilder(
-                  cubits: cubits,
                   builder: (context, shell) => AnimatedSwitcher(
                     duration: const Duration(milliseconds: 180),
                     child: switch (shell.section) {
                       DashboardSection.live => _LivePanel(
                         key: const ValueKey('live'),
-                        cubits: cubits,
                       ),
                       DashboardSection.pipeline => _PipelinePanel(
                         key: const ValueKey('pipeline'),
-                        cubits: cubits,
                       ),
                       DashboardSection.snapshot => _SnapshotPanel(
                         key: const ValueKey('snapshot'),
-                        cubits: cubits,
                       ),
                       DashboardSection.models => _ModelsPanel(
                         key: const ValueKey('models'),
-                        cubits: cubits,
                       ),
                       DashboardSection.characters => _CharactersPanel(
                         key: const ValueKey('characters'),
-                        cubits: cubits,
                       ),
                       DashboardSection.glossary => GlossaryPanel(
                         key: const ValueKey('glossary'),
-                        cubits: cubits,
                       ),
                       DashboardSection.settings => _SettingsPanel(
                         key: const ValueKey('settings'),
-                        cubits: cubits,
                       ),
                     },
                   ),
@@ -225,13 +228,13 @@ class DashboardView extends StatelessWidget {
           return Column(
             children: [
               Expanded(child: content),
-              _BottomNavigation(cubits: cubits),
+              _BottomNavigation(),
             ],
           );
         }
         return Row(
           children: [
-            _Navigation(cubits: cubits),
+            _Navigation(),
             const VerticalDivider(width: 1),
             Expanded(child: content),
           ],
@@ -242,9 +245,7 @@ class DashboardView extends StatelessWidget {
 }
 
 class _Navigation extends StatelessWidget {
-  const _Navigation({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _Navigation();
 
   @override
   Widget build(BuildContext context) => Container(
@@ -296,7 +297,6 @@ class _Navigation extends StatelessWidget {
         // window, and taller still under a raised interface scale.
         Expanded(
           child: _ShellBuilder(
-            cubits: cubits,
             builder: (context, shell) => SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,51 +306,56 @@ class _Navigation extends StatelessWidget {
                     icon: (color) => LoreDubIcons.audioCapture(color: color, size: 21),
                     label: AppLocalizations.of(context).navLive,
                     selected: shell.section == DashboardSection.live,
-                    onTap: () => cubits.shell.selectSection(DashboardSection.live),
+                    onTap: () => context.read<ShellCubit>().selectSection(DashboardSection.live),
                   ),
                   _NavigationItem(
                     icon: (color) => Icon(Icons.highlight_alt_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navSnapshot,
                     selected: shell.section == DashboardSection.snapshot,
-                    onTap: () => cubits.shell.selectSection(DashboardSection.snapshot),
+                    onTap: () =>
+                        context.read<ShellCubit>().selectSection(DashboardSection.snapshot),
                   ),
                   _NavigationGroup(label: AppLocalizations.of(context).navGroupSetup),
                   _NavigationItem(
                     icon: (color) => Icon(Icons.groups_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navCharacters,
                     selected: shell.section == DashboardSection.characters,
-                    onTap: () => cubits.shell.selectSection(DashboardSection.characters),
+                    onTap: () =>
+                        context.read<ShellCubit>().selectSection(DashboardSection.characters),
                   ),
                   _NavigationItem(
                     icon: (color) => Icon(Icons.menu_book_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navGlossary,
                     selected: shell.section == DashboardSection.glossary,
-                    onTap: () => cubits.shell.selectSection(DashboardSection.glossary),
+                    onTap: () =>
+                        context.read<ShellCubit>().selectSection(DashboardSection.glossary),
                   ),
                   _NavigationItem(
                     icon: (color) => Icon(Icons.account_tree_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navPipeline,
                     selected: shell.section == DashboardSection.pipeline,
-                    onTap: () => cubits.shell.selectSection(DashboardSection.pipeline),
+                    onTap: () =>
+                        context.read<ShellCubit>().selectSection(DashboardSection.pipeline),
                   ),
                   _NavigationItem(
                     icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navModels,
                     selected: shell.section == DashboardSection.models,
-                    onTap: () => cubits.shell.selectSection(DashboardSection.models),
+                    onTap: () => context.read<ShellCubit>().selectSection(DashboardSection.models),
                   ),
                   _NavigationItem(
                     icon: (color) => Icon(Icons.tune_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navSettings,
                     selected: shell.section == DashboardSection.settings,
-                    onTap: () => cubits.shell.selectSection(DashboardSection.settings),
+                    onTap: () =>
+                        context.read<ShellCubit>().selectSection(DashboardSection.settings),
                   ),
                 ],
               ),
             ),
           ),
         ),
-        _VersionButton(cubits: cubits),
+        _VersionButton(),
         const Padding(
           // Starts where the version's icon does, so the foot of the panel
           // reads down one left edge.
@@ -387,9 +392,7 @@ const _footerIconSize = 14.0;
 /// nothing else, so the row does not resize. Once a newer version is
 /// published the version steps aside for [_UpdateRow].
 class _VersionButton extends StatelessWidget {
-  const _VersionButton({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _VersionButton();
 
   String _tooltip(AppLocalizations l10n, UpdateState updates) => switch (updates.status) {
     UpdateStatus.checking => l10n.updateChecking,
@@ -400,7 +403,6 @@ class _VersionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _ShellBuilder(
-    cubits: cubits,
     builder: (context, shell) => _build(context, shell.updates),
   );
 
@@ -410,7 +412,7 @@ class _VersionButton extends StatelessWidget {
     if (updates.hasUpdate) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(_footerOuterInset, 0, 8, 8),
-        child: _UpdateRow(cubits: cubits, updates: updates),
+        child: _UpdateRow(updates: updates),
       );
     }
     return Padding(
@@ -421,7 +423,9 @@ class _VersionButton extends StatelessWidget {
             child: Tooltip(
               message: _tooltip(l10n, updates),
               child: TextButton(
-                onPressed: updates.checking ? null : () => cubits.shell.checkForUpdates(),
+                onPressed: updates.checking
+                    ? null
+                    : () => context.read<ShellCubit>().checkForUpdates(),
                 style: TextButton.styleFrom(
                   foregroundColor: LoreDubPalette.mutedInk,
                   alignment: Alignment.centerLeft,
@@ -476,9 +480,8 @@ class _VersionButton extends StatelessWidget {
 /// runs in the few seconds between closing and opening again; the bar is the
 /// download, which is nearly all of the wait.
 class _UpdateRow extends StatelessWidget {
-  const _UpdateRow({required this.cubits, required this.updates});
+  const _UpdateRow({required this.updates});
 
-  final DashboardCubits cubits;
   final UpdateState updates;
 
   static const _label = TextStyle(
@@ -512,7 +515,7 @@ class _UpdateRow extends StatelessWidget {
             message: l10n.updateRestartHint,
             child: TextButton.icon(
               key: const ValueKey('updateRestart'),
-              onPressed: cubits.shell.restartToUpdate,
+              onPressed: context.read<ShellCubit>().restartToUpdate,
               icon: LoreDubIcons.directorySync(color: LoreDubPalette.orange, size: 16),
               label: Text(l10n.updateRestart),
               style: TextButton.styleFrom(
@@ -550,7 +553,7 @@ class _UpdateRow extends StatelessWidget {
           : l10n.updateOpenRelease(release.version),
       child: TextButton(
         key: const ValueKey('updateAvailable'),
-        onPressed: cubits.shell.installUpdate,
+        onPressed: context.read<ShellCubit>().installUpdate,
         style: TextButton.styleFrom(
           foregroundColor: LoreDubPalette.ink,
           alignment: Alignment.centerLeft,
@@ -656,13 +659,10 @@ class _NavigationItem extends StatelessWidget {
 }
 
 class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _BottomNavigation();
 
   @override
   Widget build(BuildContext context) => _ShellBuilder(
-    cubits: cubits,
     builder: (context, shell) => _build(context, shell.section),
   );
 
@@ -673,7 +673,8 @@ class _BottomNavigation extends StatelessWidget {
       backgroundColor: LoreDubPalette.panel,
       indicatorColor: LoreDubPalette.orange,
       selectedIndex: section.index,
-      onDestinationSelected: (index) => cubits.shell.selectSection(DashboardSection.values[index]),
+      onDestinationSelected: (index) =>
+          context.read<ShellCubit>().selectSection(DashboardSection.values[index]),
       destinations: [
         NavigationDestination(
           // The bar tints its font icons itself, which leaves the drawing
@@ -727,9 +728,7 @@ String _sectionMark(BuildContext context, DashboardSection section) {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _Header();
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -738,7 +737,6 @@ class _Header extends StatelessWidget {
       children: [
         Expanded(
           child: _ShellBuilder(
-            cubits: cubits,
             builder: (context, shell) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -773,7 +771,6 @@ class _Header extends StatelessWidget {
           ),
         ),
         _PipelineBuilder(
-          cubits: cubits,
           watch: (pipeline) => (pipeline.status, pipeline.startupStage, pipeline.session),
           builder: (context, pipeline) => _StatusChip(
             status: pipeline.status,
@@ -836,9 +833,7 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _LivePanel extends StatelessWidget {
-  const _LivePanel({super.key, required this.cubits});
-
-  final DashboardCubits cubits;
+  const _LivePanel({super.key});
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -867,7 +862,6 @@ class _LivePanel extends StatelessWidget {
                 const SizedBox(height: 14),
                 LayoutBuilder(
                   builder: (context, constraints) => _SourceControls(
-                    cubits: cubits,
                     compact: constraints.maxWidth < _wideSourceRowWidth,
                   ),
                 ),
@@ -875,7 +869,7 @@ class _LivePanel extends StatelessWidget {
             ),
           ),
         ),
-        _StartChecklist(cubits: cubits),
+        _StartChecklist(),
         const SizedBox(height: 16),
         // The transcript and the voices of the scene stand side by side
         // where there is room; a narrow window stacks them, the transcript
@@ -886,11 +880,11 @@ class _LivePanel extends StatelessWidget {
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: _TranscriptCard(cubits: cubits)),
+                      Expanded(child: _TranscriptCard()),
                       const SizedBox(width: 16),
                       SizedBox(
                         width: _sceneVoicesWidth,
-                        child: _SceneVoicesCard(cubits: cubits),
+                        child: _SceneVoicesCard(),
                       ),
                     ],
                   )
@@ -898,12 +892,12 @@ class _LivePanel extends StatelessWidget {
                 // card's worth of room the transcript takes it all: two
                 // headers and nothing under them would serve nobody.
                 : constraints.maxHeight < _sceneStackedMinHeight
-                ? _TranscriptCard(cubits: cubits)
+                ? _TranscriptCard()
                 : Column(
                     children: [
-                      Expanded(flex: 3, child: _TranscriptCard(cubits: cubits)),
+                      Expanded(flex: 3, child: _TranscriptCard()),
                       const SizedBox(height: 16),
-                      Expanded(flex: 2, child: _SceneVoicesCard(cubits: cubits)),
+                      Expanded(flex: 2, child: _SceneVoicesCard()),
                     ],
                   ),
           ),
@@ -933,13 +927,10 @@ const _sceneStackedMinHeight = 360.0;
 /// What the running session heard, newest first.
 class _TranscriptCard extends StatelessWidget {
   const _TranscriptCard({
-    required this.cubits,
     this.number = '02',
     this.label,
     this.fromScreen = false,
   });
-
-  final DashboardCubits cubits;
 
   /// Which area of its screen this is, and what it is called there. Live
   /// dubbing lists what it heard second; the screen session lists what the
@@ -955,10 +946,8 @@ class _TranscriptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _PipelineBuilder(
-    cubits: cubits,
     watch: (pipeline) => pipeline.transcript,
     builder: (context, pipeline) => _CharactersBuilder(
-      cubits: cubits,
       watch: (characters) => characters.characters,
       builder: (context, characters) => Card(
         clipBehavior: Clip.antiAlias,
@@ -977,7 +966,9 @@ class _TranscriptCard extends StatelessWidget {
                   const Spacer(),
                   _ClearListButton(
                     tooltip: AppLocalizations.of(context).transcriptClearTooltip,
-                    onPressed: pipeline.transcript.isEmpty ? null : cubits.pipeline.clearTranscript,
+                    onPressed: pipeline.transcript.isEmpty
+                        ? null
+                        : context.read<PipelineCubit>().clearTranscript,
                   ),
                 ],
               ),
@@ -986,7 +977,6 @@ class _TranscriptCard extends StatelessWidget {
             Expanded(
               child: pipeline.transcript.isEmpty
                   ? _SettingsBuilder(
-                      cubits: cubits,
                       builder: (context, settings) => _EmptyTranscript(
                         targetLanguage: settings.settings.targetLanguage,
                         fromScreen: fromScreen,
@@ -1004,14 +994,15 @@ class _TranscriptCard extends StatelessWidget {
                         // it did. The glossary screen is then the list of
                         // what was collected rather than a place to
                         // remember to visit.
-                        onCorrect: (entry, reading, {silent = false}) => cubits.glossary.write(
-                          GlossaryEntry(
-                            kind: GlossaryKind.phrase,
-                            source: entry.english,
-                            reading: reading,
-                            silent: silent,
-                          ),
-                        ),
+                        onCorrect: (entry, reading, {silent = false}) =>
+                            context.read<GlossaryCubit>().write(
+                              GlossaryEntry(
+                                kind: GlossaryKind.phrase,
+                                source: entry.english,
+                                reading: reading,
+                                silent: silent,
+                              ),
+                            ),
                       ),
                     ),
             ),
@@ -1027,18 +1018,13 @@ class _TranscriptCard extends StatelessWidget {
 /// A voice of the game and a card recognized in it are both here. The area
 /// shows and does not set: who reads whom is drawn on the graph.
 class _SceneVoicesCard extends StatelessWidget {
-  const _SceneVoicesCard({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _SceneVoicesCard();
 
   @override
   Widget build(BuildContext context) => _ShellBuilder(
-    cubits: cubits,
     builder: (context, shell) => _PipelineBuilder(
-      cubits: cubits,
       watch: (pipeline) => (pipeline.speakers, pipeline.status, pipeline.session),
       builder: (context, pipeline) => _CharactersBuilder(
-        cubits: cubits,
         watch: (characters) => characters.characters,
         builder: (context, cast) =>
             _build(context, pipeline, cast.characters, initializing: shell.initializing),
@@ -1058,7 +1044,10 @@ class _SceneVoicesCard extends StatelessWidget {
     // while dubbing or a selection holds the worker, it cannot run at all.
     final canListen =
         listening ||
-        cubits.pipeline.state.canStartScene(cubits.selection, initializing: initializing);
+        context.read<PipelineCubit>().state.canStartScene(
+          context.selection,
+          initializing: initializing,
+        );
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -1081,7 +1070,9 @@ class _SceneVoicesCard extends StatelessWidget {
               child: TextButton.icon(
                 key: const ValueKey('sceneListen'),
                 onPressed: canListen
-                    ? () => cubits.pipeline.toggleSceneVoices(initializing: initializing)
+                    ? () => context.read<PipelineCubit>().toggleSceneVoices(
+                        initializing: initializing,
+                      )
                     : null,
                 icon: Icon(listening ? Icons.stop_rounded : Icons.hearing_rounded, size: 18),
                 label: Text(listening ? l10n.sceneVoicesListenStop : l10n.sceneVoicesListen),
@@ -1096,7 +1087,7 @@ class _SceneVoicesCard extends StatelessWidget {
                 ? Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
                     child: Text(
-                      !cubits.selection.tracksSpeakers
+                      !context.selection.tracksSpeakers
                           ? l10n.sceneVoicesNeedsConverter
                           : listening
                           ? l10n.sceneVoicesListening
@@ -1136,9 +1127,8 @@ class _SceneVoicesCard extends StatelessWidget {
 /// counts as missing is the screen's own question: the snapshot session
 /// does without whisper.
 class _ModelsNeededNotice extends StatelessWidget {
-  const _ModelsNeededNotice({required this.cubits, required this.ready});
+  const _ModelsNeededNotice({required this.ready});
 
-  final DashboardCubits cubits;
   final bool Function(ModelSelection selection) ready;
 
   // What is missing is decided by the packages and the chosen language
@@ -1146,10 +1136,8 @@ class _ModelsNeededNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _DownloadsBuilder(
     onlyWhatIsInstalled: true,
-    cubits: cubits,
     builder: (context, _) => _SettingsBuilder(
-      cubits: cubits,
-      builder: (context, _) => ready(cubits.selection)
+      builder: (context, _) => ready(context.selection)
           ? const SizedBox.shrink()
           : Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -1159,7 +1147,8 @@ class _ModelsNeededNotice extends StatelessWidget {
                   title: Text(AppLocalizations.of(context).modelsNeededTitle),
                   subtitle: Text(AppLocalizations.of(context).modelsNeededNote),
                   trailing: TextButton(
-                    onPressed: () => cubits.shell.selectSection(DashboardSection.models),
+                    onPressed: () =>
+                        context.read<ShellCubit>().selectSection(DashboardSection.models),
                     child: Text(AppLocalizations.of(context).modelsNeededAction),
                   ),
                 ),
@@ -1177,24 +1166,19 @@ class _ModelsNeededNotice extends StatelessWidget {
 /// with no word about what it waited on. They are one card now, numbered in
 /// the order they are met, and it is gone the moment nothing is left in it.
 class _StartChecklist extends StatelessWidget {
-  const _StartChecklist({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _StartChecklist();
 
   // Whether a package is there rather than how far its download has got:
   // the card must not redraw through the hundred ticks of one.
   @override
   Widget build(BuildContext context) => _DownloadsBuilder(
     onlyWhatIsInstalled: true,
-    cubits: cubits,
     builder: (context, _) => _SettingsBuilder(
-      cubits: cubits,
       builder: (context, _) => _PipelineBuilder(
-        cubits: cubits,
         watch: (pipeline) => pipeline.selectedProcess,
         builder: (context, pipeline) => _build(
           context,
-          stepsBeforeStart(cubits.selection, gameChosen: pipeline.selectedProcess != null),
+          stepsBeforeStart(context.selection, gameChosen: pipeline.selectedProcess != null),
         ),
       ),
     ),
@@ -1238,8 +1222,12 @@ class _StartChecklist extends StatelessWidget {
                   // screen, a finger's width above, so that step leads
                   // nowhere and only says what is missing.
                   onPressed: switch (step) {
-                    StartStep.models => () => cubits.shell.selectSection(DashboardSection.models),
-                    StartStep.route => () => cubits.shell.selectSection(DashboardSection.pipeline),
+                    StartStep.models => () => context.read<ShellCubit>().selectSection(
+                      DashboardSection.models,
+                    ),
+                    StartStep.route => () => context.read<ShellCubit>().selectSection(
+                      DashboardSection.pipeline,
+                    ),
                     StartStep.game => null,
                   },
                 ),
@@ -1340,9 +1328,7 @@ class _ClearListButton extends StatelessWidget {
 /// and both end in the same translator and voice -- so what the game keeps
 /// writing and what the player asks for arrive side by side.
 class _SnapshotPanel extends StatelessWidget {
-  const _SnapshotPanel({super.key, required this.cubits});
-
-  final DashboardCubits cubits;
+  const _SnapshotPanel({super.key});
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -1362,17 +1348,17 @@ class _SnapshotPanel extends StatelessWidget {
     final lists = stacked
         ? Column(
             children: [
-              Expanded(child: _SubtitleList(cubits: cubits)),
+              Expanded(child: _SubtitleList()),
               const SizedBox(height: 16),
-              Expanded(child: _SnapshotHistory(cubits: cubits)),
+              Expanded(child: _SnapshotHistory()),
             ],
           )
         : Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _SubtitleList(cubits: cubits)),
+              Expanded(child: _SubtitleList()),
               const SizedBox(width: 16),
-              Expanded(child: _SnapshotHistory(cubits: cubits)),
+              Expanded(child: _SnapshotHistory()),
             ],
           );
     return Padding(
@@ -1382,25 +1368,24 @@ class _SnapshotPanel extends StatelessWidget {
           if (stacked)
             Column(
               children: [
-                _ScreenCaptureCard(cubits: cubits),
+                _ScreenCaptureCard(),
                 const SizedBox(height: 16),
-                _SubtitleFrameCard(cubits: cubits),
+                _SubtitleFrameCard(),
               ],
             )
           else
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _ScreenCaptureCard(cubits: cubits)),
+                Expanded(child: _ScreenCaptureCard()),
                 const SizedBox(width: 16),
                 SizedBox(
                   width: _frameCardWidth,
-                  child: _SubtitleFrameCard(cubits: cubits),
+                  child: _SubtitleFrameCard(),
                 ),
               ],
             ),
           _ModelsNeededNotice(
-            cubits: cubits,
             ready: (selection) => selection.screenModelsInstalled,
           ),
           const SizedBox(height: 16),
@@ -1420,13 +1405,10 @@ class _SnapshotPanel extends StatelessWidget {
 /// What the frame gained as the game wrote in it, in the same card live
 /// dubbing lists what it heard in.
 class _SubtitleList extends StatelessWidget {
-  const _SubtitleList({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _SubtitleList();
 
   @override
   Widget build(BuildContext context) => _TranscriptCard(
-    cubits: cubits,
     number: '03',
     label: AppLocalizations.of(context).areaSubtitles,
     fromScreen: true,
@@ -1451,9 +1433,7 @@ const _frameCardWidth = 380.0;
 
 /// The game to read, the language on its screen, and the session's button.
 class _ScreenCaptureCard extends StatelessWidget {
-  const _ScreenCaptureCard({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _ScreenCaptureCard();
 
   @override
   Widget build(BuildContext context) => Card(
@@ -1464,7 +1444,7 @@ class _ScreenCaptureCard extends StatelessWidget {
         children: [
           _ModuleLabel(number: '01', label: AppLocalizations.of(context).areaScreenCapture),
           const SizedBox(height: 14),
-          _SnapshotControls(cubits: cubits),
+          _SnapshotControls(),
         ],
       ),
     ),
@@ -1477,15 +1457,11 @@ class _ScreenCaptureCard extends StatelessWidget {
 /// It lives here rather than in the settings because this is the only
 /// session that reads it: the frame is part of the work this screen does.
 class _SubtitleFrameCard extends StatelessWidget {
-  const _SubtitleFrameCard({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _SubtitleFrameCard();
 
   @override
   Widget build(BuildContext context) => _SettingsBuilder(
-    cubits: cubits,
     builder: (context, state) => _PipelineBuilder(
-      cubits: cubits,
       watch: (pipeline) => pipeline.running,
       builder: (context, pipeline) => _build(context, state.settings, running: pipeline.running),
     ),
@@ -1507,7 +1483,8 @@ class _SubtitleFrameCard extends StatelessWidget {
               semanticLabel: l10n.ocrRegionHelp,
               onChanged: running
                   ? null
-                  : (region) => cubits.settings.update(settings.copyWith(ocrRegion: region)),
+                  : (region) =>
+                        context.read<SettingsCubit>().update(settings.copyWith(ocrRegion: region)),
             ),
             const SizedBox(height: 14),
             Wrap(
@@ -1527,7 +1504,7 @@ class _SubtitleFrameCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: running || settings.ocrRegion == OcrRegion.standard
                       ? null
-                      : () => cubits.settings.update(
+                      : () => context.read<SettingsCubit>().update(
                           settings.copyWith(ocrRegion: OcrRegion.standard),
                         ),
                   icon: const Icon(Icons.restart_alt_rounded),
@@ -1551,8 +1528,9 @@ class _SubtitleFrameCard extends StatelessWidget {
                   value: settings.silenceWhileReading,
                   onChanged: running
                       ? null
-                      : (value) =>
-                            cubits.settings.update(settings.copyWith(silenceWhileReading: value)),
+                      : (value) => context.read<SettingsCubit>().update(
+                          settings.copyWith(silenceWhileReading: value),
+                        ),
                 ),
                 const SizedBox(width: 6),
                 Flexible(child: Text(l10n.silenceWhileReading)),
@@ -1572,15 +1550,11 @@ class _SubtitleFrameCard extends StatelessWidget {
 
 /// How to select, what the last selection came to, and the session's button.
 class _SnapshotControls extends StatelessWidget {
-  const _SnapshotControls({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _SnapshotControls();
 
   @override
   Widget build(BuildContext context) => _SettingsBuilder(
-    cubits: cubits,
     builder: (context, state) => _PipelineBuilder(
-      cubits: cubits,
       watch: (pipeline) => (
         pipeline.status,
         pipeline.session,
@@ -1598,7 +1572,7 @@ class _SnapshotControls extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final hotkey = settings.snapshotHotkey;
     final status = _status(l10n, pipeline, settings);
-    final button = _SnapshotStartButton(cubits: cubits);
+    final button = _SnapshotStartButton();
     // The frame is read out of one window, so this session needs the game
     // named even though nothing of its sound is listened to.
     final picker = ProcessPicker(
@@ -1607,8 +1581,8 @@ class _SnapshotControls extends StatelessWidget {
       // Nothing is read out of that window while the whole screen is what
       // is read, so there is nothing to choose.
       enabled: !pipeline.running && !settings.readsWholeScreen,
-      onSelected: cubits.pipeline.selectProcess,
-      onRefresh: cubits.pipeline.refreshProcesses,
+      onSelected: context.read<PipelineCubit>().selectProcess,
+      onRefresh: context.read<PipelineCubit>().refreshProcesses,
     );
     Widget details({required Widget game}) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1626,7 +1600,8 @@ class _SnapshotControls extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () => cubits.shell.selectSection(DashboardSection.settings),
+                onPressed: () =>
+                    context.read<ShellCubit>().selectSection(DashboardSection.settings),
                 child: Text(l10n.snapshotOpenSettings),
               ),
             ],
@@ -1661,14 +1636,15 @@ class _SnapshotControls extends StatelessWidget {
             selected: {settings.screenSource},
             onSelectionChanged: pipeline.running
                 ? null
-                : (selection) =>
-                      cubits.settings.update(settings.copyWith(screenSource: selection.first)),
+                : (selection) => context.read<SettingsCubit>().update(
+                    settings.copyWith(screenSource: selection.first),
+                  ),
           ),
         ),
         const SizedBox(height: 14),
         game,
         const SizedBox(height: 14),
-        _TextLanguagePicker(cubits: cubits),
+        _TextLanguagePicker(),
         const SizedBox(height: 10),
         Text(
           settings.readsWholeScreen
@@ -1758,13 +1734,10 @@ class _SnapshotControls extends StatelessWidget {
 /// Starts and ends the snapshot session. While live dubbing runs, that
 /// session answers the snapshot key, so there is nothing here to start.
 class _SnapshotStartButton extends StatelessWidget {
-  const _SnapshotStartButton({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _SnapshotStartButton();
 
   @override
   Widget build(BuildContext context) => _PipelineBuilder(
-    cubits: cubits,
     watch: (pipeline) => (
       pipeline.status,
       pipeline.session,
@@ -1774,12 +1747,9 @@ class _SnapshotStartButton extends StatelessWidget {
     // Whether it can start depends on the first load, the packages and the
     // key being bound.
     builder: (context, pipeline) => _ShellBuilder(
-      cubits: cubits,
       builder: (context, shell) => _DownloadsBuilder(
         onlyWhatIsInstalled: true,
-        cubits: cubits,
         builder: (context, _) => _SettingsBuilder(
-          cubits: cubits,
           builder: (context, _) => _build(context, pipeline, initializing: shell.initializing),
         ),
       ),
@@ -1792,7 +1762,7 @@ class _SnapshotStartButton extends StatelessWidget {
     final starting = own && pipeline.status == PipelineStatus.starting;
     final running = own && pipeline.running;
     final progress = pipeline.startupProgress;
-    final canStart = pipeline.canStartScreen(cubits.selection, initializing: initializing);
+    final canStart = pipeline.canStartScreen(context.selection, initializing: initializing);
     return Tooltip(
       message: starting && pipeline.startupStage.isNotEmpty
           ? describeStartupStage(l10n, pipeline.startupStage)
@@ -1800,7 +1770,7 @@ class _SnapshotStartButton extends StatelessWidget {
       child: FilledButton.icon(
         key: const ValueKey('snapshotStart'),
         onPressed: running || canStart
-            ? () => cubits.pipeline.toggleScreenText(initializing: initializing)
+            ? () => context.read<PipelineCubit>().toggleScreenText(initializing: initializing)
             : null,
         icon: starting
             ? SizedBox(
@@ -1829,13 +1799,10 @@ class _SnapshotStartButton extends StatelessWidget {
 
 /// Every selection translated so far, newest first.
 class _SnapshotHistory extends StatelessWidget {
-  const _SnapshotHistory({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _SnapshotHistory();
 
   @override
   Widget build(BuildContext context) => _PipelineBuilder(
-    cubits: cubits,
     watch: (pipeline) => pipeline.snapshots,
     builder: (context, pipeline) => Card(
       clipBehavior: Clip.antiAlias,
@@ -1852,7 +1819,9 @@ class _SnapshotHistory extends StatelessWidget {
                 const Spacer(),
                 _ClearListButton(
                   tooltip: AppLocalizations.of(context).snapshotClearTooltip,
-                  onPressed: pipeline.snapshots.isEmpty ? null : cubits.pipeline.clearSnapshots,
+                  onPressed: pipeline.snapshots.isEmpty
+                      ? null
+                      : context.read<PipelineCubit>().clearSnapshots,
                 ),
               ],
             ),
@@ -1917,21 +1886,17 @@ const _wideSourceRowWidth = 920 + _minimumProcessPickerWidth;
 const _minimumProcessPickerWidth = 320.0;
 
 class _SourceControls extends StatelessWidget {
-  const _SourceControls({required this.cubits, required this.compact});
+  const _SourceControls({required this.compact});
 
-  final DashboardCubits cubits;
   final bool compact;
 
   @override
   Widget build(BuildContext context) => _SettingsBuilder(
-    cubits: cubits,
     builder: (context, state) => _PipelineBuilder(
-      cubits: cubits,
       watch: (pipeline) => (pipeline.running, pipeline.processes, pipeline.selectedProcess),
       // Only whether a card is being recorded: the seconds it has heard tick
       // as it goes, and this screen must not be redrawn for them.
       builder: (context, pipeline) => _CharactersBuilder(
-        cubits: cubits,
         watch: (characters) => characters.running,
         builder: (context, characters) =>
             _build(context, state.settings, pipeline, recording: characters.running),
@@ -1954,8 +1919,8 @@ class _SourceControls extends StatelessWidget {
       // A card recording on the characters screen listens to the game it
       // started with; the choice is shared, so it is held there.
       enabled: !running && requiresProcess && !recording,
-      onSelected: cubits.pipeline.selectProcess,
-      onRefresh: cubits.pipeline.refreshProcesses,
+      onSelected: context.read<PipelineCubit>().selectProcess,
+      onRefresh: context.read<PipelineCubit>().refreshProcesses,
     );
     final helper = Text(
       requiresProcess ? l10n.captureProcessNote : l10n.captureSystemNote,
@@ -1977,15 +1942,16 @@ class _SourceControls extends StatelessWidget {
       selected: {settings.audioCaptureSource},
       onSelectionChanged: running
           ? null
-          : (selection) =>
-                cubits.settings.update(settings.copyWith(audioCaptureSource: selection.first)),
+          : (selection) => context.read<SettingsCubit>().update(
+              settings.copyWith(audioCaptureSource: selection.first),
+            ),
     );
     // The picker carries its own refresh button, so it travels whole into
     // the compact layout instead of leaving it on the row with the start
     // button.
     final picker = selector;
-    final language = _LanguageControls(cubits: cubits);
-    final target = _TargetLanguagePicker(cubits: cubits);
+    final language = _LanguageControls();
+    final target = _TargetLanguagePicker();
     if (compact) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2035,19 +2001,14 @@ class _SourceControls extends StatelessWidget {
 /// the models screen offers: it selects the translator and the voice together
 /// and is remembered between runs.
 class _TargetLanguagePicker extends StatelessWidget {
-  const _TargetLanguagePicker({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _TargetLanguagePicker();
 
   @override
   Widget build(BuildContext context) => _SettingsBuilder(
-    cubits: cubits,
     // Which languages read as ready depends on what is downloaded.
     builder: (context, settings) => _DownloadsBuilder(
       onlyWhatIsInstalled: true,
-      cubits: cubits,
       builder: (context, _) => _PipelineBuilder(
-        cubits: cubits,
         watch: (pipeline) => pipeline.running,
         builder: (context, pipeline) =>
             _build(context, settings.settings.targetLanguage, running: pipeline.running),
@@ -2058,7 +2019,7 @@ class _TargetLanguagePicker extends StatelessWidget {
   Widget _build(BuildContext context, String selected, {required bool running}) {
     final l10n = AppLocalizations.of(context);
     final languages = dubbingLanguages;
-    final selection = cubits.selection;
+    final selection = context.selection;
     return _LanguageRow(
       field: DropdownButtonFormField<String>(
         key: const ValueKey('targetLanguage'),
@@ -2082,10 +2043,10 @@ class _TargetLanguagePicker extends StatelessWidget {
         onChanged: running
             ? null
             : (value) {
-                if (value != null) cubits.settings.selectTargetLanguage(value);
+                if (value != null) context.read<SettingsCubit>().selectTargetLanguage(value);
               },
       ),
-      action: _StartButton(cubits: cubits),
+      action: _StartButton(),
     );
   }
 }
@@ -2093,13 +2054,10 @@ class _TargetLanguagePicker extends StatelessWidget {
 /// Loading Marian and Silero takes long enough that a plain label would look
 /// like a freeze, so the button carries the progress of the startup itself.
 class _StartButton extends StatelessWidget {
-  const _StartButton({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _StartButton();
 
   @override
   Widget build(BuildContext context) => _PipelineBuilder(
-    cubits: cubits,
     // The chosen process belongs here too: without it the button stays grey
     // after the player picks one, because nothing else on the screen moved.
     watch: (pipeline) => (
@@ -2112,10 +2070,8 @@ class _StartButton extends StatelessWidget {
     // Whether it can start at all depends on the first load having finished
     // and on the packages being there.
     builder: (context, pipeline) => _ShellBuilder(
-      cubits: cubits,
       builder: (context, shell) => _DownloadsBuilder(
         onlyWhatIsInstalled: true,
-        cubits: cubits,
         builder: (context, _) => _build(context, pipeline, initializing: shell.initializing),
       ),
     ),
@@ -2133,10 +2089,10 @@ class _StartButton extends StatelessWidget {
     final starting = live && pipeline.status == PipelineStatus.starting;
     final progress = pipeline.startupProgress;
     final running = pipeline.liveRunning;
-    final canStart = pipeline.canStart(cubits.selection, initializing: initializing);
+    final canStart = pipeline.canStart(context.selection, initializing: initializing);
     if (live &&
         (pipeline.status == PipelineStatus.listening || pipeline.status == PipelineStatus.paused)) {
-      return _SessionButtons(cubits: cubits, paused: pipeline.status == PipelineStatus.paused);
+      return _SessionButtons(paused: pipeline.status == PipelineStatus.paused);
     }
     return Tooltip(
       message: starting && pipeline.startupStage.isNotEmpty
@@ -2144,7 +2100,7 @@ class _StartButton extends StatelessWidget {
           : '',
       child: FilledButton.icon(
         onPressed: running || canStart
-            ? () => cubits.pipeline.toggle(initializing: initializing)
+            ? () => context.read<PipelineCubit>().toggle(initializing: initializing)
             : null,
         icon: starting
             ? SizedBox(
@@ -2177,9 +2133,8 @@ class _StartButton extends StatelessWidget {
 /// resume while paused — and the other waits beside it as an outlined icon,
 /// its name in the tooltip. Both fit the slot the start button had.
 class _SessionButtons extends StatelessWidget {
-  const _SessionButtons({required this.cubits, required this.paused});
+  const _SessionButtons({required this.paused});
 
-  final DashboardCubits cubits;
   final bool paused;
 
   @override
@@ -2191,7 +2146,7 @@ class _SessionButtons extends StatelessWidget {
           Expanded(
             child: FilledButton.icon(
               key: const ValueKey('resumeButton'),
-              onPressed: cubits.pipeline.resume,
+              onPressed: context.read<PipelineCubit>().resume,
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(l10n.resumeDubbing),
             ),
@@ -2201,7 +2156,7 @@ class _SessionButtons extends StatelessWidget {
             message: l10n.stopHint,
             child: IconButton.outlined(
               key: const ValueKey('stopButton'),
-              onPressed: cubits.pipeline.stop,
+              onPressed: context.read<PipelineCubit>().stop,
               icon: const Icon(Icons.stop_rounded),
             ),
           ),
@@ -2214,7 +2169,7 @@ class _SessionButtons extends StatelessWidget {
           message: l10n.pauseHint,
           child: IconButton.outlined(
             key: const ValueKey('pauseButton'),
-            onPressed: cubits.pipeline.pause,
+            onPressed: context.read<PipelineCubit>().pause,
             icon: const Icon(Icons.pause_rounded),
           ),
         ),
@@ -2222,7 +2177,7 @@ class _SessionButtons extends StatelessWidget {
         Expanded(
           child: FilledButton.icon(
             key: const ValueKey('stopButton'),
-            onPressed: cubits.pipeline.stop,
+            onPressed: context.read<PipelineCubit>().stop,
             icon: const Icon(Icons.stop_rounded),
             label: Text(l10n.stopDubbing),
           ),
@@ -2235,15 +2190,11 @@ class _SessionButtons extends StatelessWidget {
 /// Language of the original speech. Naming it skips whisper's detection pass,
 /// which is a noticeable share of the delay before a phrase is voiced.
 class _LanguageControls extends StatelessWidget {
-  const _LanguageControls({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _LanguageControls();
 
   @override
   Widget build(BuildContext context) => _SettingsBuilder(
-    cubits: cubits,
     builder: (context, state) => _PipelineBuilder(
-      cubits: cubits,
       watch: (pipeline) => (pipeline.running, pipeline.detectedLanguage),
       builder: (context, pipeline) => _build(context, state.settings, pipeline),
     ),
@@ -2271,7 +2222,7 @@ class _LanguageControls extends StatelessWidget {
             ? null
             : (value) {
                 if (value != null) {
-                  cubits.settings.update(settings.copyWith(sourceLanguage: value));
+                  context.read<SettingsCubit>().update(settings.copyWith(sourceLanguage: value));
                 }
               },
       ),
@@ -2282,7 +2233,9 @@ class _LanguageControls extends StatelessWidget {
             value: settings.detectSourceLanguage,
             onChanged: locked
                 ? null
-                : (value) => cubits.settings.update(settings.copyWith(detectSourceLanguage: value)),
+                : (value) => context.read<SettingsCubit>().update(
+                    settings.copyWith(detectSourceLanguage: value),
+                  ),
           ),
           const SizedBox(width: 6),
           Flexible(
@@ -2308,15 +2261,11 @@ class _LanguageControls extends StatelessWidget {
 /// the translators read only English, so the choice is English or the
 /// dubbing language itself, which is then voiced as it is.
 class _TextLanguagePicker extends StatelessWidget {
-  const _TextLanguagePicker({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _TextLanguagePicker();
 
   @override
   Widget build(BuildContext context) => _SettingsBuilder(
-    cubits: cubits,
     builder: (context, state) => _PipelineBuilder(
-      cubits: cubits,
       watch: (pipeline) => pipeline.running,
       builder: (context, pipeline) => _build(context, state.settings, locked: pipeline.running),
     ),
@@ -2342,7 +2291,7 @@ class _TextLanguagePicker extends StatelessWidget {
             ? null
             : (value) {
                 if (value != null) {
-                  cubits.settings.update(settings.copyWith(screenLanguage: value));
+                  context.read<SettingsCubit>().update(settings.copyWith(screenLanguage: value));
                 }
               },
       ),
@@ -2845,9 +2794,7 @@ class _EmptyTranscript extends StatelessWidget {
 /// is turned straight back into one of them, so the scheme and the screens
 /// can never say different things.
 class _PipelinePanel extends StatelessWidget {
-  const _PipelinePanel({super.key, required this.cubits});
-
-  final DashboardCubits cubits;
+  const _PipelinePanel({super.key});
 
   /// The scheme is listened to innermost, under everything it is drawn
   /// from. A pan or a dragged node is a new graph state every frame, and
@@ -2859,16 +2806,13 @@ class _PipelinePanel extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
     child: _SettingsBuilder(
-      cubits: cubits,
       builder: (context, settings) => _DownloadsBuilder(
-        cubits: cubits,
         // What is on disk and what the machine can run it on. A download
         // ticking must not redraw the scheme.
         watch: (downloads) =>
             '${downloads.installedModelIds.join()}'
             '|${downloads.availability.installedRuntimes.join()}',
         builder: (context, downloads) => _PipelineBuilder(
-          cubits: cubits,
           watch: (pipeline) => (
             pipeline.running,
             pipeline.status,
@@ -2877,7 +2821,6 @@ class _PipelinePanel extends StatelessWidget {
             pipeline.backendSignature,
           ),
           builder: (context, pipeline) => _CharactersBuilder(
-            cubits: cubits,
             watch: (characters) => (characters.characters, characters.running),
             builder: (context, characters) {
               final facts = PipelineFacts(
@@ -2929,16 +2872,14 @@ class _PipelinePanel extends StatelessWidget {
         // every frame of a drag, and the toolbar has no business being
         // built again for it.
         BlocBuilder<PipelineGraphBloc, PipelineGraphState>(
-          bloc: cubits.graph,
           buildWhen: _toolbarChanged,
-          builder: (context, graph) => _GraphToolbar(cubits: cubits, state: graph, facts: facts),
+          builder: (context, graph) => _GraphToolbar(state: graph, facts: facts),
         ),
         const SizedBox(height: 12),
         // The panel floats over the canvas rather than beside it: opening it
         // must not move the scheme out from under the pointer that opened it.
         Expanded(
           child: BlocBuilder<PipelineGraphBloc, PipelineGraphState>(
-            bloc: cubits.graph,
             builder: (context, graph) => _scheme(context, graph, facts, availability),
           ),
         ),
@@ -2964,7 +2905,7 @@ class _PipelinePanel extends StatelessWidget {
         children: [
           Positioned.fill(
             child: PipelineCanvas(
-              bloc: cubits.graph,
+              bloc: context.read<PipelineGraphBloc>(),
               state: graph,
               facts: facts,
               availability: availability,
@@ -2979,7 +2920,6 @@ class _PipelinePanel extends StatelessWidget {
                   ? null
                   : PipelineInspector(
                       key: ValueKey(selected.id),
-                      cubits: cubits,
                       node: selected,
                       facts: facts,
                       availability: availability,
@@ -3065,9 +3005,8 @@ class _InspectorSlotState extends State<_InspectorSlot> {
 /// The presets, the steps back, and the cards waiting to be put on the
 /// canvas. Under them, whatever the last attempt at a link came to.
 class _GraphToolbar extends StatelessWidget {
-  const _GraphToolbar({required this.cubits, required this.state, required this.facts});
+  const _GraphToolbar({required this.state, required this.facts});
 
-  final DashboardCubits cubits;
   final PipelineGraphState state;
   final PipelineFacts facts;
 
@@ -3119,13 +3058,15 @@ class _GraphToolbar extends StatelessWidget {
                       size: 20,
                       color: facts.paused ? LoreDubPalette.orange : null,
                     ),
-                    onPressed: facts.paused ? cubits.pipeline.resume : cubits.pipeline.pause,
+                    onPressed: facts.paused
+                        ? context.read<PipelineCubit>().resume
+                        : context.read<PipelineCubit>().pause,
                   ),
                   IconButton(
                     key: const ValueKey('graphStop'),
                     tooltip: l10n.stopDubbing,
                     icon: const Icon(Icons.stop_rounded, size: 20),
-                    onPressed: cubits.pipeline.stop,
+                    onPressed: context.read<PipelineCubit>().stop,
                   ),
                 ],
                 IconButton(
@@ -3136,25 +3077,26 @@ class _GraphToolbar extends StatelessWidget {
                 IconButton(
                   tooltip: l10n.pipelineSchemeImport,
                   icon: const Icon(Icons.file_open_outlined, size: 20),
-                  onPressed: () => _importScheme(l10n),
+                  onPressed: () => _importScheme(context),
                 ),
                 IconButton(
                   tooltip: l10n.pipelineResetLayout,
                   icon: const Icon(Icons.grid_view_rounded, size: 20),
-                  onPressed: () => cubits.graph.add(const PipelineLayoutReset()),
+                  onPressed: () =>
+                      context.read<PipelineGraphBloc>().add(const PipelineLayoutReset()),
                 ),
                 IconButton(
                   tooltip: l10n.pipelineUndo,
                   icon: const Icon(Icons.undo_rounded, size: 20),
                   onPressed: state.canUndo
-                      ? () => cubits.graph.add(const PipelineGraphUndone())
+                      ? () => context.read<PipelineGraphBloc>().add(const PipelineGraphUndone())
                       : null,
                 ),
                 IconButton(
                   tooltip: l10n.pipelineRedo,
                   icon: const Icon(Icons.redo_rounded, size: 20),
                   onPressed: state.canRedo
-                      ? () => cubits.graph.add(const PipelineGraphRedone())
+                      ? () => context.read<PipelineGraphBloc>().add(const PipelineGraphRedone())
                       : null,
                 ),
               ],
@@ -3168,11 +3110,12 @@ class _GraphToolbar extends StatelessWidget {
             PipelineShelf(
               schemes: state.schemes,
               cast: facts.characters,
-              onChoose: (id) => cubits.graph.add(PipelineSchemeChosen(id)),
-              onReplace: (id) => cubits.graph.add(PipelineSchemeReplaced(id)),
-              onRename: (id, name) => cubits.graph.add(PipelineSchemeRenamed(id, name)),
-              onRemove: (id) => cubits.graph.add(PipelineSchemeRemoved(id)),
-              onExport: (id) => _exportScheme(id, l10n),
+              onChoose: (id) => context.read<PipelineGraphBloc>().add(PipelineSchemeChosen(id)),
+              onReplace: (id) => context.read<PipelineGraphBloc>().add(PipelineSchemeReplaced(id)),
+              onRename: (id, name) =>
+                  context.read<PipelineGraphBloc>().add(PipelineSchemeRenamed(id, name)),
+              onRemove: (id) => context.read<PipelineGraphBloc>().add(PipelineSchemeRemoved(id)),
+              onExport: (id) => _exportScheme(context, id),
             ),
           ],
         ),
@@ -3182,16 +3125,18 @@ class _GraphToolbar extends StatelessWidget {
 
   /// Keeps the scheme as it stands, under a name the player types.
   Future<void> _saveScheme(BuildContext context, AppLocalizations l10n) async {
+    final graph = context.read<PipelineGraphBloc>();
     final name = await askForName(
       context,
       title: l10n.pipelineSchemeName,
       action: l10n.pipelineSaveScheme,
       initial: l10n.pipelineSchemeNew,
     );
-    if (name != null) cubits.graph.add(PipelineSchemeSaved(name));
+    if (name != null) graph.add(PipelineSchemeSaved(name));
   }
 
-  Future<void> _exportScheme(String id, AppLocalizations l10n) async {
+  Future<void> _exportScheme(BuildContext context, String id) async {
+    final graph = context.read<PipelineGraphBloc>();
     final scheme = state.schemes.where((value) => value.id == id).firstOrNull;
     if (scheme == null) return;
     final destination = await getSaveLocation(
@@ -3201,17 +3146,18 @@ class _GraphToolbar extends StatelessWidget {
       ],
     );
     if (destination == null) return;
-    cubits.graph.add(PipelineSchemeExported(id, destination.path));
+    graph.add(PipelineSchemeExported(id, destination.path));
   }
 
-  Future<void> _importScheme(AppLocalizations l10n) async {
+  Future<void> _importScheme(BuildContext context) async {
+    final graph = context.read<PipelineGraphBloc>();
     final files = await openFiles(
       acceptedTypeGroups: const [
         XTypeGroup(label: 'LoreDub', extensions: ['json']),
       ],
     );
     if (files.isEmpty) return;
-    cubits.graph.add(PipelineSchemeImported([for (final file in files) file.path]));
+    graph.add(PipelineSchemeImported([for (final file in files) file.path]));
   }
 
   /// Every card of the cast, drawn or not: a card already on the canvas can
@@ -3226,7 +3172,7 @@ class _GraphToolbar extends StatelessWidget {
       tooltip: facts.characters.isEmpty ? l10n.pipelineNoCharacters : l10n.pipelineAddCharacter,
       enabled: facts.characters.isNotEmpty,
       icon: const Icon(Icons.person_add_alt_rounded, size: 20),
-      onSelected: (id) => cubits.graph.add(PipelineCharacterPlaced(id)),
+      onSelected: (id) => context.read<PipelineGraphBloc>().add(PipelineCharacterPlaced(id)),
       itemBuilder: (context) => [
         for (final character in facts.characters)
           PopupMenuItem(
@@ -3255,9 +3201,7 @@ class _GraphToolbar extends StatelessWidget {
 }
 
 class _CharactersPanel extends StatelessWidget {
-  const _CharactersPanel({super.key, required this.cubits});
-
-  final DashboardCubits cubits;
+  const _CharactersPanel({super.key});
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -3275,13 +3219,12 @@ class _CharactersPanel extends StatelessWidget {
                   label: AppLocalizations.of(context).areaVoiceRecording,
                 ),
                 const SizedBox(height: 14),
-                _CharacterSessionControls(cubits: cubits),
+                _CharacterSessionControls(),
               ],
             ),
           ),
         ),
         _ModelsNeededNotice(
-          cubits: cubits,
           ready: (selection) => selection.voiceConverter?.installed ?? false,
         ),
         const SizedBox(height: 16),
@@ -3296,9 +3239,9 @@ class _CharactersPanel extends StatelessWidget {
                 ? ListView(
                     padding: EdgeInsets.zero,
                     children: [
-                      _CharacterCast(cubits: cubits),
+                      _CharacterCast(),
                       const SizedBox(height: 16),
-                      _CharacterPacks(cubits: cubits),
+                      _CharacterPacks(),
                     ],
                   )
                 : Row(
@@ -3309,7 +3252,7 @@ class _CharactersPanel extends StatelessWidget {
                       Expanded(
                         child: ListView(
                           padding: EdgeInsets.zero,
-                          children: [_CharacterCast(cubits: cubits)],
+                          children: [_CharacterCast()],
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -3317,7 +3260,7 @@ class _CharactersPanel extends StatelessWidget {
                         width: (constraints.maxWidth * 0.36).clamp(340.0, 480.0),
                         child: ListView(
                           padding: EdgeInsets.zero,
-                          children: [_CharacterPacks(cubits: cubits)],
+                          children: [_CharacterPacks()],
                         ),
                       ),
                     ],
@@ -3358,21 +3301,15 @@ const _packsBeside = 880.0;
 /// Which game to listen to, and whether the session that measures voices is
 /// running. Live dubbing holds the same worker, so the two never run at once.
 class _CharacterSessionControls extends StatelessWidget {
-  const _CharacterSessionControls({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _CharacterSessionControls();
 
   @override
   Widget build(BuildContext context) => _ShellBuilder(
-    cubits: cubits,
     builder: (context, shell) => _DownloadsBuilder(
       onlyWhatIsInstalled: true,
-      cubits: cubits,
       builder: (context, _) => _PipelineBuilder(
-        cubits: cubits,
         watch: (pipeline) => (pipeline.processes, pipeline.selectedProcess, pipeline.running),
         builder: (context, pipeline) => _CharactersBuilder(
-          cubits: cubits,
           watch: (characters) => (characters.status, characters.recordingId),
           builder: (context, characters) =>
               _build(context, pipeline, characters, initializing: shell.initializing),
@@ -3388,14 +3325,14 @@ class _CharacterSessionControls extends StatelessWidget {
     required bool initializing,
   }) {
     final l10n = AppLocalizations.of(context);
-    final canRecord = cubits.characters.canRecord;
+    final canRecord = context.read<CharactersCubit>().canRecord;
     final locked = characters.running || pipeline.running;
     final picker = ProcessPicker(
       processes: pipeline.processes,
       selected: pipeline.selectedProcess,
       enabled: !locked,
-      onSelected: cubits.pipeline.selectProcess,
-      onRefresh: cubits.pipeline.refreshProcesses,
+      onSelected: context.read<PipelineCubit>().selectProcess,
+      onRefresh: context.read<PipelineCubit>().refreshProcesses,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3415,7 +3352,7 @@ class _CharacterSessionControls extends StatelessWidget {
                 key: const ValueKey('charactersSession'),
                 onPressed: !canRecord || initializing || pipeline.running
                     ? null
-                    : () => cubits.characters.toggleSession(
+                    : () => context.read<CharactersCubit>().toggleSession(
                         initializing: initializing,
                         process: pipeline.selectedProcess,
                       ),
@@ -3461,25 +3398,26 @@ class _CharacterSessionControls extends StatelessWidget {
 /// character whether a pack names them or not, so this is where a card goes
 /// back to being in none.
 class _CharacterCast extends StatelessWidget {
-  const _CharacterCast({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _CharacterCast();
 
   Future<void> _exportAll(BuildContext context, List<Character> characters) async {
+    final charactersCubit = context.read<CharactersCubit>();
     final location = await getSaveLocation(suggestedName: 'loredub-characters.json');
     if (location == null) return;
-    await cubits.characters.export(location.path, characters);
+    await charactersCubit.export(location.path, characters);
   }
 
   Future<void> _export(BuildContext context, Character character) async {
+    final characters = context.read<CharactersCubit>();
     final location = await getSaveLocation(
       suggestedName: '${character.name.trim().isEmpty ? 'character' : character.name}.json',
     );
     if (location == null) return;
-    await cubits.characters.export(location.path, [character]);
+    await characters.export(location.path, [character]);
   }
 
   Future<void> _confirmDelete(BuildContext context, Character character) async {
+    final characters = context.read<CharactersCubit>();
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -3506,17 +3444,15 @@ class _CharacterCast extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed ?? false) await cubits.characters.remove(character.id);
+    if (confirmed ?? false) await characters.remove(character.id);
   }
 
   @override
   Widget build(BuildContext context) => _PipelineBuilder(
-    cubits: cubits,
     // Whether a dubbing session holds the worker, and nothing more of it: a
     // recognized phrase must not redraw every card.
     watch: (pipeline) => pipeline.running,
     builder: (context, pipeline) => _CharactersBuilder(
-      cubits: cubits,
       builder: (context, state) => _build(context, state, dubbing: pipeline.running),
     ),
   );
@@ -3547,7 +3483,7 @@ class _CharacterCast extends StatelessWidget {
                 ),
                 FilledButton.icon(
                   key: const ValueKey('charactersAdd'),
-                  onPressed: () => cubits.characters.add(l10n.charactersNewName),
+                  onPressed: () => context.read<CharactersCubit>().add(l10n.charactersNewName),
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(l10n.charactersAdd),
                 ),
@@ -3559,7 +3495,7 @@ class _CharacterCast extends StatelessWidget {
             // Only a card that came out of a pack has anywhere to land
             // here; one dragged from the cast is already where it is.
             onWillAcceptWithDetails: (details) => details.data.fromPackId != null,
-            onAcceptWithDetails: (details) => cubits.characters.removeFromPack(
+            onAcceptWithDetails: (details) => context.read<CharactersCubit>().removeFromPack(
               details.data.fromPackId!,
               details.data.character.id,
             ),
@@ -3587,40 +3523,45 @@ class _CharacterCast extends StatelessWidget {
                                 for (final other in state.characters)
                                   if (other.id != character.id) other,
                               ],
-                              onRename: (name) => cubits.characters.rename(character.id, name),
+                              onRename: (name) =>
+                                  context.read<CharactersCubit>().rename(character.id, name),
                               playing: state.playingId == character.id,
                               onPlay: !state.canPlay(character.id) || state.sounding
                                   ? null
-                                  : () => cubits.characters.playClip(character.id),
+                                  : () => context.read<CharactersCubit>().playClip(character.id),
                               previewing: state.previewingId == character.id,
-                              onStopSound: cubits.characters.stopSounding,
-                              carriesTimbre: cubits.characters.carriesTimbre,
+                              onStopSound: context.read<CharactersCubit>().stopSounding,
+                              carriesTimbre: context.read<CharactersCubit>().carriesTimbre,
                               dubbing: dubbing,
                               onPreview:
                                   dubbing ||
                                       state.sounding ||
                                       state.running ||
                                       state.building ||
-                                      !cubits.characters.canPreview
+                                      !context.read<CharactersCubit>().canPreview
                                   ? null
-                                  : () => cubits.characters.preview(character.id),
+                                  : () => context.read<CharactersCubit>().preview(character.id),
                               onRecord:
                                   !state.running ||
                                       (state.recording && state.recordingId != character.id)
                                   ? null
                                   : () => state.recordingId == character.id
-                                        ? cubits.characters.stopRecording()
-                                        : cubits.characters.startRecording(character.id),
+                                        ? context.read<CharactersCubit>().stopRecording()
+                                        : context.read<CharactersCubit>().startRecording(
+                                            character.id,
+                                          ),
                               building: state.buildingId == character.id,
                               built: state.builtId == character.id ? state.built : null,
                               onFilesDropped:
                                   dubbing ||
                                       state.building ||
                                       state.recording ||
-                                      !cubits.characters.canRecord
+                                      !context.read<CharactersCubit>().canRecord
                                   ? null
-                                  : (paths) =>
-                                        cubits.characters.voiceFromFiles(character.id, paths),
+                                  : (paths) => context.read<CharactersCubit>().voiceFromFiles(
+                                      character.id,
+                                      paths,
+                                    ),
                               onExport: character.vector.isEmpty
                                   ? null
                                   : () => _export(context, character),
@@ -3641,11 +3582,10 @@ class _CharacterCast extends StatelessWidget {
 /// as a group. Throwing one away leaves the cards in the cast — the player
 /// recorded them, and only the grouping was ever the pack's.
 class _CharacterPacks extends StatelessWidget {
-  const _CharacterPacks({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _CharacterPacks();
 
   Future<void> _import(BuildContext context) async {
+    final charactersCubit = context.read<CharactersCubit>();
     final l10n = AppLocalizations.of(context);
     final chosen = await openFiles(
       acceptedTypeGroups: const [
@@ -3653,7 +3593,7 @@ class _CharacterPacks extends StatelessWidget {
       ],
     );
     if (chosen.isEmpty) return;
-    final added = await cubits.characters.import([for (final file in chosen) file.path]);
+    final added = await charactersCubit.import([for (final file in chosen) file.path]);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -3667,14 +3607,16 @@ class _CharacterPacks extends StatelessWidget {
   }
 
   Future<void> _export(BuildContext context, CharacterPack pack, List<Character> members) async {
+    final characters = context.read<CharactersCubit>();
     final location = await getSaveLocation(
       suggestedName: '${pack.name.trim().isEmpty ? 'pack' : pack.name}.json',
     );
     if (location == null) return;
-    await cubits.characters.export(location.path, members, pack: pack);
+    await characters.export(location.path, members, pack: pack);
   }
 
   Future<void> _confirmDelete(BuildContext context, CharacterPack pack) async {
+    final characters = context.read<CharactersCubit>();
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -3701,12 +3643,11 @@ class _CharacterPacks extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed ?? false) await cubits.characters.removePack(pack.id);
+    if (confirmed ?? false) await characters.removePack(pack.id);
   }
 
   @override
   Widget build(BuildContext context) => _CharactersBuilder(
-    cubits: cubits,
     watch: (characters) => (characters.characters, characters.packs, characters.loading),
     builder: (context, state) {
       final l10n = AppLocalizations.of(context);
@@ -3729,7 +3670,7 @@ class _CharacterPacks extends StatelessWidget {
                   ),
                   FilledButton.icon(
                     key: const ValueKey('packsAdd'),
-                    onPressed: () => cubits.characters.addPack(l10n.packsNewName),
+                    onPressed: () => context.read<CharactersCubit>().addPack(l10n.packsNewName),
                     icon: const Icon(Icons.create_new_folder_outlined, size: 18),
                     label: Text(l10n.packsAdd),
                   ),
@@ -3759,15 +3700,19 @@ class _CharacterPacks extends StatelessWidget {
                             key: ValueKey(pack.id),
                             pack: pack,
                             members: state.membersOf(pack),
-                            onRename: (name) => cubits.characters.renamePack(pack.id, name),
+                            onRename: (name) =>
+                                context.read<CharactersCubit>().renamePack(pack.id, name),
                             onExport: pack.characterIds.isEmpty
                                 ? null
                                 : () => _export(context, pack, state.membersOf(pack)),
                             onDelete: () => _confirmDelete(context, pack),
-                            onDrop: (drag) =>
-                                cubits.characters.addToPack(pack.id, drag.character.id),
-                            onRemoveMember: (character) =>
-                                cubits.characters.removeFromPack(pack.id, character.id),
+                            onDrop: (drag) => context.read<CharactersCubit>().addToPack(
+                              pack.id,
+                              drag.character.id,
+                            ),
+                            onRemoveMember: (character) => context
+                                .read<CharactersCubit>()
+                                .removeFromPack(pack.id, character.id),
                           ),
                           const SizedBox(height: 12),
                         ],
@@ -3808,17 +3753,12 @@ class _EmptyCast extends StatelessWidget {
 }
 
 class _ModelsPanel extends StatelessWidget {
-  const _ModelsPanel({super.key, required this.cubits});
-
-  final DashboardCubits cubits;
+  const _ModelsPanel({super.key});
 
   @override
   Widget build(BuildContext context) => _DownloadsBuilder(
-    cubits: cubits,
     builder: (context, downloads) => _SettingsBuilder(
-      cubits: cubits,
       builder: (context, settings) => _PipelineBuilder(
-        cubits: cubits,
         watch: (pipeline) => pipeline.running,
         builder: (context, pipeline) => _build(context, downloads, running: pipeline.running),
       ),
@@ -3827,7 +3767,7 @@ class _ModelsPanel extends StatelessWidget {
 
   Widget _build(BuildContext context, DownloadsState downloads, {required bool running}) {
     final l10n = AppLocalizations.of(context);
-    final selection = cubits.selection;
+    final selection = context.selection;
     final selected = selection.settings.targetLanguage;
     return ListView(
       key: const ValueKey('modelsList'),
@@ -3852,13 +3792,15 @@ class _ModelsPanel extends StatelessWidget {
                   selectedId: selection.recognition?.model.id,
                   running: running,
                   isStopping: downloads.isStopping,
-                  onInstall: cubits.downloads.installModel,
-                  onPause: (state) => cubits.downloads.pauseDownload(state.model.id),
-                  onCancel: (state) => cubits.downloads.cancelDownload(state.model.id),
-                  onRemove: cubits.downloads.removeModel,
+                  onInstall: context.read<DownloadsCubit>().installModel,
+                  onPause: (state) => context.read<DownloadsCubit>().pauseDownload(state.model.id),
+                  onCancel: (state) =>
+                      context.read<DownloadsCubit>().cancelDownload(state.model.id),
+                  onRemove: context.read<DownloadsCubit>().removeModel,
                   onSelect: running
                       ? null
-                      : (state) => cubits.settings.selectRecognitionModel(state.model.id),
+                      : (state) =>
+                            context.read<SettingsCubit>().selectRecognitionModel(state.model.id),
                 ),
               );
             }
@@ -3869,15 +3811,16 @@ class _ModelsPanel extends StatelessWidget {
                   const SizedBox(height: 12),
                   _ModelCard(
                     state: state,
-                    onInstall: () => cubits.downloads.installModel(state),
-                    onPause: () => cubits.downloads.pauseDownload(state.model.id),
-                    onCancel: () => cubits.downloads.cancelDownload(state.model.id),
+                    onInstall: () => context.read<DownloadsCubit>().installModel(state),
+                    onPause: () => context.read<DownloadsCubit>().pauseDownload(state.model.id),
+                    onCancel: () => context.read<DownloadsCubit>().cancelDownload(state.model.id),
                     stopping: downloads.isStopping(state.model.id),
                     choosable: true,
                     selected: state.model.id == selection.recognition?.model.id,
                     onSelect: running
                         ? null
-                        : () => cubits.settings.selectRecognitionModel(state.model.id),
+                        : () =>
+                              context.read<SettingsCubit>().selectRecognitionModel(state.model.id),
                   ),
                 ],
               ],
@@ -3902,11 +3845,11 @@ class _ModelsPanel extends StatelessWidget {
                 isStopping: downloads.isStopping,
                 onSelect: running
                     ? null
-                    : () => cubits.settings.selectTargetLanguage(pair.language),
-                onInstall: cubits.downloads.installModel,
-                onPause: (state) => cubits.downloads.pauseDownload(state.model.id),
-                onCancel: (state) => cubits.downloads.cancelDownload(state.model.id),
-                onRemove: cubits.downloads.removeModel,
+                    : () => context.read<SettingsCubit>().selectTargetLanguage(pair.language),
+                onInstall: context.read<DownloadsCubit>().installModel,
+                onPause: (state) => context.read<DownloadsCubit>().pauseDownload(state.model.id),
+                onCancel: (state) => context.read<DownloadsCubit>().cancelDownload(state.model.id),
+                onRemove: context.read<DownloadsCubit>().removeModel,
               ),
           ],
         ),
@@ -3930,10 +3873,10 @@ class _ModelsPanel extends StatelessWidget {
                 inUse: selection.clonesVoice,
                 running: running,
                 isStopping: downloads.isStopping,
-                onInstall: cubits.downloads.installModel,
-                onPause: (state) => cubits.downloads.pauseDownload(state.model.id),
-                onCancel: (state) => cubits.downloads.cancelDownload(state.model.id),
-                onRemove: cubits.downloads.removeModel,
+                onInstall: context.read<DownloadsCubit>().installModel,
+                onPause: (state) => context.read<DownloadsCubit>().pauseDownload(state.model.id),
+                onCancel: (state) => context.read<DownloadsCubit>().cancelDownload(state.model.id),
+                onRemove: context.read<DownloadsCubit>().removeModel,
               ),
           ],
         ),
@@ -4147,9 +4090,7 @@ class _ModelCard extends StatelessWidget {
 const _settingsGroupGap = 28.0;
 
 class _SettingsPanel extends StatefulWidget {
-  const _SettingsPanel({super.key, required this.cubits});
-
-  final DashboardCubits cubits;
+  const _SettingsPanel({super.key});
 
   @override
   State<_SettingsPanel> createState() => _SettingsPanelState();
@@ -4161,9 +4102,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   late final TextEditingController _proxyController;
   late final TextEditingController _pythonController;
 
-  DashboardCubits get cubits => widget.cubits;
-
-  AppSettings get _settings => cubits.settings.settings;
+  AppSettings get _settings => context.read<SettingsCubit>().settings;
 
   @override
   void initState() {
@@ -4211,25 +4150,27 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
   void _saveProxy() {
     if (!(_proxyFormKey.currentState?.validate() ?? false)) return;
-    cubits.settings.update(_settings.copyWith(modelProxyUrl: _proxyController.text.trim()));
+    context.read<SettingsCubit>().update(
+      _settings.copyWith(modelProxyUrl: _proxyController.text.trim()),
+    );
   }
 
   Future<void> _findPython() async {
-    final executable = await cubits.settings.findPythonExecutable();
+    final executable = await context.read<SettingsCubit>().findPythonExecutable();
     if (executable == null || !mounted) return;
     _pythonController.text = executable;
   }
 
   void _savePython() {
     if (!(_pythonFormKey.currentState?.validate() ?? false)) return;
-    cubits.settings.update(_settings.copyWith(pythonExecutable: _pythonController.text.trim()));
+    context.read<SettingsCubit>().update(
+      _settings.copyWith(pythonExecutable: _pythonController.text.trim()),
+    );
   }
 
   @override
   Widget build(BuildContext context) => _SettingsBuilder(
-    cubits: cubits,
     builder: (context, state) => _PipelineBuilder(
-      cubits: cubits,
       watch: (pipeline) => pipeline.running,
       // The compute card and the model directory listen to the downloads
       // themselves, so a runtime arriving does not redraw the whole page.
@@ -4261,7 +4202,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         const SizedBox(height: _settingsGroupGap),
         _ModuleLabel(number: '03', label: l10n.settingsGroupCompute),
         const SizedBox(height: 12),
-        _ComputeDeviceCard(cubits: cubits),
+        _ComputeDeviceCard(),
         const SizedBox(height: _settingsGroupGap),
         // Where the parts come from, and where they are kept: two areas of
         // their own rather than one drawer holding everything a player only
@@ -4317,8 +4258,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
               ),
           ],
           selected: {settings.interfaceLanguage},
-          onSelectionChanged: (selection) =>
-              cubits.settings.update(settings.copyWith(interfaceLanguage: selection.first)),
+          onSelectionChanged: (selection) => context.read<SettingsCubit>().update(
+            settings.copyWith(interfaceLanguage: selection.first),
+          ),
         ),
       ),
     );
@@ -4367,7 +4309,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           max: AppSettings.largestScale,
           divisions: AppSettings.scaleDivisions,
           label: l10n.scaleValue((settings.chosenScale * 100).round()),
-          onChanged: (value) => cubits.settings.update(settings.copyWith(interfaceScale: value)),
+          onChanged: (value) =>
+              context.read<SettingsCubit>().update(settings.copyWith(interfaceScale: value)),
         ),
         const SizedBox(height: 4),
         Text(
@@ -4435,7 +4378,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             label: '${(settings.duckedVolume * 100).round()}%',
             onChanged: running
                 ? null
-                : (value) => cubits.settings.update(settings.copyWith(originalVolume: value)),
+                : (value) => context.read<SettingsCubit>().update(
+                    settings.copyWith(originalVolume: value),
+                  ),
           ),
           const SizedBox(height: 4),
           Row(
@@ -4444,8 +4389,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                 value: settings.duckWhileSpeaking,
                 onChanged: running
                     ? null
-                    : (value) =>
-                          cubits.settings.update(settings.copyWith(duckWhileSpeaking: value)),
+                    : (value) => context.read<SettingsCubit>().update(
+                        settings.copyWith(duckWhileSpeaking: value),
+                      ),
               ),
               const SizedBox(width: 6),
               Flexible(child: Text(l10n.duckWhileSpeaking)),
@@ -4473,7 +4419,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             label: l10n.speedValue(settings.chosenSpeed.toStringAsFixed(2)),
             onChanged: running
                 ? null
-                : (value) => cubits.settings.update(settings.copyWith(ttsSpeed: value)),
+                : (value) =>
+                      context.read<SettingsCubit>().update(settings.copyWith(ttsSpeed: value)),
           ),
           const SizedBox(height: 4),
           Row(
@@ -4483,7 +4430,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                 value: settings.hurryWhenQueued,
                 onChanged: running
                     ? null
-                    : (value) => cubits.settings.update(settings.copyWith(hurryWhenQueued: value)),
+                    : (value) => context.read<SettingsCubit>().update(
+                        settings.copyWith(hurryWhenQueued: value),
+                      ),
               ),
               const SizedBox(width: 6),
               Flexible(child: Text(l10n.hurryWhenQueued)),
@@ -4516,7 +4465,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             : Column(children: [volume, const SizedBox(height: 12), pace]),
       ),
       const SizedBox(height: 12),
-      _VoiceCard(cubits: cubits),
+      _VoiceCard(),
     ];
   }
 
@@ -4552,7 +4501,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                     (_settings.frameHotkey, l10n.hotkeyFrame),
                   ],
                 ),
-                onChanged: (hotkey) => cubits.settings.update(
+                onChanged: (hotkey) => context.read<SettingsCubit>().update(
                   hotkey == null
                       ? _settings.copyWith(clearPauseHotkey: true)
                       : _settings.copyWith(pauseHotkey: hotkey),
@@ -4575,7 +4524,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                     (_settings.frameHotkey, l10n.hotkeyFrame),
                   ],
                 ),
-                onChanged: (hotkey) => cubits.settings.update(
+                onChanged: (hotkey) => context.read<SettingsCubit>().update(
                   hotkey == null
                       ? _settings.copyWith(clearResumeHotkey: true)
                       : _settings.copyWith(resumeHotkey: hotkey),
@@ -4598,7 +4547,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                     (_settings.frameHotkey, l10n.hotkeyFrame),
                   ],
                 ),
-                onChanged: (hotkey) => cubits.settings.update(
+                onChanged: (hotkey) => context.read<SettingsCubit>().update(
                   hotkey == null
                       ? _settings.copyWith(clearSnapshotHotkey: true)
                       : _settings.copyWith(snapshotHotkey: hotkey),
@@ -4621,7 +4570,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                     (_settings.snapshotHotkey, l10n.hotkeySnapshot),
                   ],
                 ),
-                onChanged: (hotkey) => cubits.settings.update(
+                onChanged: (hotkey) => context.read<SettingsCubit>().update(
                   hotkey == null
                       ? _settings.copyWith(clearFrameHotkey: true)
                       : _settings.copyWith(frameHotkey: hotkey),
@@ -4636,7 +4585,6 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
   /// Where the parts come from and where they are kept.
   Widget _pythonCard(BuildContext context, AppLocalizations l10n) => _SettingsBuilder(
-    cubits: cubits,
     builder: (context, state) => _SettingCard(
       title: l10n.settingsPython,
       subtitle: l10n.pythonNote,
@@ -4756,14 +4704,13 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     child: LayoutBuilder(
       builder: (context, constraints) {
         final path = _DownloadsBuilder(
-          cubits: cubits,
           builder: (context, downloads) => SelectableText(
             downloads.modelDirectoryPath,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         );
         final open = OutlinedButton.icon(
-          onPressed: cubits.downloads.openModelDirectory,
+          onPressed: context.read<DownloadsCubit>().openModelDirectory,
           icon: const Icon(Icons.folder_open_rounded),
           label: Text(l10n.openInExplorer),
         );
@@ -4837,19 +4784,14 @@ List<int> _threadOptions(int selected) {
 /// does not, the option is disabled and the reason is written out rather
 /// than left for the user to guess at.
 class _VoiceCard extends StatelessWidget {
-  const _VoiceCard({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _VoiceCard();
 
   @override
   Widget build(BuildContext context) => _SettingsBuilder(
-    cubits: cubits,
     // Which voices exist comes from the downloaded package.
     builder: (context, state) => _DownloadsBuilder(
       onlyWhatIsInstalled: true,
-      cubits: cubits,
       builder: (context, _) => _PipelineBuilder(
-        cubits: cubits,
         watch: (pipeline) => (pipeline.running, pipeline.spokenVoice),
         builder: (context, pipeline) => _build(context, state, pipeline),
       ),
@@ -4859,7 +4801,7 @@ class _VoiceCard extends StatelessWidget {
   Widget _build(BuildContext context, SettingsState state, LivePipelineState pipeline) {
     final l10n = AppLocalizations.of(context);
     final settings = state.settings;
-    final selection = cubits.selection;
+    final selection = context.selection;
     final running = pipeline.running;
     final voices = selection.availableVoices;
     final canFollow = selection.canFollowSpeaker;
@@ -4889,7 +4831,8 @@ class _VoiceCard extends StatelessWidget {
             selected: {mode},
             onSelectionChanged: running
                 ? null
-                : (picked) => cubits.settings.update(settings.withVoiceMode(picked.first)),
+                : (picked) =>
+                      context.read<SettingsCubit>().update(settings.withVoiceMode(picked.first)),
           ),
           if (mode == VoiceMode.original) ...[
             const SizedBox(height: 10),
@@ -4907,7 +4850,6 @@ class _VoiceCard extends StatelessWidget {
           if (converterInstalled && mode != VoiceMode.chosen) ...[
             const SizedBox(height: 12),
             _VoiceBankControls(
-              cubits: cubits,
               settings: settings,
               size: state.voiceBankSize,
               running: running,
@@ -4937,7 +4879,7 @@ class _VoiceCard extends StatelessWidget {
                   ? null
                   : (value) {
                       if (value != null) {
-                        cubits.settings.update(settings.copyWith(voice: value));
+                        context.read<SettingsCubit>().update(settings.copyWith(voice: value));
                       }
                     },
             ),
@@ -4951,7 +4893,9 @@ class _VoiceCard extends StatelessWidget {
                   value: settings.overlapVoices,
                   onChanged: running
                       ? null
-                      : (value) => cubits.settings.update(settings.copyWith(overlapVoices: value)),
+                      : (value) => context.read<SettingsCubit>().update(
+                          settings.copyWith(overlapVoices: value),
+                        ),
                 ),
                 const SizedBox(width: 6),
                 Flexible(child: Text(l10n.voiceOverlap)),
@@ -4985,18 +4929,17 @@ class _VoiceCard extends StatelessWidget {
 /// and a way to forget them. Forgetting cannot be undone, so it is asked.
 class _VoiceBankControls extends StatelessWidget {
   const _VoiceBankControls({
-    required this.cubits,
     required this.settings,
     required this.size,
     required this.running,
   });
 
-  final DashboardCubits cubits;
   final AppSettings settings;
   final int size;
   final bool running;
 
   Future<void> _confirmClear(BuildContext context) async {
+    final settings = context.read<SettingsCubit>();
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -5023,7 +4966,7 @@ class _VoiceBankControls extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed ?? false) await cubits.settings.clearVoiceBank();
+    if (confirmed ?? false) await settings.clearVoiceBank();
   }
 
   @override
@@ -5038,7 +4981,8 @@ class _VoiceBankControls extends StatelessWidget {
               value: settings.voiceBank,
               onChanged: running
                   ? null
-                  : (value) => cubits.settings.update(settings.copyWith(voiceBank: value)),
+                  : (value) =>
+                        context.read<SettingsCubit>().update(settings.copyWith(voiceBank: value)),
             ),
             const SizedBox(width: 6),
             Flexible(child: Text(l10n.voiceBank)),
@@ -5079,17 +5023,12 @@ class _VoiceBankControls extends StatelessWidget {
 /// cannot run is shown but faded, so an AMD owner can see that CUDA exists
 /// and why it is not on offer.
 class _ComputeDeviceCard extends StatelessWidget {
-  const _ComputeDeviceCard({required this.cubits});
-
-  final DashboardCubits cubits;
+  const _ComputeDeviceCard();
 
   @override
   Widget build(BuildContext context) => _DownloadsBuilder(
-    cubits: cubits,
     builder: (context, downloads) => _SettingsBuilder(
-      cubits: cubits,
       builder: (context, state) => _PipelineBuilder(
-        cubits: cubits,
         watch: (pipeline) => (pipeline.running, pipeline.backendSignature),
         builder: (context, pipeline) => _build(context, downloads, state.settings, pipeline),
       ),
@@ -5134,7 +5073,7 @@ class _ComputeDeviceCard extends StatelessWidget {
             selected: {settings.computeDevice},
             onSelectionChanged: running
                 ? null
-                : (selection) => cubits.settings.selectComputeDevice(selection.first),
+                : (selection) => context.read<SettingsCubit>().selectComputeDevice(selection.first),
           ),
           // What the choice leaves to say: the card a GPU run would use, or
           // -- everything being on the processor -- how much of it to use.
@@ -5164,7 +5103,7 @@ class _ComputeDeviceCard extends StatelessWidget {
                   ? null
                   : (value) {
                       if (value != null) {
-                        cubits.settings.update(settings.copyWith(cpuThreads: value));
+                        context.read<SettingsCubit>().update(settings.copyWith(cpuThreads: value));
                       }
                     },
             ),
@@ -5180,7 +5119,9 @@ class _ComputeDeviceCard extends StatelessWidget {
                 value: settings.roughRecognition,
                 onChanged: running
                     ? null
-                    : (value) => cubits.settings.update(settings.copyWith(roughRecognition: value)),
+                    : (value) => context.read<SettingsCubit>().update(
+                        settings.copyWith(roughRecognition: value),
+                      ),
               ),
               const SizedBox(width: 6),
               Flexible(child: Text(l10n.roughRecognition)),
@@ -5210,7 +5151,7 @@ class _ComputeDeviceCard extends StatelessWidget {
                     Expanded(
                       child: SizedBox(
                         height: 48,
-                        child: _cell(l10n, stage, backend, downloads, settings, pipeline),
+                        child: _cell(context, l10n, stage, backend, downloads, settings, pipeline),
                       ),
                     ),
                     if (backend != ComputeBackend.values.last) const SizedBox(width: 8),
@@ -5240,10 +5181,11 @@ class _ComputeDeviceCard extends StatelessWidget {
                     inUse: _inUse(runtime.package.id, stages, settings, pipeline, availability),
                     running: running,
                     stopping: downloads.isStopping(runtime.package.id),
-                    onInstall: () => cubits.downloads.installRuntime(runtime),
-                    onPause: () => cubits.downloads.pauseDownload(runtime.package.id),
-                    onCancel: () => cubits.downloads.cancelDownload(runtime.package.id),
-                    onRemove: () => cubits.downloads.removeRuntime(runtime),
+                    onInstall: () => context.read<DownloadsCubit>().installRuntime(runtime),
+                    onPause: () => context.read<DownloadsCubit>().pauseDownload(runtime.package.id),
+                    onCancel: () =>
+                        context.read<DownloadsCubit>().cancelDownload(runtime.package.id),
+                    onRemove: () => context.read<DownloadsCubit>().removeRuntime(runtime),
                   ),
               ],
             ),
@@ -5270,6 +5212,7 @@ class _ComputeDeviceCard extends StatelessWidget {
   }
 
   Widget _cell(
+    BuildContext context,
     AppLocalizations l10n,
     ComputeStage stage,
     ComputeBackend backend,
@@ -5314,7 +5257,7 @@ class _ComputeDeviceCard extends StatelessWidget {
         state: BackendCellState.needsRuntime,
         detail: size,
         tooltip: '${l10n.computeRuntimeMissing(size)}\n${l10n.computeCellHintDownload}',
-        onTap: running ? null : () => cubits.downloads.installRuntime(missing),
+        onTap: running ? null : () => context.read<DownloadsCubit>().installRuntime(missing),
       );
     }
     // A runtime that is missing and not in the catalogue either: the cell
@@ -5339,7 +5282,9 @@ class _ComputeDeviceCard extends StatelessWidget {
           : running
           ? l10n.computeCellLocked
           : l10n.computeCellSelect,
-      onTap: selected || running ? null : () => cubits.settings.selectStageBackend(stage, backend),
+      onTap: selected || running
+          ? null
+          : () => context.read<SettingsCubit>().selectStageBackend(stage, backend),
     );
   }
 

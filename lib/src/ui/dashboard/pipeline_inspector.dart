@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../data/services/playback_scheduler.dart';
@@ -14,7 +15,10 @@ import '../compute_names.dart';
 import '../language_names.dart';
 import '../model_names.dart';
 import '../theme.dart';
-import 'cubits/dashboard_cubits.dart';
+import 'cubits/characters_cubit.dart';
+import 'cubits/downloads_cubit.dart';
+import 'cubits/pipeline_cubit.dart';
+import 'cubits/settings_cubit.dart';
 import 'cubits/pipeline_graph_bloc.dart';
 import 'cubits/shell_cubit.dart';
 import 'node_paint.dart';
@@ -30,7 +34,6 @@ import 'process_picker.dart';
 class PipelineInspector extends StatelessWidget {
   const PipelineInspector({
     super.key,
-    required this.cubits,
     required this.node,
     required this.facts,
     required this.availability,
@@ -39,7 +42,6 @@ class PipelineInspector extends StatelessWidget {
 
   static const double width = 320;
 
-  final DashboardCubits cubits;
   final PipelineNode node;
   final PipelineFacts facts;
   final ComputeAvailability availability;
@@ -141,7 +143,7 @@ class PipelineInspector extends StatelessWidget {
         IconButton(
           tooltip: l10n.pipelineCloseInspector,
           icon: const Icon(Icons.close_rounded, size: 18),
-          onPressed: () => cubits.graph.add(const PipelineNodeSelected(null)),
+          onPressed: () => context.read<PipelineGraphBloc>().add(const PipelineNodeSelected(null)),
         ),
       ],
     ),
@@ -158,12 +160,12 @@ class PipelineInspector extends StatelessWidget {
   };
 
   List<Widget> _fields(BuildContext context, AppLocalizations l10n) => switch (node.kind) {
-    PipelineNodeKind.source => _source(l10n),
-    PipelineNodeKind.recognition => _recognition(l10n),
-    PipelineNodeKind.translation => _translation(l10n),
-    PipelineNodeKind.voice => _voice(l10n),
-    PipelineNodeKind.mix => _mix(l10n),
-    PipelineNodeKind.output => _output(l10n),
+    PipelineNodeKind.source => _source(context, l10n),
+    PipelineNodeKind.recognition => _recognition(context, l10n),
+    PipelineNodeKind.translation => _translation(context, l10n),
+    PipelineNodeKind.voice => _voice(context, l10n),
+    PipelineNodeKind.mix => _mix(context, l10n),
+    PipelineNodeKind.output => _output(context, l10n),
     PipelineNodeKind.character => _character(context, l10n),
   };
 
@@ -171,19 +173,20 @@ class PipelineInspector extends StatelessWidget {
 
   bool get _locked => facts.running;
 
-  Future<void> _update(AppSettings value) => cubits.settings.update(value);
+  Future<void> _update(BuildContext context, AppSettings value) =>
+      context.read<SettingsCubit>().update(value);
 
-  List<Widget> _source(AppLocalizations l10n) => [
+  List<Widget> _source(BuildContext context, AppLocalizations l10n) => [
     Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: ProcessPicker(
-        processes: cubits.pipeline.state.processes,
+        processes: context.read<PipelineCubit>().state.processes,
         selected: facts.process,
         // The characters screen holds the game it records through, and this
         // is the same choice under another window.
         enabled: !_locked && !facts.recordingVoice,
-        onSelected: cubits.pipeline.selectProcess,
-        onRefresh: cubits.pipeline.refreshProcesses,
+        onSelected: context.read<PipelineCubit>().selectProcess,
+        onRefresh: context.read<PipelineCubit>().refreshProcesses,
       ),
     ),
     _Field(
@@ -195,7 +198,7 @@ class PipelineInspector extends StatelessWidget {
           AudioCaptureSource.process: l10n.sourceProcess,
           AudioCaptureSource.system: l10n.sourceSystem,
         },
-        onChanged: (value) => _update(_settings.copyWith(audioCaptureSource: value)),
+        onChanged: (value) => _update(context, _settings.copyWith(audioCaptureSource: value)),
       ),
     ),
     _Note(
@@ -205,7 +208,7 @@ class PipelineInspector extends StatelessWidget {
     ),
   ];
 
-  List<Widget> _recognition(AppLocalizations l10n) => [
+  List<Widget> _recognition(BuildContext context, AppLocalizations l10n) => [
     _Field(
       label: l10n.pipelineModelLabel,
       child: DropdownButtonFormField<String>(
@@ -222,20 +225,22 @@ class PipelineInspector extends StatelessWidget {
         ],
         onChanged: _locked
             ? null
-            : (value) => value == null ? null : cubits.settings.selectRecognitionModel(value),
+            : (value) => value == null
+                  ? null
+                  : context.read<SettingsCubit>().selectRecognitionModel(value),
       ),
     ),
-    _device(l10n, ComputeStage.recognition),
+    _device(context, l10n, ComputeStage.recognition),
     _Toggle(
       label: l10n.roughRecognition,
       value: _settings.roughRecognition,
       enabled: !_locked,
-      onChanged: (value) => _update(_settings.copyWith(roughRecognition: value)),
+      onChanged: (value) => _update(context, _settings.copyWith(roughRecognition: value)),
     ),
     _Note(text: l10n.roughRecognitionNote),
   ];
 
-  List<Widget> _translation(AppLocalizations l10n) => [
+  List<Widget> _translation(BuildContext context, AppLocalizations l10n) => [
     // What comes in is settled by what feeds this node: whisper is run with
     // -tr and hands English over whatever the game speaks, so the language
     // the game is listened to in -- a setting of Live's, and one that says
@@ -272,13 +277,14 @@ class PipelineInspector extends StatelessWidget {
         ],
         onChanged: _locked
             ? null
-            : (value) => value == null ? null : cubits.settings.selectTargetLanguage(value),
+            : (value) =>
+                  value == null ? null : context.read<SettingsCubit>().selectTargetLanguage(value),
       ),
     ),
-    _device(l10n, ComputeStage.translation),
+    _device(context, l10n, ComputeStage.translation),
   ];
 
-  List<Widget> _voice(AppLocalizations l10n) => [
+  List<Widget> _voice(BuildContext context, AppLocalizations l10n) => [
     _Field(
       label: l10n.settingsVoice,
       child: _Choices<VoiceMode>(
@@ -289,7 +295,7 @@ class PipelineInspector extends StatelessWidget {
           VoiceMode.chosen: l10n.voiceFixed,
           VoiceMode.original: l10n.voiceOriginal,
         },
-        onChanged: (value) => _update(_settings.withVoiceMode(value)),
+        onChanged: (value) => _update(context, _settings.withVoiceMode(value)),
       ),
     ),
     if (_settings.voiceMode == VoiceMode.chosen)
@@ -308,7 +314,8 @@ class PipelineInspector extends StatelessWidget {
           ],
           onChanged: _locked
               ? null
-              : (value) => value == null ? null : _update(_settings.copyWith(voice: value)),
+              : (value) =>
+                    value == null ? null : _update(context, _settings.copyWith(voice: value)),
         ),
       ),
     _Field(
@@ -327,37 +334,39 @@ class PipelineInspector extends StatelessWidget {
         // draws no value at all, and the number over the pointer is what the
         // hand is watching rather than the caption above the slider.
         label: l10n.speedValue(_settings.chosenSpeed.toStringAsFixed(2)),
-        onChanged: _locked ? null : (value) => _update(_settings.copyWith(ttsSpeed: value)),
+        onChanged: _locked
+            ? null
+            : (value) => _update(context, _settings.copyWith(ttsSpeed: value)),
       ),
     ),
     _Toggle(
       label: l10n.hurryWhenQueued,
       value: _settings.hurryWhenQueued,
       enabled: !_locked,
-      onChanged: (value) => _update(_settings.copyWith(hurryWhenQueued: value)),
+      onChanged: (value) => _update(context, _settings.copyWith(hurryWhenQueued: value)),
     ),
     _Note(text: l10n.hurryWhenQueuedNote),
-    if (facts.selection.needsVoiceConverter) _device(l10n, ComputeStage.voiceConversion),
+    if (facts.selection.needsVoiceConverter) _device(context, l10n, ComputeStage.voiceConversion),
     _Toggle(
       label: l10n.voiceBank,
       value: _settings.voiceBank,
       enabled: !_locked,
-      onChanged: (value) => _update(_settings.copyWith(voiceBank: value)),
+      onChanged: (value) => _update(context, _settings.copyWith(voiceBank: value)),
     ),
   ];
 
-  List<Widget> _mix(AppLocalizations l10n) => [
+  List<Widget> _mix(BuildContext context, AppLocalizations l10n) => [
     _Toggle(
       label: l10n.voiceOverlap,
       value: _settings.overlapVoices,
       enabled: !_locked,
-      onChanged: (value) => _update(_settings.copyWith(overlapVoices: value)),
+      onChanged: (value) => _update(context, _settings.copyWith(overlapVoices: value)),
     ),
     _Note(text: l10n.voiceOverlapNote),
     _Note(text: l10n.pipelineMixNote(overlappingVoices)),
   ];
 
-  List<Widget> _output(AppLocalizations l10n) => [
+  List<Widget> _output(BuildContext context, AppLocalizations l10n) => [
     _Field(
       label:
           '${l10n.settingsOriginalVolume} · '
@@ -371,14 +380,16 @@ class PipelineInspector extends StatelessWidget {
         max: AppSettings.loudestDuck,
         divisions: AppSettings.duckDivisions,
         label: '${(_settings.duckedVolume * 100).round()}%',
-        onChanged: _locked ? null : (value) => _update(_settings.copyWith(originalVolume: value)),
+        onChanged: _locked
+            ? null
+            : (value) => _update(context, _settings.copyWith(originalVolume: value)),
       ),
     ),
     _Toggle(
       label: l10n.duckWhileSpeaking,
       value: _settings.duckWhileSpeaking,
       enabled: !_locked,
-      onChanged: (value) => _update(_settings.copyWith(duckWhileSpeaking: value)),
+      onChanged: (value) => _update(context, _settings.copyWith(duckWhileSpeaking: value)),
     ),
     _Note(text: l10n.duckWhileSpeakingNote),
     _Note(text: l10n.pipelineOutputNote),
@@ -395,7 +406,7 @@ class PipelineInspector extends StatelessWidget {
           // that one's name rather than carrying this one's over.
           key: ValueKey('graph-name-${character.id}'),
           character: character,
-          onRename: (name) => cubits.characters.rename(character.id, name),
+          onRename: (name) => context.read<CharactersCubit>().rename(character.id, name),
         ),
       ),
       _Field(
@@ -416,7 +427,7 @@ class PipelineInspector extends StatelessWidget {
             ))
               DropdownMenuItem(value: other.id, child: Text(other.name, maxLines: 1)),
           ],
-          onChanged: (value) => cubits.characters.voiceAs(character.id, value),
+          onChanged: (value) => context.read<CharactersCubit>().voiceAs(character.id, value),
         ),
       ),
       if (chained.contains(character.id)) _Note(text: l10n.pipelineChained),
@@ -434,13 +445,13 @@ class PipelineInspector extends StatelessWidget {
       OutlinedButton.icon(
         icon: const Icon(Icons.groups_rounded, size: 18),
         label: Text(l10n.navCharacters),
-        onPressed: () => cubits.shell.selectSection(DashboardSection.characters),
+        onPressed: () => context.read<ShellCubit>().selectSection(DashboardSection.characters),
       ),
       const SizedBox(height: 8),
       OutlinedButton.icon(
         icon: const Icon(Icons.close_rounded, size: 18),
         label: Text(l10n.pipelineRemoveNode),
-        onPressed: () => cubits.graph.add(PipelineCharacterRemoved(node.id)),
+        onPressed: () => context.read<PipelineGraphBloc>().add(PipelineCharacterRemoved(node.id)),
       ),
     ];
   }
@@ -452,8 +463,8 @@ class PipelineInspector extends StatelessWidget {
   };
 
   /// What a stage runs on, offered only where the machine can actually run it.
-  Widget _device(AppLocalizations l10n, ComputeStage stage) {
-    final downloads = cubits.downloads.state;
+  Widget _device(BuildContext context, AppLocalizations l10n, ComputeStage stage) {
+    final downloads = context.read<DownloadsCubit>().state;
     final ready = [
       for (final backend in stageBackends(stage))
         if (downloads.isBackendReady(stage, backend)) backend,
@@ -471,7 +482,9 @@ class PipelineInspector extends StatelessWidget {
         ],
         onChanged: _locked || ready.length < 2
             ? null
-            : (value) => value == null ? null : cubits.settings.selectStageBackend(stage, value),
+            : (value) => value == null
+                  ? null
+                  : context.read<SettingsCubit>().selectStageBackend(stage, value),
       ),
     );
   }
