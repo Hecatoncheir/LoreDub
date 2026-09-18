@@ -228,8 +228,12 @@
       `watch`, склеивающий строку
       (`'${installedModelIds.join()}|${installedRuntimes.join()}'`), заменяется
       записью из двух множеств.
-- [ ] Репозитории — через `MultiRepositoryProvider` в `app.dart`, с
+- [x] Репозитории — через `MultiRepositoryProvider` в `app.dart`, с
       `dispose:`; `PipelineCubit.close()` перестаёт трогать `AppRepository`.
+      *Сделано так:* репозитории создаёт и отдаёт через
+      `RepositoryProvider.value` состояние `LoreDubBootstrap`, оно же гасит
+      `AppRepository` после того, как закрылись все кубиты (`dispose:` у
+      провайдера сработал бы раньше них).
 - [ ] Пирамида из четырёх билдеров в `_PipelinePanel.build` (собирает
       `PipelineFacts` из четырёх источников) → одно производное состояние:
       `PipelineFacts` считает блок графа (или отдельный `PipelineFactsBloc`

@@ -761,8 +761,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
 
   @override
   Future<void> close() {
+    // The repository is shared with every other cubit: whoever made it
+    // disposes of it, once they are all closed.
     _events?.cancel();
-    _appRepository.dispose();
     return super.close();
   }
 }
