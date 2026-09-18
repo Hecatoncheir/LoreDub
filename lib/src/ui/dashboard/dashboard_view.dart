@@ -5,7 +5,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -54,100 +53,6 @@ import 'pipeline_inspector.dart';
 import 'pipeline_shelf.dart';
 import 'whisper_model_chart.dart';
 
-/// Rebuilds only when the shell changes, which is the section, the banner
-/// and the version. Every other part of the screen listens for itself.
-class _ShellBuilder extends StatelessWidget {
-  const _ShellBuilder({required this.builder});
-
-  final Widget Function(BuildContext context, ShellState shell) builder;
-
-  @override
-  Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
-    builder: builder,
-  );
-}
-
-/// Rebuilds with the running session: its state, what it heard, and the
-/// process list.
-class _PipelineBuilder extends StatelessWidget {
-  const _PipelineBuilder({required this.builder, this.watch});
-
-  final Widget Function(BuildContext context, LivePipelineState pipeline) builder;
-
-  /// The part of the session this widget draws, as a value that can be
-  /// compared. Everything outside the transcript reads only a field or two,
-  /// and a recognized phrase must not redraw the settings screen.
-  final Object? Function(LivePipelineState pipeline)? watch;
-
-  @override
-  Widget build(BuildContext context) => BlocBuilder<PipelineCubit, LivePipelineState>(
-    buildWhen: watch == null ? null : (previous, current) => watch!(previous) != watch!(current),
-    builder: builder,
-  );
-}
-
-/// Rebuilds when the configuration changes.
-class _SettingsBuilder extends StatelessWidget {
-  const _SettingsBuilder({required this.builder});
-
-  final Widget Function(BuildContext context, SettingsState settings) builder;
-
-  @override
-  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
-    builder: builder,
-  );
-}
-
-/// Rebuilds as packages arrive. Kept off the live screen on purpose: a
-/// download ticking must not redraw the transcript.
-class _DownloadsBuilder extends StatelessWidget {
-  const _DownloadsBuilder({
-    required this.builder,
-    this.onlyWhatIsInstalled = false,
-    this.watch,
-  });
-
-  final Widget Function(BuildContext context, DownloadsState downloads) builder;
-
-  /// Set by the parts that care whether a package is there, not how far its
-  /// download has got: it holds them still through the hundred ticks of one.
-  final bool onlyWhatIsInstalled;
-
-  /// A narrower reading still, for a part that draws something else as well
-  /// — which GPU runtimes are on disk, say. Compared as a value.
-  final Object? Function(DownloadsState downloads)? watch;
-
-  @override
-  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
-    buildWhen: switch ((watch, onlyWhatIsInstalled)) {
-      (final watch?, _) => (previous, current) => watch(previous) != watch(current),
-      (_, true) => (previous, current) => !setEquals(
-        previous.installedModelIds,
-        current.installedModelIds,
-      ),
-      _ => null,
-    },
-    builder: builder,
-  );
-}
-
-/// Rebuilds with the player's cast and the session that records a voice.
-class _CharactersBuilder extends StatelessWidget {
-  const _CharactersBuilder({required this.builder, this.watch});
-
-  final Widget Function(BuildContext context, CharactersState characters) builder;
-
-  /// The part of the screen this widget draws; a recording ticking must not
-  /// redraw every card.
-  final Object? Function(CharactersState characters)? watch;
-
-  @override
-  Widget build(BuildContext context) => BlocBuilder<CharactersCubit, CharactersState>(
-    buildWhen: watch == null ? null : (previous, current) => watch!(previous) != watch!(current),
-    builder: builder,
-  );
-}
-
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key, required this.cubits});
 
@@ -183,7 +88,7 @@ class _Dashboard extends StatelessWidget {
           child: Column(
             children: [
               _Header(),
-              _ShellBuilder(
+              BlocBuilder<ShellCubit, ShellState>(
                 builder: (context, shell) => switch (shell.error) {
                   final error? => _ErrorBanner(
                     message: describeFailure(AppLocalizations.of(context), error),
@@ -192,7 +97,7 @@ class _Dashboard extends StatelessWidget {
                 },
               ),
               Expanded(
-                child: _ShellBuilder(
+                child: BlocBuilder<ShellCubit, ShellState>(
                   builder: (context, shell) => AnimatedSwitcher(
                     duration: const Duration(milliseconds: 180),
                     child: switch (shell.section) {
@@ -296,7 +201,7 @@ class _Navigation extends StatelessWidget {
         // the panel: six entries under two headings are taller than a short
         // window, and taller still under a raised interface scale.
         Expanded(
-          child: _ShellBuilder(
+          child: BlocBuilder<ShellCubit, ShellState>(
             builder: (context, shell) => SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,7 +307,7 @@ class _VersionButton extends StatelessWidget {
   };
 
   @override
-  Widget build(BuildContext context) => _ShellBuilder(
+  Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
     builder: (context, shell) => _build(context, shell.updates),
   );
 
@@ -662,7 +567,7 @@ class _BottomNavigation extends StatelessWidget {
   const _BottomNavigation();
 
   @override
-  Widget build(BuildContext context) => _ShellBuilder(
+  Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
     builder: (context, shell) => _build(context, shell.section),
   );
 
@@ -736,7 +641,7 @@ class _Header extends StatelessWidget {
     child: Row(
       children: [
         Expanded(
-          child: _ShellBuilder(
+          child: BlocBuilder<ShellCubit, ShellState>(
             builder: (context, shell) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -770,13 +675,14 @@ class _Header extends StatelessWidget {
             ),
           ),
         ),
-        _PipelineBuilder(
-          watch: (pipeline) => (pipeline.status, pipeline.startupStage, pipeline.session),
-          builder: (context, pipeline) => _StatusChip(
-            status: pipeline.status,
-            stage: pipeline.startupStage,
-            snapshot: pipeline.session == PipelineSession.screen,
+        BlocSelector<PipelineCubit, LivePipelineState, (PipelineStatus, String, bool)>(
+          selector: (pipeline) => (
+            pipeline.status,
+            pipeline.startupStage,
+            pipeline.session == PipelineSession.screen,
           ),
+          builder: (context, chip) =>
+              _StatusChip(status: chip.$1, stage: chip.$2, snapshot: chip.$3),
         ),
       ],
     ),
@@ -945,72 +851,74 @@ class _TranscriptCard extends StatelessWidget {
   final bool fromScreen;
 
   @override
-  Widget build(BuildContext context) => _PipelineBuilder(
-    watch: (pipeline) => pipeline.transcript,
-    builder: (context, pipeline) => _CharactersBuilder(
-      watch: (characters) => characters.characters,
-      builder: (context, characters) => Card(
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          children: [
-            Padding(
-              // Tighter than a bare label row would need: the button has
-              // to fit without making the header taller than it was.
-              padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-              child: Row(
-                children: [
-                  _ModuleLabel(
-                    number: number,
-                    label: label ?? AppLocalizations.of(context).areaTranscript,
-                  ),
-                  const Spacer(),
-                  _ClearListButton(
-                    tooltip: AppLocalizations.of(context).transcriptClearTooltip,
-                    onPressed: pipeline.transcript.isEmpty
-                        ? null
-                        : context.read<PipelineCubit>().clearTranscript,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: pipeline.transcript.isEmpty
-                  ? _SettingsBuilder(
-                      builder: (context, settings) => _EmptyTranscript(
-                        targetLanguage: settings.settings.targetLanguage,
-                        fromScreen: fromScreen,
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                      itemCount: pipeline.transcript.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) => _TranscriptBubble(
-                        entry: pipeline.transcript[index],
-                        characters: characters.characters,
-                        // A line is corrected where it was heard going
-                        // wrong, which is the only moment the player knows
-                        // it did. The glossary screen is then the list of
-                        // what was collected rather than a place to
-                        // remember to visit.
-                        onCorrect: (entry, reading, {silent = false}) =>
-                            context.read<GlossaryCubit>().write(
-                              GlossaryEntry(
-                                kind: GlossaryKind.phrase,
-                                source: entry.english,
-                                reading: reading,
-                                silent: silent,
-                              ),
-                            ),
+  Widget build(BuildContext context) =>
+      BlocSelector<PipelineCubit, LivePipelineState, List<TranscriptEntry>>(
+        selector: (pipeline) => pipeline.transcript,
+        builder: (context, transcript) =>
+            BlocSelector<CharactersCubit, CharactersState, List<Character>>(
+              selector: (characters) => characters.characters,
+              builder: (context, cast) => Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    Padding(
+                      // Tighter than a bare label row would need: the button has
+                      // to fit without making the header taller than it was.
+                      padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+                      child: Row(
+                        children: [
+                          _ModuleLabel(
+                            number: number,
+                            label: label ?? AppLocalizations.of(context).areaTranscript,
+                          ),
+                          const Spacer(),
+                          _ClearListButton(
+                            tooltip: AppLocalizations.of(context).transcriptClearTooltip,
+                            onPressed: transcript.isEmpty
+                                ? null
+                                : context.read<PipelineCubit>().clearTranscript,
+                          ),
+                        ],
                       ),
                     ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: transcript.isEmpty
+                          ? BlocBuilder<SettingsCubit, SettingsState>(
+                              builder: (context, settings) => _EmptyTranscript(
+                                targetLanguage: settings.settings.targetLanguage,
+                                fromScreen: fromScreen,
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                              itemCount: transcript.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: 14),
+                              itemBuilder: (context, index) => _TranscriptBubble(
+                                entry: transcript[index],
+                                characters: cast,
+                                // A line is corrected where it was heard going
+                                // wrong, which is the only moment the player knows
+                                // it did. The glossary screen is then the list of
+                                // what was collected rather than a place to
+                                // remember to visit.
+                                onCorrect: (entry, reading, {silent = false}) =>
+                                    context.read<GlossaryCubit>().write(
+                                      GlossaryEntry(
+                                        kind: GlossaryKind.phrase,
+                                        source: entry.english,
+                                        reading: reading,
+                                        silent: silent,
+                                      ),
+                                    ),
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
-      ),
-    ),
-  );
+      );
 }
 
 /// Who the session has heard, and whose voice reads them.
@@ -1021,15 +929,25 @@ class _SceneVoicesCard extends StatelessWidget {
   const _SceneVoicesCard();
 
   @override
-  Widget build(BuildContext context) => _ShellBuilder(
-    builder: (context, shell) => _PipelineBuilder(
-      watch: (pipeline) => (pipeline.speakers, pipeline.status, pipeline.session),
-      builder: (context, pipeline) => _CharactersBuilder(
-        watch: (characters) => characters.characters,
-        builder: (context, cast) =>
-            _build(context, pipeline, cast.characters, initializing: shell.initializing),
-      ),
-    ),
+  Widget build(BuildContext context) => BlocSelector<ShellCubit, ShellState, bool>(
+    selector: (shell) => shell.initializing,
+    builder: (context, initializing) =>
+        BlocSelector<
+          PipelineCubit,
+          LivePipelineState,
+          (List<SceneSpeaker>, PipelineStatus, PipelineSession)
+        >(
+          selector: (pipeline) => (pipeline.speakers, pipeline.status, pipeline.session),
+          builder: (context, _) => BlocSelector<CharactersCubit, CharactersState, List<Character>>(
+            selector: (characters) => characters.characters,
+            builder: (context, cast) => _build(
+              context,
+              context.read<PipelineCubit>().state,
+              cast,
+              initializing: initializing,
+            ),
+          ),
+        ),
   );
 
   Widget _build(
@@ -1134,9 +1052,9 @@ class _ModelsNeededNotice extends StatelessWidget {
   // What is missing is decided by the packages and the chosen language
   // together, so this notice watches both.
   @override
-  Widget build(BuildContext context) => _DownloadsBuilder(
-    onlyWhatIsInstalled: true,
-    builder: (context, _) => _SettingsBuilder(
+  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
+    buildWhen: whenChanged((downloads) => downloads.installed),
+    builder: (context, _) => BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, _) => ready(context.selection)
           ? const SizedBox.shrink()
           : Padding(
@@ -1171,11 +1089,11 @@ class _StartChecklist extends StatelessWidget {
   // Whether a package is there rather than how far its download has got:
   // the card must not redraw through the hundred ticks of one.
   @override
-  Widget build(BuildContext context) => _DownloadsBuilder(
-    onlyWhatIsInstalled: true,
-    builder: (context, _) => _SettingsBuilder(
-      builder: (context, _) => _PipelineBuilder(
-        watch: (pipeline) => pipeline.selectedProcess,
+  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
+    buildWhen: whenChanged((downloads) => downloads.installed),
+    builder: (context, _) => BlocBuilder<SettingsCubit, SettingsState>(
+      builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
+        buildWhen: whenChanged((pipeline) => pipeline.selectedProcess),
         builder: (context, pipeline) => _build(
           context,
           stepsBeforeStart(context.selection, gameChosen: pipeline.selectedProcess != null),
@@ -1460,9 +1378,9 @@ class _SubtitleFrameCard extends StatelessWidget {
   const _SubtitleFrameCard();
 
   @override
-  Widget build(BuildContext context) => _SettingsBuilder(
-    builder: (context, state) => _PipelineBuilder(
-      watch: (pipeline) => pipeline.running,
+  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+      buildWhen: whenChanged((pipeline) => pipeline.running),
       builder: (context, pipeline) => _build(context, state.settings, running: pipeline.running),
     ),
   );
@@ -1553,16 +1471,18 @@ class _SnapshotControls extends StatelessWidget {
   const _SnapshotControls();
 
   @override
-  Widget build(BuildContext context) => _SettingsBuilder(
-    builder: (context, state) => _PipelineBuilder(
-      watch: (pipeline) => (
-        pipeline.status,
-        pipeline.session,
-        pipeline.snapshotReading,
-        pipeline.snapshotMissed,
-        pipeline.frameMissed,
-        pipeline.selectedProcess,
-        pipeline.processes,
+  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+      buildWhen: whenChanged(
+        (pipeline) => (
+          pipeline.status,
+          pipeline.session,
+          pipeline.snapshotReading,
+          pipeline.snapshotMissed,
+          pipeline.frameMissed,
+          pipeline.selectedProcess,
+          pipeline.processes,
+        ),
       ),
       builder: (context, pipeline) => _build(context, state.settings, pipeline),
     ),
@@ -1737,19 +1657,21 @@ class _SnapshotStartButton extends StatelessWidget {
   const _SnapshotStartButton();
 
   @override
-  Widget build(BuildContext context) => _PipelineBuilder(
-    watch: (pipeline) => (
-      pipeline.status,
-      pipeline.session,
-      pipeline.startupProgress,
-      pipeline.startupStage,
+  Widget build(BuildContext context) => BlocBuilder<PipelineCubit, LivePipelineState>(
+    buildWhen: whenChanged(
+      (pipeline) => (
+        pipeline.status,
+        pipeline.session,
+        pipeline.startupProgress,
+        pipeline.startupStage,
+      ),
     ),
     // Whether it can start depends on the first load, the packages and the
     // key being bound.
-    builder: (context, pipeline) => _ShellBuilder(
-      builder: (context, shell) => _DownloadsBuilder(
-        onlyWhatIsInstalled: true,
-        builder: (context, _) => _SettingsBuilder(
+    builder: (context, pipeline) => BlocBuilder<ShellCubit, ShellState>(
+      builder: (context, shell) => BlocBuilder<DownloadsCubit, DownloadsState>(
+        buildWhen: whenChanged((downloads) => downloads.installed),
+        builder: (context, _) => BlocBuilder<SettingsCubit, SettingsState>(
           builder: (context, _) => _build(context, pipeline, initializing: shell.initializing),
         ),
       ),
@@ -1802,8 +1724,8 @@ class _SnapshotHistory extends StatelessWidget {
   const _SnapshotHistory();
 
   @override
-  Widget build(BuildContext context) => _PipelineBuilder(
-    watch: (pipeline) => pipeline.snapshots,
+  Widget build(BuildContext context) => BlocBuilder<PipelineCubit, LivePipelineState>(
+    buildWhen: whenChanged((pipeline) => pipeline.snapshots),
     builder: (context, pipeline) => Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -1891,13 +1813,15 @@ class _SourceControls extends StatelessWidget {
   final bool compact;
 
   @override
-  Widget build(BuildContext context) => _SettingsBuilder(
-    builder: (context, state) => _PipelineBuilder(
-      watch: (pipeline) => (pipeline.running, pipeline.processes, pipeline.selectedProcess),
+  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+      buildWhen: whenChanged(
+        (pipeline) => (pipeline.running, pipeline.processes, pipeline.selectedProcess),
+      ),
       // Only whether a card is being recorded: the seconds it has heard tick
       // as it goes, and this screen must not be redrawn for them.
-      builder: (context, pipeline) => _CharactersBuilder(
-        watch: (characters) => characters.running,
+      builder: (context, pipeline) => BlocBuilder<CharactersCubit, CharactersState>(
+        buildWhen: whenChanged((characters) => characters.running),
         builder: (context, characters) =>
             _build(context, state.settings, pipeline, recording: characters.running),
       ),
@@ -2004,12 +1928,12 @@ class _TargetLanguagePicker extends StatelessWidget {
   const _TargetLanguagePicker();
 
   @override
-  Widget build(BuildContext context) => _SettingsBuilder(
+  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
     // Which languages read as ready depends on what is downloaded.
-    builder: (context, settings) => _DownloadsBuilder(
-      onlyWhatIsInstalled: true,
-      builder: (context, _) => _PipelineBuilder(
-        watch: (pipeline) => pipeline.running,
+    builder: (context, settings) => BlocBuilder<DownloadsCubit, DownloadsState>(
+      buildWhen: whenChanged((downloads) => downloads.installed),
+      builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
+        buildWhen: whenChanged((pipeline) => pipeline.running),
         builder: (context, pipeline) =>
             _build(context, settings.settings.targetLanguage, running: pipeline.running),
       ),
@@ -2057,21 +1981,23 @@ class _StartButton extends StatelessWidget {
   const _StartButton();
 
   @override
-  Widget build(BuildContext context) => _PipelineBuilder(
+  Widget build(BuildContext context) => BlocBuilder<PipelineCubit, LivePipelineState>(
     // The chosen process belongs here too: without it the button stays grey
     // after the player picks one, because nothing else on the screen moved.
-    watch: (pipeline) => (
-      pipeline.status,
-      pipeline.session,
-      pipeline.startupProgress,
-      pipeline.startupStage,
-      pipeline.selectedProcess,
+    buildWhen: whenChanged(
+      (pipeline) => (
+        pipeline.status,
+        pipeline.session,
+        pipeline.startupProgress,
+        pipeline.startupStage,
+        pipeline.selectedProcess,
+      ),
     ),
     // Whether it can start at all depends on the first load having finished
     // and on the packages being there.
-    builder: (context, pipeline) => _ShellBuilder(
-      builder: (context, shell) => _DownloadsBuilder(
-        onlyWhatIsInstalled: true,
+    builder: (context, pipeline) => BlocBuilder<ShellCubit, ShellState>(
+      builder: (context, shell) => BlocBuilder<DownloadsCubit, DownloadsState>(
+        buildWhen: whenChanged((downloads) => downloads.installed),
         builder: (context, _) => _build(context, pipeline, initializing: shell.initializing),
       ),
     ),
@@ -2193,9 +2119,9 @@ class _LanguageControls extends StatelessWidget {
   const _LanguageControls();
 
   @override
-  Widget build(BuildContext context) => _SettingsBuilder(
-    builder: (context, state) => _PipelineBuilder(
-      watch: (pipeline) => (pipeline.running, pipeline.detectedLanguage),
+  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+      buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.detectedLanguage)),
       builder: (context, pipeline) => _build(context, state.settings, pipeline),
     ),
   );
@@ -2264,9 +2190,9 @@ class _TextLanguagePicker extends StatelessWidget {
   const _TextLanguagePicker();
 
   @override
-  Widget build(BuildContext context) => _SettingsBuilder(
-    builder: (context, state) => _PipelineBuilder(
-      watch: (pipeline) => pipeline.running,
+  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+      buildWhen: whenChanged((pipeline) => pipeline.running),
       builder: (context, pipeline) => _build(context, state.settings, locked: pipeline.running),
     ),
   );
@@ -2805,23 +2731,23 @@ class _PipelinePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
-    child: _SettingsBuilder(
-      builder: (context, settings) => _DownloadsBuilder(
+    child: BlocBuilder<SettingsCubit, SettingsState>(
+      builder: (context, settings) => BlocBuilder<DownloadsCubit, DownloadsState>(
         // What is on disk and what the machine can run it on. A download
         // ticking must not redraw the scheme.
-        watch: (downloads) =>
-            '${downloads.installedModelIds.join()}'
-            '|${downloads.availability.installedRuntimes.join()}',
-        builder: (context, downloads) => _PipelineBuilder(
-          watch: (pipeline) => (
-            pipeline.running,
-            pipeline.status,
-            pipeline.selectedProcess,
-            pipeline.processes,
-            pipeline.backendSignature,
+        buildWhen: whenChanged((downloads) => downloads.installed),
+        builder: (context, downloads) => BlocBuilder<PipelineCubit, LivePipelineState>(
+          buildWhen: whenChanged(
+            (pipeline) => (
+              pipeline.running,
+              pipeline.status,
+              pipeline.selectedProcess,
+              pipeline.processes,
+              pipeline.backendSignature,
+            ),
           ),
-          builder: (context, pipeline) => _CharactersBuilder(
-            watch: (characters) => (characters.characters, characters.running),
+          builder: (context, pipeline) => BlocBuilder<CharactersCubit, CharactersState>(
+            buildWhen: whenChanged((characters) => (characters.characters, characters.running)),
             builder: (context, characters) {
               final facts = PipelineFacts(
                 settings: settings.settings,
@@ -3304,13 +3230,15 @@ class _CharacterSessionControls extends StatelessWidget {
   const _CharacterSessionControls();
 
   @override
-  Widget build(BuildContext context) => _ShellBuilder(
-    builder: (context, shell) => _DownloadsBuilder(
-      onlyWhatIsInstalled: true,
-      builder: (context, _) => _PipelineBuilder(
-        watch: (pipeline) => (pipeline.processes, pipeline.selectedProcess, pipeline.running),
-        builder: (context, pipeline) => _CharactersBuilder(
-          watch: (characters) => (characters.status, characters.recordingId),
+  Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
+    builder: (context, shell) => BlocBuilder<DownloadsCubit, DownloadsState>(
+      buildWhen: whenChanged((downloads) => downloads.installed),
+      builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
+        buildWhen: whenChanged(
+          (pipeline) => (pipeline.processes, pipeline.selectedProcess, pipeline.running),
+        ),
+        builder: (context, pipeline) => BlocBuilder<CharactersCubit, CharactersState>(
+          buildWhen: whenChanged((characters) => (characters.status, characters.recordingId)),
           builder: (context, characters) =>
               _build(context, pipeline, characters, initializing: shell.initializing),
         ),
@@ -3448,12 +3376,12 @@ class _CharacterCast extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => _PipelineBuilder(
+  Widget build(BuildContext context) => BlocSelector<PipelineCubit, LivePipelineState, bool>(
     // Whether a dubbing session holds the worker, and nothing more of it: a
     // recognized phrase must not redraw every card.
-    watch: (pipeline) => pipeline.running,
-    builder: (context, pipeline) => _CharactersBuilder(
-      builder: (context, state) => _build(context, state, dubbing: pipeline.running),
+    selector: (pipeline) => pipeline.running,
+    builder: (context, dubbing) => BlocBuilder<CharactersCubit, CharactersState>(
+      builder: (context, state) => _build(context, state, dubbing: dubbing),
     ),
   );
 
@@ -3647,8 +3575,10 @@ class _CharacterPacks extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => _CharactersBuilder(
-    watch: (characters) => (characters.characters, characters.packs, characters.loading),
+  Widget build(BuildContext context) => BlocBuilder<CharactersCubit, CharactersState>(
+    buildWhen: whenChanged(
+      (characters) => (characters.characters, characters.packs, characters.loading),
+    ),
     builder: (context, state) {
       final l10n = AppLocalizations.of(context);
       return Card(
@@ -3756,10 +3686,10 @@ class _ModelsPanel extends StatelessWidget {
   const _ModelsPanel({super.key});
 
   @override
-  Widget build(BuildContext context) => _DownloadsBuilder(
-    builder: (context, downloads) => _SettingsBuilder(
-      builder: (context, settings) => _PipelineBuilder(
-        watch: (pipeline) => pipeline.running,
+  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
+    builder: (context, downloads) => BlocBuilder<SettingsCubit, SettingsState>(
+      builder: (context, settings) => BlocBuilder<PipelineCubit, LivePipelineState>(
+        buildWhen: whenChanged((pipeline) => pipeline.running),
         builder: (context, pipeline) => _build(context, downloads, running: pipeline.running),
       ),
     ),
@@ -4169,9 +4099,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   @override
-  Widget build(BuildContext context) => _SettingsBuilder(
-    builder: (context, state) => _PipelineBuilder(
-      watch: (pipeline) => pipeline.running,
+  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+      buildWhen: whenChanged((pipeline) => pipeline.running),
       // The compute card and the model directory listen to the downloads
       // themselves, so a runtime arriving does not redraw the whole page.
       builder: (context, pipeline) => _build(context, state, running: pipeline.running),
@@ -4584,67 +4514,69 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   /// Where the parts come from and where they are kept.
-  Widget _pythonCard(BuildContext context, AppLocalizations l10n) => _SettingsBuilder(
-    builder: (context, state) => _SettingCard(
-      title: l10n.settingsPython,
-      subtitle: l10n.pythonNote,
-      child: Form(
-        key: _pythonFormKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextFormField(
-              controller: _pythonController,
-              keyboardType: TextInputType.url,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                labelText: l10n.pythonFieldLabel,
-                helperText: l10n.pythonFieldHelper,
-                prefixIcon: const Icon(Icons.terminal_rounded),
-              ),
-              validator: (value) => (value ?? '').trim().isEmpty ? l10n.pythonFieldRequired : null,
-              onFieldSubmitted: (_) => _savePython(),
-            ),
-            const SizedBox(height: 12),
-            // Side by side where the card is wide enough for all three, and
-            // one under another at a shared width where it is not: wrapped
-            // at their own widths they came out ragged, each button a
-            // different length down the right edge.
-            _PythonActions(
+  Widget _pythonCard(BuildContext context, AppLocalizations l10n) =>
+      BlocBuilder<SettingsCubit, SettingsState>(
+        builder: (context, state) => _SettingCard(
+          title: l10n.settingsPython,
+          subtitle: l10n.pythonNote,
+          child: Form(
+            key: _pythonFormKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextButton.icon(
-                  onPressed: state.searchingPython ? null : _findPython,
-                  icon: state.searchingPython
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.manage_search_rounded),
-                  label: Text(
-                    state.searchingPython ? l10n.pythonSearching : l10n.pythonFindAutomatically,
+                TextFormField(
+                  controller: _pythonController,
+                  keyboardType: TextInputType.url,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: l10n.pythonFieldLabel,
+                    helperText: l10n.pythonFieldHelper,
+                    prefixIcon: const Icon(Icons.terminal_rounded),
                   ),
+                  validator: (value) =>
+                      (value ?? '').trim().isEmpty ? l10n.pythonFieldRequired : null,
+                  onFieldSubmitted: (_) => _savePython(),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    _pythonController.text = bundledPythonExecutablePath();
-                    _savePython();
-                  },
-                  icon: const Icon(Icons.settings_backup_restore_rounded),
-                  label: Text(l10n.pythonBundled),
-                ),
-                FilledButton.icon(
-                  onPressed: _savePython,
-                  icon: const Icon(Icons.save_outlined),
-                  label: Text(l10n.save),
+                const SizedBox(height: 12),
+                // Side by side where the card is wide enough for all three, and
+                // one under another at a shared width where it is not: wrapped
+                // at their own widths they came out ragged, each button a
+                // different length down the right edge.
+                _PythonActions(
+                  children: [
+                    TextButton.icon(
+                      onPressed: state.searchingPython ? null : _findPython,
+                      icon: state.searchingPython
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.manage_search_rounded),
+                      label: Text(
+                        state.searchingPython ? l10n.pythonSearching : l10n.pythonFindAutomatically,
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        _pythonController.text = bundledPythonExecutablePath();
+                        _savePython();
+                      },
+                      icon: const Icon(Icons.settings_backup_restore_rounded),
+                      label: Text(l10n.pythonBundled),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _savePython,
+                      icon: const Icon(Icons.save_outlined),
+                      label: Text(l10n.save),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   Widget _proxyCard(BuildContext context, AppLocalizations l10n) => _SettingCard(
     title: l10n.settingsModelDownloads,
@@ -4703,7 +4635,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     subtitle: l10n.modelDirectoryNote,
     child: LayoutBuilder(
       builder: (context, constraints) {
-        final path = _DownloadsBuilder(
+        final path = BlocBuilder<DownloadsCubit, DownloadsState>(
           builder: (context, downloads) => SelectableText(
             downloads.modelDirectoryPath,
             style: Theme.of(context).textTheme.bodyMedium,
@@ -4787,12 +4719,12 @@ class _VoiceCard extends StatelessWidget {
   const _VoiceCard();
 
   @override
-  Widget build(BuildContext context) => _SettingsBuilder(
+  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
     // Which voices exist comes from the downloaded package.
-    builder: (context, state) => _DownloadsBuilder(
-      onlyWhatIsInstalled: true,
-      builder: (context, _) => _PipelineBuilder(
-        watch: (pipeline) => (pipeline.running, pipeline.spokenVoice),
+    builder: (context, state) => BlocBuilder<DownloadsCubit, DownloadsState>(
+      buildWhen: whenChanged((downloads) => downloads.installed),
+      builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
+        buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.spokenVoice)),
         builder: (context, pipeline) => _build(context, state, pipeline),
       ),
     ),
@@ -5026,10 +4958,10 @@ class _ComputeDeviceCard extends StatelessWidget {
   const _ComputeDeviceCard();
 
   @override
-  Widget build(BuildContext context) => _DownloadsBuilder(
-    builder: (context, downloads) => _SettingsBuilder(
-      builder: (context, state) => _PipelineBuilder(
-        watch: (pipeline) => (pipeline.running, pipeline.backendSignature),
+  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
+    builder: (context, downloads) => BlocBuilder<SettingsCubit, SettingsState>(
+      builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+        buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.backendSignature)),
         builder: (context, pipeline) => _build(context, downloads, state.settings, pipeline),
       ),
     ),

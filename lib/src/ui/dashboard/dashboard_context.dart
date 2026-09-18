@@ -18,3 +18,10 @@ extension DashboardContext on BuildContext {
     settings: read<SettingsCubit>().settings,
   );
 }
+
+/// A `buildWhen` that lets a [BlocBuilder] through only when [part] of the
+/// state changes, compared as a value: a widget that draws a field or two of
+/// a state names them here, and a download ticking or a phrase arriving
+/// leaves it alone.
+BlocBuilderCondition<S> whenChanged<S>(Object? Function(S state) part) =>
+    (previous, current) => part(previous) != part(current);

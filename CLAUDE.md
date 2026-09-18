@@ -68,11 +68,16 @@ than one of them.
    `DashboardCubits` wires them together and runs `initialize()`;
    errors from any of them go to the shell through `FailureSink`. Anything
    derived from settings *and* packages together is `ModelSelection`
-   (`domain/model_selection.dart`), so neither cubit owns it. `DashboardView`
-   is a single large widget file whose parts subscribe through the four
-   `_ShellBuilder`/`_SettingsBuilder`/`_DownloadsBuilder`/`_PipelineBuilder`
-   wrappers — pass their `watch`/`onlyWhatIsInstalled` filters when a widget
-   reads only a field or two, or a download tick will redraw the screen.
+   (`domain/model_selection.dart`), so neither cubit owns it; widgets read it
+   as `context.selection` (`dashboard_context.dart`). `DashboardView` puts
+   every cubit under a `MultiBlocProvider` and nothing below it takes the
+   `DashboardCubits` bag: a widget reads what it uses off the context
+   (`context.read<X>()`, taken before any `await`). A widget that draws only
+   a field or two subscribes through `BlocSelector`, or through `BlocBuilder`
+   with `buildWhen: whenChanged((state) => ...)` where it still reads the
+   whole state -- `(downloads) => downloads.installed` (`InstalledPackages`,
+   equal through every download tick) for whatever cares only what is on
+   disk -- or a download tick will redraw the screen.
    `test/src/ui/dashboard/rebuild_scope_test.dart` counts that and fails if
    it does. There is no DI framework: `LoreDubBootstrap` (`lib/src/app.dart`)
    constructs services -> repositories -> cubits.

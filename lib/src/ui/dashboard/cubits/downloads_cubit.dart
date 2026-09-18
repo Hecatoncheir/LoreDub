@@ -16,6 +16,26 @@ import '../../../domain/runtime_package.dart';
 import 'settings_cubit.dart';
 import 'shell_cubit.dart';
 
+/// Which model packages and GPU runtimes are on disk, compared by what they
+/// hold rather than by which set instance holds it.
+@immutable
+class InstalledPackages {
+  const InstalledPackages({required this.models, required this.runtimes});
+
+  final Set<String> models;
+  final Set<String> runtimes;
+
+  @override
+  bool operator ==(Object other) =>
+      other is InstalledPackages &&
+      setEquals(other.models, models) &&
+      setEquals(other.runtimes, runtimes);
+
+  @override
+  int get hashCode =>
+      Object.hash(Object.hashAllUnordered(models), Object.hashAllUnordered(runtimes));
+}
+
 /// What is on disk and what is on its way there: the model packages, the
 /// optional GPU runtimes, and what the machine can run them on.
 class DownloadsState {
@@ -47,6 +67,12 @@ class DownloadsState {
     for (final install in models)
       if (install.installed) install.model.id,
   };
+
+  /// The same, together with the GPU runtimes on disk, as a value a widget
+  /// can select: it stays equal through every tick of a download and changes
+  /// only when something lands or is removed.
+  InstalledPackages get installed =>
+      InstalledPackages(models: installedModelIds, runtimes: availability.installedRuntimes);
 
   /// Whether the interface should offer this choice at all.
   bool isBackendOffered(ComputeStage stage, ComputeBackend backend) =>

@@ -210,12 +210,17 @@
 - [x] `DashboardView` оборачивает поддерево в `MultiBlocProvider` из
       `BlocProvider.value(...)` по уже созданным кубитам. Тесты, которые
       строят `DashboardView(cubits: ...)`, не меняются.
-- [ ] Экран за экраном: `cubits.x` → `context.read<X>()`;
+- [x] Экран за экраном: `cubits.x` → `context.read<X>()`;
       `_PipelineBuilder(watch: ...)` → `BlocSelector<PipelineCubit,
       LivePipelineState, T>`; `_DownloadsBuilder(onlyWhatIsInstalled: true)` →
       `BlocSelector` по `installedModelIds`. `rebuild_scope_test.dart` должен
       оставаться зелёным после каждого экрана.
-- [ ] Удалить `_ShellBuilder`, `_PipelineBuilder`, `_SettingsBuilder`,
+      *Сделано так:* `BlocSelector` там, где виджет рисует только выбранное;
+      где тело ещё читает состояние целиком (`_build(context, pipeline…)`) —
+      `BlocBuilder` с `buildWhen: whenChanged(...)`. Такие места переходят на
+      `BlocSelector` при разборе на виджеты (этап 2), когда у каждого
+      виджета останется своё узкое поле.
+- [x] Удалить `_ShellBuilder`, `_PipelineBuilder`, `_SettingsBuilder`,
       `_DownloadsBuilder`, `_CharactersBuilder` и параметр `cubits` у всех
       виджетов.
 - [ ] Состояниям — сравнение по значению (`equatable` либо вручную; кодогенерации
