@@ -74,6 +74,7 @@ class CharacterTile extends StatefulWidget {
     required this.onPreview,
     this.onStopSound,
     this.carriesTimbre = true,
+    this.dubbing = false,
     required this.previewing,
     required this.onExport,
     required this.onDelete,
@@ -113,7 +114,8 @@ class CharacterTile extends StatefulWidget {
   final bool playing;
 
   /// Speaks a line in the voice the dubbing would read this card in. Null
-  /// while the speech model is missing, or while anything else sounds.
+  /// while the speech model is missing, while anything else sounds, or while
+  /// something else holds the worker.
   final VoidCallback? onPreview;
 
   /// Whether this card's sample is being got ready or spoken.
@@ -127,6 +129,11 @@ class CharacterTile extends StatefulWidget {
   /// a sample that says so is worth more than one that leaves the player
   /// wondering where the voice they recorded went.
   final bool carriesTimbre;
+
+  /// Whether a dubbing session holds the worker, which is what the sample
+  /// waits for. The button says so, rather than sending the player after a
+  /// speech model they already have.
+  final bool dubbing;
   final VoidCallback? onExport;
   final VoidCallback onDelete;
 
@@ -421,13 +428,7 @@ class _CharacterTileState extends State<CharacterTile> {
       _action(
         key: ValueKey('previewVoice-${widget.character.id}'),
         icon: widget.previewing ? Icons.stop_rounded : Icons.record_voice_over_rounded,
-        tooltip: widget.previewing
-            ? l10n.charactersStopSound
-            : widget.onPreview == null
-            ? l10n.charactersPreviewNeedsModel
-            : widget.carriesTimbre
-            ? l10n.charactersPreviewVoice
-            : l10n.charactersPreviewPlain,
+        tooltip: _previewTooltip(l10n),
         onPressed: widget.previewing ? widget.onStopSound : widget.onPreview,
       ),
       // Saving the card and throwing it away are neither of them about the
@@ -440,6 +441,14 @@ class _CharacterTileState extends State<CharacterTile> {
       ),
     ],
   );
+
+  /// What the sample button says: what it will do, or what it waits for.
+  String _previewTooltip(AppLocalizations l10n) {
+    if (widget.previewing) return l10n.charactersStopSound;
+    if (widget.dubbing) return l10n.charactersPreviewWhileDubbing;
+    if (widget.onPreview == null) return l10n.charactersPreviewNeedsModel;
+    return widget.carriesTimbre ? l10n.charactersPreviewVoice : l10n.charactersPreviewPlain;
+  }
 
   Widget _action({
     required IconData icon,

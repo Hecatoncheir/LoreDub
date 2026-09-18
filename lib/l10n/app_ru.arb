@@ -127,6 +127,7 @@
   "charactersPreviewPlain": "Послушать голос озвучки. Тембр персонажа не переносится: включите «Голос оригинала» на экране «Модели», иначе персонажа читает обычный голос синтеза",
   "charactersPreviewLoading": "Готовлю голос…",
   "charactersPreviewNeedsModel": "Нужна модель озвучки: загрузите её на экране «Модели»",
+  "charactersPreviewWhileDubbing": "Голос нельзя послушать, пока идёт озвучка",
   "charactersPlayingClip": "Звучит…",
   "charactersNoClip": "Записи нет: карточка пришла из файла, в нём только отпечаток голоса",
   "charactersRecordStop": "Остановить",

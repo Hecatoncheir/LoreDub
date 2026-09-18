@@ -318,6 +318,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'The speech model is missing: fetch it on the Models screen';
 
   @override
+  String get charactersPreviewWhileDubbing => 'The voice cannot be heard while dubbing runs';
+
+  @override
   String get charactersPlayingClip => 'Sounding…';
 
   @override

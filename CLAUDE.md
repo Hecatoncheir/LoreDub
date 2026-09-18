@@ -763,8 +763,17 @@ worker has neither whisper nor Marian in it, so a dubbing or snapshot session
 takes it over the way live dubbing takes over a snapshot — through
 `PipelineCubit.releaseWorker`, which `DashboardCubits` wires to
 `CharactersCubit.stopSession` so that neither cubit has to know the other;
-the screen refuses the other direction itself, its button being out while the
-pipeline runs. Which game to listen to is one choice for every screen
+the screen refuses the other direction itself. Everything it starts — the
+recording, a sample, a card measured from files — brings up a worker of its
+own, and over a session that is dubbing that took the worker from under it
+while the capture went on, so every phrase after it failed for want of
+whisper: the three are out while the pipeline runs, and
+`CharactersCubit.dubbingHoldsWorker`, wired the same way, has the cubit
+refuse them as well. `CharactersState.previewReady` says the speech-only
+worker is still the one loaded, and is dropped on any `state` event the
+screen reads — the engine at rest holds no worker, and a recording holds one
+with no voice in it — or the next sample skips the loading and is told there
+is no worker. Which game to listen to is one choice for every screen
 (`PipelineCubit.selectedProcess`, asked for by the shared `ProcessPicker`), so
 while a card records the picker is closed on Live and in the node panel as
 well — the recording session holds the game it started with. Every
@@ -801,7 +810,12 @@ threshold cannot tell a stranger from an odd line of the right character
 `LOOSE_SET` (0.80) is a warning that the set holds two voices rather than a
 rejection. `CharactersCubit.voiceFromFiles` borrows an embed-only session
 (`startVoiceFiles`, no `ld_start`, no game) when the screen has none, and
-puts it down again.
+puts it down again — that one and no other. `startVoiceFiles` answers with
+the session's number out of `AppRepository._sessions`, and
+`AppRepository.stopSession` ends it only while that number is still the
+current one: Live starting while the files are measured takes the worker
+over without a word to this screen, and a plain stop then ended the dubbing.
+A start that never came up borrowed nothing and puts nothing down.
 
 The cards are drawn as tiles in the models' vocabulary (`character_tiles.dart`:
 `CharacterTile` over `ModelTile`'s grid and action band), and under them sit

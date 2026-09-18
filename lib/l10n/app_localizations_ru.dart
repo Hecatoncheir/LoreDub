@@ -318,6 +318,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get charactersPreviewNeedsModel => 'Нужна модель озвучки: загрузите её на экране «Модели»';
 
   @override
+  String get charactersPreviewWhileDubbing => 'Голос нельзя послушать, пока идёт озвучка';
+
+  @override
   String get charactersPlayingClip => 'Звучит…';
 
   @override

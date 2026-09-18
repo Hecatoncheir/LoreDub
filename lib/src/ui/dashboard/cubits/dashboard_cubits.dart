@@ -38,9 +38,12 @@ class DashboardCubits {
     graph = PipelineGraphBloc(appRepository, settings, characters, pipeline, shell);
     // One engine holds one session: a dubbing session starting takes the
     // worker over from the characters screen, which keeps it while it
-    // records. The other way round is the screen's own to refuse, and its
-    // button is out while the pipeline runs.
+    // records. The other way round is the screen's own to refuse: its
+    // buttons are out while the pipeline runs, and the cubit behind them is
+    // told the same, so nothing it starts — the recording, a sample, a card
+    // measured from files — lands on a worker that is dubbing.
     pipeline.releaseWorker = characters.stopSession;
+    characters.dubbingHoldsWorker = () => pipeline.state.running;
     shell.interfaceLanguage = () => settings.settings.interfaceLanguage;
     shell.proxyUrl = () => settings.settings.modelProxyUrl;
     // Closing for an update must not leave the game turned down, or the

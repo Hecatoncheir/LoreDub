@@ -29,6 +29,7 @@ import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
@@ -177,6 +178,40 @@ void main() {
 
       expect(repository.fileSessionStarts, 1, reason: 'no game to listen to, only the converter');
       expect(repository.stops, 1, reason: 'and it is not left running');
+    });
+
+    test('leaves alone the dubbing that took the worker while the files were measured', () async {
+      // A folder of recordings takes a while, and Live starting meanwhile
+      // takes the worker over without a word to this screen. What the engine
+      // holds when the measuring ends is the dubbing, which putting the
+      // borrowed session down used to stop.
+      repository.measuring = Completer<BuiltVoice>();
+      final building = characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+      await pumpEventQueue();
+      expect(repository.builtFrom, hasLength(1), reason: 'the files are being measured');
+
+      repository.takeOver();
+      // The worker went with the session, so the measuring ends as stopped.
+      repository.measuring!.completeError(const LoreDubFailure(FailureCode.pipelineStopped));
+      await building;
+
+      expect(repository.stops, 0, reason: 'the session the engine holds is not the borrowed one');
+      expect(cubits.shell.state.error, isNull, reason: 'a worker taken over is no failure');
+      expect(characters.state.building, isFalse);
+    });
+
+    test('puts nothing down when the session it meant to borrow never came up', () async {
+      // Live starting in the seconds the converter takes to load replaces
+      // that start, which ends as stopped with nothing of its own left in
+      // the engine — so a stop here landed on the start that replaced it.
+      repository.fileSessionFailure = const LoreDubFailure(FailureCode.pipelineStopped);
+
+      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+
+      expect(repository.stops, 0);
+      expect(repository.builtFrom, isEmpty);
+      expect(cubits.shell.state.error, isNull);
+      expect(characters.state.building, isFalse);
     });
 
     test('measures through the session the screen is already recording with', () async {
@@ -347,6 +382,94 @@ void main() {
     await characters.preview('a1');
 
     expect(repository.spoken, isEmpty, reason: 'that worker has no speech model in it');
+  });
+
+  test('leaves the sample alone while files are being measured', () async {
+    characters.seed(
+      const CharactersState(loading: false, characters: [guard], buildingId: 'a1'),
+    );
+
+    await characters.preview('a1');
+
+    expect(repository.previewStarts, 0, reason: 'it would replace the worker measuring them');
+    expect(repository.spoken, isEmpty);
+  });
+
+  test('loads the speech model again once the engine has come to rest', () async {
+    characters.seed(const CharactersState(loading: false, characters: [guard]));
+    await characters.preview('a1');
+    expect(characters.state.previewReady, isTrue);
+
+    // A card measured from files puts its borrowed session down, or the
+    // worker dies under the session it served: either way the engine stops,
+    // and the speech model a sample was loaded into goes with it.
+    characters.handleEvent({'type': 'state', 'state': 'idle'});
+
+    expect(characters.state.previewReady, isFalse);
+
+    await characters.preview('a1');
+
+    expect(repository.previewStarts, 2, reason: 'skipped, the sample was told there is no worker');
+    expect(repository.spoken, hasLength(2));
+  });
+
+  test('tells the session a sample was loaded for from the one that replaced it', () async {
+    characters.seed(
+      const CharactersState(loading: false, characters: [guard], previewReady: true),
+    );
+
+    // Loading for a sample announces itself as well, and must not undo itself.
+    characters.handleEvent({'type': 'state', 'state': 'listening', 'session': 'preview'});
+
+    expect(characters.state.previewReady, isTrue);
+
+    // A recording brings up a worker of its own, with no voice in it.
+    characters.handleEvent({'type': 'state', 'state': 'listening', 'session': 'characters'});
+
+    expect(characters.state.previewReady, isFalse);
+  });
+
+  group('while a dubbing session holds the worker', () {
+    setUp(() {
+      characters.seed(const CharactersState(loading: false, characters: [guard]));
+      characters.dubbingHoldsWorker = () => true;
+    });
+
+    test('speaks no sample, which would take the worker from under it', () async {
+      await characters.preview('a1');
+
+      expect(repository.previewStarts, 0);
+      expect(repository.spoken, isEmpty);
+      expect(characters.state.previewingId, isNull);
+    });
+
+    test('measures no files', () async {
+      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+
+      expect(repository.fileSessionStarts, 0);
+      expect(repository.builtFrom, isEmpty);
+      expect(characters.state.building, isFalse);
+    });
+
+    test('starts no recording', () async {
+      await characters.toggleSession(initializing: false, process: null);
+
+      expect(repository.sessionStarts, 0);
+      expect(characters.state.status, PipelineStatus.idle);
+    });
+  });
+
+  test('is told by the pipeline whether a dubbing session holds the worker', () {
+    // Neither cubit knows the other: this is the wiring between them.
+    final held = cubits.characters.dubbingHoldsWorker!;
+    expect(held(), isFalse);
+
+    cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+    expect(held(), isTrue);
+
+    // A session resting under a pause keeps its worker and its models.
+    cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.paused));
+    expect(held(), isTrue);
   });
 
   test('leaves the card alone when the recording heard nothing usable', () async {
@@ -536,7 +659,23 @@ class _CastRepository extends AppRepository {
   BuiltVoice building = const BuiltVoice();
   final builtFrom = <List<String>>[];
   int fileSessionStarts = 0;
+  int sessionStarts = 0;
   int stops = 0;
+
+  /// Set to have the files take as long as the test says, the way decoding
+  /// and embedding a folder of them does.
+  Completer<BuiltVoice>? measuring;
+
+  /// What the session borrowed for the files fails to start with, if it is to.
+  Object? fileSessionFailure;
+
+  /// The session the engine holds, numbered as the real repository numbers
+  /// them: one more with every start and with every stop.
+  int _session = 0;
+
+  /// Another screen starting a session of its own, which takes the worker
+  /// over without a word to this one.
+  void takeOver() => _session++;
 
   /// The clips kept beside the cards, by card, and what was played.
   final kept = <String, String>{};
@@ -560,17 +699,22 @@ class _CastRepository extends AppRepository {
   Future<void> playWave(String wavePath) async => played.add(wavePath);
 
   @override
-  Future<void> startVoiceFiles({
+  Future<int> startVoiceFiles({
     required AppSettings settings,
     required String converterDirectory,
     required ComputeBackend converterBackend,
     required String runtimeDirectory,
-  }) async => fileSessionStarts++;
+  }) async {
+    fileSessionStarts++;
+    final session = ++_session;
+    if (fileSessionFailure case final failure?) throw failure;
+    return session;
+  }
 
   @override
-  Future<BuiltVoice> buildVoice(List<String> paths) async {
+  Future<BuiltVoice> buildVoice(List<String> paths) {
     builtFrom.add(paths);
-    return building;
+    return measuring?.future ?? Future.value(building);
   }
 
   @override
@@ -581,7 +725,10 @@ class _CastRepository extends AppRepository {
     required ComputeBackend speechBackend,
     required ComputeBackend converterBackend,
     required String runtimeDirectory,
-  }) async => previewStarts++;
+  }) async {
+    previewStarts++;
+    _session++;
+  }
 
   @override
   Future<void> previewVoice({
@@ -613,13 +760,25 @@ class _CastRepository extends AppRepository {
     required String converterDirectory,
     required ComputeBackend converterBackend,
     required String runtimeDirectory,
-  }) => (_starting = Completer<void>()).future;
+  }) {
+    sessionStarts++;
+    _session++;
+    return (_starting = Completer<void>()).future;
+  }
 
   @override
   Future<void> stop() async {
     stops++;
+    _session++;
     _starting?.completeError(const LoreDubFailure(FailureCode.pipelineStopped));
     _starting = null;
+  }
+
+  /// The real rule, which the repository's own test holds it to: only the
+  /// session still held is ended.
+  @override
+  Future<void> stopSession(int session) async {
+    if (session == _session) await stop();
   }
 
   @override

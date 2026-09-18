@@ -139,7 +139,8 @@ class AppRepository {
   Future<ComputeAvailability> probeGraphics() => _nativeEngine.probeGraphics();
 
   /// Goes up with every session asked for and with every stop, so a start
-  /// that fails can tell whether the engine still holds the session it began.
+  /// that fails can tell whether the engine still holds the session it began
+  /// — and so can whoever borrowed one and comes to put it down.
   var _sessions = 0;
 
   /// Clears away what the failed start numbered [session] left behind —
@@ -382,7 +383,10 @@ class AppRepository {
   /// Starts the session a card is built through when the recordings are
   /// already on disk: the converter that measures a voice and nothing else,
   /// with no game listened to at all.
-  Future<void> startVoiceFiles({
+  ///
+  /// It is borrowed rather than held — up for as long as the files take —
+  /// so it answers with its number, which [stopSession] is handed back.
+  Future<int> startVoiceFiles({
     required AppSettings settings,
     required String converterDirectory,
     required ComputeBackend converterBackend,
@@ -397,6 +401,7 @@ class AppRepository {
         'voiceConversionBackend': converterBackend.name,
         'runtimeDirectory': runtimeDirectory,
       });
+      return session;
     } catch (_) {
       await _endFailedStart(session);
       rethrow;
@@ -523,6 +528,18 @@ class AppRepository {
     _sessionProcess = null;
     _sessionSettings = null;
     return _nativeEngine.stop();
+  }
+
+  /// Ends the session numbered [session], while it is still the one the
+  /// engine holds, and leaves any other alone.
+  ///
+  /// A borrowed session is put down when the work it was borrowed for is
+  /// over, and by then it may be gone: Live takes the worker over without
+  /// asking, and the stop meant for the session it replaced ended the
+  /// dubbing instead.
+  Future<void> stopSession(int session) async {
+    if (session != _sessions) return;
+    await stop();
   }
 
   void dispose() => _nativeEngine.dispose();

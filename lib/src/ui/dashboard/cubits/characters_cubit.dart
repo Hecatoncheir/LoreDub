@@ -161,6 +161,20 @@ class CharactersCubit extends Cubit<CharactersState> {
   final DownloadsCubit _downloads;
   final FailureSink _errors;
 
+  /// Whether one of the dubbing screens holds the worker.
+  ///
+  /// One engine serves one session, and everything this screen starts — the
+  /// recording session, a sample, a card measured from files — brings up a
+  /// worker of its own. Begun over a session that was dubbing, it took that
+  /// session's worker while the capture went on, and every phrase the game
+  /// said from then on failed for want of whisper. Live takes the worker
+  /// from this screen by asking ([PipelineCubit.releaseWorker]); this screen
+  /// never takes it back. [DashboardCubits] wires up the answer, so neither
+  /// cubit has to know the other.
+  bool Function()? dubbingHoldsWorker;
+
+  bool get _workerTaken => dubbingHoldsWorker?.call() ?? false;
+
   /// The best fingerprint this recording has heard so far.
   List<double>? _heard;
   String? _heardGender;
@@ -364,7 +378,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// the game to listen to, chosen on the screen.
   Future<void> toggleSession({required bool initializing, required GameProcess? process}) async {
     if (state.running) return stopSession();
-    if (initializing || !canRecord) return;
+    if (initializing || _workerTaken || !canRecord) return;
     _errors.report(null);
     emit(state.copyWith(status: PipelineStatus.starting));
     try {
@@ -513,6 +527,11 @@ class CharactersCubit extends Cubit<CharactersState> {
           'starting' => PipelineStatus.starting,
           _ => PipelineStatus.idle,
         },
+        // Whichever of the two this is, the worker a sample was loaded into
+        // is gone: at rest the engine holds none, and the one that records
+        // has no speech model in it. Left standing, the next sample skipped
+        // the loading and was told there was no worker.
+        previewReady: false,
       ),
     );
   }
@@ -555,15 +574,15 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// show. The clip the fingerprint stands closest to becomes the one the
   /// card plays back, so what the player hears is a recording they gave it.
   Future<void> voiceFromFiles(String id, List<String> paths) async {
-    if (paths.isEmpty || state.building || state.recording || !canRecord) return;
+    if (paths.isEmpty || state.building || state.recording || _workerTaken || !canRecord) return;
     if (!state.characters.any((character) => character.id == id)) return;
     _errors.report(null);
     emit(state.copyWith(buildingId: id, clearBuilt: true));
     // A session the player started is theirs to end; one borrowed here to
     // measure files with is put down again when the measuring is over.
-    final borrowed = !state.running;
+    int? borrowed;
     try {
-      if (borrowed) await _startForFiles();
+      if (!state.running) borrowed = await _startForFiles();
       final built = await _appRepository.buildVoice(paths);
       final clips = await _keptClips(id, built.anchor);
       if (isClosed) return;
@@ -573,12 +592,14 @@ class CharactersCubit extends Cubit<CharactersState> {
       // Another screen taking the worker over is no failure of this one.
       if (!isPipelineStopped(exception)) _errors.report(exception);
     } finally {
-      if (borrowed) await _stopBorrowed();
+      if (borrowed != null) await _stopBorrowed(borrowed);
       if (!isClosed) {
         emit(
           state.copyWith(
             clearBuildingId: true,
-            status: borrowed ? PipelineStatus.idle : state.status,
+            // A start that never came up borrowed nothing, and whatever the
+            // screen shows by now was put there by somebody else.
+            status: borrowed == null ? state.status : PipelineStatus.idle,
           ),
         );
       }
@@ -586,10 +607,11 @@ class CharactersCubit extends Cubit<CharactersState> {
   }
 
   /// Loads the converter and nothing else: there is no game to listen to,
-  /// and the recordings are already on disk.
-  Future<void> _startForFiles() async {
+  /// and the recordings are already on disk. Answers with the session it
+  /// began, which is the one [_stopBorrowed] puts down.
+  Future<int> _startForFiles() async {
     final settings = _settings.settings;
-    await _appRepository.startVoiceFiles(
+    return _appRepository.startVoiceFiles(
       settings: settings,
       converterDirectory: await _modelRepository.directoryFor(_selection.voiceConverter!.model),
       converterBackend: settings.backendFor(
@@ -630,12 +652,13 @@ class CharactersCubit extends Cubit<CharactersState> {
         character,
   ];
 
-  /// Puts down a session borrowed only to measure files. The engine is
-  /// stopped rather than `stopSession`: nothing reported itself as
-  /// listening, so there is no session state to go by.
-  Future<void> _stopBorrowed() async {
+  /// Puts down the session borrowed to measure files — that one, and no
+  /// other. The files may have taken a while, and Live starting meanwhile
+  /// takes the worker over without a word to this screen: what the engine
+  /// holds by now is the dubbing, which a plain stop used to end.
+  Future<void> _stopBorrowed(int session) async {
     try {
-      await _appRepository.stop();
+      await _appRepository.stopSession(session);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -654,9 +677,10 @@ class CharactersCubit extends Cubit<CharactersState> {
   ///
   /// The speech model is loaded for it, which the recording session does
   /// without — the first sample waits for that, the ones after it do not.
-  /// Recording is the other way round, so the two do not run together.
+  /// Recording is the other way round, and so is measuring files, so neither
+  /// runs together with a sample.
   Future<void> preview(String id) async {
-    if (state.sounding || state.running || !canPreview) return;
+    if (state.sounding || state.running || state.building || _workerTaken || !canPreview) return;
     final character = state.characters.where((value) => value.id == id).firstOrNull;
     if (character == null) return;
     emit(state.copyWith(previewingId: id));

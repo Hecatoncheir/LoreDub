@@ -3510,113 +3510,131 @@ class _CharacterCast extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => _CharactersBuilder(
+  Widget build(BuildContext context) => _PipelineBuilder(
     cubits: cubits,
-    builder: (context, state) {
-      final l10n = AppLocalizations.of(context);
-      return Card(
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-              child: _AreaHeading(
-                label: _ModuleLabel(number: '02', label: l10n.areaCast),
-                actions: [
-                  TextButton.icon(
-                    onPressed: state.characters.isEmpty
-                        ? null
-                        : () => _exportAll(context, state.characters),
-                    icon: const Icon(Icons.file_upload_outlined, size: 18),
-                    label: Text(l10n.charactersExportAll),
-                    style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
-                  ),
-                  FilledButton.icon(
-                    key: const ValueKey('charactersAdd'),
-                    onPressed: () => cubits.characters.add(l10n.charactersNewName),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: Text(l10n.charactersAdd),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            DragTarget<CharacterDrag>(
-              // Only a card that came out of a pack has anywhere to land
-              // here; one dragged from the cast is already where it is.
-              onWillAcceptWithDetails: (details) => details.data.fromPackId != null,
-              onAcceptWithDetails: (details) => cubits.characters.removeFromPack(
-                details.data.fromPackId!,
-                details.data.character.id,
-              ),
-              builder: (context, candidate, _) => ColoredBox(
-                color: candidate.isEmpty
-                    ? Colors.transparent
-                    : LoreDubPalette.orange.withValues(alpha: 0.08),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
-                  child: state.characters.isEmpty
-                      ? _EmptyCast(loading: state.loading)
-                      : CharacterTileGrid(
-                          children: [
-                            for (final character in state.characters)
-                              CharacterTile(
-                                key: ValueKey(character.id),
-                                character: character,
-                                recording: state.recordingId == character.id,
-                                heardSeconds: state.heardSeconds,
-                                packNames: [
-                                  for (final pack in state.packs)
-                                    if (pack.holds(character.id)) pack.name,
-                                ],
-                                cast: [
-                                  for (final other in state.characters)
-                                    if (other.id != character.id) other,
-                                ],
-                                onRename: (name) => cubits.characters.rename(character.id, name),
-                                playing: state.playingId == character.id,
-                                onPlay: !state.canPlay(character.id) || state.sounding
-                                    ? null
-                                    : () => cubits.characters.playClip(character.id),
-                                previewing: state.previewingId == character.id,
-                                onStopSound: cubits.characters.stopSounding,
-                                carriesTimbre: cubits.characters.carriesTimbre,
-                                onPreview:
-                                    state.sounding || state.running || !cubits.characters.canPreview
-                                    ? null
-                                    : () => cubits.characters.preview(character.id),
-                                onRecord:
-                                    !state.running ||
-                                        (state.recording && state.recordingId != character.id)
-                                    ? null
-                                    : () => state.recordingId == character.id
-                                          ? cubits.characters.stopRecording()
-                                          : cubits.characters.startRecording(character.id),
-                                building: state.buildingId == character.id,
-                                built: state.builtId == character.id ? state.built : null,
-                                onFilesDropped:
-                                    state.building ||
-                                        state.recording ||
-                                        !cubits.characters.canRecord
-                                    ? null
-                                    : (paths) =>
-                                          cubits.characters.voiceFromFiles(character.id, paths),
-                                onExport: character.vector.isEmpty
-                                    ? null
-                                    : () => _export(context, character),
-                                onDelete: () => _confirmDelete(context, character),
-                              ),
-                          ],
-                        ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
+    // Whether a dubbing session holds the worker, and nothing more of it: a
+    // recognized phrase must not redraw every card.
+    watch: (pipeline) => pipeline.running,
+    builder: (context, pipeline) => _CharactersBuilder(
+      cubits: cubits,
+      builder: (context, state) => _build(context, state, dubbing: pipeline.running),
+    ),
   );
+
+  /// [dubbing] is a dubbing session holding the worker. A sample and a card
+  /// measured from files each bring up a worker of their own, which would be
+  /// taken from under that session, so both wait for it to end — the way the
+  /// button that starts the recording does.
+  Widget _build(BuildContext context, CharactersState state, {required bool dubbing}) {
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+            child: _AreaHeading(
+              label: _ModuleLabel(number: '02', label: l10n.areaCast),
+              actions: [
+                TextButton.icon(
+                  onPressed: state.characters.isEmpty
+                      ? null
+                      : () => _exportAll(context, state.characters),
+                  icon: const Icon(Icons.file_upload_outlined, size: 18),
+                  label: Text(l10n.charactersExportAll),
+                  style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                ),
+                FilledButton.icon(
+                  key: const ValueKey('charactersAdd'),
+                  onPressed: () => cubits.characters.add(l10n.charactersNewName),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: Text(l10n.charactersAdd),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          DragTarget<CharacterDrag>(
+            // Only a card that came out of a pack has anywhere to land
+            // here; one dragged from the cast is already where it is.
+            onWillAcceptWithDetails: (details) => details.data.fromPackId != null,
+            onAcceptWithDetails: (details) => cubits.characters.removeFromPack(
+              details.data.fromPackId!,
+              details.data.character.id,
+            ),
+            builder: (context, candidate, _) => ColoredBox(
+              color: candidate.isEmpty
+                  ? Colors.transparent
+                  : LoreDubPalette.orange.withValues(alpha: 0.08),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+                child: state.characters.isEmpty
+                    ? _EmptyCast(loading: state.loading)
+                    : CharacterTileGrid(
+                        children: [
+                          for (final character in state.characters)
+                            CharacterTile(
+                              key: ValueKey(character.id),
+                              character: character,
+                              recording: state.recordingId == character.id,
+                              heardSeconds: state.heardSeconds,
+                              packNames: [
+                                for (final pack in state.packs)
+                                  if (pack.holds(character.id)) pack.name,
+                              ],
+                              cast: [
+                                for (final other in state.characters)
+                                  if (other.id != character.id) other,
+                              ],
+                              onRename: (name) => cubits.characters.rename(character.id, name),
+                              playing: state.playingId == character.id,
+                              onPlay: !state.canPlay(character.id) || state.sounding
+                                  ? null
+                                  : () => cubits.characters.playClip(character.id),
+                              previewing: state.previewingId == character.id,
+                              onStopSound: cubits.characters.stopSounding,
+                              carriesTimbre: cubits.characters.carriesTimbre,
+                              dubbing: dubbing,
+                              onPreview:
+                                  dubbing ||
+                                      state.sounding ||
+                                      state.running ||
+                                      state.building ||
+                                      !cubits.characters.canPreview
+                                  ? null
+                                  : () => cubits.characters.preview(character.id),
+                              onRecord:
+                                  !state.running ||
+                                      (state.recording && state.recordingId != character.id)
+                                  ? null
+                                  : () => state.recordingId == character.id
+                                        ? cubits.characters.stopRecording()
+                                        : cubits.characters.startRecording(character.id),
+                              building: state.buildingId == character.id,
+                              built: state.builtId == character.id ? state.built : null,
+                              onFilesDropped:
+                                  dubbing ||
+                                      state.building ||
+                                      state.recording ||
+                                      !cubits.characters.canRecord
+                                  ? null
+                                  : (paths) =>
+                                        cubits.characters.voiceFromFiles(character.id, paths),
+                              onExport: character.vector.isEmpty
+                                  ? null
+                                  : () => _export(context, character),
+                              onDelete: () => _confirmDelete(context, character),
+                            ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// The packs: named areas cards are dropped into, handed on and thrown away

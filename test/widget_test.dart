@@ -3097,6 +3097,49 @@ void main() {
       expect(find.byTooltip('Послушать голос озвучки'), findsOneWidget);
     });
 
+    testWidgets('holds the sample and the files back while dubbing runs', (tester) async {
+      final cubits = stageCast(
+        characters: const CharactersState(loading: false, characters: [guard]),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+      IconButton sample() => tester.widget<IconButton>(
+        find.descendant(
+          of: find.byKey(const ValueKey('previewVoice-a1')),
+          matching: find.byType(IconButton),
+        ),
+      );
+      CharacterTile card() => tester.widget<CharacterTile>(find.byType(CharacterTile));
+
+      expect(sample().onPressed, isNotNull);
+      expect(card().onFilesDropped, isNotNull);
+
+      // One engine serves one session. Either of the two brings up a worker
+      // of its own, and over a session that is dubbing it took that one's:
+      // the capture went on, and every phrase after it failed.
+      cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+      await tester.pump();
+      await tester.pump();
+
+      expect(sample().onPressed, isNull);
+      expect(card().onFilesDropped, isNull);
+      // Said in so many words, rather than sending the player after a speech
+      // model they already have.
+      expect(find.byTooltip('Голос нельзя послушать, пока идёт озвучка'), findsOneWidget);
+      expect(
+        find.byTooltip('Нужна модель озвучки: загрузите её на экране «Модели»'),
+        findsNothing,
+      );
+
+      // Stopped, and both are back.
+      cubits.pipeline.seed(const LivePipelineState());
+      await tester.pump();
+      await tester.pump();
+
+      expect(sample().onPressed, isNotNull);
+      expect(card().onFilesDropped, isNotNull);
+    });
+
     testWidgets('puts the packs beside the cast, and under it in a narrow window', (
       tester,
     ) async {

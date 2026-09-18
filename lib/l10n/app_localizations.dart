@@ -639,6 +639,12 @@ abstract class AppLocalizations {
   /// **'Нужна модель озвучки: загрузите её на экране «Модели»'**
   String get charactersPreviewNeedsModel;
 
+  /// No description provided for @charactersPreviewWhileDubbing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос нельзя послушать, пока идёт озвучка'**
+  String get charactersPreviewWhileDubbing;
+
   /// No description provided for @charactersPlayingClip.
   ///
   /// In ru, this message translates to:

@@ -127,6 +127,7 @@
   "charactersPreviewPlain": "Hear the dubbing voice. The character\u2019s timbre is not carried over: turn on Original voice on the Models screen, or a plain synthesized voice reads them",
   "charactersPreviewLoading": "Getting the voice ready…",
   "charactersPreviewNeedsModel": "The speech model is missing: fetch it on the Models screen",
+  "charactersPreviewWhileDubbing": "The voice cannot be heard while dubbing runs",
   "charactersPlayingClip": "Sounding…",
   "charactersNoClip": "No recording: the card came from a file, which carries only the fingerprint",
   "charactersRecordStop": "Stop",
