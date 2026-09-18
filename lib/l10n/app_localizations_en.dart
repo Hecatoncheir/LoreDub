@@ -1432,6 +1432,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Marian/Silero did not answer within 2 minutes, and printed nothing.';
 
   @override
+  String failureWorkerStartTimeout(String detail) {
+    return 'Marian/Silero did not start within 5 minutes. Last output: $detail';
+  }
+
+  @override
+  String get failureWorkerStartTimeoutSilent =>
+      'Marian/Silero did not start within 5 minutes, and printed nothing.';
+
+  @override
   String get failureWorkerNotRunning => 'The Marian/Silero worker is not running';
 
   @override

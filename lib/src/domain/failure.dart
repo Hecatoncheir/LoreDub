@@ -40,6 +40,9 @@ enum FailureCode {
   /// The worker did not answer in time.
   workerTimeout,
 
+  /// The worker never said it was ready; the detail is the last it printed.
+  workerStartTimeout,
+
   /// A phrase was handed over before the worker was started.
   workerNotRunning,
 
@@ -50,7 +53,8 @@ enum FailureCode {
   /// read.
   audioNotDecoded,
 
-  /// The pipeline was stopped while a phrase was in flight.
+  /// The pipeline was stopped while a phrase, or the start itself, was in
+  /// flight.
   pipelineStopped,
 
   /// Native audio or subtitle capture gave up; the detail is its own message.
@@ -152,3 +156,11 @@ class LoreDubFailure implements Exception {
   String toString() =>
       detail == null ? 'LoreDubFailure(${code.name})' : 'LoreDubFailure(${code.name}): $detail';
 }
+
+/// Whether [error] says only that the pipeline was stopped.
+///
+/// A stop fails whatever was still in flight — a phrase, or a start with
+/// minutes left to run — and that is the outcome that was asked for: whoever
+/// was waiting is told, and the player is shown nothing.
+bool isPipelineStopped(Object error) =>
+    error is LoreDubFailure && error.code == FailureCode.pipelineStopped;

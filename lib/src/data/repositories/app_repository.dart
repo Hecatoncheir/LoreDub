@@ -5,6 +5,7 @@ import '../../domain/app_settings.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
+import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
 import '../../domain/glossary.dart';
 import '../../domain/pipeline_graph.dart';
@@ -137,6 +138,24 @@ class AppRepository {
   /// state of the GPU runtimes is taken into account.
   Future<ComputeAvailability> probeGraphics() => _nativeEngine.probeGraphics();
 
+  /// Goes up with every session asked for and with every stop, so a start
+  /// that fails can tell whether the engine still holds the session it began.
+  var _sessions = 0;
+
+  /// Clears away what the failed start numbered [session] left behind —
+  /// while it is still that start's to clear.
+  ///
+  /// A start is minutes long, and the player may stop it and begin another
+  /// before it ends. Its failure then arrives into a session it has nothing
+  /// to do with, and stopping the engine for it ended whichever session was
+  /// running by then. Nor has such a start anything to report: whatever it
+  /// failed with, it failed after nobody wanted it, so it ends as stopped,
+  /// which the screens pass over.
+  Future<void> _endFailedStart(int session) async {
+    if (session != _sessions) throw const LoreDubFailure(FailureCode.pipelineStopped);
+    await _nativeEngine.stop();
+  }
+
   /// [modelDirectories] carries the three paths the pipeline needs for the
   /// chosen language: `whisper` and `translation` directories, and the
   /// `speech` model file, plus the `converter` directory when the original
@@ -164,6 +183,7 @@ class AppRepository {
     required String runtimeDirectory,
     String? voiceBank,
   }) async {
+    final session = ++_sessions;
     try {
       await _nativeEngine.start({
         'speaker': speaker,
@@ -218,7 +238,7 @@ class AppRepository {
         textLanguage: settings.textLanguage,
       );
     } catch (_) {
-      await _nativeEngine.stop();
+      await _endFailedStart(session);
       rethrow;
     }
   }
@@ -239,6 +259,7 @@ class AppRepository {
     required ComputeBackend speechBackend,
     required String runtimeDirectory,
   }) async {
+    final session = ++_sessions;
     try {
       await _nativeEngine.startScreenText({
         'speaker': speaker,
@@ -281,7 +302,7 @@ class AppRepository {
         textLanguage: settings.textLanguage,
       );
     } catch (_) {
-      await _nativeEngine.stop();
+      await _endFailedStart(session);
       rethrow;
     }
   }
@@ -305,6 +326,7 @@ class AppRepository {
     required ComputeBackend converterBackend,
     required String runtimeDirectory,
   }) async {
+    final session = ++_sessions;
     try {
       await _nativeEngine.startPreview({
         'speaker': speaker,
@@ -317,7 +339,7 @@ class AppRepository {
         'runtimeDirectory': runtimeDirectory,
       });
     } catch (_) {
-      await _nativeEngine.stop();
+      await _endFailedStart(session);
       rethrow;
     }
   }
@@ -339,6 +361,7 @@ class AppRepository {
     required ComputeBackend converterBackend,
     required String runtimeDirectory,
   }) async {
+    final session = ++_sessions;
     try {
       await _nativeEngine.startCharacters({
         'processId': process?.pid ?? 0,
@@ -351,7 +374,7 @@ class AppRepository {
         'runtimeDirectory': runtimeDirectory,
       });
     } catch (_) {
-      await _nativeEngine.stop();
+      await _endFailedStart(session);
       rethrow;
     }
   }
@@ -365,6 +388,7 @@ class AppRepository {
     required ComputeBackend converterBackend,
     required String runtimeDirectory,
   }) async {
+    final session = ++_sessions;
     try {
       await _nativeEngine.startVoiceFiles({
         'cpuThreads': settings.cpuThreads,
@@ -374,7 +398,7 @@ class AppRepository {
         'runtimeDirectory': runtimeDirectory,
       });
     } catch (_) {
-      await _nativeEngine.stop();
+      await _endFailedStart(session);
       rethrow;
     }
   }
@@ -408,6 +432,7 @@ class AppRepository {
     required String runtimeDirectory,
     String? voiceBank,
   }) async {
+    final session = ++_sessions;
     try {
       await _nativeEngine.startScene({
         'processId': process?.pid ?? 0,
@@ -423,7 +448,7 @@ class AppRepository {
         'asHeard': await _cutFromMix(),
       });
     } catch (_) {
-      await _nativeEngine.stop();
+      await _endFailedStart(session);
       rethrow;
     }
   }
@@ -492,6 +517,9 @@ class AppRepository {
   }
 
   Future<void> stop() {
+    // A start still on its way fails for being stopped, and must not take
+    // that for a failure of its own to clean up after.
+    _sessions++;
     _sessionProcess = null;
     _sessionSettings = null;
     return _nativeEngine.stop();

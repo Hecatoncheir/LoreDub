@@ -2469,6 +2469,18 @@ abstract class AppLocalizations {
   /// **'Marian/Silero не ответил за 2 минуты. Вывода процесса нет.'**
   String get failureWorkerTimeoutSilent;
 
+  /// No description provided for @failureWorkerStartTimeout.
+  ///
+  /// In ru, this message translates to:
+  /// **'Marian/Silero не запустился за 5 минут. Последний вывод: {detail}'**
+  String failureWorkerStartTimeout(String detail);
+
+  /// No description provided for @failureWorkerStartTimeoutSilent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Marian/Silero не запустился за 5 минут. Вывода процесса нет.'**
+  String get failureWorkerStartTimeoutSilent;
+
   /// No description provided for @failureWorkerNotRunning.
   ///
   /// In ru, this message translates to:

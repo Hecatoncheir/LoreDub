@@ -105,7 +105,34 @@ class WorkerDiagnostics {
       : LoreDubFailure(FailureCode.workerExited, detail: '$code$exitDetailSeparator$recentOutput');
 }
 
+/// What a start asks of the machine before the interpreter runs: both
+/// binaries found, and the worker's script written out where it can be run.
+typedef WorkerFiles = ({String python, String script, String work, String? whisper});
+typedef WorkerPreparation = Future<WorkerFiles> Function({
+  required String pythonExecutable,
+  required bool requiresWhisper,
+  required ComputeBackend recognitionBackend,
+  String? downloadedRuntimeDirectory,
+});
+
+/// Starts the interpreter the worker runs in.
+typedef WorkerStarter = Future<Process> Function(String executable, List<String> arguments);
+
 class LocalInferenceService {
+  LocalInferenceService({
+    WorkerPreparation? prepare,
+    WorkerStarter? startWorker,
+    this.startupLimit = const Duration(minutes: 5),
+  }) : _prepare = prepare ?? _prepareOnThisMachine,
+       _startWorker = startWorker ?? _startInterpreter;
+
+  final WorkerPreparation _prepare;
+  final WorkerStarter _startWorker;
+
+  /// Loading Marian and Silero is minutes on a cold machine; past this, the
+  /// worker is not coming up at all.
+  final Duration startupLimit;
+
   Process? _worker;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
@@ -114,6 +141,17 @@ class LocalInferenceService {
   Completer<void>? _workerReady;
   String? _whisperExecutable;
 
+  /// Goes up with every start and every stop, so that a start coming back
+  /// from one of its waits can tell whether it is still the one wanted.
+  ///
+  /// Starting is minutes of waiting, and the button that starts a session
+  /// also cancels a start in progress. A stop that landed in one of those
+  /// waits found nothing it could end: the start carried on into fields the
+  /// stop had cleared, and either left a worker running that nobody held or
+  /// sat out the whole of [startupLimit] — to fail then into whichever
+  /// session was running by that time.
+  var _generation = 0;
+
   /// Detected once per session and reused; null means detection is still due.
   String? _spokenLanguage;
   var _requestId = 0;
@@ -121,6 +159,11 @@ class LocalInferenceService {
   /// Reports how far the worker is through its startup, which takes long
   /// enough that the application must not look frozen while it happens.
   void Function(double value, String stage)? onStartupProgress;
+
+  /// Told when a worker that had started dies on its own, with the reason
+  /// it gave. Nothing can be dubbed from then on, so whoever holds the
+  /// session is expected to end it rather than let phrases pile up.
+  void Function(LoreDubFailure failure)? onWorkerLost;
 
   /// The language the pipeline is recognizing, once it is known.
   String? get spokenLanguage => _spokenLanguage;
@@ -239,31 +282,32 @@ class LocalInferenceService {
     /// in for it, though what the cards say waits in them.
     Set<String> asHeard = const {},
   }) async {
+    // Named before anything is waited for: each wait below is somewhere a
+    // stop can land, and the start asks after every one of them whether it
+    // is still wanted. What it waited for stays in locals until then, so a
+    // start already replaced writes nothing over the one that replaced it.
+    final generation = ++_generation;
     // A worker left over from a session that was not stopped would go on
     // holding its models — and its share of a graphics card — with the
     // handle to it about to be overwritten and nobody left to end it.
-    if (_worker != null) await stop();
-    _workerReady = Completer<void>();
+    if (_worker != null) await _endWorker();
+    _throwIfSuperseded(generation);
     _speechDevice = null;
     _converterDevice = null;
     _diagnostics.clear();
     // A language the user named is used as is; anything else is detected once
     // on the first phrase and then reused.
     _spokenLanguage = sourceLanguage == autoSpokenLanguage ? null : sourceLanguage;
-    if (!Platform.isWindows) throw const LoreDubFailure(FailureCode.windowsOnly);
     // Both binaries are validated before the caller ducks the game, so a
     // broken installation cannot look like a silently working pipeline.
-    _whisperExecutable = requiresWhisper
-        ? await resolveWhisperExecutable(
-            backend: recognitionBackend,
-            downloadedRuntimeDirectory: downloadedRuntimeDirectory,
-          )
-        : null;
-    final python = await resolvePythonExecutable(pythonExecutable);
-    final work = await createWorkDirectory();
-    final workerFile = await _extractScript('assets/runtime/inference_worker.py', work);
-    // The converter is a module the worker imports from its own directory.
-    await _extractScript('assets/runtime/tone_converter.py', work);
+    final files = await _prepare(
+      pythonExecutable: pythonExecutable,
+      requiresWhisper: requiresWhisper,
+      recognitionBackend: recognitionBackend,
+      downloadedRuntimeDirectory: downloadedRuntimeDirectory,
+    );
+    _throwIfSuperseded(generation);
+    _whisperExecutable = files.whisper;
     // The translator, the voice and the converter each ask for the CUDA build
     // on their own, and whichever does brings it in for all three.
     final cudaTorch =
@@ -271,11 +315,11 @@ class LocalInferenceService {
         (ttsModel.isNotEmpty && speechBackend == ComputeBackend.cuda) ||
         (voiceConverter != null && voiceConversionBackend == ComputeBackend.cuda);
     onStartupProgress?.call(0.05, 'python');
-    _worker = await Process.start(
-      python,
+    final worker = await _startWorker(
+      files.python,
       [
         '-u',
-        workerFile.path,
+        files.script,
         if (embedOnly) '--embed-only',
         if (speechOnly) '--speech-only',
         if (translationModel.isNotEmpty) ...['--translation-model', translationModel],
@@ -288,7 +332,7 @@ class LocalInferenceService {
         '--speaker',
         speaker,
         '--work-directory',
-        work.path,
+        files.work,
         '--threads',
         '$threads',
         '--speed',
@@ -325,13 +369,71 @@ class LocalInferenceService {
           if (asHeard.isNotEmpty) ...['--as-heard', asHeard.join(',')],
         ],
       ],
-      environment: const {'PYTHONIOENCODING': 'utf-8'},
     );
-    _listenTo(_worker!, _workerReady!);
-    // Loading Marian and Silero is minutes on a cold machine; past that, the
-    // worker is not coming up at all.
-    await _workerReady!.future.timeout(const Duration(minutes: 5));
+    if (generation != _generation) {
+      // Stopped while the interpreter was coming up. The stop found no
+      // worker to end, so this one is ended here, where it is still held.
+      _discard(worker);
+      throw const LoreDubFailure(FailureCode.pipelineStopped);
+    }
+    // Made only now, with nothing waited for before it is listened to: a
+    // stop fails it, and a failure nobody hears is an error of its own.
+    final ready = Completer<void>();
+    _worker = worker;
+    _workerReady = ready;
+    _listenTo(worker, ready);
+    try {
+      await ready.future.timeout(startupLimit);
+    } on TimeoutException {
+      final said = _diagnostics.isEmpty ? null : _diagnostics.recentOutput;
+      // Given up on, it would go on loading — and holding what it loaded —
+      // with nobody left to end it.
+      await _endWorker();
+      throw LoreDubFailure(FailureCode.workerStartTimeout, detail: said);
+    }
+    _throwIfSuperseded(generation);
   }
+
+  /// A start that was stopped, or replaced by a later one, ends here: what
+  /// it was waiting for came back to nobody.
+  void _throwIfSuperseded(int generation) {
+    if (generation != _generation) throw const LoreDubFailure(FailureCode.pipelineStopped);
+  }
+
+  /// Ends a worker nobody is going to talk to. What it printed is read to
+  /// the end and dropped: unread, it keeps the pipes of a dead process open.
+  static void _discard(Process worker) {
+    worker.kill();
+    worker.stdout.drain<void>().ignore();
+    worker.stderr.drain<void>().ignore();
+  }
+
+  /// The real [WorkerPreparation]. The work directory is the application's
+  /// own and the scripts come out of its bundle, neither of which a test has.
+  static Future<WorkerFiles> _prepareOnThisMachine({
+    required String pythonExecutable,
+    required bool requiresWhisper,
+    required ComputeBackend recognitionBackend,
+    String? downloadedRuntimeDirectory,
+  }) async {
+    if (!Platform.isWindows) throw const LoreDubFailure(FailureCode.windowsOnly);
+    final whisper = requiresWhisper
+        ? await resolveWhisperExecutable(
+            backend: recognitionBackend,
+            downloadedRuntimeDirectory: downloadedRuntimeDirectory,
+          )
+        : null;
+    final python = await resolvePythonExecutable(pythonExecutable);
+    final work = await createWorkDirectory();
+    final script = await _extractScript('assets/runtime/inference_worker.py', work);
+    // The converter is a module the worker imports from its own directory.
+    await _extractScript('assets/runtime/tone_converter.py', work);
+    return (python: python, script: script.path, work: work.path, whisper: whisper);
+  }
+
+  /// The real [WorkerStarter].
+  static Future<Process> _startInterpreter(String executable, List<String> arguments) =>
+      Process.start(executable, arguments, environment: const {'PYTHONIOENCODING': 'utf-8'});
 
   /// Copies one of the bundled runtime scripts into the work directory,
   /// where the interpreter can reach it, and answers with what it wrote.
@@ -356,7 +458,11 @@ class LocalInferenceService {
     // IOSink defaults to the system encoding, which would corrupt any
     // non-ASCII phrase on the way into the worker.
     worker.stdin.encoding = utf8;
-    _stdoutSubscription = decodeWorkerLines(worker.stdout).listen(_handleWorkerLine);
+    _stdoutSubscription = decodeWorkerLines(worker.stdout).listen((line) {
+      // A worker on its way out can still get a line in, and it answers for
+      // nobody: its handshake would end the start of the one replacing it.
+      if (identical(_worker, worker)) _handleWorkerLine(line);
+    });
     _stderrSubscription = decodeWorkerLines(worker.stderr).listen((line) {
       _diagnostics.add(line);
       stderr.writeln('[inference] $line');
@@ -369,11 +475,20 @@ class LocalInferenceService {
   void _onWorkerExit(Process worker, Completer<void> ready, int code) {
     if (!identical(_worker, worker)) return;
     final error = _diagnostics.describeExit(code);
-    if (!ready.isCompleted) ready.completeError(error);
+    // Let go of, so the next phrase is told there is no worker. Left in
+    // place it was written into a pipe nobody reads, and every phrase after
+    // it waited out its two minutes while the queue behind them grew.
+    _worker = null;
+    _workerReady = null;
+    final starting = !ready.isCompleted;
+    if (starting) ready.completeError(error);
     for (final request in _pending.values) {
       if (!request.isCompleted) request.completeError(error);
     }
     _pending.clear();
+    // A start still waiting has just been told, and fails with the reason.
+    // A session already running has nobody waiting on the worker as a whole.
+    if (!starting) onWorkerLost?.call(error);
   }
 
   /// One line the worker wrote: its handshake, a step of its startup, or
@@ -810,19 +925,37 @@ class LocalInferenceService {
     );
   }
 
-  Future<void> stop() async {
+  Future<void> stop() {
+    // Whichever start is still in one of its waits is no longer wanted, and
+    // finds that out when it comes back from it.
+    _generation++;
+    return _endWorker();
+  }
+
+  /// Fails whoever is waiting on the worker and takes it down. A start does
+  /// this to the worker it replaces, which is not a stop of the start itself.
+  Future<void> _endWorker() async {
+    const stopped = LoreDubFailure(FailureCode.pipelineStopped);
     for (final completer in _pending.values) {
-      if (!completer.isCompleted) {
-        completer.completeError(const LoreDubFailure(FailureCode.pipelineStopped));
-      }
+      if (!completer.isCompleted) completer.completeError(stopped);
     }
     _pending.clear();
+    // A start waiting for the handshake is told now. Left unanswered it sat
+    // out the whole startup limit: the exit of a worker already let go of is
+    // nobody's, so nothing else was ever going to end that wait.
+    final ready = _workerReady;
+    if (ready != null && !ready.isCompleted) ready.completeError(stopped);
     final worker = _worker;
+    final listening = [_stdoutSubscription, _stderrSubscription];
     // Cleared before the process is waited on: whatever else asks for the
     // worker while it dies must be told there is none, not handed the one
-    // on its way out.
+    // on its way out. The subscriptions with it — the next start may be
+    // listening to its own worker by the time this one has died, and those
+    // are not this call's to cancel.
     _worker = null;
     _workerReady = null;
+    _stdoutSubscription = null;
+    _stderrSubscription = null;
     await worker?.stdin.close();
     worker?.kill();
     // Waited for, so the next worker starts on a machine this one has
@@ -832,7 +965,8 @@ class LocalInferenceService {
       const Duration(seconds: 5),
       onTimeout: () => -1,
     );
-    await _stdoutSubscription?.cancel();
-    await _stderrSubscription?.cancel();
+    for (final subscription in listening) {
+      await subscription?.cancel();
+    }
   }
 }

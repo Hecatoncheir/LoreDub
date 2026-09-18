@@ -180,6 +180,26 @@ Segments are processed strictly sequentially — `NativeEngineService._processin
 is a chained `Future` — so a small CPU is never asked to run two inferences at
 once. Preserve that when adding stages.
 
+A start is minutes long and can be stopped anywhere in them — the button that
+starts a session also cancels a start in progress. `LocalInferenceService`
+counts starts and stops in `_generation`: `start()` takes its number before
+the first wait and asks after every wait whether it is still the one wanted
+(`_throwIfSuperseded`), keeping what it waited for in locals until then —
+never `_worker!` or `_workerReady!` after an await. Overtaken once the
+interpreter is spawned, it kills that process itself, the stop having found no
+worker to end; `stop()` fails a pending handshake with `pipelineStopped`, which
+is what ends the wait at once rather than after `startupLimit`. A worker that
+never says `ready` inside that limit is ended and reported as
+`workerStartTimeout`. `AppRepository._sessions` is the same counter a layer
+up: a failed start clears the engine only while the session is still its own,
+and otherwise ends as `pipelineStopped`, which the cubits pass over
+(`isPipelineStopped`) — a stop that was asked for is not an error. A worker
+that dies under a running session lets go of `_worker`, so the next phrase is
+told there is none rather than written into a dead pipe, and calls
+`onWorkerLost`, on which `NativeEngineService` reports why and stops the
+session. The seams for all of this are `WorkerPreparation` and
+`WorkerStarter`, with a fake `Process` in the service's test.
+
 Playback is not sequential in the same way. Every worker reply carries a
 `speaker` key (`timbre:<n>` from the voice fingerprints with the converter,
 `voice:<silero name>` without it, absent when unknown), and

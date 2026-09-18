@@ -911,6 +911,15 @@
     }
   },
   "failureWorkerTimeoutSilent": "Marian/Silero did not answer within 2 minutes, and printed nothing.",
+  "failureWorkerStartTimeout": "Marian/Silero did not start within 5 minutes. Last output: {detail}",
+  "@failureWorkerStartTimeout": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "failureWorkerStartTimeoutSilent": "Marian/Silero did not start within 5 minutes, and printed nothing.",
   "failureWorkerNotRunning": "The Marian/Silero worker is not running",
   "failureAudioNotDecoded": "Windows could not read any of those files as sound",
   "failureWorkerFailed": "Marian/Silero: {detail}",

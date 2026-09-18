@@ -1440,6 +1440,15 @@ class AppLocalizationsRu extends AppLocalizations {
       'Marian/Silero не ответил за 2 минуты. Вывода процесса нет.';
 
   @override
+  String failureWorkerStartTimeout(String detail) {
+    return 'Marian/Silero не запустился за 5 минут. Последний вывод: $detail';
+  }
+
+  @override
+  String get failureWorkerStartTimeoutSilent =>
+      'Marian/Silero не запустился за 5 минут. Вывода процесса нет.';
+
+  @override
   String get failureWorkerNotRunning => 'Marian/Silero worker не запущен';
 
   @override

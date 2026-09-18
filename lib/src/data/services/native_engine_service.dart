@@ -43,6 +43,7 @@ class NativeEngineService {
   NativeEngineService() {
     _inference.onStartupProgress = (value, stage) =>
         _events.add(_ofSession({'type': 'startup', 'value': value, 'stage': stage}));
+    _inference.onWorkerLost = _onWorkerLost;
     _playback.onSpeaking = _duckForSpeech;
   }
 
@@ -919,6 +920,20 @@ class NativeEngineService {
   void _reportFailure(Object error) {
     if (_activeConfig == null) return;
     _events.add({'type': 'error', 'failure': error});
+  }
+
+  /// The worker died under a running session. The capture would go on
+  /// cutting phrases for nobody — each one told there is no worker — so the
+  /// session ends here, and the player is told what the worker said.
+  void _onWorkerLost(LoreDubFailure failure) {
+    // Said before the stop, which clears the session the failure is about;
+    // the phrases that were in flight fail after it and are passed over.
+    _events.add({'type': 'error', 'failure': failure});
+    unawaited(
+      stop().catchError((Object error) {
+        if (!_events.isClosed) _events.add({'type': 'error', 'failure': error});
+      }),
+    );
   }
 
   Future<void> _publishResult(

@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -19,6 +21,8 @@ import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/built_voice.dart';
 import 'package:lore_dub/src/domain/character.dart';
+import 'package:lore_dub/src/domain/failure.dart';
+import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
@@ -113,6 +117,23 @@ void main() {
     characters.handleEvent({'type': 'state', 'state': 'idle'});
 
     expect(characters.state.running, isFalse);
+  });
+
+  test('says nothing of a session the player stopped while it was starting', () async {
+    characters.seed(const CharactersState(loading: false));
+
+    unawaited(characters.toggleSession(initializing: false, process: null));
+    await Future<void>.delayed(Duration.zero);
+    expect(characters.state.status, PipelineStatus.starting);
+
+    // The button that starts the session is the one that stops it, and a
+    // start that is stopped fails — for being stopped, which is no news.
+    await characters.toggleSession(initializing: false, process: null);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(repository.stops, 1);
+    expect(characters.state.status, PipelineStatus.idle);
+    expect(cubits.shell.state.error, isNull);
   });
 
   group('a card built from files', () {
@@ -581,8 +602,25 @@ class _CastRepository extends AppRepository {
   @override
   Future<void> recordCharacterVoice({required bool recording}) async => recordings.add(recording);
 
+  /// The recording session on its way up, which a stop fails the way the
+  /// real one fails a start it lands in.
+  Completer<void>? _starting;
+
   @override
-  Future<void> stop() async => stops++;
+  Future<void> startCharacterVoices({
+    required GameProcess? process,
+    required AppSettings settings,
+    required String converterDirectory,
+    required ComputeBackend converterBackend,
+    required String runtimeDirectory,
+  }) => (_starting = Completer<void>()).future;
+
+  @override
+  Future<void> stop() async {
+    stops++;
+    _starting?.completeError(const LoreDubFailure(FailureCode.pipelineStopped));
+    _starting = null;
+  }
 
   @override
   void dispose() {}

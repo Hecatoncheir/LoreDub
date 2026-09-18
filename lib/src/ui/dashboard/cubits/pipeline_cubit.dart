@@ -12,6 +12,7 @@ import '../../../data/repositories/model_repository.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/ocr_region.dart';
 import '../../../domain/compute_device.dart';
+import '../../../domain/failure.dart';
 import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
@@ -317,10 +318,31 @@ class PipelineCubit extends Cubit<LivePipelineState> {
             : null,
       );
     } catch (exception) {
-      if (isClosed) return;
-      emit(state.copyWith(status: PipelineStatus.error));
-      _errors.report(exception);
+      _onStartFailed(exception);
     }
+  }
+
+  /// A start that did not come up.
+  ///
+  /// One that was stopped is no failure: the button that starts a session
+  /// also cancels a start in progress, and the start then ends the way it
+  /// was asked to, with nothing to report.
+  void _onStartFailed(Object exception) {
+    if (isClosed) return;
+    if (isPipelineStopped(exception)) return _onStartStopped();
+    emit(state.copyWith(status: PipelineStatus.error));
+    _errors.report(exception);
+  }
+
+  /// Stopped from this screen, the status has moved on already — [stop]
+  /// says `stopping` before it waits for anything. Still `starting`, the
+  /// worker was taken by another screen, which stops nothing here and tells
+  /// this one nothing, so the start would go on looking alive for good.
+  void _onStartStopped() {
+    if (state.status != PipelineStatus.starting) return;
+    emit(
+      state.copyWith(status: PipelineStatus.idle, clearStartupProgress: true, startupStage: ''),
+    );
   }
 
   /// Where each model this session runs on actually sits. Whisper and the
@@ -406,9 +428,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
       );
     } catch (exception) {
-      if (isClosed) return;
-      emit(state.copyWith(status: PipelineStatus.error));
-      _errors.report(exception);
+      _onStartFailed(exception);
     }
   }
 
@@ -458,9 +478,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         voiceBank: await _appRepository.voiceBankFileFor(_game),
       );
     } catch (exception) {
-      if (isClosed) return;
-      emit(state.copyWith(status: PipelineStatus.error));
-      _errors.report(exception);
+      _onStartFailed(exception);
     }
   }
 

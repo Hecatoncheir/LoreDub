@@ -163,6 +163,55 @@ void main() {
     expect(repository.stops, 1);
   });
 
+  test('says nothing of a start the player cancelled', () async {
+    final statuses = <PipelineStatus>[];
+    final watching = pipeline.stream.listen((state) => statuses.add(state.status));
+    addTearDown(watching.cancel);
+    unawaited(pipeline.toggle(initializing: false));
+    await settle();
+
+    now = now.add(PipelineCubit.doubleClickGrace);
+    await pipeline.toggle(initializing: false);
+    await settle();
+
+    // The start ends as stopped, which is what was asked of it: an error
+    // here stood on the screen until the worker had died, and left a banner
+    // about a stop under a session that was only ever cancelled.
+    expect(statuses, isNot(contains(PipelineStatus.error)));
+    expect(pipeline.state.status, PipelineStatus.idle);
+    expect(cubits.shell.state.error, isNull);
+  });
+
+  test('comes to rest when another screen takes the worker from a start', () async {
+    unawaited(pipeline.toggle(initializing: false));
+    await settle();
+    expect(pipeline.state.status, PipelineStatus.starting);
+
+    // A sample asked for on the characters screen starts a worker of its
+    // own over this one. Nothing is stopped here, so nothing else would
+    // ever move this screen on from a start that is no longer running.
+    repository.failStart(const LoreDubFailure(FailureCode.pipelineStopped));
+    await settle();
+
+    expect(pipeline.state.status, PipelineStatus.idle);
+    expect(cubits.shell.state.error, isNull);
+    expect(repository.stops, 0);
+  });
+
+  test('still says why a start failed on its own', () async {
+    unawaited(pipeline.toggle(initializing: false));
+    await settle();
+
+    repository.failStart(const LoreDubFailure(FailureCode.workerStartTimeout));
+    await settle();
+
+    expect(pipeline.state.status, PipelineStatus.error);
+    expect(
+      cubits.shell.state.error,
+      isA<LoreDubFailure>().having((f) => f.code, 'code', FailureCode.workerStartTimeout),
+    );
+  });
+
   test('pauses and resumes on the hotkeys pressed in the game', () async {
     pipeline
       ..listen()
@@ -442,17 +491,25 @@ void main() {
 }
 
 /// A start that never finishes, as a first start does while the worker loads
-/// Marian and Silero.
+/// Marian and Silero — unless it is stopped, which fails it the way the real
+/// one fails a start still on its way.
 class _SlowStartRepository extends AppRepository {
   _SlowStartRepository() : super(NativeEngineService(), SettingsService());
 
   final _events = StreamController<Map<String, Object?>>.broadcast();
+  Completer<void>? _starting;
   int starts = 0;
   int stops = 0;
   int snapshotStarts = 0;
   Map<String, String> snapshotModels = const {};
 
   void push(Map<String, Object?> event) => _events.add(event);
+
+  /// Ends the start in progress with [failure], as the engine would.
+  void failStart(Object failure) {
+    _starting?.completeError(failure);
+    _starting = null;
+  }
 
   @override
   Stream<Map<String, Object?>> get events => _events.stream;
@@ -477,7 +534,7 @@ class _SlowStartRepository extends AppRepository {
     String? voiceBank,
   }) {
     starts++;
-    return Completer<void>().future;
+    return (_starting = Completer<void>()).future;
   }
 
   @override
@@ -519,6 +576,7 @@ class _SlowStartRepository extends AppRepository {
   @override
   Future<void> stop() async {
     stops++;
+    failStart(const LoreDubFailure(FailureCode.pipelineStopped));
   }
 
   @override

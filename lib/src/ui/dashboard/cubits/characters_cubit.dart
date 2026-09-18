@@ -12,6 +12,7 @@ import '../../../data/repositories/model_repository.dart';
 import '../../../domain/built_voice.dart';
 import '../../../domain/character.dart';
 import '../../../domain/compute_device.dart';
+import '../../../domain/failure.dart';
 import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
@@ -381,7 +382,10 @@ class CharactersCubit extends Cubit<CharactersState> {
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
       );
     } catch (exception) {
-      if (isClosed) return;
+      // The button that starts the session also stops one still starting,
+      // and Live takes the worker over: either ends the start the way it
+      // was asked to, and says itself what the screen shows.
+      if (isClosed || isPipelineStopped(exception)) return;
       emit(state.copyWith(status: PipelineStatus.error));
       _errors.report(exception);
     }
@@ -566,7 +570,8 @@ class CharactersCubit extends Cubit<CharactersState> {
       emit(state.copyWith(built: built, builtId: id, clips: clips));
       await _write(characters: _withVoiceBuilt(id, built));
     } catch (exception) {
-      _errors.report(exception);
+      // Another screen taking the worker over is no failure of this one.
+      if (!isPipelineStopped(exception)) _errors.report(exception);
     } finally {
       if (borrowed) await _stopBorrowed();
       if (!isClosed) {
@@ -677,7 +682,8 @@ class CharactersCubit extends Cubit<CharactersState> {
         timbre: selection.clonesVoice ? read.vector : const [],
       );
     } catch (exception) {
-      _errors.report(exception);
+      // Another screen taking the worker over is no failure of this one.
+      if (!isPipelineStopped(exception)) _errors.report(exception);
     } finally {
       if (!isClosed) emit(state.copyWith(clearPreviewingId: true));
     }
