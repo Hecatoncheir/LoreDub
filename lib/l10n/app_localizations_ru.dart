@@ -160,6 +160,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get glossaryEmpty => 'Пока пусто.';
 
   @override
+  String get glossaryAllHidden => 'Записи здесь есть, но их скрывает поиск или фильтр.';
+
+  @override
   String get transcriptSilenced => 'не озвучено по словарю';
 
   @override

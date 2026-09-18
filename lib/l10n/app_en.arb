@@ -74,6 +74,7 @@
   "glossaryWordSource": "As it is said now",
   "glossaryWordReading": "How to say it",
   "glossaryEmpty": "Nothing here yet.",
+  "glossaryAllHidden": "There are entries here, but the search or a filter hides them.",
   "transcriptSilenced": "passed over by the glossary",
   "transcriptCorrectSilence": "Pass over",
   "glossarySilence": "Pass this line over",

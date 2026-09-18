@@ -74,6 +74,7 @@
   "glossaryWordSource": "Как говорится сейчас",
   "glossaryWordReading": "Как говорить",
   "glossaryEmpty": "Пока пусто.",
+  "glossaryAllHidden": "Записи здесь есть, но их скрывает поиск или фильтр.",
   "transcriptSilenced": "не озвучено по словарю",
   "transcriptCorrectSilence": "Не озвучивать",
   "glossarySilence": "Не озвучивать эту реплику",

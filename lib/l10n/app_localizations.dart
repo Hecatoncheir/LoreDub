@@ -369,6 +369,12 @@ abstract class AppLocalizations {
   /// **'Пока пусто.'**
   String get glossaryEmpty;
 
+  /// No description provided for @glossaryAllHidden.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записи здесь есть, но их скрывает поиск или фильтр.'**
+  String get glossaryAllHidden;
+
   /// No description provided for @transcriptSilenced.
   ///
   /// In ru, this message translates to:

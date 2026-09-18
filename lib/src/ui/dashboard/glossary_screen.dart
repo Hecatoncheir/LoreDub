@@ -229,6 +229,7 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
                     readingLabel: l10n.glossaryPhraseReading,
                     kind: GlossaryKind.phrase,
                     entries: _of(state.glossary, GlossaryKind.phrase),
+                    held: state.glossary.of(GlossaryKind.phrase).length,
                     loaded: state.loaded,
                     cubits: widget.cubits,
                   ),
@@ -241,6 +242,7 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
                     readingLabel: l10n.glossaryNameReading,
                     kind: GlossaryKind.name,
                     entries: _of(state.glossary, GlossaryKind.name),
+                    held: state.glossary.of(GlossaryKind.name).length,
                     loaded: state.loaded,
                     cubits: widget.cubits,
                   ),
@@ -253,6 +255,7 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
                     readingLabel: l10n.glossaryWordReading,
                     kind: GlossaryKind.word,
                     entries: _of(state.glossary, GlossaryKind.word),
+                    held: state.glossary.of(GlossaryKind.word).length,
                     loaded: state.loaded,
                     cubits: widget.cubits,
                   ),
@@ -320,6 +323,7 @@ class _GlossarySection extends StatelessWidget {
     required this.readingLabel,
     required this.kind,
     required this.entries,
+    required this.held,
     required this.loaded,
     required this.cubits,
   });
@@ -330,7 +334,14 @@ class _GlossarySection extends StatelessWidget {
   final String sourceLabel;
   final String readingLabel;
   final GlossaryKind kind;
+
+  /// What the list shows: its entries, narrowed by the search and the
+  /// presets.
   final List<GlossaryEntry> entries;
+
+  /// How many are written down, whatever is shown of them, which is what
+  /// tells a list with nothing in it from one narrowed to nothing.
+  final int held;
   final bool loaded;
   final DashboardCubits cubits;
 
@@ -354,7 +365,13 @@ class _GlossarySection extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
-                  l10n.glossaryEmpty,
+                  // A list with nothing in it says so; one whose entries the
+                  // search or a preset hid says that instead, as a pack does.
+                  // "In no pack" is on to begin with, so names filed in a
+                  // game's pack would open on "nothing here yet" -- and one
+                  // written under a narrowed list, hidden the moment it is
+                  // kept, would read as not having been written.
+                  held > 0 ? l10n.glossaryAllHidden : l10n.glossaryEmpty,
                   style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
                 ),
               ),

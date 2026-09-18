@@ -969,6 +969,33 @@ void main() {
     }
   });
 
+  // "Nothing here yet" over a list holding twenty names reads as the names
+  // being gone -- and one written under it, hidden the moment it is kept, as
+  // not having been written at all.
+  testWidgets('tells a list narrowed to nothing from one with nothing in it', (tester) async {
+    const megaton = GlossaryEntry(kind: GlossaryKind.name, source: 'Megaton', reading: 'Мегатон');
+    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
+    cubits.glossary.seed(
+      const GlossaryState(loaded: true, glossary: Glossary(entries: [megaton])),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+    const empty = 'Пока пусто.';
+    const hidden = 'Записи здесь есть, но их скрывает поиск или фильтр.';
+
+    // No phrase and no word is written down, and the name is in view.
+    expect(find.text(empty), findsNWidgets(2));
+    expect(find.text(hidden), findsNothing);
+
+    // Only a phrase can be passed over, so this preset hides the name, and
+    // the two lists with nothing in them go on saying so.
+    await tester.tap(find.byKey(const ValueKey('glossary-preset-silent')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(empty), findsNWidgets(2));
+    expect(find.text(hidden), findsOneWidget);
+  });
+
   testWidgets('passes a line over from the transcript', (tester) async {
     final cubits = stage(
       buildCubits(),

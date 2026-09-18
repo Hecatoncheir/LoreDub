@@ -160,6 +160,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get glossaryEmpty => 'Nothing here yet.';
 
   @override
+  String get glossaryAllHidden => 'There are entries here, but the search or a filter hides them.';
+
+  @override
   String get transcriptSilenced => 'passed over by the glossary';
 
   @override
