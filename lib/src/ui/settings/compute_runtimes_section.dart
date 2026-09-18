@@ -12,9 +12,9 @@ import '../compute_names.dart';
 import '../dashboard/compute_matrix.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
-import '../dashboard/model_tiles.dart';
 import '../failure_messages.dart';
 import '../theme.dart';
+import '../models/model_tile_grid.dart';
 
 /// The GPU packages as tiles: the ones this machine could use, and any
 /// already on disk -- a card that was taken out must not strand gigabytes

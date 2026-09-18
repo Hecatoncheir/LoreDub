@@ -347,12 +347,17 @@ lib/src/ui/
       `stageBackendStatus()` с тестами, ячейку рисует `StageBackendCell`.
       `BackendCell.build` (36) в `compute_matrix.dart` ещё ждёт своей
       очереди — вместе с остальными файлами `dashboard/`.
-- [ ] `_VoiceCard._build` (29), `_ModelsPanel._build` (24),
+- [x] `_VoiceCard._build` (29), `_ModelsPanel._build` (24),
       `_ModelCard.build` (21), `modelActions` (30), `ModelTile.build` (26),
       `_ModelBarState._content` (26): тот же приём — sealed-состояние
       «что сейчас с пакетом» (`missing` / `downloading` / `paused` /
       `installed` / `inUse` / `failed`) один раз в домене вместо пяти
       разных `if`-лесенок в пяти виджетах.
+      *Сделано:* `PackageTransfer` в домене (что качается, стоит, отсутствует;
+      что возобновлять и что отменять) с тестами — на нём `modelActions`
+      распался на две простые функции; `ModelTile` — на `ModelTileLook`,
+      `ModelTileBody`, `ModelTileHeading`. Столбик Whisper (`_ModelBar`) —
+      впереди, вместе с `whisper_model_chart.dart`.
 - [x] Диалог подтверждения удаления написан четырежды
       (`model_visuals.dart:261`, `dashboard_view.dart:3484`, `:3661`, `:4983`),
       а удаление пака словаря (`glossary_screen.dart:751`) не спрашивает

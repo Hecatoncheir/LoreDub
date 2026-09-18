@@ -6,10 +6,11 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/character.dart';
 import '../theme.dart';
-import '../dashboard/model_visuals.dart';
 import '../common/committed_text_field.dart';
 import 'character_drag.dart';
 import 'character_pack_member.dart';
+import '../models/model_action.dart';
+import '../models/model_action_button.dart';
 
 /// One pack: a named area cards are dropped into, exported from and taken
 /// out of again.

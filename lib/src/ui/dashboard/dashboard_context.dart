@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/model_selection.dart';
 import 'cubits/downloads_cubit.dart';
 import 'cubits/settings_cubit.dart';
+import '../shell/dashboard_view.dart';
 
 /// What the dashboard's widgets read off the cubits [DashboardView] provides
 /// and that no one cubit owns.

@@ -7,8 +7,11 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/runtime_package.dart';
 import '../compute_names.dart';
 import '../theme.dart';
-import 'model_tiles.dart';
-import 'model_visuals.dart';
+import '../models/model_tile.dart';
+import '../models/model_removal.dart';
+import '../models/model_action.dart';
+import '../models/model_tile_part.dart';
+import '../common/hover_grow.dart';
 
 /// What one cell of the stage-by-device table says about its pair.
 enum BackendCellState {

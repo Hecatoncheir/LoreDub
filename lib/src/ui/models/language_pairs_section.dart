@@ -10,8 +10,9 @@ import '../common/module_label.dart';
 import '../common/section_note.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
-import '../dashboard/model_tiles.dart';
-import '../dashboard/model_visuals.dart';
+import 'language_pair_tile.dart';
+import 'model_failure_row.dart';
+import 'model_tile_grid.dart';
 
 /// The languages a line can be dubbed into. A translator and a voice are
 /// only ever useful together, so a language is one tile: downloaded, picked

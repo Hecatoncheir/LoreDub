@@ -8,11 +8,13 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/character.dart';
 import '../theme.dart';
-import '../dashboard/model_visuals.dart';
 import '../common/committed_text_field.dart';
 import 'character_drag.dart';
 import 'character_card_menu.dart';
 import 'character_drag_card.dart';
+import '../models/model_action.dart';
+import '../models/model_action_button.dart';
+import '../common/hover_grow.dart';
 
 /// One character: the name to edit, what was recorded for them, and the
 /// buttons that record it, hand it on or throw the card away.

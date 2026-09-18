@@ -9,8 +9,9 @@ import '../../domain/model_selection.dart';
 import '../common/module_label.dart';
 import '../common/section_note.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
-import '../dashboard/model_tiles.dart';
-import '../dashboard/model_visuals.dart';
+import 'converter_tile.dart';
+import 'model_failure_row.dart';
+import 'model_tile_grid.dart';
 
 /// The converter that carries the timbre of the game's voice over to the
 /// dubbing, marked in use while the original voice is kept.

@@ -10,7 +10,11 @@ import '../../domain/model_package.dart';
 import '../compute_names.dart';
 import '../model_names.dart';
 import '../theme.dart';
-import 'model_visuals.dart';
+import '../models/model_removal.dart';
+import '../models/model_action.dart';
+import '../models/model_action_button.dart';
+import '../models/model_failure_row.dart';
+import '../models/model_progress_dial.dart';
 
 /// The Whisper builds drawn as a chart: each model is a bar whose height is
 /// its download to scale and whose place along the bottom is how well it
