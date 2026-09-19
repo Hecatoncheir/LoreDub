@@ -5,10 +5,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../../domain/pipeline_graph.dart';
 import 'appearing.dart';
 import 'node_card.dart';
 import 'node_inputs.dart';
+import 'node_labels.dart';
 import 'node_metrics.dart';
 import 'node_layer_actions.dart';
 import 'node_socket.dart';
@@ -39,6 +41,7 @@ class NodeLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final node = inputs.node;
+    final title = NodeLabels.titleOf(AppLocalizations.of(context), node, inputs.facts);
     final size = NodeMetrics.sizeOf(node.kind);
     final reach = _reach;
     final origin = Offset(node.position.x - reach.width, node.position.y - reach.height);
@@ -87,6 +90,8 @@ class NodeLayer extends StatelessWidget {
                 offered: inputs.offered & (1 << socket.index) != 0,
                 caught: inputs.over == PipelinePort(node.id, socket),
                 actions: actions,
+                nodeTitle: title,
+                pulling: inputs.pulling,
               ),
         ],
       ),

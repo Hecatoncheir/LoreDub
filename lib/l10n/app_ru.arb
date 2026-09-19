@@ -1244,6 +1244,32 @@
   "pipelineNoTranslation": "Переводить нечего",
   "pipelineNodeVoice": "Реплики",
   "pipelineNodeOutput": "Поток",
+  "pipelineNodeOpen": "Открыть настройки узла",
+  "pipelineSocketLinked": "подключено",
+  "pipelineSocketFree": "свободно",
+  "pipelineLinkFrom": "Потянуть связь отсюда",
+  "pipelineLinkTo": "Присоединить связь сюда",
+  "pipelineLinkDrop": "Отпустить связь",
+  "pipelineSocketLabel": "{node}: {socket}",
+  "@pipelineSocketLabel": {
+    "placeholders": {
+      "node": {"type": "String"},
+      "socket": {"type": "String"}
+    }
+  },
+  "pipelineNodeOpen": "Открыть настройки узла",
+  "pipelineSocketLinked": "подключено",
+  "pipelineSocketFree": "свободно",
+  "pipelineLinkFrom": "Потянуть связь отсюда",
+  "pipelineLinkTo": "Присоединить связь сюда",
+  "pipelineLinkDrop": "Отпустить связь",
+  "pipelineSocketLabel": "{node}: {socket}",
+  "@pipelineSocketLabel": {
+    "placeholders": {
+      "node": {"type": "String"},
+      "socket": {"type": "String"}
+    }
+  },
   "pipelineSocketGameAudio": "Звук",
   "pipelineSocketSpeech": "Речь",
   "pipelineSocketText": "Текст",

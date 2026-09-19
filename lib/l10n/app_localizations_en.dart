@@ -1922,6 +1922,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineNodeOutput => 'Stream';
 
   @override
+  String get pipelineNodeOpen => 'Open this node\'s settings';
+
+  @override
+  String get pipelineSocketLinked => 'connected';
+
+  @override
+  String get pipelineSocketFree => 'free';
+
+  @override
+  String get pipelineLinkFrom => 'Draw a link from here';
+
+  @override
+  String get pipelineLinkTo => 'Join the link here';
+
+  @override
+  String get pipelineLinkDrop => 'Let the link go';
+
+  @override
+  String pipelineSocketLabel(String node, String socket) {
+    return '$node: $socket';
+  }
+
+  @override
   String get pipelineSocketGameAudio => 'Audio';
 
   @override

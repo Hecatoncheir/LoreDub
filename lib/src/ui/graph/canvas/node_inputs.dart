@@ -19,5 +19,6 @@ typedef NodeInputs = ({
   ComputeAvailability availability,
   int filled,
   int offered,
+  PipelinePort? pulling,
   PipelinePort? over,
 });

@@ -17,6 +17,7 @@ class NodeLayerActions {
     required this.onDrop,
     required this.onRemove,
     required this.onLinkStart,
+    required this.onLinkToggle,
     required this.onLinkDrag,
     required this.onLinkEnd,
   });
@@ -27,6 +28,10 @@ class NodeLayerActions {
   final VoidCallback onDrop;
   final void Function(String nodeId) onRemove;
   final void Function(PipelinePort port, Offset global) onLinkStart;
+
+  /// The same line drawn without a pointer: the first socket takes it up,
+  /// the second puts it down, and the one it started from lets it go.
+  final void Function(PipelinePort port) onLinkToggle;
   final void Function(Offset global) onLinkDrag;
   final VoidCallback onLinkEnd;
 }

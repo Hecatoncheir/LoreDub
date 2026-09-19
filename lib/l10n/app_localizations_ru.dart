@@ -1933,6 +1933,29 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineNodeOutput => 'Поток';
 
   @override
+  String get pipelineNodeOpen => 'Открыть настройки узла';
+
+  @override
+  String get pipelineSocketLinked => 'подключено';
+
+  @override
+  String get pipelineSocketFree => 'свободно';
+
+  @override
+  String get pipelineLinkFrom => 'Потянуть связь отсюда';
+
+  @override
+  String get pipelineLinkTo => 'Присоединить связь сюда';
+
+  @override
+  String get pipelineLinkDrop => 'Отпустить связь';
+
+  @override
+  String pipelineSocketLabel(String node, String socket) {
+    return '$node: $socket';
+  }
+
+  @override
   String get pipelineSocketGameAudio => 'Звук';
 
   @override

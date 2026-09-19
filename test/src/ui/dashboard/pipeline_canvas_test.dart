@@ -3,6 +3,7 @@
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -164,6 +165,47 @@ void main() {
 
     await pumpGraph(tester, const Size(1500, 950), still: true);
     expect(cardMotion(tester), Duration.zero);
+  });
+
+  testWidgets('draws a line from socket to socket without a pointer', (tester) async {
+    final handle = tester.ensureSemantics();
+    final cubits = await pumpGraph(tester, const Size(1500, 950));
+    final l10n = await AppLocalizations.delegate.load(const Locale('ru'));
+    // The sockets as a reader hears them: whose they are and what they carry.
+    SemanticsFinder socket(String node, String carries) =>
+        find.semantics.byLabel(l10n.pipelineSocketLabel(node, carries));
+    Future<void> activate(SemanticsFinder finder) async {
+      tester.semantics.performAction(finder, SemanticsAction.tap);
+      // One frame answers the event, the next hands the canvas the state it
+      // left behind.
+      await tester.pump();
+      await tester.pump();
+    }
+
+    final speech = socket(l10n.pipelineNodeRecognition, l10n.pipelineSocketSpeech);
+    expect(speech, findsOne, reason: 'a socket is named rather than a bare dot');
+    expect(
+      speech.evaluate().single.value,
+      l10n.pipelineSocketLinked,
+      reason: 'and says the route already reaches it',
+    );
+
+    await activate(socket(l10n.pipelineNodeSource, l10n.pipelineSocketGameAudio));
+    expect(cubits.graph.state.drag?.from.socket, PipelineSocket.gameAudio);
+
+    // The same socket again lets the line go; another one joins it.
+    await activate(socket(l10n.pipelineNodeSource, l10n.pipelineSocketGameAudio));
+    expect(cubits.graph.state.drag, isNull);
+
+    cubits.graph.add(PipelineLinkCut(routeOf(cubits)));
+    await tester.pumpAndSettle();
+    expect(cubits.settings.state.settings.captureRouted, isFalse);
+
+    await activate(socket(l10n.pipelineNodeSource, l10n.pipelineSocketGameAudio));
+    await activate(speech);
+    await tester.pumpAndSettle();
+    expect(cubits.settings.state.settings.captureRouted, isTrue, reason: 'the route is back');
+    handle.dispose();
   });
 
   testWidgets('parts the field around a chosen card over a moment, not at once', (tester) async {

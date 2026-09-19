@@ -492,7 +492,16 @@ game speaks it, when a part arrives at it, or when somebody reads it
 (`_carrying`) — the last so that a substitution is never hidden. The pointer picks a socket up through a box held
 at one size on the screen (`NodeMetrics.grabReach` divided by the zoom, no
 taller than a row): a scheme fitted into a small window draws dots six pixels
-across, which nothing can take hold of. The six
+across, which nothing can take hold of. Drawing a line is a drag, which
+neither a keyboard nor a screen reader has, so every socket is also a named
+control (`socket_names.dart`, "connected"/"free") whose action is
+`NodeLayerActions.onLinkToggle`: the first socket takes the line up, the
+second puts it down, its own lets it go, and all three go through the same
+`PipelineLinkStarted`/`PipelineLinkReleased` the pointer does, so what a link
+may join is answered in one place. A card is a control too -- `Semantics`
+with its name and whether it is chosen, and `FocusRegion`
+(`ui/common/focus_region.dart`) for Tab and the space bar, which draws it
+with the edge of a chosen card. The six
 stage nodes and the character cards carry typed sockets, and the one route
 the engine runs can be drawn: game audio into whisper. The mix node is
 `PlaybackScheduler`: the voice's

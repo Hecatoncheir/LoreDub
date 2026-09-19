@@ -27,6 +27,12 @@ class NodeLabels {
     return NodeLabels(title: reading.title(), headline: reading.headline(), note: reading.note());
   }
 
+  /// The card's own name, which is all a socket's label needs. Cheaper
+  /// than reading the whole card: the other two lines ask the settings,
+  /// the packages and the machine what the stage is set to.
+  static String titleOf(AppLocalizations l10n, PipelineNode node, PipelineFacts facts) =>
+      _Reading(l10n, node, facts, const ComputeAvailability()).title();
+
   final String title;
   final String headline;
   final String note;

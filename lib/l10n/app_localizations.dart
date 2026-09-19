@@ -3279,6 +3279,48 @@ abstract class AppLocalizations {
   /// **'Поток'**
   String get pipelineNodeOutput;
 
+  /// No description provided for @pipelineNodeOpen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть настройки узла'**
+  String get pipelineNodeOpen;
+
+  /// No description provided for @pipelineSocketLinked.
+  ///
+  /// In ru, this message translates to:
+  /// **'подключено'**
+  String get pipelineSocketLinked;
+
+  /// No description provided for @pipelineSocketFree.
+  ///
+  /// In ru, this message translates to:
+  /// **'свободно'**
+  String get pipelineSocketFree;
+
+  /// No description provided for @pipelineLinkFrom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Потянуть связь отсюда'**
+  String get pipelineLinkFrom;
+
+  /// No description provided for @pipelineLinkTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Присоединить связь сюда'**
+  String get pipelineLinkTo;
+
+  /// No description provided for @pipelineLinkDrop.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отпустить связь'**
+  String get pipelineLinkDrop;
+
+  /// No description provided for @pipelineSocketLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'{node}: {socket}'**
+  String pipelineSocketLabel(String node, String socket);
+
   /// No description provided for @pipelineSocketGameAudio.
   ///
   /// In ru, this message translates to:

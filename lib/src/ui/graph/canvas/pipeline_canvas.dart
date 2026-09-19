@@ -18,6 +18,7 @@ import 'dot_field_painter.dart';
 import 'link_painter.dart';
 import 'choice_fade.dart';
 import 'node_inputs.dart';
+import 'node_metrics.dart';
 import 'node_layer_actions.dart';
 import 'node_layer_cache.dart';
 import 'leaving_node.dart';
@@ -135,6 +136,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
     },
     onRemove: (id) => widget.bloc.add(PipelineCharacterRemoved(id)),
     onLinkStart: _startLink,
+    onLinkToggle: _toggleLink,
     onLinkDrag: _dragLink,
     onLinkEnd: _endLink,
   );
@@ -258,6 +260,23 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
     final over = from == null ? null : _hits.portNear(at, from: from);
     if (over != _over) setState(() => _over = over);
     widget.bloc.add(PipelineLinkDragged(at));
+  }
+
+  /// A line drawn without a pointer: the first socket takes it up, the
+  /// second puts it down, and the one it started from lets it go. It goes
+  /// through the same events a drag does, so what a link may join and what
+  /// it changes is answered in one place.
+  void _toggleLink(PipelinePort port) {
+    final drag = _state.drag;
+    if (drag == null) {
+      final node = _state.graph.node(port.nodeId);
+      if (node == null) return;
+      final at = NodeMetrics.portAt(node, port.socket);
+      widget.bloc.add(PipelineLinkStarted(port, GraphPoint(at.dx, at.dy)));
+      return;
+    }
+    widget.bloc.add(PipelineLinkReleased(drag.from == port ? null : port));
+    setState(() => _over = null);
   }
 
   void _endLink() {
@@ -472,6 +491,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
           availability: widget.availability,
           filled: _filledOf(node, filled),
           offered: offered[node.id] ?? 0,
+          pulling: _state.drag?.from,
           over: _over,
         ),
     ];

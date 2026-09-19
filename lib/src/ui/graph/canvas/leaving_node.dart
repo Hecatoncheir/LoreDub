@@ -34,20 +34,26 @@ class LeavingNode extends StatelessWidget {
       top: node.position.y,
       width: size.width,
       height: size.height,
-      child: IgnorePointer(
-        child: FadeTransition(
-          opacity: opacity,
-          child: ScaleTransition(
-            scale: scale,
-            child: NodeCard(
-              node: node,
-              facts: facts,
-              availability: availability,
-              selected: false,
-              onTap: () {},
-              onGrab: (_) {},
-              onDrag: (_) {},
-              onDrop: () {},
+      // Deaf to the pointer, and out of reach of the keyboard and a
+      // reader as well: it is a picture of a card that is already gone.
+      child: ExcludeSemantics(
+        child: ExcludeFocus(
+          child: IgnorePointer(
+            child: FadeTransition(
+              opacity: opacity,
+              child: ScaleTransition(
+                scale: scale,
+                child: NodeCard(
+                  node: node,
+                  facts: facts,
+                  availability: availability,
+                  selected: false,
+                  onTap: () {},
+                  onGrab: (_) {},
+                  onDrag: (_) {},
+                  onDrop: () {},
+                ),
+              ),
             ),
           ),
         ),
