@@ -123,8 +123,10 @@ class GlossaryCubit extends Cubit<GlossaryState> {
   /// Reads the files the player chose into what is already here. Merged by
   /// what an entry is filed under, so importing the same file twice leaves
   /// one of each rather than two, and a file that disagrees wins -- the
-  /// player chose it just now.
-  Future<void> import(List<String> sources) async {
+  /// player chose it just now. What comes back is how many entries and packs
+  /// the files held, or null when they could not be read -- the failure is
+  /// reported already.
+  Future<({int entries, int packs})?> import(List<String> sources) async {
     try {
       final incoming = await _appRepository.readGlossaryFiles(sources);
       var merged = state.glossary;
@@ -139,8 +141,10 @@ class GlossaryCubit extends Cubit<GlossaryState> {
         merged = merged.keepingPack(pack.copyWith(active: here?.active ?? false));
       }
       await _keep(merged);
+      return (entries: incoming.entries.length, packs: incoming.packs.length);
     } catch (error) {
       _errors.report(error);
+      return null;
     }
   }
 

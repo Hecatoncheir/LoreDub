@@ -1,10 +1,10 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../common/file_dialogs.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/character.dart';
 import '../common/confirm_dialog.dart';
@@ -35,9 +35,9 @@ class CastCard extends StatelessWidget {
   Future<void> _export(BuildContext context) async {
     final cubit = context.read<CharactersCubit>();
     final name = character.name.trim().isEmpty ? 'character' : character.name;
-    final location = await getSaveLocation(suggestedName: '$name.json');
+    final location = await context.read<FileDialogs>().saveJson('$name.json');
     if (location == null) return;
-    await cubit.export(location.path, [character]);
+    await cubit.export(location, [character]);
   }
 
   Future<void> _confirmDelete(BuildContext context) async {

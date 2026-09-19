@@ -91,6 +91,13 @@
   "glossaryPackNothingFound": "Nothing in this pack matches.",
   "glossaryPackDragHint": "Drag the entry into a pack",
   "glossaryPackImport": "Load a pack",
+  "glossaryImported": "{entries, plural, =0{No entries read} one{{entries} entry read} other{{entries} entries read}} · {packs, plural, =0{no packs} one{{packs} pack} other{{packs} packs}}",
+  "@glossaryImported": {
+    "placeholders": {
+      "entries": {"type": "int"},
+      "packs": {"type": "int"}
+    }
+  },
   "glossaryPackActive": "Active",
   "glossaryPackActiveHint": "While any pack is switched on, the dubbing is checked against the switched-on packs alone",
   "glossaryPackDeleteMessage": "The pack “{name}” will be deleted. Its entries stay in their lists.",

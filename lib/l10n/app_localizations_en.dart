@@ -213,6 +213,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get glossaryPackImport => 'Load a pack';
 
   @override
+  String glossaryImported(int entries, int packs) {
+    String _temp0 = intl.Intl.pluralLogic(
+      entries,
+      locale: localeName,
+      other: '$entries entries read',
+      one: '$entries entry read',
+      zero: 'No entries read',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      packs,
+      locale: localeName,
+      other: '$packs packs',
+      one: '$packs pack',
+      zero: 'no packs',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
   String get glossaryPackActive => 'Active';
 
   @override

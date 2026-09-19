@@ -213,6 +213,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get glossaryPackImport => 'Загрузить пакет';
 
   @override
+  String glossaryImported(int entries, int packs) {
+    String _temp0 = intl.Intl.pluralLogic(
+      entries,
+      locale: localeName,
+      other: 'Прочитано $entries записей',
+      few: 'Прочитано $entries записи',
+      one: 'Прочитана $entries запись',
+      zero: 'Ни одной записи не прочитано',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      packs,
+      locale: localeName,
+      other: '$packs пакетов',
+      few: '$packs пакета',
+      one: '$packs пакет',
+      zero: 'без пакетов',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
   String get glossaryPackActive => 'Активен';
 
   @override

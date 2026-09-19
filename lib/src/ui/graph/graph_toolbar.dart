@@ -3,10 +3,10 @@
 
 import 'dart:async';
 
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../common/file_dialogs.dart';
 import '../../domain/pipeline_graph.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
@@ -154,25 +154,18 @@ class GraphToolbar extends StatelessWidget {
     final graph = context.read<PipelineGraphBloc>();
     final scheme = state.schemes.where((value) => value.id == id).firstOrNull;
     if (scheme == null) return;
-    final destination = await getSaveLocation(
-      suggestedName: '${scheme.name}.loredub-scheme.json',
-      acceptedTypeGroups: const [
-        XTypeGroup(label: 'LoreDub', extensions: ['json']),
-      ],
+    final destination = await context.read<FileDialogs>().saveJson(
+      '${scheme.name}.loredub-scheme.json',
     );
     if (destination == null) return;
-    graph.add(PipelineSchemeExported(id, destination.path));
+    graph.add(PipelineSchemeExported(id, destination));
   }
 
   Future<void> _importScheme(BuildContext context) async {
     final graph = context.read<PipelineGraphBloc>();
-    final files = await openFiles(
-      acceptedTypeGroups: const [
-        XTypeGroup(label: 'LoreDub', extensions: ['json']),
-      ],
-    );
+    final files = await context.read<FileDialogs>().openJson();
     if (files.isEmpty) return;
-    graph.add(PipelineSchemeImported([for (final file in files) file.path]));
+    graph.add(PipelineSchemeImported(files));
   }
 
   /// Every card of the cast, drawn or not: a card already on the canvas can

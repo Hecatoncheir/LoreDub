@@ -1,10 +1,11 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../l10n/app_localizations.dart';
+import '../common/file_dialogs.dart';
 import '../../domain/glossary.dart';
 import '../../domain/glossary_view.dart';
 import '../dashboard/cubits/glossary_cubit.dart';
@@ -29,41 +30,38 @@ class GlossaryPanel extends StatefulWidget {
 }
 
 class _GlossaryPanelState extends State<GlossaryPanel> {
-  static const _json = [
-    XTypeGroup(label: 'LoreDub', extensions: ['json']),
-  ];
-
   var _filter = const GlossaryFilter();
 
   Future<void> _export() async {
     final glossary = context.read<GlossaryCubit>();
-    final location = await getSaveLocation(
-      suggestedName: 'loredub-glossary.json',
-      acceptedTypeGroups: _json,
-    );
+    final location = await context.read<FileDialogs>().saveJson('loredub-glossary.json');
     if (location == null) return;
-    await glossary.export(location.path);
+    await glossary.export(location);
   }
 
   /// A pack read back is merged the way the whole glossary is -- the entries
   /// it carries join the lists, and the grouping joins the shelf -- so one
-  /// import serves both.
+  /// import serves both. What was read is said, as it is for the cast: a
+  /// file that brought nothing new otherwise looks like one never opened.
   Future<void> _import() async {
     final glossary = context.read<GlossaryCubit>();
-    final chosen = await openFiles(acceptedTypeGroups: _json);
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+    final chosen = await context.read<FileDialogs>().openJson();
     if (chosen.isEmpty) return;
-    await glossary.import([for (final file in chosen) file.path]);
+    final read = await glossary.import(chosen);
+    if (read == null) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.glossaryImported(read.entries, read.packs))),
+    );
   }
 
   Future<void> _exportPack(GlossaryPack pack) async {
     final glossary = context.read<GlossaryCubit>();
     final name = pack.name.trim().isEmpty ? 'pack' : pack.name.trim();
-    final location = await getSaveLocation(
-      suggestedName: 'loredub-$name.json',
-      acceptedTypeGroups: _json,
-    );
+    final location = await context.read<FileDialogs>().saveJson('loredub-$name.json');
     if (location == null) return;
-    await glossary.exportPack(location.path, pack.id);
+    await glossary.exportPack(location, pack.id);
   }
 
   @override

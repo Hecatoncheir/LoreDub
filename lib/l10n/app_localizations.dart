@@ -471,6 +471,12 @@ abstract class AppLocalizations {
   /// **'Загрузить пакет'**
   String get glossaryPackImport;
 
+  /// No description provided for @glossaryImported.
+  ///
+  /// In ru, this message translates to:
+  /// **'{entries, plural, =0{Ни одной записи не прочитано} one{Прочитана {entries} запись} few{Прочитано {entries} записи} other{Прочитано {entries} записей}} · {packs, plural, =0{без пакетов} one{{packs} пакет} few{{packs} пакета} other{{packs} пакетов}}'**
+  String glossaryImported(int entries, int packs);
+
   /// No description provided for @glossaryPackActive.
   ///
   /// In ru, this message translates to:

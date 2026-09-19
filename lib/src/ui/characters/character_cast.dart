@@ -1,10 +1,10 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../common/file_dialogs.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/character.dart';
 import '../common/area_heading.dart';
@@ -24,9 +24,9 @@ class CharacterCast extends StatelessWidget {
 
   Future<void> _exportAll(BuildContext context, List<Character> characters) async {
     final cubit = context.read<CharactersCubit>();
-    final location = await getSaveLocation(suggestedName: 'loredub-characters.json');
+    final location = await context.read<FileDialogs>().saveJson('loredub-characters.json');
     if (location == null) return;
-    await cubit.export(location.path, characters);
+    await cubit.export(location, characters);
   }
 
   /// Whether a dubbing session holds the worker is read on its own: a

@@ -3,10 +3,10 @@
 
 import 'dart:async';
 
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../common/file_dialogs.dart';
 import '../../domain/character.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
@@ -26,13 +26,9 @@ class CharacterPacks extends StatelessWidget {
   Future<void> _import(BuildContext context) async {
     final charactersCubit = context.read<CharactersCubit>();
     final l10n = AppLocalizations.of(context);
-    final chosen = await openFiles(
-      acceptedTypeGroups: const [
-        XTypeGroup(label: 'LoreDub', extensions: ['json']),
-      ],
-    );
+    final chosen = await context.read<FileDialogs>().openJson();
     if (chosen.isEmpty) return;
-    final added = await charactersCubit.import([for (final file in chosen) file.path]);
+    final added = await charactersCubit.import(chosen);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -47,11 +43,10 @@ class CharacterPacks extends StatelessWidget {
 
   Future<void> _export(BuildContext context, CharacterPack pack, List<Character> members) async {
     final characters = context.read<CharactersCubit>();
-    final location = await getSaveLocation(
-      suggestedName: '${pack.name.trim().isEmpty ? 'pack' : pack.name}.json',
-    );
+    final name = pack.name.trim().isEmpty ? 'pack' : pack.name;
+    final location = await context.read<FileDialogs>().saveJson('$name.json');
     if (location == null) return;
-    await characters.export(location.path, members, pack: pack);
+    await characters.export(location, members, pack: pack);
   }
 
   Future<void> _confirmDelete(BuildContext context, CharacterPack pack) async {

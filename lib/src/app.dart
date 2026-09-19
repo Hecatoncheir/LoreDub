@@ -19,6 +19,7 @@ import 'data/services/runtime_storage_service.dart';
 import 'data/services/update_service.dart';
 import 'data/services/settings_service.dart';
 import 'ui/dashboard/cubits/dashboard_cubits.dart';
+import 'ui/common/file_dialogs.dart';
 import 'ui/dashboard/cubits/settings_cubit.dart';
 import 'ui/shell/dashboard_view.dart';
 import 'ui/theme.dart';
@@ -64,6 +65,7 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
       RepositoryProvider.value(value: modelRepository),
       RepositoryProvider.value(value: runtimeRepository),
       RepositoryProvider.value(value: updateRepository),
+      RepositoryProvider.value(value: const FileDialogs()),
     ],
     child: BlocBuilder<SettingsCubit, SettingsState>(
       // Only the settings are watched here, so switching the interface
