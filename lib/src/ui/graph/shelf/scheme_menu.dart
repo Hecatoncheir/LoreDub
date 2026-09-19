@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/saved_pipeline.dart';
+import '../../theme.dart';
 import 'name_dialog.dart';
 
 /// What can be done to a kept scheme: write the canvas over it, rename it,
@@ -32,7 +33,7 @@ class SchemeMenu extends StatelessWidget {
       tooltip: l10n.pipelineSchemeMenu,
       icon: const Icon(Icons.more_vert_rounded, size: 18),
       style: IconButton.styleFrom(
-        minimumSize: const Size(30, 30),
+        minimumSize: const Size.square(LoreDubTargets.compact),
         padding: EdgeInsets.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),

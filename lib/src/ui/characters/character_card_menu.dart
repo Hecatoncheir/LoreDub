@@ -24,8 +24,8 @@ class CharacterCardMenu extends StatelessWidget {
       style: IconButton.styleFrom(
         foregroundColor: LoreDubPalette.ink,
         hoverColor: LoreDubPalette.orange.withValues(alpha: 0.18),
-        minimumSize: const Size(34, 34),
-        fixedSize: const Size(34, 34),
+        minimumSize: const Size.square(LoreDubTargets.dense),
+        fixedSize: const Size.square(LoreDubTargets.dense),
         padding: EdgeInsets.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),

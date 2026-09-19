@@ -75,8 +75,8 @@ class PackChip<D extends Object> extends StatelessWidget {
               onPressed: onRemove,
               icon: const Icon(Icons.close_rounded, size: 15),
               style: IconButton.styleFrom(
-                minimumSize: const Size(26, 26),
-                fixedSize: const Size(26, 26),
+                minimumSize: const Size.square(LoreDubTargets.cross),
+                fixedSize: const Size.square(LoreDubTargets.cross),
                 padding: EdgeInsets.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),

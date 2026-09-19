@@ -56,9 +56,8 @@ class NodeCardHeader extends StatelessWidget {
           if (onRemove case final remove?)
             // On the card itself rather than only in the panel: a card is put
             // on the canvas by hand and taken off the same way.
-            SizedBox(
-              width: 26,
-              height: 26,
+            SizedBox.square(
+              dimension: LoreDubTargets.cross,
               child: IconButton(
                 padding: EdgeInsets.zero,
                 iconSize: 16,

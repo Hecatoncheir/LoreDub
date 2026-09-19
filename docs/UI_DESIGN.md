@@ -101,7 +101,10 @@ radius.
   and dark for a card of the cast. It is that node's panel rather than a
   page the node opened.
 - Every interactive control has a minimum 44–48 px target and visible keyboard
-  focus supplied by the Material theme.
+  focus supplied by the Material theme. The icon buttons packed into a tile's
+  action band, a card's menu and the cross on a chip or a canvas card do not
+  yet keep this (26–34 px); their sizes are `LoreDubTargets` in
+  `lib/src/ui/theme.dart`, so they grow together when they do.
 - Status is communicated with text and an indicator, never color alone.
 - The sidebar names two groups — the dubbing (Live, Snippet) and what is
   prepared before it (Characters, Graph, Models, Settings) — so six entries

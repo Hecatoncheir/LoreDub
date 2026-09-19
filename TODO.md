@@ -479,9 +479,12 @@ lib/src/ui/
       гнёзда (`:758`) — голые `GestureDetector` без фокуса и `Semantics`.
 - [ ] В пак можно положить только перетаскиванием → пункт меню
       «Добавить в пак…» у карточки и у записи словаря.
-- [ ] Цели 26–34 px (`pipeline_canvas.dart:823`, `:1460`,
+- [x] Цели 26–34 px (`pipeline_canvas.dart:823`, `:1460`,
       `glossary_screen.dart:1024`, `model_visuals.dart:125`) против 44–48 px,
       обещанных в `docs/UI_DESIGN.md`. Как минимум — токен, а не цифра.
+      *Сделано — токен:* `LoreDubTargets` (`comfortable`, `dense`, `compact`,
+      `cross`) в `theme.dart`, отступление записано в `UI_DESIGN.md`. Сами
+      цели не выросли: это меняет плотность плиток и остаётся за дизайном.
 - [x] `MediaQuery.disableAnimationsOf` не читается в
       `glossary_screen.dart:842`, `character_tiles.dart:595` и у заливок на
       300 мс. *Сделано:* `common/ease.dart` — `ease(context, ms)` для всех
