@@ -3,6 +3,6 @@
   "LoreDubPalette.": 283,
   "TextStyle(": 103,
   "avoid-nested-conditional-expressions": 24,
-  "avoid-returning-widgets": 36,
-  "prefer-single-widget-per-file": 14
+  "avoid-returning-widgets": 33,
+  "prefer-single-widget-per-file": 9
 }

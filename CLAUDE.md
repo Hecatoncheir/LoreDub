@@ -533,10 +533,14 @@ control-drag over empty space draws a band in the canvas's own state and ends
 in `PipelineSelectionSet` with what it covered, because the canvas owns the
 geometry and the bloc owns the choice. `PipelineNodeMoved` then carries every
 chosen node, clamping the whole group by whichever of them reaches
-`GraphWorld` first so it keeps its shape. `pipeline_canvas.dart` owns the geometry (`NodeMetrics`, one
-place for card sizes and socket anchors, which the curves, the dots and the
-hit-testing all read) and fits the scheme into the window the first time it
-is drawn; `pipeline_inspector.dart` is the panel that stands over it, down the
+`GraphWorld` first so it keeps its shape. The canvas is `ui/graph/canvas/`:
+`NodeMetrics` is the one place for card sizes and socket anchors, which the
+curves (`LinkGeometry`, `LinkPainter`), the dots (`DotField`,
+`DotFieldPainter`) and the hit-testing (`GraphHitTester`, pure, which also
+fits the scheme into the window the first time it is drawn) all read;
+`SchemeDiff` is what one edit drew and cut, `LinkCut` which lines carry a
+badge, `NodeLabels` what a card writes on itself, and `pipeline_canvas.dart`
+keeps the state -- the gestures, the animation and the caches below; `pipeline_inspector.dart` is the panel that stands over it, down the
 right edge and the whole height of the canvas, drawn in the face of the node
 it opened on — `NodePaint` (`node_paint.dart`, which the canvas draws its
 cards from as well) hands it the same body, head, ink and rule, and
@@ -559,10 +563,10 @@ down, and all three can be undone by accident. The graph is listened to
 so `PipelineFacts` and `ModelSelection` are not built afresh for a frame that
 only moved the canvas; the toolbar has a listener of its own with a
 `buildWhen`, so it is not built again for a drag. And the canvas keeps what
-it drew: `_drawn` holds each node's card and sockets against `_NodeInputs`, a
+it drew: `_drawn` holds each node's card and sockets against `NodeInputs` (`node_inputs.dart`), a
 record of everything that layer is drawn from, and `_badges` holds each cut
 badge against the point it sits at. **Anything new a card is drawn from has
-to go into `_NodeInputs`**, or the card will go on showing what it showed
+to go into `NodeInputs`**, or the card will go on showing what it showed
 before; anything inherited (the language, the theme) is handled by
 `didChangeDependencies` throwing both caches away. `PipelineNode` carries
 value equality for this, position and all, so one moved card is told from the

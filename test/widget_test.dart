@@ -43,7 +43,7 @@ import 'package:lore_dub/src/ui/characters/character_tile.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
-import 'package:lore_dub/src/ui/dashboard/pipeline_canvas.dart';
+import 'package:lore_dub/src/ui/graph/canvas/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/graph/pipeline_inspector.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';

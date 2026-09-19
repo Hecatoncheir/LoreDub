@@ -22,9 +22,9 @@ import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/pipeline_graph_bloc.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import 'node_paint.dart';
-import '../dashboard/pipeline_canvas.dart';
 import '../common/process_picker.dart';
 import '../common/committed_text_field.dart';
+import 'canvas/pipeline_facts.dart';
 
 /// What the node the player clicked is set to, and the controls that change
 /// it.

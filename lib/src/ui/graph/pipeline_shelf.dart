@@ -20,9 +20,8 @@ import '../../domain/character.dart';
 import '../../domain/pipeline_graph.dart';
 import '../../domain/saved_pipeline.dart';
 import '../theme.dart';
-import '../dashboard/pipeline_canvas.dart' show NodeMetrics;
 import '../common/module_number.dart';
-import '../dashboard/pipeline_canvas.dart';
+import 'canvas/node_metrics.dart';
 
 class PipelineShelf extends StatefulWidget {
   const PipelineShelf({
@@ -412,9 +411,8 @@ class _SchemePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (graph.nodes.isEmpty) return;
-    final spread = _bounds();
-    if (spread.width <= 0 || spread.height <= 0) return;
+    final spread = NodeMetrics.boundsOfAll(graph.nodes);
+    if (spread == null || spread.width <= 0 || spread.height <= 0) return;
 
     // As large as fits either way, and put in the middle of what room there
     // is, so a wide scheme and a tall one both sit in the card rather than
@@ -431,22 +429,6 @@ class _SchemePainter extends CustomPainter {
 
     _drawWires(canvas, place);
     _drawCards(canvas, place);
-  }
-
-  /// The rectangle every node of the scheme fits inside, cards and all.
-  Rect _bounds() {
-    var left = double.infinity;
-    var top = double.infinity;
-    var right = -double.infinity;
-    var bottom = -double.infinity;
-    for (final node in graph.nodes) {
-      final card = NodeMetrics.sizeOf(node.kind);
-      left = math.min(left, node.position.x);
-      top = math.min(top, node.position.y);
-      right = math.max(right, node.position.x + card.width);
-      bottom = math.max(bottom, node.position.y + card.height);
-    }
-    return Rect.fromLTRB(left, top, right, bottom);
   }
 
   /// The links, as straight lines rather than the canvas's curves: at a

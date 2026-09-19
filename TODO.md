@@ -374,7 +374,7 @@ lib/src/ui/
 `model_visuals.dart` (4) держат по нескольку **публичных** виджетов в файле —
 по правилу 2 они тоже делятся.
 
-- [ ] **`pipeline_canvas.dart` (1687 строк)** → каталог `graph/canvas/`:
+- [x] **`pipeline_canvas.dart` (1687 строк)** → каталог `graph/canvas/`:
 
       | Файл | Что в нём |
       | --- | --- |
@@ -397,14 +397,23 @@ lib/src/ui/
       чего рисуется карточка, лежит в `_NodeInputs`» из соглашения превратится
       в ошибку компиляции. После каждого шага — `flutter test
       test/graph_bench.dart`.
-- [ ] `_NodeCard` (297 строк): ~100 строк вывода текста (`:1552–1647`) →
+      *Сделано:* файл ужался до ~600 строк состояния холста; вынесены
+      `NodeMetrics` (+`boundsOfAll`, общий с полкой схем), `PipelineFacts`,
+      чистые `GraphHitTester` (с `fitted`), `SchemeDiff`, `LinkCut`,
+      `LinkGeometry`, `DotField`, painter'ы `LinkPainter` /
+      `DotFieldPainter` ниже порога 15, `NodeLabels`, `NodeInputs` и
+      виджеты карточки. Кадр в `graph_bench.dart` не вырос (≈25 мс
+      перетаскивание, ≈21 мс панорама), goldens совпали. Контроллер жестов
+      отдельным `ChangeNotifier` и `NodeLayer`, принимающий ровно
+      `NodeInputs`, — ещё не сделаны.
+- [x] `_NodeCard` (297 строк): ~100 строк вывода текста (`:1552–1647`) →
       чистая `NodeLabels.of(l10n, node, facts, availability)`; `switch` в
       `_rows` → const-таблица.
-- [ ] `_cutButtons` (`:782–855`, шесть булевых и `switch` по пятёрке)
+- [x] `_cutButtons` (`:782–855`, шесть булевых и `switch` по пятёрке)
       заново выводит то, что уже отвечает `proposeDisconnect`
       (`pipeline_graph.dart:994–1030`) → `switch` по его sealed-результату в
       `describeLinkCut`, виджет — `LinkCutBadge`.
-- [ ] Дубли геометрии: `_onCanvas` (`:313`) ≡ `_toCanvas` (`:338`);
+- [x] Дубли геометрии: `_onCanvas` (`:313`) ≡ `_toCanvas` (`:338`);
       `_caughtBy` повторяет `NodeMetrics.boundsOf`; `_fitted` повторяет
       `_SchemePainter._bounds` (`pipeline_shelf.dart:453`).
 - [ ] **`PipelineInspector`** — один виджет на 449 строк с девятью
