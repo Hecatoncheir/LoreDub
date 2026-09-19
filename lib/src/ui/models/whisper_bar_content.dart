@@ -5,11 +5,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../../l10n/app_localizations.dart';
 import '../../domain/model_package.dart';
 import '../model_names.dart';
 import '../theme.dart';
 import 'model_progress_dial.dart';
+import 'whisper_bar_mark.dart';
 
 /// What a Whisper bar shows in its middle: the cloud and the build's name,
 /// or the dial of its download over the name.
@@ -56,30 +56,12 @@ class WhisperBarContent extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (progress != null) ...[
-                ModelProgressDial(
-                  key: ValueKey('whisperDial-${state.model.id}'),
-                  progress: progress,
-                  paused: state.paused,
-                  size: _dialSize(room, heightShare: 0.62),
-                ),
-                if (state.paused) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    AppLocalizations.of(context).downloadPaused,
-                    style: const TextStyle(
-                      fontFamily: LoreDubFonts.mono,
-                      fontSize: 11,
-                      color: LoreDubPalette.orange,
-                    ),
-                  ),
-                ],
-              ] else
-                Icon(
-                  state.installed ? Icons.cloud_done_outlined : Icons.cloud_download_outlined,
-                  size: roomy ? 34 : 24,
-                  color: inUse || !state.installed ? LoreDubPalette.orange : LoreDubPalette.ink,
-                ),
+              WhisperBarMark(
+                state: state,
+                inUse: inUse,
+                roomy: roomy,
+                dialSize: _dialSize(room, heightShare: 0.62),
+              ),
               const SizedBox(height: 8),
               Text(
                 whisperShortName(state.model),
