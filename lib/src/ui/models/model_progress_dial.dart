@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../common/ease.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -31,7 +33,7 @@ class ModelProgressDial extends StatelessWidget {
       // Progress arrives in steps; the arc glides between them.
       child: TweenAnimationBuilder<double>(
         tween: Tween(end: progress.clamp(0.0, 1.0)),
-        duration: const Duration(milliseconds: 300),
+        duration: ease(context, 300),
         curve: Curves.easeOut,
         builder: (context, value, child) => CustomPaint(
           painter: ProgressRingPainter(value: value, paused: paused, stroke: stroke),

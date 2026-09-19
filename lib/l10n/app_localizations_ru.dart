@@ -213,6 +213,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get glossaryPackImport => 'Загрузить пакет';
 
   @override
+  String get charactersCardMenu => 'Ещё действия с персонажем';
+
+  @override
+  String get pipelineSchemeMenu => 'Ещё действия со схемой';
+
+  @override
   String glossaryImported(int entries, int packs) {
     String _temp0 = intl.Intl.pluralLogic(
       entries,

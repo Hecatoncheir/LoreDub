@@ -91,6 +91,8 @@
   "glossaryPackNothingFound": "Nothing in this pack matches.",
   "glossaryPackDragHint": "Drag the entry into a pack",
   "glossaryPackImport": "Load a pack",
+  "charactersCardMenu": "More for this character",
+  "pipelineSchemeMenu": "More for this scheme",
   "glossaryImported": "{entries, plural, =0{No entries read} one{{entries} entry read} other{{entries} entries read}} · {packs, plural, =0{no packs} one{{packs} pack} other{{packs} packs}}",
   "@glossaryImported": {
     "placeholders": {

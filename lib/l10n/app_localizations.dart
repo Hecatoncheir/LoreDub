@@ -471,6 +471,18 @@ abstract class AppLocalizations {
   /// **'Загрузить пакет'**
   String get glossaryPackImport;
 
+  /// No description provided for @charactersCardMenu.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ещё действия с персонажем'**
+  String get charactersCardMenu;
+
+  /// No description provided for @pipelineSchemeMenu.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ещё действия со схемой'**
+  String get pipelineSchemeMenu;
+
   /// No description provided for @glossaryImported.
   ///
   /// In ru, this message translates to:

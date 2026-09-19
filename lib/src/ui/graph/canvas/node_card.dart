@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../common/ease.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
@@ -8,7 +10,6 @@ import '../../../domain/compute_device.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../theme.dart';
 import '../node_paint.dart';
-import 'canvas_ease.dart';
 import 'hover_region.dart';
 import 'node_card_header.dart';
 import 'node_card_summary.dart';
@@ -86,11 +87,11 @@ class NodeCard extends StatelessWidget {
         // taken apart, goes dark rather than blinking dark: what the player
         // just did is worth following with the eye.
         builder: (context, hovered) => AnimatedOpacity(
-          duration: canvasEase(context),
+          duration: ease(context),
           curve: Curves.easeOut,
           opacity: node.unrouted ? 0.55 : 1,
           child: AnimatedContainer(
-            duration: canvasEase(context),
+            duration: ease(context),
             curve: Curves.easeOut,
             decoration: _decoration(paint, hovered: hovered),
             child: Column(

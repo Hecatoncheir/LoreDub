@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../common/ease.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -44,7 +46,7 @@ class GraphToolbar extends StatelessWidget {
                 // where the hand already is.
                 Expanded(
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
+                    duration: ease(context, 180),
                     child: switch (state.refusal) {
                       final refusal? => Text(
                         describeConnectionRefusal(l10n, refusal),

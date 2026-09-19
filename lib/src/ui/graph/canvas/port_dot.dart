@@ -1,12 +1,13 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../common/ease.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../domain/pipeline_graph.dart';
 import '../../theme.dart';
 import 'node_metrics.dart';
-import 'canvas_ease.dart';
 
 /// A socket: hollow while nothing is attached, filled when something is,
 /// ringed while the link being pulled could land on it.
@@ -29,7 +30,7 @@ class PortDot extends StatelessWidget {
     final color = signal == PipelineSignal.voice ? LoreDubPalette.graphite : LoreDubPalette.orange;
     return Center(
       child: AnimatedContainer(
-        duration: canvasEase(context, 120),
+        duration: ease(context, 120),
         curve: Curves.easeOut,
         width: caught ? 22 : (offered ? 18 : NodeMetrics.dotRadius * 2),
         height: caught ? 22 : (offered ? 18 : NodeMetrics.dotRadius * 2),

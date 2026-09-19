@@ -472,8 +472,9 @@ lib/src/ui/
 
 ### Доступность (P2)
 
-- [ ] `PopupMenuButton(tooltip: '')` (`character_tiles.dart:467`,
+- [x] `PopupMenuButton(tooltip: '')` (`character_tiles.dart:467`,
       `pipeline_shelf.dart:331`) оставляет кнопки-иконки без имени.
+      *Сделано:* `charactersCardMenu`, `pipelineSchemeMenu`.
 - [ ] Холст — только для указателя: карточки (`pipeline_canvas.dart:1387`) и
       гнёзда (`:758`) — голые `GestureDetector` без фокуса и `Semantics`.
 - [ ] В пак можно положить только перетаскиванием → пункт меню
@@ -481,11 +482,16 @@ lib/src/ui/
 - [ ] Цели 26–34 px (`pipeline_canvas.dart:823`, `:1460`,
       `glossary_screen.dart:1024`, `model_visuals.dart:125`) против 44–48 px,
       обещанных в `docs/UI_DESIGN.md`. Как минимум — токен, а не цифра.
-- [ ] `MediaQuery.disableAnimationsOf` не читается в
+- [x] `MediaQuery.disableAnimationsOf` не читается в
       `glossary_screen.dart:842`, `character_tiles.dart:595` и у заливок на
-      300 мс.
-- [ ] Литералы в обход l10n: `'…%'` (`pipeline_inspector.dart:373`) вместо
+      300 мс. *Сделано:* `common/ease.dart` — `ease(context, ms)` для всех
+      неявных анимаций (бывший `canvasEase`), с тестом.
+- [x] Литералы в обход l10n: `'…%'` (`pipeline_inspector.dart:373`) вместо
       `l10n.originalVolumeValue`; `Colors.white` (`model_visuals.dart:283`).
+      *Проверено:* подпись поля уже идёт через `originalVolumeValue`, а
+      `'$percent%'` осталось только в бегунке ползунка, как и на экране
+      настроек; `Colors.white` в плитках моделей больше нет. Остальные
+      `Colors.white` уйдут вместе с токенами темы (этап 3).
 
 ---
 

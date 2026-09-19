@@ -29,7 +29,7 @@ class SchemeMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return PopupMenuButton<String>(
-      tooltip: '',
+      tooltip: l10n.pipelineSchemeMenu,
       icon: const Icon(Icons.more_vert_rounded, size: 18),
       style: IconButton.styleFrom(
         minimumSize: const Size(30, 30),

@@ -91,6 +91,8 @@
   "glossaryPackNothingFound": "В этом пакете ничего не нашлось.",
   "glossaryPackDragHint": "Перетащить запись в пакет",
   "glossaryPackImport": "Загрузить пакет",
+  "charactersCardMenu": "Ещё действия с персонажем",
+  "pipelineSchemeMenu": "Ещё действия со схемой",
   "glossaryImported": "{entries, plural, =0{Ни одной записи не прочитано} one{Прочитана {entries} запись} few{Прочитано {entries} записи} other{Прочитано {entries} записей}} · {packs, plural, =0{без пакетов} one{{packs} пакет} few{{packs} пакета} other{{packs} пакетов}}",
   "@glossaryImported": {
     "placeholders": {

@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../common/ease.dart';
+
 import 'package:flutter/material.dart';
 
 /// The panel down the right edge of the canvas, coming and going.
@@ -30,7 +32,7 @@ class InspectorSlot extends StatefulWidget {
 class _InspectorSlotState extends State<InspectorSlot> {
   /// Half of this is what a panel has to itself when it takes turns with
   /// another; a panel with the canvas to itself travels for all of it.
-  static const _run = Duration(milliseconds: 360);
+  static const _run = 360;
 
   /// The half of the run a panel waits out before it comes in, when there
   /// is one leaving ahead of it.
@@ -52,7 +54,7 @@ class _InspectorSlotState extends State<InspectorSlot> {
 
   @override
   Widget build(BuildContext context) => AnimatedSwitcher(
-    duration: _run,
+    duration: ease(context, _run),
     switchInCurve: _behindAnother ? _behind : Curves.easeOutCubic,
     switchOutCurve: _leaving,
     transitionBuilder: (child, animation) => SlideTransition(

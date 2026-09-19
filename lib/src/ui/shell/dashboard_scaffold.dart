@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../common/ease.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -46,7 +48,7 @@ class DashboardScaffold extends StatelessWidget {
               Expanded(
                 child: BlocBuilder<ShellCubit, ShellState>(
                   builder: (context, shell) => AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
+                    duration: ease(context, 180),
                     child: switch (shell.section) {
                       DashboardSection.live => LivePanel(
                         key: const ValueKey('live'),

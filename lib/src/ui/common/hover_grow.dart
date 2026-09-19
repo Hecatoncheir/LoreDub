@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'ease.dart';
+
 import 'package:flutter/material.dart';
 
 /// Grows its child a little under the pointer, so the model about to be
@@ -28,14 +30,13 @@ class _HoverGrowState extends State<HoverGrow> {
 
   @override
   Widget build(BuildContext context) {
-    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: AnimatedScale(
         scale: _hovered ? widget.scale : 1,
         alignment: widget.alignment,
-        duration: still ? Duration.zero : const Duration(milliseconds: 160),
+        duration: ease(context, 160),
         curve: Curves.easeOutCubic,
         child: widget.builder(context, _hovered),
       ),

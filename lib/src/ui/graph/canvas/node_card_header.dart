@@ -1,13 +1,14 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../common/ease.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../theme.dart';
 import '../node_paint.dart';
-import 'canvas_ease.dart';
 import 'node_metrics.dart';
 
 /// The head of a node card: its icon and name, the cross that takes a card
@@ -31,7 +32,7 @@ class NodeCardHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return AnimatedContainer(
-      duration: canvasEase(context),
+      duration: ease(context),
       curve: Curves.easeOut,
       height: NodeMetrics.headerHeight,
       padding: const EdgeInsets.symmetric(horizontal: 12),

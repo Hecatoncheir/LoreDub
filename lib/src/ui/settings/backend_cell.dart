@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../common/ease.dart';
+
 import 'package:flutter/material.dart';
 
 import '../common/hover_grow.dart';
@@ -61,7 +63,7 @@ class BackendCell extends StatelessWidget {
                     Align(
                       alignment: Alignment.bottomCenter,
                       child: AnimatedFractionallySizedBox(
-                        duration: const Duration(milliseconds: 300),
+                        duration: ease(context, 300),
                         heightFactor: value.clamp(0.0, 1.0),
                         widthFactor: 1,
                         child: const ColoredBox(color: LoreDubPalette.graphite),

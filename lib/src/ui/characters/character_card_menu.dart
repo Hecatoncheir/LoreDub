@@ -17,7 +17,9 @@ class CharacterCardMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return PopupMenuButton<String>(
-      tooltip: '',
+      // Named, or a reader hears an unlabelled button beside two that say
+      // what they do.
+      tooltip: l10n.charactersCardMenu,
       icon: const Icon(Icons.more_horiz_rounded, size: 19),
       style: IconButton.styleFrom(
         foregroundColor: LoreDubPalette.ink,

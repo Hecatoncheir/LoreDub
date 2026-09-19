@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'ease.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
@@ -59,7 +61,7 @@ class PackArea<D extends Object> extends StatelessWidget {
         final inviting = candidate.isNotEmpty;
         final marked = inviting || active;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: ease(context, 150),
           padding: const EdgeInsets.fromLTRB(14, 10, 10, 12),
           decoration: BoxDecoration(
             color: inviting ? LoreDubPalette.raised : LoreDubPalette.panel,
