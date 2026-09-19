@@ -599,12 +599,21 @@ the foreground one, so nothing laid over the game passes for its subtitles;
 the screen is read whatever is in front, which is the only way into a game
 that keeps no ordinary window, and needs no process at all (`canStartScreen`
 asks for one only for the window). A process may still be named there, to be
-turned down. One
-session therefore answers for both halves of that screen — what the subtitle
-frame gains, which arrives as `ocrText`, and what the player picks out with
-the snapshot key, registered through `ld_set_hotkeys`; live dubbing registers
-the key as well. Because the frame is read out of one window, this session
-needs a process chosen, which `canStartScreen` checks.
+turned down.
+
+The screen is read two ways, and `ScreenReading` (`domain/screen_reading.dart`)
+says which of them a session does: the subtitle frame, which arrives as
+`ocrText`; the snippet the player picks out with the snapshot key, registered
+through `ld_set_hotkeys`; or both, which is what the page's top card starts.
+One engine and one worker serve all three and only the capture differs, so
+the button of one reading ends the session of another and starts its own --
+seconds, not the minute a worker takes. `ScreenReading.snippets` starts
+`ld_start` with `captureMode: 'none'`: nothing is scanned, the engine is up,
+and the key is answered, which is why that reading needs no window and no
+game (`canStartScreen` asks for one only where the frame is read, and for
+the snapshot key only where a snippet is). A reading without the frame
+registers no frame key either -- there is none to redraw. Live dubbing
+registers the snapshot key as well.
 
 A second held key draws that frame over the running game rather than over a
 picture of it: `frameKey`/`frameModifiers` with `frameProcessId`, the same

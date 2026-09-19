@@ -183,6 +183,12 @@ abstract class AppLocalizations {
   /// **'РАМКА СУБТИТРОВ'**
   String get areaSubtitleFrame;
 
+  /// No description provided for @areaSnippetOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'ТОЛЬКО ВЫДЕЛЕННЫЙ ТЕКСТ'**
+  String get areaSnippetOnly;
+
   /// No description provided for @areaSubtitles.
   ///
   /// In ru, this message translates to:

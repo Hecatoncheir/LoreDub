@@ -28,7 +28,7 @@ class SnapshotHistory extends StatelessWidget {
             child: Row(
               children: [
                 ModuleLabel(
-                  number: '04',
+                  number: '03',
                   label: AppLocalizations.of(context).areaSelectedText,
                 ),
                 const Spacer(),

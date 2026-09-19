@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/app.dart';
+import 'package:lore_dub/src/domain/screen_reading.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
@@ -2716,8 +2717,12 @@ void main() {
       latency: Duration(milliseconds: 800),
     );
 
-    FilledButton startButton(WidgetTester tester) =>
-        tester.widget<FilledButton>(find.byKey(const ValueKey('snapshotStart')));
+    /// The button of one reading: both by default, the one the whole page
+    /// starts with.
+    FilledButton startButton(
+      WidgetTester tester, {
+      ScreenReading reading = ScreenReading.both,
+    }) => tester.widget<FilledButton>(find.byKey(ValueKey('snapshotStart-${reading.name}')));
 
     const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
 
@@ -2798,10 +2803,9 @@ void main() {
     });
 
     testWidgets('stacks the language and its note where the card is narrow', (tester) async {
-      // Wide enough for the frame to stand beside the controls, and so
-      // narrow for the controls that the language and its note no longer
-      // share a line: fixed at both halves, the row used to overflow.
-      await pumpDashboard(tester, stageSnapshot(), const Size(1160, 1000));
+      // Narrow enough that the language and its note no longer share a
+      // line: fixed at both halves, the row used to overflow.
+      await pumpDashboard(tester, stageSnapshot(), const Size(480, 1000));
 
       final field = find.byKey(const ValueKey('textLanguage-en'));
       final note = find.text('Текст на языке озвучки озвучивается без перевода');

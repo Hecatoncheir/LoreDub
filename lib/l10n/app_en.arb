@@ -15,6 +15,7 @@
   "areaSceneVoices": "SCENE VOICES",
   "areaScreenCapture": "SCREEN CAPTURE",
   "areaSubtitleFrame": "SUBTITLE FRAME",
+  "areaSnippetOnly": "SELECTED TEXT ONLY",
   "areaSubtitles": "SUBTITLES",
   "areaSelectedText": "SELECTED TEXT",
   "areaVoiceRecording": "VOICE RECORDING",

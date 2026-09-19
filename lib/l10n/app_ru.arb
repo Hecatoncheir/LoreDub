@@ -15,6 +15,7 @@
   "areaSceneVoices": "ГОЛОСА СЦЕНЫ",
   "areaScreenCapture": "ЗАХВАТ ЭКРАНА",
   "areaSubtitleFrame": "РАМКА СУБТИТРОВ",
+  "areaSnippetOnly": "ТОЛЬКО ВЫДЕЛЕННЫЙ ТЕКСТ",
   "areaSubtitles": "СУБТИТРЫ",
   "areaSelectedText": "ВЫДЕЛЕННЫЙ ТЕКСТ",
   "areaVoiceRecording": "ЗАПИСЬ ГОЛОСА",

@@ -11,8 +11,10 @@ import '../theme.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
-import 'ocr_region_picker.dart';
+import '../../domain/screen_reading.dart';
 import '../common/module_label.dart';
+import 'ocr_region_picker.dart';
+import 'snapshot_start_button.dart';
 
 /// The frame the subtitles are read out of, drawn on a picture of the game's
 /// window, and whether the game is silenced while they are dubbed.
@@ -38,7 +40,7 @@ class SubtitleFrameCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ModuleLabel(number: '02', label: l10n.areaSubtitleFrame),
+            ModuleLabel(number: '04', label: l10n.areaSubtitleFrame),
             const SizedBox(height: 14),
             OcrRegionPicker(
               key: const ValueKey('ocrRegion'),
@@ -79,31 +81,12 @@ class SubtitleFrameCard extends StatelessWidget {
             // Drawn here before the game starts, or over the game itself
             // once it has: the same frame either way.
             if (settings.frameHotkey case final key?) ...[
-              Text(
-                l10n.frameHowTo(key.display),
-                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
-              ),
+              Text(l10n.frameHowTo(key.display), style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(height: 8),
             ],
-            Row(
-              children: [
-                Switch(
-                  value: settings.silenceWhileReading,
-                  onChanged: running
-                      ? null
-                      : (value) => context.read<SettingsCubit>().update(
-                          settings.copyWith(silenceWhileReading: value),
-                        ),
-                ),
-                const SizedBox(width: 6),
-                Flexible(child: Text(l10n.silenceWhileReading)),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.silenceWhileReadingNote,
-              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
-            ),
+            Text(l10n.screenHowTo, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 14),
+            SnapshotStartButton(reading: ScreenReading.subtitles),
           ],
         ),
       ),

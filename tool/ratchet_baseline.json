@@ -1,7 +1,7 @@
 {
   "Color(0x": 7,
-  "LoreDubPalette.": 272,
-  "TextStyle(": 99,
+  "LoreDubPalette.": 270,
+  "TextStyle(": 97,
   "avoid-nested-conditional-expressions": 17,
   "avoid-returning-widgets": 0,
   "prefer-single-widget-per-file": 0

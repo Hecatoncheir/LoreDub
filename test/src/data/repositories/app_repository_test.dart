@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lore_dub/src/domain/screen_reading.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/services/character_service.dart';
 import 'package:lore_dub/src/data/services/glossary_service.dart';
@@ -68,19 +69,58 @@ void main() {
     runtimeDirectory: 'runtime',
   );
 
-  Future<void> readScreen() => repository.startScreenText(
-    process: game,
-    settings: const AppSettings(),
-    modelDirectories: const {},
-    speaker: 'aidar',
-    translationPrefix: '',
-    translationBackend: ComputeBackend.cpu,
-    speechBackend: ComputeBackend.cpu,
-    runtimeDirectory: 'runtime',
-  );
+  Future<void> readScreen({ScreenReading reading = ScreenReading.both}) =>
+      repository.startScreenText(
+        reading: reading,
+        process: game,
+        settings: const AppSettings(),
+        modelDirectories: const {},
+        speaker: 'aidar',
+        translationPrefix: '',
+        translationBackend: ComputeBackend.cpu,
+        speechBackend: ComputeBackend.cpu,
+        runtimeDirectory: 'runtime',
+      );
 
   Matcher failsWith(FailureCode code) =>
       throwsA(isA<LoreDubFailure>().having((failure) => failure.code, 'code', code));
+
+  group('what a reading of the screen captures and which keys it takes', () {
+    /// Lets a start through, once it has got as far as the engine: the
+    /// screen session writes its glossary and its cast out first.
+    Future<void> began(Future<void> started) async {
+      glossary.written.complete('glossary.session.json');
+      for (var turn = 0; engine.starts.isEmpty && turn < 1000; turn++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      engine.starts.last.complete();
+      await started;
+    }
+
+    test('both: the frame is scanned and either key is registered', () async {
+      await began(readScreen());
+
+      expect(engine.screenConfig['captureMode'], 'ocr');
+      expect(engine.snapshotKey, isNotNull);
+      expect(engine.frameKey, isNotNull);
+    });
+
+    test('snippets: nothing is captured until the key is pressed', () async {
+      await began(readScreen(reading: ScreenReading.snippets));
+
+      expect(engine.screenConfig['captureMode'], 'none');
+      expect(engine.snapshotKey, isNotNull);
+      expect(engine.frameKey, isNull, reason: 'there is no frame to redraw');
+    });
+
+    test('subtitles: the frame is scanned and the key is left alone', () async {
+      await began(readScreen(reading: ScreenReading.subtitles));
+
+      expect(engine.screenConfig['captureMode'], 'ocr');
+      expect(engine.snapshotKey, isNull, reason: 'nothing is picked out by hand');
+      expect(engine.frameKey, isNotNull);
+    });
+  });
 
   test('clears away what a failed start left behind', () async {
     final starting = expectLater(start(), failsWith(FailureCode.workerStartTimeout));
@@ -304,8 +344,17 @@ class _SlowEngine extends NativeEngineService {
   @override
   Future<void> start(Map<String, Object?> config) => _starting();
 
+  /// What the last screen session was started with, and which keys it
+  /// asked for.
+  Map<String, Object?> screenConfig = const {};
+  Hotkey? snapshotKey;
+  Hotkey? frameKey;
+
   @override
-  Future<void> startScreenText(Map<String, Object?> config) => _starting();
+  Future<void> startScreenText(Map<String, Object?> config) {
+    screenConfig = config;
+    return _starting();
+  }
 
   @override
   Future<void> startVoiceFiles(Map<String, Object?> config) => _starting();
@@ -324,7 +373,11 @@ class _SlowEngine extends NativeEngineService {
     Hotkey? frame,
     int frameOf = 0,
     String textLanguage = 'en',
-  }) => hotkeys++;
+  }) {
+    hotkeys++;
+    snapshotKey = snapshot;
+    frameKey = frame;
+  }
 
   @override
   Future<void> stop() async => stops++;

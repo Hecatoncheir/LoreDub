@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:lore_dub/src/domain/screen_reading.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
@@ -258,6 +259,45 @@ void main() {
       expect(repository.starts, 0, reason: 'nothing is captured');
     });
 
+    test('reads a snippet without a game to take a window from', () async {
+      // Nothing is scanned, so there is no window to read it out of: the
+      // key picks out whatever is on the screen.
+      await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.snippets);
+
+      expect(repository.screenReadings, [ScreenReading.snippets]);
+      expect(pipeline.state.screenReading, ScreenReading.snippets);
+    });
+
+    test('changes what is read by starting that reading over the one running', () async {
+      const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
+      pipeline.selectProcess(game);
+      await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.snippets);
+      // The frame is read out of the game's window, so the session that
+      // takes over is one that knows which game.
+      pipeline.seed(
+        waiting.copyWith(selectedProcess: game, screenReading: ScreenReading.snippets),
+      );
+
+      await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.subtitles);
+
+      expect(repository.stops, 1, reason: 'the session that was running ended');
+      expect(repository.screenReadings, [ScreenReading.snippets, ScreenReading.subtitles]);
+      expect(pipeline.state.screenReading, ScreenReading.subtitles);
+    });
+
+    test('its own button ends it rather than starting it again', () async {
+      const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
+      pipeline.selectProcess(game);
+      await pipeline.toggleScreenText(initializing: false);
+      pipeline.seed(waiting.copyWith(selectedProcess: game));
+
+      await pipeline.toggleScreenText(initializing: false);
+
+      expect(repository.stops, 1);
+      expect(repository.snapshotStarts, 1);
+      expect(pipeline.state.status, PipelineStatus.idle);
+    });
+
     test('moves the subtitle frame to what was drawn over the game', () async {
       pipeline
         ..listen()
@@ -501,6 +541,9 @@ class _SlowStartRepository extends AppRepository {
   int starts = 0;
   int stops = 0;
   int snapshotStarts = 0;
+
+  /// What each screen session was asked to read.
+  final screenReadings = <ScreenReading>[];
   Map<String, String> snapshotModels = const {};
 
   void push(Map<String, Object?> event) => _events.add(event);
@@ -539,6 +582,7 @@ class _SlowStartRepository extends AppRepository {
 
   @override
   Future<void> startScreenText({
+    required ScreenReading reading,
     required GameProcess? process,
     required AppSettings settings,
     required Map<String, String> modelDirectories,
@@ -550,6 +594,7 @@ class _SlowStartRepository extends AppRepository {
   }) async {
     snapshotStarts++;
     snapshotModels = modelDirectories;
+    screenReadings.add(reading);
   }
 
   // The characters are remembered by default, so a start asks for the game's

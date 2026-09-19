@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../domain/screen_reading.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/character.dart';
@@ -271,6 +272,7 @@ class AppRepository {
   /// no sound is listened to -- so the game may be turned down as far as
   /// silence without taking the recognition with it.
   Future<void> startScreenText({
+    required ScreenReading reading,
     required GameProcess? process,
     required AppSettings settings,
     required Map<String, String> modelDirectories,
@@ -287,7 +289,10 @@ class AppRepository {
         // Named even when the screen is what is read: nothing is taken out
         // of that window then, but it is still the game to turn down.
         'processId': process?.pid ?? 0,
-        'captureMode': 'ocr',
+        // Nothing is scanned for a session that only answers the key:
+        // the worker is up, the engine is running, and the screen is read
+        // when the player asks and not before.
+        'captureMode': reading.readsSubtitles ? 'ocr' : 'none',
         'ocrSource': settings.readsWholeScreen ? 'screen' : 'process',
         'targetLanguage': settings.targetLanguage,
         'textLanguage': settings.textLanguage,
@@ -318,11 +323,12 @@ class AppRepository {
       _sessionProcess = process;
       _sessionSettings = settings;
       _nativeEngine.setHotkeys(
-        snapshot: settings.snapshotHotkey,
+        snapshot: reading.readsSnippets ? settings.snapshotHotkey : null,
         // Drawn over the game rather than over a picture of it, and
         // measured against whatever this session reads: the window it was
-        // given, or -- with no process to name -- the screen itself.
-        frame: settings.frameHotkey,
+        // given, or -- with no process to name -- the screen itself. A
+        // session reading no frame has none to redraw.
+        frame: reading.readsSubtitles ? settings.frameHotkey : null,
         frameOf: settings.readsWholeScreen ? 0 : process?.pid ?? 0,
         textLanguage: settings.textLanguage,
       );

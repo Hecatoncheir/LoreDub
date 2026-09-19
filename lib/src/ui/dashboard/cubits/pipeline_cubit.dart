@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../../domain/screen_reading.dart';
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -37,6 +39,7 @@ class LivePipelineState extends Equatable {
     this.spokenVoice,
     this.activeBackends = const {},
     this.session = PipelineSession.live,
+    this.screenReading = ScreenReading.both,
     this.snapshots = const [],
     this.snapshotReading = false,
     this.snapshotMissed = false,
@@ -68,6 +71,11 @@ class LivePipelineState extends Equatable {
 
   /// Which session [status] describes. Meaningless while idle.
   final PipelineSession session;
+
+  /// What the running session of the Screen page reads. Meaningless unless
+  /// [session] is `PipelineSession.screen`: it is what tells the three
+  /// buttons of that page which of them is the one running.
+  final ScreenReading screenReading;
 
   /// What the player selected and had translated, newest first. Kept apart
   /// from [transcript], which follows the running capture.
@@ -141,15 +149,23 @@ class LivePipelineState extends Equatable {
       (!selection.requiresProcess || selectedProcess != null) &&
       selection.tracksSpeakers;
 
-  /// The screen session needs its pair of models, a key to select with,
-  /// and -- unless the whole screen is what it reads -- the game whose
-  /// window the subtitle frame is taken out of.
-  bool canStartScreen(ModelSelection selection, {required bool initializing}) =>
+  /// The screen session needs its pair of models, and then what the
+  /// reading itself asks for: a key to pick a snippet out with, and -- for
+  /// the frame, unless the whole screen is what it reads -- the game whose
+  /// window it is taken out of.
+  ///
+  /// A session of another reading is no obstacle: pressing the button of
+  /// one ends the other and starts this one.
+  bool canStartScreen(
+    ModelSelection selection, {
+    required bool initializing,
+    ScreenReading reading = ScreenReading.both,
+  }) =>
       !initializing &&
-      status == PipelineStatus.idle &&
-      (selection.settings.readsWholeScreen || selectedProcess != null) &&
+      (status == PipelineStatus.idle || screenRunning) &&
       selection.screenModelsInstalled &&
-      selection.settings.snapshotHotkey != null;
+      (!reading.readsSubtitles || selection.settings.readsWholeScreen || selectedProcess != null) &&
+      (!reading.readsSnippets || selection.settings.snapshotHotkey != null);
 
   LivePipelineState copyWith({
     PipelineStatus? status,
@@ -167,6 +183,7 @@ class LivePipelineState extends Equatable {
     bool clearSpokenVoice = false,
     Map<ComputeStage, ComputeBackend>? activeBackends,
     PipelineSession? session,
+    ScreenReading? screenReading,
     List<TranscriptEntry>? snapshots,
     bool? snapshotReading,
     bool? snapshotMissed,
@@ -183,6 +200,7 @@ class LivePipelineState extends Equatable {
     spokenVoice: clearSpokenVoice ? null : spokenVoice ?? this.spokenVoice,
     activeBackends: activeBackends ?? this.activeBackends,
     session: session ?? this.session,
+    screenReading: screenReading ?? this.screenReading,
     snapshots: snapshots ?? this.snapshots,
     snapshotReading: snapshotReading ?? this.snapshotReading,
     snapshotMissed: snapshotMissed ?? this.snapshotMissed,
@@ -202,6 +220,7 @@ class LivePipelineState extends Equatable {
     spokenVoice,
     activeBackends,
     session,
+    screenReading,
     snapshots,
     snapshotReading,
     snapshotMissed,
@@ -402,18 +421,27 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   ComputeBackend _backendFor(ComputeStage stage) =>
       _settings.settings.backendFor(stage, _downloads.state.availability);
 
-  /// Starts or ends the screen session: the subtitle frame is read while it
-  /// runs, and the snapshot key picks anything else off the screen by hand.
-  Future<void> toggleScreenText({required bool initializing}) async {
+  /// Starts or ends a session of the Screen page, reading what [reading]
+  /// says: the frame, the key, or both.
+  ///
+  /// The button of the reading that is running ends it; the button of
+  /// another ends it and starts its own, since one engine serves the three
+  /// and only what it captures differs.
+  Future<void> toggleScreenText({
+    required bool initializing,
+    ScreenReading reading = ScreenReading.both,
+  }) async {
     if (_pressedTwice) return;
     _errors.report(null);
     if (state.running) {
       // Live dubbing is ended from its own screen.
-      if (state.session == PipelineSession.screen) await stop();
-      return;
+      if (state.session != PipelineSession.screen) return;
+      final wasReading = state.screenReading;
+      await stop();
+      if (wasReading == reading || isClosed) return;
     }
     final selection = this.selection;
-    if (!state.canStartScreen(selection, initializing: initializing)) return;
+    if (!state.canStartScreen(selection, initializing: initializing, reading: reading)) return;
     _startRequestedAt = _clock();
     // The worker the characters screen holds has neither the translator nor
     // the voice loaded, so this session starts afresh over it.
@@ -423,6 +451,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       state.copyWith(
         status: PipelineStatus.starting,
         session: PipelineSession.screen,
+        screenReading: reading,
         clearStartupProgress: true,
         startupStage: '',
         clearSpokenVoice: true,
@@ -443,6 +472,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
       final speechDirectory = await _modelRepository.directoryFor(speech);
       await _appRepository.startScreenText(
+        reading: reading,
         process: state.selectedProcess,
         settings: settings,
         modelDirectories: {

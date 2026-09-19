@@ -55,6 +55,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get areaSubtitleFrame => 'SUBTITLE FRAME';
 
   @override
+  String get areaSnippetOnly => 'SELECTED TEXT ONLY';
+
+  @override
   String get areaSubtitles => 'SUBTITLES';
 
   @override

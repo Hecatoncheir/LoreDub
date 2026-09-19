@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../domain/screen_reading.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -13,10 +15,16 @@ import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 
-/// Starts and ends the snapshot session. While live dubbing runs, that
-/// session answers the snapshot key, so there is nothing here to start.
+/// Starts and ends a session of this page, reading what [reading] says.
+///
+/// Each of the three areas carries one. The button of the reading that is
+/// running stops it; another one stops it and starts its own. While live
+/// dubbing runs, that session answers the snapshot key, so there is
+/// nothing here to start.
 class SnapshotStartButton extends StatelessWidget {
-  const SnapshotStartButton({super.key});
+  const SnapshotStartButton({super.key, this.reading = ScreenReading.both});
+
+  final ScreenReading reading;
 
   @override
   Widget build(BuildContext context) => BlocBuilder<PipelineCubit, LivePipelineState>(
@@ -42,19 +50,26 @@ class SnapshotStartButton extends StatelessWidget {
 
   Widget _build(BuildContext context, LivePipelineState pipeline, {required bool initializing}) {
     final l10n = AppLocalizations.of(context);
-    final own = pipeline.session == PipelineSession.screen;
+    final own = pipeline.session == PipelineSession.screen && pipeline.screenReading == reading;
     final starting = own && pipeline.status == PipelineStatus.starting;
     final running = own && pipeline.running;
     final progress = pipeline.startupProgress;
-    final canStart = pipeline.canStartScreen(context.selection, initializing: initializing);
+    final canStart = pipeline.canStartScreen(
+      context.selection,
+      initializing: initializing,
+      reading: reading,
+    );
     return Tooltip(
       message: starting && pipeline.startupStage.isNotEmpty
           ? describeStartupStage(l10n, pipeline.startupStage)
           : '',
       child: FilledButton.icon(
-        key: const ValueKey('snapshotStart'),
+        key: ValueKey('snapshotStart-${reading.name}'),
         onPressed: running || canStart
-            ? () => context.read<PipelineCubit>().toggleScreenText(initializing: initializing)
+            ? () => context.read<PipelineCubit>().toggleScreenText(
+                initializing: initializing,
+                reading: reading,
+              )
             : null,
         icon: starting
             ? SizedBox(

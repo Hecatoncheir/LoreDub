@@ -55,6 +55,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get areaSubtitleFrame => 'РАМКА СУБТИТРОВ';
 
   @override
+  String get areaSnippetOnly => 'ТОЛЬКО ВЫДЕЛЕННЫЙ ТЕКСТ';
+
+  @override
   String get areaSubtitles => 'СУБТИТРЫ';
 
   @override

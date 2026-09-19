@@ -740,14 +740,23 @@ int32_t ld_start(const char* config_json) {
   // Reading the whole screen needs no window, and so no process to find it
   // by -- one may still be named, to be turned down while the reading runs.
   const bool whole_screen = JsonString(config, "ocrSource") == "screen";
+  const bool reads_screen = capture_mode == "ocr";
+  // A session that captures nothing at all: the worker is up and the keys
+  // are registered, so a snippet the player picks out is read and voiced,
+  // and nothing is scanned until they ask. It needs no window and no
+  // directory to write segments into.
+  const bool captures_nothing = capture_mode == "none";
   const bool needs_process =
-      capture_mode == "ocr" ? !whole_screen : audio_source != "system";
+      reads_screen ? !whole_screen
+                   : (!captures_nothing && audio_source != "system");
   if ((needs_process && process_id == 0) ||
-      (capture_mode != "ocr" && capture_directory.empty())) {
+      (!reads_screen && !captures_nothing && capture_directory.empty())) {
     running = false;
     return -5;
   }
-  if (capture_mode == "ocr") {
+  if (captures_nothing) {
+    // Nothing to start; the state below says the engine is up.
+  } else if (reads_screen) {
     ocr_capture = std::make_unique<OcrCapture>();
     const OcrRegion region{JsonDouble(config, "ocrRegionLeft", 0.0),
                            JsonDouble(config, "ocrRegionTop", 0.55),
