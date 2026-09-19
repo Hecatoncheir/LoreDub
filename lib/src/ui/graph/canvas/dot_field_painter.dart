@@ -26,16 +26,19 @@ class DotFieldPainter extends CustomPainter {
   final GraphView view;
 
   /// The cards standing on the field, the ones on their way off it among
-  /// them. Each of them holds the dots off.
+  /// them. Where they stand is read off these; which of them the field
+  /// answers to is [chosen].
   final List<PipelineNode> nodes;
 
-  /// The cards the player has picked out. The field lights towards them:
-  /// the nearer a dot is to one, the more of the orange it carries, so a
-  /// card that is chosen is found without hunting for its border.
+  /// The cards the player has picked out, and the only ones the field
+  /// answers to. It parts around them and lights towards them: the nearer a
+  /// dot is to one, the more of the orange it carries, so a card that is
+  /// chosen is found without hunting for its border. The rest stand on the
+  /// field without disturbing it.
   final Set<String> chosen;
 
-  /// A card arriving parts the field as it comes, and one leaving lets it
-  /// close again: [grown] is how far along both of those are.
+  /// A chosen card arriving parts the field as it comes, and one leaving
+  /// lets it close again: [grown] is how far along both of those are.
   final Set<String> arriving;
   final Set<String> leaving;
   final Animation<double> grown;
@@ -132,11 +135,16 @@ class DotFieldPainter extends CustomPainter {
     return 1;
   }
 
-  /// Where the cards stand on the screen, with how hard each of them holds
-  /// the field off. Worked out once for the frame.
+  /// Where the chosen cards stand on the screen, with how hard each of them
+  /// holds the field off. Worked out once for the frame.
+  ///
+  /// Only the chosen ones: a scheme of two dozen cards parting the field
+  /// under every one of them is a field that is nowhere at rest, and the
+  /// parting says nothing, every card doing it. Around the card the player
+  /// picked out it says which one that is, together with the light.
   List<FieldCard> _cards() => [
     for (final node in nodes)
-      if (_strengthOf(node) > 0.01)
+      if (chosen.contains(node.id) && _strengthOf(node) > 0.01)
         FieldCard(
           rect: Rect.fromLTWH(
             view.x + node.position.x * view.zoom,
@@ -145,7 +153,8 @@ class DotFieldPainter extends CustomPainter {
             NodeMetrics.sizeOf(node.kind).height * view.zoom,
           ),
           strength: _strengthOf(node).clamp(0.0, 1.0),
-          chosen: chosen.contains(node.id),
+          // Every card the field is told about is one that was chosen.
+          chosen: true,
         ),
   ];
 
