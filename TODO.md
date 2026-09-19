@@ -417,8 +417,15 @@ lib/src/ui/
       `DotFieldPainter` ниже порога 15, `NodeLabels`, `NodeInputs` и
       виджеты карточки. Кадр в `graph_bench.dart` не вырос (≈25 мс
       перетаскивание, ≈21 мс панорама), goldens совпали. Контроллер жестов
-      отдельным `ChangeNotifier` и `NodeLayer`, принимающий ровно
-      `NodeInputs`, — ещё не сделаны.
+      отдельным `ChangeNotifier` — ещё не сделан.
+      *`NodeLayer` — сделано:* слой узла (карточка и гнёзда) —
+      `NodeLayer(inputs, actions)`, кеши — `NodeLayerCache` и `BadgeCache`,
+      уходящая карточка — `LeavingNode`, гнездо — `NodeSocket`. Попутно
+      найден скрытый вход: кольцо «возьмёт линию» спрашивало граф и состав
+      мимо `NodeInputs`; теперь это маска `offered`, считаемая раз за
+      протяжку. Кадр тот же (18,1 мс перетаскивание, 14,5 мс панорама на
+      этой машине — до и после). Методов, возвращающих `Widget`, больше
+      нет.
 - [x] `_NodeCard` (297 строк): ~100 строк вывода текста (`:1552–1647`) →
       чистая `NodeLabels.of(l10n, node, facts, availability)`; `switch` в
       `_rows` → const-таблица.

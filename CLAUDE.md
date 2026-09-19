@@ -563,12 +563,17 @@ down, and all three can be undone by accident. The graph is listened to
 so `PipelineFacts` and `ModelSelection` are not built afresh for a frame that
 only moved the canvas; the toolbar has a listener of its own with a
 `buildWhen`, so it is not built again for a drag. And the canvas keeps what
-it drew: `_drawn` holds each node's card and sockets against `NodeInputs` (`node_inputs.dart`), a
-record of everything that layer is drawn from, and `_badges` holds each cut
-badge against the point it sits at. **Anything new a card is drawn from has
-to go into `NodeInputs`**, or the card will go on showing what it showed
-before; anything inherited (the language, the theme) is handled by
-`didChangeDependencies` throwing both caches away. `PipelineNode` carries
+it drew: `NodeLayerCache` (`node_layer_cache.dart`) hands back each node's
+`NodeLayer` -- its card and sockets -- as the same widget while its
+`NodeInputs` (`node_inputs.dart`) compare equal, and `BadgeCache` does the
+same for each cut badge against the point it sits at. A `NodeLayer` takes
+its `NodeInputs` and the canvas's `NodeLayerActions` and nothing else, so
+**anything new a card is drawn from has to go into `NodeInputs`** or it
+cannot be read at all -- which is why the sockets that would take a pulled
+line travel there as a mask (`offered`) worked out by the canvas once a
+pull, rather than being asked of the graph inside the layer. Anything
+inherited (the language, the theme) is handled by `didChangeDependencies`
+throwing both caches away. `PipelineNode` carries
 value equality for this, position and all, so one moved card is told from the
 twenty-three that did not.
 

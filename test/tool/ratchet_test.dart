@@ -51,4 +51,12 @@ void main() {
     expect([for (final verdict in verdicts) verdict.shrank], [false, true, false, false]);
     expect(verdicts.last.describe(), contains('(new)'));
   });
+
+  test('counts a rule gone from the metrics as broken nowhere', () {
+    final verdicts = compareToBaseline({'a': 3}, {'a': 3, 'gone': 5});
+
+    expect(verdicts.last.name, 'gone');
+    expect(verdicts.last.count, 0);
+    expect(verdicts.last.shrank, isTrue);
+  });
 }

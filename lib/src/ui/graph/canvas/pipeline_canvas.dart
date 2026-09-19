@@ -11,19 +11,15 @@ import '../../../domain/compute_device.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../theme.dart';
 import '../../dashboard/cubits/pipeline_graph_bloc.dart';
-import 'node_metrics.dart';
 import 'pipeline_facts.dart';
 import 'graph_hit_tester.dart';
-import 'link_cut.dart';
-import 'link_cut_badge.dart';
-import 'link_geometry.dart';
 import 'scheme_diff.dart';
 import 'dot_field_painter.dart';
 import 'link_painter.dart';
-import 'port_dot.dart';
-import 'appearing.dart';
-import 'node_card.dart';
 import 'node_inputs.dart';
+import 'node_layer_actions.dart';
+import 'node_layer_cache.dart';
+import 'leaving_node.dart';
 
 /// The scheme: a dotted field the nodes sit on, the links between them, and
 /// the link the pointer is carrying.
@@ -86,16 +82,39 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
   Set<String> _arriving = const {};
 
   /// What each node's layer — its card and its sockets — was last drawn
-  /// from, and what came out. A dragged node hands the canvas a whole new
-  /// graph on every frame and a pan hands it a new state: without this,
-  /// thirty cards and ninety sockets were built again for one of them
-  /// moving, and for a pan that moved none of them at all.
-  final _drawn = <String, ({NodeInputs from, List<Widget> layer})>{};
+  /// as, and the badge on each line.
+  final _layers = NodeLayerCache();
+  final _badges = BadgeCache();
 
-  /// The badge on each line and where it sat when it was made. A badge
-  /// rides the middle of its curve, so it is the same badge until one of the
-  /// two cards it runs between moves.
-  var _badges = <PipelineLink, ({Offset at, Widget badge})>{};
+  /// The sockets that would take the line being pulled, by node, and what
+  /// that was worked out for: the graph does not change under a pulled
+  /// line, so this is asked once a pull rather than once a frame.
+  ({PipelineGraph graph, PipelinePort from, Object characters, Map<String, int> masks})? _offers;
+
+  /// What every layer tells the canvas, made once so that a kept layer is
+  /// still the same widget.
+  late final _actions = NodeLayerActions(
+    onTap: (id) => widget.bloc.add(PipelineNodeSelected(id, add: _adding)),
+    onGrab: (id, at) {
+      _dragging = at;
+      widget.bloc.add(PipelineNodeGrabbed(id));
+    },
+    onDrag: (id, at) {
+      final from = _dragging ?? at;
+      _dragging = at;
+      widget.bloc.add(
+        PipelineNodeMoved(id, (at.dx - from.dx) / _view.zoom, (at.dy - from.dy) / _view.zoom),
+      );
+    },
+    onDrop: () {
+      _dragging = null;
+      widget.bloc.add(const PipelineArrangementSettled());
+    },
+    onRemove: (id) => widget.bloc.add(PipelineCharacterRemoved(id)),
+    onLinkStart: _startLink,
+    onLinkDrag: _dragLink,
+    onLinkEnd: _endLink,
+  );
 
   final _viewport = GlobalKey();
 
@@ -125,8 +144,8 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
     _drawing.duration = MediaQuery.disableAnimationsOf(context) ? Duration.zero : _motion;
     // What is kept was built against the language and the theme that were
     // around it, so a change of either throws all of it away.
-    _drawn.clear();
-    _badges = {};
+    _layers.clear();
+    _badges.clear();
   }
 
   @override
@@ -274,10 +293,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
   }
 
   Widget _canvas(BuildContext context, GraphView view) {
-    final filled = _filledSockets();
-    // Only the cards still drawn are worth remembering.
-    final drawn = {for (final node in _state.graph.nodes) node.id};
-    _drawn.removeWhere((id, _) => !drawn.contains(id));
+    final layers = _layers.layersFor(_inputs(), _actions);
     return ClipRect(
       child: Listener(
         key: _viewport,
@@ -342,9 +358,20 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
                       // The cards that have been taken off go under the ones
                       // that are still here, and answer to nothing while
                       // they fade.
-                      for (final node in _leaving) ..._leavingLayer(context, node),
-                      for (final node in _state.graph.nodes) ..._nodeLayer(context, node, filled),
-                      ..._cutButtons(),
+                      for (final node in _leaving)
+                        LeavingNode(
+                          key: ValueKey('leaving/${node.id}'),
+                          node: node,
+                          facts: widget.facts,
+                          availability: widget.availability,
+                          opacity: _going,
+                          scale: _shrinking,
+                        ),
+                      ...layers,
+                      ..._badges.badgesFor(
+                        _state.graph,
+                        (link) => widget.bloc.add(PipelineLinkCut(link)),
+                      ),
                       if (_band case final band?)
                         Positioned.fromRect(
                           rect: band,
@@ -366,38 +393,6 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
         ),
       ),
     );
-  }
-
-  /// A card on its way off the canvas: where it was, fading, and deaf.
-  List<Widget> _leavingLayer(BuildContext context, PipelineNode node) {
-    final size = NodeMetrics.sizeOf(node.kind);
-    return [
-      Positioned(
-        key: ValueKey('leaving/${node.id}'),
-        left: node.position.x,
-        top: node.position.y,
-        width: size.width,
-        height: size.height,
-        child: IgnorePointer(
-          child: FadeTransition(
-            opacity: _going,
-            child: ScaleTransition(
-              scale: _shrinking,
-              child: NodeCard(
-                node: node,
-                facts: widget.facts,
-                availability: widget.availability,
-                selected: false,
-                onTap: () {},
-                onGrab: (_) {},
-                onDrag: (_) {},
-                onDrop: () {},
-              ),
-            ),
-          ),
-        ),
-      ),
-    ];
   }
 
   /// The sockets a line reaches, by the node they belong to. Worked out
@@ -423,155 +418,54 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
     return mask;
   }
 
-  List<Widget> _nodeLayer(
-    BuildContext context,
-    PipelineNode node,
-    Map<String, Set<PipelineSocket>> filled,
-  ) {
-    final from = (
-      node: node,
-      selected: _state.chosen.contains(node.id),
-      zoom: _view.zoom,
-      facts: widget.facts,
-      availability: widget.availability,
-      filled: _filledOf(node, filled),
-      pulling: _state.drag?.from,
-      over: _over,
-    );
-    if (_drawn[node.id] case final kept? when kept.from == from) return kept.layer;
-    final layer = _built(context, node, filled: from.filled, selected: from.selected);
-    _drawn[node.id] = (from: from, layer: layer);
-    return layer;
-  }
-
-  List<Widget> _built(
-    BuildContext context,
-    PipelineNode node, {
-    required int filled,
-    required bool selected,
-  }) {
-    final size = NodeMetrics.sizeOf(node.kind);
+  /// What each node's layer is drawn from this frame.
+  Iterable<NodeInputs> _inputs() {
+    final filled = _filledSockets();
+    final offered = _offeredSockets();
     return [
-      Positioned(
-        // Keyed by the node, so a card taken off the canvas does not hand
-        // its place — and the entrance it has already played — to the one
-        // drawn after it.
-        key: ValueKey(node.id),
-        left: node.position.x,
-        top: node.position.y,
-        width: size.width,
-        height: size.height,
-        // A layer of its own: the canvas is panned and zoomed by a
-        // transform above every card, and without a boundary under it each
-        // of them is painted again on every frame of that.
-        child: RepaintBoundary(
-          child: Appearing(
-            key: ValueKey('rising/${node.id}'),
-            child: NodeCard(
-              node: node,
-              facts: widget.facts,
-              availability: widget.availability,
-              selected: selected,
-              onTap: () => widget.bloc.add(PipelineNodeSelected(node.id, add: _adding)),
-              onGrab: (at) {
-                _dragging = at;
-                widget.bloc.add(PipelineNodeGrabbed(node.id));
-              },
-              onDrag: (at) {
-                final from = _dragging ?? at;
-                _dragging = at;
-                widget.bloc.add(
-                  PipelineNodeMoved(
-                    node.id,
-                    (at.dx - from.dx) / _view.zoom,
-                    (at.dy - from.dy) / _view.zoom,
-                  ),
-                );
-              },
-              onDrop: () {
-                _dragging = null;
-                widget.bloc.add(const PipelineArrangementSettled());
-              },
-              onRemove: node.kind != PipelineNodeKind.character
-                  ? null
-                  : () => widget.bloc.add(PipelineCharacterRemoved(node.id)),
-            ),
-          ),
+      for (final node in _state.graph.nodes)
+        (
+          node: node,
+          selected: _state.chosen.contains(node.id),
+          zoom: _view.zoom,
+          facts: widget.facts,
+          availability: widget.availability,
+          filled: _filledOf(node, filled),
+          offered: offered[node.id] ?? 0,
+          over: _over,
         ),
-      ),
-      for (final socket in PipelineSocket.values)
-        if (socket.owner == node.kind)
-          _port(node, socket, filled: filled & (1 << socket.index) != 0),
     ];
   }
 
-  Widget _port(PipelineNode node, PipelineSocket socket, {required bool filled}) {
-    final port = PipelinePort(node.id, socket);
-    final at = NodeMetrics.portAt(node, socket);
-    final drag = _state.drag;
-    // The dot shrinks with the canvas; the box that catches the pointer does
-    // not. It is as wide on screen whatever the zoom — there is a node's
-    // width of empty canvas either side of a socket — and no taller than
-    // half a row, so that a socket is never covered by the one under it.
-    final wide = NodeMetrics.grabReach / _view.zoom;
-    final tall = math.min(wide, NodeMetrics.rowHeight / 2);
-    return Positioned(
-      left: at.dx - wide,
-      top: at.dy - tall,
-      width: wide * 2,
-      height: tall * 2,
-      child: GestureDetector(
-        onPanStart: (details) => _startLink(port, details.globalPosition),
-        onPanUpdate: (details) => _dragLink(details.globalPosition),
-        onPanEnd: (_) => _endLink(),
-        onPanCancel: _endLink,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.precise,
-          child: PortDot(
-            signal: socket.signal,
-            filled: filled,
-            offered: drag != null && drag.from != port && _hits.accepts(drag.from, port),
-            caught: _over == port,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// The badges that cut the lines, each on the curve it cuts; which lines
-  /// carry one is [LinkCut.of]'s to say.
-  List<Widget> _cutButtons() {
-    // Built afresh rather than pruned: a badge whose line is gone is simply
-    // not carried over.
-    final badges = <PipelineLink, ({Offset at, Widget badge})>{};
-    for (final link in _state.graph.links) {
-      final cut = LinkCut.of(link);
-      final middle = _middleOf(link);
-      if (cut == null || middle == null) continue;
-      badges[link] = switch (_badges[link]) {
-        final kept? when kept.at == middle => kept,
-        _ => (
-          at: middle,
-          badge: LinkCutBadge(
-            at: middle,
-            cut: cut,
-            onCut: () => widget.bloc.add(PipelineLinkCut(link)),
-          ),
-        ),
-      };
+  /// The sockets of each node that would take the line being pulled, as
+  /// one number a node, and none while no line is.
+  Map<String, int> _offeredSockets() {
+    final from = _state.drag?.from;
+    if (from == null) return const {};
+    final kept = _offers;
+    if (kept != null &&
+        identical(kept.graph, _state.graph) &&
+        kept.from == from &&
+        identical(kept.characters, widget.facts.characters)) {
+      return kept.masks;
     }
-    _badges = badges;
-    return [for (final kept in badges.values) kept.badge];
-  }
-
-  /// The middle of [link]'s curve, or null while an end of it is not drawn.
-  Offset? _middleOf(PipelineLink link) {
-    final from = _state.graph.node(link.from.nodeId);
-    final to = _state.graph.node(link.to.nodeId);
-    if (from == null || to == null) return null;
-    return LinkGeometry.middleOf(
-      NodeMetrics.portAt(from, link.from.socket),
-      NodeMetrics.portAt(to, link.to.socket),
+    final hits = _hits;
+    final masks = <String, int>{};
+    for (final node in _state.graph.nodes) {
+      var mask = 0;
+      for (final socket in PipelineSocket.values) {
+        final port = PipelinePort(node.id, socket);
+        if (socket.owner != node.kind || port == from || !hits.accepts(from, port)) continue;
+        mask |= 1 << socket.index;
+      }
+      masks[node.id] = mask;
+    }
+    _offers = (
+      graph: _state.graph,
+      from: from,
+      characters: widget.facts.characters,
+      masks: masks,
     );
+    return masks;
   }
 }

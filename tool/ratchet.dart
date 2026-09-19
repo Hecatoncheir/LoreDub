@@ -36,7 +36,7 @@ void main(List<String> arguments) {
     return;
   }
   if (update) {
-    final merged = {...baseline, ...counts};
+    final merged = {for (final verdict in verdicts) verdict.name: verdict.count};
     final sorted = {for (final name in merged.keys.toList()..sort()) name: merged[name]};
     baselineFile.writeAsStringSync('${const JsonEncoder.withIndent('  ').convert(sorted)}\n');
     stdout.writeln('Baseline written.');
@@ -101,9 +101,15 @@ class RatchetVerdict {
   }
 }
 
+/// A verdict for every count found and for every one the baseline holds. A
+/// rule nothing breaks any more is absent from the metrics rather than
+/// counted as zero, and passed over it would keep its old allowance: the
+/// count could climb back to it unnoticed.
 List<RatchetVerdict> compareToBaseline(Map<String, int> counts, Map<String, int> baseline) => [
   for (final MapEntry(key: name, value: count) in counts.entries)
     RatchetVerdict(name, count, baseline[name]),
+  for (final MapEntry(key: name, value: allowed) in baseline.entries)
+    if (!counts.containsKey(name)) RatchetVerdict(name, 0, allowed),
 ];
 
 Map<String, String> _sources(Directory root) => {
