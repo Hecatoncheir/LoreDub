@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'directory_removal.dart';
+
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
@@ -72,7 +74,7 @@ class VoiceBankService {
   Future<void> clear() async {
     final root = await _root();
     try {
-      if (await root.exists()) await root.delete(recursive: true);
+      await deleteDirectory(root);
     } on FileSystemException catch (error) {
       throw LoreDubFailure(
         FailureCode.voiceBankClearFailed,

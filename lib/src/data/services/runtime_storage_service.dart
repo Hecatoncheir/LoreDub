@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'directory_removal.dart';
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
@@ -420,9 +422,7 @@ class RuntimeStorageService {
   Future<Directory> _downloadsFor(RuntimePackage package) async =>
       Directory(path.join((await rootDirectory()).path, '.downloads', package.id));
 
-  static Future<void> _deleteIfExists(Directory directory) async {
-    if (await directory.exists()) await directory.delete(recursive: true);
-  }
+  static Future<void> _deleteIfExists(Directory directory) => deleteDirectory(directory);
 
   /// The last lines pip printed. It writes its whole resolution before the
   /// error, and the reason is always at the end.

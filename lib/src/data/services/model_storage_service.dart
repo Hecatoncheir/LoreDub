@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'directory_removal.dart';
+
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -68,7 +70,7 @@ class ModelStorageService {
   Future<void> remove(ModelPackage model) async {
     final directory = await modelDirectory(model);
     try {
-      if (await directory.exists()) await directory.delete(recursive: true);
+      await deleteDirectory(directory);
     } on FileSystemException catch (error) {
       throw LoreDubFailure(
         FailureCode.modelRemoveFailed,
