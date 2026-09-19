@@ -95,8 +95,23 @@ LD_API int32_t ld_set_paused(int32_t paused);
 // ("failed":true when that window was nowhere under the rectangle). A
 // frameProcessId of zero measures the frame against the virtual screen
 // instead, which is what ld_start reads when its ocrSource is "screen".
+// A frameOverlayKey press sends {"type":"hotkey","action":"frameOverlay"}
+// and draws nothing itself: whether the frame is shown is the application's
+// to decide, and it answers with ld_show_frame or ld_hide_frame.
 // Null or an empty string unregisters them; ld_stop does too.
 LD_API int32_t ld_set_hotkeys(const char* config_json);
+
+// Draws the subtitle frame over the running game, so the player can see
+// where their words are read from. The config names the game and the frame:
+// {"processId":1234,"ocrRegionLeft":0.0,"ocrRegionTop":0.55,
+//  "ocrRegionRight":1.0,"ocrRegionBottom":1.0}. A processId of zero measures
+// it against the virtual screen, as ld_start does with ocrSource "screen".
+// Called again it moves the frame rather than drawing a second one. Over a
+// window the frame is shown only while that window is the one in front.
+LD_API int32_t ld_show_frame(const char* config_json);
+
+// Takes that frame off the screen. Drawing nothing is no error.
+LD_API int32_t ld_hide_frame(void);
 
 // Pops one UTF-8 JSON event. Returns 0 when the queue is empty, a positive
 // byte count on success/required capacity, or a negative error code.

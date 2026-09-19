@@ -371,6 +371,7 @@ class _SlowEngine extends NativeEngineService {
     Hotkey? resume,
     Hotkey? snapshot,
     Hotkey? frame,
+    Hotkey? frameOverlay,
     int frameOf = 0,
     String textLanguage = 'en',
   }) {

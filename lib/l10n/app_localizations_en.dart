@@ -723,6 +723,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hotkeySnapshot => 'Select an area';
 
   @override
+  String get showFrameOverlay => 'Show the frame over the game';
+
+  @override
+  String get hotkeyFrameOverlay => 'Show the frame';
+
+  @override
   String get hotkeyFrame => 'Subtitle frame';
 
   @override

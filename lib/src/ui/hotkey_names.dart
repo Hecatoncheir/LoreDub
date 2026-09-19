@@ -10,6 +10,7 @@ String hotkeyActionName(AppLocalizations l10n, HotkeyAction action) => switch (a
   HotkeyAction.resume => l10n.hotkeyResume,
   HotkeyAction.snapshot => l10n.hotkeySnapshot,
   HotkeyAction.frame => l10n.hotkeyFrame,
+  HotkeyAction.frameOverlay => l10n.hotkeyFrameOverlay,
 };
 
 /// Why a combination cannot be bound, in the interface language.

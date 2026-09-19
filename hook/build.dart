@@ -14,6 +14,7 @@ Future<void> main(List<String> arguments) async {
       assetName: 'src/native/lore_dub_native.g.dart',
       sources: const [
         'native/audio_decoder.cpp',
+        'native/frame_overlay.cpp',
         'native/lore_dub_native.cpp',
         'native/process_loopback_capture.cpp',
         'native/ocr_capture.cpp',

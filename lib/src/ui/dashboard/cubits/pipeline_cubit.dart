@@ -275,8 +275,11 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     emit(state.copyWith(processes: processes));
   }
 
-  void selectProcess(GameProcess? value) =>
-      emit(state.copyWith(selectedProcess: value, clearSelectedProcess: value == null));
+  void selectProcess(GameProcess? value) {
+    emit(state.copyWith(selectedProcess: value, clearSelectedProcess: value == null));
+    // The frame is drawn over the game, so choosing another one moves it.
+    followFrameOverlay();
+  }
 
   Future<void> refreshProcesses() async {
     final processes = await _appRepository.listProcesses();
@@ -569,6 +572,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     );
     // The worker has written its last voices by now.
     unawaited(_settings.refreshVoiceBank());
+    // The stop dropped every key the session held, the one that shows
+    // the frame among them: it is the player's, not the session's.
+    followFrameOverlay();
   }
 
   /// Rests a listening session without tearing it down: the models stay
@@ -787,9 +793,46 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         unawaited(pause());
       case HotkeyAction.resume:
         unawaited(resume());
+      case HotkeyAction.frameOverlay:
+        unawaited(_toggleFrameOverlay());
       // Held rather than pressed: the native side answers them itself.
       case HotkeyAction.snapshot || HotkeyAction.frame || null:
         break;
+    }
+  }
+
+  /// Shows the frame over the game or takes it off, which is what the key
+  /// for it asks for. It is a setting rather than a session's state: the
+  /// switch on the Screen page and the key are two ways to the same thing.
+  Future<void> _toggleFrameOverlay() async {
+    final settings = _settings.settings;
+    await _settings.update(settings.copyWith(showFrameOverlay: !settings.showFrameOverlay));
+  }
+
+  /// Puts what is drawn over the game in step with the settings: the frame
+  /// where the reading will look, over the game that was chosen, and the
+  /// key that shows and hides it registered while nothing else holds the
+  /// keys.
+  ///
+  /// Called whenever any of those change -- a setting written, a game
+  /// chosen, a session started or ended -- rather than watched from here:
+  /// one cubit listening to another is what this project keeps out.
+  void followFrameOverlay() {
+    final settings = _settings.settings;
+    final processId = settings.readsWholeScreen ? 0 : state.selectedProcess?.pid ?? 0;
+    // Over a window there has to be a window: with no game named there is
+    // nothing to draw the frame on.
+    final drawable = settings.readsWholeScreen || processId != 0;
+    try {
+      if (settings.showFrameOverlay && drawable) {
+        _appRepository.showFrameOverlay(processId: processId, region: settings.ocrRegion);
+      } else {
+        _appRepository.hideFrameOverlay();
+      }
+      // A running session registered the keys itself, its own among them.
+      if (!state.running) _appRepository.setIdleHotkeys(settings);
+    } catch (exception) {
+      _errors.report(exception);
     }
   }
 

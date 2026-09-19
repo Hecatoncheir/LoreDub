@@ -729,6 +729,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hotkeySnapshot => 'Выделение области';
 
   @override
+  String get showFrameOverlay => 'Отображать рамку';
+
+  @override
+  String get hotkeyFrameOverlay => 'Показать рамку';
+
+  @override
   String get hotkeyFrame => 'Рамка субтитров';
 
   @override

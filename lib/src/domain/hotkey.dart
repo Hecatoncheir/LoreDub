@@ -7,7 +7,12 @@ enum HotkeyAction {
   pause,
   resume,
   snapshot,
-  frame;
+  frame,
+
+  /// Shows the subtitle frame over the game, or takes it off again. It is
+  /// the one key that answers while nothing is running: the frame is the
+  /// player's own view of where their words are read from.
+  frameOverlay;
 
   /// The action an event names, or null for one this build does not know.
   static HotkeyAction? named(Object? name) => values.asNameMap()[name];
@@ -35,6 +40,12 @@ class Hotkey {
   /// Held as well, and over the running game: what is drawn becomes the
   /// subtitle frame, and the reading goes on inside it.
   static const defaultFrame = Hotkey(keyCode: 0x46, label: 'F', control: true, alt: true);
+  static const defaultFrameOverlay = Hotkey(
+    keyCode: 0x44,
+    label: 'D',
+    control: true,
+    alt: true,
+  );
 
   /// The Windows virtual-key code of the main key.
   final int keyCode;

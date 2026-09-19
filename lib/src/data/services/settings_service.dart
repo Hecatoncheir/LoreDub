@@ -124,6 +124,12 @@ class SettingsService {
       resumeHotkey: _readHotkey(preferences, 'resumeHotkey', Hotkey.defaultResume),
       snapshotHotkey: _readHotkey(preferences, 'snapshotHotkey', Hotkey.defaultSnapshot),
       frameHotkey: _readHotkey(preferences, 'frameHotkey', Hotkey.defaultFrame),
+      frameOverlayHotkey: _readHotkey(
+        preferences,
+        'frameOverlayHotkey',
+        Hotkey.defaultFrameOverlay,
+      ),
+      showFrameOverlay: preferences.getBool('showFrameOverlay') ?? false,
       computeDevice: ComputeDevice.values.firstWhere(
         (device) => device.name == preferences.getString('computeDevice'),
         orElse: () => ComputeDevice.auto,
@@ -176,6 +182,11 @@ class SettingsService {
       preferences.setString('resumeHotkey', settings.resumeHotkey?.encode() ?? ''),
       preferences.setString('snapshotHotkey', settings.snapshotHotkey?.encode() ?? ''),
       preferences.setString('frameHotkey', settings.frameHotkey?.encode() ?? ''),
+      preferences.setString(
+        'frameOverlayHotkey',
+        settings.frameOverlayHotkey?.encode() ?? '',
+      ),
+      preferences.setBool('showFrameOverlay', settings.showFrameOverlay),
       preferences.setString('computeDevice', settings.computeDevice.name),
       _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
       _writeBackend(preferences, 'translationBackend', settings.translationBackend),

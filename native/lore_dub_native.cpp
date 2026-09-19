@@ -3,6 +3,7 @@
 
 #include "lore_dub_native.h"
 #include "audio_decoder.h"
+#include "frame_overlay.h"
 #include "ocr_capture.h"
 #include "process_loopback_capture.h"
 #include "snapshot_overlay.h"
@@ -407,8 +408,11 @@ constexpr int kPauseHotkey = 1;
 constexpr int kResumeHotkey = 2;
 constexpr int kSnapshotHotkey = 3;
 constexpr int kFrameHotkey = 4;
+constexpr int kFrameOverlayHotkey = 5;
 
 struct HotkeyConfig {
+  uint32_t frame_overlay_key = 0;
+  uint32_t frame_overlay_modifiers = 0;
   uint32_t pause_key = 0;
   uint32_t pause_modifiers = 0;
   uint32_t resume_key = 0;
@@ -449,6 +453,11 @@ bool RegisterAction(int id, uint32_t key, uint32_t modifiers, const char* action
 void PushHotkeyPress(uintptr_t id) {
   if (id == kPauseHotkey) PushEvent("{\"type\":\"hotkey\",\"action\":\"pause\"}");
   if (id == kResumeHotkey) PushEvent("{\"type\":\"hotkey\",\"action\":\"resume\"}");
+  // The frame is drawn on the application's say-so, not the key's: it knows
+  // whether the player asked for one and over which game.
+  if (id == kFrameOverlayHotkey) {
+    PushEvent("{\"type\":\"hotkey\",\"action\":\"frameOverlay\"}");
+  }
 }
 
 // Lets the player select an area while the snapshot key is held, then reads
@@ -520,6 +529,8 @@ void HotkeyLoop(HotkeyConfig config, std::promise<void>* ready) {
       RegisterAction(kSnapshotHotkey, config.snapshot_key, config.snapshot_modifiers, "snapshot");
   const bool frame_ok =
       RegisterAction(kFrameHotkey, config.frame_key, config.frame_modifiers, "frame");
+  const bool overlay_ok = RegisterAction(kFrameOverlayHotkey, config.frame_overlay_key,
+                                         config.frame_overlay_modifiers, "frameOverlay");
   ready->set_value();
   while (GetMessageW(&message, nullptr, 0, 0) > 0) {
     if (message.message != WM_HOTKEY) continue;
@@ -537,6 +548,7 @@ void HotkeyLoop(HotkeyConfig config, std::promise<void>* ready) {
   if (resume_ok) UnregisterHotKey(nullptr, kResumeHotkey);
   if (snapshot_ok) UnregisterHotKey(nullptr, kSnapshotHotkey);
   if (frame_ok) UnregisterHotKey(nullptr, kFrameHotkey);
+  if (overlay_ok) UnregisterHotKey(nullptr, kFrameOverlayHotkey);
 }
 
 void StopHotkeys() {
@@ -571,12 +583,48 @@ int32_t ld_set_paused(int32_t value) {
   return 0;
 }
 
+#if defined(_WIN32)
+namespace {
+
+// The frame drawn over the game, which outlives a session: the player asks
+// for it on the Screen page and it stays until they say otherwise.
+FrameOverlay frame_overlay;
+
+}  // namespace
+#endif
+
+int32_t ld_show_frame(const char* config_json) {
+#if defined(_WIN32)
+  if (config_json == nullptr || config_json[0] == '\0') return -4;
+  const std::string config(config_json);
+  const OcrRegion region{JsonDouble(config, "ocrRegionLeft", 0.0),
+                         JsonDouble(config, "ocrRegionTop", 0.55),
+                         JsonDouble(config, "ocrRegionRight", 1.0),
+                         JsonDouble(config, "ocrRegionBottom", 1.0)};
+  return frame_overlay.Show(JsonUnsigned(config, "processId"), region) ? 0 : -8;
+#else
+  (void)config_json;
+  return -2;
+#endif
+}
+
+int32_t ld_hide_frame(void) {
+#if defined(_WIN32)
+  frame_overlay.Hide();
+  return 0;
+#else
+  return -2;
+#endif
+}
+
 int32_t ld_set_hotkeys(const char* config_json) {
 #if defined(_WIN32)
   StopHotkeys();
   if (config_json == nullptr || config_json[0] == '\0') return 0;
   const std::string config(config_json);
-  HotkeyConfig hotkeys{JsonUnsigned(config, "pauseKey"),
+  HotkeyConfig hotkeys{JsonUnsigned(config, "frameOverlayKey"),
+                       JsonUnsigned(config, "frameOverlayModifiers"),
+                       JsonUnsigned(config, "pauseKey"),
                        JsonUnsigned(config, "pauseModifiers"),
                        JsonUnsigned(config, "resumeKey"),
                        JsonUnsigned(config, "resumeModifiers"),
@@ -589,7 +637,7 @@ int32_t ld_set_hotkeys(const char* config_json) {
     hotkeys.snapshot_language = language;
   }
   if (hotkeys.pause_key == 0 && hotkeys.resume_key == 0 && hotkeys.snapshot_key == 0 &&
-      hotkeys.frame_key == 0) {
+      hotkeys.frame_key == 0 && hotkeys.frame_overlay_key == 0) {
     return 0;
   }
   std::lock_guard<std::mutex> lock(hotkey_mutex);

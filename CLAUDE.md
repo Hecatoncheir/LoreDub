@@ -615,6 +615,26 @@ the snapshot key only where a snippet is). A reading without the frame
 registers no frame key either -- there is none to redraw. Live dubbing
 registers the snapshot key as well.
 
+`AppSettings.showFrameOverlay` draws that frame over the running game and
+leaves it there: aiming it is most of what it is for, so it is shown whether
+a session runs or not. `FrameOverlay` (`native/frame_overlay.cpp`) is a
+click-through layered window of its own, always on top and never taking the
+focus, that follows the game's client area on a 120 ms timer
+(`AreaOfRegion`) and hides itself whenever that window is not the one in
+front -- which is when the reading looks away too; over the whole screen it
+is always shown. It is started and moved by `ld_show_frame(config)` and
+taken off by `ld_hide_frame()`, both outside `ld_start`, so no session owns
+it. `AppSettings.frameOverlayHotkey` shows and hides it from inside the
+game: the key draws nothing itself, it arrives as
+`{"type":"hotkey","action":"frameOverlay"}` and `PipelineCubit` answers by
+flipping the setting, since whether there is a frame to draw and over which
+game is the application's to know. `PipelineCubit.followFrameOverlay` is the
+one place that keeps the drawing in step -- with the settings (through
+`SettingsCubit.onChanged`, wired in `DashboardCubits`), with the game chosen
+and with a session ending -- and it registers that one key through
+`AppRepository.setIdleHotkeys` while nothing else holds the keys, `ld_stop`
+having dropped them.
+
 A second held key draws that frame over the running game rather than over a
 picture of it: `frameKey`/`frameModifiers` with `frameProcessId`, the same
 `SelectScreenArea` overlay, and then `RegionOfWindow` turning what was drawn

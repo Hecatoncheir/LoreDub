@@ -345,6 +345,45 @@ bool RegionOfWindow(uint32_t process_id, ScreenArea area, OcrRegion* region) {
 #endif
 }
 
+bool AreaOfRegion(uint32_t process_id, const OcrRegion& region, ScreenArea* area) {
+#if !defined(_WIN32)
+  (void)process_id;
+  (void)region;
+  (void)area;
+  return false;
+#else
+  ScreenArea bounds = VirtualScreen();
+  if (process_id != 0) {
+    const HWND window = FindProcessWindow(process_id);
+    if (window == nullptr) return false;
+    RECT client{};
+    if (!GetClientRect(window, &client)) return false;
+    POINT origin{0, 0};
+    if (!ClientToScreen(window, &origin)) return false;
+    bounds = ScreenArea{origin.x, origin.y, origin.x + client.right,
+                        origin.y + client.bottom};
+  }
+  const int width = bounds.right - bounds.left;
+  const int height = bounds.bottom - bounds.top;
+  if (width <= 0 || height <= 0) return false;
+  *area = ScreenArea{bounds.left + static_cast<int>(width * region.left),
+                     bounds.top + static_cast<int>(height * region.top),
+                     bounds.left + static_cast<int>(width * region.right),
+                     bounds.top + static_cast<int>(height * region.bottom)};
+  return area->right > area->left && area->bottom > area->top;
+#endif
+}
+
+bool WindowIsInFront(uint32_t process_id) {
+#if !defined(_WIN32)
+  (void)process_id;
+  return false;
+#else
+  const HWND window = FindProcessWindow(process_id);
+  return window != nullptr && window == GetForegroundWindow();
+#endif
+}
+
 OcrCapture::OcrCapture() = default;
 OcrCapture::~OcrCapture() { Stop(); }
 

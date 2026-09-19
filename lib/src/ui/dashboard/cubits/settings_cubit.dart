@@ -61,8 +61,15 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   AppSettings get settings => state.settings;
 
+  /// Told after every write, so what is drawn over the game -- the subtitle
+  /// frame -- follows the settings it is made of. Wired by
+  /// `DashboardCubits`: a cubit listening to another cubit is what this
+  /// project keeps out.
+  void Function()? onChanged;
+
   Future<void> load() async {
     emit(state.copyWith(settings: await _appRepository.loadSettings()));
+    onChanged?.call();
     await refreshVoiceBank();
   }
 
@@ -89,6 +96,7 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   Future<void> update(AppSettings value) async {
     emit(state.copyWith(settings: value));
+    onChanged?.call();
     await _appRepository.saveSettings(value);
   }
 

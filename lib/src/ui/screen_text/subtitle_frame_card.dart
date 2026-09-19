@@ -77,6 +77,22 @@ class SubtitleFrameCard extends StatelessWidget {
                 ),
               ],
             ),
+            // Where it is read from, shown over the game itself rather
+            // than on a picture of it: aiming the frame is most of what it
+            // is for, so it is drawn whether a session runs or not.
+            Row(
+              children: [
+                Switch(
+                  key: const ValueKey('showFrameOverlay'),
+                  value: settings.showFrameOverlay,
+                  onChanged: (value) => context.read<SettingsCubit>().update(
+                    settings.copyWith(showFrameOverlay: value),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(child: Text(l10n.showFrameOverlay)),
+              ],
+            ),
             const SizedBox(height: 6),
             // Drawn here before the game starts, or over the game itself
             // once it has: the same frame either way.

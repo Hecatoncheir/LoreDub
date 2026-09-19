@@ -33,6 +33,10 @@ external ffi.Pointer<ffi.Char> ld_error_message(
 );
 
 @meta.RecordUse()
+@ffi.Native<ffi.Int32 Function()>()
+external int ld_hide_frame();
+
+@meta.RecordUse()
 @ffi.Native<ffi.Int32 Function(ffi.Int32)>()
 external int ld_hold_take(
   int holding,
@@ -90,6 +94,12 @@ external int ld_set_paused(
 external int ld_set_process_volume(
   int process_id,
   double volume,
+);
+
+@meta.RecordUse()
+@ffi.Native<ffi.Int32 Function(ffi.Pointer<ffi.Char>)>()
+external int ld_show_frame(
+  ffi.Pointer<ffi.Char> config_json,
 );
 
 @meta.RecordUse()

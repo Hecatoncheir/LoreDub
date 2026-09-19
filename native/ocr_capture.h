@@ -50,6 +50,16 @@ bool RegionOfWindow(uint32_t process_id, ScreenArea area, OcrRegion* region);
 // every monitor together. False when the rectangle came to nothing.
 bool RegionOfScreen(ScreenArea area, OcrRegion* region);
 
+// The other way round: where [region] falls on the screen right now, inside
+// [process_id]'s client area -- or on the virtual screen, when that is
+// zero. False when the window is nowhere to be found. This is what draws
+// the frame over the game, and it measures it the way the reading does.
+bool AreaOfRegion(uint32_t process_id, const OcrRegion& region, ScreenArea* area);
+
+// Whether [process_id]'s window is the one in front, which is the only time
+// its frame is read -- and so the only time it is worth drawing.
+bool WindowIsInFront(uint32_t process_id);
+
 class OcrCapture {
  public:
   using TextCallback = std::function<void(const std::string&)>;

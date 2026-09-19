@@ -30,6 +30,7 @@ class AppSettings {
     this.originalVolume = 0.18,
     this.duckWhileSpeaking = true,
     this.silenceWhileReading = false,
+    this.showFrameOverlay = false,
     this.hurryWhenQueued = true,
     this.roughRecognition = false,
     this.ttsSpeed = 1.12,
@@ -55,6 +56,7 @@ class AppSettings {
     this.resumeHotkey = Hotkey.defaultResume,
     this.snapshotHotkey = Hotkey.defaultSnapshot,
     this.frameHotkey = Hotkey.defaultFrame,
+    this.frameOverlayHotkey = Hotkey.defaultFrameOverlay,
     this.computeDevice = ComputeDevice.auto,
     this.recognitionBackend,
     this.translationBackend,
@@ -86,6 +88,12 @@ class AppSettings {
   /// dubbing is reading at the same moment. Live dubbing has its ear in the
   /// game's own sound and is held above [audibleDuck] whatever is set here.
   final bool silenceWhileReading;
+
+  /// Whether the subtitle frame is drawn over the game itself, so the
+  /// player can see where their words are read from without looking away
+  /// from it. It outlives a session: what it shows is where the next one
+  /// will read, and aiming the frame is most of what it is for.
+  final bool showFrameOverlay;
 
   /// Whether a line is read faster while others are already waiting for the
   /// voice. Off, every line is read at the pace the player set, and a queue
@@ -241,6 +249,10 @@ class AppSettings {
   /// actually writes, instead of guessing at it on a picture of the screen.
   final Hotkey? frameHotkey;
 
+  /// Pressed to show the frame over the game or take it off again, without
+  /// leaving the game to find the switch.
+  final Hotkey? frameOverlayHotkey;
+
   VoiceMode get voiceMode => originalVoice
       ? VoiceMode.original
       : automaticVoice
@@ -255,6 +267,7 @@ class AppSettings {
     HotkeyAction.resume => resumeHotkey,
     HotkeyAction.snapshot => snapshotHotkey,
     HotkeyAction.frame => frameHotkey,
+    HotkeyAction.frameOverlay => frameOverlayHotkey,
   };
 
   /// These settings with [action] bound to [hotkey], or unbound for null.
@@ -266,6 +279,10 @@ class AppSettings {
       clearSnapshotHotkey: hotkey == null,
     ),
     HotkeyAction.frame => copyWith(frameHotkey: hotkey, clearFrameHotkey: hotkey == null),
+    HotkeyAction.frameOverlay => copyWith(
+      frameOverlayHotkey: hotkey,
+      clearFrameOverlayHotkey: hotkey == null,
+    ),
   };
 
   AppSettings withVoiceMode(VoiceMode mode) => switch (mode) {
@@ -341,6 +358,7 @@ class AppSettings {
     double? originalVolume,
     bool? duckWhileSpeaking,
     bool? silenceWhileReading,
+    bool? showFrameOverlay,
     bool? hurryWhenQueued,
     bool? roughRecognition,
     double? ttsSpeed,
@@ -370,6 +388,8 @@ class AppSettings {
     bool clearSnapshotHotkey = false,
     Hotkey? frameHotkey,
     bool clearFrameHotkey = false,
+    Hotkey? frameOverlayHotkey,
+    bool clearFrameOverlayHotkey = false,
     ComputeDevice? computeDevice,
     ComputeBackend? recognitionBackend,
     ComputeBackend? translationBackend,
@@ -382,6 +402,7 @@ class AppSettings {
     originalVolume: originalVolume ?? this.originalVolume,
     duckWhileSpeaking: duckWhileSpeaking ?? this.duckWhileSpeaking,
     silenceWhileReading: silenceWhileReading ?? this.silenceWhileReading,
+    showFrameOverlay: showFrameOverlay ?? this.showFrameOverlay,
     hurryWhenQueued: hurryWhenQueued ?? this.hurryWhenQueued,
     roughRecognition: roughRecognition ?? this.roughRecognition,
     ttsSpeed: ttsSpeed ?? this.ttsSpeed,
@@ -407,6 +428,9 @@ class AppSettings {
     resumeHotkey: clearResumeHotkey ? null : resumeHotkey ?? this.resumeHotkey,
     snapshotHotkey: clearSnapshotHotkey ? null : snapshotHotkey ?? this.snapshotHotkey,
     frameHotkey: clearFrameHotkey ? null : frameHotkey ?? this.frameHotkey,
+    frameOverlayHotkey: clearFrameOverlayHotkey
+        ? null
+        : frameOverlayHotkey ?? this.frameOverlayHotkey,
     computeDevice: computeDevice ?? this.computeDevice,
     recognitionBackend: clearBackendOverrides
         ? null

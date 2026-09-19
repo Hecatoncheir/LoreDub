@@ -731,6 +731,7 @@ class NativeEngineService {
     Hotkey? resume,
     Hotkey? snapshot,
     Hotkey? frame,
+    Hotkey? frameOverlay,
     int frameOf = 0,
     String textLanguage = 'en',
   }) {
@@ -745,6 +746,11 @@ class NativeEngineService {
       'frameKey': frame?.keyCode ?? 0,
       'frameModifiers': frame?.modifiers ?? 0,
       'frameProcessId': frameOf,
+      // The key that shows and hides the frame draws nothing itself: it
+      // arrives as an event, and the application answers with showFrame or
+      // hideFrame, knowing what the player asked for and over which game.
+      'frameOverlayKey': frameOverlay?.keyCode ?? 0,
+      'frameOverlayModifiers': frameOverlay?.modifiers ?? 0,
     }).toNativeUtf8();
     try {
       _throwIfError(ld_set_hotkeys(config.cast()));
@@ -752,6 +758,27 @@ class NativeEngineService {
       malloc.free(config);
     }
   }
+
+  /// Draws the subtitle frame over the running game, or moves one already
+  /// drawn. [processId] of zero measures it against the whole screen, as
+  /// reading the screen does.
+  void showFrame({required int processId, required OcrRegion region}) {
+    final config = jsonEncode({
+      'processId': processId,
+      'ocrRegionLeft': region.left,
+      'ocrRegionTop': region.top,
+      'ocrRegionRight': region.right,
+      'ocrRegionBottom': region.bottom,
+    }).toNativeUtf8();
+    try {
+      _throwIfError(ld_show_frame(config.cast()));
+    } finally {
+      malloc.free(config);
+    }
+  }
+
+  /// Takes that frame off the screen. Drawing nothing is no error.
+  void hideFrame() => _throwIfError(ld_hide_frame());
 
   /// Takes what the native side has gathered since the last tick — at most a
   /// handful, so one slow turn cannot hold the interface — and gives each

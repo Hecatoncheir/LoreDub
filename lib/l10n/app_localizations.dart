@@ -1281,6 +1281,18 @@ abstract class AppLocalizations {
   /// **'Выделение области'**
   String get hotkeySnapshot;
 
+  /// No description provided for @showFrameOverlay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отображать рамку'**
+  String get showFrameOverlay;
+
+  /// No description provided for @hotkeyFrameOverlay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать рамку'**
+  String get hotkeyFrameOverlay;
+
   /// No description provided for @hotkeyFrame.
   ///
   /// In ru, this message translates to:

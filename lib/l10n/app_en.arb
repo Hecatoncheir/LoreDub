@@ -370,6 +370,8 @@
   "hotkeyPause": "Pause",
   "hotkeyResume": "Resume",
   "hotkeySnapshot": "Select an area",
+  "showFrameOverlay": "Show the frame over the game",
+  "hotkeyFrameOverlay": "Show the frame",
   "hotkeyFrame": "Subtitle frame",
   "frameHowTo": "The frame can be redrawn during the game: hold {hotkey}, draw around the place the subtitles are written and let go — the selection disappears and the reading goes on inside the new frame.",
   "@frameHowTo": {

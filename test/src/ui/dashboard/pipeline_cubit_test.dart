@@ -93,6 +93,9 @@ void main() {
       cubits.shell,
       clock: () => now,
     );
+    // The cubit under test stands in for the bag's own, so what the
+    // settings tell about the frame over the game reaches this one.
+    cubits.settings.onChanged = pipeline.followFrameOverlay;
   });
 
   tearDown(() async {
@@ -240,6 +243,60 @@ void main() {
 
     expect(pipeline.state.status, PipelineStatus.idle);
     expect(repository.stops, 1);
+  });
+
+  group('the frame drawn over the game', () {
+    test('follows the switch, the game and the region', () async {
+      const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
+      pipeline.selectProcess(game);
+      expect(repository.framesDrawn, [null], reason: 'nothing was asked for yet');
+
+      await cubits.settings.update(
+        const AppSettings(showFrameOverlay: true, ocrRegion: OcrRegion(top: 0.8)),
+      );
+
+      expect(repository.framesDrawn.last?.processId, 4242);
+      expect(repository.framesDrawn.last?.region.top, 0.8);
+      expect(
+        repository.idleKeys.last,
+        Hotkey.defaultFrameOverlay,
+        reason: 'the key that hides it answers while nothing runs',
+      );
+    });
+
+    test('is drawn over the whole screen where that is what is read', () async {
+      await cubits.settings.update(
+        const AppSettings(showFrameOverlay: true, screenSource: ScreenSource.wholeScreen),
+      );
+
+      expect(repository.framesDrawn.last?.processId, 0, reason: 'no window to measure against');
+    });
+
+    test('is taken off with the switch, and its key with it', () async {
+      const game = GameProcess(pid: 7, name: 'game.exe', path: 'game.exe');
+      pipeline.selectProcess(game);
+      await cubits.settings.update(const AppSettings(showFrameOverlay: true));
+
+      await cubits.settings.update(const AppSettings());
+
+      expect(repository.framesDrawn.last, isNull);
+      expect(repository.idleKeys.last, isNull);
+    });
+
+    test('its key shows it and takes it off again', () async {
+      pipeline
+        ..listen()
+        ..selectProcess(const GameProcess(pid: 9, name: 'game.exe', path: 'game.exe'));
+
+      repository.push({'type': 'hotkey', 'action': 'frameOverlay'});
+      await settle();
+      expect(cubits.settings.settings.showFrameOverlay, isTrue);
+
+      repository.push({'type': 'hotkey', 'action': 'frameOverlay'});
+      await settle();
+      expect(cubits.settings.settings.showFrameOverlay, isFalse);
+      expect(repository.framesDrawn.last, isNull);
+    });
   });
 
   group('the screen session', () {
@@ -544,6 +601,25 @@ class _SlowStartRepository extends AppRepository {
 
   /// What each screen session was asked to read.
   final screenReadings = <ScreenReading>[];
+
+  /// What was drawn over the game, in order: a pair for every frame shown
+  /// and null for every one taken off.
+  final framesDrawn = <({int processId, OcrRegion region})?>[];
+
+  /// The keys registered while nothing runs.
+  final idleKeys = <Hotkey?>[];
+
+  @override
+  void showFrameOverlay({required int processId, required OcrRegion region}) =>
+      framesDrawn.add((processId: processId, region: region));
+
+  @override
+  void hideFrameOverlay() => framesDrawn.add(null);
+
+  @override
+  void setIdleHotkeys(AppSettings settings) => idleKeys.add(
+    settings.showFrameOverlay ? settings.frameOverlayHotkey : null,
+  );
   Map<String, String> snapshotModels = const {};
 
   void push(Map<String, Object?> event) => _events.add(event);

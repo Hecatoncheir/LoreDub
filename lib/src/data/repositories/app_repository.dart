@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../domain/ocr_region.dart';
 import '../../domain/screen_reading.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/built_voice.dart';
@@ -257,6 +258,7 @@ class AppRepository {
         pause: settings.pauseHotkey,
         resume: settings.resumeHotkey,
         snapshot: settings.snapshotHotkey,
+        frameOverlay: settings.frameOverlayHotkey,
         textLanguage: settings.textLanguage,
       );
     } catch (_) {
@@ -329,6 +331,7 @@ class AppRepository {
         // given, or -- with no process to name -- the screen itself. A
         // session reading no frame has none to redraw.
         frame: reading.readsSubtitles ? settings.frameHotkey : null,
+        frameOverlay: settings.frameOverlayHotkey,
         frameOf: settings.readsWholeScreen ? 0 : process?.pid ?? 0,
         textLanguage: settings.textLanguage,
       );
@@ -337,6 +340,24 @@ class AppRepository {
       rethrow;
     }
   }
+
+  /// Draws the subtitle frame over the game, or moves one already drawn.
+  /// [processId] of zero measures it against the whole screen.
+  void showFrameOverlay({required int processId, required OcrRegion region}) =>
+      _nativeEngine.showFrame(processId: processId, region: region);
+
+  /// Takes that frame off the screen.
+  void hideFrameOverlay() => _nativeEngine.hideFrame();
+
+  /// Registers the one key that answers while nothing is running: the frame
+  /// over the game is the player's own and outlives a session, so the key
+  /// that shows and hides it has to outlive one too. The session's own
+  /// start registers the rest, and `ld_stop` drops the lot, which is why
+  /// this is asked for again once a session ends.
+  void setIdleHotkeys(AppSettings settings) => _nativeEngine.setHotkeys(
+    frameOverlay: settings.showFrameOverlay ? settings.frameOverlayHotkey : null,
+    textLanguage: settings.textLanguage,
+  );
 
   /// Turns the game down for the screen session. Nothing here listens to the
   /// game's sound, so this one may silence it outright.

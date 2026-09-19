@@ -44,6 +44,9 @@ class DashboardCubits {
     // measured from files — lands on a worker that is dubbing.
     pipeline.releaseWorker = characters.stopSession;
     characters.dubbingHoldsWorker = () => pipeline.state.running;
+    // The frame over the game is made of the settings and the game chosen,
+    // and neither cubit owns both.
+    settings.onChanged = pipeline.followFrameOverlay;
     shell.interfaceLanguage = () => settings.settings.interfaceLanguage;
     shell.proxyUrl = () => settings.settings.modelProxyUrl;
     // Closing for an update must not leave the game turned down, or the

@@ -22,6 +22,8 @@ Future<void> main() async {
     'ld_set_paused',
     'ld_hold_take',
     'ld_set_hotkeys',
+    'ld_show_frame',
+    'ld_hide_frame',
     'ld_poll_event_json',
     'ld_error_message',
   };
