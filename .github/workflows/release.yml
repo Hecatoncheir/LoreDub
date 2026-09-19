@@ -3,7 +3,9 @@ name: Windows release
 on:
   push:
     tags:
-      - "v*"
+      # A version and nothing else: the models repository's tags such as
+      # voices-vosk-v1 start with a v too, and started a release of the app.
+      - "v[0-9]+.[0-9]+.[0-9]+"
 
 permissions:
   contents: read

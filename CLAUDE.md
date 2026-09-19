@@ -1023,7 +1023,7 @@ in `analysis_options.yaml`, which `flutter analyze` does not read) and the
 `--update` and committed in the same change, so it cannot creep up again.
 `.gitlab-ci.yml` runs format, analysis and tests on Linux.
 
-A `v*` tag starts `.github/workflows/release.yml`: `tool/prepare_release.dart`
+A `v<major>.<minor>.<patch>` tag (and no other tag starting with a `v`) starts `.github/workflows/release.yml`: `tool/prepare_release.dart`
 validates the tag against `pubspec.yaml` and cuts the release notes out of
 `CHANGELOG.md`, `scripts/build_setup.ps1` builds the installer, and `gh`
 publishes the release with that single `.exe`. `pubspec.yaml` version, the
