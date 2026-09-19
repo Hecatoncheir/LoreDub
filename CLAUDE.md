@@ -557,7 +557,9 @@ cards from as well) hands it the same body, head, ink and rule, and
 the one on a card of the cast is dark with that card's own head. It is
 `buildLoreDubPanelTheme` (`ui/theme.dart`) that turns a face into a theme,
 so the Material widgets standing in the panel are the same widgets in
-another colour rather than a second set of them. The panel declares that
+another colour rather than a second set of them; it keeps the theme of each
+of the four faces rather than building one per frame of a drag behind the
+panel (`test/graph_bench.dart` measures that frame as `panel`). The panel declares that
 theme and is built under it through a `Builder`, with a `Material` of its
 own: a line of text that asks for no colour is handed one by the nearest
 Material, and without those two the panel was written in the theme above
@@ -983,6 +985,15 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
 
 - Every source file starts with the `Copyright (c) 2026 LoreDub contributors.` /
   `SPDX-License-Identifier: MIT` header pair.
+- Colours and lettering are roles on the theme, reached as `context.colors`
+  and `context.textStyles` (`ui/theme/`): `LoreDubColors` and
+  `LoreDubTextStyles` are `ThemeExtension`s put on both themes -- the
+  window's and the node panel's -- so a widget of ours standing in the panel
+  is painted in that node's face without knowing it. `LoreDubPalette`
+  (`theme/tokens/palette.dart`) is the raw palette behind them and is on its
+  way out: naming it in a widget is what `tool/ratchet.dart` counts, and a
+  widget that names it cannot be repainted by the theme. A note is
+  `bodySmall`, a smaller one `labelSmall`.
 - Interface strings live in `lib/l10n/app_ru.arb` (the template) and
   `app_en.arb`; reach them with `AppLocalizations.of(context)`. Names for
   languages and model packages are resolved in `lib/src/ui/language_names.dart`

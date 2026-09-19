@@ -4,52 +4,16 @@
 import 'package:flutter/material.dart';
 
 import 'graph/node_paint.dart';
+import 'theme/tokens/lore_dub_colors.dart';
+import 'theme/tokens/lore_dub_text_styles.dart';
+import 'theme/tokens/palette.dart';
 
-/// Nunito carries the headings, its wider sibling sets the running text, and
-/// JetBrains Mono is reserved for the instrument markings — module numbers,
-/// state labels and measured times — which is where the icon's industrial
-/// character comes from.
-abstract final class LoreDubFonts {
-  static const display = 'Nunito';
-  static const body = 'Nunito Sans';
-  static const mono = 'JetBrains Mono';
-}
+export 'theme/theme_context.dart';
+export 'theme/tokens/lore_dub_colors.dart';
+export 'theme/tokens/lore_dub_text_styles.dart';
+export 'theme/tokens/palette.dart';
 
-/// How large a control is to the pointer, in logical pixels.
-///
-/// [comfortable] is what `docs/UI_DESIGN.md` promises, and what the Material
-/// buttons give by themselves. The other three are the icon buttons packed
-/// where that promise is not kept -- a tile's action band, a menu on a card
-/// of the shelf, the cross on a chip or on a card of the canvas -- and are
-/// named so that they can be found and grown together rather than one
-/// number at a time.
-abstract final class LoreDubTargets {
-  static const comfortable = 44.0;
-
-  /// The action band of a model or character tile, and a card's menu.
-  static const dense = 34.0;
-
-  /// The menu on a scheme of the shelf.
-  static const compact = 30.0;
-
-  /// The cross that takes a chip out of a pack or a card off the canvas.
-  static const cross = 26.0;
-}
-
-abstract final class LoreDubPalette {
-  static const ink = Color(0xFF171717);
-  static const graphite = Color(0xFF292927);
-  static const mutedInk = Color(0xFF65645F);
-  static const canvas = Color(0xFFD4D1CA);
-  static const panel = Color(0xFFE9E6DF);
-  static const raised = Color(0xFFF7F5F0);
-  static const outline = Color(0xFF9D9A93);
-  static const orange = Color(0xFFFF4A16);
-  static const orangeDark = Color(0xFFC92F00);
-  static const success = Color(0xFF277A52);
-  static const warning = Color(0xFF9A5A00);
-  static const error = Color(0xFFB42318);
-}
+final _lightStyles = LoreDubTextStyles.from(LoreDubColors.light);
 
 ThemeData buildLoreDubTheme() {
   const scheme = ColorScheme.light(
@@ -104,6 +68,17 @@ ThemeData buildLoreDubTheme() {
         height: 1.45,
       ),
       labelLarge: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.1),
+      // The three Material leaves out of this theme, which is why a note
+      // used to be written where it stood: the quiet half of the text, in
+      // the two sizes the interface says it in, and the smaller title a
+      // field or a row is headed with.
+      titleSmall: TextStyle(
+        color: LoreDubPalette.ink,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      bodySmall: TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+      labelSmall: TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
     ),
     dividerColor: LoreDubPalette.outline,
     cardTheme: const CardThemeData(
@@ -208,6 +183,9 @@ ThemeData buildLoreDubTheme() {
       linearTrackColor: LoreDubPalette.outline,
     ),
     focusColor: LoreDubPalette.orange.withValues(alpha: 0.22),
+    // LoreDub's own roles, which every widget of ours reads off the
+    // context rather than naming a colour by hand.
+    extensions: [LoreDubColors.light, _lightStyles],
   );
 }
 
@@ -219,8 +197,18 @@ ThemeData buildLoreDubTheme() {
 /// shapes, the faces, the spacing — is the theme's own, so what stands in
 /// the panel is the same interface in another colour rather than a second
 /// one.
-ThemeData buildLoreDubPanelTheme(NodePaint paint) {
+/// The panel theme of each face, kept: there are four faces, the panel is
+/// rebuilt on every frame of a drag behind it, and a `ThemeData` of a
+/// hundred and seventy lines is not worth building sixty times a second.
+final _panelThemes = <NodePaint, ThemeData>{};
+
+/// The window's widgets in the face of one node, for the panel that stands
+/// over the canvas.
+ThemeData buildLoreDubPanelTheme(NodePaint paint) => _panelThemes[paint] ??= _panelTheme(paint);
+
+ThemeData _panelTheme(NodePaint paint) {
   final base = buildLoreDubTheme();
+  final colors = _colorsOf(paint);
   const controlShape = RoundedRectangleBorder(
     borderRadius: BorderRadius.all(Radius.circular(8)),
   );
@@ -264,6 +252,9 @@ ThemeData buildLoreDubPanelTheme(NodePaint paint) {
         // rather than naming a colour of its own.
         .copyWith(bodySmall: base.textTheme.bodySmall?.copyWith(color: paint.muted)),
     dividerColor: paint.rule,
+    // The same roles in the face of this node, so a widget standing in the
+    // panel is the widget of the window in another colour.
+    extensions: [colors, LoreDubTextStyles.from(colors)],
     cardTheme: base.cardTheme.copyWith(
       color: paint.sunk,
       shape: RoundedRectangleBorder(
@@ -381,3 +372,16 @@ ThemeData buildLoreDubPanelTheme(NodePaint paint) {
     focusColor: paint.chosen.withValues(alpha: 0.22),
   );
 }
+
+/// A node's face as the roles the widgets of the panel read.
+LoreDubColors _colorsOf(NodePaint paint) => LoreDubColors.light.copyWith(
+  canvas: paint.body,
+  panel: paint.body,
+  raised: paint.sunk,
+  ink: paint.ink,
+  mutedInk: paint.muted,
+  outline: paint.rule,
+  accent: paint.chosen,
+  accentStrong: paint.chosen,
+  onAccent: paint.onChosen,
+);

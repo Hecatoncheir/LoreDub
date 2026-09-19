@@ -630,13 +630,31 @@ abstract final class AppTheme {
 
 ### Задачи
 
-- [ ] `theme/tokens/`: `_Palette` (приватная), `LoreDubColors`,
+- [x] `theme/tokens/`: `_Palette` (приватная), `LoreDubColors`,
       `LoreDubTextStyles`, `Insets`, `Radii`, `Breakpoints`.
+      *Сделано наполовину:* `theme/tokens/palette.dart` (примитивы —
+      `LoreDubPalette`, `LoreDubFonts`, `LoreDubTargets`; приватной палитра
+      станет, когда виджеты перестанут её звать), `lore_dub_colors.dart`
+      (`LoreDubColors` — роли, `light`, `copyWith`, `lerp`),
+      `lore_dub_text_styles.dart` (`moduleNumber`, `moduleLabel`,
+      `cardTitle`, `monoCaption`, `monoMarking`), `theme_context.dart`
+      (`context.colors`, `context.textStyles`). Обе темы — окна и панели
+      узла — несут роли; в базовой `TextTheme` заведены `bodySmall`,
+      `labelSmall`, `titleSmall`. `Insets`/`Radii`/`Breakpoints` — вместе с
+      переносом виджетов, чтобы не заводить шкалу, которой никто не
+      пользуется.
 - [ ] `AppTheme.build(LoreDubColors, Brightness)` — **одна** функция вместо
       пары `buildLoreDubTheme` / `buildLoreDubPanelTheme`. Панель узла:
       `AppTheme.build(face.asColors(), …)`, результат мемоизируется по грани
       (их четыре) — сейчас две `ThemeData` строятся на каждый кадр.
       Замерить в `graph_bench.dart` с открытым инспектором до и после.
+      *Мемоизация — сделана:* `buildLoreDubPanelTheme` держит тему каждой
+      грани (`_panelThemes`), грань переводится в роли `_colorsOf`. В
+      `graph_bench.dart` добавлена мерка `panel` — перетаскивание с открытой
+      панелью: 24,6 мс было, 23,0 стало (минимум из трёх прогонов
+      вперемежку). Само объединение двух сборок — впереди. Мерка `model` в
+      том же прогоне скачет от 17 до 46 мс в обеих версиях: это чистый
+      доменный цикл, на него смещается сборка мусора.
 - [ ] `NodePaint` → `NodeFaces` (`ThemeExtension`, рядом с холстом в
       `graph/`); `theme/` перестаёт импортировать `dashboard/`.
 - [ ] Перевести виджеты с `LoreDubPalette.x` на `context.colors.x` — по

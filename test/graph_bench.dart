@@ -138,6 +138,18 @@ void main() {
       await tester.pump(const Duration(milliseconds: 16));
     });
 
+    // The same drag with the node panel standing over the canvas: it is
+    // built in the face of the node it opened on, and that face used to be
+    // a whole ThemeData on every frame.
+    cubits.graph.add(const PipelineNodeSelected(PipelineNodeIds.recognition));
+    await tester.pumpAndSettle();
+    final inspecting = await time(tester, 60, () async {
+      cubits.graph.add(const PipelineNodeMoved(PipelineNodeIds.recognition, 1, 1));
+      await tester.pump(const Duration(milliseconds: 16));
+    });
+    cubits.graph.add(const PipelineNodeSelected(null));
+    await tester.pumpAndSettle();
+
     final still = await time(tester, 60, () async {
       await tester.pump(const Duration(milliseconds: 16));
     });
@@ -159,7 +171,7 @@ void main() {
 
     debugPrint(
       'BENCH drag=${dragging.round()}us pan=${panning.round()}us '
-      'idle=${still.round()}us model=${model.round()}us',
+      'panel=${inspecting.round()}us idle=${still.round()}us model=${model.round()}us',
     );
   });
 }
