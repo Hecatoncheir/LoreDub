@@ -16,6 +16,7 @@ import 'graph_hit_tester.dart';
 import 'scheme_diff.dart';
 import 'dot_field_painter.dart';
 import 'link_painter.dart';
+import 'choice_fade.dart';
 import 'node_inputs.dart';
 import 'node_layer_actions.dart';
 import 'node_layer_cache.dart';
@@ -41,7 +42,7 @@ class PipelineCanvas extends StatefulWidget {
   State<PipelineCanvas> createState() => _PipelineCanvasState();
 }
 
-class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProviderStateMixin {
+class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStateMixin {
   /// How long a line takes to draw itself in, and a line or a card to go.
   /// Long enough to be seen following the pointer that drew it, short enough
   /// that nobody waits for it.
@@ -65,6 +66,28 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
     parent: _drawing,
     curve: Curves.easeOutCubic,
   );
+
+  /// How long the field takes to come round to a card being picked out.
+  /// Shorter than an edit: nothing is drawn or taken away, and the answer
+  /// to a click should be felt rather than waited for.
+  static const _choosing = Duration(milliseconds: 200);
+
+  /// Runs whenever the choice changes, and is what the field parts over.
+  late final AnimationController _picking = AnimationController(vsync: this, duration: _choosing)
+    ..addStatusListener((status) {
+      if (status != AnimationStatus.completed || !mounted) return;
+      // Everything has arrived; the fade holds where nothing is on its way.
+      setState(() => _fade = ChoiceFade(chosen: _fade.chosen));
+    });
+
+  late final Animation<double> _picked = CurvedAnimation(
+    parent: _picking,
+    curve: Curves.easeOutCubic,
+  );
+
+  /// Which cards the field answers to, and where the ones still on their
+  /// way stood when this run began.
+  ChoiceFade _fade = const ChoiceFade();
 
   /// A card on its way off: it fades and draws in a little as it goes.
   late final Animation<double> _going = Tween<double>(begin: 1, end: 0).animate(_grown);
@@ -134,6 +157,9 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
     // the sockets they leave.
     _appearing = widget.state.graph.links.toSet();
     if (_appearing.isNotEmpty) _drawing.forward(from: 0);
+    // The scheme opens on whatever was chosen last, parted already rather
+    // than parting itself in front of the player.
+    _fade = ChoiceFade(chosen: widget.state.chosen);
   }
 
   @override
@@ -141,7 +167,9 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
     super.didChangeDependencies();
     // A player who has turned animation off in Windows is shown the end of
     // every one of these at once.
-    _drawing.duration = MediaQuery.disableAnimationsOf(context) ? Duration.zero : _motion;
+    final still = MediaQuery.disableAnimationsOf(context);
+    _drawing.duration = still ? Duration.zero : _motion;
+    _picking.duration = still ? Duration.zero : _choosing;
     // What is kept was built against the language and the theme that were
     // around it, so a change of either throws all of it away.
     _layers.clear();
@@ -151,6 +179,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
   @override
   void didUpdateWidget(PipelineCanvas old) {
     super.didUpdateWidget(old);
+    _followChoice(old.state.chosen);
     final diff = SchemeDiff.between(old.state.graph, widget.state.graph);
     if (diff.isEmpty) return;
     _appearing = diff.appearing;
@@ -160,8 +189,18 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
     _drawing.forward(from: 0);
   }
 
+  /// The field follows the choice from wherever it had got to.
+  void _followChoice(Set<String> was) {
+    final now = widget.state.chosen;
+    if (now.length == was.length && now.containsAll(was)) return;
+    _fade = _fade.towards(now, _picked.value);
+    if (_fade.settled) return;
+    _picking.forward(from: 0);
+  }
+
   @override
   void dispose() {
+    _picking.dispose();
     _drawing.dispose();
     super.dispose();
   }
@@ -314,7 +353,8 @@ class _PipelineCanvasState extends State<PipelineCanvas> with SingleTickerProvid
               // less of it, so it closes behind them rather than snapping
               // shut.
               nodes: [..._state.graph.nodes, ..._leaving],
-              chosen: _state.chosen,
+              fade: _fade,
+              picked: _picked,
               arriving: _arriving,
               leaving: {for (final node in _leaving) node.id},
               grown: _grown,

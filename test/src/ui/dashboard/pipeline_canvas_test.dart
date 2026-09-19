@@ -28,6 +28,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
+import 'package:lore_dub/src/ui/graph/canvas/dot_field_painter.dart';
 import 'package:lore_dub/src/ui/graph/canvas/node_metrics.dart';
 import 'package:lore_dub/src/ui/graph/canvas/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/graph/inspector/pipeline_inspector.dart';
@@ -163,6 +164,45 @@ void main() {
 
     await pumpGraph(tester, const Size(1500, 950), still: true);
     expect(cardMotion(tester), Duration.zero);
+  });
+
+  testWidgets('parts the field around a chosen card over a moment, not at once', (tester) async {
+    final cubits = await pumpGraph(tester, const Size(1500, 950));
+    // How hard the card holds the dots off as the field stands right now.
+    double heldOff(String id) {
+      final painter = tester
+          .widgetList<CustomPaint>(
+            find.descendant(of: find.byType(PipelineCanvas), matching: find.byType(CustomPaint)),
+          )
+          .map((paint) => paint.painter)
+          .whereType<DotFieldPainter>()
+          .first;
+      return painter.fade.of(id, painter.picked.value);
+    }
+
+    expect(heldOff(PipelineNodeIds.recognition), 0, reason: 'nothing is chosen yet');
+
+    cubits.graph.add(const PipelineNodeSelected(PipelineNodeIds.recognition));
+    // Three frames: the one that answers the choice, the one the run starts
+    // its clock on, and the one it has travelled over.
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+    final started = heldOff(PipelineNodeIds.recognition);
+
+    expect(started, greaterThan(0), reason: 'the field is on its way');
+    expect(started, lessThan(1), reason: 'and not there yet');
+    await tester.pumpAndSettle();
+    expect(heldOff(PipelineNodeIds.recognition), 1);
+
+    // Letting go closes it the same way rather than snapping shut.
+    cubits.graph.add(const PipelineNodeSelected(null));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(heldOff(PipelineNodeIds.recognition), inExclusiveRange(0, 1));
+    await tester.pumpAndSettle();
+    expect(heldOff(PipelineNodeIds.recognition), 0);
   });
 
   testWidgets('keeps the cards it drew, and draws again the one that changed', (tester) async {

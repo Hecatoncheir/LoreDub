@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/pipeline_graph.dart';
 import '../../theme.dart';
+import 'choice_fade.dart';
 import 'dot_field.dart';
 import 'node_metrics.dart';
 
@@ -18,24 +19,27 @@ class DotFieldPainter extends CustomPainter {
     required this.view,
     required this.nodes,
     required this.grown,
-    this.chosen = const {},
+    required this.picked,
+    this.fade = const ChoiceFade(),
     this.arriving = const {},
     this.leaving = const {},
-  }) : super(repaint: grown);
+  }) : super(repaint: Listenable.merge([grown, picked]));
 
   final GraphView view;
 
   /// The cards standing on the field, the ones on their way off it among
   /// them. Where they stand is read off these; which of them the field
-  /// answers to is [chosen].
+  /// answers to is [fade].
   final List<PipelineNode> nodes;
 
   /// The cards the player has picked out, and the only ones the field
   /// answers to. It parts around them and lights towards them: the nearer a
   /// dot is to one, the more of the orange it carries, so a card that is
   /// chosen is found without hunting for its border. The rest stand on the
-  /// field without disturbing it.
-  final Set<String> chosen;
+  /// field without disturbing it. A card picked out takes the field with it
+  /// over [picked] rather than between two frames.
+  final ChoiceFade fade;
+  final Animation<double> picked;
 
   /// A chosen card arriving parts the field as it comes, and one leaving
   /// lets it close again: [grown] is how far along both of those are.
@@ -143,25 +147,34 @@ class DotFieldPainter extends CustomPainter {
   /// parting says nothing, every card doing it. Around the card the player
   /// picked out it says which one that is, together with the light.
   List<FieldCard> _cards() => [
-    for (final node in nodes)
-      if (chosen.contains(node.id) && _strengthOf(node) > 0.01)
-        FieldCard(
-          rect: Rect.fromLTWH(
-            view.x + node.position.x * view.zoom,
-            view.y + node.position.y * view.zoom,
-            NodeMetrics.sizeOf(node.kind).width * view.zoom,
-            NodeMetrics.sizeOf(node.kind).height * view.zoom,
-          ),
-          strength: _strengthOf(node).clamp(0.0, 1.0),
-          // Every card the field is told about is one that was chosen.
-          chosen: true,
-        ),
+    for (final node in nodes) ?_fieldOf(node),
   ];
+
+  /// [node] as the field sees it, or null while it is nothing to the field:
+  /// not chosen, or not yet drawn.
+  FieldCard? _fieldOf(PipelineNode node) {
+    final strength = _strengthOf(node) * fade.of(node.id, picked.value);
+    if (strength <= 0.01) return null;
+    final size = NodeMetrics.sizeOf(node.kind);
+    return FieldCard(
+      rect: Rect.fromLTWH(
+        view.x + node.position.x * view.zoom,
+        view.y + node.position.y * view.zoom,
+        size.width * view.zoom,
+        size.height * view.zoom,
+      ),
+      strength: strength.clamp(0.0, 1.0),
+      // Every card the field is told about is one that was chosen.
+      chosen: true,
+    );
+  }
 
   @override
   bool shouldRepaint(DotFieldPainter old) {
     if (old.view.x != view.x || old.view.y != view.y || old.view.zoom != view.zoom) return true;
-    if (old.chosen.length != chosen.length || !old.chosen.containsAll(chosen)) return true;
+    // The canvas holds one fade and makes another only when the choice
+    // changes, so the same object is the same choice.
+    if (!identical(old.fade, fade)) return true;
     if (old.nodes.length != nodes.length) return true;
     for (var index = 0; index < nodes.length; index++) {
       if (old.nodes[index] != nodes[index]) return true;
