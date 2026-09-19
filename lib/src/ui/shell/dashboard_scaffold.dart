@@ -1,11 +1,10 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import '../common/ease.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../common/ease.dart';
 import '../../../l10n/app_localizations.dart';
 import '../failure_messages.dart';
 import '../dashboard/cubits/shell_cubit.dart';

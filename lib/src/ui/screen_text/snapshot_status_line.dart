@@ -1,0 +1,71 @@
+// Copyright (c) 2026 LoreDub contributors.
+// SPDX-License-Identifier: MIT
+
+import 'package:flutter/material.dart';
+
+import '../../../l10n/app_localizations.dart';
+import '../../domain/app_settings.dart';
+import '../dashboard/cubits/pipeline_cubit.dart';
+import '../theme.dart';
+
+/// What became of the last selection, or that live dubbing holds the key --
+/// nothing at all when there is nothing to say.
+class SnapshotStatusLine extends StatelessWidget {
+  const SnapshotStatusLine({super.key, required this.pipeline, required this.settings});
+
+  final LivePipelineState pipeline;
+  final AppSettings settings;
+
+  (IconData, String, Color)? _said(AppLocalizations l10n) => switch (pipeline) {
+    _ when pipeline.snapshotReading => (
+      Icons.hourglass_top_rounded,
+      l10n.snapshotReading,
+      LoreDubPalette.warning,
+    ),
+    _ when pipeline.snapshotMissed => (
+      Icons.search_off_rounded,
+      l10n.snapshotMissed,
+      LoreDubPalette.warning,
+    ),
+    _ when pipeline.liveRunning => (
+      Icons.info_outline_rounded,
+      l10n.snapshotInLive,
+      LoreDubPalette.mutedInk,
+    ),
+    _ when pipeline.frameMissed => (
+      Icons.crop_free_rounded,
+      l10n.frameMissed,
+      LoreDubPalette.warning,
+    ),
+    // Reading the whole screen waits for no window, so there is no game to
+    // ask for -- the picker above this line is shut for the same reason.
+    _ when pipeline.selectedProcess == null && !settings.readsWholeScreen => (
+      Icons.videogame_asset_off_rounded,
+      l10n.screenPickGame,
+      LoreDubPalette.warning,
+    ),
+    _ => null,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final said = _said(AppLocalizations.of(context));
+    if (said == null) return const SizedBox.shrink();
+    final (icon, text, color) = said;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(color: color, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

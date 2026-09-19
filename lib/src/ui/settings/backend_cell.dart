@@ -1,10 +1,9 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import '../common/ease.dart';
-
 import 'package:flutter/material.dart';
 
+import '../common/ease.dart';
 import '../common/hover_grow.dart';
 import '../theme.dart';
 import 'backend_cell_label.dart';

@@ -1,19 +1,18 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import '../common/ease.dart';
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../common/ease.dart';
 import '../common/file_dialogs.dart';
-import '../../domain/pipeline_graph.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/pipeline_graph_bloc.dart';
+import 'add_character_button.dart';
 import 'shelf/pipeline_shelf.dart';
 import 'canvas/connection_messages.dart';
 import 'canvas/pipeline_facts.dart';
@@ -62,7 +61,7 @@ class GraphToolbar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                _addCharacter(context, l10n),
+                AddCharacterButton(characters: facts.characters, graph: state.graph),
                 // The session is rested from here as well as from Live: the
                 // cast is rewired on this screen, and walking to another one
                 // to stop the dubbing first is a walk for nothing.
@@ -168,44 +167,5 @@ class GraphToolbar extends StatelessWidget {
     final files = await context.read<FileDialogs>().openJson();
     if (files.isEmpty) return;
     graph.add(PipelineSchemeImported(files));
-  }
-
-  /// Every card of the cast, drawn or not: a card already on the canvas can
-  /// be drawn again beside the character whose part it takes over, and the
-  /// count beside its name says how many of it are there.
-  Widget _addCharacter(BuildContext context, AppLocalizations l10n) {
-    final drawn = <String, int>{};
-    for (final node in state.graph.ofKind(PipelineNodeKind.character)) {
-      drawn.update(node.characterId ?? '', (count) => count + 1, ifAbsent: () => 1);
-    }
-    return PopupMenuButton<String>(
-      tooltip: facts.characters.isEmpty ? l10n.pipelineNoCharacters : l10n.pipelineAddCharacter,
-      enabled: facts.characters.isNotEmpty,
-      icon: const Icon(Icons.person_add_alt_rounded, size: 20),
-      onSelected: (id) => context.read<PipelineGraphBloc>().add(PipelineCharacterPlaced(id)),
-      itemBuilder: (context) => [
-        for (final character in facts.characters)
-          PopupMenuItem(
-            value: character.id,
-            child: Row(
-              children: [
-                Expanded(child: Text(character.name)),
-                if (drawn[character.id] case final count?)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: Text(
-                      '×$count',
-                      style: const TextStyle(
-                        fontFamily: LoreDubFonts.mono,
-                        fontSize: 11,
-                        color: LoreDubPalette.mutedInk,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-      ],
-    );
   }
 }

@@ -1,10 +1,9 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'ease.dart';
-
 import 'package:flutter/material.dart';
 
+import 'ease.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import 'committed_text_field.dart';

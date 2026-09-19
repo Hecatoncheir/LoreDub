@@ -1,10 +1,9 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import '../../common/ease.dart';
-
 import 'package:flutter/material.dart';
 
+import '../../common/ease.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../theme.dart';
 import 'node_metrics.dart';

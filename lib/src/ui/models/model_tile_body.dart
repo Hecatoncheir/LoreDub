@@ -1,12 +1,11 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import '../common/ease.dart';
-
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../common/ease.dart';
 import '../theme.dart';
 import 'model_action.dart';
 import 'model_action_button.dart';

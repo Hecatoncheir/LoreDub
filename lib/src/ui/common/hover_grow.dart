@@ -1,9 +1,9 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'ease.dart';
-
 import 'package:flutter/material.dart';
+
+import 'ease.dart';
 
 /// Grows its child a little under the pointer, so the model about to be
 /// clicked stands out without the layout shifting around it.

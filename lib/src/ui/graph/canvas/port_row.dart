@@ -3,9 +3,9 @@
 
 import 'package:flutter/material.dart';
 
-import '../../theme.dart';
 import '../node_paint.dart';
 import 'node_metrics.dart';
+import 'port_label.dart';
 
 /// A row of the card that a socket sits on, labelled towards its own edge.
 class PortRow extends StatelessWidget {
@@ -22,25 +22,18 @@ class PortRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         children: [
-          if (left != null) Expanded(child: _label(left!, TextAlign.left)),
-          if (left == null) const Spacer(),
-          if (right != null) Expanded(child: _label(right!, TextAlign.right)),
+          if (left case final text?)
+            Expanded(
+              child: PortLabel(text: text, align: TextAlign.left, color: paint.port),
+            )
+          else
+            const Spacer(),
+          if (right case final text?)
+            Expanded(
+              child: PortLabel(text: text, align: TextAlign.right, color: paint.port),
+            ),
         ],
       ),
-    ),
-  );
-
-  Widget _label(String text, TextAlign align) => Text(
-    text,
-    textAlign: align,
-    maxLines: 1,
-    overflow: TextOverflow.ellipsis,
-    style: TextStyle(
-      fontFamily: LoreDubFonts.mono,
-      fontSize: 9,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.6,
-      color: paint.port,
     ),
   );
 }

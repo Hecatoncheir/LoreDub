@@ -376,6 +376,12 @@ lib/src/ui/
 
 ### Остальные файлы интерфейса
 
+*Сделано к этому шагу:* `_label` в `PortRow` → `PortLabel`, `_addCharacter`
+→ `AddCharacterButton`, `LivePanel._content` → `LiveContent` +
+`LiveTranscriptArea`, `details()` в `SnapshotControls` → `SnapshotDetails`,
+`SnapshotHotkeyLine`, `ScreenSourcePicker`, `SnapshotStatusLine`. Осталось 5
+методов — слои `pipeline_canvas.dart`, они уходят с `NodeLayer`.
+
 В них ещё 34 приватных виджета и painter'а и ~31 метод, возвращающий
 `Widget`. Кроме того, `character_tiles.dart` (5), `model_tiles.dart` (4) и
 `model_visuals.dart` (4) держат по нескольку **публичных** виджетов в файле —
