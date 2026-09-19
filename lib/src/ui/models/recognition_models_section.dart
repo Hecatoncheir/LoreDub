@@ -11,7 +11,7 @@ import '../common/module_label.dart';
 import '../common/section_note.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
-import '../dashboard/whisper_model_chart.dart';
+import 'whisper_model_chart.dart';
 import 'recognition_model_cards.dart';
 
 /// The Whisper builds. Size against quality is the whole choice, so it is
