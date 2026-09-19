@@ -12,9 +12,10 @@ import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/pipeline_graph_bloc.dart';
-import 'pipeline_shelf.dart';
+import 'shelf/pipeline_shelf.dart';
 import 'canvas/connection_messages.dart';
 import 'canvas/pipeline_facts.dart';
+import 'shelf/name_dialog.dart';
 
 /// The presets, the steps back, and the cards waiting to be put on the
 /// canvas. Under them, whatever the last attempt at a link came to.
