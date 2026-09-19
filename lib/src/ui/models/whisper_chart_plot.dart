@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'download_progress_line.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/model_package.dart';
 import '../compute_names.dart';
@@ -78,11 +79,7 @@ class WhisperChartPlot extends StatelessWidget {
   String _hint(AppLocalizations l10n, ModelInstallState state) {
     final model = state.model;
     if (state.progress case final progress?) {
-      return l10n.whisperDownloadProgress(
-        (progress * 100).round(),
-        formatPackageSize(l10n, (model.downloadBytes * progress).round()),
-        formatPackageSize(l10n, model.downloadBytes),
-      );
+      return downloadProgressLine(l10n, progress, model.downloadBytes);
     }
     if (!state.installed) {
       return l10n.whisperHintDownload(formatPackageSize(l10n, model.downloadBytes));

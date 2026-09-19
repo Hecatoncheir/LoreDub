@@ -450,11 +450,17 @@ lib/src/ui/
       (`character_tiles.dart:182–207`, `:563–583`,
       `glossary_screen.dart:807–827`, `pipeline_inspector.dart:496–527`) →
       `CommittedTextField`; три хозяина из четырёх станут `StatelessWidget`.
-- [ ] `_ModelBar` (`whisper_model_chart.dart:276`) заново реализует
+- [x] `_ModelBar` (`whisper_model_chart.dart:276`) заново реализует
       `ModelTile`; `CharacterTileGrid` ≡ `ModelTileGrid`; помощник наведения
       существует в трёх видах (`HoverGrow`, `_Hovering`, по месту в
       `whisper_model_chart.dart:389`); подсказка «прогресс или пояснение»
       собирается в четырёх местах → по одному общему виджету.
+      *Сделано:* `common/tile_grid.dart` (`TileGrid` с шириной колонки
+      моделей или состава) вместо двух сеток; `DownloadFill` — заливка
+      загрузки у плитки, столбца и ячейки устройства; `ModelActionBand` —
+      полоса кнопок у плитки и столбца; строка прогресса везде идёт через
+      `downloadProgressLine`. Наведение уже одно: `HoverGrow`, а
+      `HoverRegion` на холсте ещё и ставит курсор.
 - [x] `WhisperModelChart._chart`: 35 строк арифметики вёрстки → чистый
       `WhisperChartLayout`; `_content` собирает детей через `children.add` и
       строит шкалу дважды (`:422`, `:436`).

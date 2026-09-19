@@ -11,7 +11,7 @@ import '../common/section_note.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
 import 'converter_tile.dart';
 import 'model_failure_row.dart';
-import 'model_tile_grid.dart';
+import '../common/tile_grid.dart';
 
 /// The converter that carries the timbre of the game's voice over to the
 /// dubbing, marked in use while the original voice is kept.
@@ -38,7 +38,7 @@ class VoiceConvertersSection extends StatelessWidget {
         const SizedBox(height: 4),
         SectionNote(l10n.sectionVoiceConversionNote),
         const SizedBox(height: 12),
-        ModelTileGrid(
+        TileGrid(
           children: [
             for (final state in selection.voiceConverters)
               ConverterTile(

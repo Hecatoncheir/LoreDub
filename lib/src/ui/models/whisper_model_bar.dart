@@ -3,14 +3,14 @@
 
 import 'package:flutter/material.dart';
 
-import '../common/ease.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/model_package.dart';
 import '../common/hover_grow.dart';
 import '../model_names.dart';
 import '../theme.dart';
 import 'model_action.dart';
-import 'model_action_button.dart';
+import 'download_fill.dart';
+import 'model_action_band.dart';
 import 'model_tile_look.dart';
 import 'whisper_bar_content.dart';
 
@@ -36,13 +36,6 @@ class WhisperModelBar extends StatelessWidget {
   static const _actionBand = 40.0;
 
   bool get _inUse => selected && state.installed && state.progress == null;
-
-  /// The buttons sit at the foot of the bar, where the fill of a download
-  /// arrives first; they switch to light once it is dark.
-  bool _darkFoot(double height) {
-    final progress = state.progress;
-    return _inUse || (progress != null && progress * height >= _actionBand);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,16 +65,7 @@ class WhisperModelBar extends StatelessWidget {
                 builder: (context, constraints) => Stack(
                   fit: StackFit.expand,
                   children: [
-                    if (state.progress case final progress?)
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: AnimatedFractionallySizedBox(
-                          duration: ease(context, 300),
-                          heightFactor: progress.clamp(0.0, 1.0),
-                          widthFactor: 1,
-                          child: const ColoredBox(color: LoreDubPalette.graphite),
-                        ),
-                      ),
+                    if (state.progress case final progress?) DownloadFill(progress: progress),
                     Column(
                       children: [
                         // Turbo only suits an English original, and that
@@ -111,17 +95,14 @@ class WhisperModelBar extends StatelessWidget {
                             ),
                           ),
                         ),
-                        SizedBox(
+                        ModelActionBand(
+                          actions: actions,
                           height: _actionBand,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              for (final action in actions)
-                                ModelActionButton(
-                                  action: action,
-                                  onDark: _darkFoot(constraints.maxHeight),
-                                ),
-                            ],
+                          onDark: ModelActionBand.darkAt(
+                            inUse: _inUse,
+                            progress: state.progress,
+                            height: constraints.maxHeight,
+                            band: _actionBand,
                           ),
                         ),
                       ],

@@ -13,7 +13,7 @@ import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../failure_messages.dart';
 import '../theme.dart';
-import '../models/model_tile_grid.dart';
+import '../common/tile_grid.dart';
 import 'runtime_tile.dart';
 
 /// The GPU packages as tiles: the ones this machine could use, and any
@@ -78,7 +78,7 @@ class ComputeRuntimesSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        ModelTileGrid(
+        TileGrid(
           children: [
             for (final runtime in runtimes)
               RuntimeTile(

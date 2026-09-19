@@ -3,9 +3,8 @@
 
 import 'package:flutter/material.dart';
 
-import '../common/ease.dart';
+import '../models/download_fill.dart';
 import '../common/hover_grow.dart';
-import '../theme.dart';
 import 'backend_cell_label.dart';
 import 'backend_cell_look.dart';
 
@@ -58,16 +57,7 @@ class BackendCell extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (progress case final value?)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: AnimatedFractionallySizedBox(
-                        duration: ease(context, 300),
-                        heightFactor: value.clamp(0.0, 1.0),
-                        widthFactor: 1,
-                        child: const ColoredBox(color: LoreDubPalette.graphite),
-                      ),
-                    ),
+                  if (progress case final value?) DownloadFill(progress: value),
                   BackendCellLabel(label: label, look: look, detail: detail),
                 ],
               ),

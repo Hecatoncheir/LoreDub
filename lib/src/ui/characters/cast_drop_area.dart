@@ -9,7 +9,7 @@ import '../theme.dart';
 import 'cast_card.dart';
 import 'empty_cast.dart';
 import 'character_drag.dart';
-import 'character_tile_grid.dart';
+import '../common/tile_grid.dart';
 
 /// The cards of the cast, laid out in a grid that a card dragged out of a
 /// pack can be dropped back on -- which takes it out of that pack.
@@ -36,7 +36,9 @@ class CastDropArea extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
         child: state.characters.isEmpty
             ? EmptyCast(loading: state.loading)
-            : CharacterTileGrid(
+            : TileGrid(
+                minWidth: TileGrid.characterWidth,
+                height: TileGrid.characterHeight,
                 children: [
                   for (final character in state.characters)
                     CastCard(

@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../models/download_progress_line.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/runtime_package.dart';
 import '../compute_names.dart';
@@ -127,11 +128,7 @@ class RuntimeTile extends StatelessWidget {
   /// package is doing for this machine.
   String _hint(AppLocalizations l10n, String size) {
     if (state.progress case final progress?) {
-      return l10n.whisperDownloadProgress(
-        (progress * 100).round(),
-        formatPackageSize(l10n, (state.package.approximateBytes * progress).round()),
-        size,
-      );
+      return downloadProgressLine(l10n, progress, state.package.approximateBytes);
     }
     if (!state.installed) return l10n.computeRuntimeMissing(size);
     return inUse ? l10n.runtimeHintInUse : l10n.runtimeHintIdle;

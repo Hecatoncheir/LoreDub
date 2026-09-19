@@ -5,10 +5,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../common/ease.dart';
-import '../theme.dart';
 import 'model_action.dart';
-import 'model_action_button.dart';
+import 'download_fill.dart';
+import 'model_action_band.dart';
 import 'model_progress_dial.dart';
 import 'model_tile_heading.dart';
 import 'model_tile_part.dart';
@@ -41,28 +40,12 @@ class ModelTileBody extends StatelessWidget {
 
   static const _actionBand = 44.0;
 
-  /// Whether the buttons stand on the dark: the tile is in use, or the fill
-  /// has risen past them.
-  bool _darkFoot(double height) {
-    final value = progress;
-    return inUse || (value != null && value * height >= _actionBand);
-  }
-
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => Stack(
       fit: StackFit.expand,
       children: [
-        if (progress case final value?)
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: AnimatedFractionallySizedBox(
-              duration: ease(context, 300),
-              heightFactor: value.clamp(0.0, 1.0),
-              widthFactor: 1,
-              child: const ColoredBox(color: LoreDubPalette.graphite),
-            ),
-          ),
+        if (progress case final value?) DownloadFill(progress: value),
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -98,14 +81,14 @@ class ModelTileBody extends StatelessWidget {
                 null => const SizedBox.shrink(),
               },
             ),
-            SizedBox(
+            ModelActionBand(
+              actions: actions,
               height: _actionBand,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (final action in actions)
-                    ModelActionButton(action: action, onDark: _darkFoot(constraints.maxHeight)),
-                ],
+              onDark: ModelActionBand.darkAt(
+                inUse: inUse,
+                progress: progress,
+                height: constraints.maxHeight,
+                band: _actionBand,
               ),
             ),
           ],

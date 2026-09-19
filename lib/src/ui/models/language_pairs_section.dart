@@ -12,7 +12,7 @@ import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import 'language_pair_tile.dart';
 import 'model_failure_row.dart';
-import 'model_tile_grid.dart';
+import '../common/tile_grid.dart';
 
 /// The languages a line can be dubbed into. A translator and a voice are
 /// only ever useful together, so a language is one tile: downloaded, picked
@@ -41,7 +41,7 @@ class LanguagePairsSection extends StatelessWidget {
         const SizedBox(height: 4),
         SectionNote(l10n.sectionLanguagesNote),
         const SizedBox(height: 12),
-        ModelTileGrid(
+        TileGrid(
           children: [
             for (final pair in selection.languagePairs)
               LanguagePairTile(
