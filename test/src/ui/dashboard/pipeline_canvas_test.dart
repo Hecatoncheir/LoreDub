@@ -30,7 +30,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
 import 'package:lore_dub/src/ui/graph/canvas/node_metrics.dart';
 import 'package:lore_dub/src/ui/graph/canvas/pipeline_canvas.dart';
-import 'package:lore_dub/src/ui/graph/pipeline_inspector.dart';
+import 'package:lore_dub/src/ui/graph/inspector/pipeline_inspector.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';

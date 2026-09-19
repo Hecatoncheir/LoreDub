@@ -416,7 +416,7 @@ lib/src/ui/
 - [x] Дубли геометрии: `_onCanvas` (`:313`) ≡ `_toCanvas` (`:338`);
       `_caughtBy` повторяет `NodeMetrics.boundsOf`; `_fitted` повторяет
       `_SchemePainter._bounds` (`pipeline_shelf.dart:453`).
-- [ ] **`PipelineInspector`** — один виджет на 449 строк с девятью
+- [x] **`PipelineInspector`** — один виджет на 449 строк с девятью
       методами-строителями → `NodeInspectorPanel`, `NodeInspectorHeader`, по
       виджету `<Kind>NodeFields` на вид узла, `StageDevicePicker`. Чтения
       `cubits.pipeline.state` (`:180`) и `cubits.downloads.state` (`:456`)

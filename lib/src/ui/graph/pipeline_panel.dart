@@ -15,7 +15,7 @@ import '../dashboard/cubits/pipeline_graph_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import 'canvas/pipeline_canvas.dart';
-import 'pipeline_inspector.dart';
+import 'inspector/pipeline_inspector.dart';
 import 'graph_toolbar.dart';
 import 'inspector_slot.dart';
 import 'canvas/pipeline_facts.dart';
