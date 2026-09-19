@@ -336,8 +336,9 @@ lib/src/ui/
       *Сделано частично:* правила — `canPlayClip`, `canPreview`,
       `recordActionFor` (`RecordAction`), `takesFiles` в `CharactersState`
       с тестами; карточку собирает `CastCard`, сетку — `CastDropArea`.
-      `CharacterTileModel` вместо 19 параметров и подписка одной плитки
-      через `BlocSelector` — впереди, вместе с `character_tiles.dart`.
+      Плитка берёт `CharacterTileModel` и `CharacterTileActions` вместо 19
+      параметров, тексты — `CharacterTileTexts` с тестами. Подписка одной
+      плитки через `BlocSelector` — впереди.
 - [x] `_ComputeDeviceCard._build` (35), `_cell` (17), `BackendCell.build`
       (36): состояние ячейки — sealed `BackendCellState` (`ready` /
       `needsRuntime(install)` / `downloading(progress)` / `noHardware` /
@@ -456,6 +457,7 @@ lib/src/ui/
       радиус 16 против документированных 12 (`glossary_screen.dart:686`).
       *Миниатюра схемы — сделано:* `SchemePainter` берёт схему и состав и
       строит граф только при рисовании; полка разобрана в `graph/shelf/`.
+      *Звуковые файлы — сделано:* `domain/sound_files.dart`.
 
 ### Доступность (P2)
 

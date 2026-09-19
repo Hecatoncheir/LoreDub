@@ -9,6 +9,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/character.dart';
 import '../common/confirm_dialog.dart';
 import 'character_tile.dart';
+import 'character_tile_actions.dart';
+import 'character_tile_model.dart';
 import '../dashboard/cubits/characters_cubit.dart';
 
 /// One card of the cast, wired to what can be done to it right now.
@@ -51,13 +53,20 @@ class CastCard extends StatelessWidget {
     if (confirmed) await cubit.remove(character.id);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<CharactersCubit>();
+  /// The name of the card standing in for this one; a card deleted since
+  /// leaves the substitution showing as nobody in particular.
+  String? _readerName() {
+    final reader = character.voicedBy;
+    if (reader == null) return null;
+    for (final other in state.characters) {
+      if (other.id == reader) return other.name;
+    }
+    return null;
+  }
+
+  CharacterTileModel _model(CharactersCubit cubit) {
     final id = character.id;
-    final canPreview = state.canPreview(dubbing: dubbing, speechInstalled: cubit.canPreview);
-    final takesFiles = state.takesFiles(dubbing: dubbing, converterInstalled: cubit.canRecord);
-    return CharacterTile(
+    return CharacterTileModel(
       character: character,
       recording: state.recordingId == id,
       heardSeconds: state.heardSeconds,
@@ -65,28 +74,39 @@ class CastCard extends StatelessWidget {
         for (final pack in state.packs)
           if (pack.holds(id)) pack.name,
       ],
-      cast: [
-        for (final other in state.characters)
-          if (other.id != id) other,
-      ],
-      onRename: (name) => cubit.rename(id, name),
+      readerName: _readerName(),
       playing: state.playingId == id,
-      onPlay: state.canPlayClip(id) ? () => cubit.playClip(id) : null,
       previewing: state.previewingId == id,
-      onStopSound: cubit.stopSounding,
       carriesTimbre: cubit.carriesTimbre,
       dubbing: dubbing,
-      onPreview: canPreview ? () => cubit.preview(id) : null,
+      building: state.buildingId == id,
+      built: state.builtId == id ? state.built : null,
+    );
+  }
+
+  CharacterTileActions _actions(BuildContext context, CharactersCubit cubit) {
+    final id = character.id;
+    final canPreview = state.canPreview(dubbing: dubbing, speechInstalled: cubit.canPreview);
+    final takesFiles = state.takesFiles(dubbing: dubbing, converterInstalled: cubit.canRecord);
+    return CharacterTileActions(
+      onRename: (name) => cubit.rename(id, name),
+      onDelete: () => _confirmDelete(context),
       onRecord: switch (state.recordActionFor(id)) {
         RecordAction.start => () => cubit.startRecording(id),
         RecordAction.stop => cubit.stopRecording,
         null => null,
       },
-      building: state.buildingId == id,
-      built: state.builtId == id ? state.built : null,
-      onFilesDropped: takesFiles ? (paths) => cubit.voiceFromFiles(id, paths) : null,
+      onPlay: state.canPlayClip(id) ? () => cubit.playClip(id) : null,
+      onPreview: canPreview ? () => cubit.preview(id) : null,
+      onStopSound: cubit.stopSounding,
       onExport: character.vector.isEmpty ? null : () => _export(context),
-      onDelete: () => _confirmDelete(context),
+      onFilesDropped: takesFiles ? (paths) => cubit.voiceFromFiles(id, paths) : null,
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<CharactersCubit>();
+    return CharacterTile(model: _model(cubit), actions: _actions(context, cubit));
   }
 }

@@ -42,6 +42,7 @@ import 'package:lore_dub/src/ui/characters/character_pack_area.dart';
 import 'package:lore_dub/src/ui/characters/character_tile.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
+import 'package:lore_dub/src/domain/sound_files.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
 import 'package:lore_dub/src/ui/graph/canvas/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/graph/inspector/pipeline_inspector.dart';
@@ -3145,7 +3146,7 @@ void main() {
       CharacterTile card() => tester.widget<CharacterTile>(find.byType(CharacterTile));
 
       expect(sample().onPressed, isNotNull);
-      expect(card().onFilesDropped, isNotNull);
+      expect(card().actions.onFilesDropped, isNotNull);
 
       // One engine serves one session. Either of the two brings up a worker
       // of its own, and over a session that is dubbing it took that one's:
@@ -3155,7 +3156,7 @@ void main() {
       await tester.pump();
 
       expect(sample().onPressed, isNull);
-      expect(card().onFilesDropped, isNull);
+      expect(card().actions.onFilesDropped, isNull);
       // Said in so many words, rather than sending the player after a speech
       // model they already have.
       expect(find.byTooltip('Голос нельзя послушать, пока идёт озвучка'), findsOneWidget);
@@ -3170,7 +3171,7 @@ void main() {
       await tester.pump();
 
       expect(sample().onPressed, isNotNull);
-      expect(card().onFilesDropped, isNotNull);
+      expect(card().actions.onFilesDropped, isNotNull);
     });
 
     testWidgets('puts the packs beside the cast, and under it in a narrow window', (
@@ -3266,7 +3267,7 @@ void main() {
     // ogg and an mp3 beside it; a folder or a screenshot dropped by
     // mistake is left where it was.
     expect(
-      CharacterTile.soundAmong(const [
+      soundAmong(const [
         r'C:\game\vo\guard_01.OGG',
         r'C:\music\theme.mp3',
         r'C:\shots\screen.png',
