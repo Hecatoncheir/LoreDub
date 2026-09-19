@@ -224,6 +224,19 @@ class RuntimeStorageService {
     DownloadControl? control,
   }) async {
     final python = await resolvePythonExecutable(pythonExecutable);
+    // A CUDA runtime fetched before the voice could use the card holds torch
+    // already: what it lacks is added, rather than 2.7 GB fetched again.
+    if (await _predatesCompanions(package, directory)) {
+      onProgress(0.9);
+      return _withCompanions(
+        package,
+        python,
+        directory,
+        DownloadOutcome.completed,
+        proxyUrl: proxyUrl,
+        control: control,
+      );
+    }
     if (await _interpreterTag(python) != package.wheelPython) {
       return _installWithPip(
         package,
@@ -252,12 +265,19 @@ class RuntimeStorageService {
     if (fetched == DownloadOutcome.cancelled) await _deleteIfExists(downloads);
     if (fetched != DownloadOutcome.completed) return fetched;
 
-    final outcome = await _runPip(
+    final outcome = await _withCompanions(
+      package,
       python,
       directory,
-      [for (final artifact in package.artifacts) path.join(downloads.path, artifact.fileName)],
+      await _runPip(
+        python,
+        directory,
+        [for (final artifact in package.artifacts) path.join(downloads.path, artifact.fileName)],
+        proxyUrl: proxyUrl,
+        onStart: () => onProgress(0.9),
+        control: control,
+      ),
       proxyUrl: proxyUrl,
-      onStart: () => onProgress(0.9),
       control: control,
     );
     // Gigabytes that are worth nothing once installed, or once cancelled.
@@ -279,14 +299,57 @@ class RuntimeStorageService {
     required String proxyUrl,
     required String python,
     DownloadControl? control,
-  }) => _runPip(
+  }) async => _withCompanions(
+    package,
     python,
     directory,
-    package.pipArguments,
+    await _runPip(
+      python,
+      directory,
+      package.pipArguments,
+      proxyUrl: proxyUrl,
+      onStart: () => onProgress(0.05),
+      control: control,
+    ),
     proxyUrl: proxyUrl,
-    onStart: () => onProgress(0.05),
     control: control,
   );
+
+  /// The [RuntimePackage.companions], once the main install [finished], in a
+  /// pip run of their own with `--no-deps`: what they depend on is in the
+  /// bundled interpreter already, and a second copy installed here would sit
+  /// first on the worker's import path -- onnxruntime-gpu alone brought
+  /// numpy 2.4 over the bundled 2.2 that the translator was built against.
+  Future<DownloadOutcome> _withCompanions(
+    RuntimePackage package,
+    String python,
+    Directory directory,
+    DownloadOutcome finished, {
+    required String proxyUrl,
+    DownloadControl? control,
+  }) async {
+    if (finished != DownloadOutcome.completed || package.companions.isEmpty) return finished;
+    final probe = package.probeFileName;
+    return _runPip(
+      python,
+      directory,
+      ['--no-deps', ...package.companions],
+      proxyUrl: proxyUrl,
+      onStart: () {},
+      control: control,
+      // The main install is whole by now; a companion that fails takes only
+      // itself away, so trying again does not fetch gigabytes a second time.
+      discard: probe == null ? null : Directory(path.join(directory.path, probe)),
+    );
+  }
+
+  /// Whether [directory] holds an install made before the companions were
+  /// part of the package: its old probe is there and its new one is not.
+  Future<bool> _predatesCompanions(RuntimePackage package, Directory directory) async {
+    final previous = package.previousProbeFileName;
+    if (previous == null || package.companions.isEmpty) return false;
+    return Directory(path.join(directory.path, previous)).exists();
+  }
 
   /// `pip install --target`, leaving nothing behind unless it finished.
   ///
@@ -300,7 +363,11 @@ class RuntimeStorageService {
     required String proxyUrl,
     required void Function() onStart,
     DownloadControl? control,
+    Directory? discard,
   }) async {
+    // What a stop or a failure takes away: the whole directory, unless the
+    // run only adds to an install that stands on its own.
+    final unfinished = discard ?? directory;
     await directory.create(recursive: true);
     onStart();
     final proxy = parseModelProxyUrl(proxyUrl);
@@ -323,13 +390,13 @@ class RuntimeStorageService {
     if (control?.requestedStop case final stop?) {
       // Whatever pip managed to unpack is not a runtime, and it must not be
       // mistaken for one on the next start.
-      await _deleteIfExists(directory);
+      await _deleteIfExists(unfinished);
       return stop;
     }
     if (result.exitCode != 0) {
       // pip can fail after it has moved part of the wheels into place, and a
       // torch directory would pass the probe. Only a finished install stays.
-      await _deleteIfExists(directory);
+      await _deleteIfExists(unfinished);
       throw LoreDubFailure(
         FailureCode.runtimeInstallFailed,
         detail: '${result.exitCode}\n${_tail('${result.stderr}')}'.trim(),

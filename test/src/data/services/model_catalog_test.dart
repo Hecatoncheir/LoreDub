@@ -28,52 +28,55 @@ void main() {
     expect(transcribeOnly.map((model) => model.id), ['whisper-large-v3-turbo-q5']);
   });
 
-  test('every dubbing language has a voice, and a translator unless it is English', () {
-    expect(dubbingLanguages, isNotEmpty);
-    for (final language in dubbingLanguages) {
-      expect(speechModelFor(language), isNotNull, reason: language);
-      if (language == untranslatedDubbingLanguage) continue;
-      expect(translationModelFor(language), isNotNull, reason: language);
+  test('dubs into Russian and nothing else', () {
+    // Every other language went with Silero, whose voices are CC BY-NC.
+    expect(dubbingLanguages, ['ru']);
+    expect(translationModelFor('ru'), isNotNull);
+    expect(speechModelFor('ru'), isNotNull);
+  });
+
+  test('has no English voice, so nothing is dubbed without the translator', () {
+    // Whisper hands English over whatever the game speaks; with a voice for
+    // it the translator could be left out, and without one it cannot.
+    expect(speechModelFor(untranslatedDubbingLanguage), isNull);
+    expect(dubbingLanguages, isNot(contains(untranslatedDubbingLanguage)));
+  });
+
+  test('reads Russian with Vosk, pinned file by file with its NOTICE', () {
+    final speech = modelCatalog.where((model) => model.kind == ModelKind.speech).toList();
+    expect(speech.map((model) => model.id), ['vosk-ru-0.9']);
+    final vosk = speech.single;
+
+    // The pipeline names a speech package by its first file, and the worker
+    // reads the package from the directory it sits in.
+    expect(vosk.primaryFileName, 'model.onnx');
+    for (final artifact in vosk.artifacts) {
+      expect(artifact.byteSize, isNotNull, reason: artifact.fileName);
+      expect(artifact.hash, hasLength(64), reason: artifact.fileName);
+      expect(artifact.url.toString(), startsWith(voskVoiceRelease), reason: artifact.fileName);
     }
+    // Apache 2.0 travels with the weights.
+    expect(vosk.artifacts.map((artifact) => artifact.fileName), contains('NOTICE'));
   });
 
-  test('dubs into English with a voice and no translator at all', () {
-    // Whisper is asked for English whatever the game speaks, so the phrase
-    // arrives in it: the one language whose pair is a voice on its own.
-    expect(dubbingLanguages, contains(untranslatedDubbingLanguage));
-    expect(speechModelFor(untranslatedDubbingLanguage), isNotNull);
-    expect(translationModelFor(untranslatedDubbingLanguage), isNull);
-  });
-
-  test('offers a language once however many voices the catalogue has for it', () {
-    // Russian has two voice packages; the models screen shows one language.
-    expect(dubbingLanguages.where((language) => language == 'ru'), hasLength(1));
-    expect(dubbingLanguages.toSet(), hasLength(dubbingLanguages.length));
-  });
-
-  test('every voice names the speaker to synthesize with', () {
+  test('names a default voice among the ones the package lists', () {
     for (final model in modelCatalog.where((model) => model.kind == ModelKind.speech)) {
-      expect(model.speaker, isNotNull, reason: model.id);
       expect(model.speaker, isNotEmpty, reason: model.id);
-      expect(model.artifacts, hasLength(1), reason: 'the worker is handed one file');
-      expect(model.primaryFileName, endsWith('.pt'), reason: model.id);
+      expect(model.voices.map((voice) => voice.id), contains(model.speaker), reason: model.id);
     }
   });
 
-  test('keeps the identifier the Russian voice was downloaded under', () {
+  test('keeps the identifier the Russian translator was downloaded under', () {
     // Identifiers name folders on disk, so changing one asks everyone to
-    // download again. The voice keeps its name; the translator deliberately
-    // does not — it was replaced by the Tatoeba-Challenge model, which is
-    // worth the second download.
-    expect(speechModelFor('ru')?.id, 'silero-ru-v5.3');
+    // download again.
     expect(translationModelFor('ru')?.id, 'opus-mt-tc-big-en-zle');
+    expect(speechModelFor('ru')?.id, 'vosk-ru-0.9');
   });
 
   test('names the target language for a translator that serves several', () {
     // opus-mt-tc-big-en-zle covers Russian, Ukrainian and Belarusian, and
     // picks between them from a token in front of the text.
     expect(translationModelFor('ru')?.translationPrefix, '>>rus<<');
-    expect(translationModelFor('de')?.translationPrefix, isNull);
   });
 
   test('offers a readable name for every dubbing language', () {
@@ -97,10 +100,10 @@ void main() {
         expect(artifact.url.scheme, 'https', reason: model.id);
         expect(
           artifact.url.host,
-          // github.com is this project's own releases: the translators are
-          // converted here rather than fetched as their authors published
-          // them.
-          anyOf('huggingface.co', 'models.silero.ai', 'github.com'),
+          // github.com is this project's own releases: the translator is
+          // converted here and the Vosk voice laid out as files, rather than
+          // fetched as their authors published them.
+          anyOf('huggingface.co', 'github.com'),
           reason: model.id,
         );
       }

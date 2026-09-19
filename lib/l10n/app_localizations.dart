@@ -1482,25 +1482,25 @@ abstract class AppLocalizations {
   /// No description provided for @pipelineSummaryDirect.
   ///
   /// In ru, this message translates to:
-  /// **'Whisper → English → Silero'**
+  /// **'Whisper → English → Vosk'**
   String get pipelineSummaryDirect;
 
   /// No description provided for @pipelineSummaryOcrDirect.
   ///
   /// In ru, this message translates to:
-  /// **'Windows OCR → English → Silero'**
+  /// **'Windows OCR → English → Vosk'**
   String get pipelineSummaryOcrDirect;
 
   /// No description provided for @pipelineSummary.
   ///
   /// In ru, this message translates to:
-  /// **'Whisper → English → Marian → {language} → Silero'**
+  /// **'Whisper → English → Marian → {language} → Vosk'**
   String pipelineSummary(String language);
 
   /// No description provided for @pipelineSummaryOcr.
   ///
   /// In ru, this message translates to:
-  /// **'Windows OCR → English → Marian → {language} → Silero'**
+  /// **'Windows OCR → English → Marian → {language} → Vosk'**
   String pipelineSummaryOcr(String language);
 
   /// No description provided for @sectionRecognition.
@@ -1524,7 +1524,7 @@ abstract class AppLocalizations {
   /// No description provided for @sectionLanguagesNote.
   ///
   /// In ru, this message translates to:
-  /// **'Переводчик и голос одного языка скачиваются, выбираются и удаляются вместе. Нужен только тот язык, на который вы играете. Английскому переводчик не нужен: whisper и так отдаёт английский.'**
+  /// **'Переводчик и голос скачиваются и удаляются вместе. LoreDub озвучивает на русском: голоса других языков были под лицензией, запрещающей коммерческое использование.'**
   String get sectionLanguagesNote;
 
   /// No description provided for @modelPartTranslation.
@@ -1758,7 +1758,7 @@ abstract class AppLocalizations {
   /// No description provided for @voiceOriginalNote.
   ///
   /// In ru, this message translates to:
-  /// **'Тембр оригинала накладывается на голос Silero. На процессоре реплика звучит примерно на секунду позже, на видеокарте — без заметной задержки: устройство выбирается в строке OpenVoice раздела «Устройство».'**
+  /// **'Тембр оригинала накладывается на голос Vosk. На процессоре реплика звучит примерно на секунду позже, на видеокарте — без заметной задержки: устройство выбирается в строке OpenVoice раздела «Устройство».'**
   String get voiceOriginalNote;
 
   /// No description provided for @voiceOriginalMissing.
@@ -1794,7 +1794,7 @@ abstract class AppLocalizations {
   /// No description provided for @voiceBankOnNote.
   ///
   /// In ru, this message translates to:
-  /// **'Каждый новый персонаж запоминается по голосу и получает свой голос Silero, а в режиме «Голос оригинала» — ещё и свой тембр. Следующие его реплики звучат так же, в том числе после перезапуска. У каждой игры свой банк голосов.'**
+  /// **'Каждый новый персонаж запоминается по голосу и получает свой голос Vosk, а в режиме «Голос оригинала» — ещё и свой тембр. Следующие его реплики звучат так же, в том числе после перезапуска. У каждой игры свой банк голосов.'**
   String get voiceBankOnNote;
 
   /// No description provided for @voiceBankOffNote.
@@ -1860,7 +1860,7 @@ abstract class AppLocalizations {
   /// No description provided for @modelConverterNote.
   ///
   /// In ru, this message translates to:
-  /// **'Переносит тембр оригинальной реплики на голос Silero, {size}.'**
+  /// **'Переносит тембр оригинальной реплики на голос Vosk, {size}.'**
   String modelConverterNote(String size);
 
   /// No description provided for @stageConverter.
@@ -1920,7 +1920,7 @@ abstract class AppLocalizations {
   /// No description provided for @pythonNote.
   ///
   /// In ru, this message translates to:
-  /// **'Marian и Silero запускаются выбранным python.exe. Setup включает готовый runtime.'**
+  /// **'Marian и Vosk запускаются выбранным python.exe. Setup включает готовый runtime.'**
   String get pythonNote;
 
   /// No description provided for @pythonFieldLabel.
@@ -1998,7 +1998,7 @@ abstract class AppLocalizations {
   /// No description provided for @modelDirectoryNote.
   ///
   /// In ru, this message translates to:
-  /// **'Whisper, Marian и Silero хранятся локально.'**
+  /// **'Whisper, Marian и Vosk хранятся локально.'**
   String get modelDirectoryNote;
 
   /// No description provided for @openInExplorer.
@@ -2196,7 +2196,7 @@ abstract class AppLocalizations {
   /// No description provided for @modelVoiceTitle.
   ///
   /// In ru, this message translates to:
-  /// **'{language} — Silero {version}'**
+  /// **'{language} — Vosk {version}'**
   String modelVoiceTitle(String language, String version);
 
   /// No description provided for @modelVoiceNote.
@@ -2208,7 +2208,7 @@ abstract class AppLocalizations {
   /// No description provided for @modelVoiceNoteRu.
   ///
   /// In ru, this message translates to:
-  /// **'Русская речь, 24 kHz; голоса xenia, aidar, baya, kseniya и eugene.'**
+  /// **'Русская речь под Apache 2.0; голоса female_1, male_0 и male_1.'**
   String get modelVoiceNoteRu;
 
   /// No description provided for @language_ar.
@@ -2460,43 +2460,43 @@ abstract class AppLocalizations {
   /// No description provided for @failureWorkerExited.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Silero worker завершился с кодом {code}: {detail}'**
+  /// **'Marian/Vosk worker завершился с кодом {code}: {detail}'**
   String failureWorkerExited(int code, String detail);
 
   /// No description provided for @failureWorkerExitedSilently.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Silero worker завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.'**
+  /// **'Marian/Vosk worker завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.'**
   String failureWorkerExitedSilently(int code);
 
   /// No description provided for @failureWorkerTimeout.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Silero не ответил за 2 минуты. Последний вывод: {detail}'**
+  /// **'Marian/Vosk не ответил за 2 минуты. Последний вывод: {detail}'**
   String failureWorkerTimeout(String detail);
 
   /// No description provided for @failureWorkerTimeoutSilent.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Silero не ответил за 2 минуты. Вывода процесса нет.'**
+  /// **'Marian/Vosk не ответил за 2 минуты. Вывода процесса нет.'**
   String get failureWorkerTimeoutSilent;
 
   /// No description provided for @failureWorkerStartTimeout.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Silero не запустился за 5 минут. Последний вывод: {detail}'**
+  /// **'Marian/Vosk не запустился за 5 минут. Последний вывод: {detail}'**
   String failureWorkerStartTimeout(String detail);
 
   /// No description provided for @failureWorkerStartTimeoutSilent.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Silero не запустился за 5 минут. Вывода процесса нет.'**
+  /// **'Marian/Vosk не запустился за 5 минут. Вывода процесса нет.'**
   String get failureWorkerStartTimeoutSilent;
 
   /// No description provided for @failureWorkerNotRunning.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Silero worker не запущен'**
+  /// **'Marian/Vosk worker не запущен'**
   String get failureWorkerNotRunning;
 
   /// No description provided for @failureAudioNotDecoded.
@@ -2508,7 +2508,7 @@ abstract class AppLocalizations {
   /// No description provided for @failureWorkerFailed.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Silero: {detail}'**
+  /// **'Marian/Vosk: {detail}'**
   String failureWorkerFailed(String detail);
 
   /// No description provided for @failurePipelineStopped.
@@ -2856,7 +2856,7 @@ abstract class AppLocalizations {
   /// No description provided for @computeSpeechNote.
   ///
   /// In ru, this message translates to:
-  /// **'Озвучка на видеокарте выигрывает немного: Silero держится 20-26 мс на строке любой длины против 23-66 мс на процессоре, а первая фраза сессии обходится на секунду дороже. Рядом с распознаванием, которое считается секундами, разницу почти не слышно.'**
+  /// **'Vosk на видеокарте быстрее только на повторах: фраза, уже звучавшая, читается за 0,3 с, а каждая реплика новой длины — около 1,9 с, потому что cuDNN заново строит план свёртки. На процессоре реплика занимает 0,4–1,3 с. Для видеокарты нужен тот же CUDA-рантайм, что и для перевода.'**
   String get computeSpeechNote;
 
   /// No description provided for @failureRuntimeIncomplete.
@@ -3210,7 +3210,7 @@ abstract class AppLocalizations {
   /// No description provided for @pipelineCutTranslation.
   ///
   /// In ru, this message translates to:
-  /// **'Убрать перевод — озвучка пойдёт на английском'**
+  /// **'Перевод не убрать: голос есть только у русского'**
   String get pipelineCutTranslation;
 
   /// No description provided for @pipelineCutTranslationBack.

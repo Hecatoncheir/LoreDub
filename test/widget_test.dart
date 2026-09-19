@@ -379,7 +379,7 @@ void main() {
     await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     expect(find.text('Захватывается только звук выбранного процесса'), findsOneWidget);
-    expect(find.text('Whisper → English → Marian → Русский → Silero'), findsOneWidget);
+    expect(find.text('Whisper → English → Marian → Русский → Vosk'), findsOneWidget);
   });
 
   testWidgets('names the screen path on the page that reads the screen', (tester) async {
@@ -390,7 +390,7 @@ void main() {
     );
     await pumpDashboard(tester, cubits, const Size(1280, 900));
 
-    expect(find.text('Windows OCR → English → Marian → Русский → Silero'), findsOneWidget);
+    expect(find.text('Windows OCR → English → Marian → Русский → Vosk'), findsOneWidget);
     expect(find.textContaining('Whisper →'), findsNothing);
   });
 
@@ -1213,34 +1213,27 @@ void main() {
     expect(find.text('Чтобы начать'), findsNothing);
   });
 
-  testWidgets('picks the dubbing language beside the start button', (tester) async {
-    final cubits = stage(buildCubits(), models: catalogue(missingLanguage: 'de'));
+  testWidgets('offers Russian alone beside the start button', (tester) async {
+    final cubits = stage(buildCubits(), models: catalogue());
     await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     final picker = find.byKey(const ValueKey('targetLanguage'));
     expect(picker, findsOneWidget);
     expect(find.text('Русский'), findsOneWidget);
-
     final field = tester.widget<DropdownButtonFormField<String>>(picker);
-    field.onChanged!('fr');
-    await tester.pumpAndSettle();
-
-    // The choice is the models choice: the French pair is now the one used.
-    expect(cubits.settings.settings.targetLanguage, 'fr');
-    expect((await SettingsService().load()).targetLanguage, 'fr');
+    expect(field.initialValue, 'ru');
     expect(cubits.selection.requiredModelsInstalled, isTrue);
   });
 
-  testWidgets('marks a language whose models are missing', (tester) async {
-    final cubits = stage(buildCubits(), models: catalogue(missingLanguage: 'de'));
+  testWidgets('marks the language whose models are missing', (tester) async {
+    final cubits = stage(buildCubits(), models: catalogue(missingLanguage: 'ru'));
     await pumpDashboard(tester, cubits, const Size(1280, 720));
 
-    expect(cubits.selection.isLanguageReady('ru'), isTrue);
-    expect(cubits.selection.isLanguageReady('de'), isFalse);
+    expect(cubits.selection.isLanguageReady('ru'), isFalse);
 
     await tester.tap(find.byKey(const ValueKey('targetLanguage')));
     await tester.pumpAndSettle();
-    expect(find.text('Немецкий · нет моделей'), findsWidgets);
+    expect(find.text('Русский · нет моделей'), findsWidgets);
   });
 
   testWidgets('splits the models screen into recognition, languages and the converter', (
@@ -1267,7 +1260,7 @@ void main() {
     expect(find.text('ГОЛОС ОРИГИНАЛА'), findsOneWidget);
     final selection = cubits.selection;
     expect(selection.recognitionModels.length, greaterThan(1), reason: 'the model is a choice');
-    expect(selection.languagePairs.length, greaterThan(1));
+    expect(selection.languagePairs.map((pair) => pair.language), ['ru']);
   });
 
   group('the language tiles', () {
@@ -1281,12 +1274,12 @@ void main() {
         buildCubits(),
         section: DashboardSection.models,
         settings: settings,
-        models: models ?? catalogue(missingLanguage: 'de'),
+        models: models ?? catalogue(),
         status: status,
       );
       await pumpDashboard(tester, cubits, const Size(1280, 1000));
       await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('languageTile-uk')),
+        find.byKey(const ValueKey('languageTile-ru')),
         300,
         scrollable: modelsScroller(),
       );
@@ -1297,42 +1290,30 @@ void main() {
     Finder tile(String language) => find.byKey(ValueKey('languageTile-$language'));
     Finder on(String language, Finder what) => find.descendant(of: tile(language), matching: what);
 
-    testWidgets('holds a translator and a voice in one tile per language', (tester) async {
+    testWidgets('holds a translator and a voice in one tile, for Russian alone', (tester) async {
       await pumpTiles(tester);
 
-      for (final language in ['ru', 'de', 'es', 'fr', 'uk']) {
-        expect(tile(language), findsOneWidget, reason: language);
-      }
+      expect(find.byKey(const ValueKey('languageTile-de')), findsNothing);
       expect(on('ru', find.text('Русский')), findsOneWidget);
       expect(on('ru', find.text('перевод')), findsOneWidget);
       expect(on('ru', find.text('голос')), findsOneWidget);
       expect(on('ru', find.byTooltip('Удалить')), findsOneWidget);
-      expect(on('de', find.byTooltip('Скачать')), findsOneWidget, reason: 'German is missing');
-      expect(on('de', find.byTooltip('Удалить')), findsNothing);
     });
 
-    testWidgets('picks the language by tapping its tile', (tester) async {
-      final cubits = await pumpTiles(tester);
+    testWidgets('offers the pair for download while it is missing', (tester) async {
+      await pumpTiles(tester, models: catalogue(missingLanguage: 'ru'));
 
-      await tester.tap(on('de', find.text('Немецкий')));
-      await tester.pumpAndSettle();
-      expect(cubits.settings.settings.targetLanguage, 'de');
-
-      await tester.tap(on('ru', find.text('Русский')));
-      await tester.pumpAndSettle();
-      expect(cubits.settings.settings.targetLanguage, 'ru');
+      expect(on('ru', find.byTooltip('Скачать')), findsOneWidget);
+      expect(on('ru', find.byTooltip('Удалить')), findsNothing);
     });
 
-    testWidgets('marks the language in use dark and the others light', (tester) async {
+    testWidgets('marks the language in use dark', (tester) async {
       await pumpTiles(tester);
 
-      Color face(String language) => tester
-          .widget<Material>(
-            find.descendant(of: tile(language), matching: find.byType(Material)).first,
-          )
-          .color!;
-      expect(face('ru'), LoreDubPalette.graphite);
-      expect(face('fr'), LoreDubPalette.panel);
+      final face = tester
+          .widget<Material>(find.descendant(of: tile('ru'), matching: find.byType(Material)).first)
+          .color;
+      expect(face, LoreDubPalette.graphite);
     });
 
     testWidgets('shows a pair downloading as one ring with its controls', (tester) async {
@@ -1633,7 +1614,7 @@ void main() {
       expect(colour(cell('recognition', 'cpu')), LoreDubPalette.panel);
       expect(colour(cell('translation', 'cpu')), LoreDubPalette.graphite);
       expect(
-        find.descendant(of: cell('translation', 'cuda'), matching: find.text('2.5 ГБ')),
+        find.descendant(of: cell('translation', 'cuda'), matching: find.text('2.7 ГБ')),
         findsOneWidget,
         reason: 'the missing package names its size',
       );
@@ -2372,14 +2353,14 @@ void main() {
       final picker = find.byKey(const ValueKey('voice'));
       expect(picker, findsOneWidget);
       final field = tester.widget<DropdownButtonFormField<String>>(picker);
-      expect(field.initialValue, 'xenia', reason: 'the catalogue default for Russian');
+      expect(field.initialValue, 'female_1', reason: 'the catalogue default for Russian');
 
-      field.onChanged!('eugene');
+      field.onChanged!('male_0');
       await tester.pumpAndSettle();
 
       final saved = await SettingsService().load();
       expect(saved.automaticVoice, isFalse);
-      expect(saved.voice, 'eugene');
+      expect(saved.voice, 'male_0');
     });
 
     testWidgets('names the gender beside every voice', (tester) async {
@@ -2388,15 +2369,27 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('voice')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Aidar (мужской)'), findsWidgets);
-      expect(find.text('Xenia (женский)'), findsWidgets);
+      expect(find.text('Male 0 (мужской)'), findsWidgets);
+      expect(find.text('Female 1 (женский)'), findsWidgets);
     });
 
     testWidgets('says why a one-gender language cannot follow either', (tester) async {
-      // Every Spanish voice is a man's.
+      // A Russian package with men's voices alone, as Silero's Spanish was.
+      final vosk = speechModelFor('ru')!;
+      final menOnly = ModelPackage(
+        id: vosk.id,
+        artifacts: vosk.artifacts,
+        kind: ModelKind.speech,
+        language: 'ru',
+        speaker: 'male_0',
+        voices: const [VoiceOption('male_0', gender: VoiceGender.male)],
+      );
       final cubits = await pumpSettings(
         tester,
-        settings: const AppSettings(targetLanguage: 'es'),
+        models: [
+          for (final state in catalogue())
+            state.model.id == vosk.id ? ModelInstallState(model: menOnly, installed: true) : state,
+        ],
       );
 
       expect(cubits.selection.canFollowSpeaker, isFalse);
@@ -2412,7 +2405,7 @@ void main() {
       expect((await SettingsService().load()).originalVoice, isTrue);
       expect(find.textContaining('Тембр оригинала накладывается'), findsOneWidget);
       expect(
-        find.textContaining('получает свой голос Silero'),
+        find.textContaining('получает свой голос Vosk'),
         findsOneWidget,
         reason: 'the characters are remembered from the start',
       );
@@ -2439,7 +2432,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.widget<Switch>(remember).value, isTrue, reason: 'on from the start');
-      expect(find.textContaining('получает свой голос Silero'), findsOneWidget);
+      expect(find.textContaining('получает свой голос Vosk'), findsOneWidget);
     });
 
     testWidgets('asks for the converter before re-voicing', (tester) async {
@@ -2535,7 +2528,7 @@ void main() {
     testWidgets('leaves OpenVoice out of the devices without the original voice', (tester) async {
       await pumpSettings(tester);
       await tester.scrollUntilVisible(
-        find.textContaining('Silero держится'),
+        find.textContaining('Vosk на видеокарте быстрее только на повторах'),
         300,
         scrollable: settingsScroller(),
       );

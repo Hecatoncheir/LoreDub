@@ -42,7 +42,7 @@ class Character {
   /// What the recording sounded like, when it was clear enough to say.
   final String? gender;
 
-  /// The Silero voice this character is read in, once one was given.
+  /// The voice this character is read in, once one was given.
   final String? voice;
 
   /// How long the recording their fingerprint was taken from ran.

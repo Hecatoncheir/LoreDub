@@ -89,6 +89,7 @@ flutter:
     - assets/icons/directory_sync.svg
     - assets/runtime/inference_worker.py
     - assets/runtime/tone_converter.py
+    - assets/runtime/vosk_voice.py
 
   fonts:
     # Static instances cut from the upstream variable fonts, so the weights

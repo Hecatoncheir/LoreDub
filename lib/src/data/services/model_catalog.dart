@@ -5,11 +5,13 @@ import '../../domain/model_package.dart';
 import '../../domain/spoken_language.dart';
 
 /// Recognition needs nothing but Whisper: it turns speech in any language
-/// into English on its own. Everything after that comes in pairs — a Marian
-/// translator and a Silero voice for the same language.
+/// into English on its own. What follows is Russian alone -- a Marian
+/// translator and a Vosk voice. The other languages and every Silero voice
+/// were taken out: Silero's are CC BY-NC, and the dubbing is to be free to
+/// earn money with.
 const whisperModelId = 'whisper-base';
 
-/// OpenVoice V2's tone colour converter, which re-voices Silero in the timbre
+/// OpenVoice V2's tone colour converter, which re-voices the voice in the timbre
 /// of the phrase being answered. MIT, and the same package for every language.
 const voiceConverterModelId = 'openvoice-v2-converter';
 
@@ -40,11 +42,16 @@ ModelPackage _whisper({
   ],
 );
 
+/// Where this project publishes the model files it prepares: a public
+/// repository of their own, since the application's may be private and a
+/// release asset of a private repository answers an anonymous download with
+/// 404. It holds no code, only releases.
+const _modelReleases = 'https://github.com/Hecatoncheir/LoreDub-models/releases/download';
+
 /// Where the converted translators are published: an asset of the release
 /// that carries them. Release assets are flat, so a file is named by its
 /// package and its own name together.
-const convertedTranslatorRelease =
-    'https://github.com/Hecatoncheir/LoreDub/releases/download/translators-ct2-v1';
+const convertedTranslatorRelease = '$_modelReleases/translators-ct2-v1';
 
 /// A translator of the OPUS-MT project, converted to CTranslate2 int8 and
 /// published by this project rather than fetched from its authors.
@@ -83,137 +90,26 @@ ModelPackage _converted({
   ],
 );
 
-/// Voices, with the gender each one reads as.
-///
-/// The genders are measured rather than looked up: every voice was
-/// synthesized and its median fundamental taken, which separates the two
-/// groups by a wide margin. Packages whose voices are named by number are
-/// left [VoiceGender.unknown], and the automatic choice then stays out of it.
-/// The English voices that read as women and as men, by the median
-/// fundamental of one phrase each -- the same measurement the worker makes
-/// of a game's speaker.
-const _englishWomen = [
-  0,
-  4,
-  5,
-  6,
-  10,
-  11,
-  12,
-  14,
-  16,
-  18,
-  21,
-  24,
-  25,
-  26,
-  28,
-  33,
-  36,
-  37,
-  38,
-  39,
-  41,
-  43,
-  44,
-  45,
-  47,
-  49,
-  50,
-  51,
-  52,
-  53,
-  54,
-  55,
-  56,
-  60,
-  61,
-  62,
-  65,
-  67,
-  72,
-  75,
-  82,
-  83,
-  85,
-  86,
-  92,
-  94,
-  95,
-  96,
-  97,
-  98,
-  99,
-  101,
-  107,
-  108,
-  109,
-  116,
-  117,
-];
-const _englishMen = [
-  2,
-  13,
-  15,
-  17,
-  19,
-  20,
-  22,
-  23,
-  27,
-  29,
-  30,
-  31,
-  32,
-  34,
-  35,
-  40,
-  42,
-  46,
-  57,
-  58,
-  63,
-  66,
-  69,
-  70,
-  71,
-  73,
-  77,
-  78,
-  79,
-  80,
-  81,
-  84,
-  87,
-  89,
-  90,
-  91,
-  93,
-  100,
-  102,
-  103,
-  104,
-  105,
-  106,
-  110,
-  112,
-  113,
-  114,
-  115,
-];
-
 VoiceOption _male(String id) => VoiceOption(id, gender: VoiceGender.male);
 VoiceOption _female(String id) => VoiceOption(id, gender: VoiceGender.female);
 
-ModelPackage _silero({
+/// Where the Vosk voices are published: a release beside the translators'. The authors hand the model out as one archive with nothing to
+/// check it by; laid out as files here, every one carries its size and its
+/// SHA-256 and a download resumes where it stopped.
+const voskVoiceRelease = '$_modelReleases/voices-vosk-v1';
+
+/// A Vosk-TTS voice, read by `vosk_voice.py` in the worker. `model.onnx` goes
+/// first: the pipeline names a speech package by its first file, and the
+/// worker takes the directory it sits in.
+ModelPackage _vosk({
   required String id,
-  required String language,
-  required String fileName,
-  required String directory,
-  required int byteSize,
-  required String speaker,
   required String version,
-  List<VoiceOption> voices = const [],
+  required String language,
+  required String speaker,
+  required List<VoiceOption> voices,
+
+  /// File name to its size in bytes and its SHA-256.
+  required Map<String, (int, String)> files,
 }) => ModelPackage(
   id: id,
   kind: ModelKind.speech,
@@ -222,11 +118,13 @@ ModelPackage _silero({
   version: version,
   voices: voices,
   artifacts: [
-    ModelArtifact(
-      fileName: fileName,
-      url: Uri.parse('https://models.silero.ai/models/tts/$directory/$fileName'),
-      byteSize: byteSize,
-    ),
+    for (final entry in files.entries)
+      ModelArtifact(
+        fileName: entry.key,
+        url: Uri.parse('$voskVoiceRelease/$id-${entry.key}'),
+        byteSize: entry.value.$1,
+        hash: entry.value.$2,
+      ),
   ],
 );
 
@@ -289,233 +187,40 @@ final modelCatalog = <ModelPackage>[
       'vocab.json': (2510527, '41dbdff4a0b5a6ab125715c3342c5ce6516e93ffd49608813240403f036c5efb'),
     },
   ),
-  _converted(
-    id: 'marian-en-de',
-    language: 'de',
-    files: const {
-      'config.json': (233, '72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee'),
-      'model.bin': (75979635, '3cad348e65aa400a0fce83b2b89a876030092e108ebc5a824ac1def6c76957b2'),
-      'NOTICE': (569, 'a0af054f2180db4e0cd071db94a3fa2887cbff13ce77535b017d3cbf31873ded'),
-      'shared_vocabulary.json': (
-        1051929,
-        'c32eadf3db9b4884a959858d7294f7c61e20067fc47564ae3c56d180c1ee6178',
-      ),
-      'source.spm': (768489, '678f2a1177d8389f67b66299762dcc4fc567e89b07e212ba91b0c56daecf47ce'),
-      'target.spm': (796845, 'bbd1f495eea99c8e21ae086d9146e0fa7b096c3dfdd9ba07ab8b631889df5c9b'),
-      'tokenizer_config.json': (
-        42,
-        '052c28be2c51ea3398bf9b9de92004270e29a51f8404f9921ec025986ffbefae',
-      ),
-      'vocab.json': (1273232, '0d70d89fee4a8b4ef99a56d712163baadcabd5600a597f71515547ee70306329'),
-    },
-  ),
-  _converted(
-    id: 'marian-en-es',
-    language: 'es',
-    files: const {
-      'config.json': (233, '72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee'),
-      'model.bin': (79567635, '30c5c2de08329c61860777fbe471e2dd413f64adbde543b2848b5ac3b5d6f865'),
-      'NOTICE': (569, 'd589b8d5b129e95bec670b2ce7dd44fe1127e3fdd0ec60c570dae86233f75d24'),
-      'shared_vocabulary.json': (
-        1341137,
-        '5d57da3a8899ca0a45f085eff04c41553d784a981544702996001911b9dd0af1',
-      ),
-      'source.spm': (801636, '4dd547c24816a335e7b0b2e63376a8f1b3cbfc671eda5ab808dd44fdadaa8791'),
-      'target.spm': (825924, 'e236ee6d866b635c0142114f8647f39831f9d92534aa2aad75c942f6a78ad0e3'),
-      'tokenizer_config.json': (
-        44,
-        '9859e3f8f73e2f50ab3e5cc2de432645347432956df4772d33209a346dd97f3b',
-      ),
-      'vocab.json': (1590040, '257f346d7a6b2ecceafcca8ba05648ce2fd68dfaf105fb0e913dca7198f3f6d5'),
-    },
-  ),
-  _converted(
-    id: 'marian-en-fr',
-    language: 'fr',
-    files: const {
-      'config.json': (233, '72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee'),
-      'model.bin': (76714395, '236b63e3029611a328693d704067ebdd75b800e5b3011cdec3dad4287fd29a36'),
-      'NOTICE': (569, '3a76b5f5a1c95b848595772ddc736e7277b0f66c4543bc6a4894d3bc446cd049'),
-      'shared_vocabulary.json': (
-        1112211,
-        '528a527b3504bda364600f8bd7a2db1b0d7f82ef97a33ba0e80c289c4ae63c24',
-      ),
-      'source.spm': (778395, '173e9f493a668fe396d599e28d414a201193094e6ffd7a4678e5aab0f6d3d838'),
-      'target.spm': (802397, '78d0e717c77053f1c4b856d8661d9cb87c64f083a35418c087b9146300e4f585'),
-      'tokenizer_config.json': (
-        42,
-        '3492a8555368d21fc116cac84bdf551aee16783413be3afbfe4823de045960cf',
-      ),
-      'vocab.json': (1339166, '945c604346ce15ce4aff9001001e7f925e336d942c4087017f191871162cbdc4'),
-    },
-  ),
-  _converted(
-    id: 'marian-en-uk',
-    language: 'uk',
-    files: const {
-      'config.json': (233, '72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee'),
-      'model.bin': (77792355, '48294770fc750ac5ef9f998d46c99e30eddda60e8267a23ed7c3420ce7976e00'),
-      'NOTICE': (569, '22f2fe24971d0a4af13020cb7996dca0c8548a8ce54d27085d6c0bf956011cdc'),
-      'shared_vocabulary.json': (
-        2132463,
-        '7c3e274a6272691b85fd24075451d3abd4c72052c89bf672e571185ee44e311a',
-      ),
-      'source.spm': (808645, '4dc9157e60a15b157c2f3d5f892379b03aed111c9fe8ac7cecba5f2aa56379ef'),
-      'target.spm': (1007605, '7abd810b2df512e6fe177f8732f6a0b3107614c84cc52aba20d805b4cb0d7b6b'),
-      'tokenizer_config.json': (
-        42,
-        '33e70590c12ca4b2de861bec63a06eb2a884a1d835ecc6301122d77eb66b959f',
-      ),
-      'vocab.json': (2367710, '992107700c8d5f9c1f41fefa5f72ac99050852b39d75f979c4e59344e6d14770'),
-    },
-  ),
 
-  _silero(
-    id: 'silero-ru-v5.3',
-    version: 'v5.3',
-    language: 'ru',
-    fileName: 'v5_3_ru.pt',
-    directory: 'ru',
-    byteSize: 145359640,
-    speaker: 'xenia',
-    voices: [
-      _male('aidar'),
-      _female('baya'),
-      _female('kseniya'),
-      _male('eugene'),
-      _female('xenia'),
-    ],
-  ),
-  // The same Silero under MIT instead of CC BY-NC-SA, which is the whole
-  // reason it is here: every voice of the CIS package also reads Russian, so
-  // this is the Russian voice a build that earns money could carry. The
-  // `nostress` build is the one that fits the pipeline -- plain
-  // `v5_cis_base` expects the stress marked in the text (`в н+едрах`), and
-  // what arrives here is Marian's output, unmarked.
+  // Vosk-TTS, the Russian voice, under Apache 2.0. Measured against the
+  // Silero v5.3 it replaced over the same four characters, the two are a tie
+  // under the converter (0.743 against 0.745 from a game line); Vosk reads a
+  // line in 0.9 s on the processor to Silero's 0.2.
   //
-  // The voices are the package's own CIS speakers reading Russian, so
-  // whatever accent they carry is theirs. The genders are measured the way
-  // the others are; `ru_albina`, `ru_gamat` and `ru_igor` are left out
-  // rather than guessed, sitting between the thresholds at 159 to 171 Hz
-  // over four phrases each -- one phrase alone had put `ru_igor` on the
-  // women's side at 180.
-  _silero(
-    id: 'silero-ru-cis-v5',
-    version: 'v5 cis base',
+  // Three of its five voices are listed: `female_0` and `female_2` measure
+  // 173 Hz over four phrases, inside the gap the worker leaves undecided, and
+  // are left out rather than guessed. The model's own names call them women;
+  // one phrase alone had put `female_2` at 160 Hz, on the men's side.
+  _vosk(
+    id: 'vosk-ru-0.9',
+    version: '0.9',
     language: 'ru',
-    fileName: 'v5_cis_base_nostress.pt',
-    directory: 'ru',
-    byteSize: 91685438,
-    speaker: 'ru_ekaterina',
+    speaker: 'female_1',
     voices: [
-      _female('ru_aigul'),
-      _male('ru_alexandr'),
-      _female('ru_alfia'),
-      _female('ru_alfia2'),
-      _male('ru_bogdan'),
-      _male('ru_dmitriy'),
-      _female('ru_ekaterina'),
-      _female('ru_vika'),
-      _female('ru_karina'),
-      _male('ru_kejilgan'),
-      _female('ru_kermen'),
-      _male('ru_marat'),
-      _male('ru_miyau'),
-      _female('ru_nurgul'),
-      _female('ru_oksana'),
-      _female('ru_onaoy'),
-      _female('ru_ramilia'),
-      _male('ru_roman'),
-      _male('ru_safarhuja'),
-      _female('ru_saida'),
-      _male('ru_sibday'),
-      _female('ru_zara'),
-      _female('ru_zhadyra'),
-      _female('ru_zhazira'),
-      _female('ru_zinaida'),
-      _male('ru_eduard'),
+      _female('female_1'),
+      _male('male_0'),
+      _male('male_1'),
     ],
-  ),
-  _silero(
-    id: 'silero-de-v3',
-    version: 'v3',
-    language: 'de',
-    fileName: 'v3_de.pt',
-    directory: 'de',
-    byteSize: 57076082,
-    speaker: 'eva_k',
-    voices: [
-      _male('bernd_ungerer'),
-      _female('eva_k'),
-      _male('friedrich'),
-      _female('hokuspokus'),
-      _male('karlsson'),
-    ],
-  ),
-  _silero(
-    id: 'silero-es-v3',
-    version: 'v3',
-    language: 'es',
-    fileName: 'v3_es.pt',
-    directory: 'es',
-    byteSize: 57079302,
-    speaker: 'es_0',
-    // Measured: all three Spanish voices are men, so there is no second
-    // gender for the automatic choice to switch to.
-    voices: [_male('es_0'), _male('es_1'), _male('es_2')],
-  ),
-  _silero(
-    id: 'silero-fr-v3',
-    version: 'v3',
-    language: 'fr',
-    fileName: 'v3_fr.pt',
-    directory: 'fr',
-    byteSize: 57085158,
-    speaker: 'fr_0',
-    voices: [
-      _male('fr_0'),
-      _male('fr_1'),
-      _male('fr_2'),
-      _male('fr_3'),
-      _female('fr_4'),
-      _male('fr_5'),
-    ],
-  ),
-  _silero(
-    id: 'silero-uk-v4',
-    version: 'v4',
-    language: 'uk',
-    fileName: 'v4_ua.pt',
-    directory: 'ua',
-    byteSize: 35354913,
-    speaker: 'mykyta',
-    // The Ukrainian package ships one voice, so there is nothing to follow.
-    voices: [_male('mykyta')],
-  ),
-
-  // The one language with a voice and no translator: whisper is already
-  // asked for English, so a phrase arrives in it and Marian is left out of
-  // the session entirely -- a stage less to load, and a machine too small
-  // for the translator can still dub.
-  //
-  // The package ships 118 numbered voices of uneven quality. All 118 were
-  // synthesized and measured; the 13 that landed between the thresholds
-  // (156 to 174 Hz) are left off the list rather than guessed at, which is
-  // what the rest of the catalogue does. They are grouped by gender rather
-  // than left in numeric order: a picker of a hundred names is read by
-  // looking for a man's or a woman's voice first.
-  _silero(
-    id: 'silero-en-v3',
-    version: 'v3',
-    language: 'en',
-    fileName: 'v3_en.pt',
-    directory: 'en',
-    byteSize: 57194546,
-    speaker: 'en_0',
-    voices: [
-      for (final number in _englishWomen) _female('en_$number'),
-      for (final number in _englishMen) _male('en_$number'),
-    ],
+    files: {
+      'model.onnx': (179314533, '0fa5a36b22a8bf7fe7179a3882c6371d2c01e5317019e717516f892d329c24b9'),
+      'config.json': (1518, 'e155fb266a730e1858a2420442b465acf08a3236dffad7d1a507bf155b213d50'),
+      'dictionary': (
+        101431118,
+        '2939e72c170bb41ac8e256828cca1c5fac4db1e36717f9f53fde843b00a220ba',
+      ),
+      'bert.onnx': (654361598, '2e2f1740eaae5e29c2b4844625cbb01ff644b2b5fb0560bd34374c35d8a092c1'),
+      'bert-vocab.txt': (
+        1780720,
+        'bbe5063cc3d7a314effd90e9c5099cf493b81f2b9552c155264e16eeab074237',
+      ),
+      'NOTICE': (986, '43c94f4c0fd4a3bddff2546da61f4c7622e1922dadac6bc650d043f1261cb8a7'),
+    },
   ),
 
   ModelPackage(
@@ -546,10 +251,9 @@ final modelCatalog = <ModelPackage>[
 /// Languages the pipeline can dub into, in catalogue order: those with a
 /// voice and either a translator or nothing to translate.
 ///
-/// English is the second kind. Whisper hands English over whatever the game
-/// speaks, so dubbing into it asks for a voice and no Marian at all -- which
-/// is also why it is the one language a machine too small for the translator
-/// can still dub into.
+/// English would be the second kind -- whisper hands English over whatever the
+/// game speaks, so it would ask for a voice and no Marian -- but the catalogue
+/// carries no English voice, so today this is Russian alone.
 ///
 /// Counted over the voices rather than the translators, because a language
 /// may have more than one voice package and every one of them names it.

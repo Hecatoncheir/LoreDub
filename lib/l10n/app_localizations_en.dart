@@ -843,19 +843,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptClearTooltip => 'Remove every line from the list';
 
   @override
-  String get pipelineSummaryDirect => 'Whisper → English → Silero';
+  String get pipelineSummaryDirect => 'Whisper → English → Vosk';
 
   @override
-  String get pipelineSummaryOcrDirect => 'Windows OCR → English → Silero';
+  String get pipelineSummaryOcrDirect => 'Windows OCR → English → Vosk';
 
   @override
   String pipelineSummary(String language) {
-    return 'Whisper → English → Marian → $language → Silero';
+    return 'Whisper → English → Marian → $language → Vosk';
   }
 
   @override
   String pipelineSummaryOcr(String language) {
-    return 'Windows OCR → English → Marian → $language → Silero';
+    return 'Windows OCR → English → Marian → $language → Vosk';
   }
 
   @override
@@ -870,7 +870,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionLanguagesNote =>
-      'A language\'s translator and voice are downloaded, picked and deleted together. Only the language you play in is needed. English needs no translator: whisper hands English over already.';
+      'A translator and its voice are downloaded and deleted together. LoreDub dubs into Russian: the other languages\' voices were under a licence that forbids commercial use.';
 
   @override
   String get modelPartTranslation => 'translation';
@@ -1004,7 +1004,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceOriginalNote =>
-      'The original\'s timbre is laid over the Silero voice. On the processor each line sounds about a second later, on a graphics card with no noticeable delay: pick the device in the OpenVoice row under Device.';
+      'The original\'s timbre is laid over the Vosk voice. On the processor each line sounds about a second later, on a graphics card with no noticeable delay: pick the device in the OpenVoice row under Device.';
 
   @override
   String get voiceOriginalMissing =>
@@ -1027,7 +1027,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceBankOnNote =>
-      'Every new character is remembered by their voice and given a Silero voice of their own — and their own timbre with Original voice on. Their later lines keep both, restarts included. Every game has a voice bank of its own.';
+      'Every new character is remembered by their voice and given a Vosk voice of their own — and their own timbre with Original voice on. Their later lines keep both, restarts included. Every game has a voice bank of its own.';
 
   @override
   String get voiceBankOffNote =>
@@ -1075,7 +1075,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String modelConverterNote(String size) {
-    return 'Moves the timbre of the original line onto the Silero voice, $size.';
+    return 'Moves the timbre of the original line onto the Vosk voice, $size.';
   }
 
   @override
@@ -1112,7 +1112,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pythonNote =>
-      'Marian and Silero run on the python.exe you pick. The setup ships a ready runtime.';
+      'Marian and Vosk run on the python.exe you pick. The setup ships a ready runtime.';
 
   @override
   String get pythonFieldLabel => 'Python path or command';
@@ -1151,7 +1151,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsModelDirectory => 'Model directory';
 
   @override
-  String get modelDirectoryNote => 'Whisper, Marian and Silero are kept on this machine.';
+  String get modelDirectoryNote => 'Whisper, Marian and Vosk are kept on this machine.';
 
   @override
   String get openInExplorer => 'Open in Explorer';
@@ -1267,7 +1267,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String modelVoiceTitle(String language, String version) {
-    return '$language — Silero $version';
+    return '$language — Vosk $version';
   }
 
   @override
@@ -1277,7 +1277,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelVoiceNoteRu =>
-      'Russian speech, 24 kHz; voices xenia, aidar, baya, kseniya and eugene.';
+      'Russian speech under Apache 2.0; voices female_1, male_0 and male_1.';
 
   @override
   String get language_ar => 'Arabic';
@@ -1422,41 +1422,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String failureWorkerExited(int code, String detail) {
-    return 'The Marian/Silero worker exited with code $code: $detail';
+    return 'The Marian/Vosk worker exited with code $code: $detail';
   }
 
   @override
   String failureWorkerExitedSilently(int code) {
-    return 'The Marian/Silero worker exited with code $code without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.';
+    return 'The Marian/Vosk worker exited with code $code without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.';
   }
 
   @override
   String failureWorkerTimeout(String detail) {
-    return 'Marian/Silero did not answer within 2 minutes. Last output: $detail';
+    return 'Marian/Vosk did not answer within 2 minutes. Last output: $detail';
   }
 
   @override
   String get failureWorkerTimeoutSilent =>
-      'Marian/Silero did not answer within 2 minutes, and printed nothing.';
+      'Marian/Vosk did not answer within 2 minutes, and printed nothing.';
 
   @override
   String failureWorkerStartTimeout(String detail) {
-    return 'Marian/Silero did not start within 5 minutes. Last output: $detail';
+    return 'Marian/Vosk did not start within 5 minutes. Last output: $detail';
   }
 
   @override
   String get failureWorkerStartTimeoutSilent =>
-      'Marian/Silero did not start within 5 minutes, and printed nothing.';
+      'Marian/Vosk did not start within 5 minutes, and printed nothing.';
 
   @override
-  String get failureWorkerNotRunning => 'The Marian/Silero worker is not running';
+  String get failureWorkerNotRunning => 'The Marian/Vosk worker is not running';
 
   @override
   String get failureAudioNotDecoded => 'Windows could not read any of those files as sound';
 
   @override
   String failureWorkerFailed(String detail) {
-    return 'Marian/Silero: $detail';
+    return 'Marian/Vosk: $detail';
   }
 
   @override
@@ -1658,7 +1658,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get computeSpeechNote =>
-      'Speech gains little from the card: Silero holds at 20-26 ms whatever the line is worth, against 23-66 ms on the processor, and the first phrase of a session costs a second more. Next to recognition, which is measured in seconds, the difference is hard to hear.';
+      'Vosk on the card is faster only on repeats: a phrase heard before is read in 0.3 s, while every line of a new length takes about 1.9 s as cuDNN plans the convolution afresh. On the processor a line takes 0.4-1.3 s. The card needs the same CUDA runtime as translation.';
 
   @override
   String failureRuntimeIncomplete(String detail) {
@@ -1868,7 +1868,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineCutHeard => 'Stop counting this one among the voices of the game';
 
   @override
-  String get pipelineCutTranslation => 'Take the translator out — the dubbing becomes English';
+  String get pipelineCutTranslation => 'Translation stays: only Russian has a voice';
 
   @override
   String get pipelineCutTranslationBack => 'Put the translator back in the line';

@@ -49,7 +49,7 @@ class PythonDiscoveryResult {
       : const LoreDubFailure(FailureCode.pythonSearchNoDependencies);
 }
 
-/// Looks for an interpreter that can actually run the Marian/Silero worker.
+/// Looks for an interpreter that can actually run the Marian/Vosk worker.
 ///
 /// Being first in PATH is not enough: the Microsoft Store alias resolves there
 /// but only advertises the Store, and a plain installation without torch and

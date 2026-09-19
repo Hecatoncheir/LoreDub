@@ -141,23 +141,6 @@ const glossaryRu = Glossary(
   ],
 );
 
-const glossaryEn = Glossary(
-  entries: [
-    GlossaryEntry(
-      kind: GlossaryKind.phrase,
-      source: 'Fire in the hole!',
-      reading: 'Take cover, grenade!',
-    ),
-    GlossaryEntry(
-      kind: GlossaryKind.phrase,
-      source: 'Watch your six.',
-      reading: 'Behind you!',
-    ),
-    GlossaryEntry(kind: GlossaryKind.name, source: 'Hollowvale', reading: 'Hollow Vale'),
-    GlossaryEntry(kind: GlossaryKind.word, source: 'Vault', reading: 'Shelter'),
-  ],
-);
-
 /// Where the game of the pictures writes its subtitles: a band across the
 /// lower middle of the window, clear of the quest in the corner.
 const subtitles = AppSettings(
@@ -180,14 +163,16 @@ const lines = {
     ),
     ('Archers on the wall.', 'Лучники на стене.', 'character:smith', 1563),
   ],
+  // The interface speaks English; the dubbing is Russian all the same, the
+  // one language LoreDub dubs into.
   'en': [
     (
       'That armor will not stop an arrow.',
-      'Diese Rüstung hält keinen Pfeil auf.',
+      'Эта броня не остановит стрелу.',
       'character:guard',
       1673,
     ),
-    ('Archers on the wall.', 'Bogenschützen auf der Mauer.', 'character:smith', 1563),
+    ('Archers on the wall.', 'Лучники на стене.', 'character:smith', 1563),
   ],
 };
 
@@ -203,10 +188,10 @@ const snippets = {
   ],
   'en': [
     (
-      'Kehre zum Hafen zurück, ehe die Flut wechselt.',
       'Return to the harbour before the tide turns.',
+      'Вернитесь в гавань, пока не сменился прилив.',
     ),
-    ('Das Siegel ist gebrochen. Lies ihn allein.', 'The seal is broken. Read it alone.'),
+    ('The seal is broken. Read it alone.', 'Печать сломана. Прочтите его в одиночестве.'),
   ],
 };
 
@@ -323,7 +308,7 @@ void main() {
         model: model,
         installed: model.language == null
             ? model.id == 'whisper-small' || model.kind == ModelKind.voiceConversion
-            : model.language == (language == 'ru' ? 'ru' : 'de'),
+            : model.language == 'ru',
       ),
   ];
 
@@ -354,7 +339,7 @@ void main() {
         settings: settings.copyWith(
           interfaceLanguage: language,
           whisperModel: 'whisper-small',
-          targetLanguage: language == 'ru' ? 'ru' : 'de',
+          targetLanguage: 'ru',
           sourceLanguage: 'en',
           detectSourceLanguage: false,
           originalVoice: true,
@@ -489,7 +474,8 @@ void main() {
         stage(
           language,
           section: DashboardSection.glossary,
-          glossary: language == 'ru' ? glossaryRu : glossaryEn,
+          // Readings are in the dubbing language, which is Russian either way.
+          glossary: glossaryRu,
         ),
         'glossary',
         language,

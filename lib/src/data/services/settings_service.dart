@@ -8,8 +8,18 @@ import '../../domain/compute_device.dart';
 import '../../domain/ocr_region.dart';
 import '../../domain/runtime_paths.dart';
 import '../../domain/spoken_language.dart';
+import 'model_catalog.dart';
 
 class SettingsService {
+  /// A dubbing language this build no longer carries -- every one but
+  /// Russian was taken out of the catalogue -- falls back to the first it
+  /// does, or the session would have no translator and no voice to start with.
+  static String _readTargetLanguage(SharedPreferences preferences) {
+    final stored = preferences.getString('targetLanguage');
+    final offered = dubbingLanguages;
+    return stored != null && offered.contains(stored) ? stored : offered.first;
+  }
+
   /// A code stored by an older build, or one whose entry has since been
   /// removed, must not reach whisper.cpp as an unknown argument.
   /// An interface language this build no longer offers falls back to the
@@ -75,7 +85,7 @@ class SettingsService {
     final preferences = await SharedPreferences.getInstance();
     return AppSettings(
       captureRouted: preferences.getBool('captureRouted') ?? const AppSettings().captureRouted,
-      targetLanguage: preferences.getString('targetLanguage') ?? 'ru',
+      targetLanguage: _readTargetLanguage(preferences),
       originalVolume: preferences.getDouble('originalVolume') ?? 0.18,
       duckWhileSpeaking:
           preferences.getBool('duckWhileSpeaking') ?? const AppSettings().duckWhileSpeaking,

@@ -210,7 +210,7 @@ class AppSettings {
   final String voice;
 
   /// Whether each line is also re-voiced in the timbre of the phrase it
-  /// answers, over the Silero voice picked the usual way.
+  /// answers, over the voice picked the usual way.
   final bool originalVoice;
 
   /// Whether the original voice keeps a fingerprint of every character it

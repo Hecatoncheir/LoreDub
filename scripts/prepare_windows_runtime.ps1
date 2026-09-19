@@ -120,7 +120,13 @@ $Packages = @(
   # CTranslate2 runs the translator: the same Marian weights in int8, read in
   # about half the time transformers took for them. transformers stays for the
   # tokenizer alone.
-  "ctranslate2==4.8.2"
+  "ctranslate2==4.8.2",
+  # Vosk-TTS, the Russian voice under Apache 2.0, runs on onnxruntime's
+  # processor build. 1.20 read a line in 754 ms against 1.30's 846 on the
+  # same machine, and opens the model as fast once the worker turns memory
+  # reuse off (vosk_voice.py).
+  "onnxruntime==1.20.1",
+  "vosk-tts==0.3.61"
 )
 
 # The cache is vouched for by a marker written after the last install, and by

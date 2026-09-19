@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/app_repository.dart';
+import '../../../data/services/model_catalog.dart';
 import '../../../domain/character.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
@@ -748,10 +749,16 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       // of its own behind this: dubbing into English is what has nothing to
       // translate, so taking the stage out chooses English and putting it
       // back chooses a language that has a translator. Locked with the
-      // route, the models being loaded for the session that runs.
+      // route, the models being loaded for the session that runs. A
+      // catalogue with no English voice -- Russian is all it carries -- has
+      // no line without the translator, and the cut is refused.
       case TranslationConnection(:final routed):
         if (routeLocked) {
           emit(state.copyWith(refusal: ConnectionRefusal.locked));
+          return;
+        }
+        if (!routed && !dubbingLanguages.contains(untranslatedDubbingLanguage)) {
+          emit(state.copyWith(refusal: ConnectionRefusal.unsupported));
           return;
         }
         final language = routed ? _languageToTranslateInto : untranslatedDubbingLanguage;

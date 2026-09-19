@@ -48,7 +48,7 @@ class InferenceResult {
   final int? bankSize;
 
   /// Who is speaking, as a key only compared for equality: the matched voice
-  /// with the original voice on, the Silero voice otherwise. Null when the
+  /// with the original voice on, the Vosk voice otherwise. Null when the
   /// worker cannot tell.
   final String? speaker;
 }
@@ -129,7 +129,7 @@ class LocalInferenceService {
   final WorkerPreparation _prepare;
   final WorkerStarter _startWorker;
 
-  /// Loading Marian and Silero is minutes on a cold machine; past this, the
+  /// Loading Marian and Vosk is minutes on a cold machine; past this, the
   /// worker is not coming up at all.
   final Duration startupLimit;
 
@@ -219,11 +219,12 @@ class LocalInferenceService {
     /// Empty with [embedOnly], which loads neither.
     String translationModel = '',
 
-    /// Full path to the Silero model file: its name differs per language.
+    /// Full path to the voice package's first file, `model.onnx`; the worker
+    /// reads the package from the directory it sits in.
     String ttsModel = '',
 
     /// Load the voice converter and nothing else: the characters screen
-    /// measures a voice without waiting a minute for Marian and Silero.
+    /// measures a voice without waiting a minute for Marian and Vosk.
     bool embedOnly = false,
 
     /// Load the speech model and the converter without the translator: a
@@ -426,8 +427,10 @@ class LocalInferenceService {
     final python = await resolvePythonExecutable(pythonExecutable);
     final work = await createWorkDirectory();
     final script = await _extractScript('assets/runtime/inference_worker.py', work);
-    // The converter is a module the worker imports from its own directory.
+    // The converter and the Vosk voice are modules the worker imports from
+    // its own directory.
     await _extractScript('assets/runtime/tone_converter.py', work);
+    await _extractScript('assets/runtime/vosk_voice.py', work);
     return (python: python, script: script.path, work: work.path, whisper: whisper);
   }
 

@@ -361,7 +361,7 @@ class _CharacterTileState extends State<CharacterTile> {
             : l10n.charactersPlayClip,
         onPressed: widget.playing ? widget.onStopSound : widget.onPlay,
       ),
-      // Not the recording but the dubbing: the Silero voice this card will
+      // Not the recording but the dubbing: the voice this card will
       // be read in, with its own timbre over it.
       _action(
         key: ValueKey('previewVoice-${widget.character.id}'),

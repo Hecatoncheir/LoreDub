@@ -181,6 +181,17 @@ void main() {
     expect(graph.state.refusal, ConnectionRefusal.locked);
   });
 
+  test('keeps the translator in the line, there being no voice without it', () async {
+    // Cutting it once meant dubbing into English; the catalogue carries a
+    // Russian voice alone now, so there is nothing to dub into without it.
+    graph.add(PipelineLinkCut(graph.state.graph.linkInto(translationIn)!));
+    await pumpEvents();
+
+    expect(cubits.settings.settings.targetLanguage, 'ru');
+    expect(graph.state.refusal, ConnectionRefusal.unsupported);
+    expect(graph.state.graph.linkInto(translationIn), isNotNull);
+  });
+
   test('a card is still given away while a session is running', () async {
     cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
 

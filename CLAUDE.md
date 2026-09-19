@@ -120,9 +120,10 @@ than one of them.
    dropped. Which build runs is the compute setting:
    bundled `runtime/whisper/` (CPU) or `runtime/whisper-vulkan/`, or the
    downloaded `<app support>/runtime/whisper-cuda/`. OCR mode skips it.
-   Recognition is the larger half of the delay before a line is heard -- 1.33 s
+   Recognition was the larger half of the delay before a line is heard -- 1.33 s
    of a 1.5 s chain on twelve CPU threads, against 0.06 for translation and
-   0.07 for Silero -- and nearly all of it is the encoder, which works over a
+   0.07 for the Silero voice of the time; Vosk, which replaced it, takes about
+   1 s a line of its own -- and nearly all of recognition is the encoder, which works over a
    fixed window whatever the phrase is worth. `AppSettings.roughRecognition`
    shortens that window with `-ac`: measured over nine clips, 1000 took 897 ms
    rather than 1329 and said the same words on all nine, two differing only by
@@ -139,7 +140,7 @@ than one of them.
    by `LocalInferenceService` as a persistent subprocess speaking
    line-delimited JSON (`{"id","text"}` in, `{"id","translated","wave"}` or
    `{"id","error"}` out, plus one `{"type":"ready"}` handshake). It keeps
-   Marian and Silero loaded, which is why the first start takes minutes.
+   Marian and the Vosk voice loaded, which is why the first start takes minutes.
    Startup uses the bundled embedded Python (`runtime/python/python.exe`,
    see `resolvePythonExecutable`), which `scripts/prepare_windows_runtime.ps1`
    fills with torch, transformers, sentencepiece, sacremoses and ctranslate2 —
@@ -166,12 +167,11 @@ CTranslate2 as a single batch, which decodes them side by side: 100 ms against
 116 for the same lines whole. `TranslationMemory` keeps the last 512 sentences,
 so a game repeating itself costs nothing and one shout is never rendered two
 ways in the same fight. What the translator leaves in Latin script is written
-out by `transliterated` rather than translated a second time. Silero reads no
-Latin: measured, it drops the word without a sound -- "Добро пожаловать в
-Rapture." speaks for the same 0.95 s as "Добро пожаловать." alone -- and
-raises on a line that is Latin end to end, which reaches the player as a
-failure rather than as a line, so the name written out is the name spoken at
-all. A letter standing on its own is
+out by `transliterated` rather than translated a second time. The voice reads
+no Latin: `vosk_voice.py` drops whatever its phoneme map lacks -- Latin and
+digits -- rather than raise on it (the Silero it replaced dropped the word
+too, measured, and raised on a line that was Latin end to end), so the name
+written out is the name spoken at all. A letter standing on its own is
 dropped the same way and is named rather than spelt: "Press F to pay respects"
 is "Нажмите эф", since one letter of Cyrillic is worth as little to the
 voice as one of Latin (2.07 s against the 1.98 s of the line without it, and
@@ -247,7 +247,7 @@ stop can land inside either wait.
 
 Playback is not sequential in the same way. Every worker reply carries a
 `speaker` key (`timbre:<n>` from the voice fingerprints with the converter,
-`voice:<silero name>` without it, absent when unknown), and
+`voice:<voice name>` without it, absent when unknown), and
 `PlaybackScheduler` (`data/services/playback_scheduler.dart`) plays lines of
 different speakers side by side, up to `overlappingVoices` (2) with
 `AppSettings.overlapVoices`, while one speaker's lines stay in order and a
@@ -440,9 +440,12 @@ labelled, still in its place — and `canStart` refuses until it is joined
 again. Cutting either half of the translator's line answers
 `TranslationConnection(false)`, which is not a setting of its own but the
 dubbing language: whisper hands English over whatever the game speaks, so a
-session dubbing into English (`untranslatedDubbingLanguage`) has nothing to
-translate, and the canvas draws the stage faded with the text running from
-recognition straight into the voice. Joining it back asks for the first
+session dubbing into English (`untranslatedDubbingLanguage`) would have
+nothing to translate, and the canvas draws the stage faded with the text
+running from recognition straight into the voice. The catalogue carries no
+English voice today, so `PipelineGraphBloc` refuses that cut with
+`ConnectionRefusal.unsupported` while `dubbingLanguages` lacks English; the
+rest of the machinery stays for the day a voice for it comes back. Joining it back asks for the first
 installed language that has a translator and refuses with `translatorMissing`
 when there is none; cutting the line that steps over the stage puts the stage
 back, a voice with nothing to read being no state at all. `ModelSelection.translates`
@@ -567,7 +570,7 @@ twenty-three that did not.
 
 The Screen screen ("Экран", `DashboardSection.snapshot`) runs the second kind of
 session, `PipelineSession.screen`: `AppRepository.startScreenText` ->
-`NativeEngineService.startScreenText` loads the worker with Marian and Silero
+`NativeEngineService.startScreenText` loads the worker with Marian and Vosk
 only (no whisper) and then calls `ld_start` with `captureMode: 'ocr'`, which
 starts `OcrCapture` over the game's window -- or over the virtual screen,
 which `AppSettings.screenSource` picks between and `ocrSource` carries to the
@@ -664,11 +667,32 @@ per-user setup put this copy there; otherwise the line opens the release page.
 
 A dubbing language is a voice and, unless it is English, a translator:
 `dubbingLanguages` counts over the voice packages, so a language with two of
-them (Russian has `v5_3_ru` and the MIT CIS package) is still offered once,
-and English is offered with no Marian behind it at all.
+them would still be offered once, and English would be offered with no Marian
+behind it at all. Today the catalogue dubs into Russian alone: Silero, which
+voiced German, Spanish, French, Ukrainian and English as well, is CC BY-NC,
+and the dubbing is to be free to earn money with, so it went and took those
+languages and their translators with it. `SettingsService` reads a stored
+`targetLanguage` the catalogue no longer carries as its first language, or
+the session would start with no translator and no voice.
+
+The voice is `vosk-ru-0.9`, Vosk-TTS under Apache 2.0, measured a tie with the
+Silero it replaced under the converter (0.743 against 0.745 from a game line).
+The pipeline names a speech package by its first file, `model.onnx`, and
+`assets/runtime/vosk_voice.py` reads the package from the directory it sits
+in, answering the calls the worker was written against for Silero
+(`speakers`, `apply_tts`). It turns onnxruntime's memory reuse off: planning
+it over the graph's 29 000 nodes is what opening it cost, 100 s against 3,
+with a line read in the same time either way. What its phoneme map lacks --
+digits, Latin -- is dropped rather than raised on. The files are this
+project's release `voices-vosk-v1` in `Hecatoncheir/LoreDub-models`, renamed flat from the authors' archive
+with a NOTICE, as the translators are.
+
 
 The translators are the one thing the catalogue does not fetch from its
-authors: `_converted` points at this project's own release, because the
+authors: `_converted` points at this project's own release, in the public
+`Hecatoncheir/LoreDub-models` repository (`_modelReleases`) -- the
+application's repository is private, and a private release asset answers an
+anonymous download with 404 -- because the
 CTranslate2 conversion is made once here rather than on every machine — it
 wants a transformers newer than the runtime carries.
 `scripts/convert_translators.py` builds them and prints the entries, sizes
@@ -724,7 +748,7 @@ each change it disagreed about where the answer came from — a per-game
 The substitution itself is the card's: `Character.voicedBy` names the card
 that reads this one, holds in every game, and is applied by the worker's
 `read_as` before `voice_for`/`timbre_for`, which is why it carries both the
-Silero voice and the timbre. `speaker` is still reported as heard — the scene
+voice and the timbre. `speaker` is still reported as heard — the scene
 list keeps one row per voice of the game, and `PlaybackScheduler` keeps
 ordering lines by who spoke. Only a card can be given away: a `timbre:<n>`
 voice the bank founded has no card to carry anything, and a `voice:<name>`
@@ -756,7 +780,7 @@ where the player records their own cast. `CharacterService` keeps them in one
 because the player owns these cards — and `AppRepository.startCharacterVoices`
 runs a session for recording them: `ld_start` on the game's audio plus the
 worker under `--embed-only`, which loads the converter and neither Marian nor
-Silero, so the screen is ready in seconds. While a card records the capture is held open
+Vosk, so the screen is ready in seconds. While a card records the capture is held open
 (`ld_hold_take`, `ProcessLoopbackCapture::SetHoldingTake`): neither the
 end-of-phrase silence nor the twelve-second segment cap closes it, so the take
 is everything between the two button presses, to a ceiling of three minutes.
@@ -851,7 +875,7 @@ Telling the characters apart is not the same switch as re-voicing them.
 `ModelSelection.tracksSpeakers` loads the converter whenever the package is
 installed and the bank is on, and `--revoice` (`clonesVoice`) decides whether
 its timbre is carried over at all. So the worker `identify()`s the speaker
-first, then `voice_for()` gives each character a Silero voice of their own —
+first, then `voice_for()` gives each character a voice of their own —
 kept in the bank with the gender heard in their founding line, so a whisper
 or a shout no longer flips a character's voice mid-scene (bank format v2;
 v1's bare fingerprints still load). Without the converter nothing hears who
@@ -889,18 +913,27 @@ backend that cannot start. Adding a backend means touching that resolver,
 each whisper.cpp build needs its own folder because they ship ggml libraries
 of the same name compiled against different backends.
 
-Three of the four stages run inside the worker's torch, so `torch-cuda` serves
-translation, speech and the converter alike and no stage of them has a Vulkan
-build to offer. Speech is the one where the card barely shows, and the numbers
-are in `ComputeStage`'s own comment rather than here: measured over nine lines
-on an RTX 3080 Ti at twelve threads, the processor grows with the line (23 ms
-for one word, 66 for fourteen) while CUDA stands at 20 to 26 ms whatever the
-line is worth. That is some 30 ms off a chain whose recognition alone runs
-seconds, bought with a second of the session's start and 350 MB of the card,
-so the row is offered and the note under the table says plainly what it buys.
-`--speech-device` carries it to the worker, which falls back to the processor
-both when torch cannot see the card and when `tts.to` is refused for want of
-memory — the voice being the stage nothing can be dubbed without.
+Two of the worker's three stages run in its torch and the voice in
+onnxruntime, and `torch-cuda` serves all three: the runtime installs
+`onnxruntime-gpu` beside torch (`RuntimePackage.companions`, a second pip run
+with `--no-deps`, since its dependencies are in the bundled interpreter and a
+second numpy placed first on the import path would shadow the one the
+translator was built against), and it finds the CUDA 12 and cuDNN 9 libraries
+in the torch the worker imports first. `onnxruntime` is the runtime's probe,
+so a directory holding torch alone -- from before the voice could use the card
+-- reads as not installed; installing it again finds torch there
+(`previousProbeFileName`) and runs only the companions, and a companion that
+fails takes only itself away rather than the 2.7 GB beside it. The card is a poor bargain for
+Vosk and it is offered anyway, Automatic choosing it, because the user asked
+for every stage that can run on the card to: measured on an RTX 3080 Ti, a
+phrase repeated is read in 0.3 s, but every line of a new length costs about
+1.9 s against the processor's 0.4 to 1.3, cuDNN planning the convolution
+afresh for each shape (`Conv` was 1.8 s of a 2.5 s run), and neither the
+algorithm search nor the workspace settings change it. `--speech-device`
+carries the choice to the worker, and `VoskVoice.device` reads back from the
+session where it really runs -- a provider asked for and not taken leaves the
+session on the processor without a word -- which is what the `ready` line
+reports.
 
 `RuntimeStorageService` fetches the GPU runtimes on demand into
 `<app support>/runtime/<id>/`: archives are downloaded, unpacked in an isolate

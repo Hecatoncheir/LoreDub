@@ -43,9 +43,9 @@ sent anywhere, and there is no account to make.
 - **The voice matches the character.** A man's or a woman's, chosen from the
   pitch of the original, line by line — and in [Original voice](#dubbing-voice)
   mode the dubbing takes on the speaker's timbre too.
-- **Six dubbing languages:** Russian, German, Spanish, French, Ukrainian and
-  English. English needs no translator at all — whisper hands English over
-  already — so it is a voice on its own and starts quicker than the rest.
+- **Dubbed into Russian.** The game may speak any of the nearly hundred
+  languages Whisper understands; the translation is heard in Russian, in a
+  Vosk-TTS voice under Apache 2.0, which allows commercial use too.
 - **A graphics card is optional.** NVIDIA roughly halves the recognition time,
   but everything works on the processor without one.
 - **There is a [subtitle mode](#subtitle-mode).** When the lines are written
@@ -92,7 +92,7 @@ So that nothing comes as a surprise, here is the honest picture.
 - **The translation is machine translation.** Ordinary lines come out decently,
   but idioms, jokes and proper nouns get mangled. Wins and failures are shown
   under [Translator](#translator).
-- **The voice is synthesized.** Silero is even and clear, but it is not acting.
+- **The voice is synthesized.** Vosk is even and clear, but it is not acting.
 - **Dense dialogue accumulates a lag.** No phrase is dropped, so if characters
   speak without pauses the dubbing gradually falls behind the picture.
 - **The first start is slow** — a minute or two to load the models into memory.
@@ -394,14 +394,10 @@ stage goes dark, labelled «not routed» and still in its place, while Live
 refuses to start and says why. The mode is remembered, so any link drawn back
 picks up the route it had.
 
-The **Translation** link comes off as well, and taking it off means dubbing
-into English. Whisper hands English over anyway, so the text runs from it
-straight into the voice and the translation node fades with «nothing to
-translate» under it -- the same state as choosing English on the models
-screen, not a second setting beside it. A line drawn back puts the translation
-on the first downloaded language that has a translator; with none downloaded
-the link is refused and asks for one first. Like the route, it cannot be
-switched mid-session: the models are loaded for the session that runs.
+The **Translation** link does not come off: without translation there is
+nothing to voice. Taking it off used to mean dubbing into English, but there is
+no English voice any more -- LoreDub dubs into Russian alone -- and the graph
+answers «The engine has no such route».
 
 Clicking a node opens its own settings in a panel down the right edge of the
 canvas, the whole height of it: the game and where its sound is taken from,
@@ -503,11 +499,10 @@ with its percentage in a ring. The buttons are always on the bar: download,
 pause or resume and cancel, or delete for a downloaded model (after a
 confirmation). A click on a downloaded bar picks it.
 
-Below it are the dubbing languages, a tile each. A tile holds the pair: the
+Below it is the dubbing language, Russian, as one tile. It holds the pair: the
 translator and the voice, each with its size and a tick once on disk. The pair
-is downloaded, picked and deleted as one, with one ring for both while it
-downloads. The English tile holds one half: it has no translator, so only the
-voice is fetched. A click on a tile picks the language. At the bottom is the voice
+is downloaded and deleted as one, with one ring for both while it downloads.
+At the bottom is the voice
 converter's tile: one for every language, needed only by Original voice mode.
 The tiles speak the Whisper bars' language: light is missing, ticked is
 downloaded, dark with an orange edge is in use, a fill from the bottom is
@@ -577,9 +572,9 @@ them. Measurements and details are under
 Game process (WASAPI process loopback, 16 kHz mono)
   -> energy VAD and phrase endpointing
   -> whisper.cpp --translate
-  -> Helsinki-NLP Marian English -> chosen language
-  -> Silero TTS in that language
-  -> (Original voice mode) OpenVoice V2: the line's timbre over the Silero voice
+  -> Helsinki-NLP Marian English -> Russian
+  -> Vosk-TTS
+  -> (Original voice mode) OpenVoice V2: the line's timbre over the Vosk voice
   -> default Windows output
 ```
 
@@ -587,9 +582,8 @@ Audio capture can target a selected process tree or the complete default output.
 Complete-output mode excludes the LoreDub process tree so synthesized speech
 does not feed back into recognition. Alternatively, OCR mode captures a
 player-chosen area of the selected game window, recognizes stable
-subtitle text with Windows OCR, and sends it directly to Marian and Silero
-without running Whisper; text already in the dubbing language goes straight to
-Silero.
+subtitle text with Windows OCR, and sends it directly to Marian and Vosk
+without running Whisper; Russian text goes straight to Vosk.
 
 Models are downloaded by the application on demand and kept in the Windows
 application-support directory.
@@ -608,6 +602,42 @@ and applies immediately, without a restart. Every label lives in
 
 ## Dubbing voice
 
+Russian is read by [Vosk-TTS](https://alphacephei.com/vosk/) 0.9 from Alpha
+Cephei, under Apache 2.0. It used to be Silero, which also voiced German,
+Spanish, French, Ukrainian and English, but Silero's voices are CC BY-NC —
+non-commercial use only — so they were taken out, together with the languages
+that had no other voice.
+
+In likeness to the original Vosk gives nothing away to Silero: over the same
+four characters under the OpenVoice converter it came out 0.743 against 0.745
+from a game line and 0.749 against 0.761 from the voice bank — the spread
+between characters is wider than the gap between the engines. The package
+weighs 937 MB, 654 of them the BERT model (ruBert-base by SberDevices) Vosk
+sets intonation with; the stress comes from its own dictionary of two million
+words.
+
+Vosk runs on the processor and on the card alike, chosen in the **Speech** row
+under Device, and Automatic puts it on the card once the CUDA runtime is
+downloaded. The numbers are not the obvious ones:
+
+| | Processor, 12 threads | Card (RTX 3080 Ti) |
+| --- | --- | --- |
+| A line of a new length | 0.4–1.3 s, median 1.0 | about 1.9 s |
+| The same phrase again | ~0.85 s | ~0.3 s |
+| Loading | 8 s | 17 s |
+
+On the card cuDNN plans the convolution afresh for every new line length, and
+that costs about a second and a half; only repeats come out faster. cuDNN's
+algorithm search and its settings do not change it.
+
+Vosk ships five voices and three are listed: `female_1`, `male_0` and
+`male_1`. `female_0` and `female_2` measure about 173 Hz over four phrases,
+between the thresholds, and are given no gender. Vosk reads neither digits nor
+Latin script and passes them by in silence; Latin names the translator left
+behind are written out in Cyrillic by the worker first.
+
+### Voice mode
+
 Settings carries an **Automatic / Choose / Original voice** switch. Automatic is the default:
 the worker measures the pitch of the captured phrase and answers in a man's
 or a woman's voice to match, line by line. The decision is sticky — an
@@ -620,18 +650,13 @@ and its median fundamental taken.
 
 | Language | Male | Female | Automatic |
 | --- | --- | --- | --- |
-| Russian | aidar, eugene | baya, kseniya, xenia | yes |
-| German | bernd_ungerer, friedrich, karlsson | eva_k, hokuspokus | yes |
-| French | fr_0…fr_3, fr_5 | fr_4 | yes |
-| Spanish | es_0, es_1, es_2 | — | no |
-| Ukrainian | mykyta | — | no |
-| English | 48 `en_*` voices | 57 `en_*` voices | yes |
+| Russian | male_0, male_1 | female_1 | yes |
 
-Automatic is unavailable where a package ships voices of one gender only. It
-says so in Settings and falls back to the chosen voice.
+Automatic would be unavailable for a package with voices of one gender only:
+it says so in Settings and falls back to the chosen voice.
 
 **Original voice** goes further: the timbre is taken from the same captured
-line and moved onto the Silero voice by the
+line and moved onto the Vosk voice by the
 [OpenVoice V2](https://github.com/myshell-ai/OpenVoice) tone colour converter
 (MIT licence). The base voice is still picked by pitch, which leaves the
 converter less to move; where the package cannot follow the speaker's gender,
@@ -648,7 +673,7 @@ runtime translation uses, and either row can download it.
 The **Remember the characters' voices** switch (on by default) keeps a voice
 bank. It is on offer wherever the converter is downloaded — in Automatic mode
 too, where the converter only listens to who is speaking. Every new character
-is remembered by their voice fingerprint and given a Silero voice of their own
+is remembered by their voice fingerprint and given a Vosk voice of their own
 in the right gender, so two men in a scene no longer sound alike. The gender is
 decided once, from the line that founded the character, and not revisited: a
 whisper or a shout does not flip their voice mid-conversation. With Original
@@ -668,7 +693,8 @@ speaker changed. Capture cuts speech on silence, so an exchange without pauses
 by one voice. Now such a segment is searched for the moments the voice
 changes, the recording is cut there at the nearest quiet point, and each piece
 is recognized and voiced on its own. Segments under three seconds and pieces
-under a second are left alone. The threshold is measured on Silero voices:
+under a second are left alone. The threshold is measured on the Silero voices
+LoreDub used to dub with:
 across the boundary between two different voices neighbouring windows differ
 by 0.34 in cosine, while within one voice, at the seam of two phrases, they
 differ by at most 0.11; the cut is made at 0.25. On a pair of joined voices
@@ -686,7 +712,7 @@ differently by mode:
 - Original voice: by the voice fingerprint (the kept character with the voice
   bank on, this session's fingerprints without it);
 - Automatic: by the character when the voice bank is on; without it by the
-  Silero voice, which separates men from women and nothing more;
+  Vosk voice, which separates men from women and nothing more;
 - Choose has one voice, so lines play strictly in turn.
 
 A short line nobody could be matched to plays on its own.
@@ -711,7 +737,7 @@ The gain is not in fine wording but in the gross failures it removes. Over
 Not everything improves: "hills" became "горы", and it addresses the player
 formally more often. It also costs more — about 400 ms a line against 260 ms.
 
-Now and then it leaves a proper noun in Latin script, which Silero cannot
+Now and then it leaves a proper noun in Latin script, which Vosk cannot
 read. The worker catches that and translates again with the line lower-cased;
 over those 25 lines it happened once, and the retry fixed it.
 
@@ -739,14 +765,12 @@ the authors, and say what was changed. Both travel as a NOTICE file beside
 the weights. Every file is pinned by size and SHA-256 as well, which the
 upstream never could be: OPUS-MT publishes no digests of its own.
 
-Dubbing into English needs no translator at all: whisper runs with `-tr` and
-hands English over whatever the game speaks, so the line reaches the voice
-already in it. The English language in the catalogue is therefore a voice on
-its own, the session comes up without Marian, and on a machine too small for
-the translator it is the one language left. Silero's `v3_en` ships 118 voices;
-105 are listed -- 57 women and 48 men -- and the thirteen whose pitch fell
-between the thresholds are not named at all, as everywhere else in the
-catalogue.
+The German, Spanish, French and Ukrainian translators are out of the catalogue:
+they went with the Silero voices those languages were dubbed with. Their files
+are gone with them. The Russian translator and the Vosk voice are served from a
+separate public repository,
+[LoreDub-models](https://github.com/Hecatoncheir/LoreDub-models), which holds
+no code, only releases of model files.
 
 ## Recognition model
 
@@ -785,8 +809,8 @@ but disabled, with a tooltip saying why.
 | Stage | CUDA | Vulkan | CPU |
 | --- | --- | --- | --- |
 | Whisper | yes, downloaded (436 MB) | yes, if built (see below) | always |
-| Translation (Marian) | yes, downloaded (~2.5 GB) | no: torch has no Vulkan backend | always |
-| Speech (Silero) | yes, the same torch package | no: torch has no Vulkan backend | always |
+| Translation (Marian) | yes, downloaded (~2.7 GB) | no: torch has no Vulkan backend | always |
+| Speech (Vosk) | yes, the same runtime: onnxruntime-gpu beside torch | no | always |
 
 The heavy GPU runtimes are **not in the installer**. They are fetched on demand
 by the same machinery as the models, with progress, SHA-256 verification and
@@ -998,7 +1022,7 @@ button and the arrow behave as usual.
 ## How the pipeline is built
 
 The audio mode is wired end to end. The setup contains pinned `whisper.cpp`
-v1.8.2 binaries and an embedded Python CPU runtime for Marian and Silero.
+v1.8.2 binaries and an embedded Python CPU runtime for Marian and Vosk.
 
 Recognition, translation and synthesis are serialized so a small CPU is never
 asked to run two inferences at once, while playback happens beside them:
@@ -1023,9 +1047,12 @@ being detected again for every phrase, which costs a full extra encoder pass.
   and is not worth the complexity.
 - **Subtitle overlay.** `AppSettings.showOverlay` is persisted but nothing
   reads it yet; the intent is to draw the translated lines over the game.
-- **A second speech engine, Piper.** Silero speaks six languages, Piper 57,
-  among them Italian, Polish, Portuguese, Turkish, Chinese, Dutch, Czech,
-  Swedish and Arabic — the ones Marian already translates into. A voice there
+- **Other dubbing languages — Piper or Kokoro.** LoreDub dubs into Russian
+  alone today: Silero's voices for the other languages went for their CC BY-NC
+  licence. Piper speaks 57 languages, among them German, Italian, Polish,
+  Portuguese, Turkish, Chinese, Dutch, Czech, Swedish and Arabic; Kokoro
+  (Apache 2.0) English, Spanish, French and a few more. Each would need a
+  Marian translator as well. A voice there
   is a 60 MB `.onnx` file rather than a package per language, so a player
   downloads the one voice they listen to; the pace is handed to the synthesis
   (`length_scale`) instead of stretching a finished wave; its 22.05 kHz would
@@ -1034,8 +1061,9 @@ being detected again for every phrase, which costs a full extra encoder pass.
   licence: `piper1-gpl` is GPL-3 because it embeds espeak-ng, so it can only
   be called as a separate process (`python -m piper.http_server`), the way
   whisper already is — importing it into the worker would make the whole build
-  GPL. Russian stays on Silero: of Piper's four Russian voices two are CC0 and
-  both are men, and the one woman's voice states no licence at all.
+  GPL, and Kokoro is in the same place for every language but English.
+  Russian stays on Vosk: of Piper's four Russian voices two are CC0 and both
+  are men, and the one woman's voice states no licence at all.
 - **A release carrying the Vulkan build, which is to say a release for AMD and
   Intel.** The installer goes out without it today: `scripts/build_setup.ps1`
   calls `prepare_windows_runtime.ps1` without `-RequireVulkan`, the runner has
@@ -1191,7 +1219,7 @@ section at the [LoreDub releases page](https://github.com/Hecatoncheir/LoreDub/r
 ## Source layout
 
 ```text
-assets/runtime/              persistent Marian/Silero worker
+assets/runtime/              persistent worker: Marian, Vosk, OpenVoice
 assets/branding/             LoreDub icon and brand assets
 assets/fonts/                bundled Nunito, Nunito Sans and JetBrains Mono (OFL)
 docs/screenshots/            screen captures used by the READMEs and the page
@@ -1217,24 +1245,31 @@ player's machine, and each keeps its upstream licence.
 | LoreDub code | MIT | yes |
 | whisper.cpp, the CPU, Vulkan and CUDA builds | MIT | yes |
 | Whisper weights (`ggml-*.bin`) | MIT | yes |
-| Marian `opus-mt-tc-big-en-zle` (Russian), `opus-mt-en-de` | CC-BY-4.0 | yes, with attribution |
-| Marian `opus-mt-en-es`, `opus-mt-en-fr`, `opus-mt-en-uk` | Apache-2.0 | yes |
-| Silero voices (`v5_3_ru`, `v3_de`, `v3_es`, `v3_fr`, `v4_ua`) | **CC BY-NC-SA 4.0** | **no** |
+| Marian `opus-mt-tc-big-en-zle` (Russian) | CC-BY-4.0 | yes, with attribution |
+| Vosk-TTS 0.9 (Alpha Cephei), with ruBert-base (SberDevices) | Apache-2.0 | yes, with attribution |
 | OpenVoice V2 tone colour converter | MIT | yes |
 | torch, including the CUDA build | BSD-3-Clause; NVIDIA libraries under the NVIDIA EULA | yes |
-| transformers, sentencepiece | Apache-2.0 | yes |
+| transformers, sentencepiece, vosk-tts | Apache-2.0 | yes |
+| onnxruntime, onnxruntime-gpu | MIT | yes |
 | sacremoses | MIT | yes |
 | Embedded Python 3.11 | PSF License | yes |
 | Nunito, Nunito Sans and JetBrains Mono fonts | OFL 1.1 | yes |
 
-The one exception in that list is the Silero voices. **NC** means
-non-commercial use only, and **SA** means that anything derived from the
-weights — fine-tuning, conversion to another format, quantisation — has to be
-published under the same licence. For LoreDub itself nothing changes: the
-application is free and redistributes no weights. But if the dubbing earns
-money — a monetised stream, studio work, a paid product built on this code —
-the Silero voice needs a separate licence from its authors; the rest of the
-stack does not.
+Everything in that list allows commercial use: the dubbing may earn money — a
+monetised stream, studio work, a paid product built on this code. It was not
+always so: the voice used to be Silero under CC BY-NC-SA, and it was taken out
+of LoreDub together with the languages no other voice was found for.
+
+LoreDub serves Vosk-TTS from its own release,
+[`voices-vosk-v1`](https://github.com/Hecatoncheir/LoreDub-models/releases/tag/voices-vosk-v1)
+in the models repository,
+rather than the authors' archive: there every file is pinned by size and
+SHA-256 and resumes where a download stopped. The contents are unchanged; the
+files are only renamed to sit in one folder, which the NOTICE beside the
+weights says, as Apache 2.0 asks. The model's voices F01 and F02 were trained,
+its authors say, on recordings of other projects (Tiflocomp Irina, SOVA
+Natasha); if that matters to you, check the terms of those recordings
+separately.
 
 ## Sponsors
 

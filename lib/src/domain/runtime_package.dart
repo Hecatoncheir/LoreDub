@@ -23,7 +23,9 @@ class RuntimePackage {
     required this.approximateBytes,
     this.artifacts = const [],
     this.pipArguments = const [],
+    this.companions = const [],
     this.probeFileName,
+    this.previousProbeFileName,
     this.wheelPython,
   });
 
@@ -40,9 +42,18 @@ class RuntimePackage {
   /// Arguments after `pip install --target <directory>`.
   final List<String> pipArguments;
 
+  /// Requirements pip installs beside the [wheel] kind's local wheel, from
+  /// the index, in the same run. The [pip] route names its own in
+  /// [pipArguments].
+  final List<String> companions;
+
   /// A file that proves the unpack or install finished, relative to the
   /// package directory. Size alone cannot answer that for an archive.
   final String? probeFileName;
+
+  /// The probe an install made before [companions] joined the package. Found
+  /// without [probeFileName] beside it, only the companions are installed.
+  final String? previousProbeFileName;
 
   /// The interpreter tag the [wheel] kind's wheel was built for, `cp311`.
   /// Any other interpreter falls back to [pipArguments].

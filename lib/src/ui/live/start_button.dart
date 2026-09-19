@@ -12,7 +12,7 @@ import '../dashboard/dashboard_context.dart';
 import 'session_buttons.dart';
 import 'start_dubbing_button.dart';
 
-/// Loading Marian and Silero takes long enough that a plain label would look
+/// Loading Marian and Vosk takes long enough that a plain label would look
 /// like a freeze, so the button carries the progress of the startup itself.
 class StartButton extends StatelessWidget {
   const StartButton({super.key});

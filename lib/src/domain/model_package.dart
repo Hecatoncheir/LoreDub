@@ -28,7 +28,7 @@ enum ModelKind { recognition, translation, speech, voiceConversion }
 
 /// Whether a voice reads as a man or a woman.
 ///
-/// [unknown] is a real answer, not a placeholder: several Silero packages ship
+/// [unknown] is a real answer, not a placeholder: a package may ship
 /// voices under bare numbers, and guessing at them would make the automatic
 /// choice pick wrongly with confidence.
 enum VoiceGender { male, female, unknown }
@@ -66,7 +66,7 @@ class ModelPackage {
   /// The language this package produces; null for recognition.
   final String? language;
 
-  /// Silero voice to synthesize with. The worker falls back to whatever the
+  /// The voice to synthesize with. The worker falls back to whatever the
   /// package actually ships if this name is not among its speakers.
   final String? speaker;
 

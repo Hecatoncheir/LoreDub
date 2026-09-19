@@ -37,15 +37,12 @@ import urllib.request
 
 HOST = "https://huggingface.co"
 
-# The translators of the catalogue, in its order. English is not among them
-# and never will be: whisper hands English over already, so that language is
-# a voice with no translator behind it.
+# The translators of the catalogue, in its order: Russian is the one
+# language LoreDub dubs into. The German, Spanish, French and Ukrainian ones
+# were taken out with their voices. The converted files are published in the
+# public Hecatoncheir/LoreDub-models repository, release translators-ct2-v1.
 TRANSLATORS = [
     ("opus-mt-tc-big-en-zle", "ru", "Helsinki-NLP/opus-mt-tc-big-en-zle"),
-    ("marian-en-de", "de", "Helsinki-NLP/opus-mt-en-de"),
-    ("marian-en-es", "es", "Helsinki-NLP/opus-mt-en-es"),
-    ("marian-en-fr", "fr", "Helsinki-NLP/opus-mt-en-fr"),
-    ("marian-en-uk", "uk", "Helsinki-NLP/opus-mt-en-uk"),
 ]
 
 # What the converter reads. Some models ship fewer of these, so one that is

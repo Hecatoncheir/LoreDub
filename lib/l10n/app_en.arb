@@ -490,9 +490,9 @@
   "emptyTranscript": "Recognized and translated lines will appear here",
   "transcriptClear": "Clear",
   "transcriptClearTooltip": "Remove every line from the list",
-  "pipelineSummaryDirect": "Whisper → English → Silero",
-  "pipelineSummaryOcrDirect": "Windows OCR → English → Silero",
-  "pipelineSummary": "Whisper → English → Marian → {language} → Silero",
+  "pipelineSummaryDirect": "Whisper → English → Vosk",
+  "pipelineSummaryOcrDirect": "Windows OCR → English → Vosk",
+  "pipelineSummary": "Whisper → English → Marian → {language} → Vosk",
   "@pipelineSummary": {
     "placeholders": {
       "language": {
@@ -500,7 +500,7 @@
       }
     }
   },
-  "pipelineSummaryOcr": "Windows OCR → English → Marian → {language} → Silero",
+  "pipelineSummaryOcr": "Windows OCR → English → Marian → {language} → Vosk",
   "@pipelineSummaryOcr": {
     "placeholders": {
       "language": {
@@ -511,7 +511,7 @@
   "sectionRecognition": "SPEECH RECOGNITION",
   "sectionRecognitionNote": "Whisper turns speech in any language into English text. One model covers everything — larger is more accurate and slower.",
   "sectionLanguages": "DUBBING LANGUAGES",
-  "sectionLanguagesNote": "A language's translator and voice are downloaded, picked and deleted together. Only the language you play in is needed. English needs no translator: whisper hands English over already.",
+  "sectionLanguagesNote": "A translator and its voice are downloaded and deleted together. LoreDub dubs into Russian: the other languages' voices were under a licence that forbids commercial use.",
   "modelPartTranslation": "translation",
   "modelPartVoice": "voice",
   "modelPartConverter": "voice converter",
@@ -606,7 +606,7 @@
   "voiceFieldLabel": "Voice",
   "voiceUnavailable": "This language's package ships voices of one gender only — you can pick one, but there is nothing to match.",
   "voiceOriginal": "Original voice",
-  "voiceOriginalNote": "The original's timbre is laid over the Silero voice. On the processor each line sounds about a second later, on a graphics card with no noticeable delay: pick the device in the OpenVoice row under Device.",
+  "voiceOriginalNote": "The original's timbre is laid over the Vosk voice. On the processor each line sounds about a second later, on a graphics card with no noticeable delay: pick the device in the OpenVoice row under Device.",
   "voiceOriginalMissing": "This needs the voice converter: download it under Original voice on the Models screen.",
   "voiceOriginalSpeaking": "The original's timbre over {name}",
   "@voiceOriginalSpeaking": {
@@ -619,7 +619,7 @@
   "voiceOverlap": "Let different characters overlap",
   "voiceOverlapNote": "Another character's line starts at once instead of waiting for the current one to end; no more than two voices sound together. Without remembered characters they are told apart only by the gender of their voice.",
   "voiceBank": "Remember the characters' voices",
-  "voiceBankOnNote": "Every new character is remembered by their voice and given a Silero voice of their own — and their own timbre with Original voice on. Their later lines keep both, restarts included. Every game has a voice bank of its own.",
+  "voiceBankOnNote": "Every new character is remembered by their voice and given a Vosk voice of their own — and their own timbre with Original voice on. Their later lines keep both, restarts included. Every game has a voice bank of its own.",
   "voiceBankOffNote": "Characters are not remembered: the voice is matched to the gender of each line afresh, and the timbre is taken from that line and never saved.",
   "voiceBankCount": "{count, plural, =0{No voices saved} one{{count} voice saved} other{{count} voices saved}}",
   "@voiceBankCount": {
@@ -644,7 +644,7 @@
       }
     }
   },
-  "modelConverterNote": "Moves the timbre of the original line onto the Silero voice, {size}.",
+  "modelConverterNote": "Moves the timbre of the original line onto the Vosk voice, {size}.",
   "@modelConverterNote": {
     "placeholders": {
       "size": {
@@ -678,7 +678,7 @@
   "roughRecognition": "Recognize faster, more roughly",
   "roughRecognitionNote": "Whisper listens over a shortened stretch of sound. On nine clips measured, recognition took 897 ms rather than 1329 and the words came back the same on all nine, two of them differing only by a comma. Fast or unclear speech will cost more mistakes. Translation and the voice are not affected.",
   "settingsPython": "Python runtime",
-  "pythonNote": "Marian and Silero run on the python.exe you pick. The setup ships a ready runtime.",
+  "pythonNote": "Marian and Vosk run on the python.exe you pick. The setup ships a ready runtime.",
   "pythonFieldLabel": "Python path or command",
   "pythonFieldHelper": "A full path, or python.exe resolved from PATH.",
   "pythonFieldRequired": "Name a python.exe",
@@ -691,7 +691,7 @@
   "proxyLabel": "HTTP / SOCKS5 proxy",
   "proxyHelper": "Format: http://… or socks5://user:password@host:port. Stored locally.",
   "settingsModelDirectory": "Model directory",
-  "modelDirectoryNote": "Whisper, Marian and Silero are kept on this machine.",
+  "modelDirectoryNote": "Whisper, Marian and Vosk are kept on this machine.",
   "openInExplorer": "Open in Explorer",
   "settingsInterfaceLanguage": "Interface language",
   "interfaceLanguageNote": "Applies immediately, without a restart.",
@@ -772,7 +772,7 @@
       }
     }
   },
-  "modelVoiceTitle": "{language} — Silero {version}",
+  "modelVoiceTitle": "{language} — Vosk {version}",
   "@modelVoiceTitle": {
     "placeholders": {
       "language": {
@@ -791,7 +791,7 @@
       }
     }
   },
-  "modelVoiceNoteRu": "Russian speech, 24 kHz; voices xenia, aidar, baya, kseniya and eugene.",
+  "modelVoiceNoteRu": "Russian speech under Apache 2.0; voices female_1, male_0 and male_1.",
   "language_ar": "Arabic",
   "language_cs": "Czech",
   "language_de": "German",
@@ -892,7 +892,7 @@
       }
     }
   },
-  "failureWorkerExited": "The Marian/Silero worker exited with code {code}: {detail}",
+  "failureWorkerExited": "The Marian/Vosk worker exited with code {code}: {detail}",
   "@failureWorkerExited": {
     "placeholders": {
       "code": {
@@ -903,7 +903,7 @@
       }
     }
   },
-  "failureWorkerExitedSilently": "The Marian/Silero worker exited with code {code} without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.",
+  "failureWorkerExitedSilently": "The Marian/Vosk worker exited with code {code} without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.",
   "@failureWorkerExitedSilently": {
     "placeholders": {
       "code": {
@@ -911,7 +911,7 @@
       }
     }
   },
-  "failureWorkerTimeout": "Marian/Silero did not answer within 2 minutes. Last output: {detail}",
+  "failureWorkerTimeout": "Marian/Vosk did not answer within 2 minutes. Last output: {detail}",
   "@failureWorkerTimeout": {
     "placeholders": {
       "detail": {
@@ -919,8 +919,8 @@
       }
     }
   },
-  "failureWorkerTimeoutSilent": "Marian/Silero did not answer within 2 minutes, and printed nothing.",
-  "failureWorkerStartTimeout": "Marian/Silero did not start within 5 minutes. Last output: {detail}",
+  "failureWorkerTimeoutSilent": "Marian/Vosk did not answer within 2 minutes, and printed nothing.",
+  "failureWorkerStartTimeout": "Marian/Vosk did not start within 5 minutes. Last output: {detail}",
   "@failureWorkerStartTimeout": {
     "placeholders": {
       "detail": {
@@ -928,10 +928,10 @@
       }
     }
   },
-  "failureWorkerStartTimeoutSilent": "Marian/Silero did not start within 5 minutes, and printed nothing.",
-  "failureWorkerNotRunning": "The Marian/Silero worker is not running",
+  "failureWorkerStartTimeoutSilent": "Marian/Vosk did not start within 5 minutes, and printed nothing.",
+  "failureWorkerNotRunning": "The Marian/Vosk worker is not running",
   "failureAudioNotDecoded": "Windows could not read any of those files as sound",
-  "failureWorkerFailed": "Marian/Silero: {detail}",
+  "failureWorkerFailed": "Marian/Vosk: {detail}",
   "@failureWorkerFailed": {
     "placeholders": {
       "detail": {
@@ -1083,7 +1083,7 @@
   "computeCellSelect": "Click to run this stage here",
   "computeCellSelected": "This stage runs here",
   "computeCellLocked": "The device can be changed once dubbing is stopped",
-  "computeSpeechNote": "Speech gains little from the card: Silero holds at 20-26 ms whatever the line is worth, against 23-66 ms on the processor, and the first phrase of a session costs a second more. Next to recognition, which is measured in seconds, the difference is hard to hear.",
+  "computeSpeechNote": "Vosk on the card is faster only on repeats: a phrase heard before is read in 0.3 s, while every line of a new length takes about 1.9 s as cuDNN plans the convolution afresh. On the processor a line takes 0.4-1.3 s. The card needs the same CUDA runtime as translation.",
   "failureRuntimeIncomplete": "The downloaded package has no {detail}",
   "@failureRuntimeIncomplete": {
     "placeholders": {
@@ -1221,7 +1221,7 @@
   "pipelineCutRoute": "Take the original stream out",
   "pipelineCutCast": "Take the cast out of the mix",
   "pipelineCutHeard": "Stop counting this one among the voices of the game",
-  "pipelineCutTranslation": "Take the translator out — the dubbing becomes English",
+  "pipelineCutTranslation": "Translation stays: only Russian has a voice",
   "pipelineCutTranslationBack": "Put the translator back in the line",
   "pipelineNodeSource": "Original stream",
   "pipelineNodeRecognition": "Whisper",

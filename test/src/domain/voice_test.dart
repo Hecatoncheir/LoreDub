@@ -11,17 +11,19 @@ void main() {
   test('splits a package into the voices of each gender', () {
     final russian = speechFor('ru');
 
-    expect(russian.voicesOf(VoiceGender.male), ['aidar', 'eugene']);
-    expect(russian.voicesOf(VoiceGender.female), ['baya', 'kseniya', 'xenia']);
+    expect(russian.voicesOf(VoiceGender.male), ['male_0', 'male_1']);
+    expect(russian.voicesOf(VoiceGender.female), ['female_1']);
   });
 
   test('offers to follow the speaker only with both genders on hand', () {
     expect(speechFor('ru').canFollowSpeaker, isTrue);
-    expect(speechFor('de').canFollowSpeaker, isTrue);
-    expect(speechFor('fr').canFollowSpeaker, isTrue);
-    // Measured: every Spanish voice is a man's, and Ukrainian ships one.
-    expect(speechFor('es').canFollowSpeaker, isFalse);
-    expect(speechFor('uk').canFollowSpeaker, isFalse);
+    const menOnly = ModelPackage(
+      id: 'men-only',
+      artifacts: [],
+      kind: ModelKind.speech,
+      voices: [VoiceOption('a', gender: VoiceGender.male)],
+    );
+    expect(menOnly.canFollowSpeaker, isFalse);
   });
 
   test('names a gender for every voice it lists', () {
@@ -49,7 +51,7 @@ void main() {
   });
 
   test('says nothing about a package with no voices listed', () {
-    const bare = ModelPackage(id: 'silero-xx', artifacts: [], kind: ModelKind.speech);
+    const bare = ModelPackage(id: 'bare-xx', artifacts: [], kind: ModelKind.speech);
 
     expect(bare.canFollowSpeaker, isFalse);
     expect(bare.voicesOf(VoiceGender.male), isEmpty);

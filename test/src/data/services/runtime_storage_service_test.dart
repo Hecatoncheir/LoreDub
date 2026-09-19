@@ -307,6 +307,103 @@ void main() {
       expect(downloads().existsSync(), isFalse, reason: 'the wheel is not kept once installed');
     });
 
+    test('installs the companions after the wheel, without their dependencies', () async {
+      // onnxruntime-gpu alone would bring numpy 2.4 over the bundled 2.2,
+      // and this directory sits first on the worker's import path.
+      final pipRuns = <List<String>>[];
+      final base = wheelPackage();
+      final package = RuntimePackage(
+        id: base.id,
+        kind: base.kind,
+        approximateBytes: base.approximateBytes,
+        probeFileName: base.probeFileName,
+        wheelPython: base.wheelPython,
+        artifacts: base.artifacts,
+        pipArguments: base.pipArguments,
+        companions: const ['onnxruntime-gpu==1.22.0'],
+      );
+      final store = storeWith(
+        MockClient((_) async => http.Response.bytes(wheel, 200)),
+        startProcess: interpreter('cp311', pipRuns: pipRuns),
+      );
+
+      await store.install(
+        package,
+        onProgress: (_) {},
+        pythonExecutable: Platform.resolvedExecutable,
+      );
+
+      expect(pipRuns, hasLength(2));
+      expect(pipRuns.first.last, path.join(downloads().path, wheelName));
+      expect(pipRuns.last, containsAllInOrder(['--no-deps', 'onnxruntime-gpu==1.22.0']));
+      expect(
+        pipRuns.last,
+        containsAllInOrder(['--target', path.join(root.path, 'torch-cuda')]),
+        reason: 'beside torch, whose CUDA libraries it loads',
+      );
+    });
+
+    RuntimePackage withCompanions() {
+      final base = wheelPackage();
+      return RuntimePackage(
+        id: base.id,
+        kind: base.kind,
+        approximateBytes: base.approximateBytes,
+        probeFileName: 'onnxruntime',
+        previousProbeFileName: 'torch',
+        wheelPython: base.wheelPython,
+        artifacts: base.artifacts,
+        pipArguments: base.pipArguments,
+        companions: const ['onnxruntime-gpu==1.22.0'],
+      );
+    }
+
+    test('adds the companions to a runtime installed before them', () async {
+      // torch is 2.7 GB; a directory that holds it already is only missing
+      // what the voice needs to use the card.
+      final torch = Directory(path.join(root.path, 'torch-cuda', 'torch'))
+        ..createSync(recursive: true);
+      final pipRuns = <List<String>>[];
+      var fetched = 0;
+      final store = storeWith(
+        MockClient((_) async {
+          fetched++;
+          return http.Response.bytes(wheel, 200);
+        }),
+        startProcess: interpreter('cp311', pipRuns: pipRuns),
+      );
+
+      await store.install(
+        withCompanions(),
+        onProgress: (_) {},
+        pythonExecutable: Platform.resolvedExecutable,
+      );
+
+      expect(fetched, 0, reason: 'the wheel is not fetched again');
+      expect(pipRuns.single, containsAllInOrder(['--no-deps', 'onnxruntime-gpu==1.22.0']));
+      expect(torch.existsSync(), isTrue);
+    });
+
+    test('keeps torch when a companion fails to install', () async {
+      final torch = Directory(path.join(root.path, 'torch-cuda', 'torch'))
+        ..createSync(recursive: true);
+      final store = storeWith(
+        MockClient((_) async => http.Response.bytes(wheel, 200)),
+        startProcess: interpreter('cp311', pipRuns: [], pipExit: 1),
+      );
+
+      await expectLater(
+        store.install(
+          withCompanions(),
+          onProgress: (_) {},
+          pythonExecutable: Platform.resolvedExecutable,
+        ),
+        throwsA(isA<LoreDubFailure>()),
+      );
+
+      expect(torch.existsSync(), isTrue, reason: 'only the companion is taken away');
+    });
+
     test('leaves another interpreter to pip and the index, as before', () async {
       final pipRuns = <List<String>>[];
       var fetched = 0;

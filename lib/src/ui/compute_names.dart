@@ -43,7 +43,7 @@ String computeDeviceName(AppLocalizations l10n, ComputeDevice device) => switch 
   ComputeDevice.cpu => l10n.computeDeviceCpu,
 };
 
-/// A voice, as "Aidar (мужской)". The identifiers come from Silero and are
+/// A voice, as "Male 0 (мужской)". The identifiers come from Vosk and are
 /// not translated; the gender is, because it is the part being chosen.
 String voiceLabel(AppLocalizations l10n, VoiceOption voice) {
   final name = voice.id.isEmpty

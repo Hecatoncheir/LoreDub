@@ -1,7 +1,7 @@
 # Copyright (c) 2026 LoreDub contributors.
 # SPDX-License-Identifier: MIT
 
-"""Persistent, line-delimited JSON worker for Marian and Silero inference."""
+"""Persistent, line-delimited JSON worker for Marian and the Vosk-TTS voice."""
 
 import argparse
 import collections
@@ -51,7 +51,8 @@ def report_progress(value, stage):
 def change_speed(samples, speed, sample_rate):
     """Scales speech duration without shifting pitch (WSOLA).
 
-    Silero has no rate control, so the synthesized waveform is retimed here.
+    The voice's own rate is left alone, so the synthesized waveform is
+    retimed here.
     A speed above 1.0 shortens the phrase.
     """
     if samples.size == 0 or abs(speed - 1.0) < 0.01:
@@ -266,10 +267,10 @@ def build_voice(converter, paths):
 
 
 # Two or more Latin letters in a translated line means a name came through
-# untranslated, and the voice does not read Latin: measured, Silero drops the
-# word without a sound -- "Добро пожаловать в Rapture." speaks for the same 0.95 s as
-# "Добро пожаловать." alone -- and raises on a line that is Latin end to end,
-# which reaches the player as a failure rather than as a line.
+# untranslated, and the voice does not read Latin: vosk_voice.py drops what
+# its phoneme map lacks, so "Добро пожаловать в Rapture." would be said
+# without the name at all (the Silero this replaced did the same, and raised
+# on a line of Latin end to end).
 LATIN_RUN = re.compile(r"[A-Za-z]{2,}")
 
 # A letter standing on its own is dropped the same way -- "Нажмите F, чтобы
@@ -586,7 +587,7 @@ class TranslationMemory:
             self._kept.popitem(last=False)
 
 # Between the highest male and the lowest female voice measured in the Silero
-# packages there is a wide gap; anything inside it is left undecided rather
+# packages LoreDub used to carry there is a wide gap; anything inside it is left undecided rather
 # than guessed.
 MALE_BELOW_HZ = 155.0
 FEMALE_ABOVE_HZ = 175.0
@@ -722,7 +723,7 @@ class VoiceBank:
     """The voices of one game's characters, kept between sessions.
 
     Every character holds a fingerprint, the gender heard in the line that
-    founded them, and the Silero voice they were given. Nothing is averaged:
+    founded them, and the voice they were given. Nothing is averaged:
     the first clear line of a character stands for them, so their timbre,
     their gender and their voice stay the same from line to line and from one
     session to the next.
@@ -761,7 +762,7 @@ class VoiceBank:
         return len(self.voices)
 
     def voice_of(self, index):
-        """The Silero voice this character was given, if they have one."""
+        """The voice this character was given, if they have one."""
         return self.details[index]["voice"] if 0 <= index < len(self.details) else None
 
     def spoken_by(self, gender):
@@ -902,7 +903,7 @@ def main():
     parser.add_argument("--translation-model", default="")
     parser.add_argument("--tts-model", default="")
     # Answer fingerprint requests and nothing else: the characters screen
-    # records a voice without waiting a minute for Marian and Silero.
+    # records a voice without waiting a minute for Marian and the voice.
     parser.add_argument("--embed-only", action="store_true")
     # Answer preview requests: the speech model and the converter, without
     # the translator. The characters screen plays a sample of a voice with
@@ -916,7 +917,7 @@ def main():
     parser.add_argument("--work-directory", required=True)
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--speed", type=float, default=1.0)
-    parser.add_argument("--speaker", default="xenia")
+    parser.add_argument("--speaker", default="female_1")
     parser.add_argument("--sample-rate", type=int, default=24000)
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
     parser.add_argument("--extra-packages", default="")
@@ -938,9 +939,8 @@ def main():
     # The converter is placed apart from the translator: on the CPU it is
     # the slow half of a line, on a GPU next to nothing.
     parser.add_argument("--converter-device", default="cpu", choices=["cpu", "cuda"])
-    # The voice has its own answer too, and it is the stage the card changes
-    # least: measured, CUDA stands at 20 to 26 ms whatever the line is worth
-    # while the processor runs 23 to 66 ms with its length.
+    # The voice has its own answer too: measured, Vosk reads a line in 280 to
+    # 330 ms on the card against 850 to 920 on twelve processor threads.
     parser.add_argument("--speech-device", default="cpu", choices=["cpu", "cuda"])
     # The game's voice bank. With it, a character met before is voiced with
     # the fingerprint kept for them instead of the one of the current line.
@@ -1024,31 +1024,22 @@ def main():
                 )
 
         report_progress(0.90, "speech")
-        tts = torch.package.PackageImporter(args.tts_model).load_pickle("tts_models", "model")
-        # The same fallback as the translator's and the converter's: a card
-        # torch cannot see leaves the voice on the processor rather than the
-        # dubbing stopped at the line it was about to read.
-        speech_device = torch.device(
-            "cuda" if args.speech_device == "cuda" and torch.cuda.is_available() else "cpu"
-        )
-        try:
-            tts.to(speech_device)
-        except RuntimeError:
-            # A card too full to hold the voice is a working processor, and
-            # this is the stage nothing can be dubbed without: refusing here
-            # would cost the whole session what the card only saves 30 ms on.
-            speech_device = torch.device("cpu")
-            tts.to(speech_device)
-        # Loading the Silero package drops torch to a single thread, and that
-        # holds for everything after it: the translator ran on one core, and
-        # the voice converter took three times as long. The count goes back.
-        torch.set_num_threads(max(1, args.threads))
-        # Every Silero language ships its own voices. Falling back keeps an
-        # unknown name from turning the whole language into a runtime error.
-        voices = list(getattr(tts, "speakers", None) or [])
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        from vosk_voice import VoskVoice
+
+        # torch is imported already, so onnxruntime-gpu finds the CUDA and
+        # cuDNN libraries it brought. Without the card -- or with the
+        # processor's build of onnxruntime, which is all a machine without the
+        # CUDA runtime has -- the voice falls back to the processor, and the
+        # ready line says where it really is.
+        tts = VoskVoice(args.tts_model, threads=args.threads, device=args.speech_device)
+        speech_device = torch.device(tts.device)
+        # An unknown name falls back to the package's first voice rather than
+        # turning the whole session into a runtime error.
+        voices = list(tts.speakers)
         speaker = args.speaker if args.speaker in voices else (voices[0] if voices else args.speaker)
 
-    # The Silero voice picked below stays the base: the converter only moves
+    # The voice picked below stays the base: the converter only moves
     # the original speaker's timbre onto it.
     converter = None
     bank = None
@@ -1497,7 +1488,7 @@ def main():
                 if (kind, index) != (heard_kind, heard_index) and index is not None:
                     answer["readAs"] = f"character:{cast.identifier(index)}"
             elif converter is None:
-                # Nothing heard who is speaking, so the Silero voice is all
+                # Nothing heard who is speaking, so the voice is all
                 # that tells lines apart: men from women and nothing more.
                 answer["speaker"] = f"voice:{chosen}"
             if bank is not None:
