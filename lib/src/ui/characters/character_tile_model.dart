@@ -14,6 +14,7 @@ class CharacterTileModel {
     this.recording = false,
     this.heardSeconds = 0,
     this.packNames = const [],
+    this.packs = const [],
     this.readerName,
     this.playing = false,
     this.previewing = false,
@@ -34,6 +35,9 @@ class CharacterTileModel {
   /// The packs holding this card, named under it so the player can see where
   /// a card already belongs without opening every pack.
   final List<String> packNames;
+
+  /// Every pack on the shelf, which the card's menu offers to file it in.
+  final List<CharacterPack> packs;
 
   /// The name of the card reading this one, when one does. Who reads whom is
   /// drawn on the graph; a card shows it and does not set it.

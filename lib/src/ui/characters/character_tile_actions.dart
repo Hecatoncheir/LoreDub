@@ -16,6 +16,7 @@ class CharacterTileActions {
     this.onStopSound,
     this.onExport,
     this.onFilesDropped,
+    this.onFileInPack,
   });
 
   final ValueChanged<String> onRename;
@@ -43,4 +44,7 @@ class CharacterTileActions {
   /// all of them at once. Null while nothing could be measured — the
   /// converter is missing, or another card is being recorded.
   final ValueChanged<List<String>>? onFilesDropped;
+
+  /// Files the card in the pack of that id, the way dropping it there does.
+  final ValueChanged<String>? onFileInPack;
 }

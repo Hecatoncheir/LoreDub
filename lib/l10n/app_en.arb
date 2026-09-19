@@ -89,10 +89,16 @@
   "glossaryPacksEmpty": "No packs yet. Make one and drag entries into it by the handle on the left -- a set collected for one game is then handed on as a single file.",
   "glossaryPackDropHint": "Drag entries from the lists above here.",
   "glossaryPackNothingFound": "Nothing in this pack matches.",
-  "glossaryPackDragHint": "Drag the entry into a pack",
+  "glossaryPackDragHint": "Drag the entry into a pack, or click to choose one",
   "glossaryPackImport": "Load a pack",
   "charactersCardMenu": "More for this character",
   "pipelineSchemeMenu": "More for this scheme",
+  "packsFileInto": "Into the pack “{name}”",
+  "@packsFileInto": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
   "glossaryImported": "{entries, plural, =0{No entries read} one{{entries} entry read} other{{entries} entries read}} · {packs, plural, =0{no packs} one{{packs} pack} other{{packs} packs}}",
   "@glossaryImported": {
     "placeholders": {

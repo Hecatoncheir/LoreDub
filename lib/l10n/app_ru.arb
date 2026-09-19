@@ -89,10 +89,16 @@
   "glossaryPacksEmpty": "Пакетов пока нет. Создайте пакет и перетащите в него записи за рукоятку слева — так набор для одной игры передаётся одним файлом.",
   "glossaryPackDropHint": "Перетащите сюда записи из списков выше.",
   "glossaryPackNothingFound": "В этом пакете ничего не нашлось.",
-  "glossaryPackDragHint": "Перетащить запись в пакет",
+  "glossaryPackDragHint": "Перетащить запись в пакет или выбрать пакет щелчком",
   "glossaryPackImport": "Загрузить пакет",
   "charactersCardMenu": "Ещё действия с персонажем",
   "pipelineSchemeMenu": "Ещё действия со схемой",
+  "packsFileInto": "В пакет «{name}»",
+  "@packsFileInto": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
   "glossaryImported": "{entries, plural, =0{Ни одной записи не прочитано} one{Прочитана {entries} запись} few{Прочитано {entries} записи} other{Прочитано {entries} записей}} · {packs, plural, =0{без пакетов} one{{packs} пакет} few{{packs} пакета} other{{packs} пакетов}}",
   "@glossaryImported": {
     "placeholders": {

@@ -207,7 +207,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get glossaryPackNothingFound => 'В этом пакете ничего не нашлось.';
 
   @override
-  String get glossaryPackDragHint => 'Перетащить запись в пакет';
+  String get glossaryPackDragHint => 'Перетащить запись в пакет или выбрать пакет щелчком';
 
   @override
   String get glossaryPackImport => 'Загрузить пакет';
@@ -217,6 +217,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pipelineSchemeMenu => 'Ещё действия со схемой';
+
+  @override
+  String packsFileInto(String name) {
+    return 'В пакет «$name»';
+  }
 
   @override
   String glossaryImported(int entries, int packs) {

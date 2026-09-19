@@ -462,7 +462,7 @@ abstract class AppLocalizations {
   /// No description provided for @glossaryPackDragHint.
   ///
   /// In ru, this message translates to:
-  /// **'Перетащить запись в пакет'**
+  /// **'Перетащить запись в пакет или выбрать пакет щелчком'**
   String get glossaryPackDragHint;
 
   /// No description provided for @glossaryPackImport.
@@ -482,6 +482,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Ещё действия со схемой'**
   String get pipelineSchemeMenu;
+
+  /// No description provided for @packsFileInto.
+  ///
+  /// In ru, this message translates to:
+  /// **'В пакет «{name}»'**
+  String packsFileInto(String name);
 
   /// No description provided for @glossaryImported.
   ///

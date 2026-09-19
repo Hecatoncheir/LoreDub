@@ -6,9 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
 import '../theme.dart';
-import 'glossary_drag.dart';
-import 'glossary_layout.dart';
-import '../common/drag_feedback_chip.dart';
+import 'glossary_entry_handle.dart';
 
 /// One entry, edited where it stands. Written back when the field is left or
 /// submitted rather than on every keystroke: half a word is not an entry,
@@ -21,6 +19,8 @@ class GlossaryEntryRow extends StatefulWidget {
     required this.readingLabel,
     required this.onWrite,
     required this.onRemove,
+    this.packs = const [],
+    this.onFileInPack,
   });
 
   final GlossaryEntry entry;
@@ -28,6 +28,11 @@ class GlossaryEntryRow extends StatefulWidget {
   final String readingLabel;
   final void Function(GlossaryEntry entry) onWrite;
   final VoidCallback onRemove;
+
+  /// Every pack on the shelf, offered from the handle to a hand that
+  /// cannot drag -- a keyboard, a switch.
+  final List<GlossaryPack> packs;
+  final ValueChanged<String>? onFileInPack;
 
   @override
   State<GlossaryEntryRow> createState() => _GlossaryEntryRowState();
@@ -53,21 +58,10 @@ class _GlossaryEntryRowState extends State<GlossaryEntryRow> {
     padding: const EdgeInsets.only(bottom: 10),
     child: Row(
       children: [
-        Draggable<GlossaryDrag>(
-          data: GlossaryDrag(entry: widget.entry),
-          dragAnchorStrategy: pointerDragAnchorStrategy,
-          feedback: DragFeedbackChip(label: widget.entry.source),
-          child: Tooltip(
-            message: AppLocalizations.of(context).glossaryPackDragHint,
-            child: const SizedBox(
-              width: GlossaryLayout.dragHandleWidth,
-              child: Icon(
-                Icons.drag_indicator_rounded,
-                size: 18,
-                color: LoreDubPalette.mutedInk,
-              ),
-            ),
-          ),
+        GlossaryEntryHandle(
+          entry: widget.entry,
+          packs: widget.packs,
+          onFileInPack: widget.onFileInPack,
         ),
         // The source is shown rather than edited: it is what the entry is
         // filed under, and editing it in place would silently found a second

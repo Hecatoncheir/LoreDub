@@ -30,6 +30,7 @@ class GlossaryLists extends StatelessWidget {
           entries: view.listed(kind),
           held: view.held(kind),
           loaded: loaded,
+          packs: view.glossary.packs,
         ),
       ],
     ],

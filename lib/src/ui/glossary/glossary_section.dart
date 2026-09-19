@@ -23,6 +23,7 @@ class GlossarySection extends StatelessWidget {
     required this.entries,
     required this.held,
     required this.loaded,
+    this.packs = const [],
   });
 
   final String number;
@@ -36,6 +37,9 @@ class GlossarySection extends StatelessWidget {
   /// tells a list with nothing in it from one narrowed to nothing.
   final int held;
   final bool loaded;
+
+  /// Every pack on the shelf, which an entry can be filed in from its handle.
+  final List<GlossaryPack> packs;
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +84,8 @@ class GlossarySection extends StatelessWidget {
                 readingLabel: texts.readingLabel,
                 onWrite: (written) => glossary.write(written),
                 onRemove: () => glossary.remove(kind, entry.source),
+                packs: packs,
+                onFileInPack: (packId) => glossary.fileInPack(entry, into: packId),
               ),
             const SizedBox(height: 6),
             GlossaryAddRow(

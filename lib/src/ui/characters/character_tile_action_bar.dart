@@ -63,7 +63,13 @@ class CharacterTileActionBar extends StatelessWidget {
         // voice, and one of them cannot be taken back. Five unlabelled icons in
         // a row put delete a slip away from record; behind a menu it is named
         // in words and reached on purpose.
-        CharacterCardMenu(onExport: actions.onExport, onDelete: actions.onDelete),
+        CharacterCardMenu(
+          characterId: id,
+          onExport: actions.onExport,
+          onDelete: actions.onDelete,
+          packs: model.packs,
+          onFileInPack: actions.onFileInPack,
+        ),
       ],
     );
   }

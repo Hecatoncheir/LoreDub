@@ -207,7 +207,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get glossaryPackNothingFound => 'Nothing in this pack matches.';
 
   @override
-  String get glossaryPackDragHint => 'Drag the entry into a pack';
+  String get glossaryPackDragHint => 'Drag the entry into a pack, or click to choose one';
 
   @override
   String get glossaryPackImport => 'Load a pack';
@@ -217,6 +217,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pipelineSchemeMenu => 'More for this scheme';
+
+  @override
+  String packsFileInto(String name) {
+    return 'Into the pack “$name”';
+  }
 
   @override
   String glossaryImported(int entries, int packs) {

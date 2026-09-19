@@ -74,6 +74,7 @@ class CastCard extends StatelessWidget {
         for (final pack in state.packs)
           if (pack.holds(id)) pack.name,
       ],
+      packs: state.packs,
       readerName: _readerName(),
       playing: state.playingId == id,
       previewing: state.previewingId == id,
@@ -101,6 +102,7 @@ class CastCard extends StatelessWidget {
       onStopSound: cubit.stopSounding,
       onExport: character.vector.isEmpty ? null : () => _export(context),
       onFilesDropped: takesFiles ? (paths) => cubit.voiceFromFiles(id, paths) : null,
+      onFileInPack: (packId) => cubit.addToPack(packId, id),
     );
   }
 
