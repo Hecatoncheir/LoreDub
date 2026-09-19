@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
-import '../theme.dart';
+import '../common/pack_hint.dart';
 import 'glossary_packed_entry.dart';
 
 /// The entries a pack shows, as chips that can be dragged out again -- or,
@@ -32,12 +32,8 @@ class GlossaryPackMembers extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     if (members.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
-        child: Text(
-          searching && held > 0 ? l10n.glossaryPackNothingFound : l10n.glossaryPackDropHint,
-          style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
-        ),
+      return PackHint(
+        text: searching && held > 0 ? l10n.glossaryPackNothingFound : l10n.glossaryPackDropHint,
       );
     }
     // A Wrap gives its children all the room they ask for, and a phrase asks

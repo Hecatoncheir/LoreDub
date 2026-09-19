@@ -363,10 +363,16 @@ lib/src/ui/
       (`model_visuals.dart:261`, `dashboard_view.dart:3484`, `:3661`, `:4983`),
       а удаление пака словаря (`glossary_screen.dart:751`) не спрашивает
       вовсе → один `ConfirmDialog` в `common/`, и спрашивать везде.
-- [ ] `CharacterPackArea` (`character_tiles.dart:536–686`) и
+- [x] `CharacterPackArea` (`character_tiles.dart:536–686`) и
       `_GlossaryPackArea` (`glossary_screen.dart:769–965`) — один и тот же
       виджет; отличаются переключателем активности и подсказкой поиска →
       `PackArea<D>` + `PackChip<D>` + `DragFeedbackChip`, полки → `PackShelf`.
+      *Сделано:* `common/pack_area.dart` (`PackArea<D>`: имя, счёт, кнопки
+      в строке имени или ряд `controls` под ней, `active`), `PackChip<D>`,
+      `PackHint`; `CharacterPackArea` и `GlossaryPackArea` — тонкие обёртки.
+      Полки не объединены: у состава `Card` с `AreaHeading`, у словаря —
+      колонка со своим заголовком и радиусом 16; это решение дизайна, а не
+      рефакторинг.
 
 ### Остальные файлы интерфейса
 
