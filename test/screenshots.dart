@@ -315,6 +315,7 @@ void main() {
   DashboardCubits stage(
     String language, {
     required DashboardSection section,
+    LiveView liveView = LiveView.dubbing,
     AppSettings settings = const AppSettings(),
     PipelineStatus status = PipelineStatus.idle,
     PipelineSession session = PipelineSession.live,
@@ -330,6 +331,7 @@ void main() {
     cubits.shell.seed(
       ShellState(
         section: section,
+        liveView: liveView,
         initializing: false,
         updates: const UpdateState(currentVersion: '0.15.0'),
       ),
@@ -415,7 +417,8 @@ void main() {
         tester,
         stage(
           language,
-          section: DashboardSection.pipeline,
+          section: DashboardSection.live,
+          liveView: LiveView.scheme,
           placed: [
             CastPlacement.of('smith'),
             const CastPlacement(nodeId: copy, characterId: 'guard', heard: false),
@@ -441,7 +444,8 @@ void main() {
         tester,
         stage(
           language,
-          section: DashboardSection.pipeline,
+          section: DashboardSection.live,
+          liveView: LiveView.scheme,
           placed: [
             CastPlacement.of('smith'),
             const CastPlacement(nodeId: copy, characterId: 'guard', heard: false),

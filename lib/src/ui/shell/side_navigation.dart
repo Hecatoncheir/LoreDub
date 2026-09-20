@@ -102,13 +102,6 @@ class SideNavigation extends StatelessWidget {
                         context.read<ShellCubit>().selectSection(DashboardSection.glossary),
                   ),
                   NavigationItem(
-                    icon: (color) => Icon(Icons.account_tree_rounded, size: 21, color: color),
-                    label: AppLocalizations.of(context).navPipeline,
-                    selected: shell.section == DashboardSection.pipeline,
-                    onTap: () =>
-                        context.read<ShellCubit>().selectSection(DashboardSection.pipeline),
-                  ),
-                  NavigationItem(
                     icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navModels,
                     selected: shell.section == DashboardSection.models,

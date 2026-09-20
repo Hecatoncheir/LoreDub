@@ -81,9 +81,7 @@ class StartChecklist extends StatelessWidget {
                     StartStep.models => () => context.read<ShellCubit>().selectSection(
                       DashboardSection.models,
                     ),
-                    StartStep.route => () => context.read<ShellCubit>().selectSection(
-                      DashboardSection.pipeline,
-                    ),
+                    StartStep.route => () => context.read<ShellCubit>().showOnLive(LiveView.scheme),
                     StartStep.game => null,
                   },
                 ),

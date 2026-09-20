@@ -18,7 +18,6 @@ import '../screen_text/snapshot_panel.dart';
 import '../characters/characters_panel.dart';
 import '../models/models_panel.dart';
 import '../settings/settings_panel.dart';
-import '../graph/pipeline_panel.dart';
 import 'shell_layout.dart';
 
 /// The frame every screen stands in: the sidebar, or the bottom bar in a
@@ -51,9 +50,6 @@ class DashboardScaffold extends StatelessWidget {
                     child: switch (shell.section) {
                       DashboardSection.live => LivePanel(
                         key: const ValueKey('live'),
-                      ),
-                      DashboardSection.pipeline => PipelinePanel(
-                        key: const ValueKey('pipeline'),
                       ),
                       DashboardSection.snapshot => SnapshotPanel(
                         key: const ValueKey('snapshot'),

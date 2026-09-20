@@ -32,7 +32,7 @@ class DashboardHeader extends StatelessWidget {
                   // The marking over the title reads in the player's own
                   // language: it is a strap rather than a brand, and half
                   // the screens already named their areas in Russian.
-                  shell.section.mark(AppLocalizations.of(context)),
+                  shell.section.mark(AppLocalizations.of(context), liveView: shell.liveView),
                   style: const TextStyle(
                     fontFamily: LoreDubFonts.mono,
                     color: LoreDubPalette.mutedInk,
@@ -44,8 +44,10 @@ class DashboardHeader extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   switch (shell.section) {
+                    // The scheme is the other half of Эфир, and says so.
+                    DashboardSection.live when shell.liveView == LiveView.scheme =>
+                      AppLocalizations.of(context).titlePipeline,
                     DashboardSection.live => AppLocalizations.of(context).titleLive,
-                    DashboardSection.pipeline => AppLocalizations.of(context).titlePipeline,
                     DashboardSection.snapshot => AppLocalizations.of(context).titleSnapshot,
                     DashboardSection.models => AppLocalizations.of(context).titleModels,
                     DashboardSection.characters => AppLocalizations.of(context).titleCharacters,

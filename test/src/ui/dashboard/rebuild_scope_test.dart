@@ -58,7 +58,11 @@ void main() {
     return rebuilt;
   }
 
-  Future<DashboardCubits> pumpAt(WidgetTester tester, DashboardSection section) async {
+  Future<DashboardCubits> pumpAt(
+    WidgetTester tester,
+    DashboardSection section, {
+    LiveView liveView = LiveView.dubbing,
+  }) async {
     SharedPreferences.setMockInitialValues({});
     final cubits = DashboardCubits(
       AppRepository(NativeEngineService(), SettingsService()),
@@ -81,7 +85,7 @@ void main() {
       ),
     );
     addTearDown(cubits.dispose);
-    cubits.shell.seed(ShellState(section: section, initializing: false));
+    cubits.shell.seed(ShellState(section: section, liveView: liveView, initializing: false));
     cubits.downloads.seed(DownloadsState(models: modelsAt(0.10)));
 
     tester.view.physicalSize = const Size(1280, 900);
@@ -128,7 +132,11 @@ void main() {
   });
 
   testWidgets('a download tick leaves the pipeline scheme untouched', (tester) async {
-    final cubits = await pumpAt(tester, DashboardSection.pipeline);
+    final cubits = await pumpAt(
+      tester,
+      DashboardSection.live,
+      liveView: LiveView.scheme,
+    );
     cubits.graph.seed(const PipelineGraphState(loading: false));
     // The canvas fits the scheme into the window after the frame that
     // measured it, so the screen settles a few frames after it is seeded.

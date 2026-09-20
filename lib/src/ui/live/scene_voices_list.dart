@@ -27,6 +27,9 @@ class SceneVoicesList extends StatelessWidget {
           final l10n = AppLocalizations.of(context);
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+            // The card grows with this list and scrolls inside itself once
+            // it has grown as far as it may.
+            shrinkWrap: true,
             children: [
               Text(
                 characters.isEmpty

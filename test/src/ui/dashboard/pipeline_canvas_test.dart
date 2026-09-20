@@ -74,7 +74,13 @@ void main() {
       ),
     );
     addTearDown(cubits.dispose);
-    cubits.shell.seed(const ShellState(section: DashboardSection.pipeline, initializing: false));
+    cubits.shell.seed(
+      const ShellState(
+        section: DashboardSection.live,
+        liveView: LiveView.scheme,
+        initializing: false,
+      ),
+    );
     cubits.settings.seed(SettingsState(settings: settings));
     cubits.downloads.seed(
       DownloadsState(

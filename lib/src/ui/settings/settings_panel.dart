@@ -12,15 +12,12 @@ import 'compute_device_card.dart';
 import 'hotkeys_card.dart';
 import 'interface_language_card.dart';
 import 'model_directory_card.dart';
-import 'original_volume_card.dart';
 import 'paired_cards.dart';
 import 'proxy_card.dart';
 import 'python_card.dart';
 import 'scale_card.dart';
 import 'settings_area.dart';
 import 'settings_layout.dart';
-import 'speech_pace_card.dart';
-import 'voice_card.dart';
 
 /// The whole settings screen: five areas of cards, in the order a player
 /// meets them — what is heard, how it sounds, what drives it, and at the
@@ -56,19 +53,7 @@ class SettingsPanel extends StatelessWidget {
             const SizedBox(height: SettingsLayout.cardGap),
             HotkeysCard(settings: settings, running: running),
             const SizedBox(height: SettingsLayout.groupGap),
-            ModuleLabel(number: '02', label: l10n.settingsGroupDubbing),
-            const SizedBox(height: SettingsLayout.cardGap),
-            // Two sliders with a switch under each: side by side they are
-            // read at a glance, and one under the other only where the screen
-            // is too narrow to set either without squeezing its own notes.
-            PairedCards(
-              first: OriginalVolumeCard(settings: settings, running: running),
-              second: SpeechPaceCard(settings: settings, running: running),
-            ),
-            const SizedBox(height: SettingsLayout.cardGap),
-            const VoiceCard(),
-            const SizedBox(height: SettingsLayout.groupGap),
-            ModuleLabel(number: '03', label: l10n.settingsGroupCompute),
+            ModuleLabel(number: '02', label: l10n.settingsGroupCompute),
             const SizedBox(height: SettingsLayout.cardGap),
             const ComputeDeviceCard(),
             const SizedBox(height: SettingsLayout.groupGap),
@@ -79,12 +64,12 @@ class SettingsPanel extends StatelessWidget {
               sameHeight: false,
               stackedGap: SettingsLayout.groupGap,
               first: SettingsArea(
-                number: '04',
+                number: '03',
                 label: l10n.settingsGroupDownloads,
                 children: const [ProxyCard()],
               ),
               second: SettingsArea(
-                number: '05',
+                number: '04',
                 label: l10n.settingsGroupPaths,
                 children: const [
                   PythonCard(),

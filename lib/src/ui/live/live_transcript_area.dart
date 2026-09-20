@@ -16,25 +16,24 @@ class LiveTranscriptArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      // Each card is as tall as what it holds, to the ten lines worth
+      // seeing at once; the page scrolls rather than squeezing them.
       if (constraints.maxWidth >= LiveLayout.sceneBesideTranscriptWidth) {
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: TranscriptCard()),
+            Expanded(child: TranscriptCard(number: '03', fillsHeight: false)),
             const SizedBox(width: 16),
             SizedBox(width: LiveLayout.sceneVoicesWidth, child: SceneVoicesCard()),
           ],
         );
       }
-      // Shares of what is left rather than a fixed height. Under a card's
-      // worth of room the transcript takes it all: two headers and nothing
-      // under them would serve nobody.
-      if (constraints.maxHeight < LiveLayout.sceneStackedMinHeight) return TranscriptCard();
       return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(flex: 3, child: TranscriptCard()),
+          TranscriptCard(number: '03', fillsHeight: false),
           const SizedBox(height: 16),
-          Expanded(flex: 2, child: SceneVoicesCard()),
+          SceneVoicesCard(),
         ],
       );
     },

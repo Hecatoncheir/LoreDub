@@ -18,7 +18,13 @@ import '../../../domain/progress_ticker.dart';
 /// The order the sections are listed in, which is the order the work is
 /// done in: what the game says, a piece of it by hand, whose voices read it,
 /// how the signal runs, what it runs on, and everything else.
-enum DashboardSection { live, snapshot, characters, glossary, pipeline, models, settings }
+enum DashboardSection { live, snapshot, characters, glossary, models, settings }
+
+/// What the Эфир screen shows: the dubbing itself, or the scheme it runs
+/// by. The scheme was a screen of its own under the preparations, which
+/// meant leaving the dubbing to rewire it -- and it is the one thing there
+/// that answers while the dubbing runs.
+enum LiveView { dubbing, scheme }
 
 /// Where the parts of the dashboard put what went wrong.
 ///
@@ -33,12 +39,16 @@ abstract class FailureSink {
 class ShellState extends Equatable {
   const ShellState({
     this.section = DashboardSection.live,
+    this.liveView = LiveView.dubbing,
     this.initializing = true,
     this.error,
     this.updates = const UpdateState(),
   });
 
   final DashboardSection section;
+
+  /// Which half of Эфир is up. Meaningless on any other screen.
+  final LiveView liveView;
   final bool initializing;
 
   /// What went wrong, as raised. The interface writes it out.
@@ -49,12 +59,14 @@ class ShellState extends Equatable {
 
   ShellState copyWith({
     DashboardSection? section,
+    LiveView? liveView,
     bool? initializing,
     Object? error,
     bool clearError = false,
     UpdateState? updates,
   }) => ShellState(
     section: section ?? this.section,
+    liveView: liveView ?? this.liveView,
     initializing: initializing ?? this.initializing,
     error: clearError ? null : error ?? this.error,
     updates: updates ?? this.updates,
@@ -63,6 +75,7 @@ class ShellState extends Equatable {
   @override
   List<Object?> get props => [
     section,
+    liveView,
     initializing,
     error,
     updates,
@@ -93,6 +106,12 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
   }
 
   void selectSection(DashboardSection value) => emit(state.copyWith(section: value));
+
+  /// Shows one half of Эфир: the dubbing, or the scheme it runs by. It
+  /// comes back to Эфир first, so the checklist can send the player to the
+  /// scheme from wherever they are standing.
+  void showOnLive(LiveView view) =>
+      emit(state.copyWith(section: DashboardSection.live, liveView: view));
 
   void finishInitializing() => emit(state.copyWith(initializing: false));
 

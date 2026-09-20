@@ -10,16 +10,22 @@ import '../dashboard/cubits/shell_cubit.dart';
 /// Numbered off [DashboardSection] rather than by hand, so a screen put
 /// between two others renumbers the rest by itself.
 extension SectionMark on DashboardSection {
-  String mark(AppLocalizations l10n) {
+  /// [liveView] names the half of Эфир that is up, the scheme having been
+  /// a screen of its own once.
+  String mark(AppLocalizations l10n, {LiveView liveView = LiveView.dubbing}) {
+    if (this == DashboardSection.live && liveView == LiveView.scheme) {
+      return '$_number  /  ${l10n.headerPipeline}';
+    }
     final area = switch (this) {
       DashboardSection.live => l10n.headerLive,
       DashboardSection.snapshot => l10n.headerScreen,
       DashboardSection.characters => l10n.headerCharacters,
       DashboardSection.glossary => l10n.headerGlossary,
-      DashboardSection.pipeline => l10n.headerPipeline,
       DashboardSection.models => l10n.headerModels,
       DashboardSection.settings => l10n.headerSettings,
     };
-    return '${(index + 1).toString().padLeft(2, '0')}  /  $area';
+    return '$_number  /  $area';
   }
+
+  String get _number => (index + 1).toString().padLeft(2, '0');
 }

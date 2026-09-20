@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'transcript_body.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -25,12 +27,13 @@ class SceneVoicesCard extends StatelessWidget {
     builder: (context, pipeline) => Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
             child: ModuleLabel(
-              number: '03',
+              number: '04',
               label: AppLocalizations.of(context).areaSceneVoices,
             ),
           ),
@@ -41,8 +44,10 @@ class SceneVoicesCard extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
             child: Align(alignment: Alignment.centerLeft, child: SceneListenButton()),
           ),
-          Expanded(
-            child: pipeline.speakers.isEmpty
+          TranscriptBody(
+            fillsHeight: false,
+            empty: pipeline.speakers.isEmpty,
+            lines: pipeline.speakers.isEmpty
                 ? SceneVoicesEmpty(listening: pipeline.sceneRunning)
                 : SceneVoicesList(speakers: pipeline.speakers),
           ),

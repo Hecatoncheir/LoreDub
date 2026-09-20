@@ -297,8 +297,8 @@ waiting to be spoken, while lines waiting to be recognized are not held up by
 the voice at all, and hurrying for them would rush a dubbing that is late for
 another reason.
 
-The seven screens are listed in the order the work is done in — Эфир,
-Экран, Персонажи, Словарь, Схема, Модели, Настройки — which is the
+The six screens are listed in the order the work is done in — Эфир,
+Экран, Персонажи, Словарь, Модели, Настройки — which is the
 order of `DashboardSection` itself: the compact navigation indexes into
 `DashboardSection.values`, and `_sectionMark` numbers the header off
 `section.index`, so a screen put between two others renumbers the rest by
@@ -427,8 +427,14 @@ which glossary the next line is read against. Deleting a pack leaves the
 entries, deleting an entry takes it out of every pack, and a pack naming an
 entry that is gone is pruned when the file is read.
 
-The Graph screen ("Схема", `DashboardSection.pipeline`) draws the pipeline as
-nodes and is the second way to the same settings, not a second set of them.
+The scheme ("Схема") draws the pipeline as nodes and is the second way to
+the same settings, not a second set of them. It is a half of Эфир rather
+than a screen of its own (`ShellState.liveView`, `LiveViewSwitch`): it is
+where the dubbing is arranged, and reaching it meant leaving the dubbing --
+while it is the one arrangement that answers with a session running. Эфир
+carries the dubbing's own settings for the same reason: how far the game is
+turned down, how fast a line is read, and in which voice
+(`live/dubbing_cards.dart`, moved off the settings screen).
 `buildPipelineGraph` (`domain/pipeline_graph.dart`) is a pure function of
 `AppSettings`, the cast and a `PipelineLayout`, so the canvas is rebuilt
 whenever either changes and can never drift from them; every edit goes the

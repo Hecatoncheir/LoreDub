@@ -44,6 +44,8 @@ import 'package:lore_dub/src/ui/characters/character_tile.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/domain/sound_files.dart';
+import 'package:lore_dub/src/ui/live/source_controls.dart';
+import 'package:lore_dub/src/ui/settings/voice_card.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
 import 'package:lore_dub/src/ui/graph/canvas/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/graph/inspector/pipeline_inspector.dart';
@@ -76,6 +78,7 @@ void main() {
   DashboardCubits stage(
     DashboardCubits cubits, {
     DashboardSection section = DashboardSection.live,
+    LiveView liveView = LiveView.dubbing,
     UpdateState updates = const UpdateState(),
     AppSettings? settings,
     List<ModelInstallState>? models,
@@ -88,7 +91,14 @@ void main() {
     double? startupProgress,
     String startupStage = '',
   }) {
-    cubits.shell.seed(ShellState(section: section, initializing: false, updates: updates));
+    cubits.shell.seed(
+      ShellState(
+        section: section,
+        liveView: liveView,
+        initializing: false,
+        updates: updates,
+      ),
+    );
     if (settings != null) cubits.settings.seed(SettingsState(settings: settings));
     if (models != null || runtimes != null || availability != null) {
       cubits.downloads.seed(
@@ -150,6 +160,19 @@ void main() {
 
   Finder settingsScroller() => pageScroller('settingsList');
 
+  Finder liveScroller() => pageScroller('liveList');
+
+  /// The transcript stands under the dubbing's own settings now, so it is
+  /// scrolled to rather than found where the page opens.
+  Future<void> showTranscript(WidgetTester tester) async {
+    await tester.scrollUntilVisible(
+      find.text('РАСШИФРОВКА'),
+      300,
+      scrollable: liveScroller(),
+    );
+    await tester.pumpAndSettle();
+  }
+
   Finder modelsScroller() => pageScroller('modelsList');
 
   Finder glossaryScroller() => pageScroller('glossaryList');
@@ -170,7 +193,9 @@ void main() {
     expect(find.text('LoreDub'), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
     expect(find.text('Перевод игры'), findsOneWidget);
-    expect(find.text('Эфир'), findsOneWidget);
+    // Twice: the navigation item, and the switch between the dubbing and
+    // the scheme it runs by.
+    expect(find.text('Эфир'), findsNWidgets(2));
     expect(find.text('01  /  ЖИВОЙ ГОЛОС'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
   });
@@ -196,7 +221,7 @@ void main() {
     // the assertion -- an overflow is an exception the test would fail on.
     await pumpLoreDub(tester, const Size(1280, 560));
 
-    expect(find.text('Эфир'), findsOneWidget);
+    expect(find.text('Эфир'), findsNWidgets(2));
     expect(find.text('Настройки'), findsOneWidget);
   });
 
@@ -204,7 +229,7 @@ void main() {
     await pumpLoreDub(tester, const Size(760, 720));
 
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('Эфир'), findsOneWidget);
+    expect(find.text('Эфир'), findsNWidgets(2));
     expect(find.text('Модели'), findsOneWidget);
     expect(find.text('Настройки'), findsOneWidget);
   });
@@ -343,18 +368,13 @@ void main() {
     Future<Slider> volumeSlider(AppSettings settings) async {
       await pumpDashboard(
         tester,
-        stage(
-          buildCubits(),
-          section: DashboardSection.settings,
-          settings: settings,
-          models: catalogue(),
-        ),
+        stage(buildCubits(), settings: settings, models: catalogue()),
         const Size(1280, 1000),
       );
       await tester.scrollUntilVisible(
         find.text('Оригинальный звук'),
         300,
-        scrollable: settingsScroller(),
+        scrollable: liveScroller(),
       );
       await tester.pumpAndSettle();
       return tester.widget<Slider>(find.byKey(const ValueKey('originalVolume')));
@@ -403,7 +423,9 @@ void main() {
     expect(find.text('Определять язык'), findsOneWidget);
     expect(tester.widget<DropdownButtonFormField<String>>(dropdown).onChanged, isNull);
 
-    await tester.tap(find.byType(Switch));
+    await tester.tap(
+      find.descendant(of: find.byType(SourceControls), matching: find.byType(Switch)),
+    );
     await tester.pumpAndSettle();
 
     final field = tester.widget<DropdownButtonFormField<String>>(dropdown);
@@ -515,6 +537,7 @@ void main() {
     // Taller than the usual test window: the badge and the button sit under
     // the bubble, and a short one puts them past the bottom edge.
     await pumpDashboard(tester, cubits, const Size(1280, 1000));
+    await showTranscript(tester);
 
     await tester.tap(find.byKey(const ValueKey('transcript-correct-Fire in the hole!')));
     await tester.pumpAndSettle();
@@ -558,6 +581,7 @@ void main() {
       ],
     );
     await pumpDashboard(tester, cubits, const Size(1280, 1000));
+    await showTranscript(tester);
 
     await tester.tap(find.byKey(const ValueKey('transcript-correct-Fire in the hole!')));
     await tester.pumpAndSettle();
@@ -1051,6 +1075,7 @@ void main() {
       ],
     );
     await pumpDashboard(tester, cubits, const Size(1280, 1000));
+    await showTranscript(tester);
 
     await tester.tap(find.byKey(const ValueKey('transcript-correct-Reloading!')));
     await tester.pumpAndSettle();
@@ -1091,6 +1116,7 @@ void main() {
       ],
     );
     await pumpDashboard(tester, cubits, const Size(1280, 720));
+    await showTranscript(tester);
 
     await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
     await tester.pumpAndSettle();
@@ -1127,6 +1153,7 @@ void main() {
       ],
     );
     await pumpDashboard(tester, cubits, const Size(1280, 720));
+    await showTranscript(tester);
 
     await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
     await tester.pumpAndSettle();
@@ -2320,7 +2347,6 @@ void main() {
     }) async {
       final cubits = stage(
         buildCubits(),
-        section: DashboardSection.settings,
         settings: settings,
         models: models ?? catalogue(),
       );
@@ -2328,7 +2354,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Голос озвучки'),
         300,
-        scrollable: settingsScroller(),
+        scrollable: liveScroller(),
       );
       await tester.pumpAndSettle();
       return cubits;
@@ -2478,9 +2504,12 @@ void main() {
       expect(find.text('Накладывать реплики разных персонажей'), findsNothing);
     });
 
-    Finder clearButton() => find.ancestor(
-      of: find.text('Очистить'),
-      matching: find.byWidgetPredicate((widget) => widget is TextButton),
+    Finder clearButton() => find.descendant(
+      of: find.byType(VoiceCard),
+      matching: find.ancestor(
+        of: find.text('Очистить'),
+        matching: find.byWidgetPredicate((widget) => widget is TextButton),
+      ),
     );
 
     testWidgets('remembers the characters until told otherwise', (tester) async {
@@ -2528,7 +2557,11 @@ void main() {
     });
 
     testWidgets('leaves OpenVoice out of the devices without the original voice', (tester) async {
-      await pumpSettings(tester);
+      await pumpDashboard(
+        tester,
+        stage(buildCubits(), section: DashboardSection.settings, models: catalogue()),
+        const Size(1280, 1000),
+      );
       await tester.scrollUntilVisible(
         find.textContaining('Vosk на видеокарте быстрее только на повторах'),
         300,
@@ -2539,7 +2572,16 @@ void main() {
     });
 
     testWidgets('gives OpenVoice a device of its own with the original voice', (tester) async {
-      await pumpSettings(tester, settings: const AppSettings(originalVoice: true));
+      await pumpDashboard(
+        tester,
+        stage(
+          buildCubits(),
+          section: DashboardSection.settings,
+          settings: const AppSettings(originalVoice: true),
+          models: catalogue(),
+        ),
+        const Size(1280, 1000),
+      );
       await tester.scrollUntilVisible(
         find.text('OpenVoice'),
         300,
@@ -3499,7 +3541,8 @@ void main() {
     }) async {
       final cubits = stage(
         buildCubits(),
-        section: DashboardSection.pipeline,
+        section: DashboardSection.live,
+        liveView: LiveView.scheme,
         settings: settings,
         models: catalogue(),
       );
@@ -3515,7 +3558,7 @@ void main() {
     testWidgets('draws the stages of the pipeline as nodes', (tester) async {
       await pumpGraph(tester);
 
-      expect(find.text('05  /  ПУТЬ СИГНАЛА'), findsOneWidget);
+      expect(find.text('01  /  ПУТЬ СИГНАЛА'), findsOneWidget);
       expect(find.text('Оригинальный поток'), findsOneWidget);
       expect(find.text('Whisper'), findsOneWidget);
       expect(find.text('Перевод'), findsOneWidget);
