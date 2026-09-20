@@ -47,4 +47,20 @@ abstract final class LoreDubPalette {
   static const success = Color(0xFF277A52);
   static const warning = Color(0xFF9A5A00);
   static const error = Color(0xFFB42318);
+
+  /// Turned over. The dark interface is the light one inside out, and it
+  /// starts from the face a card of the cast is already drawn in: the ink
+  /// is the ground, the graphite is what stands on it, and the cream a
+  /// dark node is written in becomes the text of the whole window.
+  ///
+  /// Only what the light set has no answer for is named here. The third
+  /// step up from the ground, the hairline between them, and the states,
+  /// which on the ink are too dark to read at the values the paper needs.
+  static const raisedDark = Color(0xFF3A3A36);
+  static const outlineDark = Color(0xFF5E5D57);
+  static const mutedInkDark = Color(0xFFB2B1AD);
+  static const orangeLight = Color(0xFFFF7A4F);
+  static const successLight = Color(0xFF4FB183);
+  static const warningLight = Color(0xFFD79A3C);
+  static const errorLight = Color(0xFFE5675C);
 }

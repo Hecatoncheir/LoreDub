@@ -20,8 +20,9 @@ import 'tokens/palette.dart';
 /// a colour named here cannot be repainted, which is the whole point of
 /// handing the roles in.
 abstract final class AppTheme {
-  /// The window's own.
+  /// The window's own, and the same window turned over.
   static final light = build(LoreDubColors.light, Brightness.light);
+  static final dark = build(LoreDubColors.dark, Brightness.dark);
 
   static ThemeData build(LoreDubColors colors, Brightness brightness) {
     final scheme = _scheme(colors, brightness);

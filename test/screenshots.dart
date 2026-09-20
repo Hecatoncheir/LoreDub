@@ -55,6 +55,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
+import 'package:lore_dub/src/ui/graph/node_faces.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -265,6 +266,7 @@ void main() {
     String name,
     String language, {
     double scroll = 0,
+    bool dark = false,
   }) async {
     tester.view.physicalSize = shot;
     tester.view.devicePixelRatio = 1;
@@ -278,7 +280,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
+        theme: (dark ? AppTheme.dark : AppTheme.light).withNodeFaces(
+          NodeFaces.from(dark ? LoreDubColors.dark : LoreDubColors.light),
+        ),
         locale: Locale(language),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -577,4 +581,63 @@ void main() {
       );
     });
   }
+
+  // The window turned over. Three screens rather than all nine, and in one
+  // language: what the dark has to answer for is the colours, and a screen
+  // says that in either language. The scheme is among them because the
+  // faces of its nodes are built from the same roles and are the likeliest
+  // to come out wrong.
+  testWidgets('the settings, in the dark', (tester) async {
+    await shoot(
+      tester,
+      stage('ru', section: DashboardSection.settings),
+      'settings-dark',
+      'ru',
+      dark: true,
+    );
+  });
+
+  testWidgets('the graph, in the dark', (tester) async {
+    await shoot(
+      tester,
+      stage(
+        'ru',
+        section: DashboardSection.live,
+        liveView: LiveView.scheme,
+        placed: [CastPlacement.of('smith'), CastPlacement.of('guard')],
+        where: {
+          PipelineNodeIds.character('smith'): PipelineLayout.castPlace(0),
+          PipelineNodeIds.character('guard'): PipelineLayout.castPlace(1),
+        },
+      ),
+      'graph-dark',
+      'ru',
+      dark: true,
+    );
+  });
+
+  testWidgets('live, in the dark', (tester) async {
+    await shoot(
+      tester,
+      stage(
+        'ru',
+        section: DashboardSection.live,
+        status: PipelineStatus.listening,
+        speakers: heard,
+        transcript: [
+          for (final line in lines['ru']!)
+            TranscriptEntry(
+              original: line.$1,
+              english: line.$1,
+              translated: line.$2,
+              latency: Duration(milliseconds: line.$4),
+              speaker: line.$3,
+            ),
+        ],
+      ),
+      'live-dark',
+      'ru',
+      dark: true,
+    );
+  });
 }

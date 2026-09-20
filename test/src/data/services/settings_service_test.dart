@@ -148,6 +148,23 @@ void main() {
     expect((await SettingsService().load()).recognitionBackend, isNull);
   });
 
+  test('follows Windows for the theme until the player says otherwise', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    expect((await SettingsService().load()).interfaceTheme, InterfaceTheme.system);
+  });
+
+  test('remembers a theme picked by hand, and ignores one this build lost', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    await service.save(const AppSettings(interfaceTheme: InterfaceTheme.dark));
+    expect((await service.load()).interfaceTheme, InterfaceTheme.dark);
+
+    SharedPreferences.setMockInitialValues({'interfaceTheme': 'sepia'});
+    expect((await SettingsService().load()).interfaceTheme, InterfaceTheme.system);
+  });
+
   test('follows the speaker until told otherwise', () async {
     SharedPreferences.setMockInitialValues({});
 

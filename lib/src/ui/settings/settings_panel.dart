@@ -16,6 +16,7 @@ import 'paired_cards.dart';
 import 'proxy_card.dart';
 import 'python_card.dart';
 import 'scale_card.dart';
+import 'theme_card.dart';
 import 'settings_area.dart';
 import 'settings_layout.dart';
 
@@ -50,6 +51,8 @@ class SettingsPanel extends StatelessWidget {
               first: InterfaceLanguageCard(settings: settings),
               second: ScaleCard(settings: settings),
             ),
+            const SizedBox(height: SettingsLayout.cardGap),
+            ThemeCard(settings: settings),
             const SizedBox(height: SettingsLayout.cardGap),
             HotkeysCard(settings: settings, running: running),
             const SizedBox(height: SettingsLayout.groupGap),

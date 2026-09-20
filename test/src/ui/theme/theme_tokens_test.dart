@@ -61,6 +61,35 @@ void main() {
     );
   });
 
+  test('the dark is the light turned over, and the accent is not', () {
+    const light = LoreDubColors.light;
+    const dark = LoreDubColors.dark;
+
+    // What a line of text stands on and what it is written in swap ends.
+    expect(dark.canvas, light.ink);
+    expect(dark.ink, light.onDeep);
+    // A dark surface is what contrasts with the ground, so on the ink it is
+    // the pale one.
+    expect(dark.deep, light.panel);
+    expect(dark.onDeep, light.ink);
+    // The accent is the same orange either way, so what is written on it
+    // does not turn over with the rest.
+    expect(dark.accent, light.accent);
+    expect(dark.onAccent, light.onAccent);
+    expect(dark.onAccentLight, light.onAccentLight);
+    expect(dark.onAccentMuted, light.onAccentMuted);
+    // Every role answers with something: a `copyWith` that forgot one would
+    // leave the dark carrying a colour of the light.
+    expect(dark, isNot(light));
+  });
+
+  test('the whole window comes in both', () {
+    expect(AppTheme.dark.brightness, Brightness.dark);
+    expect(AppTheme.dark.extension<LoreDubColors>(), LoreDubColors.dark);
+    expect(AppTheme.dark.scaffoldBackgroundColor, LoreDubColors.dark.canvas);
+    expect(AppTheme.dark.textTheme.bodyMedium?.color, LoreDubColors.dark.ink);
+  });
+
   test('the roles travel between two faces rather than jumping', () {
     final half = LoreDubColors.light.lerp(
       LoreDubColors.light.copyWith(ink: const Color(0xFFFFFFFF)),

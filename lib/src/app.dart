@@ -9,6 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../l10n/app_localizations.dart';
 import 'data/repositories/app_repository.dart';
+import 'domain/app_settings.dart';
 import 'data/repositories/model_repository.dart';
 import 'data/repositories/runtime_repository.dart';
 import 'data/repositories/update_repository.dart';
@@ -75,13 +76,20 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
       bloc: cubits.settings,
       buildWhen: (previous, current) =>
           previous.settings.interfaceLanguage != current.settings.interfaceLanguage ||
-          previous.settings.chosenScale != current.settings.chosenScale,
+          previous.settings.chosenScale != current.settings.chosenScale ||
+          previous.settings.interfaceTheme != current.settings.interfaceTheme,
       builder: (context, state) => MaterialApp(
         title: 'LoreDub',
         debugShowCheckedModeBanner: false,
         // The faces of the canvas ride on the theme rather than in the
         // theme layer: what a node looks like is the graph screen's own.
         theme: AppTheme.light.withNodeFaces(),
+        darkTheme: AppTheme.dark.withNodeFaces(NodeFaces.from(LoreDubColors.dark)),
+        themeMode: switch (state.settings.interfaceTheme) {
+          InterfaceTheme.system => ThemeMode.system,
+          InterfaceTheme.light => ThemeMode.light,
+          InterfaceTheme.dark => ThemeMode.dark,
+        },
         locale: Locale(state.settings.interfaceLanguage),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: const [

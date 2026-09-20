@@ -50,17 +50,17 @@ class NodeFaces extends ThemeExtension<NodeFaces> {
       // and the strap under it are what a glance at these two nodes is for,
       // and dark on orange left them sitting in the colour rather than on
       // it.
-      ink: colors.onDeep,
+      ink: colors.onAccentLight,
       muted: colors.onAccentMuted,
       // The sockets are light, as the words are. The line under the title
       // is the accent itself: drawn in any other colour it reads as a crack
       // across the node rather than as the edge of its head.
-      port: colors.onDeep,
+      port: colors.onAccentLight,
       rule: colors.accent,
       // The accent on the accent would be no mark at all, so what is picked
       // out here is picked out in the ink.
       chosen: colors.ink,
-      onChosen: colors.onDeep,
+      onChosen: colors.onAccentLight,
       sunk: colors.accentStrong,
       dark: true,
     ),

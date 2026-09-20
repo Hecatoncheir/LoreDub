@@ -29,6 +29,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     required this.deep,
     required this.onDeep,
     required this.onDeepMuted,
+    required this.onAccentLight,
     required this.onAccentMuted,
     required this.success,
     required this.warning,
@@ -52,6 +53,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     deep: LoreDubPalette.graphite,
     onDeep: LoreDubPalette.raised,
     onDeepMuted: _onDeepMuted,
+    onAccentLight: LoreDubPalette.raised,
     onAccentMuted: _onAccentMuted,
     success: LoreDubPalette.success,
     warning: LoreDubPalette.warning,
@@ -90,8 +92,14 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
   final Color onDeep;
   final Color onDeepMuted;
 
-  /// The quieter half of what is written on the accent, which carries
-  /// further than on the dark: the accent is the brighter ground.
+  /// The accent takes writing both ways, and it is the one colour that
+  /// does not turn over with the theme, so neither do these: [onAccent] is
+  /// the dark a control's label is set in, and [onAccentLight] the light a
+  /// node's title is, which was measured to read where the dark sat in the
+  /// colour rather than on it. [onAccentMuted] is that light's quieter
+  /// half, which carries further than on the dark: the accent is the
+  /// brighter ground.
+  final Color onAccentLight;
   final Color onAccentMuted;
 
   /// What a state is said in, beside the words that say it.
@@ -102,9 +110,47 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
   /// What is cast under a card that is lifted.
   final Color shadow;
 
+  /// The interface turned over. Every role answers with what it answers
+  /// with on a card of the cast, which is the dark this application
+  /// already has: the ink is the ground, the graphite is what stands on
+  /// it, and the cream a dark node is written in is the text.
+  ///
+  /// Three roles do not simply swap. [deep] means a dark surface against
+  /// the ground, and on the ink there is no darker one, so here it is the
+  /// pale one -- a chosen chip, a card of the cast, the head of a node --
+  /// with the ink written on it. [accentStrong] is the accent where it has
+  /// to hold its own, which against paper means darker and against the ink
+  /// means lighter. And the three states are lifted for the same reason:
+  /// at the values the paper needs they are unreadable on the ground.
+  static const dark = LoreDubColors(
+    canvas: LoreDubPalette.ink,
+    panel: LoreDubPalette.graphite,
+    raised: LoreDubPalette.raisedDark,
+    ink: LoreDubPalette.raised,
+    mutedInk: LoreDubPalette.mutedInkDark,
+    outline: LoreDubPalette.outlineDark,
+    strongOutline: LoreDubPalette.outline,
+    accent: LoreDubPalette.orange,
+    accentStrong: LoreDubPalette.orangeLight,
+    onAccent: LoreDubPalette.ink,
+    deep: LoreDubPalette.panel,
+    onDeep: LoreDubPalette.ink,
+    onDeepMuted: _onPaleMuted,
+    onAccentLight: LoreDubPalette.raised,
+    onAccentMuted: _onAccentMuted,
+    success: LoreDubPalette.successLight,
+    warning: LoreDubPalette.warningLight,
+    danger: LoreDubPalette.errorLight,
+    shadow: _shadowDark,
+  );
+
   static const _onDeepMuted = Color(0xAAF7F5F0);
+  static const _onPaleMuted = Color(0xAA171717);
   static const _onAccentMuted = Color(0xCCF7F5F0);
   static const _shadow = Color(0x22171717);
+
+  /// Deeper, because it falls on the ink rather than on paper.
+  static const _shadowDark = Color(0x55000000);
 
   @override
   LoreDubColors copyWith({
@@ -121,6 +167,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     Color? deep,
     Color? onDeep,
     Color? onDeepMuted,
+    Color? onAccentLight,
     Color? onAccentMuted,
     Color? success,
     Color? warning,
@@ -140,6 +187,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     deep: deep ?? this.deep,
     onDeep: onDeep ?? this.onDeep,
     onDeepMuted: onDeepMuted ?? this.onDeepMuted,
+    onAccentLight: onAccentLight ?? this.onAccentLight,
     onAccentMuted: onAccentMuted ?? this.onAccentMuted,
     success: success ?? this.success,
     warning: warning ?? this.warning,
@@ -164,6 +212,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
       deep: Color.lerp(deep, other.deep, t)!,
       onDeep: Color.lerp(onDeep, other.onDeep, t)!,
       onDeepMuted: Color.lerp(onDeepMuted, other.onDeepMuted, t)!,
+      onAccentLight: Color.lerp(onAccentLight, other.onAccentLight, t)!,
       onAccentMuted: Color.lerp(onAccentMuted, other.onAccentMuted, t)!,
       success: Color.lerp(success, other.success, t)!,
       warning: Color.lerp(warning, other.warning, t)!,

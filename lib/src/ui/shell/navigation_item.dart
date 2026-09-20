@@ -45,7 +45,7 @@ class NavigationItem extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: selected ? Colors.white : context.colors.ink,
+                    color: selected ? context.colors.onDeep : context.colors.ink,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),

@@ -1057,9 +1057,20 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `SPDX-License-Identifier: MIT` header pair.
 - Colours and lettering are roles on the theme, reached as `context.colors`
   and `context.textStyles` (`ui/theme/`): `LoreDubColors` and
-  `LoreDubTextStyles` are `ThemeExtension`s put on both themes -- the
-  window's and the node panel's -- so a widget of ours standing in the panel
-  is painted in that node's face without knowing it. `LoreDubPalette`
+  `LoreDubTextStyles` are `ThemeExtension`s put on every theme -- the
+  window's light and dark and the node panel's -- so a widget of ours
+  standing in the panel is painted in that node's face without knowing it.
+  `LoreDubColors.dark` is the light set turned over, and
+  `AppSettings.interfaceTheme` picks between them or follows Windows. Three
+  roles do not simply swap: `deep` means a surface that contrasts with the
+  ground, so on the ink it is the pale one; `accentStrong` is darker against
+  paper and lighter against the ink; and the three states are lifted, being
+  unreadable on the ground at the values paper needs. The accent itself
+  never turns over, so neither does what is written on it -- `onAccent` for
+  a control's label and `onAccentLight` for a node's title, which is why the
+  latter is a role of its own rather than riding on `onDeep`. Naming a
+  colour in a widget breaks the dark theme, `Colors.white` as much as
+  `LoreDubPalette`. `LoreDubPalette`
   (`theme/tokens/palette.dart`) is the raw palette behind them and is now
   behind them alone: no widget names it, and `tool/ratchet.dart` holds that
   count at zero, a widget that names one cannot be repainted by the theme.

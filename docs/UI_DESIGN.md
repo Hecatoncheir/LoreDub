@@ -39,6 +39,16 @@ colour — which is why a colour named in a widget cannot be repainted and
 | `danger` | `#B42318` | Recoverable failures |
 | `shadow` | `#22171717` | What is cast under a card that is lifted |
 
+`LoreDubColors.dark` is that set turned over, picked by
+`AppSettings.interfaceTheme` or, by default, by Windows. Three roles do not
+simply swap: `deep` means the surface that contrasts with the ground, so on
+the ink it is the pale one; `accentStrong` is darker against paper and
+lighter against the ink; and the three states are lifted, being unreadable
+on the ground at the values paper needs. The accent is the same orange
+either way, so neither `onAccent` nor `onAccentLight` turns over — which is
+why naming a colour in a widget, `Colors.white` as much as a palette entry,
+is what the dark theme breaks.
+
 Lettering is roles too. Material's own `TextTheme` carries the headings, the
 running text and the three small ones a note is said in (`titleSmall`,
 `bodySmall`, `labelSmall`); what Material has no name for — the markings of

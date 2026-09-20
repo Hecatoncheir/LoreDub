@@ -112,6 +112,10 @@ class SettingsService {
       screenLanguage: _readScreenLanguage(preferences),
       interfaceLanguage: _readInterfaceLanguage(preferences),
       interfaceScale: preferences.getDouble('interfaceScale') ?? const AppSettings().interfaceScale,
+      interfaceTheme: InterfaceTheme.values.firstWhere(
+        (theme) => theme.name == preferences.getString('interfaceTheme'),
+        orElse: () => const AppSettings().interfaceTheme,
+      ),
       whisperModel: preferences.getString('whisperModel') ?? '',
       automaticVoice: preferences.getBool('automaticVoice') ?? true,
       voice: preferences.getString('voice') ?? '',
@@ -168,6 +172,7 @@ class SettingsService {
       preferences.setString('screenLanguage', settings.screenLanguage),
       preferences.setString('interfaceLanguage', settings.interfaceLanguage),
       preferences.setDouble('interfaceScale', settings.interfaceScale),
+      preferences.setString('interfaceTheme', settings.interfaceTheme.name),
       preferences.setString('whisperModel', settings.whisperModel),
       preferences.setBool('automaticVoice', settings.automaticVoice),
       preferences.setString('voice', settings.voice),

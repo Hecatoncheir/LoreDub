@@ -1232,6 +1232,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'Makes the whole interface larger or smaller at once, leaving the Windows scale alone: this window often sits beside a game that took the screen.';
 
   @override
+  String get settingsTheme => 'Theme';
+
+  @override
+  String get themeSystem => 'System';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
+  String get themeDark => 'Dark';
+
+  @override
+  String get themeNote =>
+      '“System” follows the Windows setting. Dark is the same scheme turned over: the ink becomes the ground, and the cream a dark node is written in becomes the text.';
+
+  @override
   String get settingsGroupDownloads => 'DOWNLOADS';
 
   @override

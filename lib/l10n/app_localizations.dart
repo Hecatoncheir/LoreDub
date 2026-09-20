@@ -2115,6 +2115,36 @@ abstract class AppLocalizations {
   /// **'Увеличивает или уменьшает весь интерфейс сразу, не трогая масштаб самой Windows: окно часто стоит рядом с игрой, которая заняла экран.'**
   String get scaleNote;
 
+  /// No description provided for @settingsTheme.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тема'**
+  String get settingsTheme;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системная'**
+  String get themeSystem;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In ru, this message translates to:
+  /// **'Светлая'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тёмная'**
+  String get themeDark;
+
+  /// No description provided for @themeNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'«Системная» следует за настройкой Windows. Тёмная — та же схема наизнанку: чернила становятся фоном, а кремовый, которым написаны тёмные ноды, — текстом.'**
+  String get themeNote;
+
   /// No description provided for @settingsGroupDownloads.
   ///
   /// In ru, this message translates to:

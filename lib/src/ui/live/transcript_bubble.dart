@@ -96,7 +96,7 @@ class TranscriptBubble extends StatelessWidget {
                 Text(
                   original,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.62),
+                    color: context.colors.onDeep.withValues(alpha: 0.62),
                     fontSize: 13,
                     height: 1.3,
                   ),
@@ -113,13 +113,13 @@ class TranscriptBubble extends StatelessWidget {
                     Icon(
                       Icons.volume_off_rounded,
                       size: 16,
-                      color: context.colors.mutedInk,
+                      color: context.colors.onDeepMuted,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       AppLocalizations.of(context).transcriptSilenced,
                       style: TextStyle(
-                        color: context.colors.mutedInk,
+                        color: context.colors.onDeepMuted,
                         fontSize: 15,
                         fontStyle: FontStyle.italic,
                         height: 1.25,
@@ -130,8 +130,8 @@ class TranscriptBubble extends StatelessWidget {
               else
                 Text(
                   entry.translated,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.onDeep,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                     height: 1.25,

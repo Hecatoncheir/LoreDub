@@ -729,6 +729,11 @@
     }
   },
   "scaleNote": "Makes the whole interface larger or smaller at once, leaving the Windows scale alone: this window often sits beside a game that took the screen.",
+  "settingsTheme": "Theme",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "themeNote": "“System” follows the Windows setting. Dark is the same scheme turned over: the ink becomes the ground, and the cream a dark node is written in becomes the text.",
   "settingsGroupDownloads": "DOWNLOADS",
   "settingsGroupPaths": "PATHS",
   "modelWhisperTitle": "Whisper {version}",

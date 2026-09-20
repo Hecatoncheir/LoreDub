@@ -10,6 +10,14 @@ import 'spoken_language.dart';
 
 enum AudioCaptureSource { process, system }
 
+/// Which of the two the interface is drawn in, or Windows' own answer.
+///
+/// The dubbing window usually stands beside a game that has taken the
+/// screen, so how bright it is in the dark is the player's own business
+/// rather than the system's -- but following the system is what most of
+/// them will want, so it is where this starts.
+enum InterfaceTheme { system, light, dark }
+
 /// Where the screen session takes its text from: the window of the game it
 /// was given, or everything the monitors show.
 ///
@@ -46,6 +54,7 @@ class AppSettings {
     this.screenLanguage = fallbackSpokenLanguage,
     this.interfaceLanguage = defaultInterfaceLanguage,
     this.interfaceScale = 1,
+    this.interfaceTheme = InterfaceTheme.system,
     this.whisperModel = '',
     this.automaticVoice = true,
     this.voice = '',
@@ -189,6 +198,9 @@ class AppSettings {
   /// resolution, and the system setting is not worth changing for one
   /// window. Held to [smallestScale]..[largestScale] by [chosenScale].
   final double interfaceScale;
+
+  /// Which of the two the window is drawn in.
+  final InterfaceTheme interfaceTheme;
 
   /// Smaller than this the process names and the times are no longer read;
   /// larger, the node canvas has nowhere left to draw a scheme.
@@ -370,6 +382,7 @@ class AppSettings {
     String? screenLanguage,
     String? interfaceLanguage,
     double? interfaceScale,
+    InterfaceTheme? interfaceTheme,
     String? whisperModel,
     bool? automaticVoice,
     String? voice,
@@ -414,6 +427,7 @@ class AppSettings {
     screenLanguage: screenLanguage ?? this.screenLanguage,
     interfaceLanguage: interfaceLanguage ?? this.interfaceLanguage,
     interfaceScale: interfaceScale ?? this.interfaceScale,
+    interfaceTheme: interfaceTheme ?? this.interfaceTheme,
     whisperModel: whisperModel ?? this.whisperModel,
     automaticVoice: automaticVoice ?? this.automaticVoice,
     voice: voice ?? this.voice,

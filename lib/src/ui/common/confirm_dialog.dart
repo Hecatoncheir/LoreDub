@@ -34,7 +34,7 @@ class ConfirmDialog extends StatelessWidget {
         onPressed: () => Navigator.of(context).pop(true),
         style: FilledButton.styleFrom(
           backgroundColor: Theme.of(context).colorScheme.error,
-          foregroundColor: Colors.white,
+          foregroundColor: Theme.of(context).colorScheme.onError,
         ),
         child: Text(confirmLabel),
       ),

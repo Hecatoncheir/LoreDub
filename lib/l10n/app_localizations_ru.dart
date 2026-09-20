@@ -1242,6 +1242,22 @@ class AppLocalizationsRu extends AppLocalizations {
       'Увеличивает или уменьшает весь интерфейс сразу, не трогая масштаб самой Windows: окно часто стоит рядом с игрой, которая заняла экран.';
 
   @override
+  String get settingsTheme => 'Тема';
+
+  @override
+  String get themeSystem => 'Системная';
+
+  @override
+  String get themeLight => 'Светлая';
+
+  @override
+  String get themeDark => 'Тёмная';
+
+  @override
+  String get themeNote =>
+      '«Системная» следует за настройкой Windows. Тёмная — та же схема наизнанку: чернила становятся фоном, а кремовый, которым написаны тёмные ноды, — текстом.';
+
+  @override
   String get settingsGroupDownloads => 'ЗАГРУЗКА';
 
   @override

@@ -27,7 +27,7 @@ class LatencyBadge extends StatelessWidget {
       // A fixed height with no leading keeps the label centred in the pill
       // instead of riding on the font's baseline.
       style: context.textStyles.monoCaption.copyWith(
-        color: Colors.white,
+        color: context.colors.onAccentLight,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.3,
         height: 1,

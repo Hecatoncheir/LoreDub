@@ -290,7 +290,8 @@ class _RegionPainter extends CustomPainter {
       region.right * size.width,
       region.bottom * size.height,
     );
-    // Dim everything the scan leaves out.
+    // Dim everything the scan leaves out. Black whatever the theme is:
+    // what this lies over is a picture of the game, not a page of ours.
     canvas.drawPath(
       Path.combine(PathOperation.difference, Path()..addRect(screen), Path()..addRect(frame)),
       Paint()..color = Colors.black.withValues(alpha: 0.35),
