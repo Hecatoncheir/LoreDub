@@ -29,7 +29,6 @@ class AppSettings {
     this.targetLanguage = 'ru',
     this.originalVolume = 0.18,
     this.duckWhileSpeaking = true,
-    this.silenceWhileReading = false,
     this.showFrameOverlay = false,
     this.hurryWhenQueued = true,
     this.roughRecognition = false,
@@ -80,15 +79,6 @@ class AppSettings {
   /// their own volume between lines and step aside for each one.
   final bool duckWhileSpeaking;
 
-  /// Whether the game is silenced outright while the screen is read.
-  ///
-  /// Only that session can offer it: it takes its text from the subtitle
-  /// frame and listens to no sound at all, so nothing is lost by turning the
-  /// game off -- and what is gained is not hearing the game speak a line the
-  /// dubbing is reading at the same moment. Live dubbing has its ear in the
-  /// game's own sound and is held above [audibleDuck] whatever is set here.
-  final bool silenceWhileReading;
-
   /// Whether the subtitle frame is drawn over the game itself, so the
   /// player can see where their words are read from without looking away
   /// from it. It outlives a session: what it shows is where the next one
@@ -134,10 +124,6 @@ class AppSettings {
   /// What the game is actually turned down to while it is being listened
   /// to: [originalVolume] held to what the capture can still hear.
   double get duckedVolume => originalVolume.clamp(audibleDuck, loudestDuck);
-
-  /// What the game is turned down to while the screen is read instead --
-  /// the same number, or silence when the player asked for it.
-  double get silentDuckedVolume => silenceWhileReading ? 0 : duckedVolume;
 
   /// The notches of a volume slider, from the range it may cover.
   static int get duckDivisions => ((loudestDuck - audibleDuck) / duckStep).round();
@@ -357,7 +343,6 @@ class AppSettings {
     String? targetLanguage,
     double? originalVolume,
     bool? duckWhileSpeaking,
-    bool? silenceWhileReading,
     bool? showFrameOverlay,
     bool? hurryWhenQueued,
     bool? roughRecognition,
@@ -401,7 +386,6 @@ class AppSettings {
     targetLanguage: targetLanguage ?? this.targetLanguage,
     originalVolume: originalVolume ?? this.originalVolume,
     duckWhileSpeaking: duckWhileSpeaking ?? this.duckWhileSpeaking,
-    silenceWhileReading: silenceWhileReading ?? this.silenceWhileReading,
     showFrameOverlay: showFrameOverlay ?? this.showFrameOverlay,
     hurryWhenQueued: hurryWhenQueued ?? this.hurryWhenQueued,
     roughRecognition: roughRecognition ?? this.roughRecognition,

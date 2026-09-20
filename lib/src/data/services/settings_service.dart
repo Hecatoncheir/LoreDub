@@ -89,8 +89,6 @@ class SettingsService {
       originalVolume: preferences.getDouble('originalVolume') ?? 0.18,
       duckWhileSpeaking:
           preferences.getBool('duckWhileSpeaking') ?? const AppSettings().duckWhileSpeaking,
-      silenceWhileReading:
-          preferences.getBool('silenceWhileReading') ?? const AppSettings().silenceWhileReading,
       hurryWhenQueued:
           preferences.getBool('hurryWhenQueued') ?? const AppSettings().hurryWhenQueued,
       roughRecognition:
@@ -148,7 +146,6 @@ class SettingsService {
       preferences.setString('targetLanguage', settings.targetLanguage),
       preferences.setDouble('originalVolume', settings.originalVolume),
       preferences.setBool('duckWhileSpeaking', settings.duckWhileSpeaking),
-      preferences.setBool('silenceWhileReading', settings.silenceWhileReading),
       preferences.setBool('hurryWhenQueued', settings.hurryWhenQueued),
       preferences.setBool('roughRecognition', settings.roughRecognition),
       preferences.setDouble('ttsSpeed', settings.ttsSpeed),

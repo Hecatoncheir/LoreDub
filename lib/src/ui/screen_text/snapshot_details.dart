@@ -8,7 +8,6 @@ import '../../domain/app_settings.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../language_names.dart';
 import 'screen_source_picker.dart';
-import 'silence_while_reading_switch.dart';
 import 'snapshot_status_line.dart';
 import 'text_language_picker.dart';
 
@@ -43,11 +42,6 @@ class SnapshotDetails extends StatelessWidget {
           settings.readsWholeScreen ? l10n.screenWholeNote(voice) : l10n.snapshotNote(voice),
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        const SizedBox(height: 10),
-        // Silencing the game belongs to the session rather than to the
-        // frame: nothing here listens to the game, so it may go quiet
-        // whichever way the screen is read.
-        SilenceWhileReadingSwitch(settings: settings, locked: pipeline.running),
         SnapshotStatusLine(pipeline: pipeline, settings: settings),
       ],
     );

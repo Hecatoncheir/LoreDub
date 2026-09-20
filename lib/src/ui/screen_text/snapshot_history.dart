@@ -27,9 +27,11 @@ class SnapshotHistory extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
             child: Row(
               children: [
-                ModuleLabel(
-                  number: '03',
-                  label: AppLocalizations.of(context).areaSelectedText,
+                Flexible(
+                  child: ModuleLabel(
+                    number: '03',
+                    label: AppLocalizations.of(context).areaSelectedText,
+                  ),
                 ),
                 const Spacer(),
                 ClearListButton(

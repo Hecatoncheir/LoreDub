@@ -2802,6 +2802,27 @@ void main() {
       );
     });
 
+    // The page scrolls rather than squeezing what it holds, and a window
+    // of any shape was overflowing it before it did: the frame card grew
+    // and the heading of a list did not give way.
+    for (final size in const [
+      Size(900, 700),
+      Size(1100, 900),
+      Size(1400, 1000),
+      Size(1400, 1300),
+      Size(1920, 1080),
+    ]) {
+      testWidgets('fits a window of ${size.width} by ${size.height}', (tester) async {
+        final overflows = <String>[];
+        final reported = FlutterError.onError;
+        FlutterError.onError = (details) => overflows.add(details.exceptionAsString());
+        await pumpDashboard(tester, stageSnapshot(), size);
+        FlutterError.onError = reported;
+
+        expect(overflows, isEmpty);
+      });
+    }
+
     testWidgets('stacks the language and its note where the card is narrow', (tester) async {
       // Narrow enough that the language and its note no longer share a
       // line: fixed at both halves, the row used to overflow.

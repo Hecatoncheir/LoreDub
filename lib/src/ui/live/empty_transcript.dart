@@ -23,11 +23,16 @@ class EmptyTranscript extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
+    // The card either hands this a height to fill or grows with it, and
+    // reaching for the height of a card that has none is asking for
+    // infinity.
     builder: (context, constraints) => SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          minHeight: constraints.maxHeight > 24 ? constraints.maxHeight - 24 : 0,
+          minHeight: constraints.maxHeight.isFinite && constraints.maxHeight > 24
+              ? constraints.maxHeight - 24
+              : 0,
         ),
         child: Center(
           child: Column(

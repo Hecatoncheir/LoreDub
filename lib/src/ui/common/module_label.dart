@@ -23,14 +23,20 @@ class ModuleLabel extends StatelessWidget {
     children: [
       ModuleNumber(number),
       const SizedBox(width: 9),
-      Text(
-        label,
-        style: const TextStyle(
-          fontFamily: LoreDubFonts.mono,
-          color: LoreDubPalette.ink,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.1,
+      // Cut rather than overflowed: a heading in a column narrower than its
+      // own name is a heading that has to give way.
+      Flexible(
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontFamily: LoreDubFonts.mono,
+            color: LoreDubPalette.ink,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.1,
+          ),
         ),
       ),
     ],

@@ -92,6 +92,12 @@ class LivePipelineState extends Equatable {
   /// subtitles go on being read where they were.
   final bool frameMissed;
 
+  /// How many lines a list keeps, newest first. The screen's subtitles keep
+  /// ten: that area grows with what it holds rather than scrolling inside
+  /// itself, so a longer list would push the page down without being read.
+  static const linesKept = 50;
+  static const subtitlesKept = 10;
+
   /// A paused session is still a session: its settings stay locked and its
   /// models loaded.
   bool get running =>
@@ -718,7 +724,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     if (event['snapshot'] == true) {
       emit(
         state.copyWith(
-          snapshots: [entry, ...state.snapshots.take(49)],
+          snapshots: [entry, ...state.snapshots.take(LivePipelineState.linesKept - 1)],
           snapshotReading: false,
         ),
       );
@@ -726,7 +732,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     }
     emit(
       state.copyWith(
-        transcript: [entry, ...state.transcript.take(49)],
+        transcript: [entry, ...state.transcript.take(_linesKept - 1)],
         speakers: _withSpeaker(
           entry.speaker,
           line: entry.translated.trim().isEmpty ? entry.original : entry.translated,
@@ -835,6 +841,11 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       _errors.report(exception);
     }
   }
+
+  /// How much of the transcript this session keeps.
+  int get _linesKept => state.session == PipelineSession.screen
+      ? LivePipelineState.subtitlesKept
+      : LivePipelineState.linesKept;
 
   /// Something went wrong with one phrase.
   ///

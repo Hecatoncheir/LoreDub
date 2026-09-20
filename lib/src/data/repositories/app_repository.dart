@@ -303,7 +303,7 @@ class AppRepository {
         'ocrRegionTop': settings.ocrRegion.top,
         'ocrRegionRight': settings.ocrRegion.right,
         'ocrRegionBottom': settings.ocrRegion.bottom,
-        'duckVolume': settings.silentDuckedVolume,
+        'duckVolume': settings.duckedVolume,
         'duckWhileSpeaking': settings.duckWhileSpeaking,
         'ttsSpeed': settings.chosenSpeed,
         'hurryWhenQueued': settings.hurryWhenQueued,
@@ -363,7 +363,7 @@ class AppRepository {
   /// game's sound, so this one may silence it outright.
   Future<void> _duckScreen(GameProcess? process, AppSettings settings) async {
     if (process == null || settings.duckWhileSpeaking) return;
-    await _nativeEngine.setProcessVolume(process.pid, settings.silentDuckedVolume);
+    await _nativeEngine.setProcessVolume(process.pid, settings.duckedVolume);
   }
 
   /// Loads the speech model and the converter so a card's voice can be

@@ -654,13 +654,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'While the session runs the subtitles in the frame are read and voiced by themselves -- only what a line gained is spoken.';
 
   @override
-  String get silenceWhileReading => 'Silence the game';
-
-  @override
-  String get silenceWhileReadingNote =>
-      'The game\'s sound means nothing here -- the text comes off the screen -- so it may be turned off altogether, rather than speaking a line at the same moment as the dubbing. Off, the game is turned down as it is on Live.';
-
-  @override
   String get screenPickGame => 'Choose the game whose screen to read';
 
   @override

@@ -1155,18 +1155,6 @@ abstract class AppLocalizations {
   /// **'Пока сеанс идёт, субтитры в рамке читаются и озвучиваются сами — озвучивается только то, что в них прибавилось.'**
   String get screenHowTo;
 
-  /// No description provided for @silenceWhileReading.
-  ///
-  /// In ru, this message translates to:
-  /// **'Заглушить игру полностью'**
-  String get silenceWhileReading;
-
-  /// No description provided for @silenceWhileReadingNote.
-  ///
-  /// In ru, this message translates to:
-  /// **'Здесь звук игры ничего не значит — текст берётся с экрана, и игру можно заглушить совсем, чтобы она не произносила реплику одновременно с озвучкой. Выключено — игра приглушается так же, как в «Эфире».'**
-  String get silenceWhileReadingNote;
-
   /// No description provided for @screenPickGame.
   ///
   /// In ru, this message translates to:

@@ -328,8 +328,6 @@
   "resumeDubbing": "Resume",
   "snapshotHowTo": "Hold {hotkey}, draw a frame around the text over the game and let go — LoreDub reads it, translates it and voices it.",
   "screenHowTo": "While the session runs the subtitles in the frame are read and voiced by themselves -- only what a line gained is spoken.",
-  "silenceWhileReading": "Silence the game",
-  "silenceWhileReadingNote": "The game's sound means nothing here -- the text comes off the screen -- so it may be turned off altogether, rather than speaking a line at the same moment as the dubbing. Off, the game is turned down as it is on Live.",
   "screenPickGame": "Choose the game whose screen to read",
   "@snapshotHowTo": {
     "placeholders": {

@@ -316,6 +316,31 @@ void main() {
       expect(repository.starts, 0, reason: 'nothing is captured');
     });
 
+    test('keeps the last ten subtitles, the newest on top', () async {
+      pipeline
+        ..listen()
+        ..seed(waiting);
+
+      for (var line = 1; line <= 12; line++) {
+        repository.push({
+          'type': 'transcript',
+          'original': 'line $line',
+          'english': 'line $line',
+          'translated': 'строка $line',
+          'latencyMs': 100,
+        });
+      }
+      await settle();
+
+      expect(pipeline.state.transcript, hasLength(LivePipelineState.subtitlesKept));
+      expect(pipeline.state.transcript.first.original, 'line 12');
+      expect(
+        pipeline.state.transcript.last.original,
+        'line 3',
+        reason: 'the older two left as the newer arrived',
+      );
+    });
+
     test('reads a snippet without a game to take a window from', () async {
       // Nothing is scanned, so there is no window to read it out of: the
       // key picks out whatever is on the screen.

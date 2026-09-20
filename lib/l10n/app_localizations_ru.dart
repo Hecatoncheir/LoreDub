@@ -660,13 +660,6 @@ class AppLocalizationsRu extends AppLocalizations {
       'Пока сеанс идёт, субтитры в рамке читаются и озвучиваются сами — озвучивается только то, что в них прибавилось.';
 
   @override
-  String get silenceWhileReading => 'Заглушить игру полностью';
-
-  @override
-  String get silenceWhileReadingNote =>
-      'Здесь звук игры ничего не значит — текст берётся с экрана, и игру можно заглушить совсем, чтобы она не произносила реплику одновременно с озвучкой. Выключено — игра приглушается так же, как в «Эфире».';
-
-  @override
   String get screenPickGame => 'Выберите игру, чтобы читать её экран';
 
   @override

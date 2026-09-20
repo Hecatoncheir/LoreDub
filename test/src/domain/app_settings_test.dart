@@ -15,16 +15,6 @@ void main() {
     expect(const AppSettings(originalVolume: 0.9).duckedVolume, AppSettings.loudestDuck);
   });
 
-  test('lets the screen session silence the game, having no ear in it', () {
-    // It takes its text off the screen, so the game may be turned off
-    // altogether rather than left speaking under the dubbing.
-    const asked = AppSettings(silenceWhileReading: true, originalVolume: 0.3);
-
-    expect(asked.silentDuckedVolume, 0);
-    expect(asked.duckedVolume, 0.3, reason: 'live dubbing still hears through this');
-    expect(const AppSettings(originalVolume: 0.3).silentDuckedVolume, 0.3);
-  });
-
   test('reads at the same pace whichever screen sets it', () {
     // The node panel offered 0.8 to 1.6 in steps of 0.05 while the settings
     // screen offered 0.9 to 1.35 in steps of 0.025: a pace set on one was

@@ -16,5 +16,7 @@ class SubtitleList extends StatelessWidget {
     number: '05',
     label: AppLocalizations.of(context).areaSubtitles,
     fromScreen: true,
+    // The page scrolls; this area grows with the ten lines it keeps.
+    fillsHeight: false,
   );
 }

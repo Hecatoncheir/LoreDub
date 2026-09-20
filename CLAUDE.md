@@ -264,9 +264,9 @@ one segment in eight seconds. `duckedVolume` therefore holds `originalVolume`
 to `audibleDuck` (0.1), the game's own sound being what the pipeline listens
 to; both volume sliders — the settings screen and the output node — read
 `audibleDuck`/`loudestDuck`/`duckDivisions`, so a number set on one can be
-set again on the other. The screen session has no ear in the game, so it
-offers `AppSettings.silenceWhileReading` instead — one switch on its own page
-— and starts with `silentDuckedVolume`, which is that same number or zero. The pace sliders pair the same way over
+set again on the other. The screen session turns the game down the same
+way, though it has no ear in it: a switch that silenced it outright was
+offered there and is gone, nothing but that page could reach it. The pace sliders pair the same way over
 `slowestSpeech`/`fastestSpeech`/`speechDivisions`, with `chosenSpeed` holding
 a stored value inside them. `AppSettings.duckWhileSpeaking` replaces the
 session-long duck with one that lasts a line: `PlaybackScheduler.onSpeaking`
@@ -660,7 +660,10 @@ true)`, its `transcript` event carries `snapshot: true` and lands in
 even while a live session is paused. Subtitle lines carry no such flag and go
 to `LivePipelineState.transcript`, which the screen draws beside the
 snapshots and which `toggleScreenText` clears at the start, a transcript
-belonging to one session. Starting live dubbing over a running screen session
+belonging to one session. That list keeps `subtitlesKept` (10) lines
+rather than the `linesKept` (50) Live keeps: the page scrolls as a whole
+and every area on it is as tall as what it holds, so a longer list would
+push the page down without being read. Starting live dubbing over a running screen session
 stops it first, since its worker has no whisper.
 
 Text read off the screen — the subtitle frame and the snippets — is in
