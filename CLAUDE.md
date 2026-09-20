@@ -70,7 +70,23 @@ than one of them.
    records a voice for a card), plus one Bloc — `PipelineGraphBloc`, the
    node canvas, which is event-driven because a gesture there is a sequence
    (grab, move, drop) rather than a call.
-   `DashboardCubits` wires them together and runs `initialize()`;
+   No cubit reads another cubit. What more than one screen needs lives in a
+   repository that owns it and publishes it: `SettingsRepository`
+   (`AppSettings`), `InstallRepository` (what is on disk, what the machine
+   can run it on, where the runtimes are) and `CastRepository` (the cards
+   and the packs). Each has the value as it stands and a `changes` stream
+   beside it, and each publishes **synchronously** -- a screen that writes
+   to a repository also listens to it, and delivered a microtask later its
+   own echo arrived after it had moved on and put the older value back. The
+   repository is the only writer: a cubit that also emitted what it wrote
+   was a second one. The stream does not replay the current value, because
+   cancelling a subscription to a generator that yields it first never
+   completes inside a widget test's zone. `SettingsRepository.load()` reads
+   the file once whoever asks first, so nothing depends on being started in
+   a particular order. The one rule that is not a value is
+   `SessionCoordinator` (`domain/`): one engine, one session, and each
+   screen registers its own half of it.
+   `DashboardCubits` builds the cubits and runs `initialize()`;
    errors from any of them go to the shell through `FailureSink`. Anything
    derived from settings *and* packages together is `ModelSelection`
    (`domain/model_selection.dart`), so neither cubit owns it; widgets read it
@@ -496,7 +512,7 @@ was, whatever was cut while it was on it. Unlike the route it is not
 locked while a session runs — a paused session keeps its cast loaded, so
 this is the one branch the canvas may rewire mid-session, and the running
 worker is told rather than restarted: `_voiceCard` writes the arrangement and
-then `CharactersCubit.readAsHeard` sends `{"asHeard": [...]}`, which rebinds the
+then `CastRepository.readAsHeard` sends `{"asHeard": [...]}`, which rebinds the
 worker's own `as_heard` (not `args.as_heard`, which only seeds it). The set
 is a session's, so `AppRepository.start`/`startSceneVoices` read the
 arrangement off disk for `'asHeard': 'id,id'` — one flat string, the config
@@ -533,9 +549,9 @@ the engine runs can be drawn: game audio into whisper. The mix node is
 audio and every card's voice enter it, and what it puts in order leaves for
 the output, which is why a character on the canvas is joined to the path at
 both ends rather than hanging off it. `PipelineGraphBloc` applies the answer through
-`SettingsCubit` and `CharactersCubit` — so a route change is locked while a
-session runs, while a substitution is not, the running worker being told of
-it rather than restarted — and keeps an undo history of layout,
+`SettingsRepository` and `CastRepository` — so a route change is locked
+while a session runs, while a substitution is not, the running worker being
+told of it rather than restarted — and keeps an undo history of layout,
 route and readers. Schemes the player keeps are a shelf beside that arrangement:
 `SavedPipeline` (`domain/saved_pipeline.dart`) holds the route
 (`captureRouted`), the `PipelineLayout` — which carries the cut cards — and the
@@ -544,9 +560,9 @@ by `PipelineLibraryService` and exported and imported as the same shape.
 A scheme is worked on rather than written once:
 `PipelineSchemeReplaced` writes what the canvas says now into the scheme it
 names, which keeps the name and the place on the shelf it already had.
-Choosing one puts it back through the calls an edit makes — `SettingsCubit`
-for the route, `CharactersCubit.voiceAs` for the substitutions — so the other
-screens follow and one step back restores the scheme that was up; a scheme
+Choosing one puts it back through the calls an edit makes —
+`SettingsRepository` for the route, `CastRepository.voiceAs` for the
+substitutions — so the other screens follow and one step back restores the scheme that was up; a scheme
 that would reroute a running session is refused with `locked`. The
 substitutions go back over the **whole** cast, not over the cards the scheme
 names: a scheme is the whole picture of who reads whom, so a card it does not
@@ -674,9 +690,9 @@ game: the key draws nothing itself, it arrives as
 `{"type":"hotkey","action":"frameOverlay"}` and `PipelineCubit` answers by
 flipping the setting, since whether there is a frame to draw and over which
 game is the application's to know. `PipelineCubit.followFrameOverlay` is the
-one place that keeps the drawing in step -- with the settings (through
-`SettingsCubit.onChanged`, wired in `DashboardCubits`), with the game chosen
-and with a session ending -- and it registers that one key through
+one place that keeps the drawing in step -- with the settings, which it
+follows through `SettingsRepository.changes`, with the game chosen and with
+a session ending -- and it registers that one key through
 `AppRepository.setIdleHotkeys` while nothing else holds the keys, `ld_stop`
 having dropped them.
 
@@ -690,7 +706,7 @@ reading thread through `OcrCapture::SetRegion` — the capture reads it on
 every scan rather than holding the one it started with, so nothing is torn
 down — and comes back as a `subtitleFrame` event, which forgets the previous
 OCR text (the old frame's) and writes `AppSettings.ocrRegion` through
-`SettingsCubit`, so the picker shows where the reading moved and the next
+`SettingsRepository`, so the picker shows where the reading moved and the next
 session starts there. A selection that missed the window answers
 `failed` and changes nothing. The snapshot key is held, not
 pressed: on its WM_HOTKEY the hotkey thread runs `SelectScreenArea`
@@ -889,8 +905,9 @@ each change it disagreed about where the answer came from — a per-game
 `speaker_map/<exe>.json` was the third, and it is gone: no file, no
 `--speaker-map`, no `{"assign": {...}}` request.
 
-`AppSettings.voice` may be picked while a session runs: `SettingsCubit`
-tells `PipelineCubit` through `onChanged`, which sends `{"speaker": name}`
+`AppSettings.voice` may be picked while a session runs: the write goes to
+`SettingsRepository`, `PipelineCubit` hears it on that repository's stream
+and sends `{"speaker": name}`
 to the worker (`useVoice`, one control request beside `{"glossary": ...}`
 and `{"asHeard": ...}`) and keeps `_activeConfig` in step. A name the
 package does not ship leaves the voice alone, and the worker answers with
@@ -907,8 +924,8 @@ speaker means nothing heard who was talking at all. The substitution is
 followed one hop (`readerOfSpeaker` in `domain/speaker_keys.dart` is the same
 rule for the interface, and is what names the reader in the transcript and in
 the scene list). The cast file is read when a session starts, so
-`CharactersCubit.voiceAs` — which the graph bloc is now the only caller of —
-also sends `{"voicedBy": {...}}` to a running worker, so a scheme rearranged
+`CastRepository.voiceAs` — which writes the file and is what both screens
+call — also sends `{"voicedBy": {...}}` to a running worker, so a scheme rearranged
 under a pause is heard from the next line rather than at the next start.
 
 The voices can be placed before anything is dubbed. `PipelineSession.scene`
@@ -953,15 +970,15 @@ card in. The line is in `targetLanguage`, not the interface language: a
 Russian voice handed English says it letter by letter. Its
 worker has neither whisper nor Marian in it, so a dubbing or snapshot session
 takes it over the way live dubbing takes over a snapshot — through
-`PipelineCubit.releaseWorker`, which `DashboardCubits` wires to
-`CharactersCubit.stopSession` so that neither cubit has to know the other;
-the screen refuses the other direction itself. Everything it starts — the
+`SessionCoordinator.makeRoomForDubbing`, which this screen registers its own
+half of, so neither cubit has to know the other; the screen refuses the
+other direction itself. Everything it starts — the
 recording, a sample, a card measured from files — brings up a worker of its
 own, and over a session that is dubbing that took the worker from under it
 while the capture went on, so every phrase after it failed for want of
 whisper: the three are out while the pipeline runs, and
-`CharactersCubit.dubbingHoldsWorker`, wired the same way, has the cubit
-refuse them as well. `CharactersState.previewReady` says the speech-only
+`SessionCoordinator.dubbingRuns`, which the dubbing screens register, has
+the cubit refuse them as well. `CharactersState.previewReady` says the speech-only
 worker is still the one loaded, and is dropped on any `state` event the
 screen reads — the engine at rest holds no worker, and a recording holds one
 with no voice in it — or the next sample skips the loading and is told there

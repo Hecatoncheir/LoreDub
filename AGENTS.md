@@ -44,14 +44,17 @@ notes live in `docs/`.
 Use Dart's standard two-space indentation and the configured 100-column formatter width.
 Keep analyzer infos at zero; strict casts, inference, and raw types are enabled. Name files in
 `snake_case.dart`, types in `UpperCamelCase`, and members in `lowerCamelCase`. Keep domain logic
-pure where possible and preserve the service → repository → Cubit dependency direction. C/C++
+pure where possible and preserve the service → repository → cubit dependency direction: a
+cubit reads repositories, never another cubit. What more than one screen needs lives in a
+repository that owns it and publishes it synchronously, and that repository is the only
+writer — a cubit that also emitted what it wrote put its own stale echo back. C/C++
 ABI additions must remain small, UTF-8/JSON-based, and be followed by binding regeneration.
 
 ## Testing Guidelines
 
 Use `flutter_test`; name files `*_test.dart` and describe behavior in readable `test(...)`
 sentences. Place tests beside the matching source hierarchy. Cover new domain decisions,
-service edge cases, and Cubit state transitions. UI changes that affect subscription scope must
+service edge cases, repository publishing order, and cubit state transitions. UI changes that affect subscription scope must
 keep `test/src/ui/dashboard/rebuild_scope_test.dart` passing.
 
 ## Commit & Pull Request Guidelines
