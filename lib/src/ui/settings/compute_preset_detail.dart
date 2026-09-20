@@ -11,7 +11,6 @@ import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/runtime_paths.dart';
 import '../dashboard/cubits/settings_cubit.dart';
-import '../theme.dart';
 
 /// What the preset leaves to say: the card a GPU run would use, or --
 /// everything being on the processor -- how much of it to use. Automatic
@@ -37,7 +36,7 @@ class ComputePresetDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final note = TextStyle(color: context.colors.mutedInk, fontSize: 13);
+    final note = Theme.of(context).textTheme.bodySmall;
     return switch (settings.computeDevice) {
       ComputeDevice.gpu => Padding(
         padding: const EdgeInsets.only(top: 14),

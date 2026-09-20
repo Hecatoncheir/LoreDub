@@ -49,13 +49,7 @@ class SideNavigation extends StatelessWidget {
                     SizedBox(height: 2),
                     Text(
                       'VOICE UNIT 01',
-                      style: TextStyle(
-                        fontFamily: LoreDubFonts.mono,
-                        color: context.colors.mutedInk,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                      ),
+                      style: context.textStyles.monoMarking,
                     ),
                   ],
                 ),

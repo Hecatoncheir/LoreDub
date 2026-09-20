@@ -26,10 +26,8 @@ class LatencyBadge extends StatelessWidget {
       AppLocalizations.of(context).latencyMs(milliseconds),
       // A fixed height with no leading keeps the label centred in the pill
       // instead of riding on the font's baseline.
-      style: const TextStyle(
-        fontFamily: LoreDubFonts.mono,
+      style: context.textStyles.monoCaption.copyWith(
         color: Colors.white,
-        fontSize: 11,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.3,
         height: 1,

@@ -67,7 +67,8 @@ class ModelCardDetails extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 modelDescription(l10n, state.model),
-                style: TextStyle(color: context.colors.mutedInk),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: context.colors.mutedInk),
               ),
               if (state.progress case final progress?)
                 ModelDownloadProgress(

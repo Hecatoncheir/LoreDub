@@ -48,11 +48,7 @@ class AddCharacterButton extends StatelessWidget {
                     padding: const EdgeInsets.only(left: 12),
                     child: Text(
                       '×$count',
-                      style: TextStyle(
-                        fontFamily: LoreDubFonts.mono,
-                        fontSize: 11,
-                        color: context.colors.mutedInk,
-                      ),
+                      style: context.textStyles.monoCaption,
                     ),
                   ),
               ],

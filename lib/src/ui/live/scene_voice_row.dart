@@ -60,11 +60,7 @@ class SceneVoiceRow extends StatelessWidget {
               ),
               Text(
                 l10n.sceneVoiceLines(speaker.lines),
-                style: TextStyle(
-                  fontFamily: LoreDubFonts.mono,
-                  fontSize: 11,
-                  color: context.colors.mutedInk,
-                ),
+                style: context.textStyles.monoCaption,
               ),
             ],
           ),
@@ -77,7 +73,7 @@ class SceneVoiceRow extends StatelessWidget {
                 : l10n.sceneVoiceHeardFor(speaker.seconds.toStringAsFixed(1)),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, color: context.colors.mutedInk),
+            style: Theme.of(context).textTheme.labelSmall,
           ),
           const SizedBox(height: 8),
           // Who reads this voice, as the graph wired it. The row shows it

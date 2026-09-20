@@ -8,7 +8,6 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../common/setting_card.dart';
 import '../dashboard/cubits/settings_cubit.dart';
-import '../theme.dart';
 
 /// How large the interface itself is drawn, beside the language it speaks:
 /// the two things a player sets once, for their own eyes rather than for the
@@ -41,7 +40,7 @@ class ScaleCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             l10n.scaleNote,
-            style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),

@@ -28,7 +28,6 @@ class LoreDubTextStyles extends ThemeExtension<LoreDubTextStyles> {
       color: colors.onAccent,
       fontSize: 10,
       fontWeight: FontWeight.w700,
-      letterSpacing: 0.4,
     ),
     moduleLabel: TextStyle(
       fontFamily: LoreDubFonts.mono,
@@ -53,7 +52,7 @@ class LoreDubTextStyles extends ThemeExtension<LoreDubTextStyles> {
       color: colors.mutedInk,
       fontSize: 10,
       fontWeight: FontWeight.w700,
-      letterSpacing: 0.8,
+      letterSpacing: 1.4,
     ),
   );
 

@@ -24,9 +24,7 @@ class ShelfLabel extends StatelessWidget {
       const SizedBox(width: 9),
       Text(
         label,
-        style: TextStyle(
-          fontFamily: LoreDubFonts.mono,
-          fontSize: 11,
+        style: context.textStyles.monoCaption.copyWith(
           letterSpacing: 1.4,
           color: context.colors.ink,
         ),

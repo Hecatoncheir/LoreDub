@@ -8,7 +8,6 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../common/labeled_switch.dart';
 import '../dashboard/cubits/settings_cubit.dart';
-import '../theme.dart';
 
 /// Whether lines of different speakers may play over one another, with what
 /// that means written under it.
@@ -35,7 +34,7 @@ class OverlapVoicesControls extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           l10n.voiceOverlapNote,
-          style: TextStyle(color: context.colors.mutedInk, fontSize: 12),
+          style: Theme.of(context).textTheme.labelSmall,
         ),
       ],
     );

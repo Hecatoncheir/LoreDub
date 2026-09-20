@@ -47,11 +47,7 @@ class WhisperBarMark extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             AppLocalizations.of(context).downloadPaused,
-            style: TextStyle(
-              fontFamily: LoreDubFonts.mono,
-              fontSize: 11,
-              color: context.colors.accent,
-            ),
+            style: context.textStyles.monoCaption.copyWith(color: context.colors.accent),
           ),
         ],
       ],

@@ -9,7 +9,6 @@ import '../../domain/app_settings.dart';
 import '../common/labeled_switch.dart';
 import '../common/setting_card.dart';
 import '../dashboard/cubits/settings_cubit.dart';
-import '../theme.dart';
 
 /// How far the game is turned down under the dubbing, and whether only while
 /// a line is spoken.
@@ -58,7 +57,7 @@ class OriginalVolumeCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             l10n.duckWhileSpeakingNote,
-            style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),

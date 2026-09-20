@@ -55,7 +55,7 @@ class GraphToolbar extends StatelessWidget {
                       _ => Text(
                         l10n.pipelineGraphHint,
                         key: const ValueKey('hint'),
-                        style: TextStyle(fontSize: 12, color: context.colors.mutedInk),
+                        style: Theme.of(context).textTheme.labelSmall,
                       ),
                     },
                   ),

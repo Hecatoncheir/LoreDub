@@ -57,7 +57,7 @@ class VoiceBankControls extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           settings.voiceBank ? l10n.voiceBankOnNote : l10n.voiceBankOffNote,
-          style: TextStyle(color: context.colors.mutedInk, fontSize: 12),
+          style: Theme.of(context).textTheme.labelSmall,
         ),
         // Shown with the switch off too: voices kept earlier are still on
         // disk, and this is where they are given back.
@@ -66,7 +66,7 @@ class VoiceBankControls extends StatelessWidget {
             Expanded(
               child: Text(
                 l10n.voiceBankCount(size),
-                style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
             TextButton.icon(

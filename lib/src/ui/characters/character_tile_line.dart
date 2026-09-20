@@ -34,9 +34,7 @@ class CharacterTileLine extends StatelessWidget {
         text,
         maxLines: maxLines,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontFamily: LoreDubFonts.mono,
-          fontSize: 11,
+        style: context.textStyles.monoCaption.copyWith(
           color: color ?? context.colors.mutedInk,
           fontWeight: bold ? FontWeight.w600 : null,
         ),

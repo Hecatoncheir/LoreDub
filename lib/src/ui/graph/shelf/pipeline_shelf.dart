@@ -104,7 +104,7 @@ class _PipelineShelfState extends State<PipelineShelf> {
               padding: const EdgeInsets.fromLTRB(2, 2, 2, 10),
               child: Text(
                 l10n.pipelineSchemesEmpty,
-                style: TextStyle(fontSize: 12, color: context.colors.mutedInk),
+                style: Theme.of(context).textTheme.labelSmall,
               ),
             )
           else

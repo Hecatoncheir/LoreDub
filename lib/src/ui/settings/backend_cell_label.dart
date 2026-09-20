@@ -41,9 +41,7 @@ class BackendCellLabel extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 text,
-                style: TextStyle(
-                  fontFamily: LoreDubFonts.mono,
-                  fontSize: 11,
+                style: context.textStyles.monoCaption.copyWith(
                   color: look.ink.withValues(alpha: 0.8),
                 ),
               ),

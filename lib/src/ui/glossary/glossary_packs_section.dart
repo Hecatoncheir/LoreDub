@@ -92,13 +92,13 @@ class GlossaryPacksSection extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               l10n.glossaryPacksNote,
-              style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 14),
             if (view.glossary.packs.isEmpty)
               Text(
                 l10n.glossaryPacksEmpty,
-                style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+                style: Theme.of(context).textTheme.bodySmall,
               )
             else
               for (final pack in view.glossary.packs)

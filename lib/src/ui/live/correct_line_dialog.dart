@@ -49,7 +49,7 @@ class _CorrectLineDialogState extends State<CorrectLineDialog> {
           children: [
             Text(
               widget.entry.english,
-              style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 14),
             TextField(
@@ -64,7 +64,7 @@ class _CorrectLineDialogState extends State<CorrectLineDialog> {
             const SizedBox(height: 10),
             Text(
               l10n.transcriptCorrectNote,
-              style: TextStyle(color: context.colors.mutedInk, fontSize: 12),
+              style: Theme.of(context).textTheme.labelSmall,
             ),
           ],
         ),

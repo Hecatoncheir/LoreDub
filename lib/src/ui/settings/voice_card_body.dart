@@ -47,7 +47,7 @@ class VoiceCardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final note = TextStyle(color: context.colors.mutedInk, fontSize: 12);
+    final note = Theme.of(context).textTheme.labelSmall;
     final settings = selection.settings;
     final mode = selection.voiceMode;
     final converterInstalled = selection.voiceConverter?.installed ?? false;
@@ -74,7 +74,7 @@ class VoiceCardBody extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             converterInstalled ? l10n.voiceOriginalNote : l10n.voiceOriginalMissing,
-            style: converterInstalled ? note : note.copyWith(color: context.colors.warning),
+            style: converterInstalled ? note : note?.copyWith(color: context.colors.warning),
           ),
         ],
         // The converter is what hears who is speaking, so remembering the

@@ -35,13 +35,7 @@ class DashboardHeader extends StatelessWidget {
                   // language: it is a strap rather than a brand, and half
                   // the screens already named their areas in Russian.
                   shell.section.mark(AppLocalizations.of(context), liveView: shell.liveView),
-                  style: TextStyle(
-                    fontFamily: LoreDubFonts.mono,
-                    color: context.colors.mutedInk,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.4,
-                  ),
+                  style: context.textStyles.monoMarking,
                 ),
                 const SizedBox(height: 5),
                 if (shell.section == DashboardSection.live)

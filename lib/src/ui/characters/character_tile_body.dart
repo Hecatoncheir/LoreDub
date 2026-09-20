@@ -59,11 +59,7 @@ class CharacterTileBody extends StatelessWidget {
             child: CommittedTextField(
               value: model.character.name,
               onCommitted: actions.onRename,
-              style: const TextStyle(
-                fontFamily: LoreDubFonts.display,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
+              style: context.textStyles.cardTitle,
               decoration: InputDecoration(
                 labelText: AppLocalizations.of(context).charactersNameLabel,
                 isDense: true,

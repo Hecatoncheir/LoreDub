@@ -39,7 +39,7 @@ class ModelTileHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final detail = TextStyle(fontFamily: LoreDubFonts.mono, fontSize: 11, color: ink);
+    final detail = context.textStyles.monoCaption.copyWith(color: ink);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,

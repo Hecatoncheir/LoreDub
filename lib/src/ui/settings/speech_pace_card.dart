@@ -9,7 +9,6 @@ import '../../domain/app_settings.dart';
 import '../common/labeled_switch.dart';
 import '../common/setting_card.dart';
 import '../dashboard/cubits/settings_cubit.dart';
-import '../theme.dart';
 
 /// How fast a line is read, and whether the voice hurries while lines queue
 /// up for it.
@@ -54,7 +53,7 @@ class SpeechPaceCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             l10n.hurryWhenQueuedNote,
-            style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),

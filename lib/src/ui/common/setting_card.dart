@@ -25,7 +25,8 @@ class SettingCard extends StatelessWidget {
             const SizedBox(height: 5),
             Text(
               value,
-              style: TextStyle(color: context.colors.mutedInk),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: context.colors.mutedInk),
             ),
           ],
           const SizedBox(height: 16),

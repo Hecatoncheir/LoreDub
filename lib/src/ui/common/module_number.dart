@@ -24,12 +24,7 @@ class ModuleNumber extends StatelessWidget {
     ),
     child: Text(
       number,
-      style: TextStyle(
-        fontFamily: LoreDubFonts.mono,
-        color: context.colors.ink,
-        fontSize: 10,
-        fontWeight: FontWeight.w700,
-      ),
+      style: context.textStyles.moduleNumber,
     ),
   );
 }

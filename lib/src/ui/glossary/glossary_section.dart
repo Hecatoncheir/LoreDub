@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
-import '../theme.dart';
 import '../dashboard/cubits/glossary_cubit.dart';
 import 'glossary_kind_texts.dart';
 import 'glossary_add_row.dart';
@@ -56,7 +55,7 @@ class GlossarySection extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               texts.note,
-              style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 14),
             if (loaded && entries.isEmpty)
@@ -70,7 +69,7 @@ class GlossarySection extends StatelessWidget {
                   // written under a narrowed list, hidden the moment it is
                   // kept, would read as not having been written.
                   held > 0 ? l10n.glossaryAllHidden : l10n.glossaryEmpty,
-                  style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
             for (final entry in entries)

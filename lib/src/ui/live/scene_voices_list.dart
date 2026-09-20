@@ -9,7 +9,6 @@ import '../../domain/character.dart';
 import '../../domain/pipeline_state.dart';
 import '../dashboard/cubits/characters_cubit.dart';
 import '../speaker_names.dart';
-import '../theme.dart';
 import 'scene_voice_row.dart';
 
 /// Every voice the session has heard, each named as the cast knows it and
@@ -35,7 +34,7 @@ class SceneVoicesList extends StatelessWidget {
                 characters.isEmpty
                     ? l10n.sceneVoiceNoCharacters
                     : '${l10n.sceneVoicesNote} ${l10n.voicesOnTheGraph}',
-                style: TextStyle(fontSize: 12, color: context.colors.mutedInk),
+                style: Theme.of(context).textTheme.labelSmall,
               ),
               const SizedBox(height: 6),
               for (final speaker in speakers)

@@ -61,7 +61,8 @@ class EmptyTranscript extends StatelessWidget {
                     spokenLanguageName(AppLocalizations.of(context), targetLanguage),
                   ),
                 },
-                style: TextStyle(color: context.colors.mutedInk),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: context.colors.mutedInk),
               ),
             ],
           ),

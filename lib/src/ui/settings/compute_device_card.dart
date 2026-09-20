@@ -14,7 +14,6 @@ import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
-import '../theme.dart';
 import 'compute_preset_detail.dart';
 import 'compute_runtimes_section.dart';
 import 'stage_backend_table.dart';
@@ -80,7 +79,7 @@ class ComputeDeviceCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   l10n.roughRecognitionNote,
-                  style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 14),
                 StageBackendTable(
@@ -98,7 +97,7 @@ class ComputeDeviceCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   l10n.computeSpeechNote,
-                  style: TextStyle(color: context.colors.mutedInk, fontSize: 12),
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
               ],
             ),

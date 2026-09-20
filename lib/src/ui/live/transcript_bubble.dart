@@ -62,12 +62,7 @@ class TranscriptBubble extends StatelessWidget {
                     speakerName(l10n, speaker, characters),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: LoreDubFonts.mono,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: context.colors.mutedInk,
-                    ),
+                    style: context.textStyles.monoCaption.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
                 if (readAs != null) ...[
@@ -77,11 +72,7 @@ class TranscriptBubble extends StatelessWidget {
                       l10n.sceneVoiceReplaced(readAs),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: LoreDubFonts.mono,
-                        fontSize: 11,
-                        color: context.colors.accent,
-                      ),
+                      style: context.textStyles.monoCaption.copyWith(color: context.colors.accent),
                     ),
                   ),
                 ],
