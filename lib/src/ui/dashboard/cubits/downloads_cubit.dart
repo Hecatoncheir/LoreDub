@@ -175,19 +175,12 @@ class DownloadsCubit extends Cubit<DownloadsState> {
   /// can pause or cancel the one it is showing.
   final _controls = <String, DownloadControl>{};
 
-  /// Both of these take what they asked for on the spot rather than
-  /// waiting for the stream to bring it round: a caller that awaited the
-  /// read means the rows to be there when it returns, and a broadcast
-  /// stream hands its value over a microtask later.
-  Future<void> load() async {
-    await _installed.load();
-    _followInstalled(_installed.parts);
-  }
+  /// The repository publishes as it reads and this cubit is listening, so
+  /// a caller that awaited either of these has the rows when it returns.
+  Future<void> load() => _installed.load();
 
-  Future<void> refreshAvailability({ComputeAvailability? probe}) async {
-    await _installed.refreshAvailability(probe: probe);
-    _followInstalled(_installed.parts);
-  }
+  Future<void> refreshAvailability({ComputeAvailability? probe}) =>
+      _installed.refreshAvailability(probe: probe);
 
   /// What was read off disk, with whatever is arriving kept as it was: a
   /// download that is paused or still running keeps its progress, since
@@ -410,7 +403,6 @@ class DownloadsCubit extends Cubit<DownloadsState> {
   /// drew a screen full of packages over a pipeline that had none.
   @visibleForTesting
   void seed(DownloadsState value) {
-    emit(value);
     _installed.seed(
       InstalledParts(
         models: [
@@ -422,6 +414,9 @@ class DownloadsCubit extends Cubit<DownloadsState> {
         runtimeDirectory: value.runtimeDirectoryPath,
       ),
     );
+    // After the repository, so what it publishes does not land on top of
+    // the rows and their progress that this test is staging.
+    emit(value);
   }
 
   @override

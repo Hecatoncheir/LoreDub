@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import '../../../data/repositories/app_repository.dart';
+import '../../../data/repositories/cast_repository.dart';
 import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../data/repositories/runtime_repository.dart';
@@ -63,9 +64,10 @@ class DashboardCubits {
       installed,
       shell,
       sessions,
+      cast,
     );
     glossary = GlossaryCubit(appRepository, shell);
-    graph = PipelineGraphBloc(appRepository, settingsRepository, characters, pipeline, shell);
+    graph = PipelineGraphBloc(appRepository, settingsRepository, cast, pipeline, shell);
     // Closing for an update must not leave the game turned down, or the
     // worker of either screen still holding the files the setup replaces.
     shell.beforeRestart = () async {
@@ -91,6 +93,9 @@ class DashboardCubits {
   /// What is on disk and what the machine can run it on, read once and
   /// told to everyone who cares.
   late final InstallRepository installed;
+
+  /// The player's own cards, which two screens work on.
+  late final CastRepository cast = CastRepository(_appRepository);
   late final PipelineCubit pipeline;
   late final CharactersCubit characters;
 

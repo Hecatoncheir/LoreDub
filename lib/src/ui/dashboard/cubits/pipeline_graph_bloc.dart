@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../data/repositories/cast_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/services/model_catalog.dart';
@@ -16,7 +17,6 @@ import '../../../domain/id_source.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
 import '../../../domain/spoken_language.dart';
-import 'characters_cubit.dart';
 import 'pipeline_cubit.dart';
 import 'shell_cubit.dart';
 
@@ -406,18 +406,18 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     // language picked here or on another screen is the same change, so it
     // is redrawn from them rather than kept twice.
     _settingsChanges = _settings.changes.listen((_) => add(const PipelineGraphRefreshed()));
-    _characterChanges = _characters.stream.listen((_) => add(const PipelineGraphRefreshed()));
+    _characterChanges = _characters.changes.listen((_) => add(const PipelineGraphRefreshed()));
   }
 
   final AppRepository _appRepository;
   final SettingsRepository _settings;
-  final CharactersCubit _characters;
+  final CastRepository _characters;
   final PipelineCubit _pipeline;
   final FailureSink _errors;
   final IdSource _ids;
 
   late final StreamSubscription<AppSettings> _settingsChanges;
-  late final StreamSubscription<CharactersState> _characterChanges;
+  late final StreamSubscription<CharacterLibrary> _characterChanges;
 
   /// How far back the canvas remembers. Long enough to undo an evening's
   /// rewiring, short enough that the list is never a concern.
@@ -426,7 +426,25 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   final List<_GraphMemento> _past = [];
   final List<_GraphMemento> _future = [];
 
-  List<Character> get _cast => _characters.state.characters;
+  List<Character> get _cast => _characters.cast;
+
+  /// The repository raises what went wrong; this screen has a banner of
+  /// its own to put it in.
+  Future<void> _voiceCharacterAs(String id, String? target) async {
+    try {
+      await _characters.voiceAs(id, target);
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
+  Future<void> _readAsHeard(Set<String> ids) async {
+    try {
+      await _characters.readAsHeard(ids);
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
 
   /// Whether the route may be changed at all. A running session holds the
   /// models it started with, so the way in is settled until it stops; whose
@@ -524,7 +542,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     // arrangement, so a session already running is told the moment it is put
     // up rather than at the next start.
     if (!_sameCards(wasSilent, scheme.layout.silent)) {
-      await _characters.readAsHeard(scheme.layout.silent);
+      await _readAsHeard(scheme.layout.silent);
     }
     // The scheme is the whole picture of who reads whom, so it is put back
     // over the whole cast rather than over the cards it happens to name: a
@@ -534,7 +552,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     for (final character in _cast) {
       final reader = scheme.readers[character.id];
       if (character.voicedBy == reader) continue;
-      await _characters.voiceAs(character.id, reader);
+      await _voiceCharacterAs(character.id, reader);
     }
   }
 
@@ -794,7 +812,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       case ReaderConnection(:final characterId, :final readerId):
         _remember();
         await _relayout(_joined(state.layout, joining), emit);
-        await _characters.voiceAs(characterId, readerId);
+        await _voiceCharacterAs(characterId, readerId);
       // A note on the card, kept with the arrangement: nothing of the
       // pipeline changes with it, so nothing is written through.
       case HeardConnection(:final nodeId, :final heard):
@@ -863,7 +881,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     emit(_redrawn(state.copyWith(layout: memento.layout, clearRefusal: true)));
     _persist();
     if (!_sameCards(wasSilent, memento.layout.silent)) {
-      await _characters.readAsHeard(memento.layout.silent);
+      await _readAsHeard(memento.layout.silent);
     }
     if (!routeLocked && _settings.settings.captureRouted != memento.routed) {
       await _settings.save(_settings.settings.copyWith(captureRouted: memento.routed));
@@ -874,7 +892,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         orElse: () => const Character(id: '', name: '', vector: []),
       );
       if (now.id.isEmpty || now.voicedBy == entry.value) continue;
-      await _characters.voiceAs(entry.key, entry.value);
+      await _voiceCharacterAs(entry.key, entry.value);
     }
     if (isClosed) return;
     emit(_redrawn(state.copyWith(canUndo: _past.isNotEmpty, canRedo: _future.isNotEmpty)));
@@ -893,7 +911,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     final layout = from.withVoiced(characterId, routed);
     emit(_redrawn(state.copyWith(layout: layout, clearRefusal: true)));
     _persist();
-    await _characters.readAsHeard(layout.silent);
+    await _readAsHeard(layout.silent);
   }
 
   /// Draws the canvas on [layout] and keeps it, telling a running session
@@ -902,7 +920,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     final was = state.layout.silent;
     emit(_redrawn(state.copyWith(layout: layout, clearRefusal: true)));
     _persist();
-    if (!_sameCards(was, layout.silent)) await _characters.readAsHeard(layout.silent);
+    if (!_sameCards(was, layout.silent)) await _readAsHeard(layout.silent);
   }
 
   /// Whether two sets name the same cards. The worker is told only when

@@ -24,8 +24,6 @@ void main() {
     addTearDown(listening.cancel);
 
     await repository.load();
-    // A broadcast controller hands its value over in a microtask.
-    await Future<void>.delayed(Duration.zero);
 
     expect(repository.settings.cpuThreads, 6);
     expect(heard.single.cpuThreads, 6);
@@ -54,7 +52,6 @@ void main() {
     final heard = <int>[];
     final listening = repository.changes.listen((value) => heard.add(value.cpuThreads));
     addTearDown(listening.cancel);
-    await Future<void>.delayed(Duration.zero);
 
     // What holds already is read off `settings`; the stream is for what
     // happens next.
@@ -62,7 +59,6 @@ void main() {
     expect(repository.settings.cpuThreads, 3);
 
     await repository.save(const AppSettings(cpuThreads: 4));
-    await Future<void>.delayed(Duration.zero);
 
     expect(heard, [4]);
   });

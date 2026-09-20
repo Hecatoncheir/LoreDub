@@ -85,6 +85,7 @@ void main() {
       cubits.installed,
       cubits.shell,
       sessions,
+      cubits.cast,
     );
   });
 

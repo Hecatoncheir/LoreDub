@@ -24,7 +24,13 @@ class SettingsRepository {
   SettingsRepository(this._service);
 
   final SettingsService _service;
-  final _changes = StreamController<AppSettings>.broadcast();
+
+  /// Synchronous on purpose. A screen that writes here also listens here,
+  /// and with the usual asynchronous delivery its own echo arrived a
+  /// microtask later -- after it had already moved on -- and put the older
+  /// value back. Delivered as it is published, the order is the
+  /// repository's and a caller that awaited a write sees it done.
+  final _changes = StreamController<AppSettings>.broadcast(sync: true);
   AppSettings _settings = const AppSettings();
 
   /// What the settings are now. The default set until [load] has run: the

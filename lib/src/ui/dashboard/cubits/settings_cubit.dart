@@ -113,13 +113,12 @@ class SettingsCubit extends Cubit<SettingsState> {
     await refreshVoiceBank();
   }
 
-  /// Emits before it writes, so what the player just did is on screen
-  /// before the disk has heard of it. The repository publishes it too,
-  /// which reaches this cubit again as the state it is already in.
-  Future<void> update(AppSettings value) async {
-    emit(state.copyWith(settings: value));
-    await _settings.save(value);
-  }
+  /// Nothing is emitted here. The repository publishes as it writes and
+  /// this cubit is listening, so the change is on screen before this
+  /// returns; emitting as well made the screen a second writer of one
+  /// value, and its own echo arriving afterwards could put the older one
+  /// back.
+  Future<void> update(AppSettings value) => _settings.save(value);
 
   /// Choosing the language picks both the translator and the voice: text in
   /// one language read by a voice for another would be gibberish.
@@ -169,8 +168,8 @@ class SettingsCubit extends Cubit<SettingsState> {
   /// another.
   @visibleForTesting
   void seed(SettingsState value) {
-    emit(value);
     _settings.seed(value.settings);
+    emit(value);
   }
 
   @override

@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../data/repositories/cast_repository.dart';
 import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/app_repository.dart';
@@ -198,12 +199,20 @@ class CharactersCubit extends Cubit<CharactersState> {
     this._settings,
     this._downloads,
     this._errors,
-    this._sessions, {
+    this._sessions,
+    this._cast, {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        _ids = IdSource(clock: clock),
        super(const CharactersState()) {
     _sessions.cast = stopSession;
+    // The canvas works on the same cards, through the same repository, so
+    // a substitution drawn there shows up here without either screen
+    // knowing about the other.
+    _written = _cast.changes.listen(
+      (CharacterLibrary library) =>
+          emit(state.copyWith(characters: library.characters, packs: library.packs)),
+    );
   }
 
   /// A recording keeps the clearest voice it has heard, not the last: a
@@ -216,7 +225,9 @@ class CharactersCubit extends Cubit<CharactersState> {
   final InstallRepository _downloads;
   final FailureSink _errors;
   final SessionCoordinator _sessions;
+  final CastRepository _cast;
   final DateTime Function() _clock;
+  StreamSubscription<CharacterLibrary>? _written;
   final IdSource _ids;
 
   /// Whether one of the dubbing screens holds the worker.
@@ -257,7 +268,7 @@ class CharactersCubit extends Cubit<CharactersState> {
 
   Future<void> load() async {
     try {
-      final library = await _appRepository.loadCharacters();
+      final library = await _cast.load();
       final clips = await _listClips();
       if (isClosed) return;
       emit(
@@ -298,20 +309,8 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// own choice in Live overrides it. A card cannot be given its own voice,
   /// which would say nothing.
   Future<void> voiceAs(String id, String? target) async {
-    if (id == target) return;
-    await _write(
-      characters: [
-        for (final character in state.characters)
-          if (character.id == id)
-            character.copyWith(voicedBy: target, clearVoicedBy: target == null)
-          else
-            character,
-      ],
-    );
-    // A session already running holds the cast it started with, so it is
-    // told as well and the next line of this character is read anew.
     try {
-      await _appRepository.voiceCharacterAs(id, target);
+      await _cast.voiceAs(id, target);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -325,7 +324,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// told, or it would go on reading the cast until the next start.
   Future<void> readAsHeard(Set<String> value) async {
     try {
-      await _appRepository.readAsHeard(value);
+      await _cast.readAsHeard(value);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -817,13 +816,20 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
   }
 
-  /// Shows the change at once and writes the file behind it; the cards and
-  /// the packs go in one file, so both are written whichever changed.
+  /// Writes the cards and the packs -- they go in one file, so both are
+  /// written whichever changed.
+  ///
+  /// Nothing is emitted here. The repository publishes as it writes and
+  /// this cubit is listening, so the change is on screen before this
+  /// returns; emitting as well made the screen a second writer, and its
+  /// own echo arriving afterwards put the older list back.
   Future<void> _write({List<Character>? characters, List<CharacterPack>? packs}) async {
-    emit(state.copyWith(characters: characters, packs: packs));
     try {
-      await _appRepository.saveCharacters(
-        CharacterLibrary(characters: state.characters, packs: state.packs),
+      await _cast.save(
+        CharacterLibrary(
+          characters: characters ?? _cast.cast,
+          packs: packs ?? _cast.library.packs,
+        ),
       );
     } catch (exception) {
       _errors.report(exception);
@@ -831,6 +837,19 @@ class CharactersCubit extends Cubit<CharactersState> {
   }
 
   /// Stages a state a widget test wants to render without reading a file.
+  ///
+  /// The cards go to the repository as well: the canvas draws them from
+  /// there, and a test that staged only this cubit drew a cast on one
+  /// screen and none on the other.
   @visibleForTesting
-  void seed(CharactersState value) => emit(value);
+  void seed(CharactersState value) {
+    emit(value);
+    _cast.seed(CharacterLibrary(characters: value.characters, packs: value.packs));
+  }
+
+  @override
+  Future<void> close() async {
+    await _written?.cancel();
+    return super.close();
+  }
 }
