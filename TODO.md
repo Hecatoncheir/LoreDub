@@ -1078,11 +1078,24 @@ abstract final class AppTheme {
       (`local_inference_service.dart:459`) без таймаута, и `stop()` не может
       его убить; `_runPip` отменяет сторожевой таймер вне `finally`
       (`runtime_storage_service.dart:320–322`).
-- [ ] **Сырые исключения мимо контракта ошибок:** `NativeEngineException`
+- [x] **Сырые исключения мимо контракта ошибок:** `NativeEngineException`
       (`native_engine_service.dart:32`, `:1057`), `TimeoutException`
       (`local_inference_service.dart:333`), `FormatException` (`:1130`)
       доходят до `describeFailure` и печатаются как есть → оборачивать в
       `LoreDubFailure`.
+      *Сделано:* класса `NativeEngineException` больше нет — вызовы бросают
+      `LoreDubFailure(FailureCode.nativeCallFailed)` с кодом и тем, что
+      сказала библиотека, в детали. Туда же ушёл `FormatException` из
+      `readNativeUtf8String` (значение, которое восемь раз подряд росло
+      между запросом размера и копированием). Таймауты воркера к этому
+      времени были уже обёрнуты, а `TimeoutException` нашёлся в другом
+      месте — в проверке обновлений (`update_service.dart`), где `.timeout`
+      стоял без `onTimeout` и игрок читал «TimeoutException after
+      0:00:15: Future not completed»; теперь это `updateCheckFailed`.
+      Таймаут в `python_discovery` наружу не уходит: там `on Object` и
+      интерпретатор просто считается негодным.
+      Формулировки нового кода проверяет `failure_messages_test.dart` — он
+      идёт по всем `FailureCode.values` и требует текста на обоих языках.
 - [ ] **Слои.** Девять импортов `ui → data/services` тянут константы и
       значения, живущие в файлах сервисов (`exitDetailSeparator`,
       `overlappingVoices`, `isNewerRelease`, `RejectedPython`, id рантаймов) →

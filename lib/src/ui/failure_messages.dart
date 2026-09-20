@@ -41,6 +41,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.audioNotDecoded => l10n.failureAudioNotDecoded,
     FailureCode.pipelineStopped => l10n.failurePipelineStopped,
     FailureCode.captureFailed => l10n.failureCaptureFailed(detail),
+    FailureCode.nativeCallFailed => l10n.failureNativeCallFailed(detail),
     FailureCode.windowsOnly => l10n.failureWindowsOnly,
     FailureCode.explorerUnsupported => l10n.failureExplorerUnsupported,
     FailureCode.downloadRejected => l10n.failureDownloadRejected(detail),

@@ -1040,6 +1040,14 @@
       }
     }
   },
+  "failureNativeCallFailed": "The LoreDub library answered with an error: {detail}",
+  "@failureNativeCallFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureCaptureFailed": "Capture stopped: {detail}",
   "@failureCaptureFailed": {
     "placeholders": {

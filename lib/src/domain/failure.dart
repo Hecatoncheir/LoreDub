@@ -60,6 +60,11 @@ enum FailureCode {
   /// Native audio or subtitle capture gave up; the detail is its own message.
   captureFailed,
 
+  /// A call into the native library answered with an error code, or its
+  /// answer could not be read at all. The detail is the code and whatever
+  /// the library said about it.
+  nativeCallFailed,
+
   /// The pipeline only runs on Windows.
   windowsOnly,
 

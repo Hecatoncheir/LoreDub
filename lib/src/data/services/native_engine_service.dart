@@ -36,15 +36,14 @@ typedef NativeStringReader = int Function(Pointer<Char> output, int capacity);
 /// the capture cuts the game's sound into.
 typedef WorkDirectoryProvider = Future<Directory> Function();
 
-class NativeEngineException implements Exception {
-  const NativeEngineException(this.code, this.message);
-
-  final int code;
-  final String message;
-
-  @override
-  String toString() => 'NativeEngineException($code): $message';
-}
+/// A call into the library that answered with an error code.
+///
+/// A [LoreDubFailure] rather than an exception of its own: it reaches the
+/// banner like everything else, and `describeFailure` shows anything that
+/// is not one as it came -- so this used to be read by the player as
+/// `NativeEngineException(-3): ...`.
+LoreDubFailure nativeCallFailed(int code, String message) =>
+    LoreDubFailure(FailureCode.nativeCallFailed, detail: '$code: $message');
 
 /// What every start and every stop ask of the native library.
 ///
@@ -1269,10 +1268,7 @@ class NativeEngineService {
     try {
       final code = ld_play_wave(pointer.cast());
       if (code < 0) {
-        throw NativeEngineException(
-          code,
-          ld_error_message(code).cast<Utf8>().toDartString(),
-        );
+        throw nativeCallFailed(code, ld_error_message(code).cast<Utf8>().toDartString());
       }
     } finally {
       malloc.free(pointer);
@@ -1301,7 +1297,7 @@ class NativeEngineService {
 
   void _throwIfError(int code) {
     if (code >= 0) return;
-    throw NativeEngineException(code, _native.errorMessage(code));
+    throw nativeCallFailed(code, _native.errorMessage(code));
   }
 
   void dispose() {
@@ -1385,7 +1381,11 @@ String readNativeUtf8String(
     }
   }
 
-  throw const FormatException(
-    'Native UTF-8 value kept changing while it was being read',
+  // Eight tries at a value that grows between the size query and the copy
+  // is a library that is not going to settle. Raised as a failure rather
+  // than a `FormatException`, which the banner printed as it came.
+  throw const LoreDubFailure(
+    FailureCode.nativeCallFailed,
+    detail: 'a native value kept changing while it was being read',
   );
 }

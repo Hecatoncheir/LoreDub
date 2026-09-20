@@ -2721,6 +2721,12 @@ abstract class AppLocalizations {
   /// **'Не удалось инициализировать приложение: {detail}'**
   String failureInitializationFailed(String detail);
 
+  /// No description provided for @failureNativeCallFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Библиотека LoreDub ответила ошибкой: {detail}'**
+  String failureNativeCallFailed(String detail);
+
   /// No description provided for @failureCaptureFailed.
   ///
   /// In ru, this message translates to:

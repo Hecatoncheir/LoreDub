@@ -1598,6 +1598,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String failureNativeCallFailed(String detail) {
+    return 'The LoreDub library answered with an error: $detail';
+  }
+
+  @override
   String failureCaptureFailed(String detail) {
     return 'Capture stopped: $detail';
   }

@@ -1040,6 +1040,14 @@
       }
     }
   },
+  "failureNativeCallFailed": "Библиотека LoreDub ответила ошибкой: {detail}",
+  "@failureNativeCallFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "failureCaptureFailed": "Захват прервался: {detail}",
   "@failureCaptureFailed": {
     "placeholders": {

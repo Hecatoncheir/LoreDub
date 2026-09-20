@@ -1608,6 +1608,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String failureNativeCallFailed(String detail) {
+    return 'Библиотека LoreDub ответила ошибкой: $detail';
+  }
+
+  @override
   String failureCaptureFailed(String detail) {
     return 'Захват прервался: $detail';
   }

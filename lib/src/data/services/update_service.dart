@@ -66,7 +66,15 @@ class UpdateService {
               'X-GitHub-Api-Version': '2022-11-28',
             },
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(
+            const Duration(seconds: 15),
+            // Left to itself a `TimeoutException` reached the banner and
+            // was printed as it came, which says nothing to a player.
+            onTimeout: () => throw const LoreDubFailure(
+              FailureCode.updateCheckFailed,
+              detail: 'no answer in 15 s',
+            ),
+          );
       // A repository with no releases answers 404, which is an answer rather
       // than a failure: there is simply nothing newer to point at.
       if (response.statusCode == HttpStatus.notFound) return null;

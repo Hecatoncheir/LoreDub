@@ -129,6 +129,26 @@ void main() {
     expect(calls, 3);
   });
 
+  test('a value that never settles is a failure, not a raw exception', () {
+    // Eight tries at a string that grows every time. What comes out has to
+    // be something the banner can word: a `FormatException` reached the
+    // player as it came.
+    var length = 8;
+
+    int forever(Pointer<Char> output, int capacity) => length += 8;
+
+    expect(
+      () => readNativeUtf8String(forever, throwIfError: (code) => fail('no error: $code')),
+      throwsA(
+        isA<LoreDubFailure>().having(
+          (failure) => failure.code,
+          'code',
+          FailureCode.nativeCallFailed,
+        ),
+      ),
+    );
+  });
+
   group('a start that is stopped or replaced', () {
     late Directory work;
     late _HeldWorkDirectory held;
@@ -394,9 +414,11 @@ void main() {
       final starting = expectLater(
         engine.startScene(sceneOf(7)),
         throwsA(
-          isA<NativeEngineException>()
-              .having((error) => error.code, 'code', -6)
-              .having((error) => error.message, 'message', 'native error -6'),
+          isA<LoreDubFailure>()
+              .having((error) => error.code, 'code', FailureCode.nativeCallFailed)
+              // The code and what the library said about it, for the
+              // banner to word rather than print.
+              .having((error) => error.detail, 'detail', '-6: native error -6'),
         ),
       );
       final worker = await untilCaptureDirectory();
