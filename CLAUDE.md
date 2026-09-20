@@ -1219,6 +1219,24 @@ publishes the release with that single `.exe`. `pubspec.yaml` version, the
 `v<major>.<minor>.<patch>` git tag, and a matching `## [x.y.z] - date` section
 in `CHANGELOG.md` must agree, or `prepare_release.dart` fails the workflow.
 
+That workflow has not actually run since v0.22.0: GitHub refuses to start
+the job -- "recent account payments have failed or your spending limit needs
+to be increased" -- and the run fails in three seconds without reaching a
+step. Until the account is settled a release is made by hand, which is the
+same three things the workflow does: `scripts/build_setup.ps1
+-ReleaseTag v<x.y.z>`, then
+`dart run tool/prepare_release.dart --tag v<x.y.z> --output <notes>`, then
+`gh release create v<x.y.z> --title "LoreDub <x.y.z>" --notes-file <notes>
+dist/LoreDub-<x.y.z>-windows-x64-setup.exe`.
+
+`-ReleaseTag` is the part that is easy to leave off and expensive to leave
+off. Without a tag -- and outside CI, where `CI_COMMIT_TAG` or
+`GITHUB_REF_NAME` supplies one -- the script versions the package
+`<pubspec version>-local`, which is not only the file's name but the
+installer's `AppVersion`, so Windows lists the program as "0.24.0-local"
+and the uninstall entry carries that too. Renaming the file afterwards does
+not fix it; the build has to be made again.
+
 Every program the two build scripts start goes through `Invoke-Native`
 (`scripts/invoke_native.ps1`, dot-sourced by both), and a line added to either
 has to as well. `$ErrorActionPreference = "Stop"` stops a script on a failing
