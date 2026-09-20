@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../dashboard/cubits/shell_cubit.dart';
+import '../theme.dart';
 import 'live_title_word.dart';
 
 /// The title of Эфир, which is also the switch between its two halves: the
@@ -28,13 +29,22 @@ class LiveTitleSwitch extends StatelessWidget {
           LiveTitleWord(
             key: const ValueKey('liveTitleDubbing'),
             label: l10n.liveViewDubbing,
+            icon: Icons.graphic_eq_rounded,
             selected: view == LiveView.dubbing,
             onPressed: () => context.read<ShellCubit>().showOnLive(LiveView.dubbing),
           ),
-          const SizedBox(width: 4),
+          // The two are one title with a choice in it, so they are
+          // parted the way the marking above them parts its halves.
+          Text(
+            '/',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: context.colors.outline,
+            ),
+          ),
           LiveTitleWord(
             key: const ValueKey('liveTitleScheme'),
             label: l10n.liveViewScheme,
+            icon: Icons.account_tree_rounded,
             selected: view == LiveView.scheme,
             onPressed: () => context.read<ShellCubit>().showOnLive(LiveView.scheme),
           ),

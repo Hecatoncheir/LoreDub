@@ -12,11 +12,16 @@ class LiveTitleWord extends StatelessWidget {
   const LiveTitleWord({
     super.key,
     required this.label,
+    required this.icon,
     required this.selected,
     required this.onPressed,
   });
 
   final String label;
+
+  /// The mark this half is known by, the same one its screen carried when
+  /// it was one: the wave of a voice, the tree of the scheme.
+  final IconData icon;
   final bool selected;
   final VoidCallback onPressed;
 
@@ -26,8 +31,9 @@ class LiveTitleWord extends StatelessWidget {
     final style = selected
         ? titles.headlineSmall?.copyWith(color: context.colors.accent)
         : titles.titleLarge?.copyWith(color: context.colors.mutedInk);
-    return TextButton(
+    return TextButton.icon(
       onPressed: selected ? null : onPressed,
+      icon: Icon(icon, size: selected ? 22 : 18),
       style: TextButton.styleFrom(
         // A title is read, not aimed at: it keeps the room the words take
         // rather than the room a button would ask for.
@@ -38,7 +44,7 @@ class LiveTitleWord extends StatelessWidget {
         disabledForegroundColor: context.colors.accent,
         textStyle: style,
       ),
-      child: Text(label, style: style),
+      label: Text(label, style: style),
     );
   }
 }
