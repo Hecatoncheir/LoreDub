@@ -866,7 +866,24 @@ abstract final class AppTheme {
       регистрирует свою половину сам, из конструктора, так что кубиты друг
       о друге не знают и `DashboardCubits` больше не держит правило —
       только сам координатор, чтобы его было кому передать.
-      Остальное — стримы у репозиториев и снос `DashboardCubits` — впереди.
+      *`Stream<AppSettings>` — сделано:* `SettingsRepository`
+      (`data/repositories/settings_repository.dart`) держит настройки и
+      поток рядом с ними. `SettingsCubit` теперь читает оттуда, а не
+      владеет; `PipelineCubit` берёт репозиторий вместо кубита и подписан
+      на него — колбэк `settings.onChanged = pipeline.followSettings` ушёл.
+      `ShellCubit` читает язык тоста и прокси там же, так что ушли и
+      `interfaceLanguage`/`proxyUrl`. Из `DashboardCubits` пропали три
+      связки; счётчик банка голосов перестал дёргаться из
+      `PipelineCubit` — кубит настроек слушает движок сам
+      (`VoiceBankGrew` и остановка сессии).
+      Поток намеренно не повторяет текущее значение: `async*`-генератор,
+      который сначала отдаёт `settings`, читается лучше, но отписка от
+      него внутри зоны виджет-теста не завершается никогда, и на ней
+      вис каждый `tearDown`, закрывающий кубит. Потери нет: `load()`
+      публикует, так что подписавшийся на умолчаниях узнаёт всё, как
+      только диск прочитан, — ровно то, что делал `onChanged`.
+      Остальное — стримы для моделей и состава и снос `DashboardCubits` —
+      впереди.
 - [ ] Разрезать `AppRepository` по контекстам: `SettingsRepository`,
       `SessionRepository`, `CastRepository`, `GlossaryRepository`,
       `SchemeRepository`, `VoiceBankRepository`, `SystemRepository`

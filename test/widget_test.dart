@@ -13,6 +13,7 @@ import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/app.dart';
 import 'package:lore_dub/src/domain/screen_reading.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
+import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
@@ -64,6 +65,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final cubits = DashboardCubits(
       AppRepository(NativeEngineService(), SettingsService()),
+      SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       runtimes ?? RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(UpdateService(client: _offline), NotificationService(plugin: _silent)),
@@ -1962,6 +1964,7 @@ void main() {
         updates = _FakeUpdateRepository();
         final cubits = DashboardCubits(
           AppRepository(NativeEngineService(), SettingsService()),
+          SettingsRepository(SettingsService()),
           ModelRepository(ModelStorageService()),
           RuntimeRepository(RuntimeStorageService()),
           updates,

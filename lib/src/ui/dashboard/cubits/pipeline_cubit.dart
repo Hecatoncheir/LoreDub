@@ -22,7 +22,7 @@ import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
 import '../../../domain/session_coordinator.dart';
 import 'downloads_cubit.dart';
-import 'settings_cubit.dart';
+import '../../../data/repositories/settings_repository.dart';
 import 'shell_cubit.dart';
 
 /// The running session: what it is doing, what it heard, and what it chose
@@ -247,6 +247,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }) : _clock = clock ?? DateTime.now,
        super(const LivePipelineState()) {
     _sessions.dubbing = () => state.running;
+    // What is drawn over the game is made of the settings, so it follows
+    // them from here rather than being called by whoever wrote one.
+    _written = _settings.changes.listen((_) {
+      followFrameOverlay();
+      unawaited(_followVoice());
+    });
   }
 
   /// How long after a start a second press is taken for the rest of a
@@ -255,12 +261,13 @@ class PipelineCubit extends Cubit<LivePipelineState> {
 
   final AppRepository _appRepository;
   final ModelRepository _modelRepository;
-  final SettingsCubit _settings;
+  final SettingsRepository _settings;
   final DownloadsCubit _downloads;
   final FailureSink _errors;
   final SessionCoordinator _sessions;
   final DateTime Function() _clock;
   StreamSubscription<EngineEvent>? _events;
+  StreamSubscription<AppSettings>? _written;
 
   /// When the last start was asked for. The button that starts the pipeline
   /// also cancels a start in progress, so without this a double-click would
@@ -587,8 +594,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         snapshotReading: false,
       ),
     );
-    // The worker has written its last voices by now.
-    unawaited(_settings.refreshVoiceBank());
     // The stop dropped every key the session held, the one that shows
     // the frame among them: it is the player's, not the session's.
     followFrameOverlay();
@@ -678,9 +683,10 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         );
       case VoiceSpoken():
         emit(state.copyWith(spokenVoice: event.name, clearSpokenVoice: event.name == null));
+      // The count beside the switch is the settings screen's, and it
+      // follows the engine itself.
       case VoiceBankGrew():
-        // The event carries this game's count; the settings show all games.
-        unawaited(_settings.refreshVoiceBank());
+        break;
       case BackendSettled():
         emit(
           state.copyWith(activeBackends: {...state.activeBackends, event.stage: event.backend}),
@@ -704,7 +710,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   void _onSubtitleFrame(SubtitleFrameMoved event) {
     if (event.region case final region?) {
       emit(state.copyWith(frameMissed: false));
-      unawaited(_settings.update(_settings.settings.copyWith(ocrRegion: region)));
+      unawaited(_settings.save(_settings.settings.copyWith(ocrRegion: region)));
       return;
     }
     emit(state.copyWith(frameMissed: true));
@@ -794,17 +800,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// switch on the Screen page and the key are two ways to the same thing.
   Future<void> _toggleFrameOverlay() async {
     final settings = _settings.settings;
-    await _settings.update(settings.copyWith(showFrameOverlay: !settings.showFrameOverlay));
-  }
-
-  /// What a running session is told of a settings change: the voice it
-  /// reads in, and what is drawn over the game.
-  ///
-  /// Called from `SettingsCubit` rather than watched from here: one cubit
-  /// listening to another is what this project keeps out.
-  void followSettings() {
-    followFrameOverlay();
-    unawaited(_followVoice());
+    await _settings.save(settings.copyWith(showFrameOverlay: !settings.showFrameOverlay));
   }
 
   /// Reads a line the session has already read, again: one that went by
@@ -840,9 +836,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// key that shows and hides it registered while nothing else holds the
   /// keys.
   ///
-  /// Called whenever any of those change -- a setting written, a game
-  /// chosen, a session started or ended -- rather than watched from here:
-  /// one cubit listening to another is what this project keeps out.
+  /// Called whenever any of those change: a setting written, which the
+  /// repository's stream brings here, or a game chosen and a session
+  /// started or ended, which are this cubit's own.
   void followFrameOverlay() {
     final settings = _settings.settings;
     final processId = settings.readsWholeScreen ? 0 : state.selectedProcess?.pid ?? 0;
@@ -886,6 +882,8 @@ class PipelineCubit extends Cubit<LivePipelineState> {
 
   @override
   Future<void> close() {
+    unawaited(_written?.cancel());
+    unawaited(_written?.cancel());
     // The repository is shared with every other cubit: whoever made it
     // disposes of it, once they are all closed.
     _events?.cancel();

@@ -12,6 +12,7 @@ import 'data/repositories/app_repository.dart';
 import 'domain/app_settings.dart';
 import 'data/repositories/model_repository.dart';
 import 'data/repositories/runtime_repository.dart';
+import 'data/repositories/settings_repository.dart';
 import 'data/repositories/update_repository.dart';
 import 'data/services/model_storage_service.dart';
 import 'data/services/native_engine_service.dart';
@@ -35,6 +36,9 @@ class LoreDubBootstrap extends StatefulWidget {
 }
 
 class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
+  /// One settings file, read and published in one place: everything
+  /// that follows a setting listens here rather than being told.
+  final settingsRepository = SettingsRepository(SettingsService());
   final appRepository = AppRepository(NativeEngineService(), SettingsService());
   final modelRepository = ModelRepository(ModelStorageService());
   final runtimeRepository = RuntimeRepository(RuntimeStorageService());
@@ -46,6 +50,7 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
     super.initState();
     cubits = DashboardCubits(
       appRepository,
+      settingsRepository,
       modelRepository,
       runtimeRepository,
       updateRepository,
@@ -66,6 +71,7 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
       RepositoryProvider.value(value: appRepository),
       RepositoryProvider.value(value: modelRepository),
       RepositoryProvider.value(value: runtimeRepository),
+      RepositoryProvider.value(value: settingsRepository),
       RepositoryProvider.value(value: updateRepository),
       RepositoryProvider.value(value: const FileDialogs()),
     ],

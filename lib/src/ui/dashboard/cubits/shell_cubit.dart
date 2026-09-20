@@ -8,10 +8,10 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/update_repository.dart';
 import '../../../data/services/update_service.dart';
 import '../../../domain/app_release.dart';
-import '../../../domain/app_settings.dart';
 import '../../../domain/progress_ticker.dart';
 
 /// In the order the navigation lists them; the compact bar picks by index.
@@ -83,17 +83,14 @@ class ShellState extends Equatable {
 }
 
 class ShellCubit extends Cubit<ShellState> implements FailureSink {
-  ShellCubit(this._updateRepository) : super(const ShellState());
+  ShellCubit(this._updateRepository, this._settings) : super(const ShellState());
 
   final UpdateRepository _updateRepository;
 
-  /// Read when a toast has to be worded outside any widget tree, and when
-  /// the check goes through a proxy. Both live in the settings, which are
-  /// built after the shell, so they are handed over rather than injected.
-  String Function()? interfaceLanguage;
-
-  /// The proxy the update check should go through, if the user set one.
-  String Function()? proxyUrl;
+  /// The language a toast is worded in, outside any widget tree, and the
+  /// proxy the check goes through. Both are read off the repository rather
+  /// than handed over by whoever built the screens.
+  final SettingsRepository _settings;
 
   /// Run before the application closes for an update, so dubbing stops and
   /// the game's volume comes back rather than staying turned down.
@@ -151,7 +148,9 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
     final version = updates.currentVersion.isNotEmpty
         ? updates.currentVersion
         : await _updateRepository.currentVersion();
-    final release = await _updateRepository.latestRelease(proxyUrl: proxyUrl?.call() ?? '');
+    final release = await _updateRepository.latestRelease(
+      proxyUrl: _settings.settings.modelProxyUrl,
+    );
     final newer = release != null && isNewerRelease(release.version, version);
     final installer = newer ? release.installer : null;
     final installable = installer != null && _updateRepository.canInstall;
@@ -172,7 +171,7 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
   /// interface language rather than read from a context.
   Future<void> _announce(AppRelease release) async {
     final l10n = await AppLocalizations.delegate.load(
-      Locale(interfaceLanguage?.call() ?? const AppSettings().interfaceLanguage),
+      Locale(_settings.settings.interfaceLanguage),
     );
     await _updateRepository.announce(
       title: l10n.updateAvailableTitle,
@@ -205,7 +204,7 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
     try {
       final setup = await _updateRepository.downloadInstaller(
         installer,
-        proxyUrl: proxyUrl?.call() ?? '',
+        proxyUrl: _settings.settings.modelProxyUrl,
         onProgress: (value) {
           // Every chunk reports; only a change the reader can see redraws.
           if (isClosed || !ticker.shouldReport(value)) return;

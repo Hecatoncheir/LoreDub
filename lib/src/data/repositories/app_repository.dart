@@ -125,8 +125,6 @@ class AppRepository {
   Stream<EngineEvent> get events => _nativeEngine.events;
   bool get processLoopbackSupported => _nativeEngine.processLoopbackSupported;
 
-  Future<AppSettings> loadSettings() => _settingsService.load();
-  Future<void> saveSettings(AppSettings settings) => _settingsService.save(settings);
   Future<List<GameProcess>> listProcesses() => _nativeEngine.listProcesses();
 
   /// The bank file the original voice keeps [game]'s characters in; the game

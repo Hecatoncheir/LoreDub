@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/screen_reading.dart';
+import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
@@ -77,6 +78,7 @@ void main() {
     repository = _SlowStartRepository();
     cubits = DashboardCubits(
       repository,
+      SettingsRepository(SettingsService()),
       _FixedModelRepository(),
       RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(
@@ -111,15 +113,12 @@ void main() {
     pipeline = PipelineCubit(
       repository,
       _FixedModelRepository(),
-      cubits.settings,
+      cubits.settingsRepository,
       cubits.downloads,
       cubits.shell,
       cubits.sessions,
       clock: () => now,
     );
-    // The cubit under test stands in for the bag's own, so what the
-    // settings tell about the frame over the game reaches this one.
-    cubits.settings.onChanged = pipeline.followSettings;
   });
 
   tearDown(() async {
@@ -346,7 +345,14 @@ void main() {
     test('follows the switch, the game and the region', () async {
       const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
       pipeline.selectProcess(game);
-      expect(repository.framesDrawn, [null], reason: 'nothing was asked for yet');
+      // The pipeline puts the overlay in step whenever the settings reach
+      // it, which now includes the value it gets on subscribing, so what
+      // matters is that none of those asked for a frame.
+      expect(
+        repository.framesDrawn,
+        everyElement(isNull),
+        reason: 'nothing was asked for yet',
+      );
 
       await cubits.settings.update(
         const AppSettings(showFrameOverlay: true, ocrRegion: OcrRegion(top: 0.8)),

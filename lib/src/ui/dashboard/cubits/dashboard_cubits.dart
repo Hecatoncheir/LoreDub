@@ -6,6 +6,7 @@ import 'dart:async';
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../data/repositories/runtime_repository.dart';
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/update_repository.dart';
 import '../../../domain/engine_event.dart';
 import '../../../domain/failure.dart';
@@ -27,17 +28,26 @@ import 'shell_cubit.dart';
 class DashboardCubits {
   DashboardCubits(
     AppRepository appRepository,
+    SettingsRepository settingsRepository,
     ModelRepository modelRepository,
     RuntimeRepository runtimeRepository,
     UpdateRepository updateRepository,
   ) : _appRepository = appRepository,
-      shell = ShellCubit(updateRepository) {
+      _settingsRepository = settingsRepository,
+      shell = ShellCubit(updateRepository, settingsRepository) {
     // One engine holds one session. Each screen registers its own half of
     // that with the coordinator, so neither knows the other and this bag
     // does not hold the rule together.
-    settings = SettingsCubit(appRepository, shell);
+    settings = SettingsCubit(appRepository, settingsRepository, shell);
     downloads = DownloadsCubit(modelRepository, runtimeRepository, settings, shell);
-    pipeline = PipelineCubit(appRepository, modelRepository, settings, downloads, shell, sessions);
+    pipeline = PipelineCubit(
+      appRepository,
+      modelRepository,
+      settingsRepository,
+      downloads,
+      shell,
+      sessions,
+    );
     characters = CharactersCubit(
       appRepository,
       modelRepository,
@@ -48,11 +58,6 @@ class DashboardCubits {
     );
     glossary = GlossaryCubit(appRepository, shell);
     graph = PipelineGraphBloc(appRepository, settings, characters, pipeline, shell);
-    // The frame over the game is made of the settings and the game chosen,
-    // and neither cubit owns both.
-    settings.onChanged = pipeline.followSettings;
-    shell.interfaceLanguage = () => settings.settings.interfaceLanguage;
-    shell.proxyUrl = () => settings.settings.modelProxyUrl;
     // Closing for an update must not leave the game turned down, or the
     // worker of either screen still holding the files the setup replaces.
     shell.beforeRestart = () async {
@@ -63,6 +68,10 @@ class DashboardCubits {
   }
 
   final AppRepository _appRepository;
+  final SettingsRepository _settingsRepository;
+
+  /// What the player configured, published for whoever follows it.
+  SettingsRepository get settingsRepository => _settingsRepository;
   final ShellCubit shell;
 
   /// Which screen may hold the one worker. Each of the two registers its

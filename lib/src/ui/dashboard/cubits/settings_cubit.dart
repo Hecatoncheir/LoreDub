@@ -1,14 +1,19 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/app_repository.dart';
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/services/python_discovery.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/compute_device.dart';
+import '../../../domain/engine_event.dart';
+import '../../../domain/pipeline_state.dart';
 import '../../../domain/failure.dart';
 import 'shell_cubit.dart';
 
@@ -54,22 +59,36 @@ class SettingsState extends Equatable {
 }
 
 class SettingsCubit extends Cubit<SettingsState> {
-  SettingsCubit(this._appRepository, this._errors) : super(const SettingsState());
+  SettingsCubit(this._appRepository, this._settings, this._errors)
+    : super(SettingsState(settings: _settings.settings)) {
+    // Whoever writes a setting writes it to the repository, which is where
+    // this reads it back from: the pipeline moving the subtitle frame or
+    // flipping the overlay does not have to know there is a screen showing
+    // what it changed.
+    _written = _settings.changes.listen(
+      (value) => emit(state.copyWith(settings: value)),
+    );
+    // The bank grows while a session runs, and its last voices are written
+    // as that session comes to rest. The count stands beside a switch here,
+    // so it is this cubit's to keep and nobody else's to refresh.
+    _engine = _appRepository.events.listen((event) {
+      if (event is VoiceBankGrew ||
+          (event is SessionStateChanged && event.status == PipelineStatus.idle)) {
+        unawaited(refreshVoiceBank());
+      }
+    });
+  }
 
   final AppRepository _appRepository;
+  final SettingsRepository _settings;
   final FailureSink _errors;
+  StreamSubscription<AppSettings>? _written;
+  StreamSubscription<EngineEvent>? _engine;
 
   AppSettings get settings => state.settings;
 
-  /// Told after every write, so what is drawn over the game -- the subtitle
-  /// frame -- follows the settings it is made of. Wired by
-  /// `DashboardCubits`: a cubit listening to another cubit is what this
-  /// project keeps out.
-  void Function()? onChanged;
-
   Future<void> load() async {
-    emit(state.copyWith(settings: await _appRepository.loadSettings()));
-    onChanged?.call();
+    await _settings.load();
     await refreshVoiceBank();
   }
 
@@ -94,10 +113,12 @@ class SettingsCubit extends Cubit<SettingsState> {
     await refreshVoiceBank();
   }
 
+  /// Emits before it writes, so what the player just did is on screen
+  /// before the disk has heard of it. The repository publishes it too,
+  /// which reaches this cubit again as the state it is already in.
   Future<void> update(AppSettings value) async {
     emit(state.copyWith(settings: value));
-    onChanged?.call();
-    await _appRepository.saveSettings(value);
+    await _settings.save(value);
   }
 
   /// Choosing the language picks both the translator and the voice: text in
@@ -140,6 +161,22 @@ class SettingsCubit extends Cubit<SettingsState> {
   }
 
   /// Stages a state a widget test wants to render without touching disk.
+  ///
+  /// The settings go to the repository as well, and this cubit's own state
+  /// at once rather than through the stream: everything that reads them
+  /// reads them there, and a test that staged only this cubit drew a
+  /// screen from one set of settings while the pipeline behind it ran on
+  /// another.
   @visibleForTesting
-  void seed(SettingsState value) => emit(value);
+  void seed(SettingsState value) {
+    emit(value);
+    _settings.seed(value.settings);
+  }
+
+  @override
+  Future<void> close() async {
+    await _written?.cancel();
+    await _engine?.cancel();
+    return super.close();
+  }
 }

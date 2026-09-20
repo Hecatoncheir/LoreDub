@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
@@ -46,6 +47,7 @@ void main() {
     repository = _CastRepository();
     cubits = DashboardCubits(
       repository,
+      SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(
