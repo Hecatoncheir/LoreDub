@@ -40,13 +40,17 @@ Invoke-Native {
     -Destination (Join-Path $ReleaseDirectory "runtime")
 }
 
+# The machine-wide install first, which is what the runners carry, and then
+# the per-user one winget makes by default -- a developer building the
+# installer on their own machine usually has it there.
 $IsccCandidates = @(
   "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-  "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+  "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+  "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
 )
 $Iscc = $IsccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $Iscc) {
-  throw "Inno Setup 6 is not installed on the GitLab runner."
+  throw "Inno Setup 6 is not installed: looked in $($IsccCandidates -join ', ')."
 }
 
 New-Item -ItemType Directory -Force -Path dist | Out-Null
