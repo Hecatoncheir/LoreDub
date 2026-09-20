@@ -13,6 +13,7 @@ import '../../../data/repositories/model_repository.dart';
 import '../../../domain/built_voice.dart';
 import '../../../domain/character.dart';
 import '../../../domain/compute_device.dart';
+import '../../../domain/engine_event.dart';
 import '../../../domain/failure.dart';
 import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
@@ -548,31 +549,28 @@ class CharactersCubit extends Cubit<CharactersState> {
 
   /// What the session reported: the state it is in, and the voices it heard
   /// while a card was recording.
-  void handleEvent(Map<String, Object?> event) {
-    switch (event['type']) {
-      case 'state':
+  void handleEvent(EngineEvent event) {
+    switch (event) {
+      case SessionStateChanged():
         _onSessionState(event);
-      case 'characterVoice':
+      case CharacterVoiceMeasured():
         _onCharacterVoice(event);
+      // The dubbing screens read the rest; this one is only in the stream
+      // because the same engine serves them all in turn.
+      default:
+        break;
     }
   }
 
   /// The session has started, come up or come to rest.
-  void _onSessionState(Map<String, Object?> event) {
+  void _onSessionState(SessionStateChanged event) {
     // The dubbing screens hold the worker in their turn, and a session of
     // theirs is not this screen's to show. An event naming no session is the
     // engine coming to rest, which ends this one as well.
-    if (event['session'] case final String session
-        when session != PipelineSession.characters.name) {
-      return;
-    }
+    if (!event.concerns(PipelineSession.characters)) return;
     emit(
       state.copyWith(
-        status: switch (event['state']) {
-          'ready' || 'listening' => PipelineStatus.listening,
-          'starting' => PipelineStatus.starting,
-          _ => PipelineStatus.idle,
-        },
+        status: event.status,
         // Whichever of the two this is, the worker a sample was loaded into
         // is gone: at rest the engine holds none, and the one that records
         // has no speech model in it. Left standing, the next sample skipped
@@ -583,18 +581,15 @@ class CharactersCubit extends Cubit<CharactersState> {
   }
 
   /// What was measured from the take a card is recording.
-  void _onCharacterVoice(Map<String, Object?> event) {
+  void _onCharacterVoice(CharacterVoiceMeasured event) {
     if (!state.recording) return;
-    final seconds = (event['seconds'] as num?)?.toDouble() ?? 0;
+    final seconds = event.seconds;
     // The take is one recording, so this is it — unless it holds less speech
     // than a fingerprint can be taken from.
     if (seconds < enoughSeconds) return;
-    _heard = [
-      for (final value in event['vector'] as List<Object?>? ?? const [])
-        if (value is num) value.toDouble(),
-    ];
-    _heardGender = event['gender'] as String?;
-    _heardClip = event['clip'] as String?;
+    _heard = event.vector;
+    _heardGender = event.gender;
+    _heardClip = event.clip;
     // How long the take turned out to hold, which is what the card keeps;
     // the seconds on screen meanwhile are the clock's.
     _heardSeconds = seconds;

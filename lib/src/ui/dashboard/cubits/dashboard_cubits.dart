@@ -7,6 +7,7 @@ import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../data/repositories/runtime_repository.dart';
 import '../../../data/repositories/update_repository.dart';
+import '../../../domain/engine_event.dart';
 import '../../../domain/failure.dart';
 import '../../../domain/model_selection.dart';
 import 'characters_cubit.dart';
@@ -78,7 +79,7 @@ class DashboardCubits {
 
   /// The session events reach both the pipeline and the characters screen:
   /// each holds the worker in its turn, and only one of them at a time.
-  StreamSubscription<Map<String, Object?>>? _events;
+  StreamSubscription<EngineEvent>? _events;
 
   /// What the settings and the installed packages together decided.
   ModelSelection get selection =>

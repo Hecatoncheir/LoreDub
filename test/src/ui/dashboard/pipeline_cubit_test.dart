@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/screen_reading.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
@@ -34,6 +35,28 @@ import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
+/// A dubbed line as the engine reports it, with only the parts a test
+/// cares about spelled out.
+LineDubbed dubbed(
+  String original, {
+  String english = '',
+  String translated = '',
+  int latencyMs = 0,
+  String? speaker,
+  String? wave,
+  bool snapshot = false,
+}) => LineDubbed(
+  line: TranscriptEntry(
+    original: original,
+    english: english,
+    translated: translated,
+    latency: Duration(milliseconds: latencyMs),
+    speaker: speaker,
+    spoken: wave,
+  ),
+  snapshot: snapshot,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -108,20 +131,30 @@ void main() {
 
     // One engine serves both screens, and this is what the characters screen
     // starting its recording session announces. It is not this screen's.
-    repository.push({'type': 'state', 'state': 'listening', 'session': 'characters'});
+    repository.push(
+      const SessionStateChanged(
+        status: PipelineStatus.listening,
+        session: PipelineSession.characters,
+      ),
+    );
     await settle();
 
     expect(pipeline.state.status, PipelineStatus.idle);
     expect(pipeline.state.liveRunning, isFalse);
 
     // Its own session still arrives.
-    repository.push({'type': 'state', 'state': 'listening', 'session': 'live'});
+    repository.push(
+      const SessionStateChanged(
+        status: PipelineStatus.listening,
+        session: PipelineSession.live,
+      ),
+    );
     await settle();
 
     expect(pipeline.state.liveRunning, isTrue);
 
     // The engine coming to rest names no session: it ends every screen's.
-    repository.push({'type': 'state', 'state': 'idle'});
+    repository.push(const SessionStateChanged(status: PipelineStatus.idle));
     await settle();
 
     expect(pipeline.state.status, PipelineStatus.idle);
@@ -221,16 +254,16 @@ void main() {
       ..listen()
       ..seed(const LivePipelineState(status: PipelineStatus.listening));
 
-    repository.push({'type': 'hotkey', 'action': 'pause'});
+    repository.push(const HotkeyPressed(HotkeyAction.pause));
     await settle();
     expect(pipeline.state.status, PipelineStatus.paused);
     expect(pipeline.state.running, isTrue, reason: 'a paused session is still a session');
 
-    repository.push({'type': 'hotkey', 'action': 'pause'});
+    repository.push(const HotkeyPressed(HotkeyAction.pause));
     await settle();
     expect(pipeline.state.status, PipelineStatus.paused, reason: 'pausing twice changes nothing');
 
-    repository.push({'type': 'hotkey', 'action': 'resume'});
+    repository.push(const HotkeyPressed(HotkeyAction.resume));
     await settle();
     expect(pipeline.state.status, PipelineStatus.listening);
     expect(repository.stops, 0, reason: 'neither tears the session down');
@@ -251,14 +284,15 @@ void main() {
         ..listen()
         ..seed(const LivePipelineState(status: PipelineStatus.listening));
 
-      repository.push({
-        'type': 'transcript',
-        'original': 'Fire in the hole!',
-        'english': 'Fire in the hole!',
-        'translated': 'Ложись!',
-        'latencyMs': 900,
-        'wave': 'work/speech-7.wav',
-      });
+      repository.push(
+        dubbed(
+          'Fire in the hole!',
+          english: 'Fire in the hole!',
+          translated: 'Ложись!',
+          latencyMs: 900,
+          wave: 'work/speech-7.wav',
+        ),
+      );
       await settle();
 
       final line = pipeline.state.transcript.single;
@@ -350,11 +384,11 @@ void main() {
         ..listen()
         ..selectProcess(const GameProcess(pid: 9, name: 'game.exe', path: 'game.exe'));
 
-      repository.push({'type': 'hotkey', 'action': 'frameOverlay'});
+      repository.push(const HotkeyPressed(HotkeyAction.frameOverlay));
       await settle();
       expect(cubits.settings.settings.showFrameOverlay, isTrue);
 
-      repository.push({'type': 'hotkey', 'action': 'frameOverlay'});
+      repository.push(const HotkeyPressed(HotkeyAction.frameOverlay));
       await settle();
       expect(cubits.settings.settings.showFrameOverlay, isFalse);
       expect(repository.framesDrawn.last, isNull);
@@ -384,13 +418,9 @@ void main() {
         ..seed(waiting);
 
       for (var line = 1; line <= 12; line++) {
-        repository.push({
-          'type': 'transcript',
-          'original': 'line $line',
-          'english': 'line $line',
-          'translated': 'строка $line',
-          'latencyMs': 100,
-        });
+        repository.push(
+          dubbed('line $line', english: 'line $line', translated: 'строка $line', latencyMs: 100),
+        );
       }
       await settle();
 
@@ -462,10 +492,9 @@ void main() {
         ..listen()
         ..seed(waiting);
 
-      repository.push({
-        'type': 'subtitleFrame',
-        'region': const OcrRegion(left: 0.1, top: 0.7, right: 0.9, bottom: 0.95),
-      });
+      repository.push(
+        const SubtitleFrameMoved(OcrRegion(left: 0.1, top: 0.7, right: 0.9, bottom: 0.95)),
+      );
       await settle();
 
       expect(
@@ -482,7 +511,7 @@ void main() {
         ..seed(waiting);
       final before = cubits.settings.settings.ocrRegion;
 
-      repository.push({'type': 'subtitleFrame', 'failed': true});
+      repository.push(const SubtitleFrameMoved(null));
       await settle();
 
       expect(cubits.settings.settings.ocrRegion, before);
@@ -495,18 +524,19 @@ void main() {
         ..seed(waiting);
 
       repository
-        ..push({'type': 'snapshotReading'})
-        ..push({'type': 'snapshot', 'text': 'Press E to open'});
+        ..push(const SnapshotReading())
+        ..push(const SnapshotRead(text: 'Press E to open'));
       await settle();
       expect(pipeline.state.snapshotReading, isTrue, reason: 'the translation is on its way');
 
-      repository.push({
-        'type': 'transcript',
-        'original': 'Press E to open',
-        'translated': 'Нажмите E, чтобы открыть',
-        'latencyMs': 800,
-        'snapshot': true,
-      });
+      repository.push(
+        dubbed(
+          'Press E to open',
+          translated: 'Нажмите E, чтобы открыть',
+          latencyMs: 800,
+          snapshot: true,
+        ),
+      );
       await settle();
       expect(pipeline.state.snapshots.single.translated, 'Нажмите E, чтобы открыть');
       expect(pipeline.state.transcript, isEmpty);
@@ -519,8 +549,8 @@ void main() {
         ..seed(waiting);
 
       repository
-        ..push({'type': 'snapshotReading'})
-        ..push({'type': 'snapshot', 'text': ''});
+        ..push(const SnapshotReading())
+        ..push(const SnapshotRead(text: ''));
       await settle();
 
       expect(pipeline.state.snapshotMissed, isTrue);
@@ -548,47 +578,28 @@ void main() {
     });
   });
 
-  test('raises the banner for a capture failure and keeps it through an empty error', () async {
+  // An error carrying nothing to show used to be a case of its own: the
+  // banner had to survive one. `EngineFailed` cannot be built without a
+  // failure, so there is no longer such an event to survive.
+  test('raises the banner for a capture failure', () async {
     pipeline.listen();
     const failure = LoreDubFailure(
       FailureCode.captureFailed,
       detail: 'English OCR language is not installed.',
     );
 
-    repository.push({'type': 'error', 'failure': failure});
+    repository.push(const EngineFailed(failure));
     await settle();
-    expect(cubits.shell.state.error, same(failure));
 
-    repository.push({'type': 'error'});
-    await settle();
-    expect(
-      cubits.shell.state.error,
-      same(failure),
-      reason: 'an event with nothing to show is no reason to clear the banner',
-    );
+    expect(cubits.shell.state.error, same(failure));
   });
 
   test('collects the voices of the scene, newest line first', () async {
     pipeline.listen();
 
-    repository.push({
-      'type': 'transcript',
-      'original': 'Halt!',
-      'translated': 'Стоять!',
-      'speaker': 'timbre:0',
-    });
-    repository.push({
-      'type': 'transcript',
-      'original': 'What do you want?',
-      'translated': 'Чего тебе?',
-      'speaker': 'character:a1',
-    });
-    repository.push({
-      'type': 'transcript',
-      'original': 'Move along.',
-      'translated': 'Проходи.',
-      'speaker': 'timbre:0',
-    });
+    repository.push(dubbed('Halt!', translated: 'Стоять!', speaker: 'timbre:0'));
+    repository.push(dubbed('What do you want?', translated: 'Чего тебе?', speaker: 'character:a1'));
+    repository.push(dubbed('Move along.', translated: 'Проходи.', speaker: 'timbre:0'));
     await settle();
 
     final speakers = pipeline.state.speakers;
@@ -604,7 +615,7 @@ void main() {
   test('leaves a line nobody was heard in out of the scene list', () async {
     pipeline.listen();
 
-    repository.push({'type': 'transcript', 'original': 'Hello', 'translated': 'Привет'});
+    repository.push(dubbed('Hello', translated: 'Привет'));
     await settle();
 
     expect(pipeline.state.transcript, hasLength(1));
@@ -637,9 +648,9 @@ void main() {
           ),
         );
 
-      repository.push({'type': 'sceneVoice', 'speaker': 'timbre:0', 'seconds': 1.8});
-      repository.push({'type': 'sceneVoice', 'speaker': 'timbre:0', 'seconds': 3.2});
-      repository.push({'type': 'sceneVoice', 'speaker': 'character:a1', 'seconds': 2.0});
+      repository.push(const SceneVoiceHeard(speaker: 'timbre:0', seconds: 1.8));
+      repository.push(const SceneVoiceHeard(speaker: 'timbre:0', seconds: 3.2));
+      repository.push(const SceneVoiceHeard(speaker: 'character:a1', seconds: 2));
       await settle();
 
       final voices = pipeline.state.speakers;
@@ -695,7 +706,7 @@ void main() {
 class _SlowStartRepository extends AppRepository {
   _SlowStartRepository() : super(NativeEngineService(), SettingsService());
 
-  final _events = StreamController<Map<String, Object?>>.broadcast();
+  final _events = StreamController<EngineEvent>.broadcast();
   Completer<void>? _starting;
   int starts = 0;
   int stops = 0;
@@ -738,7 +749,7 @@ class _SlowStartRepository extends AppRepository {
   );
   Map<String, String> snapshotModels = const {};
 
-  void push(Map<String, Object?> event) => _events.add(event);
+  void push(EngineEvent event) => _events.add(event);
 
   /// Ends the start in progress with [failure], as the engine would.
   void failStart(Object failure) {
@@ -747,7 +758,7 @@ class _SlowStartRepository extends AppRepository {
   }
 
   @override
-  Stream<Map<String, Object?>> get events => _events.stream;
+  Stream<EngineEvent> get events => _events.stream;
 
   @override
   Future<void> start({

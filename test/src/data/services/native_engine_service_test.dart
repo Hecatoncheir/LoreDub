@@ -10,7 +10,11 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/local_inference_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
+import 'package:lore_dub/src/domain/compute_device.dart';
+import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/failure.dart';
+import 'package:lore_dub/src/domain/hotkey.dart';
+import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../support/fake_worker.dart';
@@ -23,27 +27,57 @@ void main() {
       'message': 'English OCR language is not installed.',
     });
 
-    expect(event['type'], 'error');
-    final failure = event['failure']! as LoreDubFailure;
-    expect(failure.code, FailureCode.captureFailed);
-    expect(failure.detail, 'English OCR language is not installed.');
+    expect(
+      event,
+      isA<EngineFailed>().having(
+        (event) => event.failure,
+        'failure',
+        isA<LoreDubFailure>()
+            .having((failure) => failure.code, 'code', FailureCode.captureFailed)
+            .having(
+              (failure) => failure.detail,
+              'detail',
+              'English OCR language is not installed.',
+            ),
+      ),
+    );
   });
 
-  test('passes every other native event on untouched', () {
-    const state = {'type': 'state', 'state': 'listening'};
+  test('names the session a state belongs to, and leaves a resting one to all', () {
+    const listening = {'type': 'state', 'state': 'listening'};
 
-    expect(fromNativeEvent(state), same(state));
+    expect(
+      fromNativeEvent(listening, session: PipelineSession.scene),
+      isA<SessionStateChanged>()
+          .having((event) => event.status, 'status', PipelineStatus.listening)
+          .having((event) => event.session, 'session', PipelineSession.scene),
+    );
+    expect(
+      fromNativeEvent({'type': 'state', 'state': 'idle'}),
+      isA<SessionStateChanged>()
+          .having((event) => event.status, 'status', PipelineStatus.idle)
+          .having((event) => event.concerns(PipelineSession.live), 'concerns anyone', isTrue),
+    );
+  });
+
+  test('passes over a kind this build has nothing to do with', () {
+    expect(fromNativeEvent({'type': 'somethingLater'}), isNull);
+    // A key this build does not know is nothing to press.
+    expect(fromNativeEvent({'type': 'hotkey', 'action': 'teleport'}), isNull);
   });
 
   test('names the action whose hotkey another program holds', () {
     final event = fromNativeEvent({'type': 'hotkeyTaken', 'action': 'resume'});
 
-    expect(event['type'], 'error');
     expect(
-      event['failure'],
-      isA<LoreDubFailure>()
-          .having((failure) => failure.code, 'code', FailureCode.hotkeyTaken)
-          .having((failure) => failure.detail, 'detail', 'resume'),
+      event,
+      isA<EngineFailed>().having(
+        (event) => event.failure,
+        'failure',
+        isA<LoreDubFailure>()
+            .having((failure) => failure.code, 'code', FailureCode.hotkeyTaken)
+            .having((failure) => failure.detail, 'detail', 'resume'),
+      ),
     );
   });
 
@@ -51,17 +85,22 @@ void main() {
     final event = fromNativeEvent({'type': 'ocrLanguageMissing', 'language': 'ru'});
 
     expect(
-      event['failure'],
-      isA<LoreDubFailure>()
-          .having((failure) => failure.code, 'code', FailureCode.ocrLanguageMissing)
-          .having((failure) => failure.detail, 'detail', 'ru'),
+      event,
+      isA<EngineFailed>().having(
+        (event) => event.failure,
+        'failure',
+        isA<LoreDubFailure>()
+            .having((failure) => failure.code, 'code', FailureCode.ocrLanguageMissing)
+            .having((failure) => failure.detail, 'detail', 'ru'),
+      ),
     );
   });
 
-  test('passes a hotkey press on for the pipeline to act on', () {
-    final press = {'type': 'hotkey', 'action': 'pause'};
-
-    expect(fromNativeEvent(press), same(press));
+  test('names the key that was pressed, for the pipeline to act on', () {
+    expect(
+      fromNativeEvent({'type': 'hotkey', 'action': 'pause'}),
+      isA<HotkeyPressed>().having((event) => event.action, 'action', HotkeyAction.pause),
+    );
   });
 
   test('retries when a native string grows between size and copy', () {
@@ -96,7 +135,7 @@ void main() {
     late _FakeNative native;
     late List<FakeWorker> workers;
     late NativeEngineService engine;
-    late List<Map<String, Object?>> events;
+    late List<EngineEvent> events;
     var disposed = false;
 
     setUp(() async {
@@ -165,10 +204,7 @@ void main() {
       return workers.last;
     }
 
-    List<Map<String, Object?>> eventsOf(String type) => [
-      for (final event in events)
-        if (event['type'] == type) event,
-    ];
+    List<T> eventsOf<T extends EngineEvent>() => events.whereType<T>().toList();
 
     test('starts the capture in the directory it made, once the worker is up', () async {
       final starting = engine.startScene(sceneOf(7));
@@ -181,8 +217,13 @@ void main() {
       expect(native.started.single, containsPair('captureDirectory', capture));
       expect(Directory(capture).existsSync(), isTrue);
       // What the capture reports is read, and named for the session it is.
-      await _until(() => eventsOf('state').length == 2);
-      expect(eventsOf('state').last, {'type': 'state', 'state': 'listening', 'session': 'scene'});
+      await _until(() => eventsOf<SessionStateChanged>().length == 2);
+      expect(
+        eventsOf<SessionStateChanged>().last,
+        isA<SessionStateChanged>()
+            .having((event) => event.status, 'status', PipelineStatus.listening)
+            .having((event) => event.session, 'session', PipelineSession.scene),
+      );
 
       await engine.stop();
       expect(worker.killed, isTrue);
@@ -211,14 +252,17 @@ void main() {
       expect(
         [
           for (final event in events)
-            if (event['type'] == 'backend' || event['stage'] == 'capture') event,
+            if (event case BackendSettled(:final stage, :final backend))
+              (stage, backend)
+            else if (event case StartupProgressed(stage: 'capture', :final value))
+              value,
         ],
         [
-          {'type': 'backend', 'stage': 'translation', 'backend': 'cuda'},
-          {'type': 'backend', 'stage': 'speech', 'backend': 'cpu'},
-          {'type': 'backend', 'stage': 'voiceConversion', 'backend': 'cuda'},
+          (ComputeStage.translation, ComputeBackend.cuda),
+          (ComputeStage.speech, ComputeBackend.cpu),
+          (ComputeStage.voiceConversion, ComputeBackend.cuda),
           // Said once the last of them is: the capture is what is left.
-          {'type': 'startup', 'value': 0.98, 'stage': 'capture'},
+          0.98,
         ],
       );
     });
@@ -239,10 +283,15 @@ void main() {
       expect(native.started, isEmpty);
       // The engine came to rest once, under nobody's name, and the start
       // said nothing after that for a screen to take as its own.
-      expect(eventsOf('state'), [
-        {'type': 'state', 'state': 'idle'},
-      ]);
-      expect(eventsOf('startup'), isEmpty);
+      expect(
+        eventsOf<SessionStateChanged>(),
+        [
+          isA<SessionStateChanged>()
+              .having((event) => event.status, 'status', PipelineStatus.idle)
+              .having((event) => event.session, 'session', isNull),
+        ],
+      );
+      expect(eventsOf<StartupProgressed>(), isEmpty);
     });
 
     test('a stop while the capture directory is made begins no capture', () async {
@@ -278,7 +327,7 @@ void main() {
       // The start ends as stopped, which the screens pass over; what the
       // player is told is what the worker said.
       expect(
-        eventsOf('error').single['failure'],
+        eventsOf<EngineFailed>().single.failure,
         isA<LoreDubFailure>()
             .having((failure) => failure.code, 'code', FailureCode.workerExited)
             .having((failure) => failure.detail, 'detail', contains('CUDA out of memory')),
@@ -309,7 +358,12 @@ void main() {
         isEmpty,
         reason: 'the scene was replaced, and a sample captures nothing',
       );
-      expect(eventsOf('state').last, {'type': 'state', 'state': 'listening', 'session': 'preview'});
+      expect(
+        eventsOf<SessionStateChanged>().last,
+        isA<SessionStateChanged>()
+            .having((event) => event.status, 'status', PipelineStatus.listening)
+            .having((event) => event.session, 'session', PipelineSession.preview),
+      );
     });
 
     test('a replaced start ends its worker while nobody else has asked for one', () async {

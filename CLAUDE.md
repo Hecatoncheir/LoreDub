@@ -98,14 +98,24 @@ than one of them.
    JSON. The native side hand-rolls its JSON parsing/escaping (`JsonString`,
    `EscapeJson`) — keep config keys flat and string/number valued.
    `NativeEngineService` polls `ld_poll_event_json` every 80 ms and turns
-   `{"type":"audioSegment"|"ocrText"|"state"|"error"}` events into a Dart
-   stream. Which session it started is one `PipelineSession` field rather
-   than a flag per session, and it is written onto every `state` event on the
+   what it finds into a `Stream<EngineEvent>`. That is the boundary: JSON is
+   read in `fromNativeEvent` and nowhere above it, and what leaves is one of
+   the sealed kinds in `domain/engine_event.dart` -- `SessionStateChanged`,
+   `LineDubbed`, `SceneVoiceHeard`, `SnapshotRead`, `SubtitleFrameMoved`,
+   `StartupProgressed`, `BackendSettled`, `HotkeyPressed`,
+   `CharacterVoiceMeasured`, `EngineFailed` and the rest -- so a screen
+   matches types rather than strings and the analyzer names a kind nobody
+   answered. A kind this build has nothing to do with comes back null rather
+   than travelling as a map with an unknown key in it.
+   Which session it started is one `PipelineSession` field rather
+   than a flag per session, and it is written onto every state and startup
+   event on the
    way out: one engine serves the dubbing screens and the characters screen
    in turn, and the same stream reaches `PipelineCubit` and `CharactersCubit`
    both, so unnamed, a start on one screen was read as a start on the other.
-   A `state` event carrying no session is `ld_stop` coming to rest and ends
-   what every screen was showing. Native capture runs on its own threads (`ProcessLoopbackCapture`
+   A `SessionStateChanged` carrying no session is `ld_stop` coming to rest and ends
+   what every screen was showing -- which is what `concerns` answers, in one
+   place rather than in each cubit. Native capture runs on its own threads (`ProcessLoopbackCapture`
    WASAPI process loopback + energy VAD writing 16 kHz WAV chunks;
    `OcrCapture` GDI + Windows OCR over `AppSettings.ocrRegion`, a frame the
    player draws in Settings and stored as fractions of the foreground game

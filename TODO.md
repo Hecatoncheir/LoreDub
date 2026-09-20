@@ -824,12 +824,33 @@ abstract final class AppTheme {
 
 ### Задачи
 
-- [ ] **Типизированные события движка.** `NativeEngineService` один раз, на
+- [x] **Типизированные события движка.** `NativeEngineService` один раз, на
       границе, превращает JSON в sealed `EngineEvent` (`SessionStateChanged`,
       `LineDubbed`, `SceneVoiceHeard`, `SnapshotRead`, `SubtitleFrameMoved`,
       `StartupProgressed`, `LanguageDetected`, `BackendSettled`,
       `HotkeyPressed`, `CharacterVoiceMeasured`, `EngineFailed`…). Блоки
       сопоставляют типы, а не строки; `event['x'] as String? ?? ''` исчезает.
+      *Сделано:* `domain/engine_event.dart` — четырнадцать видов.
+      `fromNativeEvent` стал единственным местом, где читается JSON: он же
+      разбирает `state`, `hotkey` и три вида ошибок и отвечает `null` на то,
+      с чем этой сборке делать нечего (ключ, которого она не знает, событие
+      из будущей). Имя сессии больше не приписывается словарю после
+      разбора (`_ofSession` удалён) — оно параметр `fromNativeEvent`, а
+      «моя ли это сессия» спрашивается у события (`concerns`), а не
+      сравнением строк в каждом кубите.
+      Два `switch` по строке стали `switch` по типу: анализатор теперь сам
+      называет вид, на который никто не ответил. Ушли `_valueNamed` (поиск
+      enum по имени в кубите — стадию и бэкенд разбирает движок),
+      `_onDetectedLanguage`, `_onSpokenVoice` и `_onBackend` (по строке emit
+      каждый) и разбор `TranscriptEntry` из шести приведений с
+      подстановками: движок отдаёт готовую запись.
+      Один невозможный случай перестал быть представимым: ошибка без
+      ошибки. `EngineFailed` нельзя построить без неё, так что тест
+      «баннер переживает пустую ошибку» удалён вместе с самой пустой
+      ошибкой. `EngineFailed.failure` остался `Object`: `describeFailure`
+      показывает не-`LoreDubFailure` как есть, и сужать поле означало бы
+      завести код «чего мы не предусмотрели», который говорит меньше самой
+      ошибки.
 - [ ] **Развязать блоки.** `SettingsRepository` отдаёт `Stream<AppSettings>`
       и текущее значение; то же для установленных моделей и состава. Правило
       «один движок — одна сессия» (сейчас это колбэк `releaseWorker`,

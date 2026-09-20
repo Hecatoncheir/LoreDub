@@ -18,6 +18,7 @@ import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/data/services/update_service.dart';
+import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/built_voice.dart';
 import 'package:lore_dub/src/domain/character.dart';
@@ -106,16 +107,26 @@ void main() {
 
     // One engine serves both screens; a live session is not this screen's to
     // show, and its record buttons open on nothing but a session of its own.
-    characters.handleEvent({'type': 'state', 'state': 'listening', 'session': 'live'});
+    characters.handleEvent(
+      const SessionStateChanged(
+        status: PipelineStatus.listening,
+        session: PipelineSession.live,
+      ),
+    );
 
     expect(characters.state.running, isFalse);
 
-    characters.handleEvent({'type': 'state', 'state': 'listening', 'session': 'characters'});
+    characters.handleEvent(
+      const SessionStateChanged(
+        status: PipelineStatus.listening,
+        session: PipelineSession.characters,
+      ),
+    );
 
     expect(characters.state.running, isTrue);
 
     // The engine coming to rest names no session: it ends this one as well.
-    characters.handleEvent({'type': 'state', 'state': 'idle'});
+    characters.handleEvent(const SessionStateChanged(status: PipelineStatus.idle));
 
     expect(characters.state.running, isFalse);
   });
@@ -269,12 +280,9 @@ void main() {
     // The take is one recording, closed by the stop below: however long the
     // character went on, and whatever pauses they left, this is what the
     // card is measured from.
-    characters.handleEvent({
-      'type': 'characterVoice',
-      'vector': [0.7, 0.1],
-      'gender': 'male',
-      'seconds': 24.5,
-    });
+    characters.handleEvent(
+      const CharacterVoiceMeasured(vector: [0.7, 0.1], gender: 'male', seconds: 24.5),
+    );
 
     await characters.stopRecording();
 
@@ -296,11 +304,7 @@ void main() {
     );
 
     characters.startRecording('a1');
-    characters.handleEvent({
-      'type': 'characterVoice',
-      'vector': [9.0],
-      'seconds': 0.8,
-    });
+    characters.handleEvent(const CharacterVoiceMeasured(vector: [9], seconds: 0.8));
 
     await characters.stopRecording();
 
@@ -317,12 +321,13 @@ void main() {
     );
 
     characters.startRecording('a1');
-    characters.handleEvent({
-      'type': 'characterVoice',
-      'vector': [0.7, 0.1],
-      'seconds': 2.4,
-      'clip': r'C:\work\capture\segment-2.wav',
-    });
+    characters.handleEvent(
+      const CharacterVoiceMeasured(
+        vector: [0.7, 0.1],
+        seconds: 2.4,
+        clip: r'C:\work\capture\segment-2.wav',
+      ),
+    );
     await characters.stopRecording();
 
     expect(repository.kept['a1'], r'C:\work\capture\segment-2.wav');
@@ -403,7 +408,7 @@ void main() {
     // A card measured from files puts its borrowed session down, or the
     // worker dies under the session it served: either way the engine stops,
     // and the speech model a sample was loaded into goes with it.
-    characters.handleEvent({'type': 'state', 'state': 'idle'});
+    characters.handleEvent(const SessionStateChanged(status: PipelineStatus.idle));
 
     expect(characters.state.previewReady, isFalse);
 
@@ -419,12 +424,22 @@ void main() {
     );
 
     // Loading for a sample announces itself as well, and must not undo itself.
-    characters.handleEvent({'type': 'state', 'state': 'listening', 'session': 'preview'});
+    characters.handleEvent(
+      const SessionStateChanged(
+        status: PipelineStatus.listening,
+        session: PipelineSession.preview,
+      ),
+    );
 
     expect(characters.state.previewReady, isTrue);
 
     // A recording brings up a worker of its own, with no voice in it.
-    characters.handleEvent({'type': 'state', 'state': 'listening', 'session': 'characters'});
+    characters.handleEvent(
+      const SessionStateChanged(
+        status: PipelineStatus.listening,
+        session: PipelineSession.characters,
+      ),
+    );
 
     expect(characters.state.previewReady, isFalse);
   });
@@ -482,11 +497,7 @@ void main() {
     );
 
     characters.startRecording('a1');
-    characters.handleEvent({
-      'type': 'characterVoice',
-      'vector': [9.0],
-      'seconds': 0.5,
-    });
+    characters.handleEvent(const CharacterVoiceMeasured(vector: [9], seconds: 0.5));
     await characters.stopRecording();
 
     expect(characters.state.characters.single.vector, [0.2, 0.4], reason: 'as it was');

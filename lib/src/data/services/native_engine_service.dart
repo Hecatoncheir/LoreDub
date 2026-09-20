@@ -11,6 +11,7 @@ import 'dart:isolate';
 import 'package:ffi/ffi.dart';
 
 import '../../domain/compute_device.dart';
+import '../../domain/engine_event.dart';
 import '../../domain/failure.dart';
 import '../../domain/glossary.dart';
 import '../../domain/game_process.dart';
@@ -85,12 +86,12 @@ class NativeEngineService {
   }) : _inference = inference ?? LocalInferenceService(),
        _workDirectory = workDirectory ?? LocalInferenceService.createWorkDirectory {
     _inference.onStartupProgress = (value, stage) =>
-        _events.add(_ofSession({'type': 'startup', 'value': value, 'stage': stage}));
+        _events.add(StartupProgressed(value: value, stage: stage, session: _session));
     _inference.onWorkerLost = _onWorkerLost;
     _playback.onSpeaking = _duckForSpeech;
   }
 
-  final _events = StreamController<Map<String, Object?>>.broadcast();
+  final _events = StreamController<EngineEvent>.broadcast();
   final LocalInferenceService _inference;
   final NativeSessionCalls _native;
   final WorkDirectoryProvider _workDirectory;
@@ -156,7 +157,7 @@ class NativeEngineService {
   /// leaving the screen — is not voiced again.
   String? _previousOcrText;
 
-  Stream<Map<String, Object?>> get events => _events.stream;
+  Stream<EngineEvent> get events => _events.stream;
   bool get processLoopbackSupported => ld_is_process_loopback_supported() == 1;
 
   Future<List<GameProcess>> listProcesses() async {
@@ -522,11 +523,12 @@ class NativeEngineService {
   /// where it was asked to — and that the capture is what is left to start.
   void _reportWorkerUp(int start, Map<String, ComputeBackend?> settled) {
     _throwIfSuperseded(start);
-    for (final MapEntry(key: stage, value: backend) in settled.entries) {
-      if (backend == null) continue;
-      _events.add({'type': 'backend', 'stage': stage, 'backend': backend.name});
+    for (final MapEntry(key: named, value: backend) in settled.entries) {
+      final stage = ComputeStage.values.asNameMap()[named];
+      if (stage == null || backend == null) continue;
+      _events.add(BackendSettled(stage: stage, backend: backend));
     }
-    _events.add({'type': 'startup', 'value': 0.98, 'stage': 'capture'});
+    _events.add(const StartupProgressed(value: 0.98, stage: 'capture'));
   }
 
   /// The directory the capture cuts the game's sound into, made if need be.
@@ -556,7 +558,7 @@ class NativeEngineService {
     _throwIfSuperseded(start);
     _activeConfig = config;
     _pollRegularly();
-    _events.add(_ofSession({'type': 'state', 'state': 'listening'}));
+    _events.add(SessionStateChanged(status: PipelineStatus.listening, session: _session));
   }
 
   void _pollRegularly() {
@@ -821,7 +823,9 @@ class NativeEngineService {
         case 'subtitleFrame':
           _onSubtitleFrame(event);
         default:
-          _events.add(_ofSession(fromNativeEvent(event)));
+          if (fromNativeEvent(event, session: _session) case final typed?) {
+            _events.add(typed);
+          }
       }
     }
   }
@@ -900,7 +904,7 @@ class NativeEngineService {
   void _onSubtitleFrame(Map<String, Object?> event) {
     if (_activeConfig == null) return;
     if (event['failed'] == true) {
-      _events.add(_ofSession({'type': 'subtitleFrame', 'failed': true}));
+      _events.add(const SubtitleFrameMoved(null));
       return;
     }
     double edge(String key) => (event[key] as num?)?.toDouble() ?? 0;
@@ -918,7 +922,7 @@ class NativeEngineService {
       'ocrRegionRight': region.right,
       'ocrRegionBottom': region.bottom,
     };
-    _events.add(_ofSession({'type': 'subtitleFrame', 'region': region}));
+    _events.add(SubtitleFrameMoved(region));
   }
 
   /// An area of the screen the player selected by hand. Read even while the
@@ -928,22 +932,8 @@ class NativeEngineService {
     // OCR reports the lines on screen apart; the translator wants prose.
     final text = (event['text'] as String? ?? '').split(RegExp(r'\s+')).join(' ').trim();
     if (text.isNotEmpty) _phrases.add(PendingPhrase.text(text, snapshot: true));
-    _events.add(event);
+    _events.add(SnapshotRead(text: text, failed: event['failed'] == true));
   }
-
-  /// [event] with the session it belongs to written on it.
-  ///
-  /// The native side reports what the capture is doing and nothing about who
-  /// asked for it, so the same `state` event served whichever screen was
-  /// listening: the characters screen holding the worker showed a dubbing
-  /// session on Live, and a live session turned on the recording buttons of
-  /// a card that could record nothing. A state event with no session — the
-  /// idle `ld_stop` announces — belongs to everyone: one session runs at a
-  /// time, and stopping it stops whatever any screen was showing.
-  Map<String, Object?> _ofSession(Map<String, Object?> event) =>
-      (event['type'] == 'state' || event['type'] == 'startup') && _session != null
-      ? {...event, 'session': _session!.name}
-      : event;
 
   Future<void> _processPhrase(PendingPhrase phrase) {
     final wavePath = phrase.wavePath;
@@ -967,13 +957,14 @@ class NativeEngineService {
       // earned the card beside it and let the player hear it back.
       kept = _recordingVoice;
       if (kept) _recordedClips.add(wavePath);
-      _events.add({
-        'type': 'characterVoice',
-        'vector': heard.vector,
-        'gender': heard.gender,
-        'seconds': heard.seconds,
-        if (kept) 'clip': wavePath,
-      });
+      _events.add(
+        CharacterVoiceMeasured(
+          vector: heard.vector,
+          gender: heard.gender,
+          seconds: heard.seconds,
+          clip: kept ? wavePath : null,
+        ),
+      );
     } catch (error) {
       _reportFailure(error);
     } finally {
@@ -990,11 +981,7 @@ class NativeEngineService {
       final heard = await _inference.listenSpeaker(wavePath);
       // Too short or too unvoiced to belong to anyone.
       if (heard.speaker == null) return;
-      _events.add({
-        'type': 'sceneVoice',
-        'speaker': heard.speaker,
-        'seconds': heard.seconds,
-      });
+      _events.add(SceneVoiceHeard(speaker: heard.speaker, seconds: heard.seconds));
     } catch (error) {
       _reportFailure(error);
     } finally {
@@ -1086,7 +1073,7 @@ class NativeEngineService {
       final spoken = withoutSoundCaptions(recognizedText);
       if (spoken.isEmpty) {
         // A selection is waiting for its answer; this one held no words.
-        if (snapshot) _events.add({'type': 'snapshot', 'text': ''});
+        if (snapshot) _events.add(const SnapshotRead(text: ''));
         return;
       }
       // Text read in the dubbing language itself is voiced as it is.
@@ -1127,14 +1114,14 @@ class NativeEngineService {
     final detected = _inference.spokenLanguage;
     if (detected == null || detected == _reportedLanguage) return;
     _reportedLanguage = detected;
-    _events.add({'type': 'language', 'code': detected});
+    _events.add(LanguageDetected(detected));
   }
 
   /// Work already in flight fails when the user stops the pipeline. That is
   /// the expected outcome of stopping, not something to alarm them with.
   void _reportFailure(Object error) {
     if (_activeConfig == null) return;
-    _events.add({'type': 'error', 'failure': error});
+    _events.add(EngineFailed(error));
   }
 
   /// The worker died under a running session. The capture would go on
@@ -1143,10 +1130,10 @@ class NativeEngineService {
   void _onWorkerLost(LoreDubFailure failure) {
     // Said before the stop, which clears the session the failure is about;
     // the phrases that were in flight fail after it and are passed over.
-    _events.add({'type': 'error', 'failure': failure});
+    _events.add(EngineFailed(failure));
     unawaited(
       stop().catchError((Object error) {
-        if (!_events.isClosed) _events.add({'type': 'error', 'failure': error});
+        if (!_events.isClosed) _events.add(EngineFailed(error));
       }),
     );
   }
@@ -1157,31 +1144,35 @@ class NativeEngineService {
     required String original,
     bool snapshot = false,
   }) async {
-    _events.add({
-      'type': 'transcript',
-      'original': original,
-      'english': result.english,
-      'translated': result.translated,
-      'latencyMs': latencyMs,
-      if (snapshot) 'snapshot': true,
-      // Shown as heard and passed over, rather than as a line that arrived
-      // with nothing in it.
-      if (result.silenced) 'silenced': true,
-      // Who said it, so the scene list can offer the voice a replacement.
-      'speaker': ?result.speaker,
-      // What it was read as, so the line can be heard again.
-      'wave': ?result.wavePath,
-    });
+    _events.add(
+      LineDubbed(
+        line: TranscriptEntry(
+          original: original,
+          english: result.english,
+          translated: result.translated,
+          latency: Duration(milliseconds: latencyMs),
+          // Shown as heard and passed over, rather than as a line that
+          // arrived with nothing in it.
+          silenced: result.silenced,
+          // Who said it, so the scene list can offer the voice a
+          // replacement.
+          speaker: result.speaker,
+          // What it was read as, so the line can be heard again.
+          spoken: result.wavePath,
+        ),
+        snapshot: snapshot,
+      ),
+    );
     // Which voice read it: the automatic choice can change it per phrase, so
     // the interface should not have to guess.
     if (result.voice.isNotEmpty && result.voice != _reportedVoice) {
       _reportedVoice = result.voice;
-      _events.add({'type': 'voice', 'name': result.voice});
+      _events.add(VoiceSpoken(result.voice));
     }
     // A new character joined the bank, so the count in the settings is stale.
     if (result.bankSize case final size? when size != _reportedBankSize) {
       _reportedBankSize = size;
-      _events.add({'type': 'voiceBank', 'size': size});
+      _events.add(VoiceBankGrew(size));
     }
     // A line that was already being translated when the pause came is shown
     // in the transcript, but the pause means quiet. A selection is the
@@ -1323,36 +1314,48 @@ class NativeEngineService {
   }
 }
 
-/// An event from the native queue in the shape the rest of the app reads.
+/// One event off the native queue as an [EngineEvent], or null for a kind
+/// this build has nothing to do with.
 ///
-/// Native capture reports trouble as `{"type":"error","message":...}`, a
-/// sentence in English, while the interface expects a [LoreDubFailure] under
-/// `failure`. Passed on as it came, the error arrived with no failure and
-/// cleared the banner instead of raising one.
-Map<String, Object?> fromNativeEvent(Map<String, Object?> event) {
-  // Windows has no text recognition for the language the text is read in.
-  if (event['type'] == 'ocrLanguageMissing') {
-    return {
-      'type': 'error',
-      'failure': LoreDubFailure(
-        FailureCode.ocrLanguageMissing,
-        detail: event['language'] as String?,
+/// This is the boundary: JSON is read here and nowhere above. Native
+/// capture reports trouble as `{"type":"error","message":...}`, a sentence
+/// in English, while the interface words a [LoreDubFailure] — passed on as
+/// it came, the error arrived with no failure and cleared the banner
+/// instead of raising one.
+///
+/// [session] is written onto a state event, because the native side reports
+/// what the capture is doing and nothing about who asked for it: the same
+/// state served whichever screen was listening, so the characters screen
+/// holding the worker showed a dubbing session on Live. A state with no
+/// session — the idle `ld_stop` announces — belongs to everyone.
+EngineEvent? fromNativeEvent(Map<String, Object?> event, {PipelineSession? session}) =>
+    switch (event['type']) {
+      'state' => SessionStateChanged(
+        status: switch (event['state']) {
+          'listening' => PipelineStatus.listening,
+          'starting' => PipelineStatus.starting,
+          _ => PipelineStatus.idle,
+        },
+        session: session,
       ),
+      'hotkey' => switch (HotkeyAction.named(event['action'])) {
+        final action? => HotkeyPressed(action),
+        // A key this build does not know: nothing to press.
+        null => null,
+      },
+      // Windows has no text recognition for the language the text is read in.
+      'ocrLanguageMissing' => EngineFailed(
+        LoreDubFailure(FailureCode.ocrLanguageMissing, detail: event['language'] as String?),
+      ),
+      // Windows refused a combination: another program already holds it.
+      'hotkeyTaken' => EngineFailed(
+        LoreDubFailure(FailureCode.hotkeyTaken, detail: event['action'] as String?),
+      ),
+      'error' => EngineFailed(
+        LoreDubFailure(FailureCode.captureFailed, detail: event['message'] as String?),
+      ),
+      _ => null,
     };
-  }
-  // Windows refused a combination: another program already holds it.
-  if (event['type'] == 'hotkeyTaken') {
-    return {
-      'type': 'error',
-      'failure': LoreDubFailure(FailureCode.hotkeyTaken, detail: event['action'] as String?),
-    };
-  }
-  if (event['type'] != 'error' || event['failure'] != null) return event;
-  return {
-    'type': 'error',
-    'failure': LoreDubFailure(FailureCode.captureFailed, detail: event['message'] as String?),
-  };
-}
 
 String readNativeUtf8String(
   NativeStringReader reader, {

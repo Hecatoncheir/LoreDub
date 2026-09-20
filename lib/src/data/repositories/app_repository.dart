@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../domain/engine_event.dart';
 import '../../domain/ocr_region.dart';
 import '../../domain/screen_reading.dart';
 import '../../domain/app_settings.dart';
@@ -121,7 +122,7 @@ class AppRepository {
 
   Future<PythonDiscoveryResult> findPythonExecutable() => _pythonDiscovery.find();
 
-  Stream<Map<String, Object?>> get events => _nativeEngine.events;
+  Stream<EngineEvent> get events => _nativeEngine.events;
   bool get processLoopbackSupported => _nativeEngine.processLoopbackSupported;
 
   Future<AppSettings> loadSettings() => _settingsService.load();

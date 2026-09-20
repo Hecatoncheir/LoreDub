@@ -13,8 +13,8 @@ import 'package:path/path.dart' as path;
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../domain/app_settings.dart';
-import '../../../domain/ocr_region.dart';
 import '../../../domain/compute_device.dart';
+import '../../../domain/engine_event.dart';
 import '../../../domain/failure.dart';
 import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
@@ -255,7 +255,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   final DownloadsCubit _downloads;
   final FailureSink _errors;
   final DateTime Function() _clock;
-  StreamSubscription<Map<String, Object?>>? _events;
+  StreamSubscription<EngineEvent>? _events;
 
   /// Ends the session another screen holds, so that starting one here takes
   /// the worker over rather than colliding with it. The characters screen is
@@ -652,35 +652,47 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   ///
   /// The switch only names the handler: each kind of event is a method of a
   /// few lines below, so reading one of them never means reading the rest.
-  void _handleEvent(Map<String, Object?> event) {
-    switch (event['type']) {
-      case 'state':
+  /// [EngineEvent] is sealed, so a kind nobody answers is named by the
+  /// analyzer rather than passed over at runtime.
+  void _handleEvent(EngineEvent event) {
+    switch (event) {
+      case SessionStateChanged():
         _onSessionState(event);
-      case 'transcript':
+      case LineDubbed():
         _onTranscript(event);
-      case 'sceneVoice':
+      case SceneVoiceHeard():
         _onSceneVoice(event);
-      case 'snapshotReading':
+      case SnapshotReading():
         emit(state.copyWith(snapshotReading: true, snapshotMissed: false));
-      case 'snapshot':
+      case SnapshotRead():
         _onSnapshot(event);
-      case 'subtitleFrame':
+      case SubtitleFrameMoved():
         _onSubtitleFrame(event);
-      case 'startup':
+      case StartupProgressed():
         _onStartup(event);
-      case 'language':
-        _onDetectedLanguage(event);
-      case 'voice':
-        _onSpokenVoice(event);
-      case 'voiceBank':
+      case LanguageDetected():
+        emit(
+          state.copyWith(
+            detectedLanguage: event.code,
+            clearDetectedLanguage: event.code == null,
+          ),
+        );
+      case VoiceSpoken():
+        emit(state.copyWith(spokenVoice: event.name, clearSpokenVoice: event.name == null));
+      case VoiceBankGrew():
         // The event carries this game's count; the settings show all games.
         unawaited(_settings.refreshVoiceBank());
-      case 'backend':
-        _onBackend(event);
-      case 'hotkey':
-        _onHotkey(event);
-      case 'error':
+      case BackendSettled():
+        emit(
+          state.copyWith(activeBackends: {...state.activeBackends, event.stage: event.backend}),
+        );
+      case HotkeyPressed():
+        _onHotkey(event.action);
+      case EngineFailed():
         _onError(event);
+      // The cast screen's, and nothing to this one.
+      case CharacterVoiceMeasured():
+        break;
     }
   }
 
@@ -690,8 +702,8 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// frame itself, so the picker on the screen shows where the reading
   /// moved to and the next session starts in the same place. A selection
   /// that missed the game's window changes nothing and says so.
-  void _onSubtitleFrame(Map<String, Object?> event) {
-    if (event['region'] case final OcrRegion region) {
+  void _onSubtitleFrame(SubtitleFrameMoved event) {
+    if (event.region case final region?) {
       emit(state.copyWith(frameMissed: false));
       unawaited(_settings.update(_settings.settings.copyWith(ocrRegion: region)));
       return;
@@ -700,18 +712,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }
 
   /// The engine has started, come up or come to rest.
-  void _onSessionState(Map<String, Object?> event) {
+  void _onSessionState(SessionStateChanged event) {
     // The engine serves the characters screen in its turn, and that session
     // is not this screen's to show. An event naming no session is the engine
     // coming to rest, which ends whatever was running.
-    if (event['session'] case final String session when session != state.session.name) {
-      return;
-    }
-    final status = switch (event['state']) {
-      'ready' || 'listening' => PipelineStatus.listening,
-      'starting' => PipelineStatus.starting,
-      _ => PipelineStatus.idle,
-    };
+    if (!event.concerns(state.session)) return;
+    final status = event.status;
     emit(
       state.copyWith(
         status: status,
@@ -722,19 +728,11 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }
 
   /// One dubbed line, from the capture or from a selection.
-  void _onTranscript(Map<String, Object?> event) {
-    final entry = TranscriptEntry(
-      original: event['original'] as String? ?? '',
-      english: event['english'] as String? ?? '',
-      translated: event['translated'] as String? ?? '',
-      latency: Duration(milliseconds: event['latencyMs'] as int? ?? 0),
-      speaker: event['speaker'] as String?,
-      silenced: event['silenced'] == true,
-      spoken: event['wave'] as String?,
-    );
+  void _onTranscript(LineDubbed event) {
+    final entry = event.line;
     // A selection answers the player's request, not the running capture, so
     // it has a list of its own.
-    if (event['snapshot'] == true) {
+    if (event.snapshot) {
       emit(
         state.copyWith(
           snapshots: [entry, ...state.snapshots.take(LivePipelineState.linesKept - 1)],
@@ -755,59 +753,31 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }
 
   /// A voice placed before the dubbing runs: no words, only who spoke.
-  void _onSceneVoice(Map<String, Object?> event) {
-    emit(
-      state.copyWith(
-        speakers: _withSpeaker(
-          event['speaker'] as String?,
-          seconds: (event['seconds'] as num?)?.toDouble() ?? 0,
-        ),
-      ),
-    );
+  void _onSceneVoice(SceneVoiceHeard event) {
+    emit(state.copyWith(speakers: _withSpeaker(event.speaker, seconds: event.seconds)));
   }
 
   /// What the screen selection was read as, or that nothing was read.
-  void _onSnapshot(Map<String, Object?> event) {
+  void _onSnapshot(SnapshotRead event) {
     // Text that was found stays in reading until its translation lands.
-    if ((event['text'] as String? ?? '').isNotEmpty) return;
-    emit(state.copyWith(snapshotReading: false, snapshotMissed: event['failed'] != true));
+    if (event.text.isNotEmpty) return;
+    emit(state.copyWith(snapshotReading: false, snapshotMissed: !event.failed));
   }
 
   /// How far the worker is through its startup.
-  void _onStartup(Map<String, Object?> event) {
+  void _onStartup(StartupProgressed event) {
     emit(
       state.copyWith(
-        startupProgress: (event['value'] as num?)?.toDouble(),
-        clearStartupProgress: event['value'] == null,
-        startupStage: event['stage'] as String? ?? '',
+        startupProgress: event.value,
+        clearStartupProgress: event.value == null,
+        startupStage: event.stage,
       ),
     );
   }
 
-  /// The language whisper settled on, once it has settled on one.
-  void _onDetectedLanguage(Map<String, Object?> event) {
-    final code = event['code'] as String?;
-    emit(state.copyWith(detectedLanguage: code, clearDetectedLanguage: code == null));
-  }
-
-  /// The voice the last line was read in.
-  void _onSpokenVoice(Map<String, Object?> event) {
-    final name = event['name'] as String?;
-    emit(state.copyWith(spokenVoice: name, clearSpokenVoice: name == null));
-  }
-
-  /// Where a stage actually ended up running, which is not always what it
-  /// was asked for. A stage or a backend this build does not know is left.
-  void _onBackend(Map<String, Object?> event) {
-    final stage = _valueNamed(ComputeStage.values, event['stage']);
-    final backend = _valueNamed(ComputeBackend.values, event['backend']);
-    if (stage == null || backend == null) return;
-    emit(state.copyWith(activeBackends: {...state.activeBackends, stage: backend}));
-  }
-
   /// A system-wide combination, pressed from inside the game.
-  void _onHotkey(Map<String, Object?> event) {
-    switch (HotkeyAction.named(event['action'])) {
+  void _onHotkey(HotkeyAction action) {
+    switch (action) {
       case HotkeyAction.pause:
         unawaited(pause());
       case HotkeyAction.resume:
@@ -815,7 +785,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       case HotkeyAction.frameOverlay:
         unawaited(_toggleFrameOverlay());
       // Held rather than pressed: the native side answers them itself.
-      case HotkeyAction.snapshot || HotkeyAction.frame || null:
+      case HotkeyAction.snapshot || HotkeyAction.frame:
         break;
     }
   }
@@ -905,18 +875,10 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// used to leave it stuck: neither startable nor stoppable. An event
   /// without a failure has nothing to show, and reporting null would clear a
   /// banner raised a moment earlier.
-  void _onError(Map<String, Object?> event) {
+  void _onError(EngineFailed event) {
     // Whatever failed, a selection still waiting will not be answered.
     if (state.snapshotReading) emit(state.copyWith(snapshotReading: false));
-    if (event['failure'] case final failure?) _errors.report(failure);
-  }
-
-  /// The enum value written as [name], or null when nothing is.
-  static T? _valueNamed<T extends Enum>(List<T> values, Object? name) {
-    for (final value in values) {
-      if (value.name == name) return value;
-    }
-    return null;
+    _errors.report(event.failure);
   }
 
   /// Stages a state a widget test wants to render without starting anything.
