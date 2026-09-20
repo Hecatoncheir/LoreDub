@@ -15,6 +15,7 @@
 /// other and nothing above them has to hold the rule together.
 class SessionCoordinator {
   bool Function() _dubbingRuns = _never;
+  bool Function() _castHolds = _never;
   Future<void> Function() _endCastSession = _nothing;
 
   /// The dubbing screens say how to tell whether one of their sessions is
@@ -22,8 +23,15 @@ class SessionCoordinator {
   set dubbing(bool Function() running) => _dubbingRuns = running;
 
   /// The cast screen says how its session ends, for when the worker is
-  /// taken from it.
+  /// taken from it, and whether it is holding one at all -- a recording,
+  /// or a worker still loaded from a sample.
   set cast(Future<void> Function() end) => _endCastSession = end;
+  set castHolds(bool Function() holding) => _castHolds = holding;
+
+  /// Whether any screen is holding the engine. Asked before the
+  /// application closes for an update: the game must not be left turned
+  /// down, and no worker may still hold the files the setup replaces.
+  bool get anyRuns => _dubbingRuns() || _castHolds();
 
   /// Whether a dubbing session holds the worker.
   bool get dubbingRuns => _dubbingRuns();

@@ -10,7 +10,6 @@ import '../../../data/repositories/model_repository.dart';
 import '../../../data/repositories/runtime_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/update_repository.dart';
-import '../../../domain/engine_event.dart';
 import '../../../domain/failure.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/session_coordinator.dart';
@@ -35,8 +34,8 @@ class DashboardCubits {
     RuntimeRepository runtimeRepository,
     UpdateRepository updateRepository,
   ) : _appRepository = appRepository,
-      _settingsRepository = settingsRepository,
-      shell = ShellCubit(updateRepository, settingsRepository) {
+      _settingsRepository = settingsRepository {
+    shell = ShellCubit(updateRepository, settingsRepository, appRepository, sessions);
     // One engine holds one session. Each screen registers its own half of
     // that with the coordinator, so neither knows the other and this bag
     // does not hold the rule together.
@@ -68,13 +67,6 @@ class DashboardCubits {
     );
     glossary = GlossaryCubit(appRepository, shell);
     graph = PipelineGraphBloc(appRepository, settingsRepository, cast, pipeline, shell);
-    // Closing for an update must not leave the game turned down, or the
-    // worker of either screen still holding the files the setup replaces.
-    shell.beforeRestart = () async {
-      if (pipeline.state.running || characters.state.running || characters.state.previewReady) {
-        await appRepository.stop();
-      }
-    };
   }
 
   final AppRepository _appRepository;
@@ -82,7 +74,7 @@ class DashboardCubits {
 
   /// What the player configured, published for whoever follows it.
   SettingsRepository get settingsRepository => _settingsRepository;
-  final ShellCubit shell;
+  late final ShellCubit shell;
 
   /// Which screen may hold the one worker. Each of the two registers its
   /// own half here, so neither knows the other.
@@ -110,26 +102,19 @@ class DashboardCubits {
   /// replayed and undone.
   late final PipelineGraphBloc graph;
 
-  /// The session events reach both the pipeline and the characters screen:
-  /// each holds the worker in its turn, and only one of them at a time.
-  StreamSubscription<EngineEvent>? _events;
-
   /// What the settings and the installed packages together decided.
   ModelSelection get selection =>
       ModelSelection(models: downloads.state.models, settings: settings.settings);
 
   Future<void> initialize() async {
     pipeline.listen();
-    _events = _appRepository.events.listen(characters.handleEvent);
     try {
       final graphics = _appRepository.probeGraphics();
-      // The settings first and alone: the glossary is only offered the
-      // packs LoreDub brings when the dubbing is into the language they
-      // are written in, and it reads that off the repository. Loaded
-      // beside it, the two raced and a player dubbing into another
-      // language could be handed a hundred Russian readings.
-      await settings.load();
+      // No order between them. Whoever needs the settings first awaits
+      // the one read of them -- the glossary does, for the language its
+      // built-in packs are written in.
       await Future.wait([
+        settings.load(),
         pipeline.loadProcesses(),
         downloads.load(),
         characters.load(),
@@ -150,7 +135,6 @@ class DashboardCubits {
   }
 
   Future<void> dispose() async {
-    await _events?.cancel();
     await graph.close();
     await glossary.close();
     await characters.close();

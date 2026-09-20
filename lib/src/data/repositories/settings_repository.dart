@@ -48,12 +48,14 @@ class SettingsRepository {
   /// read.
   Stream<AppSettings> get changes => _changes.stream;
 
-  /// Reads what was stored. Answers with it as well as publishing it, for
-  /// a caller that wants to know the load is done.
-  Future<AppSettings> load() async {
-    _publish(await _service.load());
-    return _settings;
-  }
+  /// Reads what was stored, once.
+  ///
+  /// Whoever needs the settings before doing their own work awaits this
+  /// rather than relying on being started after whoever else reads them.
+  /// The glossary does: which built-in packs it is offered depends on the
+  /// dubbing language, so loaded beside the settings the two raced. Asked
+  /// again, it answers with the read already in flight or already done —
+  /// the file is read once whoever asks first.
 
   /// Publishes [value] at once and writes it behind that: what the player
   /// just did should be on screen before the disk has heard about it.
@@ -66,8 +68,21 @@ class SettingsRepository {
   ///
   /// What `SettingsCubit.seed` stages through, so a test arranging the
   /// settings a screen is drawn from arranges them where everything reads
-  /// them rather than in one cubit's own state.
-  void seed(AppSettings value) => _publish(value);
+  /// them rather than in one cubit's own state. Staged settings count as
+  /// read: nothing goes to the disk afterwards and puts them back.
+  void seed(AppSettings value) {
+    _publish(value);
+    _loading = Future.value(value);
+  }
+
+  Future<AppSettings>? _loading;
+
+  Future<AppSettings> load() => _loading ??= _read();
+
+  Future<AppSettings> _read() async {
+    _publish(await _service.load());
+    return _settings;
+  }
 
   void _publish(AppSettings value) {
     _settings = value;

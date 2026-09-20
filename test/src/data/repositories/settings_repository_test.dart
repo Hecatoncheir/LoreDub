@@ -44,6 +44,29 @@ void main() {
     expect((await SettingsService().load()).cpuThreads, 3, reason: 'and stored after');
   });
 
+  test('reads the file once, whoever asks first', () async {
+    // The glossary awaits the settings for the language its built-in
+    // packs are written in, and so may anyone else; asked again, the read
+    // already in flight is what they get rather than a second one.
+    SharedPreferences.setMockInitialValues({'cpuThreads': 5});
+    final repository = SettingsRepository(SettingsService());
+
+    final both = await Future.wait([repository.load(), repository.load()]);
+
+    expect(both.first, same(both.last));
+    expect(repository.settings.cpuThreads, 5);
+  });
+
+  test('staged settings count as read, so no disk puts them back', () async {
+    SharedPreferences.setMockInitialValues({'cpuThreads': 9});
+    final repository = SettingsRepository(SettingsService());
+
+    repository.seed(const AppSettings(cpuThreads: 2));
+
+    expect((await repository.load()).cpuThreads, 2);
+    expect(repository.settings.cpuThreads, 2);
+  });
+
   test('a listener that came late is told the next change, not the last', () async {
     SharedPreferences.setMockInitialValues({});
     final repository = SettingsRepository(SettingsService());

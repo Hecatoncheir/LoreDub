@@ -8,7 +8,9 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
+import '../../../domain/session_coordinator.dart';
 import '../../../data/repositories/update_repository.dart';
 import '../../../data/services/update_service.dart';
 import '../../../domain/app_release.dart';
@@ -83,7 +85,8 @@ class ShellState extends Equatable {
 }
 
 class ShellCubit extends Cubit<ShellState> implements FailureSink {
-  ShellCubit(this._updateRepository, this._settings) : super(const ShellState());
+  ShellCubit(this._updateRepository, this._settings, this._app, this._sessions)
+    : super(const ShellState());
 
   final UpdateRepository _updateRepository;
 
@@ -91,10 +94,10 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
   /// proxy the check goes through. Both are read off the repository rather
   /// than handed over by whoever built the screens.
   final SettingsRepository _settings;
+  final AppRepository _app;
 
-  /// Run before the application closes for an update, so dubbing stops and
-  /// the game's volume comes back rather than staying turned down.
-  Future<void> Function()? beforeRestart;
+  /// Who is holding the engine, asked before closing for an update.
+  final SessionCoordinator _sessions;
 
   @override
   void report(Object? error) {
@@ -230,7 +233,9 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
     final setup = state.updates.installerPath;
     if (setup == null) return;
     try {
-      await beforeRestart?.call();
+      // Closing must not leave the game turned down, or the worker of
+      // either screen still holding the files the setup replaces.
+      if (_sessions.anyRuns) await _app.stop();
       await _updateRepository.restartInto(setup);
     } catch (exception) {
       report(exception);

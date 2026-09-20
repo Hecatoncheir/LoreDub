@@ -206,6 +206,10 @@ class CharactersCubit extends Cubit<CharactersState> {
        _ids = IdSource(clock: clock),
        super(const CharactersState()) {
     _sessions.cast = stopSession;
+    _sessions.castHolds = () => state.running || state.previewReady;
+    // One engine serves every screen in turn and the same stream reaches
+    // them all; this screen picks its own out of it.
+    _engine = _appRepository.events.listen(handleEvent);
     // The canvas works on the same cards, through the same repository, so
     // a substitution drawn there shows up here without either screen
     // knowing about the other.
@@ -228,6 +232,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   final CastRepository _cast;
   final DateTime Function() _clock;
   StreamSubscription<CharacterLibrary>? _written;
+  StreamSubscription<EngineEvent>? _engine;
   final IdSource _ids;
 
   /// Whether one of the dubbing screens holds the worker.
@@ -850,6 +855,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   @override
   Future<void> close() async {
     await _written?.cancel();
+    await _engine?.cancel();
     return super.close();
   }
 }

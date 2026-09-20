@@ -74,10 +74,11 @@ class AppRepository {
   /// first — which is why the first load reads them before anything else.
   Future<Glossary> loadGlossary() async {
     final kept = await _glossary.load();
-    // What the settings are, rather than what the file says: they are read
-    // and published in one place, and reading the disk again here meant
-    // two owners of one file.
-    if (_settings.settings.targetLanguage != builtInGlossaryLanguage) return kept;
+    // The settings themselves rather than the file they came from: one
+    // owner, one read. Awaited rather than read off the field, so this
+    // does not depend on having been started after whoever loads them.
+    final settings = await _settings.load();
+    if (settings.targetLanguage != builtInGlossaryLanguage) return kept;
     final offered = await _glossary.withBuiltIn(kept, builtInGlossary());
     if (!identical(offered, kept)) await _glossary.save(offered);
     return offered;
