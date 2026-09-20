@@ -675,7 +675,7 @@ class _FixedModelRepository extends ModelRepository {
 }
 
 class _CastRepository extends AppRepository {
-  _CastRepository() : super(NativeEngineService(), SettingsService());
+  _CastRepository() : super(NativeEngineService(), SettingsRepository(SettingsService()));
 
   CharacterLibrary stored = CharacterLibrary.empty;
   CharacterLibrary incoming = CharacterLibrary.empty;

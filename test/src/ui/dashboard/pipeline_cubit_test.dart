@@ -711,7 +711,7 @@ void main() {
 /// Marian and Silero — unless it is stopped, which fails it the way the real
 /// one fails a start still on its way.
 class _SlowStartRepository extends AppRepository {
-  _SlowStartRepository() : super(NativeEngineService(), SettingsService());
+  _SlowStartRepository() : super(NativeEngineService(), SettingsRepository(SettingsService()));
 
   final _events = StreamController<EngineEvent>.broadcast();
   Completer<void>? _starting;

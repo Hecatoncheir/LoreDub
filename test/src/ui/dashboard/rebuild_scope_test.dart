@@ -66,7 +66,7 @@ void main() {
   }) async {
     SharedPreferences.setMockInitialValues({});
     final cubits = DashboardCubits(
-      AppRepository(NativeEngineService(), SettingsService()),
+      AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),

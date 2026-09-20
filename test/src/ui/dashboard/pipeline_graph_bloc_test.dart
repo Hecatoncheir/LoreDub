@@ -883,7 +883,7 @@ Future<void> pumpEvents() => Future<void>.delayed(Duration.zero);
 /// An application repository with no disk behind it: the cast and the
 /// arrangement are kept in memory.
 class _GraphRepository extends AppRepository {
-  _GraphRepository() : super(NativeEngineService(), SettingsService());
+  _GraphRepository() : super(NativeEngineService(), SettingsRepository(SettingsService()));
 
   CharacterLibrary stored = CharacterLibrary.empty;
   PipelineLayout layout = PipelineLayout.standard;

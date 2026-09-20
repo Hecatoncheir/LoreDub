@@ -39,7 +39,7 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
   /// One settings file, read and published in one place: everything
   /// that follows a setting listens here rather than being told.
   final settingsRepository = SettingsRepository(SettingsService());
-  final appRepository = AppRepository(NativeEngineService(), SettingsService());
+  late final appRepository = AppRepository(NativeEngineService(), settingsRepository);
   final modelRepository = ModelRepository(ModelStorageService());
   final runtimeRepository = RuntimeRepository(RuntimeStorageService());
   final updateRepository = UpdateRepository(UpdateService(), NotificationService());

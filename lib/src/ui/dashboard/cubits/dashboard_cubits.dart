@@ -106,8 +106,13 @@ class DashboardCubits {
     _events = _appRepository.events.listen(characters.handleEvent);
     try {
       final graphics = _appRepository.probeGraphics();
+      // The settings first and alone: the glossary is only offered the
+      // packs LoreDub brings when the dubbing is into the language they
+      // are written in, and it reads that off the repository. Loaded
+      // beside it, the two raced and a player dubbing into another
+      // language could be handed a hundred Russian readings.
+      await settings.load();
       await Future.wait([
-        settings.load(),
         pipeline.loadProcesses(),
         downloads.load(),
         characters.load(),

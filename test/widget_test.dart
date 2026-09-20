@@ -64,7 +64,7 @@ void main() {
   DashboardCubits buildCubits({RuntimeRepository? runtimes}) {
     SharedPreferences.setMockInitialValues({});
     final cubits = DashboardCubits(
-      AppRepository(NativeEngineService(), SettingsService()),
+      AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       runtimes ?? RuntimeRepository(RuntimeStorageService()),
@@ -1963,7 +1963,7 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         updates = _FakeUpdateRepository();
         final cubits = DashboardCubits(
-          AppRepository(NativeEngineService(), SettingsService()),
+          AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
           SettingsRepository(SettingsService()),
           ModelRepository(ModelStorageService()),
           RuntimeRepository(RuntimeStorageService()),

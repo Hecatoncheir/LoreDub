@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/l10n/app_localizations.dart';
+import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
@@ -61,7 +62,7 @@ class _Failures implements FailureSink {
 }
 
 class _GlossaryRepository extends AppRepository {
-  _GlossaryRepository() : super(NativeEngineService(), SettingsService());
+  _GlossaryRepository() : super(NativeEngineService(), SettingsRepository(SettingsService()));
 
   List<String> read = const [];
 

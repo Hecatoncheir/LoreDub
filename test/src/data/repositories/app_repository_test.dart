@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/screen_reading.dart';
+import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/services/character_service.dart';
 import 'package:lore_dub/src/data/services/glossary_service.dart';
@@ -29,7 +30,7 @@ void main() {
     glossary = _SlowGlossary();
     repository = AppRepository(
       engine,
-      SettingsService(),
+      SettingsRepository(SettingsService()),
       null,
       null,
       _Characters(),

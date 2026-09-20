@@ -13,6 +13,7 @@ import '../../domain/game_process.dart';
 import '../../domain/glossary.dart';
 import '../../domain/pipeline_graph.dart';
 import '../../domain/saved_pipeline.dart';
+import 'settings_repository.dart';
 import '../services/character_service.dart';
 import '../services/glossary_catalog.dart';
 import '../services/glossary_service.dart';
@@ -20,13 +21,12 @@ import '../services/native_engine_service.dart';
 import '../services/pipeline_graph_service.dart';
 import '../services/pipeline_library_service.dart';
 import '../services/python_discovery.dart';
-import '../services/settings_service.dart';
 import '../services/voice_bank_service.dart';
 
 class AppRepository {
   AppRepository(
     this._nativeEngine,
-    this._settingsService, [
+    this._settings, [
     PythonDiscovery? pythonDiscovery,
     VoiceBankService? voiceBank,
     CharacterService? characters,
@@ -41,7 +41,7 @@ class AppRepository {
        _pipelines = pipelines ?? PipelineLibraryService();
 
   final NativeEngineService _nativeEngine;
-  final SettingsService _settingsService;
+  final SettingsRepository _settings;
   final PythonDiscovery _pythonDiscovery;
   final VoiceBankService _voiceBank;
   final CharacterService _characters;
@@ -69,10 +69,15 @@ class AppRepository {
   /// player dubbing into German is not offered a hundred Russian readings,
   /// and is offered them if they ever switch: nothing is marked as offered
   /// until it actually has been.
+  ///
+  /// Read off the settings as they stand, so they have to have been loaded
+  /// first — which is why the first load reads them before anything else.
   Future<Glossary> loadGlossary() async {
     final kept = await _glossary.load();
-    final settings = await _settingsService.load();
-    if (settings.targetLanguage != builtInGlossaryLanguage) return kept;
+    // What the settings are, rather than what the file says: they are read
+    // and published in one place, and reading the disk again here meant
+    // two owners of one file.
+    if (_settings.settings.targetLanguage != builtInGlossaryLanguage) return kept;
     final offered = await _glossary.withBuiltIn(kept, builtInGlossary());
     if (!identical(offered, kept)) await _glossary.save(offered);
     return offered;
