@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import '../../../data/repositories/app_repository.dart';
+import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../data/repositories/runtime_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
@@ -39,12 +40,19 @@ class DashboardCubits {
     // that with the coordinator, so neither knows the other and this bag
     // does not hold the rule together.
     settings = SettingsCubit(appRepository, settingsRepository, shell);
-    downloads = DownloadsCubit(modelRepository, runtimeRepository, settingsRepository, shell);
+    installed = InstallRepository(modelRepository, runtimeRepository);
+    downloads = DownloadsCubit(
+      modelRepository,
+      runtimeRepository,
+      installed,
+      settingsRepository,
+      shell,
+    );
     pipeline = PipelineCubit(
       appRepository,
       modelRepository,
       settingsRepository,
-      downloads,
+      installed,
       shell,
       sessions,
     );
@@ -52,7 +60,7 @@ class DashboardCubits {
       appRepository,
       modelRepository,
       settingsRepository,
-      downloads,
+      installed,
       shell,
       sessions,
     );
@@ -79,6 +87,10 @@ class DashboardCubits {
   final sessions = SessionCoordinator();
   late final SettingsCubit settings;
   late final DownloadsCubit downloads;
+
+  /// What is on disk and what the machine can run it on, read once and
+  /// told to everyone who cares.
+  late final InstallRepository installed;
   late final PipelineCubit pipeline;
   late final CharactersCubit characters;
 

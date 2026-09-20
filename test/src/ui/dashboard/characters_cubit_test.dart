@@ -82,7 +82,7 @@ void main() {
       // unit test does not have.
       _FixedModelRepository(),
       cubits.settingsRepository,
-      cubits.downloads,
+      cubits.installed,
       cubits.shell,
       sessions,
     );

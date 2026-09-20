@@ -114,7 +114,7 @@ void main() {
       repository,
       _FixedModelRepository(),
       cubits.settingsRepository,
-      cubits.downloads,
+      cubits.installed,
       cubits.shell,
       cubits.sessions,
       clock: () => now,

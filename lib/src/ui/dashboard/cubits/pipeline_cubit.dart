@@ -10,6 +10,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../domain/app_settings.dart';
@@ -21,7 +22,6 @@ import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
 import '../../../domain/session_coordinator.dart';
-import 'downloads_cubit.dart';
 import '../../../data/repositories/settings_repository.dart';
 import 'shell_cubit.dart';
 
@@ -262,7 +262,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   final AppRepository _appRepository;
   final ModelRepository _modelRepository;
   final SettingsRepository _settings;
-  final DownloadsCubit _downloads;
+  final InstallRepository _downloads;
   final FailureSink _errors;
   final SessionCoordinator _sessions;
   final DateTime Function() _clock;
@@ -277,7 +277,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// What the settings and the downloads together say a session will use.
   /// Read from the graph as well, which asks it what a link would change.
   ModelSelection get selection =>
-      ModelSelection(models: _downloads.state.models, settings: _settings.settings);
+      ModelSelection(models: _downloads.parts.models, settings: _settings.settings);
 
   void listen() => _events = _appRepository.events.listen(_handleEvent);
 
@@ -374,7 +374,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         translationBackend: _backendFor(ComputeStage.translation),
         speechBackend: _backendFor(ComputeStage.speech),
         voiceConversionBackend: _backendFor(ComputeStage.voiceConversion),
-        runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+        runtimeDirectory: _downloads.parts.runtimeDirectory,
         // Kept per game, so one game's cast does not answer for another's.
         voiceBank: selection.keepsVoiceBank
             ? await _appRepository.voiceBankFileFor(state.selectedProcess?.name ?? '')
@@ -434,7 +434,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
 
   /// Where [stage] runs, given what this machine turned out to have.
   ComputeBackend _backendFor(ComputeStage stage) =>
-      _settings.settings.backendFor(stage, _downloads.state.availability);
+      _settings.settings.backendFor(stage, _downloads.parts.availability);
 
   /// Starts or ends a session of the Screen page, reading what [reading]
   /// says: the frame, the key, or both.
@@ -511,7 +511,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         translationBackend: _backendFor(ComputeStage.translation),
         speechBackend: _backendFor(ComputeStage.speech),
         converterBackend: _backendFor(ComputeStage.voiceConversion),
-        runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+        runtimeDirectory: _downloads.parts.runtimeDirectory,
       );
     } catch (exception) {
       _onStartFailed(exception);
@@ -558,7 +558,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
           selection.voiceConverter!.model,
         ),
         converterBackend: _backendFor(ComputeStage.voiceConversion),
-        runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+        runtimeDirectory: _downloads.parts.runtimeDirectory,
         // The same bank the dubbing session reads, so a voice met now is
         // the same voice then.
         voiceBank: await _appRepository.voiceBankFileFor(_game),

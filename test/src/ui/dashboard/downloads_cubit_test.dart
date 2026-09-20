@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lore_dub/src/data/repositories/install_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
@@ -22,6 +23,7 @@ void main() {
 
   late _HeldModels models;
   late DownloadsCubit downloads;
+  late InstallRepository installed;
   late _Banner banner;
 
   /// The first package of the catalogue, which the tests fetch.
@@ -31,9 +33,12 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     models = _HeldModels();
     banner = _Banner();
+    final runtimes = _NoRuntimes();
+    installed = InstallRepository(models, runtimes);
     downloads = DownloadsCubit(
       models,
-      _NoRuntimes(),
+      runtimes,
+      installed,
       SettingsRepository(SettingsService()),
       banner,
     );
@@ -115,6 +120,43 @@ void main() {
     expect(models.asked, 1);
     models.finish(DownloadOutcome.completed);
     await fetching;
+  });
+
+  test('a model that lands is on disk for every screen, not only this one', () async {
+    expect(
+      installed.parts.models.firstWhere((row) => row.model.id == first.id).installed,
+      isFalse,
+    );
+
+    final fetching = downloads.installModel(rowFor(first.id));
+    await pumpEventQueue();
+    models.finish(DownloadOutcome.completed);
+    await fetching;
+
+    // What the dubbing screens and the cast screen read: they ask the
+    // repository, not this cubit.
+    expect(
+      installed.parts.models.firstWhere((row) => row.model.id == first.id).installed,
+      isTrue,
+    );
+  });
+
+  test('a model thrown away is gone for every screen too', () async {
+    installed.seed(
+      InstalledParts(
+        models: [
+          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
+        ],
+      ),
+    );
+    await downloads.load();
+
+    await downloads.removeModel(rowFor(first.id));
+
+    expect(
+      installed.parts.models.firstWhere((row) => row.model.id == first.id).installed,
+      isFalse,
+    );
   });
 
   test('a failure is written on the row rather than raised to the banner', () async {

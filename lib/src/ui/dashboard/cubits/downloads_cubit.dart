@@ -9,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/services/artifact_downloader.dart';
+import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../data/repositories/runtime_repository.dart';
 import '../../../domain/compute_device.dart';
@@ -150,54 +151,67 @@ class DownloadsState extends Equatable {
 }
 
 class DownloadsCubit extends Cubit<DownloadsState> {
-  DownloadsCubit(this._modelRepository, this._runtimeRepository, this._settings, this._errors)
-    : super(const DownloadsState());
+  DownloadsCubit(
+    this._modelRepository,
+    this._runtimeRepository,
+    this._installed,
+    this._settings,
+    this._errors,
+  ) : super(const DownloadsState()) {
+    // What is on disk is read and published once, for everyone; this
+    // screen lays its own rows over it, with the progress of whatever is
+    // arriving.
+    _parts = _installed.changes.listen(_followInstalled);
+  }
 
   final ModelRepository _modelRepository;
   final RuntimeRepository _runtimeRepository;
+  final InstallRepository _installed;
   final SettingsRepository _settings;
   final FailureSink _errors;
+  StreamSubscription<InstalledParts>? _parts;
 
   /// The handle on each running download, by package id, so the interface
   /// can pause or cancel the one it is showing.
   final _controls = <String, DownloadControl>{};
 
+  /// Both of these take what they asked for on the spot rather than
+  /// waiting for the stream to bring it round: a caller that awaited the
+  /// read means the rows to be there when it returns, and a broadcast
+  /// stream hands its value over a microtask later.
   Future<void> load() async {
-    final values = await Future.wait<Object>([
-      _modelRepository.loadStates(),
-      _modelRepository.rootDirectory(),
-      _runtimeRepository.rootDirectory(),
-    ]);
-    if (isClosed) return;
-    emit(
-      state.copyWith(
-        models: values[0] as List<ModelInstallState>,
-        modelDirectoryPath: values[1] as String,
-        runtimeDirectoryPath: values[2] as String,
-      ),
-    );
+    await _installed.load();
+    _followInstalled(_installed.parts);
   }
 
-  /// Rereads what the machine offers. The hardware half is asked for only
-  /// when it is not already known: adapters do not appear mid-session, while
-  /// a runtime download finishing is exactly what changes here.
   Future<void> refreshAvailability({ComputeAvailability? probe}) async {
-    final hardware = probe ?? state.availability;
-    final installed = await _runtimeRepository.installedIds();
+    await _installed.refreshAvailability(probe: probe);
+    _followInstalled(_installed.parts);
+  }
+
+  /// What was read off disk, with whatever is arriving kept as it was: a
+  /// download that is paused or still running keeps its progress, since
+  /// rereading the list must not lose where it got to.
+  void _followInstalled(InstalledParts parts) {
     if (isClosed) return;
+    final runtimes = parts.availability.installedRuntimes;
     emit(
       state.copyWith(
-        availability: hardware.copyWith(installedRuntimes: installed),
+        models: [
+          for (final read in parts.models)
+            _modelWithId(read.model.id)?.copyWith(installed: read.installed) ?? read,
+        ],
         runtimes: [
           for (final package in _runtimeRepository.catalog)
-            // A download that is paused or still running keeps its progress:
-            // rebuilding the list must not lose where it got to.
-            state.runtimeWithId(package.id)?.copyWith(installed: installed.contains(package.id)) ??
+            state.runtimeWithId(package.id)?.copyWith(installed: runtimes.contains(package.id)) ??
                 RuntimeInstallState(
                   package: package,
-                  installed: installed.contains(package.id),
+                  installed: runtimes.contains(package.id),
                 ),
         ],
+        availability: parts.availability,
+        modelDirectoryPath: parts.modelDirectory,
+        runtimeDirectoryPath: parts.runtimeDirectory,
       ),
     );
   }
@@ -211,6 +225,12 @@ class DownloadsCubit extends Cubit<DownloadsState> {
       proxyUrl: _settings.settings.modelProxyUrl,
       control: control,
       onProgress: onProgress,
+    ),
+    // A model that has landed is on disk for everyone, not only for the
+    // screen that fetched it.
+    afterwards: () async => _installed.modelSettled(
+      install.model.id,
+      installed: _modelWithId(install.model.id)?.installed ?? false,
     ),
   );
 
@@ -292,6 +312,7 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     try {
       await _modelRepository.remove(install.model);
       _changeModel(id, (row) => row.copyWith(installed: false, clearError: true));
+      _installed.modelSettled(id, installed: false);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -383,6 +404,29 @@ class DownloadsCubit extends Cubit<DownloadsState> {
   }
 
   /// Stages a state a widget test wants to render without touching disk.
+  ///
+  /// What is on disk goes to the repository as well: everything that asks
+  /// what is installed asks there, and a test that staged only this cubit
+  /// drew a screen full of packages over a pipeline that had none.
   @visibleForTesting
-  void seed(DownloadsState value) => emit(value);
+  void seed(DownloadsState value) {
+    emit(value);
+    _installed.seed(
+      InstalledParts(
+        models: [
+          for (final install in value.models)
+            ModelInstallState(model: install.model, installed: install.installed),
+        ],
+        availability: value.availability,
+        modelDirectory: value.modelDirectoryPath,
+        runtimeDirectory: value.runtimeDirectoryPath,
+      ),
+    );
+  }
+
+  @override
+  Future<void> close() async {
+    await _parts?.cancel();
+    return super.close();
+  }
 }

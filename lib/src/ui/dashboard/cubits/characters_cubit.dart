@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
@@ -23,7 +24,6 @@ import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
 import '../../../domain/session_coordinator.dart';
 import '../../../domain/voice_sample.dart';
-import 'downloads_cubit.dart';
 import 'shell_cubit.dart';
 
 /// What a card's record button does when pressed.
@@ -213,7 +213,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   final AppRepository _appRepository;
   final ModelRepository _modelRepository;
   final SettingsRepository _settings;
-  final DownloadsCubit _downloads;
+  final InstallRepository _downloads;
   final FailureSink _errors;
   final SessionCoordinator _sessions;
   final DateTime Function() _clock;
@@ -239,7 +239,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   String? _heardClip;
 
   ModelSelection get _selection =>
-      ModelSelection(models: _downloads.state.models, settings: _settings.settings);
+      ModelSelection(models: _downloads.parts.models, settings: _settings.settings);
 
   /// Whether a voice can be recorded at all: the converter is what measures
   /// one, and it is downloaded on the models screen.
@@ -446,9 +446,9 @@ class CharactersCubit extends Cubit<CharactersState> {
         ),
         converterBackend: settings.backendFor(
           ComputeStage.voiceConversion,
-          _downloads.state.availability,
+          _downloads.parts.availability,
         ),
-        runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+        runtimeDirectory: _downloads.parts.runtimeDirectory,
       );
     } catch (exception) {
       // The button that starts the session also stops one still starting,
@@ -665,9 +665,9 @@ class CharactersCubit extends Cubit<CharactersState> {
       converterDirectory: await _modelRepository.directoryFor(_selection.voiceConverter!.model),
       converterBackend: settings.backendFor(
         ComputeStage.voiceConversion,
-        _downloads.state.availability,
+        _downloads.parts.availability,
       ),
-      runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+      runtimeDirectory: _downloads.parts.runtimeDirectory,
     );
   }
 
@@ -777,13 +777,13 @@ class CharactersCubit extends Cubit<CharactersState> {
       speaker: selection.voice,
       speechBackend: _settings.settings.backendFor(
         ComputeStage.speech,
-        _downloads.state.availability,
+        _downloads.parts.availability,
       ),
       converterBackend: _settings.settings.backendFor(
         ComputeStage.voiceConversion,
-        _downloads.state.availability,
+        _downloads.parts.availability,
       ),
-      runtimeDirectory: _downloads.state.runtimeDirectoryPath,
+      runtimeDirectory: _downloads.parts.runtimeDirectory,
     );
   }
 
