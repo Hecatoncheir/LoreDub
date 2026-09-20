@@ -562,8 +562,12 @@ right edge and the whole height of the canvas, drawn in the face of the node
 it opened on — `NodePaint` (`node_paint.dart`, which the canvas draws its
 cards from as well) hands it the same body, head, ink and rule, and
 `nodeIcon` the same icon, so the panel on the orange output is orange and
-the one on a card of the cast is dark with that card's own head. It is
-`buildLoreDubPanelTheme` (`ui/theme.dart`) that turns a face into a theme,
+the one on a card of the cast is dark with that card's own head. The four faces are `NodeFaces` (`graph/node_faces.dart`), a
+`ThemeExtension` built from `LoreDubColors` and read as
+`NodeFaces.of(context)`: they live beside the canvas because what a node
+looks like is this screen's business, and the theme layer knows nothing of
+nodes -- the application puts the two together in `app.dart`. It is
+`buildLoreDubPanelTheme` (`graph/node_panel_theme.dart`) that turns a face into a theme,
 so the Material widgets standing in the panel are the same widgets in
 another colour rather than a second set of them; it keeps the theme of each
 of the four faces rather than building one per frame of a drag behind the

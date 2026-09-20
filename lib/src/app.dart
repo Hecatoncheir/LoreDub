@@ -22,6 +22,7 @@ import 'ui/dashboard/cubits/dashboard_cubits.dart';
 import 'ui/common/file_dialogs.dart';
 import 'ui/dashboard/cubits/settings_cubit.dart';
 import 'ui/shell/dashboard_view.dart';
+import 'ui/graph/node_faces.dart';
 import 'ui/theme.dart';
 import 'ui/app/interface_scale.dart';
 
@@ -78,7 +79,9 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
       builder: (context, state) => MaterialApp(
         title: 'LoreDub',
         debugShowCheckedModeBanner: false,
-        theme: buildLoreDubTheme(),
+        // The faces of the canvas ride on the theme rather than in the
+        // theme layer: what a node looks like is the graph screen's own.
+        theme: buildLoreDubTheme().withNodeFaces(),
         locale: Locale(state.settings.interfaceLanguage),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: const [

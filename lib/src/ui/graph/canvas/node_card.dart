@@ -9,6 +9,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../theme.dart';
+import '../node_faces.dart';
 import '../node_paint.dart';
 import 'hover_region.dart';
 import 'node_card_header.dart';
@@ -80,7 +81,7 @@ class NodeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final paint = NodePaint.of(node);
+    final paint = NodeFaces.of(context).forNode(node);
     final labels = NodeLabels.of(l10n, node, facts, availability);
     // The card is a control, and used to be one to the pointer alone: it is
     // named now, says whether it is chosen, and opens on the space bar.

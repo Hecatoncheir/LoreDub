@@ -78,7 +78,12 @@ Map<String, int> countHandWrittenStyles(Map<String, String> sources) {
 
 bool _belongsToTheme(String file) {
   final normalized = file.replaceAll(r'\', '/');
-  return normalized.endsWith('lib/src/ui/theme.dart') || normalized.contains('lib/src/ui/theme/');
+  return normalized.endsWith('lib/src/ui/theme.dart') ||
+      normalized.contains('lib/src/ui/theme/') ||
+      // A theme builder wherever it lives: the node panel's stands beside
+      // the canvas, because what a node looks like is the graph screen's
+      // own business and the theme layer knows nothing of nodes.
+      normalized.endsWith('lib/src/ui/graph/node_panel_theme.dart');
 }
 
 /// One count against the number it may not exceed.

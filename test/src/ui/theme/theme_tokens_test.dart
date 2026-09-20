@@ -3,7 +3,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/ui/graph/node_paint.dart';
+import 'package:lore_dub/src/ui/graph/node_faces.dart';
+import 'package:lore_dub/src/ui/graph/node_panel_theme.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 
 void main() {
@@ -20,26 +21,35 @@ void main() {
   });
 
   test('the node panel carries the same roles in that node face', () {
-    final colors = buildLoreDubPanelTheme(NodePaint.ends).extension<LoreDubColors>()!;
+    final colors = buildLoreDubPanelTheme(NodeFaces.light.ends).extension<LoreDubColors>()!;
 
-    expect(colors.ink, NodePaint.ends.ink);
-    expect(colors.mutedInk, NodePaint.ends.muted);
-    expect(colors.panel, NodePaint.ends.body);
-    expect(colors.accent, NodePaint.ends.chosen);
+    expect(colors.ink, NodeFaces.light.ends.ink);
+    expect(colors.mutedInk, NodeFaces.light.ends.muted);
+    expect(colors.panel, NodeFaces.light.ends.body);
+    expect(colors.accent, NodeFaces.light.ends.chosen);
     expect(
-      buildLoreDubPanelTheme(NodePaint.ends).extension<LoreDubTextStyles>()?.monoCaption.color,
-      NodePaint.ends.muted,
+      buildLoreDubPanelTheme(NodeFaces.light.ends)
+          .extension<LoreDubTextStyles>()
+          ?.monoCaption
+          .color,
+      NodeFaces.light.ends.muted,
       reason: 'a marking in the panel is said in that face, not the window\'s',
     );
   });
 
   test('a face is built once, not on every frame of a drag behind the panel', () {
     expect(
-      identical(buildLoreDubPanelTheme(NodePaint.cast), buildLoreDubPanelTheme(NodePaint.cast)),
+      identical(
+        buildLoreDubPanelTheme(NodeFaces.light.cast),
+        buildLoreDubPanelTheme(NodeFaces.light.cast),
+      ),
       isTrue,
     );
     expect(
-      identical(buildLoreDubPanelTheme(NodePaint.cast), buildLoreDubPanelTheme(NodePaint.plain)),
+      identical(
+        buildLoreDubPanelTheme(NodeFaces.light.cast),
+        buildLoreDubPanelTheme(NodeFaces.light.plain),
+      ),
       isFalse,
       reason: 'and each face keeps its own',
     );

@@ -1,15 +1,16 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../node_faces.dart';
+import '../node_panel_theme.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/pipeline_graph.dart';
-import '../../theme.dart';
 import '../canvas/node_labels.dart';
 import '../canvas/pipeline_facts.dart';
-import '../node_paint.dart';
 import 'inspector_note.dart';
 import 'node_inspector_fields.dart';
 import 'node_inspector_header.dart';
@@ -45,7 +46,7 @@ class PipelineInspector extends StatelessWidget {
     // The face the node itself carries: the panel that opens on the orange
     // output is orange, the one that opens on a card of the cast is dark,
     // and a card the mix hears gives the panel its orange head too.
-    final paint = NodePaint.of(node);
+    final paint = NodeFaces.of(context).forNode(node);
     // The whole height of the canvas, against its right edge: the panel is
     // a wall the scheme is worked against rather than a card lying on it.
     // Its own corners are square. It is drawn inside the card the scheme is

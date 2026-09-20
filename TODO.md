@@ -655,8 +655,16 @@ abstract final class AppTheme {
       вперемежку). Само объединение двух сборок — впереди. Мерка `model` в
       том же прогоне скачет от 17 до 46 мс в обеих версиях: это чистый
       доменный цикл, на него смещается сборка мусора.
-- [ ] `NodePaint` → `NodeFaces` (`ThemeExtension`, рядом с холстом в
+- [x] `NodePaint` → `NodeFaces` (`ThemeExtension`, рядом с холстом в
       `graph/`); `theme/` перестаёт импортировать `dashboard/`.
+      *Сделано:* `graph/node_faces.dart` — четыре грани строятся из
+      `LoreDubColors` (`NodeFaces.from`), лежат на теме и берутся
+      `NodeFaces.of(context)`, с запасным вариантом для темы без них.
+      `NodePaint` остался классом одной грани и умеет `lerp`. Сборка темы
+      панели уехала в `graph/node_panel_theme.dart`, так что `theme.dart`
+      больше не импортирует `graph/`, и приложение сводит их в `app.dart`
+      (`withNodeFaces`). Счётчики упали сами: `LoreDubPalette.` 270 → 239,
+      `Color(0x` 7 → 2.
 - [ ] Перевести виджеты с `LoreDubPalette.x` на `context.colors.x` — по
       экранам, в том же порядке, что этап 2 (264 места). `CustomPainter`
       получает готовые значения через конструктор и сравнивает их в

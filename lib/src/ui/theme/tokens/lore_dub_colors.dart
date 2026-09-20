@@ -28,6 +28,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     required this.deep,
     required this.onDeep,
     required this.onDeepMuted,
+    required this.onAccentMuted,
     required this.success,
     required this.warning,
     required this.danger,
@@ -49,6 +50,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     deep: LoreDubPalette.graphite,
     onDeep: LoreDubPalette.raised,
     onDeepMuted: _onDeepMuted,
+    onAccentMuted: _onAccentMuted,
     success: LoreDubPalette.success,
     warning: LoreDubPalette.warning,
     danger: LoreDubPalette.error,
@@ -81,6 +83,10 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
   final Color onDeep;
   final Color onDeepMuted;
 
+  /// The quieter half of what is written on the accent, which carries
+  /// further than on the dark: the accent is the brighter ground.
+  final Color onAccentMuted;
+
   /// What a state is said in, beside the words that say it.
   final Color success;
   final Color warning;
@@ -90,6 +96,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
   final Color shadow;
 
   static const _onDeepMuted = Color(0xAAF7F5F0);
+  static const _onAccentMuted = Color(0xCCF7F5F0);
   static const _shadow = Color(0x22171717);
 
   @override
@@ -106,6 +113,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     Color? deep,
     Color? onDeep,
     Color? onDeepMuted,
+    Color? onAccentMuted,
     Color? success,
     Color? warning,
     Color? danger,
@@ -123,6 +131,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     deep: deep ?? this.deep,
     onDeep: onDeep ?? this.onDeep,
     onDeepMuted: onDeepMuted ?? this.onDeepMuted,
+    onAccentMuted: onAccentMuted ?? this.onAccentMuted,
     success: success ?? this.success,
     warning: warning ?? this.warning,
     danger: danger ?? this.danger,
@@ -145,6 +154,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
       deep: Color.lerp(deep, other.deep, t)!,
       onDeep: Color.lerp(onDeep, other.onDeep, t)!,
       onDeepMuted: Color.lerp(onDeepMuted, other.onDeepMuted, t)!,
+      onAccentMuted: Color.lerp(onAccentMuted, other.onAccentMuted, t)!,
       success: Color.lerp(success, other.success, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
