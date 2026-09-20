@@ -9,7 +9,7 @@ import 'package:lore_dub/src/ui/theme.dart';
 
 void main() {
   test('the window carries the roles every widget of ours reads', () {
-    final theme = buildLoreDubTheme();
+    final theme = AppTheme.light;
 
     expect(theme.extension<LoreDubColors>(), LoreDubColors.light);
     expect(theme.extension<LoreDubTextStyles>()?.moduleLabel.color, LoreDubColors.light.ink);
@@ -25,7 +25,13 @@ void main() {
 
     expect(colors.ink, NodeFaces.light.ends.ink);
     expect(colors.mutedInk, NodeFaces.light.ends.muted);
-    expect(colors.panel, NodeFaces.light.ends.body);
+    // A face has two greys where the window has three: the body is the
+    // ground the panel stands on, and the sunk one is everything the
+    // window would raise off it.
+    expect(colors.canvas, NodeFaces.light.ends.body);
+    expect(colors.panel, NodeFaces.light.ends.sunk);
+    expect(colors.raised, NodeFaces.light.ends.sunk);
+    expect(colors.strongOutline, NodeFaces.light.ends.rule);
     expect(colors.accent, NodeFaces.light.ends.chosen);
     expect(
       buildLoreDubPanelTheme(NodeFaces.light.ends)

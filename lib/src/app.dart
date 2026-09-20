@@ -81,7 +81,7 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
         debugShowCheckedModeBanner: false,
         // The faces of the canvas ride on the theme rather than in the
         // theme layer: what a node looks like is the graph screen's own.
-        theme: buildLoreDubTheme().withNodeFaces(),
+        theme: AppTheme.light.withNodeFaces(),
         locale: Locale(state.settings.interfaceLanguage),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: const [

@@ -141,7 +141,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildLoreDubTheme(),
+        theme: AppTheme.light,
         locale: const Locale(defaultInterfaceLanguage),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,

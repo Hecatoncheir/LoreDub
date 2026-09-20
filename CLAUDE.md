@@ -568,8 +568,14 @@ the one on a card of the cast is dark with that card's own head. The four faces 
 looks like is this screen's business, and the theme layer knows nothing of
 nodes -- the application puts the two together in `app.dart`. It is
 `buildLoreDubPanelTheme` (`graph/node_panel_theme.dart`) that turns a face into a theme,
-so the Material widgets standing in the panel are the same widgets in
-another colour rather than a second set of them; it keeps the theme of each
+and `AppTheme.build(LoreDubColors, Brightness)` (`theme/app_theme.dart`)
+underneath -- one builder for the window and the panel both, reading
+nothing but the roles, so the Material widgets standing in the panel are
+the same widgets in another colour rather than a second set of them. A face
+carries two greys where the window carries three, so `_colorsOf` puts
+`sunk` on `panel`, `raised` and `deep` alike and `body` on `canvas`, and
+`strongOutline` -- the graphite a pressable control is edged with in the
+window -- is the face's own rule. It keeps the theme of each
 of the four faces rather than building one per frame of a drag behind the
 panel (`test/graph_bench.dart` measures that frame as `panel`). The panel declares that
 theme and is built under it through a `Builder`, with a `Material` of its

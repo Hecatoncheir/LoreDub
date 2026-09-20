@@ -93,7 +93,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildLoreDubTheme(),
+        theme: AppTheme.light,
         locale: const Locale('ru'),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,

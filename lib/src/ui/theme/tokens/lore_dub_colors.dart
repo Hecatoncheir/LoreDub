@@ -22,6 +22,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     required this.ink,
     required this.mutedInk,
     required this.outline,
+    required this.strongOutline,
     required this.accent,
     required this.accentStrong,
     required this.onAccent,
@@ -44,6 +45,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     ink: LoreDubPalette.ink,
     mutedInk: LoreDubPalette.mutedInk,
     outline: LoreDubPalette.outline,
+    strongOutline: LoreDubPalette.graphite,
     accent: LoreDubPalette.orange,
     accentStrong: LoreDubPalette.orangeDark,
     onAccent: LoreDubPalette.ink,
@@ -69,6 +71,11 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
 
   /// The hairline around a panel, a tile, a field.
   final Color outline;
+
+  /// The same line where it has to hold its own against the ink beside it:
+  /// the edge of a control the player can press. On a face of the canvas
+  /// there is no second line, and the rule does this work as well.
+  final Color strongOutline;
 
   /// What the player chose, and what is written on it. [accentStrong] is the
   /// same accent where it has to hold its own against the paper -- a small
@@ -107,6 +114,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     Color? ink,
     Color? mutedInk,
     Color? outline,
+    Color? strongOutline,
     Color? accent,
     Color? accentStrong,
     Color? onAccent,
@@ -125,6 +133,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     ink: ink ?? this.ink,
     mutedInk: mutedInk ?? this.mutedInk,
     outline: outline ?? this.outline,
+    strongOutline: strongOutline ?? this.strongOutline,
     accent: accent ?? this.accent,
     accentStrong: accentStrong ?? this.accentStrong,
     onAccent: onAccent ?? this.onAccent,
@@ -148,6 +157,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
       ink: Color.lerp(ink, other.ink, t)!,
       mutedInk: Color.lerp(mutedInk, other.mutedInk, t)!,
       outline: Color.lerp(outline, other.outline, t)!,
+      strongOutline: Color.lerp(strongOutline, other.strongOutline, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
       accentStrong: Color.lerp(accentStrong, other.accentStrong, t)!,
       onAccent: Color.lerp(onAccent, other.onAccent, t)!,

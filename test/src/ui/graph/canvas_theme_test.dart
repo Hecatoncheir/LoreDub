@@ -68,7 +68,7 @@ void main() {
         builder: (context, setState) {
           repaint = setState;
           return MaterialApp(
-            theme: buildLoreDubTheme()
+            theme: AppTheme.light
                 .copyWith(extensions: [colors])
                 .withNodeFaces(
                   NodeFaces.from(colors),
