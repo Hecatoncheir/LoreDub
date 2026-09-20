@@ -21,6 +21,7 @@ import re
 import numpy as np
 import torch
 
+from onnx_speech import providers_for
 from tone_converter import resample
 
 # A line is cut where the voice starts and stops, with this much kept on
@@ -36,18 +37,6 @@ def _directory(path):
     well."""
     path = pathlib.Path(path)
     return path.parent if path.name == "model.onnx" else path
-
-
-def _providers(device):
-    """Where to read, best first. The card is used through onnxruntime-gpu,
-    which the CUDA runtime installs beside torch and which finds its CUDA and
-    cuDNN libraries in the torch imported before it; the processor's build
-    of onnxruntime offers no such provider, and the voice stays there."""
-    import onnxruntime
-
-    if device == "cuda" and "CUDAExecutionProvider" in onnxruntime.get_available_providers():
-        return ["CUDAExecutionProvider", "CPUExecutionProvider"]
-    return ["CPUExecutionProvider"]
 
 
 def _session(path, threads, providers):
@@ -131,7 +120,7 @@ class VoskVoice:
         from vosk_tts import Synth
 
         directory = _directory(directory)
-        self._synth = Synth(_Model(directory, threads, _providers(device)))
+        self._synth = Synth(_Model(directory, threads, providers_for(device)))
         # A provider asked for and not taken -- a driver too old, a library
         # missing -- leaves the session on the processor without a word, so
         # where it runs is read back from the session rather than assumed.

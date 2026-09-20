@@ -750,8 +750,9 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       // translate, so taking the stage out chooses English and putting it
       // back chooses a language that has a translator. Locked with the
       // route, the models being loaded for the session that runs. A
-      // catalogue with no English voice -- Russian is all it carries -- has
-      // no line without the translator, and the cut is refused.
+      // catalogue carrying no English voice would have no line without the
+      // translator at all, and the cut is refused rather than left to end in
+      // a session with nothing to read it.
       case TranslationConnection(:final routed):
         if (routeLocked) {
           emit(state.copyWith(refusal: ConnectionRefusal.locked));

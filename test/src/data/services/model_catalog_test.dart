@@ -28,35 +28,45 @@ void main() {
     expect(transcribeOnly.map((model) => model.id), ['whisper-large-v3-turbo-q5']);
   });
 
-  test('dubs into Russian and nothing else', () {
-    // Every other language went with Silero, whose voices are CC BY-NC.
-    expect(dubbingLanguages, ['ru']);
+  test('dubs into Russian and English and nothing else', () {
+    // The other languages went with Silero, whose voices are CC BY-NC.
+    expect(dubbingLanguages, ['ru', 'en']);
     expect(translationModelFor('ru'), isNotNull);
     expect(speechModelFor('ru'), isNotNull);
   });
 
-  test('has no English voice, so nothing is dubbed without the translator', () {
-    // Whisper hands English over whatever the game speaks; with a voice for
-    // it the translator could be left out, and without one it cannot.
-    expect(speechModelFor(untranslatedDubbingLanguage), isNull);
-    expect(dubbingLanguages, isNot(contains(untranslatedDubbingLanguage)));
+  test('dubs into English with a voice alone, the translator being no use', () {
+    // Whisper hands English over whatever the game speaks, so the one
+    // language that needs no translator is the one it recognizes into.
+    expect(speechModelFor(untranslatedDubbingLanguage), isNotNull);
+    expect(translationModelFor(untranslatedDubbingLanguage), isNull);
+    expect(dubbingLanguages, contains(untranslatedDubbingLanguage));
   });
 
-  test('reads Russian with Vosk, pinned file by file with its NOTICE', () {
+  test('reads each language with one voice, pinned file by file with its NOTICE', () {
     final speech = modelCatalog.where((model) => model.kind == ModelKind.speech).toList();
-    expect(speech.map((model) => model.id), ['vosk-ru-0.9']);
-    final vosk = speech.single;
+    expect(speech.map((model) => model.id), ['vosk-ru-0.9', englishVoiceModelId]);
+    final releases = {'vosk-ru-0.9': voskVoiceRelease, englishVoiceModelId: kokoroVoiceRelease};
 
-    // The pipeline names a speech package by its first file, and the worker
-    // reads the package from the directory it sits in.
-    expect(vosk.primaryFileName, 'model.onnx');
-    for (final artifact in vosk.artifacts) {
-      expect(artifact.byteSize, isNotNull, reason: artifact.fileName);
-      expect(artifact.hash, hasLength(64), reason: artifact.fileName);
-      expect(artifact.url.toString(), startsWith(voskVoiceRelease), reason: artifact.fileName);
+    for (final voice in speech) {
+      // The pipeline names a speech package by its first file, and the worker
+      // reads the package from the directory it sits in.
+      expect(voice.primaryFileName, 'model.onnx', reason: voice.id);
+      // Which wrapper reads it is the package's own answer, and its name is
+      // what the models screen shows beside the version.
+      expect(voice.engine, isNotEmpty, reason: voice.id);
+      for (final artifact in voice.artifacts) {
+        expect(artifact.byteSize, isNotNull, reason: artifact.fileName);
+        expect(artifact.hash, hasLength(64), reason: artifact.fileName);
+        expect(
+          artifact.url.toString(),
+          startsWith(releases[voice.id]!),
+          reason: artifact.fileName,
+        );
+      }
+      // Apache 2.0 travels with the weights.
+      expect(voice.artifacts.map((artifact) => artifact.fileName), contains('NOTICE'));
     }
-    // Apache 2.0 travels with the weights.
-    expect(vosk.artifacts.map((artifact) => artifact.fileName), contains('NOTICE'));
   });
 
   test('names a default voice among the ones the package lists', () {

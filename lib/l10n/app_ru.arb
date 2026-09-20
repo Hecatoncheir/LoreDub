@@ -532,7 +532,7 @@
   "sectionRecognition": "РАСПОЗНАВАНИЕ РЕЧИ",
   "sectionRecognitionNote": "Whisper переводит речь любого языка в английский текст. Нужна одна модель — чем больше, тем точнее и медленнее.",
   "sectionLanguages": "ЯЗЫКИ ОЗВУЧКИ",
-  "sectionLanguagesNote": "Переводчик и голос скачиваются и удаляются вместе. LoreDub озвучивает на русском: голоса других языков были под лицензией, запрещающей коммерческое использование.",
+  "sectionLanguagesNote": "Переводчик и голос скачиваются и удаляются вместе. Английскому переводчик не нужен: whisper и так отдаёт английский, что бы ни говорила игра. Остальные языки ушли вместе с голосами, лицензия которых запрещала коммерческое использование.",
   "modelPartTranslation": "перевод",
   "modelPartVoice": "голос",
   "modelPartConverter": "конвертер голоса",
@@ -798,10 +798,13 @@
       }
     }
   },
-  "modelVoiceTitle": "{language} — Vosk {version}",
+  "modelVoiceTitle": "{language} — {engine} {version}",
   "@modelVoiceTitle": {
     "placeholders": {
       "language": {
+        "type": "String"
+      },
+      "engine": {
         "type": "String"
       },
       "version": {
@@ -840,11 +843,13 @@
   "translationTarget_es": "испанский",
   "translationTarget_fr": "французский",
   "translationTarget_uk": "украинский",
+  "voiceName_en": "Английский голос",
   "voiceName_ru": "Русский голос",
   "voiceName_de": "Немецкий голос",
   "voiceName_es": "Испанский голос",
   "voiceName_fr": "Французский голос",
   "voiceName_uk": "Украинский голос",
+  "voiceSpeech_en": "Английская",
   "voiceSpeech_de": "Немецкая",
   "voiceSpeech_es": "Испанская",
   "voiceSpeech_fr": "Французская",

@@ -126,8 +126,29 @@ $Packages = @(
   # same machine, and opens the model as fast once the worker turns memory
   # reuse off (vosk_voice.py).
   "onnxruntime==1.20.1",
-  "vosk-tts==0.3.61"
+  "vosk-tts==0.3.61",
+  # The English voice, Kokoro, is read through the same onnxruntime and needs
+  # no package of its own: `kokoro_voice.py` opens the model and the voices.
+  # What it does need is phonemes, and every other wrapper of that model
+  # takes them from espeak-ng, which is GPLv3 and cannot travel inside an MIT
+  # application. misaki is Apache 2.0 and reads the words it holds. It is
+  # installed without its `[en]` extra on purpose: that extra is what pulls
+  # espeakng-loader and phonemizer-fork, the GPL half, and the two packages
+  # of it we do want are named here instead.
+  "misaki==0.9.4",
+  "num2words==0.5.14",
+  "spacy==3.8.16",
+  # misaki tags the words with this pipeline, and downloads it itself when it
+  # is missing -- a network call in the middle of a dubbing session.
+  "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
 )
+
+# Installed without its dependencies, because only its letter-to-sound
+# weights are used: `english_g2p.py` reads `checkpoint20.npz` out of the
+# package and never imports it. Importing it would pull NLTK in and ask for
+# two corpora, downloading them from the network on a machine that is meant
+# to dub a game offline.
+$WeightsOnly = @("g2p-en==2.1.0")
 
 # The cache is vouched for by a marker written after the last install, and by
 # nothing else. It used to be the torch folder, which is the first thing pip
@@ -138,7 +159,7 @@ $Packages = @(
 # rebuilt too -- which is what sacremoses and ctranslate2 used to be checked
 # folder by folder for. The price is torch downloaded again on that day.
 $PythonComplete = Join-Path $PythonCache ".complete"
-$PythonWanted = @($TorchIndex, $TorchPackage) + $Packages
+$PythonWanted = @($TorchIndex, $TorchPackage) + $Packages + $WeightsOnly
 $PythonKept = if (Test-Path $PythonComplete) { @(Get-Content $PythonComplete) } else { @() }
 if (($PythonKept -join "`n") -ne ($PythonWanted -join "`n")) {
   Remove-Tree $PythonCache
@@ -154,6 +175,9 @@ if (($PythonKept -join "`n") -ne ($PythonWanted -join "`n")) {
   }
   Invoke-Native {
     & $Python -m pip install --no-cache-dir --no-warn-script-location @Packages
+  }
+  Invoke-Native {
+    & $Python -m pip install --no-cache-dir --no-warn-script-location --no-deps @WeightsOnly
   }
   Set-Content -Encoding ascii $PythonComplete $PythonWanted
 }

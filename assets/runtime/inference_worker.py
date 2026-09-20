@@ -896,6 +896,26 @@ class CharacterCast:
         return None
 
 
+def load_voice(path, threads, device):
+    """The voice the package asks for.
+
+    Which wrapper reads a speech package is the package's own answer rather
+    than a flag from the application: a Kokoro one carries its voices in
+    `voices.bin` beside the model, a Vosk one a `config.json` and a
+    `dictionary`. Both are named by their first file, `model.onnx`, so the
+    name says nothing.
+    """
+    directory = pathlib.Path(path)
+    directory = directory.parent if directory.suffix == ".onnx" else directory
+    if (directory / "voices.bin").is_file():
+        from kokoro_voice import KokoroVoice
+
+        return KokoroVoice(path, threads=threads, device=device)
+    from vosk_voice import VoskVoice
+
+    return VoskVoice(path, threads=threads, device=device)
+
+
 def main():
     use_utf8_streams()
     parser = argparse.ArgumentParser()
@@ -1025,14 +1045,13 @@ def main():
 
         report_progress(0.90, "speech")
         sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-        from vosk_voice import VoskVoice
 
         # torch is imported already, so onnxruntime-gpu finds the CUDA and
         # cuDNN libraries it brought. Without the card -- or with the
         # processor's build of onnxruntime, which is all a machine without the
         # CUDA runtime has -- the voice falls back to the processor, and the
         # ready line says where it really is.
-        tts = VoskVoice(args.tts_model, threads=args.threads, device=args.speech_device)
+        tts = load_voice(args.tts_model, threads=args.threads, device=args.speech_device)
         speech_device = torch.device(tts.device)
         # An unknown name falls back to the package's first voice rather than
         # turning the whole session into a runtime error.

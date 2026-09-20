@@ -925,7 +925,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sectionLanguagesNote =>
-      'Переводчик и голос скачиваются и удаляются вместе. LoreDub озвучивает на русском: голоса других языков были под лицензией, запрещающей коммерческое использование.';
+      'Переводчик и голос скачиваются и удаляются вместе. Английскому переводчик не нужен: whisper и так отдаёт английский, что бы ни говорила игра. Остальные языки ушли вместе с голосами, лицензия которых запрещала коммерческое использование.';
 
   @override
   String get modelPartTranslation => 'перевод';
@@ -1340,8 +1340,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String modelVoiceTitle(String language, String version) {
-    return '$language — Vosk $version';
+  String modelVoiceTitle(String language, String engine, String version) {
+    return '$language — $engine $version';
   }
 
   @override
@@ -1419,6 +1419,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get translationTarget_uk => 'украинский';
 
   @override
+  String get voiceName_en => 'Английский голос';
+
+  @override
   String get voiceName_ru => 'Русский голос';
 
   @override
@@ -1432,6 +1435,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get voiceName_uk => 'Украинский голос';
+
+  @override
+  String get voiceSpeech_en => 'Английская';
 
   @override
   String get voiceSpeech_de => 'Немецкая';

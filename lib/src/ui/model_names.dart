@@ -16,6 +16,7 @@ String modelTitle(AppLocalizations l10n, ModelPackage model) => switch (model.ki
   ),
   ModelKind.speech => l10n.modelVoiceTitle(
     voiceName(l10n, model.language!),
+    model.engine ?? '',
     model.version ?? '',
   ),
   ModelKind.voiceConversion => l10n.modelConverterTitle(model.version ?? ''),

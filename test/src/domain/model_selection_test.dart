@@ -35,7 +35,7 @@ void main() {
     test('pairs each language with its translator and voice, in catalogue order', () {
       final pairs = selectionWith(const AppSettings()).languagePairs;
 
-      expect(pairs.map((pair) => pair.language), ['ru']);
+      expect(pairs.map((pair) => pair.language), ['ru', 'en']);
       for (final pair in pairs) {
         expect(pair.speech?.model.kind, ModelKind.speech, reason: pair.language);
         // English is half a pair on purpose: whisper hands it over already.

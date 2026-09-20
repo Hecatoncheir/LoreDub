@@ -18,6 +18,7 @@ import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
+import 'package:lore_dub/src/domain/spoken_language.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
@@ -181,15 +182,16 @@ void main() {
     expect(graph.state.refusal, ConnectionRefusal.locked);
   });
 
-  test('keeps the translator in the line, there being no voice without it', () async {
-    // Cutting it once meant dubbing into English; the catalogue carries a
-    // Russian voice alone now, so there is nothing to dub into without it.
+  test('cutting the translator dubs into English, which asks for none', () async {
+    // There is no setting of its own behind the stage: whisper hands English
+    // over whatever the game speaks, so a line without the translator is a
+    // session dubbing into English, and the catalogue has a voice for it.
     graph.add(PipelineLinkCut(graph.state.graph.linkInto(translationIn)!));
     await pumpEvents();
 
-    expect(cubits.settings.settings.targetLanguage, 'ru');
-    expect(graph.state.refusal, ConnectionRefusal.unsupported);
-    expect(graph.state.graph.linkInto(translationIn), isNotNull);
+    expect(cubits.settings.settings.targetLanguage, untranslatedDubbingLanguage);
+    expect(graph.state.refusal, isNull);
+    expect(graph.state.graph.linkInto(translationIn), isNull);
   });
 
   test('a card is still given away while a session is running', () async {

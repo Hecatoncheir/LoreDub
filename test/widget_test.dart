@@ -1289,7 +1289,7 @@ void main() {
     expect(find.text('ГОЛОС ОРИГИНАЛА'), findsOneWidget);
     final selection = cubits.selection;
     expect(selection.recognitionModels.length, greaterThan(1), reason: 'the model is a choice');
-    expect(selection.languagePairs.map((pair) => pair.language), ['ru']);
+    expect(selection.languagePairs.map((pair) => pair.language), ['ru', 'en']);
   });
 
   group('the language tiles', () {

@@ -53,6 +53,7 @@ class ModelPackage {
     this.language,
     this.speaker,
     this.version,
+    this.engine,
     this.voices = const [],
     this.translatesSpeech = true,
     this.translationPrefix,
@@ -72,6 +73,11 @@ class ModelPackage {
 
   /// Upstream release the voice comes from, shown in its name.
   final String? version;
+
+  /// What reads a speech package, shown in its name beside the version: the
+  /// catalogue carries a voice of one engine per language, and which engine
+  /// it is says more about a package than its version does.
+  final String? engine;
 
   /// Every voice the package ships, [speaker] among them.
   final List<VoiceOption> voices;

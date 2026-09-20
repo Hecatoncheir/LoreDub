@@ -15,6 +15,11 @@ const whisperModelId = 'whisper-base';
 /// of the phrase being answered. MIT, and the same package for every language.
 const voiceConverterModelId = 'openvoice-v2-converter';
 
+/// The English voice. It is named here because it is the one speech package
+/// with no translator behind it: whisper hands English over whatever the game
+/// speaks, so a session dubbing into English translates nothing.
+const englishVoiceModelId = 'kokoro-en-1.0';
+
 /// The whisper.cpp builds on offer, smallest first.
 ///
 /// `base` stays the default because it is the one that fits a plain CPU;
@@ -98,11 +103,20 @@ VoiceOption _female(String id) => VoiceOption(id, gender: VoiceGender.female);
 /// SHA-256 and a download resumes where it stopped.
 const voskVoiceRelease = '$_modelReleases/voices-vosk-v1';
 
-/// A Vosk-TTS voice, read by `vosk_voice.py` in the worker. `model.onnx` goes
-/// first: the pipeline names a speech package by its first file, and the
-/// worker takes the directory it sits in.
-ModelPackage _vosk({
+/// Where the English voice is published: a release beside the Russian one.
+/// Its authors publish the weights on Hugging Face and the ONNX export in
+/// another project's GitHub release, neither with a digest to check them by;
+/// laid out as files here, every one carries its size and its SHA-256.
+const kokoroVoiceRelease = '$_modelReleases/voices-kokoro-v1';
+
+/// A speech package, read by `vosk_voice.py` or `kokoro_voice.py` in the
+/// worker -- which of the two is the package's own answer, not a flag.
+/// `model.onnx` goes first either way: the pipeline names a speech package by
+/// its first file, and the worker takes the directory it sits in.
+ModelPackage _voice({
   required String id,
+  required String release,
+  required String engine,
   required String version,
   required String language,
   required String speaker,
@@ -116,12 +130,13 @@ ModelPackage _vosk({
   language: language,
   speaker: speaker,
   version: version,
+  engine: engine,
   voices: voices,
   artifacts: [
     for (final entry in files.entries)
       ModelArtifact(
         fileName: entry.key,
-        url: Uri.parse('$voskVoiceRelease/$id-${entry.key}'),
+        url: Uri.parse('$release/$id-${entry.key}'),
         byteSize: entry.value.$1,
         hash: entry.value.$2,
       ),
@@ -197,8 +212,10 @@ final modelCatalog = <ModelPackage>[
   // 173 Hz over four phrases, inside the gap the worker leaves undecided, and
   // are left out rather than guessed. The model's own names call them women;
   // one phrase alone had put `female_2` at 160 Hz, on the men's side.
-  _vosk(
+  _voice(
     id: 'vosk-ru-0.9',
+    release: voskVoiceRelease,
+    engine: 'Vosk',
     version: '0.9',
     language: 'ru',
     speaker: 'female_1',
@@ -220,6 +237,68 @@ final modelCatalog = <ModelPackage>[
         'bbe5063cc3d7a314effd90e9c5099cf493b81f2b9552c155264e16eeab074237',
       ),
       'NOTICE': (986, '43c94f4c0fd4a3bddff2546da61f4c7622e1922dadac6bc650d043f1261cb8a7'),
+    },
+  ),
+
+  // Kokoro-82M, the English voice, under Apache 2.0 — and the one dubbing
+  // language that needs no translator, whisper handing English over whatever
+  // the game speaks. Measured against the Russian voice on the same machine
+  // over fifteen game lines: a tie per second of speech on the processor
+  // (RTF 0.29 against 0.31), 353 MB against 894 on disk, open in 1 s against
+  // 17, and 174 ms a line on an RTX 3080 Ti — where Vosk pays about 1.9 s
+  // for every line of a length it has not seen. Under the converter it lands
+  // closer to the character it aims at (0.805 and 0.865 against two targets,
+  // to Vosk's 0.763 and 0.839) and its worst line is far better (0.717
+  // against 0.548).
+  //
+  // Twenty-three of the package's twenty-eight English voices are listed.
+  // The genders are measured with the worker's own `median_f0` over two
+  // lines each, and the names say nothing: `af_alloy` reads at 147 Hz, a
+  // man, and `am_santa` at 182, a woman. Five sit inside the gap the worker
+  // leaves undecided — af_kore 160, af_nicole 148, af_nova 165, af_sky 164
+  // and am_eric 165 Hz — and are left out rather than guessed.
+  _voice(
+    id: englishVoiceModelId,
+    release: kokoroVoiceRelease,
+    engine: 'Kokoro',
+    version: '1.0',
+    language: untranslatedDubbingLanguage,
+    speaker: 'af_heart',
+    voices: [
+      _male('af_alloy'),
+      _female('af_aoede'),
+      _female('af_bella'),
+      _female('af_heart'),
+      _female('af_jessica'),
+      _female('af_river'),
+      _female('af_sarah'),
+      _male('am_adam'),
+      _male('am_echo'),
+      _male('am_fenrir'),
+      _male('am_liam'),
+      _male('am_michael'),
+      _male('am_onyx'),
+      _male('am_puck'),
+      _female('am_santa'),
+      _female('bf_alice'),
+      _female('bf_emma'),
+      _female('bf_isabella'),
+      _female('bf_lily'),
+      _male('bm_daniel'),
+      _male('bm_fable'),
+      _male('bm_george'),
+      _male('bm_lewis'),
+    ],
+    files: {
+      'model.onnx': (
+        325505369,
+        'beb0d1848dee9a49da392cc3df26958d46cfa35d321edf434f52949153f0df3a',
+      ),
+      'voices.bin': (
+        28214398,
+        'bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d',
+      ),
+      'NOTICE': (1457, 'af1f04524c2d3723317856d20af6b1c5489dd653ffe334b19ca12e27a48c51de'),
     },
   ),
 

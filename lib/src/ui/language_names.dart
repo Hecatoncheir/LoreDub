@@ -41,6 +41,7 @@ String translationTargetName(AppLocalizations l10n, String code) => switch (code
 
 String voiceName(AppLocalizations l10n, String code) => switch (code) {
   'de' => l10n.voiceName_de,
+  'en' => l10n.voiceName_en,
   'es' => l10n.voiceName_es,
   'fr' => l10n.voiceName_fr,
   'ru' => l10n.voiceName_ru,
@@ -50,6 +51,7 @@ String voiceName(AppLocalizations l10n, String code) => switch (code) {
 
 String voiceSpeechName(AppLocalizations l10n, String code) => switch (code) {
   'de' => l10n.voiceSpeech_de,
+  'en' => l10n.voiceSpeech_en,
   'es' => l10n.voiceSpeech_es,
   'fr' => l10n.voiceSpeech_fr,
   'uk' => l10n.voiceSpeech_uk,

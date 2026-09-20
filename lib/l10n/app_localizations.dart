@@ -1584,7 +1584,7 @@ abstract class AppLocalizations {
   /// No description provided for @sectionLanguagesNote.
   ///
   /// In ru, this message translates to:
-  /// **'Переводчик и голос скачиваются и удаляются вместе. LoreDub озвучивает на русском: голоса других языков были под лицензией, запрещающей коммерческое использование.'**
+  /// **'Переводчик и голос скачиваются и удаляются вместе. Английскому переводчик не нужен: whisper и так отдаёт английский, что бы ни говорила игра. Остальные языки ушли вместе с голосами, лицензия которых запрещала коммерческое использование.'**
   String get sectionLanguagesNote;
 
   /// No description provided for @modelPartTranslation.
@@ -2286,8 +2286,8 @@ abstract class AppLocalizations {
   /// No description provided for @modelVoiceTitle.
   ///
   /// In ru, this message translates to:
-  /// **'{language} — Vosk {version}'**
-  String modelVoiceTitle(String language, String version);
+  /// **'{language} — {engine} {version}'**
+  String modelVoiceTitle(String language, String engine, String version);
 
   /// No description provided for @modelVoiceNote.
   ///
@@ -2433,6 +2433,12 @@ abstract class AppLocalizations {
   /// **'украинский'**
   String get translationTarget_uk;
 
+  /// No description provided for @voiceName_en.
+  ///
+  /// In ru, this message translates to:
+  /// **'Английский голос'**
+  String get voiceName_en;
+
   /// No description provided for @voiceName_ru.
   ///
   /// In ru, this message translates to:
@@ -2462,6 +2468,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Украинский голос'**
   String get voiceName_uk;
+
+  /// No description provided for @voiceSpeech_en.
+  ///
+  /// In ru, this message translates to:
+  /// **'Английская'**
+  String get voiceSpeech_en;
 
   /// No description provided for @voiceSpeech_de.
   ///

@@ -63,14 +63,17 @@ class PythonDiscovery {
        _probe = probe ?? _runProbe,
        _bundledExecutable = bundledExecutable ?? bundledPythonExecutablePath();
 
-  // torch runs the voice and the converter, transformers the tokenizer, and
-  // ctranslate2 the translator itself. An interpreter without the last one
-  // would start and then fail on the first line it had to translate.
+  // torch runs the voice and the converter, transformers the tokenizer,
+  // ctranslate2 the translator itself, and misaki with g2p_en turns an
+  // English line into the phonemes the English voice reads. An interpreter
+  // without one of them starts and then fails on the first line that needs
+  // it -- the first line to translate, or the first one to dub into English.
   static const _probeScript =
       'import sys, importlib.util as u; '
       'print(sys.version.split()[0]); '
       "print(bool(u.find_spec('torch') and u.find_spec('transformers') "
-      "and u.find_spec('ctranslate2')))";
+      "and u.find_spec('ctranslate2') and u.find_spec('misaki') "
+      "and u.find_spec('g2p_en')))";
 
   final Map<String, String> _environment;
   final PythonProbe _probe;

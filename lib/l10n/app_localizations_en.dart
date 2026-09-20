@@ -918,7 +918,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionLanguagesNote =>
-      'A translator and its voice are downloaded and deleted together. LoreDub dubs into Russian: the other languages\' voices were under a licence that forbids commercial use.';
+      'A translator and its voice are downloaded and deleted together. English needs no translator: whisper hands English over whatever the game speaks. The other languages went with voices under a licence that forbids commercial use.';
 
   @override
   String get modelPartTranslation => 'translation';
@@ -1330,8 +1330,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String modelVoiceTitle(String language, String version) {
-    return '$language — Vosk $version';
+  String modelVoiceTitle(String language, String engine, String version) {
+    return '$language — $engine $version';
   }
 
   @override
@@ -1410,6 +1410,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get translationTarget_uk => 'Ukrainian';
 
   @override
+  String get voiceName_en => 'English voice';
+
+  @override
   String get voiceName_ru => 'Russian voice';
 
   @override
@@ -1423,6 +1426,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceName_uk => 'Ukrainian voice';
+
+  @override
+  String get voiceSpeech_en => 'English';
 
   @override
   String get voiceSpeech_de => 'German';

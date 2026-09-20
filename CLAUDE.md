@@ -140,12 +140,15 @@ than one of them.
    by `LocalInferenceService` as a persistent subprocess speaking
    line-delimited JSON (`{"id","text"}` in, `{"id","translated","wave"}` or
    `{"id","error"}` out, plus one `{"type":"ready"}` handshake). It keeps
-   Marian and the Vosk voice loaded, which is why the first start takes minutes.
+   Marian and the session's voice loaded, which is why the first start takes
+   minutes.
    Startup uses the bundled embedded Python (`runtime/python/python.exe`,
    see `resolvePythonExecutable`), which `scripts/prepare_windows_runtime.ps1`
    fills with torch, transformers, sentencepiece, sacremoses and ctranslate2 —
    sacremoses is what the Marian tokenizer normalizes punctuation with, and
-   transformers prints a recommendation on every start without it.
+   transformers prints a recommendation on every start without it — and with
+   misaki, spacy, `en_core_web_sm` and g2p_en, which are what the English
+   voice reads with.
    Translation runs under **CTranslate2** rather than transformers: the same
    Marian weights in int8 read a line in about half the time (262 ms to 107 ms
    over twelve lines) and load in 0.3 s rather than 4.1 s, and transformers is
@@ -153,8 +156,10 @@ than one of them.
    worker's own answer for where translation runs — it starts where torch did
    and falls back to the processor on its own — and it is what the `ready`
    line reports as `device`. `python_discovery.dart` asks an interpreter for
-   ctranslate2 along with torch and transformers, since one without it would
-   start and then fail on the first line it had to translate.
+   ctranslate2 along with torch and transformers, and for misaki and g2p_en
+   beside them, since one without any of these would start and then fail on
+   the first line that needed it — the first to translate, or the first to
+   dub into English.
 
 A line is translated a sentence at a time. Marian was trained on single
 sentences and answers a reply of several with one of them, dropping the rest --
@@ -171,7 +176,9 @@ out by `transliterated` rather than translated a second time. The voice reads
 no Latin: `vosk_voice.py` drops whatever its phoneme map lacks -- Latin and
 digits -- rather than raise on it (the Silero it replaced dropped the word
 too, measured, and raised on a line that was Latin end to end), so the name
-written out is the name spoken at all. A letter standing on its own is
+written out is the name spoken at all. None of this runs for a session
+dubbing into English: `dubbed_in_latin` is true the moment there is no
+translator, and the English voice reads Latin and nothing else. A letter standing on its own is
 dropped the same way and is named rather than spelt: "Press F to pay respects"
 is "Нажмите эф", since one letter of Cyrillic is worth as little to the
 voice as one of Latin (2.07 s against the 1.98 s of the line without it, and
@@ -450,10 +457,10 @@ again. Cutting either half of the translator's line answers
 dubbing language: whisper hands English over whatever the game speaks, so a
 session dubbing into English (`untranslatedDubbingLanguage`) would have
 nothing to translate, and the canvas draws the stage faded with the text
-running from recognition straight into the voice. The catalogue carries no
-English voice today, so `PipelineGraphBloc` refuses that cut with
-`ConnectionRefusal.unsupported` while `dubbingLanguages` lacks English; the
-rest of the machinery stays for the day a voice for it comes back. Joining it back asks for the first
+running from recognition straight into the voice. `PipelineGraphBloc` still
+refuses that cut with `ConnectionRefusal.unsupported` where `dubbingLanguages`
+lacks English, which is a catalogue with no English voice in it at all rather
+than the one this ships. Joining it back asks for the first
 installed language that has a translator and refuses with `translatorMissing`
 when there is none; cutting the line that steps over the stage puts the stage
 back, a voice with nothing to read being no state at all. `ModelSelection.translates`
@@ -750,9 +757,9 @@ per-user setup put this copy there; otherwise the line opens the release page.
 
 A dubbing language is a voice and, unless it is English, a translator:
 `dubbingLanguages` counts over the voice packages, so a language with two of
-them would still be offered once, and English would be offered with no Marian
-behind it at all. Today the catalogue dubs into Russian alone: Silero, which
-voiced German, Spanish, French, Ukrainian and English as well, is CC BY-NC,
+them would still be offered once, and English is offered with no Marian
+behind it at all. The catalogue dubs into Russian and English: Silero, which
+voiced German, Spanish, French and Ukrainian as well, is CC BY-NC,
 and the dubbing is to be free to earn money with, so it went and took those
 languages and their translators with it. `SettingsService` reads a stored
 `targetLanguage` the catalogue no longer carries as its first language, or
@@ -769,6 +776,50 @@ with a line read in the same time either way. What its phoneme map lacks --
 digits, Latin -- is dropped rather than raised on. The files are this
 project's release `voices-vosk-v1` in `Hecatoncheir/LoreDub-models`, renamed flat from the authors' archive
 with a NOTICE, as the translators are.
+
+English is `kokoro-en-1.0`, Kokoro-82M under Apache 2.0, read by
+`assets/runtime/kokoro_voice.py` — the same two calls (`speakers`,
+`apply_tts`) the worker was written against. Which of the two wrappers reads
+a speech package is the package's own answer rather than a flag from the
+application: `load_voice` (`inference_worker.py`) takes Kokoro where
+`voices.bin` sits beside the model and Vosk otherwise, both packages being
+named by the same first file, `model.onnx`. What must not differ between them
+is where a voice runs, so `onnx_speech.providers_for` is the one place that
+answers it. Measured against Vosk on the same machine over fifteen game
+lines: a tie per second of speech on the processor (RTF 0.29 to 0.31,
+though an English reading of a line is longer than its Russian one), 353 MB
+against 894, open in 1.0 s against 17.2, and 174 ms a line on the card with
+**no per-shape penalty at all** — the opposite of Vosk, where a line of a new
+length costs about 1.9 s. Under the converter it lands closer to the
+character than Vosk does (0.805 and 0.865 against two targets to Vosk's 0.763
+and 0.839) and its floor is far higher (0.717 against 0.548, Vosk's short
+lines being what fall apart). The fp32 export is what ships: fp16 reads
+correctly on the processor and goes silent on the card for `af_heart` in four
+lines of five, and the quantized builds that load at all are four times
+slower than fp32 (RTF 1.4, slower than real time). The catalogue lists 23 of
+its 28 English voices with **measured** genders — `af_alloy` is a man at 147
+Hz and `am_santa` a woman at 182, so a name says nothing — and leaves out the
+five that fall between the worker's thresholds.
+
+The phonemes are the part with a licence in it. Every other wrapper of that
+model takes them from espeak-ng, which is GPLv3 and cannot travel inside an
+MIT application, so `assets/runtime/english_g2p.py` reads the words misaki
+(Apache 2.0) holds and answers the rest with the letter-to-sound network of
+g2p_en (Apache 2.0), ported into that file because importing the package
+reaches for two NLTK corpora and downloads them. Only its `checkpoint20.npz`
+is used, found through `importlib.util.find_spec` so the module is never
+executed; the port answers what `g2p_en.G2p.predict` answers on all forty
+words it was checked against. Measured over the 119 English lines the
+glossary had collected, misaki alone leaves 1.4% of the words unread, and
+they are the ones a game is made of (Whiterun, Zorvax, Aiur, medkit) — unread
+meaning **dropped**, since its `❓` is not in the model's vocabulary. The
+fallback's guesses are not espeak's: over forty game proper nouns the two
+agree on 3, differ only in stress on 4 and differ in what is said on 24. That
+is the trade the licence buys, and the glossary is the lever the player has
+over it. `prepare_windows_runtime.ps1` therefore installs misaki **without**
+its `[en]` extra — that extra is what pulls espeakng-loader and
+phonemizer-fork, the GPL half — naming `num2words` and `spacy` itself, and
+installs `g2p-en` with `--no-deps` in a pip run of its own.
 
 
 The translators are the one thing the catalogue does not fetch from its

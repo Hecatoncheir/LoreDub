@@ -43,9 +43,11 @@ sent anywhere, and there is no account to make.
 - **The voice matches the character.** A man's or a woman's, chosen from the
   pitch of the original, line by line — and in [Original voice](#dubbing-voice)
   mode the dubbing takes on the speaker's timbre too.
-- **Dubbed into Russian.** The game may speak any of the nearly hundred
-  languages Whisper understands; the translation is heard in Russian, in a
-  Vosk-TTS voice under Apache 2.0, which allows commercial use too.
+- **Dubbed into Russian or English.** The game may speak any of the nearly
+  hundred languages Whisper understands; the translation is heard in Russian,
+  in a Vosk-TTS voice — or in English, in a Kokoro voice that needs no
+  translator at all, whisper handing English over anyway. Both are under
+  Apache 2.0, which allows commercial use too.
 - **A graphics card is optional.** NVIDIA roughly halves the recognition time,
   but everything works on the processor without one.
 - **There is a [subtitle mode](#subtitle-mode).** When the lines are written
@@ -68,8 +70,9 @@ everything needed to run on the processor.
 
 Two things are needed: one recognition model (start with **Whisper base**) and
 a translator/voice pair for the language you want to play in. For Russian that
-is about 740 MB. The other languages need not be downloaded: every language
-has its own tile, and its one Download button fetches both halves of the pair.
+is about 740 MB; for English 337 MB, and there is only one half of it, English
+needing no translator. Every language has its own tile, and its one Download
+button fetches everything that language needs.
 
 **3. Start the game** and let it play some sound, so it appears in the process
 list.
@@ -394,10 +397,12 @@ stage goes dark, labelled «not routed» and still in its place, while Live
 refuses to start and says why. The mode is remembered, so any link drawn back
 picks up the route it had.
 
-The **Translation** link does not come off: without translation there is
-nothing to voice. Taking it off used to mean dubbing into English, but there is
-no English voice any more -- LoreDub dubs into Russian alone -- and the graph
-answers «The engine has no such route».
+Taking the **Translation** link off means dubbing into English: whisper hands
+English over whatever the game speaks, so there is nothing left to translate.
+The node fades, the text runs from recognition straight into the voice, and
+the dubbing language in the settings becomes English -- it is one setting seen
+from the other side. Drawing the link back picks the first installed language
+that has a translator.
 
 Clicking a node opens its own settings in a panel down the right edge of the
 canvas, the whole height of it: the game and where its sound is taken from,
@@ -572,9 +577,10 @@ them. Measurements and details are under
 Game process (WASAPI process loopback, 16 kHz mono)
   -> energy VAD and phrase endpointing
   -> whisper.cpp --translate
-  -> Helsinki-NLP Marian English -> Russian
-  -> Vosk-TTS
-  -> (Original voice mode) OpenVoice V2: the line's timbre over the Vosk voice
+  -> Helsinki-NLP Marian English -> Russian (skipped when dubbing into
+     English)
+  -> Vosk-TTS or Kokoro
+  -> (Original voice mode) OpenVoice V2: the line's timbre over that voice
   -> default Windows output
 ```
 
@@ -635,6 +641,43 @@ Vosk ships five voices and three are listed: `female_1`, `male_0` and
 between the thresholds, and are given no gender. Vosk reads neither digits nor
 Latin script and passes them by in silence; Latin names the translator left
 behind are written out in Cyrillic by the worker first.
+
+### The English voice
+
+English is read by [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M)
+1.0, under Apache 2.0 — which allows earning money too. It needs no
+translator: whisper hands English over whatever the game speaks, so the chain
+is a whole stage shorter.
+
+Beside Vosk it stands like this: 353 MB against 894, open in a second against
+seventeen, and a line read just as fast per second of speech (RTF 0.29
+against 0.31 on twelve processor threads). The card, unlike Vosk's, is a real
+bargain here: 174 ms a line, with no penalty for a new length at all — the
+longest line measured, 4.3 s of speech, took 312 ms. Under the OpenVoice
+converter it lands closer to the original than Vosk: 0.805 and 0.865 against
+two targets, to Vosk's 0.763 and 0.839, and its worst line is 0.717 against
+0.548.
+
+Twenty-three of its twenty-eight voices are listed; five (`af_kore`,
+`af_nicole`, `af_nova`, `af_sky`, `am_eric`) measure between the thresholds
+and are given no gender. The names say nothing about it: `af_alloy` reads at
+147 Hz, a man, and `am_santa` at 182, a woman, so every voice is measured
+rather than taken at its name.
+
+How the text becomes sounds is a story of its own. Every other wrapper of
+this model takes its phonemes from espeak-ng, which is GPLv3 and has no place
+inside an MIT application. So the words are read by
+[misaki](https://github.com/hexgrad/misaki) (Apache 2.0), and what it does
+not know by the network of [g2p_en](https://github.com/Kyubyong/g2p) (Apache
+2.0 as well). Over the 119 English lines collected in the glossary misaki
+does not know 1.4% of the words — and they are exactly the words the whole
+thing is for: Whiterun, Zorvax, Aiur, medkit. Without a fallback they are not
+said wrongly, they are not said at all. The fallback says them by its own
+rules, and they are not espeak's: over forty game names the two agree on
+three, differ only in stress on four more, and read the other 24 differently
+— espeak's "Whiterun" is white-run, this one's is wit-er-un. A name read
+wrongly is one the player can correct with a glossary entry; a name dropped
+in silence is not.
 
 ### Voice mode
 
@@ -810,7 +853,7 @@ but disabled, with a tooltip saying why.
 | --- | --- | --- | --- |
 | Whisper | yes, downloaded (436 MB) | yes, if built (see below) | always |
 | Translation (Marian) | yes, downloaded (~2.7 GB) | no: torch has no Vulkan backend | always |
-| Speech (Vosk) | yes, the same runtime: onnxruntime-gpu beside torch | no | always |
+| Speech (Vosk and Kokoro) | yes, the same runtime: onnxruntime-gpu beside torch | no | always |
 
 The heavy GPU runtimes are **not in the installer**. They are fetched on demand
 by the same machinery as the models, with progress, SHA-256 verification and
@@ -1047,12 +1090,13 @@ being detected again for every phrase, which costs a full extra encoder pass.
   and is not worth the complexity.
 - **Subtitle overlay.** `AppSettings.showOverlay` is persisted but nothing
   reads it yet; the intent is to draw the translated lines over the game.
-- **Other dubbing languages — Piper or Kokoro.** LoreDub dubs into Russian
-  alone today: Silero's voices for the other languages went for their CC BY-NC
+- **Other dubbing languages — Piper or Kokoro.** English is dubbed by Kokoro
+  already; the other languages went with Silero's voices for their CC BY-NC
   licence. Piper speaks 57 languages, among them German, Italian, Polish,
   Portuguese, Turkish, Chinese, Dutch, Czech, Swedish and Arabic; Kokoro
-  (Apache 2.0) English, Spanish, French and a few more. Each would need a
-  Marian translator as well. A voice there
+  itself Spanish, French, Italian and a few more — but their phonemes come
+  from espeak-ng, which is not here: misaki knows the words of English alone.
+  Each would need a Marian translator as well. A voice there
   is a 60 MB `.onnx` file rather than a package per language, so a player
   downloads the one voice they listen to; the pace is handed to the synthesis
   (`length_scale`) instead of stretching a finished wave; its 22.05 kHz would
@@ -1247,9 +1291,11 @@ player's machine, and each keeps its upstream licence.
 | Whisper weights (`ggml-*.bin`) | MIT | yes |
 | Marian `opus-mt-tc-big-en-zle` (Russian) | CC-BY-4.0 | yes, with attribution |
 | Vosk-TTS 0.9 (Alpha Cephei), with ruBert-base (SberDevices) | Apache-2.0 | yes, with attribution |
+| Kokoro-82M 1.0 (hexgrad), the English voice | Apache-2.0 | yes, with attribution |
 | OpenVoice V2 tone colour converter | MIT | yes |
 | torch, including the CUDA build | BSD-3-Clause; NVIDIA libraries under the NVIDIA EULA | yes |
-| transformers, sentencepiece, vosk-tts | Apache-2.0 | yes |
+| transformers, sentencepiece, vosk-tts, misaki, g2p_en | Apache-2.0 | yes |
+| spacy, en_core_web_sm | MIT | yes |
 | onnxruntime, onnxruntime-gpu | MIT | yes |
 | sacremoses | MIT | yes |
 | Embedded Python 3.11 | PSF License | yes |
@@ -1270,6 +1316,14 @@ weights says, as Apache 2.0 asks. The model's voices F01 and F02 were trained,
 its authors say, on recordings of other projects (Tiflocomp Irina, SOVA
 Natasha); if that matters to you, check the terms of those recordings
 separately.
+
+Kokoro is served from the same place, the release
+[`voices-kokoro-v1`](https://github.com/Hecatoncheir/LoreDub-models/releases/tag/voices-kokoro-v1),
+on the same terms: the files are renamed, the contents unchanged, the NOTICE
+beside them. Its authors write that the training audio included speech
+synthesized by closed commercial engines; the licence on the weights is
+hexgrad's, and it is Apache 2.0, but if that matters to you it is worth
+knowing.
 
 ## Sponsors
 

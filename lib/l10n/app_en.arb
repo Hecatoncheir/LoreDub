@@ -532,7 +532,7 @@
   "sectionRecognition": "SPEECH RECOGNITION",
   "sectionRecognitionNote": "Whisper turns speech in any language into English text. One model covers everything — larger is more accurate and slower.",
   "sectionLanguages": "DUBBING LANGUAGES",
-  "sectionLanguagesNote": "A translator and its voice are downloaded and deleted together. LoreDub dubs into Russian: the other languages' voices were under a licence that forbids commercial use.",
+  "sectionLanguagesNote": "A translator and its voice are downloaded and deleted together. English needs no translator: whisper hands English over whatever the game speaks. The other languages went with voices under a licence that forbids commercial use.",
   "modelPartTranslation": "translation",
   "modelPartVoice": "voice",
   "modelPartConverter": "voice converter",
@@ -798,10 +798,13 @@
       }
     }
   },
-  "modelVoiceTitle": "{language} — Vosk {version}",
+  "modelVoiceTitle": "{language} — {engine} {version}",
   "@modelVoiceTitle": {
     "placeholders": {
       "language": {
+        "type": "String"
+      },
+      "engine": {
         "type": "String"
       },
       "version": {
@@ -840,11 +843,13 @@
   "translationTarget_es": "Spanish",
   "translationTarget_fr": "French",
   "translationTarget_uk": "Ukrainian",
+  "voiceName_en": "English voice",
   "voiceName_ru": "Russian voice",
   "voiceName_de": "German voice",
   "voiceName_es": "Spanish voice",
   "voiceName_fr": "French voice",
   "voiceName_uk": "Ukrainian voice",
+  "voiceSpeech_en": "English",
   "voiceSpeech_de": "German",
   "voiceSpeech_es": "Spanish",
   "voiceSpeech_fr": "French",
