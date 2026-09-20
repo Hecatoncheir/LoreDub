@@ -1345,6 +1345,19 @@ def main():
                 glossary.replace(written_down)
                 reply({"id": request_id, "glossary": len(glossary)})
                 continue
+            # The voice the dubbing reads in, changed while it runs: the
+            # player picks another on the screen page or in the settings,
+            # and the next line is read in it rather than at the next
+            # start. A name this package does not ship is left alone --
+            # the answer says which voice is actually in use.
+            chosen_voice = request.get("speaker")
+            if chosen_voice is not None:
+                name = str(chosen_voice)
+                if name in voices:
+                    speaker = name
+                    current_voice = name
+                reply({"id": request_id, "speaker": speaker})
+                continue
             heard_as_itself = request.get("asHeard")
             if heard_as_itself is not None:
                 as_heard = {str(name) for name in heard_as_itself}

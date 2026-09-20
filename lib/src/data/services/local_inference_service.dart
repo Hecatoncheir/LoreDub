@@ -839,6 +839,35 @@ class LocalInferenceService {
     }
   }
 
+  /// Reads the lines that follow in [voice], which is what the picker on
+  /// the settings and screen pages changes while a session runs.
+  ///
+  /// The voice is given to the worker when it starts, so this is what
+  /// carries a change made meanwhile: the next line is read in it rather
+  /// than the next session.
+  Future<void> useVoice(String voice) async {
+    final worker = _worker;
+    if (worker == null) return;
+
+    final id = ++_requestId;
+    final completer = Completer<Map<String, Object?>>();
+    _pending[id] = completer;
+    worker.stdin.writeln(jsonEncode({'id': id, 'speaker': voice}));
+    final response = await completer.future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        _pending.remove(id);
+        throw LoreDubFailure(
+          FailureCode.workerTimeout,
+          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+        );
+      },
+    );
+    if (response['error'] case final String error) {
+      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
+    }
+  }
+
   /// Reads [character] in [target]'s voice wherever they are recognized, as
   /// their card now says, or in their own again when [target] is null.
   ///

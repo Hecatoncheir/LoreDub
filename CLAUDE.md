@@ -807,6 +807,13 @@ each change it disagreed about where the answer came from — a per-game
 `speaker_map/<exe>.json` was the third, and it is gone: no file, no
 `--speaker-map`, no `{"assign": {...}}` request.
 
+`AppSettings.voice` may be picked while a session runs: `SettingsCubit`
+tells `PipelineCubit` through `onChanged`, which sends `{"speaker": name}`
+to the worker (`useVoice`, one control request beside `{"glossary": ...}`
+and `{"asHeard": ...}`) and keeps `_activeConfig` in step. A name the
+package does not ship leaves the voice alone, and the worker answers with
+the one actually in use.
+
 The substitution itself is the card's: `Character.voicedBy` names the card
 that reads this one, holds in every game, and is applied by the worker's
 `read_as` before `voice_for`/`timbre_for`, which is why it carries both the

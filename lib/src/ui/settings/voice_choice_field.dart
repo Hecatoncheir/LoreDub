@@ -10,11 +10,13 @@ import '../compute_names.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 
 /// The voice picked by hand out of those the language's package ships.
+///
+/// It can be picked at any moment, a session running or not: the worker is
+/// told, and the next line is read in it.
 class VoiceChoiceField extends StatelessWidget {
-  const VoiceChoiceField({super.key, required this.selection, required this.running});
+  const VoiceChoiceField({super.key, required this.selection});
 
   final ModelSelection selection;
-  final bool running;
 
   void _choose(BuildContext context, String? voice) {
     if (voice == null) return;
@@ -32,7 +34,7 @@ class VoiceChoiceField extends StatelessWidget {
         for (final voice in selection.availableVoices)
           DropdownMenuItem(value: voice.id, child: Text(voiceLabel(l10n, voice))),
       ],
-      onChanged: running ? null : (value) => _choose(context, value),
+      onChanged: (value) => _choose(context, value),
     );
   }
 }

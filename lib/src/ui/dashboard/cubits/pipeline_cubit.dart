@@ -827,6 +827,32 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     await _settings.update(settings.copyWith(showFrameOverlay: !settings.showFrameOverlay));
   }
 
+  /// What a running session is told of a settings change: the voice it
+  /// reads in, and what is drawn over the game.
+  ///
+  /// Called from `SettingsCubit` rather than watched from here: one cubit
+  /// listening to another is what this project keeps out.
+  void followSettings() {
+    followFrameOverlay();
+    unawaited(_followVoice());
+  }
+
+  /// The voice picked while a session runs reaches the worker rather than
+  /// waiting for the next start: the player hears the next line in it.
+  Future<void> _followVoice() async {
+    final voice = _settings.settings.voice;
+    if (!state.running || voice.isEmpty || voice == _voiceTold) return;
+    _voiceTold = voice;
+    try {
+      await _appRepository.useVoice(voice);
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
+  /// The voice the running worker was last told to read in.
+  String? _voiceTold;
+
   /// Puts what is drawn over the game in step with the settings: the frame
   /// where the reading will look, over the game that was chosen, and the
   /// key that shows and hides it registered while nothing else holds the

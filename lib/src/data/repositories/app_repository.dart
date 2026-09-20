@@ -374,6 +374,9 @@ class AppRepository {
     return hearsVoices ? 'ocrAndAudio' : 'ocr';
   }
 
+  /// Reads the lines that follow in [voice], while a session runs.
+  Future<void> useVoice(String voice) => _nativeEngine.useVoice(voice);
+
   /// Turns the game down for the screen session. Nothing here listens to the
   /// game's sound, so this one may silence it outright.
   Future<void> _duckScreen(GameProcess? process, AppSettings settings) async {

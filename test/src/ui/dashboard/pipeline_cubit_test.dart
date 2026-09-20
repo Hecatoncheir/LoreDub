@@ -95,7 +95,7 @@ void main() {
     );
     // The cubit under test stands in for the bag's own, so what the
     // settings tell about the frame over the game reaches this one.
-    cubits.settings.onChanged = pipeline.followFrameOverlay;
+    cubits.settings.onChanged = pipeline.followSettings;
   });
 
   tearDown(() async {
@@ -243,6 +243,37 @@ void main() {
 
     expect(pipeline.state.status, PipelineStatus.idle);
     expect(repository.stops, 1);
+  });
+
+  group('the voice picked while a session runs', () {
+    test('reaches the worker rather than waiting for the next start', () async {
+      pipeline.seed(
+        const LivePipelineState(
+          status: PipelineStatus.listening,
+          session: PipelineSession.screen,
+        ),
+      );
+
+      await cubits.settings.update(const AppSettings(voice: 'male_0'));
+
+      expect(repository.voicesTold, ['male_0']);
+    });
+
+    test('is not sent twice, and not at all while nothing runs', () async {
+      await cubits.settings.update(const AppSettings(voice: 'male_1'));
+      expect(repository.voicesTold, isEmpty, reason: 'the next start will carry it');
+
+      pipeline.seed(
+        const LivePipelineState(
+          status: PipelineStatus.listening,
+          session: PipelineSession.live,
+        ),
+      );
+      await cubits.settings.update(const AppSettings(voice: 'male_1'));
+      await cubits.settings.update(const AppSettings(voice: 'male_1'));
+
+      expect(repository.voicesTold, ['male_1']);
+    });
   });
 
   group('the frame drawn over the game', () {
@@ -650,6 +681,12 @@ class _SlowStartRepository extends AppRepository {
 
   /// The keys registered while nothing runs.
   final idleKeys = <Hotkey?>[];
+
+  /// The voices a running session was told to read in.
+  final voicesTold = <String>[];
+
+  @override
+  Future<void> useVoice(String voice) async => voicesTold.add(voice);
 
   @override
   void showFrameOverlay({required int processId, required OcrRegion region}) =>

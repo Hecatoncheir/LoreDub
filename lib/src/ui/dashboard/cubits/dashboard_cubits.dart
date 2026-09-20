@@ -46,7 +46,7 @@ class DashboardCubits {
     characters.dubbingHoldsWorker = () => pipeline.state.running;
     // The frame over the game is made of the settings and the game chosen,
     // and neither cubit owns both.
-    settings.onChanged = pipeline.followFrameOverlay;
+    settings.onChanged = pipeline.followSettings;
     shell.interfaceLanguage = () => settings.settings.interfaceLanguage;
     shell.proxyUrl = () => settings.settings.modelProxyUrl;
     // Closing for an update must not leave the game turned down, or the

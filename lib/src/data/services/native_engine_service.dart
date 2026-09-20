@@ -788,6 +788,16 @@ class NativeEngineService {
   /// Takes that frame off the screen. Drawing nothing is no error.
   void hideFrame() => _throwIfError(ld_hide_frame());
 
+  /// Reads the lines that follow in [voice]. The session keeps it too, so
+  /// a line that asks what this session was started with is answered with
+  /// the voice actually in use.
+  Future<void> useVoice(String voice) async {
+    final config = _activeConfig;
+    if (config == null || config['speaker'] == voice) return;
+    _activeConfig = {...config, 'speaker': voice};
+    await _inference.useVoice(voice);
+  }
+
   /// Takes what the native side has gathered since the last tick — at most a
   /// handful, so one slow turn cannot hold the interface — and gives each
   /// event to the part that knows what to do with it.

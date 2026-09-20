@@ -91,7 +91,7 @@ class VoiceCardBody extends StatelessWidget {
         ],
         if (selection.picksVoiceByHand && selection.availableVoices.isNotEmpty) ...[
           const SizedBox(height: 14),
-          VoiceChoiceField(selection: selection, running: running),
+          VoiceChoiceField(selection: selection),
         ],
         // With one voice for every line there is nobody to tell apart.
         if (mode != VoiceMode.chosen) ...[
