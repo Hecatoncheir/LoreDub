@@ -118,7 +118,7 @@ class _HotkeyFieldState extends State<HotkeyField> {
                     alignment: Alignment.centerLeft,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     side: BorderSide(
-                      color: _listening ? LoreDubPalette.orange : LoreDubPalette.graphite,
+                      color: _listening ? context.colors.accent : context.colors.deep,
                       width: _listening ? 2 : 1,
                     ),
                   ),
@@ -129,10 +129,10 @@ class _HotkeyFieldState extends State<HotkeyField> {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: _listening
-                          ? LoreDubPalette.orangeDark
+                          ? context.colors.accentStrong
                           : value == null
-                          ? LoreDubPalette.mutedInk
-                          : LoreDubPalette.ink,
+                          ? context.colors.mutedInk
+                          : context.colors.ink,
                     ),
                   ),
                 ),

@@ -19,7 +19,7 @@ class LatencyBadge extends StatelessWidget {
     alignment: Alignment.center,
     padding: const EdgeInsets.symmetric(horizontal: 11),
     decoration: BoxDecoration(
-      color: LoreDubPalette.orange,
+      color: context.colors.accent,
       borderRadius: BorderRadius.circular(30),
     ),
     child: Text(

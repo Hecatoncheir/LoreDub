@@ -48,7 +48,7 @@ class CorrectLineButton extends StatelessWidget {
       iconSize: 16,
       visualDensity: VisualDensity.compact,
       tooltip: AppLocalizations.of(context).transcriptCorrect,
-      icon: const Icon(Icons.edit_note_rounded, color: LoreDubPalette.mutedInk),
+      icon: Icon(Icons.edit_note_rounded, color: context.colors.mutedInk),
       onPressed: () => _ask(context),
     ),
   );

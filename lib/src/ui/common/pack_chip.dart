@@ -17,14 +17,17 @@ class PackChip<D extends Object> extends StatelessWidget {
     required this.label,
     required this.feedback,
     required this.onRemove,
-    this.iconColor = LoreDubPalette.mutedInk,
+    this.iconColor,
     this.maxWidth,
     this.tooltip,
   });
 
   final D data;
   final IconData icon;
-  final Color iconColor;
+
+  /// What the icon is drawn in, where it says something -- a card with a
+  /// voice against one without. The quiet ink otherwise.
+  final Color? iconColor;
   final String label;
 
   /// What travels under the pointer while the chip is dragged.
@@ -49,17 +52,17 @@ class PackChip<D extends Object> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chip = Material(
-      color: LoreDubPalette.raised,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(20)),
-        side: BorderSide(color: LoreDubPalette.outline),
+      color: context.colors.raised,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(20)),
+        side: BorderSide(color: context.colors.outline),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: iconColor),
+            Icon(icon, size: 16, color: iconColor ?? context.colors.mutedInk),
             const SizedBox(width: 8),
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: _labelWidth),

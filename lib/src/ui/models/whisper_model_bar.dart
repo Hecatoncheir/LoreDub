@@ -43,6 +43,7 @@ class WhisperModelBar extends StatelessWidget {
     return HoverGrow(
       builder: (context, hovered) {
         final look = ModelTileLook.of(
+          colors: context.colors,
           downloading: state.progress != null,
           inUse: _inUse,
           marked: selected,
@@ -80,7 +81,7 @@ class WhisperModelBar extends StatelessWidget {
                                 fontFamily: LoreDubFonts.mono,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: _inUse ? LoreDubPalette.orange : LoreDubPalette.orangeDark,
+                                color: _inUse ? context.colors.accent : context.colors.accentStrong,
                               ),
                             ),
                           ),

@@ -25,18 +25,18 @@ class StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final (label, color) = switch (status) {
-      PipelineStatus.idle => (l10n.statusIdle, LoreDubPalette.mutedInk),
+      PipelineStatus.idle => (l10n.statusIdle, context.colors.mutedInk),
       PipelineStatus.starting => (
         stage.isEmpty ? l10n.statusStarting : describeStartupStage(l10n, stage),
-        LoreDubPalette.warning,
+        context.colors.warning,
       ),
       PipelineStatus.listening => (
         snapshot ? l10n.statusSnapshotReady : l10n.statusListening,
-        LoreDubPalette.success,
+        context.colors.success,
       ),
-      PipelineStatus.paused => (l10n.statusPaused, LoreDubPalette.warning),
-      PipelineStatus.stopping => (l10n.statusStopping, LoreDubPalette.warning),
-      PipelineStatus.error => (l10n.statusError, LoreDubPalette.error),
+      PipelineStatus.paused => (l10n.statusPaused, context.colors.warning),
+      PipelineStatus.stopping => (l10n.statusStopping, context.colors.warning),
+      PipelineStatus.error => (l10n.statusError, context.colors.danger),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),

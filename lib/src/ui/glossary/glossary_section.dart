@@ -56,7 +56,7 @@ class GlossarySection extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               texts.note,
-              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+              style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
             ),
             const SizedBox(height: 14),
             if (loaded && entries.isEmpty)
@@ -70,7 +70,7 @@ class GlossarySection extends StatelessWidget {
                   // written under a narrowed list, hidden the moment it is
                   // kept, would read as not having been written.
                   held > 0 ? l10n.glossaryAllHidden : l10n.glossaryEmpty,
-                  style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+                  style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
                 ),
               ),
             for (final entry in entries)

@@ -22,7 +22,7 @@ class EmptyCast extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.groups_rounded, size: 42, color: LoreDubPalette.mutedInk),
+                Icon(Icons.groups_rounded, size: 42, color: context.colors.mutedInk),
                 const SizedBox(height: 14),
                 Text(
                   AppLocalizations.of(context).charactersEmpty,

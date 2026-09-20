@@ -16,40 +16,41 @@ class SnapshotStatusLine extends StatelessWidget {
   final LivePipelineState pipeline;
   final AppSettings settings;
 
-  (IconData, String, Color)? _said(AppLocalizations l10n) => switch (pipeline) {
-    _ when pipeline.snapshotReading => (
-      Icons.hourglass_top_rounded,
-      l10n.snapshotReading,
-      LoreDubPalette.warning,
-    ),
-    _ when pipeline.snapshotMissed => (
-      Icons.search_off_rounded,
-      l10n.snapshotMissed,
-      LoreDubPalette.warning,
-    ),
-    _ when pipeline.liveRunning => (
-      Icons.info_outline_rounded,
-      l10n.snapshotInLive,
-      LoreDubPalette.mutedInk,
-    ),
-    _ when pipeline.frameMissed => (
-      Icons.crop_free_rounded,
-      l10n.frameMissed,
-      LoreDubPalette.warning,
-    ),
-    // Reading the whole screen waits for no window, so there is no game to
-    // ask for -- the picker above this line is shut for the same reason.
-    _ when pipeline.selectedProcess == null && !settings.readsWholeScreen => (
-      Icons.videogame_asset_off_rounded,
-      l10n.screenPickGame,
-      LoreDubPalette.warning,
-    ),
-    _ => null,
-  };
+  (IconData, String, Color)? _said(AppLocalizations l10n, LoreDubColors colors) =>
+      switch (pipeline) {
+        _ when pipeline.snapshotReading => (
+          Icons.hourglass_top_rounded,
+          l10n.snapshotReading,
+          colors.warning,
+        ),
+        _ when pipeline.snapshotMissed => (
+          Icons.search_off_rounded,
+          l10n.snapshotMissed,
+          colors.warning,
+        ),
+        _ when pipeline.liveRunning => (
+          Icons.info_outline_rounded,
+          l10n.snapshotInLive,
+          colors.mutedInk,
+        ),
+        _ when pipeline.frameMissed => (
+          Icons.crop_free_rounded,
+          l10n.frameMissed,
+          colors.warning,
+        ),
+        // Reading the whole screen waits for no window, so there is no game to
+        // ask for -- the picker above this line is shut for the same reason.
+        _ when pipeline.selectedProcess == null && !settings.readsWholeScreen => (
+          Icons.videogame_asset_off_rounded,
+          l10n.screenPickGame,
+          colors.warning,
+        ),
+        _ => null,
+      };
 
   @override
   Widget build(BuildContext context) {
-    final said = _said(AppLocalizations.of(context));
+    final said = _said(AppLocalizations.of(context), context.colors);
     if (said == null) return const SizedBox.shrink();
     final (icon, text, color) = said;
     return Padding(

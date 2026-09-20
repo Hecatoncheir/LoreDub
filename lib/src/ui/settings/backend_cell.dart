@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../models/download_fill.dart';
 import '../common/hover_grow.dart';
+import '../theme.dart';
 import 'backend_cell_label.dart';
 import 'backend_cell_look.dart';
 
@@ -40,7 +41,12 @@ class BackendCell extends StatelessWidget {
       alignment: Alignment.center,
       scale: onTap == null ? 1 : 1.04,
       builder: (context, hovered) {
-        final look = BackendCellLook.of(state, hovered: hovered, tappable: onTap != null);
+        final look = BackendCellLook.of(
+          state,
+          colors: context.colors,
+          hovered: hovered,
+          tappable: onTap != null,
+        );
         return Semantics(
           button: onTap != null,
           selected: state == BackendCellState.selected,

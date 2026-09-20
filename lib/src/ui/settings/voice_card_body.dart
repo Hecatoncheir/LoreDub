@@ -31,8 +31,6 @@ class VoiceCardBody extends StatelessWidget {
   /// The voice the running session last spoke in, if it has.
   final String? spokenVoice;
 
-  static const _note = TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12);
-
   /// Which voice the automatic choice actually settled on, so it is not a
   /// silent decision — the same courtesy the detected language gets on the
   /// live screen. With one voice for every line there is nothing to say.
@@ -49,6 +47,7 @@ class VoiceCardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final note = TextStyle(color: context.colors.mutedInk, fontSize: 12);
     final settings = selection.settings;
     final mode = selection.voiceMode;
     final converterInstalled = selection.voiceConverter?.installed ?? false;
@@ -75,7 +74,7 @@ class VoiceCardBody extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             converterInstalled ? l10n.voiceOriginalNote : l10n.voiceOriginalMissing,
-            style: converterInstalled ? _note : _note.copyWith(color: LoreDubPalette.warning),
+            style: converterInstalled ? note : note.copyWith(color: context.colors.warning),
           ),
         ],
         // The converter is what hears who is speaking, so remembering the
@@ -87,7 +86,7 @@ class VoiceCardBody extends StatelessWidget {
         ],
         if (!selection.canFollowSpeaker) ...[
           const SizedBox(height: 10),
-          Text(l10n.voiceUnavailable, style: _note),
+          Text(l10n.voiceUnavailable, style: note),
         ],
         if (selection.picksVoiceByHand && selection.availableVoices.isNotEmpty) ...[
           const SizedBox(height: 14),
@@ -100,7 +99,7 @@ class VoiceCardBody extends StatelessWidget {
         ],
         if (_speaking(l10n) case final speaking?) ...[
           const SizedBox(height: 10),
-          Text(speaking, style: _note),
+          Text(speaking, style: note),
         ],
       ],
     );

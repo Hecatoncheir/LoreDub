@@ -30,9 +30,9 @@ class ModuleLabel extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: LoreDubFonts.mono,
-            color: LoreDubPalette.ink,
+            color: context.colors.ink,
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.1,

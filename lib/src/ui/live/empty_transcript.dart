@@ -38,10 +38,10 @@ class EmptyTranscript extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.subtitles_outlined,
                 size: 42,
-                color: LoreDubPalette.mutedInk,
+                color: context.colors.mutedInk,
               ),
               const SizedBox(height: 14),
               Text(AppLocalizations.of(context).emptyTranscript),
@@ -61,7 +61,7 @@ class EmptyTranscript extends StatelessWidget {
                     spokenLanguageName(AppLocalizations.of(context), targetLanguage),
                   ),
                 },
-                style: const TextStyle(color: LoreDubPalette.mutedInk),
+                style: TextStyle(color: context.colors.mutedInk),
               ),
             ],
           ),

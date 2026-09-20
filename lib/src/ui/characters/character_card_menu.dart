@@ -57,8 +57,8 @@ class CharacterCardMenu extends StatelessWidget {
       tooltip: l10n.charactersCardMenu,
       icon: const Icon(Icons.more_horiz_rounded, size: 19),
       style: IconButton.styleFrom(
-        foregroundColor: LoreDubPalette.ink,
-        hoverColor: LoreDubPalette.orange.withValues(alpha: 0.18),
+        foregroundColor: context.colors.ink,
+        hoverColor: context.colors.accent.withValues(alpha: 0.18),
         minimumSize: const Size.square(LoreDubTargets.dense),
         fixedSize: const Size.square(LoreDubTargets.dense),
         padding: EdgeInsets.zero,

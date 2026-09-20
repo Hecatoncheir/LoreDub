@@ -21,7 +21,7 @@ class SideNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: 236,
-    color: LoreDubPalette.panel,
+    color: context.colors.panel,
     padding: const EdgeInsets.all(14),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,7 +37,7 @@ class SideNavigation extends StatelessWidget {
                 semanticLabel: 'LoreDub',
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -51,7 +51,7 @@ class SideNavigation extends StatelessWidget {
                       'VOICE UNIT 01',
                       style: TextStyle(
                         fontFamily: LoreDubFonts.mono,
-                        color: LoreDubPalette.mutedInk,
+                        color: context.colors.mutedInk,
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.2,
@@ -120,7 +120,7 @@ class SideNavigation extends StatelessWidget {
           ),
         ),
         VersionButton(),
-        const Padding(
+        Padding(
           // Starts where the version's icon does, so the foot of the panel
           // reads down one left edge.
           padding: EdgeInsets.fromLTRB(FooterInsets.start, 0, 12, 12),
@@ -130,7 +130,7 @@ class SideNavigation extends StatelessWidget {
             // The monospaced face is wider than the label had room for.
             style: TextStyle(
               fontFamily: LoreDubFonts.mono,
-              color: LoreDubPalette.mutedInk,
+              color: context.colors.mutedInk,
               fontSize: 9,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.2,

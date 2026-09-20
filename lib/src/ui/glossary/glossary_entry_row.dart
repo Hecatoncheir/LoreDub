@@ -72,9 +72,9 @@ class _GlossaryEntryRowState extends State<GlossaryEntryRow> {
         Expanded(
           child: SelectableText(widget.entry.source, style: const TextStyle(fontSize: 14)),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Icon(Icons.arrow_forward_rounded, size: 16, color: LoreDubPalette.mutedInk),
+          child: Icon(Icons.arrow_forward_rounded, size: 16, color: context.colors.mutedInk),
         ),
         Expanded(
           child: Focus(
@@ -108,7 +108,7 @@ class _GlossaryEntryRowState extends State<GlossaryEntryRow> {
             icon: Icon(
               widget.entry.silent ? Icons.volume_off_rounded : Icons.volume_up_outlined,
               size: 20,
-              color: widget.entry.silent ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
+              color: widget.entry.silent ? context.colors.accent : context.colors.mutedInk,
             ),
             onPressed: () => widget.onWrite(widget.entry.copyWith(silent: !widget.entry.silent)),
           ),

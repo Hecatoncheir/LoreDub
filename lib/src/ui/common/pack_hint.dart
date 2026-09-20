@@ -14,6 +14,6 @@ class PackHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
-    child: Text(text, style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk)),
+    child: Text(text, style: TextStyle(fontSize: 12, color: context.colors.mutedInk)),
   );
 }

@@ -24,11 +24,11 @@ class ShelfLabel extends StatelessWidget {
       const SizedBox(width: 9),
       Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: LoreDubFonts.mono,
           fontSize: 11,
           letterSpacing: 1.4,
-          color: LoreDubPalette.ink,
+          color: context.colors.ink,
         ),
       ),
     ],

@@ -31,9 +31,9 @@ class ModelTileHeading extends StatelessWidget {
   final bool inUse;
   final Color ink;
 
-  Color _tick(ModelTilePart part) {
+  Color _tick(ModelTilePart part, LoreDubColors colors) {
     if (!part.installed) return ink.withValues(alpha: 0.6);
-    return inUse ? LoreDubPalette.orange : LoreDubPalette.success;
+    return inUse ? colors.accent : colors.success;
   }
 
   @override
@@ -68,7 +68,7 @@ class ModelTileHeading extends StatelessWidget {
               Icon(
                 installed ? Icons.cloud_done_outlined : Icons.cloud_download_outlined,
                 size: 22,
-                color: inUse || !installed ? LoreDubPalette.orange : LoreDubPalette.ink,
+                color: inUse || !installed ? context.colors.accent : context.colors.ink,
               ),
           ],
         ),
@@ -81,7 +81,7 @@ class ModelTileHeading extends StatelessWidget {
                 Icon(
                   part.installed ? Icons.check_rounded : Icons.remove_rounded,
                   size: 14,
-                  color: _tick(part),
+                  color: _tick(part, context.colors),
                 ),
                 const SizedBox(width: 6),
                 Expanded(child: Text(part.label, style: detail)),

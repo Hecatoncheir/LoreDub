@@ -16,6 +16,7 @@ class WhisperAxesPainter extends CustomPainter {
     required this.baseline,
     required this.right,
     required this.bars,
+    required this.colors,
   });
 
   final double left;
@@ -24,10 +25,14 @@ class WhisperAxesPainter extends CustomPainter {
   final double right;
   final List<Rect> bars;
 
+  /// The roles the axes are drawn in. A painter stands outside the widget
+  /// tree and has no context to read them off.
+  final LoreDubColors colors;
+
   @override
   void paint(Canvas canvas, Size size) {
     final guide = Paint()
-      ..color = LoreDubPalette.ink.withValues(alpha: 0.55)
+      ..color = colors.ink.withValues(alpha: 0.55)
       ..strokeWidth = 1;
     for (final bar in bars) {
       // From the size on the axis to the top of its bar...
@@ -36,7 +41,7 @@ class WhisperAxesPainter extends CustomPainter {
       _dash(canvas, Offset(bar.right, baseline), Offset(bar.right, baseline + 28), guide);
     }
     final axis = Paint()
-      ..color = LoreDubPalette.orange
+      ..color = colors.accent
       ..strokeWidth = 2;
     canvas
       ..drawLine(Offset(left, top), Offset(left, baseline), axis)
@@ -57,6 +62,7 @@ class WhisperAxesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(WhisperAxesPainter oldDelegate) =>
+      oldDelegate.colors != colors ||
       oldDelegate.left != left ||
       oldDelegate.top != top ||
       oldDelegate.baseline != baseline ||

@@ -182,10 +182,10 @@ class _OcrRegionPickerState extends State<OcrRegionPicker> {
               children: [
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    color: LoreDubPalette.graphite,
+                    color: context.colors.deep,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _focused ? LoreDubPalette.orange : LoreDubPalette.graphite,
+                      color: _focused ? context.colors.accent : context.colors.deep,
                       width: 2,
                     ),
                   ),
@@ -200,12 +200,12 @@ class _OcrRegionPickerState extends State<OcrRegionPicker> {
                   ),
                 ),
                 // The stand, so the rectangle reads as a monitor at a glance.
-                Container(width: 34, height: 14, color: LoreDubPalette.graphite),
+                Container(width: 34, height: 14, color: context.colors.deep),
                 Container(
                   width: 120,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: LoreDubPalette.graphite,
+                    color: context.colors.deep,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -221,7 +221,7 @@ class _OcrRegionPickerState extends State<OcrRegionPicker> {
     final painter = CustomPaint(
       key: const ValueKey('ocrRegionScreen'),
       size: size,
-      painter: _RegionPainter(region: _shown, showGrips: _enabled),
+      painter: _RegionPainter(region: _shown, showGrips: _enabled, colors: context.colors),
     );
     if (!_enabled) return painter;
     return MouseRegion(
@@ -246,7 +246,15 @@ class _OcrRegionPickerState extends State<OcrRegionPicker> {
 }
 
 class _RegionPainter extends CustomPainter {
-  const _RegionPainter({required this.region, required this.showGrips});
+  const _RegionPainter({
+    required this.region,
+    required this.showGrips,
+    required this.colors,
+  });
+
+  /// The roles this picture is drawn in. A painter stands outside the
+  /// widget tree and reads nothing off a context of its own.
+  final LoreDubColors colors;
 
   final OcrRegion region;
   final bool showGrips;
@@ -256,12 +264,12 @@ class _RegionPainter extends CustomPainter {
     final screen = Offset.zero & size;
     canvas.drawRRect(
       RRect.fromRectAndRadius(screen, const Radius.circular(4)),
-      Paint()..color = LoreDubPalette.ink,
+      Paint()..color = colors.ink,
     );
 
     // Two dim lines where games usually print dialogue, so the empty screen
     // suggests what to look for without pretending to be the game.
-    final line = Paint()..color = LoreDubPalette.raised.withValues(alpha: 0.22);
+    final line = Paint()..color = colors.raised.withValues(alpha: 0.22);
     for (final (top, width) in [(0.82, 0.46), (0.88, 0.3)]) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
@@ -287,18 +295,18 @@ class _RegionPainter extends CustomPainter {
       Path.combine(PathOperation.difference, Path()..addRect(screen), Path()..addRect(frame)),
       Paint()..color = Colors.black.withValues(alpha: 0.35),
     );
-    canvas.drawRect(frame, Paint()..color = LoreDubPalette.orange.withValues(alpha: 0.16));
+    canvas.drawRect(frame, Paint()..color = colors.accent.withValues(alpha: 0.16));
     canvas.drawRect(
       frame.deflate(1),
       Paint()
-        ..color = LoreDubPalette.orange
+        ..color = colors.accent
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
     if (!showGrips) return;
-    final fill = Paint()..color = LoreDubPalette.raised;
+    final fill = Paint()..color = colors.raised;
     final edge = Paint()
-      ..color = LoreDubPalette.orange
+      ..color = colors.accent
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     for (final point in [
@@ -320,5 +328,7 @@ class _RegionPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RegionPainter oldDelegate) =>
-      oldDelegate.region != region || oldDelegate.showGrips != showGrips;
+      oldDelegate.region != region ||
+      oldDelegate.showGrips != showGrips ||
+      oldDelegate.colors != colors;
 }

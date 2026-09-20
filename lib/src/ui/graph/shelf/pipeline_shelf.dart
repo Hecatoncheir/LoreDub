@@ -91,7 +91,7 @@ class _PipelineShelfState extends State<PipelineShelf> {
                 Icon(
                   _open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                   size: 20,
-                  color: LoreDubPalette.mutedInk,
+                  color: context.colors.mutedInk,
                 ),
               ],
             ),
@@ -104,7 +104,7 @@ class _PipelineShelfState extends State<PipelineShelf> {
               padding: const EdgeInsets.fromLTRB(2, 2, 2, 10),
               child: Text(
                 l10n.pipelineSchemesEmpty,
-                style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+                style: TextStyle(fontSize: 12, color: context.colors.mutedInk),
               ),
             )
           else

@@ -20,12 +20,17 @@ class DotFieldPainter extends CustomPainter {
     required this.nodes,
     required this.grown,
     required this.picked,
+    required this.colors,
     this.fade = const ChoiceFade(),
     this.arriving = const {},
     this.leaving = const {},
   }) : super(repaint: Listenable.merge([grown, picked]));
 
   final GraphView view;
+
+  /// The roles the field is drawn in. A painter stands outside the widget
+  /// tree and has no context to read them off, so they are handed to it.
+  final LoreDubColors colors;
 
   /// The cards standing on the field, the ones on their way off it among
   /// them. Where they stand is read off these; which of them the field
@@ -62,7 +67,7 @@ class DotFieldPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = LoreDubPalette.canvas);
+    canvas.drawRect(Offset.zero & size, Paint()..color = colors.canvas);
     final step = spacing * view.zoom;
     if (step < 6) return;
     _drawShades(canvas, _sorted(size, step), radius: math.max(0.8, 1.1 * view.zoom));
@@ -107,10 +112,10 @@ class DotFieldPainter extends CustomPainter {
   }
 
   void _drawShades(Canvas canvas, List<List<Offset>> byShade, {required double radius}) {
-    final plain = LoreDubPalette.outline.withValues(alpha: 0.55);
+    final plain = colors.outline.withValues(alpha: 0.55);
     for (var shade = 0; shade <= _shades; shade++) {
       final share = shade / _shades;
-      final colour = Color.lerp(plain, LoreDubPalette.orange, share * lit)!;
+      final colour = Color.lerp(plain, colors.accent, share * lit)!;
       for (var left = 1; left <= _steps; left++) {
         final dots = byShade[shade * (_steps + 1) + left];
         if (dots.isEmpty) continue;
@@ -171,6 +176,7 @@ class DotFieldPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(DotFieldPainter old) {
+    if (old.colors != colors) return true;
     if (old.view.x != view.x || old.view.y != view.y || old.view.zoom != view.zoom) return true;
     // The canvas holds one fade and makes another only when the choice
     // changes, so the same object is the same choice.

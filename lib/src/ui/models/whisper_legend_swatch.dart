@@ -27,9 +27,9 @@ class WhisperLegendSwatch extends StatelessWidget {
     height: 16,
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
-      color: LoreDubPalette.panel,
+      color: context.colors.panel,
       borderRadius: const BorderRadius.all(Radius.circular(4)),
-      border: Border.all(color: edge, width: edge == LoreDubPalette.orange ? 2 : 1),
+      border: Border.all(color: edge, width: edge == context.colors.accent ? 2 : 1),
     ),
     child: switch (icon) {
       final mark? => Icon(mark, size: 11, color: fill),

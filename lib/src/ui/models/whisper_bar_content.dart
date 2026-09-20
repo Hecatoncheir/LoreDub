@@ -26,9 +26,9 @@ class WhisperBarContent extends StatelessWidget {
   /// Narrower than this the bar holds the dial alone.
   static const _roomyWidth = 150.0;
 
-  Color get _nameInk {
-    if (state.progress != null) return LoreDubPalette.orange;
-    return inUse ? LoreDubPalette.raised : LoreDubPalette.ink;
+  Color _nameInk(LoreDubColors colors) {
+    if (state.progress != null) return colors.accent;
+    return inUse ? colors.raised : colors.ink;
   }
 
   static double _dialSize(BoxConstraints room, {required double heightShare}) =>
@@ -70,7 +70,7 @@ class WhisperBarContent extends StatelessWidget {
                   fontFamily: LoreDubFonts.mono,
                   fontSize: roomy ? 20 : 15,
                   fontWeight: FontWeight.w500,
-                  color: _nameInk,
+                  color: _nameInk(context.colors),
                 ),
               ),
             ],

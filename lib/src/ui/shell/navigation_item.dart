@@ -30,7 +30,7 @@ class NavigationItem extends StatelessWidget {
       button: true,
       label: label,
       child: Material(
-        color: selected ? LoreDubPalette.graphite : Colors.transparent,
+        color: selected ? context.colors.deep : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
@@ -40,12 +40,12 @@ class NavigationItem extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: 12),
-                icon(selected ? LoreDubPalette.orange : LoreDubPalette.ink),
+                icon(selected ? context.colors.accent : context.colors.ink),
                 const SizedBox(width: 12),
                 Text(
                   label,
                   style: TextStyle(
-                    color: selected ? Colors.white : LoreDubPalette.ink,
+                    color: selected ? Colors.white : context.colors.ink,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),

@@ -20,10 +20,10 @@ class WhisperLegendItem extends StatelessWidget {
       const SizedBox(width: 6),
       Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: LoreDubFonts.mono,
           fontSize: 11,
-          color: LoreDubPalette.mutedInk,
+          color: context.colors.mutedInk,
         ),
       ),
     ],

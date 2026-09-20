@@ -46,7 +46,7 @@ class UpdateRow extends StatelessWidget {
               child: Text(
                 l10n.updateInstalled,
                 maxLines: 1,
-                style: _label.copyWith(color: LoreDubPalette.ink),
+                style: _label.copyWith(color: context.colors.ink),
               ),
             ),
           ),
@@ -55,10 +55,10 @@ class UpdateRow extends StatelessWidget {
             child: TextButton.icon(
               key: const ValueKey('updateRestart'),
               onPressed: context.read<ShellCubit>().restartToUpdate,
-              icon: LoreDubIcons.directorySync(color: LoreDubPalette.orange, size: 16),
+              icon: LoreDubIcons.directorySync(color: context.colors.accent, size: 16),
               label: Text(l10n.updateRestart),
               style: TextButton.styleFrom(
-                foregroundColor: LoreDubPalette.orangeDark,
+                foregroundColor: context.colors.accentStrong,
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 minimumSize: const Size(0, 34),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -94,7 +94,7 @@ class UpdateRow extends StatelessWidget {
         key: const ValueKey('updateAvailable'),
         onPressed: context.read<ShellCubit>().installUpdate,
         style: TextButton.styleFrom(
-          foregroundColor: LoreDubPalette.ink,
+          foregroundColor: context.colors.ink,
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: FooterInsets.button, vertical: 6),
           minimumSize: const Size(0, 34),
@@ -110,7 +110,7 @@ class UpdateRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            LoreDubIcons.deployedCodeUpdate(color: LoreDubPalette.orange, size: 18),
+            LoreDubIcons.deployedCodeUpdate(color: context.colors.accent, size: 18),
           ],
         ),
       ),

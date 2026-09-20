@@ -56,9 +56,9 @@ class GlossaryPacksSection extends StatelessWidget {
     return Container(
       key: const ValueKey('glossaryPacks'),
       decoration: BoxDecoration(
-        color: LoreDubPalette.panel,
+        color: context.colors.panel,
         borderRadius: const BorderRadius.all(Radius.circular(16)),
-        border: Border.all(color: LoreDubPalette.outline),
+        border: Border.all(color: context.colors.outline),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -78,27 +78,27 @@ class GlossaryPacksSection extends StatelessWidget {
                   onPressed: onImport,
                   icon: const Icon(Icons.file_download_outlined, size: 18),
                   label: Text(l10n.glossaryPackImport),
-                  style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                  style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
                 ),
                 TextButton.icon(
                   key: const ValueKey('glossary-pack-add'),
                   onPressed: () => context.read<GlossaryCubit>().addPack(l10n.packsNewName),
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(l10n.packsAdd),
-                  style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                  style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
               l10n.glossaryPacksNote,
-              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+              style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
             ),
             const SizedBox(height: 14),
             if (view.glossary.packs.isEmpty)
               Text(
                 l10n.glossaryPacksEmpty,
-                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+                style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
               )
             else
               for (final pack in view.glossary.packs)

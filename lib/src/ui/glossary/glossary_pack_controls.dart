@@ -44,7 +44,7 @@ class GlossaryPackControls extends StatelessWidget {
                 l10n.glossaryPackActive,
                 style: TextStyle(
                   fontSize: 12,
-                  color: pack.active ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
+                  color: pack.active ? context.colors.accent : context.colors.mutedInk,
                 ),
               ),
             ],

@@ -1054,10 +1054,15 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `LoreDubTextStyles` are `ThemeExtension`s put on both themes -- the
   window's and the node panel's -- so a widget of ours standing in the panel
   is painted in that node's face without knowing it. `LoreDubPalette`
-  (`theme/tokens/palette.dart`) is the raw palette behind them and is on its
-  way out: naming it in a widget is what `tool/ratchet.dart` counts, and a
-  widget that names it cannot be repainted by the theme. A note is
-  `bodySmall`, a smaller one `labelSmall`.
+  (`theme/tokens/palette.dart`) is the raw palette behind them and is now
+  behind them alone: no widget names it, and `tool/ratchet.dart` holds that
+  count at zero, a widget that names one cannot be repainted by the theme.
+  What stands outside the widget tree -- a `CustomPainter`, a look decided
+  from state -- takes `LoreDubColors` as a parameter rather than reaching
+  for the palette, and a painter compares it in `shouldRepaint`.
+  `context.colors` falls back to `LoreDubColors.light` under a theme that
+  carries no roles, so a widget of ours built alone in a test still draws.
+  A note is `bodySmall`, a smaller one `labelSmall`.
 - Interface strings live in `lib/l10n/app_ru.arb` (the template) and
   `app_en.arb`; reach them with `AppLocalizations.of(context)`. Names for
   languages and model packages are resolved in `lib/src/ui/language_names.dart`

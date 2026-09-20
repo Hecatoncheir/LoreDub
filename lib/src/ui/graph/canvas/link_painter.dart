@@ -21,6 +21,7 @@ class LinkPainter extends CustomPainter {
   LinkPainter({
     required this.graph,
     required this.grown,
+    required this.colors,
     this.drag,
     this.over,
     this.appearing = const {},
@@ -29,6 +30,10 @@ class LinkPainter extends CustomPainter {
   }) : super(repaint: grown);
 
   final PipelineGraph graph;
+
+  /// The roles the curves are drawn in. A painter stands outside the widget
+  /// tree and has no context to read them off, so they are handed to it.
+  final LoreDubColors colors;
   final PipelineLinkDrag? drag;
   final PipelinePort? over;
 
@@ -86,10 +91,10 @@ class LinkPainter extends CustomPainter {
   /// A voice going into the mix is the one the player hears, so it carries
   /// the orange of the path it joins; the casting among the cards is
   /// graphite, being an arrangement rather than a signal.
-  static Color _colourOf(PipelineLink link) {
+  Color _colourOf(PipelineLink link) {
     final cast = link.signal == PipelineSignal.voice;
     final heard = link.to.socket == PipelineSocket.mixCast;
-    return cast && !heard ? LoreDubPalette.graphite : LoreDubPalette.orange;
+    return cast && !heard ? colors.deep : colors.accent;
   }
 
   /// The link the pointer is carrying, dashed, orange once a socket would
@@ -110,12 +115,13 @@ class LinkPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.4
         ..strokeCap = StrokeCap.round
-        ..color = over == null ? LoreDubPalette.mutedInk : LoreDubPalette.orange,
+        ..color = over == null ? colors.mutedInk : colors.accent,
     );
   }
 
   @override
   bool shouldRepaint(LinkPainter old) =>
+      old.colors != colors ||
       old.graph != graph ||
       old.drag != drag ||
       old.over != over ||

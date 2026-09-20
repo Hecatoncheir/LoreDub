@@ -31,8 +31,8 @@ class LinkCutBadge extends StatelessWidget {
       // the voices of the game, or one card takes its own part back.
       message: cut.describe(AppLocalizations.of(context)),
       child: Material(
-        shape: const CircleBorder(side: BorderSide(color: LoreDubPalette.graphite)),
-        color: LoreDubPalette.raised,
+        shape: CircleBorder(side: BorderSide(color: context.colors.deep)),
+        color: context.colors.raised,
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onCut,

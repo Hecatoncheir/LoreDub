@@ -40,11 +40,11 @@ class SchemeCard extends StatelessWidget {
     return SizedBox(
       width: width,
       child: Material(
-        color: LoreDubPalette.panel,
+        color: context.colors.panel,
         clipBehavior: Clip.antiAlias,
-        shape: const RoundedRectangleBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
-          side: BorderSide(color: LoreDubPalette.outline),
+          side: BorderSide(color: context.colors.outline),
         ),
         child: InkWell(
           onTap: onChoose,
@@ -57,7 +57,7 @@ class SchemeCard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
                     child: CustomPaint(
-                      painter: SchemePainter(scheme: scheme, cast: cast),
+                      painter: SchemePainter(scheme: scheme, cast: cast, colors: context.colors),
                     ),
                   ),
                 ),
@@ -83,10 +83,10 @@ class SchemeCard extends StatelessWidget {
                               _note(l10n),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: LoreDubFonts.mono,
                                 fontSize: 10,
-                                color: LoreDubPalette.mutedInk,
+                                color: context.colors.mutedInk,
                               ),
                             ),
                           ],

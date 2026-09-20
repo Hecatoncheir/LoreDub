@@ -23,7 +23,7 @@ class EmptySnapshots extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.highlight_alt_rounded, size: 42, color: LoreDubPalette.mutedInk),
+              Icon(Icons.highlight_alt_rounded, size: 42, color: context.colors.mutedInk),
               const SizedBox(height: 14),
               Text(AppLocalizations.of(context).snapshotEmpty, textAlign: TextAlign.center),
             ],

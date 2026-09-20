@@ -31,7 +31,7 @@ class CastDropArea extends StatelessWidget {
       details.data.character.id,
     ),
     builder: (context, candidate, _) => ColoredBox(
-      color: candidate.isEmpty ? Colors.transparent : LoreDubPalette.orange.withValues(alpha: 0.08),
+      color: candidate.isEmpty ? Colors.transparent : context.colors.accent.withValues(alpha: 0.08),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
         child: state.characters.isEmpty

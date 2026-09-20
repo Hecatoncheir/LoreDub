@@ -25,32 +25,32 @@ class WhisperChartLegend extends StatelessWidget {
         children: [
           WhisperLegendItem(
             label: l10n.whisperLegendMissing,
-            mark: const WhisperLegendSwatch(
-              fill: LoreDubPalette.orange,
-              edge: LoreDubPalette.outline,
+            mark: WhisperLegendSwatch(
+              fill: context.colors.accent,
+              edge: context.colors.outline,
               icon: Icons.cloud_download_outlined,
             ),
           ),
           WhisperLegendItem(
             label: l10n.whisperLegendInstalled,
-            mark: const WhisperLegendSwatch(
-              fill: LoreDubPalette.ink,
-              edge: LoreDubPalette.outline,
+            mark: WhisperLegendSwatch(
+              fill: context.colors.ink,
+              edge: context.colors.outline,
               icon: Icons.cloud_done_outlined,
             ),
           ),
           WhisperLegendItem(
             label: l10n.whisperLegendSelected,
-            mark: const WhisperLegendSwatch(
-              fill: LoreDubPalette.graphite,
-              edge: LoreDubPalette.orange,
+            mark: WhisperLegendSwatch(
+              fill: context.colors.deep,
+              edge: context.colors.accent,
             ),
           ),
           WhisperLegendItem(
             label: l10n.whisperLegendDownloading,
-            mark: const WhisperLegendSwatch(
-              fill: LoreDubPalette.graphite,
-              edge: LoreDubPalette.orange,
+            mark: WhisperLegendSwatch(
+              fill: context.colors.deep,
+              edge: context.colors.accent,
               filled: 0.5,
             ),
           ),

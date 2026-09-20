@@ -29,8 +29,6 @@ class ComputePresetDetail extends StatelessWidget {
   final ComputeAvailability availability;
   final bool running;
 
-  static const _note = TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13);
-
   void _chooseThreads(BuildContext context, int? threads) {
     if (threads == null) return;
     context.read<SettingsCubit>().update(settings.copyWith(cpuThreads: threads));
@@ -39,13 +37,14 @@ class ComputePresetDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final note = TextStyle(color: context.colors.mutedInk, fontSize: 13);
     return switch (settings.computeDevice) {
       ComputeDevice.gpu => Padding(
         padding: const EdgeInsets.only(top: 14),
         child: Text(switch (availability.adapters.firstOrNull) {
           final adapter? => l10n.computeAdapterDetected(adapter.name),
           null => l10n.computeNoAdapter,
-        }, style: _note),
+        }, style: note),
       ),
       ComputeDevice.cpu => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -53,7 +52,7 @@ class ComputePresetDetail extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             l10n.performanceNote(Platform.numberOfProcessors, defaultCpuThreads()),
-            style: _note,
+            style: note,
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(

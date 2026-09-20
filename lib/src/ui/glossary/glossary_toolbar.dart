@@ -79,7 +79,7 @@ class _GlossaryToolbarState extends State<GlossaryToolbar> {
             onPressed: widget.onImport,
             icon: const Icon(Icons.file_download_outlined, size: 18),
             label: Text(l10n.glossaryImport),
-            style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+            style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
           ),
           const SizedBox(width: 4),
           TextButton.icon(
@@ -87,7 +87,7 @@ class _GlossaryToolbarState extends State<GlossaryToolbar> {
             onPressed: widget.canExport ? widget.onExport : null,
             icon: const Icon(Icons.file_upload_outlined, size: 18),
             label: Text(l10n.glossaryExport),
-            style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+            style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
           ),
         ],
       ),

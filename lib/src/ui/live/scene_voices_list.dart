@@ -35,7 +35,7 @@ class SceneVoicesList extends StatelessWidget {
                 characters.isEmpty
                     ? l10n.sceneVoiceNoCharacters
                     : '${l10n.sceneVoicesNote} ${l10n.voicesOnTheGraph}',
-                style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+                style: TextStyle(fontSize: 12, color: context.colors.mutedInk),
               ),
               const SizedBox(height: 6),
               for (final speaker in speakers)

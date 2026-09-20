@@ -12,14 +12,17 @@ class CharacterTileLine extends StatelessWidget {
     super.key,
     required this.text,
     this.top = 0,
-    this.color = LoreDubPalette.mutedInk,
+    this.color,
     this.bold = false,
     this.maxLines = 1,
   });
 
   final String text;
   final double top;
-  final Color color;
+
+  /// What the line is said in. The quiet ink where nothing else is asked
+  /// for.
+  final Color? color;
   final bool bold;
   final int maxLines;
 
@@ -34,7 +37,7 @@ class CharacterTileLine extends StatelessWidget {
         style: TextStyle(
           fontFamily: LoreDubFonts.mono,
           fontSize: 11,
-          color: color,
+          color: color ?? context.colors.mutedInk,
           fontWeight: bold ? FontWeight.w600 : null,
         ),
       ),

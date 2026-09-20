@@ -84,7 +84,7 @@ class CharacterPacks extends StatelessWidget {
                     onPressed: () => _import(context),
                     icon: const Icon(Icons.file_download_outlined, size: 18),
                     label: Text(l10n.charactersImport),
-                    style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                    style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
                   ),
                   FilledButton.icon(
                     key: const ValueKey('packsAdd'),
@@ -101,10 +101,10 @@ class CharacterPacks extends StatelessWidget {
               child: state.packs.isEmpty
                   ? Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.inventory_2_outlined,
                           size: 20,
-                          color: LoreDubPalette.mutedInk,
+                          color: context.colors.mutedInk,
                         ),
                         const SizedBox(width: 12),
                         Expanded(child: Text(l10n.packsEmpty)),

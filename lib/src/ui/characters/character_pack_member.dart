@@ -29,7 +29,7 @@ class CharacterPackMember extends StatelessWidget {
     return PackChip<CharacterDrag>(
       data: CharacterDrag(character: character, fromPackId: packId),
       icon: voiced ? Icons.record_voice_over_outlined : Icons.mic_none_rounded,
-      iconColor: voiced ? LoreDubPalette.success : LoreDubPalette.mutedInk,
+      iconColor: voiced ? context.colors.success : context.colors.mutedInk,
       label: character.name,
       feedback: CharacterDragCard(name: character.name),
       onRemove: onRemove,

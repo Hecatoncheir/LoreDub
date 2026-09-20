@@ -21,7 +21,7 @@ class DownloadFill extends StatelessWidget {
       duration: ease(context, 300),
       heightFactor: progress.clamp(0.0, 1.0),
       widthFactor: 1,
-      child: const ColoredBox(color: LoreDubPalette.graphite),
+      child: ColoredBox(color: context.colors.deep),
     ),
   );
 }

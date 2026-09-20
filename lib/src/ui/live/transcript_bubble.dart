@@ -62,11 +62,11 @@ class TranscriptBubble extends StatelessWidget {
                     speakerName(l10n, speaker, characters),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: LoreDubFonts.mono,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: LoreDubPalette.mutedInk,
+                      color: context.colors.mutedInk,
                     ),
                   ),
                 ),
@@ -77,10 +77,10 @@ class TranscriptBubble extends StatelessWidget {
                       l10n.sceneVoiceReplaced(readAs),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: LoreDubFonts.mono,
                         fontSize: 11,
-                        color: LoreDubPalette.orange,
+                        color: context.colors.accent,
                       ),
                     ),
                   ),
@@ -95,7 +95,7 @@ class TranscriptBubble extends StatelessWidget {
           constraints: const BoxConstraints(minWidth: 80),
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 15),
           decoration: BoxDecoration(
-            color: LoreDubPalette.graphite,
+            color: context.colors.deep,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -119,16 +119,16 @@ class TranscriptBubble extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.volume_off_rounded,
                       size: 16,
-                      color: LoreDubPalette.mutedInk,
+                      color: context.colors.mutedInk,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       AppLocalizations.of(context).transcriptSilenced,
-                      style: const TextStyle(
-                        color: LoreDubPalette.mutedInk,
+                      style: TextStyle(
+                        color: context.colors.mutedInk,
                         fontSize: 15,
                         fontStyle: FontStyle.italic,
                         height: 1.25,
@@ -155,7 +155,10 @@ class TranscriptBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(width: _tailInset),
-            CustomPaint(size: _tailSize, painter: BubbleTailPainter()),
+            CustomPaint(
+              size: _tailSize,
+              painter: BubbleTailPainter(color: context.colors.deep),
+            ),
             const SizedBox(width: 10),
             Padding(
               padding: const EdgeInsets.only(top: 6),

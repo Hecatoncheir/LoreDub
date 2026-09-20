@@ -35,7 +35,7 @@ class OverlapVoicesControls extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           l10n.voiceOverlapNote,
-          style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+          style: TextStyle(color: context.colors.mutedInk, fontSize: 12),
         ),
       ],
     );

@@ -43,7 +43,7 @@ class SceneVoiceRow extends StatelessWidget {
               Icon(
                 readsAs == null ? Icons.graphic_eq_rounded : Icons.published_with_changes_rounded,
                 size: 16,
-                color: readsAs == null ? LoreDubPalette.mutedInk : LoreDubPalette.orange,
+                color: readsAs == null ? context.colors.mutedInk : context.colors.accent,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -60,10 +60,10 @@ class SceneVoiceRow extends StatelessWidget {
               ),
               Text(
                 l10n.sceneVoiceLines(speaker.lines),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: LoreDubFonts.mono,
                   fontSize: 11,
-                  color: LoreDubPalette.mutedInk,
+                  color: context.colors.mutedInk,
                 ),
               ),
             ],
@@ -77,7 +77,7 @@ class SceneVoiceRow extends StatelessWidget {
                 : l10n.sceneVoiceHeardFor(speaker.seconds.toStringAsFixed(1)),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+            style: TextStyle(fontSize: 12, color: context.colors.mutedInk),
           ),
           const SizedBox(height: 8),
           // Who reads this voice, as the graph wired it. The row shows it
@@ -88,10 +88,10 @@ class SceneVoiceRow extends StatelessWidget {
               key: ValueKey('reads-${speaker.key}'),
               padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
               decoration: BoxDecoration(
-                color: LoreDubPalette.raised,
+                color: context.colors.raised,
                 borderRadius: const BorderRadius.all(Radius.circular(8)),
                 border: Border.all(
-                  color: readsAs == null ? LoreDubPalette.outline : LoreDubPalette.orange,
+                  color: readsAs == null ? context.colors.outline : context.colors.accent,
                 ),
               ),
               child: Text(

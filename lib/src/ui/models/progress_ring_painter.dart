@@ -13,17 +13,22 @@ class ProgressRingPainter extends CustomPainter {
     required this.value,
     required this.paused,
     required this.stroke,
+    required this.colors,
   });
 
   final double value;
   final bool paused;
   final double stroke;
 
+  /// The roles the ring is drawn in. A painter stands outside the widget
+  /// tree and has no context to read them off.
+  final LoreDubColors colors;
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = (Offset.zero & size).deflate(stroke / 2);
     final track = Paint()
-      ..color = LoreDubPalette.orange.withValues(alpha: 0.45)
+      ..color = colors.accent.withValues(alpha: 0.45)
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(1.5, stroke * 0.45);
     const segments = 36;
@@ -33,7 +38,7 @@ class ProgressRingPainter extends CustomPainter {
     }
     if (value <= 0) return;
     final arc = Paint()
-      ..color = paused ? LoreDubPalette.orange.withValues(alpha: 0.55) : LoreDubPalette.orange
+      ..color = paused ? colors.accent.withValues(alpha: 0.55) : colors.accent
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = stroke;
@@ -42,5 +47,8 @@ class ProgressRingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(ProgressRingPainter oldDelegate) =>
-      oldDelegate.value != value || oldDelegate.paused != paused || oldDelegate.stroke != stroke;
+      oldDelegate.value != value ||
+      oldDelegate.paused != paused ||
+      oldDelegate.stroke != stroke ||
+      oldDelegate.colors != colors;
 }

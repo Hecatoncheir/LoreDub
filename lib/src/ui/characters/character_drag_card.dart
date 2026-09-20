@@ -16,7 +16,7 @@ class CharacterDragCard extends StatelessWidget {
   Widget build(BuildContext context) => Transform.translate(
     offset: const Offset(-70, -22),
     child: Material(
-      color: LoreDubPalette.graphite,
+      color: context.colors.deep,
       elevation: 8,
       borderRadius: const BorderRadius.all(Radius.circular(10)),
       child: Padding(
@@ -24,15 +24,15 @@ class CharacterDragCard extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.drag_indicator_rounded, size: 18, color: LoreDubPalette.orange),
+            Icon(Icons.drag_indicator_rounded, size: 18, color: context.colors.accent),
             const SizedBox(width: 8),
             Text(
               name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: LoreDubFonts.display,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: LoreDubPalette.raised,
+                color: context.colors.raised,
               ),
             ),
           ],

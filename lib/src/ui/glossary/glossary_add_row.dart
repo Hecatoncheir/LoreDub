@@ -64,9 +64,9 @@ class _GlossaryAddRowState extends State<GlossaryAddRow> {
           onSubmitted: (_) => _add(),
         ),
       ),
-      const Padding(
+      Padding(
         padding: EdgeInsets.symmetric(horizontal: 8),
-        child: Icon(Icons.arrow_forward_rounded, size: 16, color: LoreDubPalette.mutedInk),
+        child: Icon(Icons.arrow_forward_rounded, size: 16, color: context.colors.mutedInk),
       ),
       Expanded(
         child: TextField(

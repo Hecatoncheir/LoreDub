@@ -54,7 +54,7 @@ class SpeechPaceCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             l10n.hurryWhenQueuedNote,
-            style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+            style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
           ),
         ],
       ),

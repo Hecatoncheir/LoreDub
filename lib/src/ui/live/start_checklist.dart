@@ -53,7 +53,7 @@ class StartChecklist extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.checklist_rounded, color: LoreDubPalette.warning, size: 20),
+                  Icon(Icons.checklist_rounded, color: context.colors.warning, size: 20),
                   const SizedBox(width: 10),
                   Text(
                     l10n.startChecklistTitle,

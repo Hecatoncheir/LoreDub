@@ -55,7 +55,7 @@ class CharacterCast extends StatelessWidget {
                           : () => _exportAll(context, state.characters),
                       icon: const Icon(Icons.file_upload_outlined, size: 18),
                       label: Text(l10n.charactersExportAll),
-                      style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+                      style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
                     ),
                     FilledButton.icon(
                       key: const ValueKey('charactersAdd'),

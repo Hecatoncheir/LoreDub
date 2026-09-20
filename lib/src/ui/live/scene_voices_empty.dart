@@ -29,7 +29,7 @@ class SceneVoicesEmpty extends StatelessWidget {
       ),
       style: TextStyle(
         fontSize: 12,
-        color: listening ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
+        color: listening ? context.colors.accent : context.colors.mutedInk,
       ),
     ),
   );

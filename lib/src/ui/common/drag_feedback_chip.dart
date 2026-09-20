@@ -13,7 +13,7 @@ class DragFeedbackChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: LoreDubPalette.graphite,
+    color: context.colors.deep,
     borderRadius: const BorderRadius.all(Radius.circular(18)),
     elevation: 6,
     child: Padding(
@@ -24,7 +24,7 @@ class DragFeedbackChip extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: LoreDubPalette.raised, fontSize: 13),
+          style: TextStyle(color: context.colors.raised, fontSize: 13),
         ),
       ),
     ),

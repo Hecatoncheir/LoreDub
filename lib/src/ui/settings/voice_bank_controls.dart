@@ -57,7 +57,7 @@ class VoiceBankControls extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           settings.voiceBank ? l10n.voiceBankOnNote : l10n.voiceBankOffNote,
-          style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+          style: TextStyle(color: context.colors.mutedInk, fontSize: 12),
         ),
         // Shown with the switch off too: voices kept earlier are still on
         // disk, and this is where they are given back.
@@ -66,7 +66,7 @@ class VoiceBankControls extends StatelessWidget {
             Expanded(
               child: Text(
                 l10n.voiceBankCount(size),
-                style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+                style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
               ),
             ),
             TextButton.icon(
@@ -74,7 +74,7 @@ class VoiceBankControls extends StatelessWidget {
               onPressed: running || size == 0 ? null : () => _confirmClear(context),
               icon: const Icon(Icons.delete_outline_rounded, size: 18),
               label: Text(l10n.voiceBankClear),
-              style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+              style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
             ),
           ],
         ),

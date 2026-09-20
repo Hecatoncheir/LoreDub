@@ -32,9 +32,9 @@ class CharacterTileBody extends StatelessWidget {
   /// card is the target, so the whole edge lights up.
   bool get _edged => lit || model.recording || model.building;
 
-  Color _edge({required bool hovered}) {
-    if (_edged) return LoreDubPalette.orange;
-    return hovered ? LoreDubPalette.ink : LoreDubPalette.outline;
+  Color _edge(LoreDubColors colors, {required bool hovered}) {
+    if (_edged) return colors.accent;
+    return hovered ? colors.ink : colors.outline;
   }
 
   @override
@@ -42,12 +42,12 @@ class CharacterTileBody extends StatelessWidget {
     alignment: Alignment.center,
     scale: 1.02,
     builder: (context, hovered) => Material(
-      color: LoreDubPalette.panel,
+      color: context.colors.panel,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: const BorderRadius.all(Radius.circular(12)),
         side: BorderSide(
-          color: _edge(hovered: hovered),
+          color: _edge(context.colors, hovered: hovered),
           width: _edged ? 2 : 1,
         ),
       ),

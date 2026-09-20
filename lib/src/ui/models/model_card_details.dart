@@ -36,21 +36,21 @@ class ModelCardDetails extends StatelessWidget {
   final VoidCallback onCancel;
 
   /// The mark beside the name, as an icon and its colour.
-  (IconData, Color) _mark() {
+  (IconData, Color) _mark(LoreDubColors colors) {
     if (choosable) {
       return selected
-          ? (Icons.radio_button_checked, LoreDubPalette.orange)
-          : (Icons.radio_button_unchecked, LoreDubPalette.outline);
+          ? (Icons.radio_button_checked, colors.accent)
+          : (Icons.radio_button_unchecked, colors.outline);
     }
     return state.installed
-        ? (Icons.check_circle_rounded, LoreDubPalette.success)
-        : (Icons.memory_rounded, LoreDubPalette.mutedInk);
+        ? (Icons.check_circle_rounded, colors.success)
+        : (Icons.memory_rounded, colors.mutedInk);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final (mark, markColor) = _mark();
+    final (mark, markColor) = _mark(context.colors);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -67,7 +67,7 @@ class ModelCardDetails extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 modelDescription(l10n, state.model),
-                style: const TextStyle(color: LoreDubPalette.mutedInk),
+                style: TextStyle(color: context.colors.mutedInk),
               ),
               if (state.progress case final progress?)
                 ModelDownloadProgress(

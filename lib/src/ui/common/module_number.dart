@@ -18,15 +18,15 @@ class ModuleNumber extends StatelessWidget {
     height: 22,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: LoreDubPalette.orange,
+      color: context.colors.accent,
       borderRadius: BorderRadius.circular(4),
-      border: Border.all(color: LoreDubPalette.ink),
+      border: Border.all(color: context.colors.ink),
     ),
     child: Text(
       number,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: LoreDubFonts.mono,
-        color: LoreDubPalette.ink,
+        color: context.colors.ink,
         fontSize: 10,
         fontWeight: FontWeight.w700,
       ),

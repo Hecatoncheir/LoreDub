@@ -32,7 +32,7 @@ class ModelsNeededNotice extends StatelessWidget {
               padding: const EdgeInsets.only(top: 12),
               child: Card(
                 child: ListTile(
-                  leading: const Icon(Icons.download_rounded, color: LoreDubPalette.warning),
+                  leading: Icon(Icons.download_rounded, color: context.colors.warning),
                   title: Text(AppLocalizations.of(context).modelsNeededTitle),
                   subtitle: Text(AppLocalizations.of(context).modelsNeededNote),
                   trailing: TextButton(

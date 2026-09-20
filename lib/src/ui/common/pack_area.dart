@@ -63,10 +63,10 @@ class PackArea<D extends Object> extends StatelessWidget {
           duration: ease(context, 150),
           padding: const EdgeInsets.fromLTRB(14, 10, 10, 12),
           decoration: BoxDecoration(
-            color: inviting ? LoreDubPalette.raised : LoreDubPalette.panel,
+            color: inviting ? context.colors.raised : context.colors.panel,
             borderRadius: const BorderRadius.all(Radius.circular(12)),
             border: Border.all(
-              color: marked ? LoreDubPalette.orange : LoreDubPalette.outline,
+              color: marked ? context.colors.accent : context.colors.outline,
               width: marked ? 2 : 1,
             ),
           ),
@@ -81,7 +81,7 @@ class PackArea<D extends Object> extends StatelessWidget {
                     child: CommittedTextField(
                       value: name,
                       onCommitted: onRename,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: LoreDubFonts.display,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -90,14 +90,7 @@ class PackArea<D extends Object> extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    count,
-                    style: const TextStyle(
-                      fontFamily: LoreDubFonts.mono,
-                      fontSize: 11,
-                      color: LoreDubPalette.mutedInk,
-                    ),
-                  ),
+                  Text(count, style: context.textStyles.monoCaption),
                   ...trailing,
                 ],
               ),

@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../common/hover_grow.dart';
+import '../theme.dart';
 import 'model_action.dart';
 import 'model_tile_body.dart';
 import 'model_tile_look.dart';
@@ -49,6 +50,7 @@ class ModelTile extends StatelessWidget {
     scale: 1.03,
     builder: (context, hovered) {
       final look = ModelTileLook.of(
+        colors: context.colors,
         downloading: progress != null,
         inUse: inUse,
         marked: marked,

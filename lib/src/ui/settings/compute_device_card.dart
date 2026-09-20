@@ -80,7 +80,7 @@ class ComputeDeviceCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   l10n.roughRecognitionNote,
-                  style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+                  style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
                 ),
                 const SizedBox(height: 14),
                 StageBackendTable(
@@ -98,7 +98,7 @@ class ComputeDeviceCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   l10n.computeSpeechNote,
-                  style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+                  style: TextStyle(color: context.colors.mutedInk, fontSize: 12),
                 ),
               ],
             ),

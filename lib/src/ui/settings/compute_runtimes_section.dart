@@ -69,12 +69,12 @@ class ComputeRuntimesSection extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           l10n.computeRuntimesTitle,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: LoreDubFonts.mono,
             fontSize: 12,
             fontWeight: FontWeight.w700,
             letterSpacing: 1,
-            color: LoreDubPalette.mutedInk,
+            color: context.colors.mutedInk,
           ),
         ),
         const SizedBox(height: 10),

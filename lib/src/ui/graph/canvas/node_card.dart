@@ -56,27 +56,31 @@ class NodeCard extends StatelessWidget {
   /// The card's face: the orange edge of a chosen card or of the one the
   /// keyboard has reached, and a shadow that lifts it when chosen or under
   /// the pointer.
-  BoxDecoration _decoration(NodePaint paint, {required bool hovered, required bool focused}) =>
-      BoxDecoration(
-        color: paint.body,
-        borderRadius: BorderRadius.circular(12),
-        // A card the keyboard has reached wears the edge of a chosen one:
-        // it is what the space bar will open, and nothing else on the
-        // canvas says where the keyboard stands.
-        border: Border.all(
-          color: selected || focused ? paint.chosen : LoreDubPalette.outline,
-          width: selected || focused ? 2 : 1,
-        ),
-        boxShadow: selected || hovered
-            ? [
-                BoxShadow(
-                  color: const Color(0x22171717),
-                  blurRadius: selected ? 18 : 12,
-                  offset: Offset(0, selected ? 6 : 4),
-                ),
-              ]
-            : null,
-      );
+  BoxDecoration _decoration(
+    NodePaint paint,
+    LoreDubColors colors, {
+    required bool hovered,
+    required bool focused,
+  }) => BoxDecoration(
+    color: paint.body,
+    borderRadius: BorderRadius.circular(12),
+    // A card the keyboard has reached wears the edge of a chosen one:
+    // it is what the space bar will open, and nothing else on the
+    // canvas says where the keyboard stands.
+    border: Border.all(
+      color: selected || focused ? paint.chosen : colors.outline,
+      width: selected || focused ? 2 : 1,
+    ),
+    boxShadow: selected || hovered
+        ? [
+            BoxShadow(
+              color: const Color(0x22171717),
+              blurRadius: selected ? 18 : 12,
+              offset: Offset(0, selected ? 6 : 4),
+            ),
+          ]
+        : null,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +113,7 @@ class NodeCard extends StatelessWidget {
               child: AnimatedContainer(
                 duration: ease(context),
                 curve: Curves.easeOut,
-                decoration: _decoration(paint, hovered: hovered, focused: focused),
+                decoration: _decoration(paint, context.colors, hovered: hovered, focused: focused),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

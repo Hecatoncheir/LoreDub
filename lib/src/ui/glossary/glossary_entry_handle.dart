@@ -46,9 +46,9 @@ class GlossaryEntryHandle extends StatelessWidget {
       data: GlossaryDrag(entry: entry),
       dragAnchorStrategy: pointerDragAnchorStrategy,
       feedback: DragFeedbackChip(label: entry.source),
-      child: const SizedBox(
+      child: SizedBox(
         width: GlossaryLayout.dragHandleWidth,
-        child: Icon(Icons.drag_indicator_rounded, size: 18, color: LoreDubPalette.mutedInk),
+        child: Icon(Icons.drag_indicator_rounded, size: 18, color: context.colors.mutedInk),
       ),
     ),
   );

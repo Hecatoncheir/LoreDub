@@ -22,9 +22,9 @@ class NavigationGroup extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(14, 24, 8, 8),
     child: Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: LoreDubFonts.mono,
-        color: LoreDubPalette.mutedInk,
+        color: context.colors.mutedInk,
         fontSize: 10,
         fontWeight: FontWeight.w700,
         letterSpacing: 1.4,

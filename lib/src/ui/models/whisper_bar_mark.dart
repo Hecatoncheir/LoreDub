@@ -31,7 +31,7 @@ class WhisperBarMark extends StatelessWidget {
       return Icon(
         state.installed ? Icons.cloud_done_outlined : Icons.cloud_download_outlined,
         size: roomy ? 34 : 24,
-        color: inUse || !state.installed ? LoreDubPalette.orange : LoreDubPalette.ink,
+        color: inUse || !state.installed ? context.colors.accent : context.colors.ink,
       );
     }
     return Column(
@@ -47,10 +47,10 @@ class WhisperBarMark extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             AppLocalizations.of(context).downloadPaused,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: LoreDubFonts.mono,
               fontSize: 11,
-              color: LoreDubPalette.orange,
+              color: context.colors.accent,
             ),
           ),
         ],

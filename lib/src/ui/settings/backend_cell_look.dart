@@ -43,41 +43,44 @@ class BackendCellLook {
     required this.iconColour,
   });
 
+  /// [colors] are the roles the cell is drawn in, handed over rather than
+  /// read off a context: the look is decided from the state alone.
   factory BackendCellLook.of(
     BackendCellState state, {
+    required LoreDubColors colors,
     required bool hovered,
     required bool tappable,
   }) {
-    final ink = _ink(state);
+    final ink = _ink(state, colors);
     return BackendCellLook(
-      face: _face(state),
+      face: _face(state, colors),
       ink: ink,
-      edge: _edge(state, hovered: hovered && tappable),
+      edge: _edge(state, colors, hovered: hovered && tappable),
       edgeWidth: state.edged ? 2 : 1,
       icon: _icon(state),
       iconColour: state == BackendCellState.selected || state == BackendCellState.needsRuntime
-          ? LoreDubPalette.orange
+          ? colors.accent
           : ink,
     );
   }
 
-  static Color _ink(BackendCellState state) => switch (state) {
-    BackendCellState.selected => LoreDubPalette.raised,
-    BackendCellState.downloading => LoreDubPalette.orange,
+  static Color _ink(BackendCellState state, LoreDubColors colors) => switch (state) {
+    BackendCellState.selected => colors.raised,
+    BackendCellState.downloading => colors.accent,
     BackendCellState.noHardware ||
-    BackendCellState.unsupported => LoreDubPalette.mutedInk.withValues(alpha: 0.7),
-    BackendCellState.ready || BackendCellState.needsRuntime => LoreDubPalette.ink,
+    BackendCellState.unsupported => colors.mutedInk.withValues(alpha: 0.7),
+    BackendCellState.ready || BackendCellState.needsRuntime => colors.ink,
   };
 
-  static Color _face(BackendCellState state) {
-    if (state == BackendCellState.selected) return LoreDubPalette.graphite;
-    return state.off ? Colors.transparent : LoreDubPalette.panel;
+  static Color _face(BackendCellState state, LoreDubColors colors) {
+    if (state == BackendCellState.selected) return colors.deep;
+    return state.off ? Colors.transparent : colors.panel;
   }
 
-  static Color _edge(BackendCellState state, {required bool hovered}) {
-    if (state.edged) return LoreDubPalette.orange;
-    if (hovered) return LoreDubPalette.ink;
-    return LoreDubPalette.outline.withValues(alpha: state.off ? 0.5 : 1);
+  static Color _edge(BackendCellState state, LoreDubColors colors, {required bool hovered}) {
+    if (state.edged) return colors.accent;
+    if (hovered) return colors.ink;
+    return colors.outline.withValues(alpha: state.off ? 0.5 : 1);
   }
 
   static IconData? _icon(BackendCellState state) => switch (state) {

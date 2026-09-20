@@ -16,7 +16,7 @@ class ModelActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colour = onDark ? LoreDubPalette.raised : LoreDubPalette.ink;
+    final colour = onDark ? context.colors.raised : context.colors.ink;
     return IconButton(
       tooltip: action.tooltip,
       onPressed: action.onPressed,
@@ -24,7 +24,7 @@ class ModelActionButton extends StatelessWidget {
       style: IconButton.styleFrom(
         foregroundColor: colour,
         disabledForegroundColor: colour.withValues(alpha: 0.35),
-        hoverColor: LoreDubPalette.orange.withValues(alpha: 0.18),
+        hoverColor: context.colors.accent.withValues(alpha: 0.18),
         minimumSize: const Size.square(LoreDubTargets.dense),
         fixedSize: const Size.square(LoreDubTargets.dense),
         padding: EdgeInsets.zero,

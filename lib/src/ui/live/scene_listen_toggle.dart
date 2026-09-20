@@ -33,7 +33,7 @@ class SceneListenToggle extends StatelessWidget {
       icon: Icon(listening ? Icons.stop_rounded : Icons.hearing_rounded, size: 18),
       label: Text(listening ? l10n.sceneVoicesListenStop : l10n.sceneVoicesListen),
       style: TextButton.styleFrom(
-        foregroundColor: listening ? LoreDubPalette.orange : LoreDubPalette.ink,
+        foregroundColor: listening ? context.colors.accent : context.colors.ink,
       ),
     );
   }

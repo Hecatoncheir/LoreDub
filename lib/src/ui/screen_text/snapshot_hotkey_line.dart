@@ -29,7 +29,7 @@ class SnapshotHotkeyLine extends StatelessWidget {
       children: [
         Text(
           l10n.snapshotNoHotkey,
-          style: const TextStyle(color: LoreDubPalette.warning, fontWeight: FontWeight.w600),
+          style: TextStyle(color: context.colors.warning, fontWeight: FontWeight.w600),
         ),
         TextButton(
           onPressed: () => context.read<ShellCubit>().selectSection(DashboardSection.settings),

@@ -49,7 +49,7 @@ class _CorrectLineDialogState extends State<CorrectLineDialog> {
           children: [
             Text(
               widget.entry.english,
-              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 13),
+              style: TextStyle(color: context.colors.mutedInk, fontSize: 13),
             ),
             const SizedBox(height: 14),
             TextField(
@@ -64,7 +64,7 @@ class _CorrectLineDialogState extends State<CorrectLineDialog> {
             const SizedBox(height: 10),
             Text(
               l10n.transcriptCorrectNote,
-              style: const TextStyle(color: LoreDubPalette.mutedInk, fontSize: 12),
+              style: TextStyle(color: context.colors.mutedInk, fontSize: 12),
             ),
           ],
         ),
@@ -81,7 +81,7 @@ class _CorrectLineDialogState extends State<CorrectLineDialog> {
           onPressed: () => Navigator.of(context).pop(const LineCorrection(silent: true)),
           icon: const Icon(Icons.volume_off_rounded, size: 18),
           label: Text(l10n.transcriptCorrectSilence),
-          style: TextButton.styleFrom(foregroundColor: LoreDubPalette.mutedInk),
+          style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(LineCorrection(reading: _reading.text)),

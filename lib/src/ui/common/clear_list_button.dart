@@ -24,7 +24,7 @@ class ClearListButton extends StatelessWidget {
       icon: const Icon(Icons.backspace_outlined, size: 16),
       label: Text(AppLocalizations.of(context).transcriptClear),
       style: TextButton.styleFrom(
-        foregroundColor: LoreDubPalette.mutedInk,
+        foregroundColor: context.colors.mutedInk,
         minimumSize: const Size(0, 28),
         padding: const EdgeInsets.symmetric(horizontal: 10),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,

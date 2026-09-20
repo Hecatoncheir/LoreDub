@@ -20,9 +20,13 @@ import '../canvas/node_metrics.dart';
 /// and a graph is told apart from another by identity, so the thumbnail was
 /// painted again on every rebuild of the shelf.
 class SchemePainter extends CustomPainter {
-  SchemePainter({required this.scheme, required this.cast});
+  SchemePainter({required this.scheme, required this.cast, required this.colors});
 
   final SavedPipeline scheme;
+
+  /// The roles the thumbnail is drawn in. A painter stands outside the
+  /// widget tree and has no context to read them off.
+  final LoreDubColors colors;
 
   /// The cards the machine has, so the picture draws the characters the
   /// scheme names rather than boxes with nothing in them.
@@ -62,7 +66,7 @@ class SchemePainter extends CustomPainter {
     final wire = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..color = LoreDubPalette.mutedInk;
+      ..color = colors.mutedInk;
     for (final link in graph.links) {
       final from = graph.node(link.from.nodeId);
       final to = graph.node(link.to.nodeId);
@@ -72,10 +76,7 @@ class SchemePainter extends CustomPainter {
       canvas.drawLine(
         place(GraphPoint(start.dx, start.dy)),
         place(GraphPoint(end.dx, end.dy)),
-        wire
-          ..color = link.signal == PipelineSignal.voice
-              ? LoreDubPalette.mutedInk
-              : LoreDubPalette.orange,
+        wire..color = link.signal == PipelineSignal.voice ? colors.mutedInk : colors.accent,
       );
     }
   }
@@ -94,19 +95,20 @@ class SchemePainter extends CustomPainter {
         rounded,
         Paint()
           ..color = !node.unrouted && node.kind == PipelineNodeKind.character
-              ? LoreDubPalette.panel
-              : LoreDubPalette.raised,
+              ? colors.panel
+              : colors.raised,
       );
       canvas.drawRRect(
         rounded,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1
-          ..color = node.unrouted ? LoreDubPalette.outline : LoreDubPalette.ink,
+          ..color = node.unrouted ? colors.outline : colors.ink,
       );
     }
   }
 
   @override
-  bool shouldRepaint(SchemePainter old) => old.scheme != scheme || old.cast != cast;
+  bool shouldRepaint(SchemePainter old) =>
+      old.scheme != scheme || old.cast != cast || old.colors != colors;
 }

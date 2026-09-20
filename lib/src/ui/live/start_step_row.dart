@@ -30,9 +30,9 @@ class StartStepRow extends StatelessWidget {
           width: 30,
           child: Text(
             '$number.',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: LoreDubFonts.mono,
-              color: LoreDubPalette.mutedInk,
+              color: context.colors.mutedInk,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),

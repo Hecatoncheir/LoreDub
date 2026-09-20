@@ -22,8 +22,8 @@ class BottomNavigation extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return NavigationBar(
       height: 68,
-      backgroundColor: LoreDubPalette.panel,
-      indicatorColor: LoreDubPalette.orange,
+      backgroundColor: context.colors.panel,
+      indicatorColor: context.colors.accent,
       selectedIndex: section.index,
       onDestinationSelected: (index) =>
           context.read<ShellCubit>().selectSection(DashboardSection.values[index]),

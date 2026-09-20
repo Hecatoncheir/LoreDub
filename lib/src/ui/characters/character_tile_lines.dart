@@ -28,7 +28,7 @@ class CharacterTileLines extends StatelessWidget {
       children: [
         CharacterTileLine(
           text: texts.voice(),
-          color: model.recording ? LoreDubPalette.orange : LoreDubPalette.mutedInk,
+          color: model.recording ? context.colors.accent : context.colors.mutedInk,
           bold: model.recording,
           maxLines: 2,
         ),
@@ -36,7 +36,7 @@ class CharacterTileLines extends StatelessWidget {
           CharacterTileLine(
             text: texts.building(),
             top: 6,
-            color: model.built?.together == false ? LoreDubPalette.error : LoreDubPalette.orange,
+            color: model.built?.together == false ? context.colors.danger : context.colors.accent,
             bold: true,
             maxLines: 2,
           ),
@@ -44,7 +44,7 @@ class CharacterTileLines extends StatelessWidget {
           CharacterTileLine(
             text: l10n.sceneVoiceReplaced(model.readerName ?? l10n.sceneVoiceAnonymous),
             top: 6,
-            color: LoreDubPalette.orange,
+            color: context.colors.accent,
             bold: true,
           ),
         // A rigid gap rather than a padding inside the line: the lines give

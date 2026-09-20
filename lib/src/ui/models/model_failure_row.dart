@@ -23,9 +23,9 @@ class ModelFailureRow extends StatelessWidget {
       key: ValueKey('modelFailure-${state.model.id}'),
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
-        color: LoreDubPalette.panel,
+        color: context.colors.panel,
         borderRadius: const BorderRadius.all(Radius.circular(10)),
-        border: Border.all(color: LoreDubPalette.outline),
+        border: Border.all(color: context.colors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

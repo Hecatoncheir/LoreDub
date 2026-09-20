@@ -665,10 +665,23 @@ abstract final class AppTheme {
       больше не импортирует `graph/`, и приложение сводит их в `app.dart`
       (`withNodeFaces`). Счётчики упали сами: `LoreDubPalette.` 270 → 239,
       `Color(0x` 7 → 2.
-- [ ] Перевести виджеты с `LoreDubPalette.x` на `context.colors.x` — по
+- [x] Перевести виджеты с `LoreDubPalette.x` на `context.colors.x` — по
       экранам, в том же порядке, что этап 2 (264 места). `CustomPainter`
       получает готовые значения через конструктор и сравнивает их в
       `shouldRepaint`.
+      *Сделано:* 93 файла, `LoreDubPalette.` в виджетах 239 → **0**, снимки
+      экранов не изменились ни на пиксель. Что стоит вне дерева виджетов,
+      получает роли параметром: пять `CustomPainter`ов (`DotFieldPainter`,
+      `LinkPainter`, `SchemePainter`, `ProgressRingPainter`,
+      `WhisperAxesPainter`) — полем `colors`, которое сравнивается в
+      `shouldRepaint`; `ModelTileLook.of` и `BackendCellLook.of`, решающие
+      цвет по состоянию, — первым именованным параметром. Статические
+      `TextStyle` с цветом стали местными переменными того `build`, который
+      их рисует. `context.colors`/`context.textStyles` больше не бросают на
+      чужой теме, а откатываются к светлым ролям (как `NodeFaces.of`): виджет
+      этого приложения остаётся им, под чем бы его ни повесили, — иначе
+      три теста, строящие один виджет под голым `MaterialApp`, падали.
+      Заодно упал `avoid-nested-conditional-expressions` 17 → 0.
 - [ ] 111 `TextStyle(...)` по месту → роли. Цвет в роль не зашивать там, где
       текст стоит на разных гранях (панель узла) — его даёт
       `DefaultTextStyle`. В базовой `TextTheme` сейчас нет `bodySmall`,

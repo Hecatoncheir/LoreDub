@@ -50,12 +50,12 @@ class GraphToolbar extends StatelessWidget {
                       final refusal? => Text(
                         describeConnectionRefusal(l10n, refusal),
                         key: ValueKey(refusal),
-                        style: const TextStyle(fontSize: 12, color: LoreDubPalette.error),
+                        style: TextStyle(fontSize: 12, color: context.colors.danger),
                       ),
                       _ => Text(
                         l10n.pipelineGraphHint,
                         key: const ValueKey('hint'),
-                        style: const TextStyle(fontSize: 12, color: LoreDubPalette.mutedInk),
+                        style: TextStyle(fontSize: 12, color: context.colors.mutedInk),
                       ),
                     },
                   ),
@@ -72,7 +72,7 @@ class GraphToolbar extends StatelessWidget {
                     icon: Icon(
                       facts.paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
                       size: 20,
-                      color: facts.paused ? LoreDubPalette.orange : null,
+                      color: facts.paused ? context.colors.accent : null,
                     ),
                     onPressed: facts.paused
                         ? context.read<PipelineCubit>().resume

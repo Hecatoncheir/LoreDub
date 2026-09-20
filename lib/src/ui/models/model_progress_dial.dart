@@ -35,7 +35,12 @@ class ModelProgressDial extends StatelessWidget {
         duration: ease(context, 300),
         curve: Curves.easeOut,
         builder: (context, value, child) => CustomPaint(
-          painter: ProgressRingPainter(value: value, paused: paused, stroke: stroke),
+          painter: ProgressRingPainter(
+            value: value,
+            paused: paused,
+            stroke: stroke,
+            colors: context.colors,
+          ),
           child: child,
         ),
         child: Center(
@@ -49,7 +54,7 @@ class ModelProgressDial extends StatelessWidget {
                   fontFamily: LoreDubFonts.mono,
                   fontSize: math.max(12, size * 0.27),
                   fontWeight: FontWeight.w600,
-                  color: LoreDubPalette.orange,
+                  color: context.colors.accent,
                 ),
               ),
             ),

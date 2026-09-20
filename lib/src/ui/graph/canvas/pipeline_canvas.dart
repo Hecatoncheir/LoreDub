@@ -377,6 +377,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
               arriving: _arriving,
               leaving: {for (final node in _leaving) node.id},
               grown: _grown,
+              colors: context.colors,
             ),
             // The nodes sit on a box of their own rather than on the window:
             // a child drawn outside its parent is painted but not hit, and
@@ -411,6 +412,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
                             fading: _fading,
                             leaving: _leaving,
                             grown: _grown,
+                            colors: context.colors,
                           ),
                         ),
                       ),
@@ -437,8 +439,8 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
                           child: IgnorePointer(
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                color: LoreDubPalette.orange.withValues(alpha: 0.08),
-                                border: Border.all(color: LoreDubPalette.orange),
+                                color: context.colors.accent.withValues(alpha: 0.08),
+                                border: Border.all(color: context.colors.accent),
                               ),
                             ),
                           ),

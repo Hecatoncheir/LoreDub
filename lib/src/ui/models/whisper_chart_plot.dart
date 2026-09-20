@@ -24,18 +24,6 @@ class WhisperChartPlot extends StatelessWidget {
   final WhisperModelChart chart;
   final WhisperChartLayout layout;
 
-  static const _axisTitle = TextStyle(
-    fontFamily: LoreDubFonts.mono,
-    fontSize: 13,
-    fontWeight: FontWeight.w700,
-    color: LoreDubPalette.orangeDark,
-  );
-  static const _marking = TextStyle(
-    fontFamily: LoreDubFonts.mono,
-    fontSize: 12,
-    color: LoreDubPalette.ink,
-  );
-
   /// A press on a bar fetches a model that is not there and picks one that
   /// is; nothing while it downloads, is already chosen, or dubbing runs.
   VoidCallback? _tapFor(ModelInstallState state) {
@@ -97,6 +85,17 @@ class WhisperChartPlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final axisTitle = TextStyle(
+      fontFamily: LoreDubFonts.mono,
+      fontSize: 13,
+      fontWeight: FontWeight.w700,
+      color: context.colors.accentStrong,
+    );
+    final marking = TextStyle(
+      fontFamily: LoreDubFonts.mono,
+      fontSize: 12,
+      color: context.colors.ink,
+    );
     const left = WhisperChartLayout.labelGutter;
     const baseline = WhisperChartLayout.baseline;
     final models = chart.models;
@@ -113,6 +112,7 @@ class WhisperChartPlot extends StatelessWidget {
                 baseline: baseline,
                 right: layout.width - 8,
                 bars: layout.bars,
+                colors: context.colors,
               ),
             ),
           ),
@@ -120,19 +120,19 @@ class WhisperChartPlot extends StatelessWidget {
             left: 0,
             width: left - 10,
             top: 0,
-            child: Text(l10n.whisperAxisSize, textAlign: TextAlign.right, style: _axisTitle),
+            child: Text(l10n.whisperAxisSize, textAlign: TextAlign.right, style: axisTitle),
           ),
-          const Positioned(
+          Positioned(
             left: 0,
             width: left - 10,
             top: baseline + 4,
-            child: Text('0', textAlign: TextAlign.right, style: _marking),
+            child: Text('0', textAlign: TextAlign.right, style: marking),
           ),
           Positioned(
             right: 0,
             width: WhisperChartLayout.axisTitleWidth - 8,
             top: baseline + 10,
-            child: Text(l10n.whisperAxisQuality, textAlign: TextAlign.right, style: _axisTitle),
+            child: Text(l10n.whisperAxisQuality, textAlign: TextAlign.right, style: axisTitle),
           ),
           for (final (index, state) in models.indexed) ...[
             Positioned(
@@ -142,7 +142,7 @@ class WhisperChartPlot extends StatelessWidget {
               child: Text(
                 formatPackageSize(l10n, state.model.downloadBytes),
                 textAlign: TextAlign.right,
-                style: _marking,
+                style: marking,
               ),
             ),
             Positioned(
@@ -152,7 +152,7 @@ class WhisperChartPlot extends StatelessWidget {
               child: Text(
                 recognitionQualityName(l10n, state.model.quality) ?? '',
                 textAlign: TextAlign.center,
-                style: _marking,
+                style: marking,
               ),
             ),
             Positioned.fromRect(

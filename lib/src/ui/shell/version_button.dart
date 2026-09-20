@@ -52,7 +52,7 @@ class VersionButton extends StatelessWidget {
                     ? null
                     : () => context.read<ShellCubit>().checkForUpdates(),
                 style: TextButton.styleFrom(
-                  foregroundColor: LoreDubPalette.mutedInk,
+                  foregroundColor: context.colors.mutedInk,
                   alignment: Alignment.centerLeft,
                   padding: const EdgeInsets.symmetric(horizontal: FooterInsets.button),
                   minimumSize: const Size(0, 34),
@@ -76,7 +76,7 @@ class VersionButton extends StatelessWidget {
                                   ? Icons.cloud_off_rounded
                                   : Icons.verified_outlined,
                               size: FooterInsets.iconSize,
-                              color: LoreDubPalette.mutedInk,
+                              color: context.colors.mutedInk,
                             ),
                     ),
                     const SizedBox(width: 8),

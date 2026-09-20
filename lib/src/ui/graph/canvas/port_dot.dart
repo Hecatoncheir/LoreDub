@@ -26,7 +26,7 @@ class PortDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = signal == PipelineSignal.voice ? LoreDubPalette.graphite : LoreDubPalette.orange;
+    final color = signal == PipelineSignal.voice ? context.colors.deep : context.colors.accent;
     return Center(
       child: AnimatedContainer(
         duration: ease(context, 120),
@@ -35,8 +35,8 @@ class PortDot extends StatelessWidget {
         height: caught ? 22 : (offered ? 18 : NodeMetrics.dotRadius * 2),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: filled ? color : LoreDubPalette.raised,
-          border: Border.all(color: caught || offered ? LoreDubPalette.orange : color, width: 2),
+          color: filled ? color : context.colors.raised,
+          border: Border.all(color: caught || offered ? context.colors.accent : color, width: 2),
         ),
       ),
     );
