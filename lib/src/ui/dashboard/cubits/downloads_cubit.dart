@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../data/repositories/runtime_repository.dart';
 import '../../../domain/compute_device.dart';
@@ -14,7 +15,6 @@ import '../../../domain/download_control.dart';
 import '../../../domain/model_package.dart';
 import '../../../domain/progress_ticker.dart';
 import '../../../domain/runtime_package.dart';
-import 'settings_cubit.dart';
 import 'shell_cubit.dart';
 
 /// Which model packages and GPU runtimes are on disk, compared by what they
@@ -153,7 +153,7 @@ class DownloadsCubit extends Cubit<DownloadsState> {
 
   final ModelRepository _modelRepository;
   final RuntimeRepository _runtimeRepository;
-  final SettingsCubit _settings;
+  final SettingsRepository _settings;
   final FailureSink _errors;
 
   /// The handle on each running download, by package id, so the interface

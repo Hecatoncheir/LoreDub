@@ -7,8 +7,10 @@ import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/services/model_catalog.dart';
+import '../../../domain/app_settings.dart';
 import '../../../domain/character.dart';
 import '../../../domain/id_source.dart';
 import '../../../domain/pipeline_graph.dart';
@@ -16,7 +18,6 @@ import '../../../domain/saved_pipeline.dart';
 import '../../../domain/spoken_language.dart';
 import 'characters_cubit.dart';
 import 'pipeline_cubit.dart';
-import 'settings_cubit.dart';
 import 'shell_cubit.dart';
 
 /// What the canvas was asked to do.
@@ -404,18 +405,18 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     // The canvas is a second window onto the settings and the cast: a
     // language picked here or on another screen is the same change, so it
     // is redrawn from them rather than kept twice.
-    _settingsChanges = _settings.stream.listen((_) => add(const PipelineGraphRefreshed()));
+    _settingsChanges = _settings.changes.listen((_) => add(const PipelineGraphRefreshed()));
     _characterChanges = _characters.stream.listen((_) => add(const PipelineGraphRefreshed()));
   }
 
   final AppRepository _appRepository;
-  final SettingsCubit _settings;
+  final SettingsRepository _settings;
   final CharactersCubit _characters;
   final PipelineCubit _pipeline;
   final FailureSink _errors;
   final IdSource _ids;
 
-  late final StreamSubscription<SettingsState> _settingsChanges;
+  late final StreamSubscription<AppSettings> _settingsChanges;
   late final StreamSubscription<CharactersState> _characterChanges;
 
   /// How far back the canvas remembers. Long enough to undo an evening's
@@ -518,7 +519,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       ),
     );
     _persist();
-    await _settings.update(_settings.settings.copyWith(captureRouted: scheme.captureRouted));
+    await _settings.save(_settings.settings.copyWith(captureRouted: scheme.captureRouted));
     // Which cards the scheme cuts out of the mix travels with its
     // arrangement, so a session already running is told the moment it is put
     // up rather than at the next start.
@@ -748,7 +749,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         }
         _remember();
         emit(state.copyWith(clearRefusal: true));
-        await _settings.update(_settings.settings.copyWith(captureRouted: routed));
+        await _settings.save(_settings.settings.copyWith(captureRouted: routed));
       // The translator out of the line, or back into it. There is no setting
       // of its own behind this: dubbing into English is what has nothing to
       // translate, so taking the stage out chooses English and putting it
@@ -773,7 +774,9 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         }
         _remember();
         emit(state.copyWith(clearRefusal: true));
-        await _settings.selectTargetLanguage(language);
+        // Both the translator and the voice: text in one language read
+        // by a voice for another would be gibberish.
+        await _settings.save(_settings.settings.copyWith(targetLanguage: language));
       // A card into the mix, or out of it. Not locked with the route: a
       // session keeps its cast loaded either way, and the worker is told.
       //
@@ -863,7 +866,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       await _characters.readAsHeard(memento.layout.silent);
     }
     if (!routeLocked && _settings.settings.captureRouted != memento.routed) {
-      await _settings.update(_settings.settings.copyWith(captureRouted: memento.routed));
+      await _settings.save(_settings.settings.copyWith(captureRouted: memento.routed));
     }
     for (final entry in memento.readers.entries) {
       final now = _cast.firstWhere(

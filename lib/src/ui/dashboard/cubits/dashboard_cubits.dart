@@ -39,7 +39,7 @@ class DashboardCubits {
     // that with the coordinator, so neither knows the other and this bag
     // does not hold the rule together.
     settings = SettingsCubit(appRepository, settingsRepository, shell);
-    downloads = DownloadsCubit(modelRepository, runtimeRepository, settings, shell);
+    downloads = DownloadsCubit(modelRepository, runtimeRepository, settingsRepository, shell);
     pipeline = PipelineCubit(
       appRepository,
       modelRepository,
@@ -51,13 +51,13 @@ class DashboardCubits {
     characters = CharactersCubit(
       appRepository,
       modelRepository,
-      settings,
+      settingsRepository,
       downloads,
       shell,
       sessions,
     );
     glossary = GlossaryCubit(appRepository, shell);
-    graph = PipelineGraphBloc(appRepository, settings, characters, pipeline, shell);
+    graph = PipelineGraphBloc(appRepository, settingsRepository, characters, pipeline, shell);
     // Closing for an update must not leave the game turned down, or the
     // worker of either screen still holding the files the setup replaces.
     shell.beforeRestart = () async {

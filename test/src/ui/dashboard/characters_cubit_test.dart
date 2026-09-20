@@ -81,7 +81,7 @@ void main() {
       // The real one goes looking for the application directory, which a
       // unit test does not have.
       _FixedModelRepository(),
-      cubits.settings,
+      cubits.settingsRepository,
       cubits.downloads,
       cubits.shell,
       sessions,

@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../domain/built_voice.dart';
@@ -23,7 +24,6 @@ import '../../../domain/pipeline_state.dart';
 import '../../../domain/session_coordinator.dart';
 import '../../../domain/voice_sample.dart';
 import 'downloads_cubit.dart';
-import 'settings_cubit.dart';
 import 'shell_cubit.dart';
 
 /// What a card's record button does when pressed.
@@ -212,7 +212,7 @@ class CharactersCubit extends Cubit<CharactersState> {
 
   final AppRepository _appRepository;
   final ModelRepository _modelRepository;
-  final SettingsCubit _settings;
+  final SettingsRepository _settings;
   final DownloadsCubit _downloads;
   final FailureSink _errors;
   final SessionCoordinator _sessions;
