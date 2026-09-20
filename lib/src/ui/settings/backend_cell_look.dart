@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../common/tile_edge.dart';
 import '../theme.dart';
 
 /// What one cell of the stage-by-device table says about its pair.
@@ -38,7 +39,6 @@ class BackendCellLook {
     required this.face,
     required this.ink,
     required this.edge,
-    required this.edgeWidth,
     required this.icon,
     required this.iconColour,
   });
@@ -55,8 +55,12 @@ class BackendCellLook {
     return BackendCellLook(
       face: _face(state, colors),
       ink: ink,
-      edge: _edge(state, colors, hovered: hovered && tappable),
-      edgeWidth: state.edged ? 2 : 1,
+      edge: TileEdge.of(
+        colors,
+        marked: state.edged,
+        hovered: hovered && tappable,
+        quiet: state.off,
+      ),
       icon: _icon(state),
       iconColour: state == BackendCellState.selected || state == BackendCellState.needsRuntime
           ? colors.accent
@@ -77,12 +81,6 @@ class BackendCellLook {
     return state.off ? Colors.transparent : colors.panel;
   }
 
-  static Color _edge(BackendCellState state, LoreDubColors colors, {required bool hovered}) {
-    if (state.edged) return colors.accent;
-    if (hovered) return colors.ink;
-    return colors.outline.withValues(alpha: state.off ? 0.5 : 1);
-  }
-
   static IconData? _icon(BackendCellState state) => switch (state) {
     BackendCellState.selected => Icons.check_rounded,
     BackendCellState.needsRuntime => Icons.cloud_download_outlined,
@@ -93,8 +91,7 @@ class BackendCellLook {
 
   final Color face;
   final Color ink;
-  final Color edge;
-  final double edgeWidth;
+  final TileEdge edge;
   final IconData? icon;
   final Color iconColour;
 }

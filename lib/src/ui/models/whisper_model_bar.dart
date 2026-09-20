@@ -56,10 +56,7 @@ class WhisperModelBar extends StatelessWidget {
           child: Material(
             color: look.face,
             clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: const BorderRadius.all(Radius.circular(12)),
-              side: BorderSide(color: look.edge, width: look.edgeWidth),
-            ),
+            shape: look.edge.shaped(12),
             child: InkWell(
               onTap: onTap,
               child: LayoutBuilder(

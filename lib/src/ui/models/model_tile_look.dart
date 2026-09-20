@@ -3,16 +3,12 @@
 
 import 'package:flutter/material.dart';
 
+import '../common/tile_edge.dart';
 import '../theme.dart';
 
 /// The colours of a model tile, decided once from where the model stands.
 class ModelTileLook {
-  const ModelTileLook({
-    required this.face,
-    required this.ink,
-    required this.edge,
-    required this.edgeWidth,
-  });
+  const ModelTileLook({required this.face, required this.ink, required this.edge});
 
   /// A tile arriving or chosen wears the orange edge; one in use is dark;
   /// orange is the one colour that reads on the light face and on the dark
@@ -27,18 +23,11 @@ class ModelTileLook {
     required bool marked,
     required bool hovered,
   }) {
-    final edged = marked || downloading;
     return ModelTileLook(
       face: inUse ? colors.deep : colors.panel,
       ink: _ink(colors, downloading: downloading, inUse: inUse),
-      edge: _edge(colors, edged: edged, hovered: hovered),
-      edgeWidth: edged ? 2 : 1,
+      edge: TileEdge.of(colors, marked: marked || downloading, hovered: hovered),
     );
-  }
-
-  static Color _edge(LoreDubColors colors, {required bool edged, required bool hovered}) {
-    if (edged) return colors.accent;
-    return hovered ? colors.ink : colors.outline;
   }
 
   static Color _ink(LoreDubColors colors, {required bool downloading, required bool inUse}) {
@@ -48,6 +37,5 @@ class ModelTileLook {
 
   final Color face;
   final Color ink;
-  final Color edge;
-  final double edgeWidth;
+  final TileEdge edge;
 }

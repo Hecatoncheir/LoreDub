@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../node_faces.dart';
+import '../../theme.dart';
 import '../node_panel_theme.dart';
 
 import 'package:flutter/material.dart';
@@ -66,8 +67,12 @@ class PipelineInspector extends StatelessWidget {
               color: paint.body,
               // No line down the left: the shadow it casts on the canvas is
               // the edge, and a rule as well read as a second one.
-              boxShadow: const [
-                BoxShadow(color: Color(0x22171717), blurRadius: 24, offset: Offset(-8, 0)),
+              boxShadow: [
+                BoxShadow(
+                  color: context.colors.shadow,
+                  blurRadius: 24,
+                  offset: const Offset(-8, 0),
+                ),
               ],
             ),
             child: Material(

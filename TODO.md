@@ -705,22 +705,23 @@ abstract final class AppTheme {
       `display` пяти разных кеглей (14–18) — роли на них нет, и `cardTitle`
       подходит только к 17; моно без цвета, берущее его от `DefaultTextStyle`;
       и всё, что красится гранью узла (`paint.ink`, `paint.muted`).
-- [ ] Повторяющиеся рецепты → роли и общие виджеты:
-  - значок номера модуля (28×22, оранжевый, радиус 4, моно 10 w700) — слово
-    в слово в `dashboard_view.dart:2414`, `glossary_screen.dart:603`,
-    `pipeline_shelf.dart:170` → один `ModuleLabel`;
-  - приглушённая заметка 12–13 `mutedInk` — ~25 мест → `bodySmall`;
-  - моно-подпись 11 и моно-маркировка прописными (`character_tiles.dart:368`,
-    `pipeline_canvas.dart:1475`, `pipeline_inspector.dart:123`…) → роли
-    `monoCaption`, `monoMarking`;
-  - кромка плитки (`marked ? orange : hovered ? ink : outline`, 2/1, радиус
-    12) — `model_tiles.dart:113`, `whisper_model_chart.dart:316`,
-    `character_tiles.dart:275`, `compute_matrix.dart:99` → `TileEdge`;
-  - заливка загрузки — `model_tiles.dart:131`, `whisper_model_chart.dart:336`,
-    `compute_matrix.dart:113` → `DownloadFill`;
-  - компактная кнопка-иконка 26/30/34 — пять мест → `CompactIconButton`;
-  - сырые цвета с альфой (`0x22171717` дважды, `0xAAF7F5F0` четырежды) →
-    токены `shadow`, `inkOnDarkMuted`.
+- [x] Повторяющиеся рецепты → роли и общие виджеты:
+  - [x] значок номера модуля (28×22, оранжевый, радиус 4, моно 10 w700) —
+    `ModuleNumber` и `ModuleLabel`, оба теперь на ролях темы;
+  - [x] приглушённая заметка 12–13 `mutedInk` → `bodySmall` / `labelSmall`;
+  - [x] моно-подпись 11 и моно-маркировка прописными → роли `monoCaption`,
+    `monoMarking`;
+  - [x] кромка плитки → `common/tile_edge.dart`. `TileEdge.of` — одно
+    правило на три экрана (модель, ячейка устройства, карточка каста), с
+    `quiet` для того, чему машина сказала «нет», и `shaped(radius)`, потому
+    что угол у ячейки 10, а у остальных 12. `ModelTileLook` и
+    `BackendCellLook` носят его вместо пары `edge`/`edgeWidth`;
+  - [x] заливка загрузки — `DownloadFill`;
+  - [x] компактная кнопка-иконка: пяти мест больше нет. Разбор экранов
+    развёл их по своим виджетам (`ClearListButton`, `CorrectLineButton`),
+    и одинаковыми остались две кнопки одного файла — общий виджет ради них
+    был бы дороже повтора;
+  - [x] сырые цвета с альфой → токены. `Color(0x` вне темы теперь 0.
 - [ ] Ловушка при переезде на тему: значки разреза связи на холсте
       запоминают цвета в момент создания и лежат в кеше
       (`pipeline_canvas.dart:840–841`). Когда цвета пойдут из темы,

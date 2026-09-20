@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../common/committed_text_field.dart';
 import '../common/hover_grow.dart';
+import '../common/tile_edge.dart';
 import '../theme.dart';
 import 'character_tile_action_bar.dart';
 import 'character_tile_actions.dart';
@@ -32,11 +33,6 @@ class CharacterTileBody extends StatelessWidget {
   /// card is the target, so the whole edge lights up.
   bool get _edged => lit || model.recording || model.building;
 
-  Color _edge(LoreDubColors colors, {required bool hovered}) {
-    if (_edged) return colors.accent;
-    return hovered ? colors.ink : colors.outline;
-  }
-
   @override
   Widget build(BuildContext context) => HoverGrow(
     alignment: Alignment.center,
@@ -44,13 +40,7 @@ class CharacterTileBody extends StatelessWidget {
     builder: (context, hovered) => Material(
       color: context.colors.panel,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
-        side: BorderSide(
-          color: _edge(context.colors, hovered: hovered),
-          width: _edged ? 2 : 1,
-        ),
-      ),
+      shape: TileEdge.of(context.colors, marked: _edged, hovered: hovered).shaped(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

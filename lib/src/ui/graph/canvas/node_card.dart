@@ -74,7 +74,7 @@ class NodeCard extends StatelessWidget {
     boxShadow: selected || hovered
         ? [
             BoxShadow(
-              color: const Color(0x22171717),
+              color: colors.shadow,
               blurRadius: selected ? 18 : 12,
               offset: Offset(0, selected ? 6 : 4),
             ),
