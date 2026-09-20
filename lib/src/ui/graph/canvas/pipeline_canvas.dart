@@ -173,7 +173,11 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
     _drawing.duration = still ? Duration.zero : _motion;
     _picking.duration = still ? Duration.zero : _choosing;
     // What is kept was built against the language and the theme that were
-    // around it, so a change of either throws all of it away.
+    // around it, so a change of either throws all of it away. A card and a
+    // badge read both inside their own `build`, so the framework would
+    // rebuild them anyway -- `canvas_theme_test.dart` holds them to that,
+    // cache and all -- and this is what keeps that true of anything put in
+    // them later.
     _layers.clear();
     _badges.clear();
   }
