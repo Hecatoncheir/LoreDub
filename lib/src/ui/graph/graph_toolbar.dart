@@ -50,7 +50,8 @@ class GraphToolbar extends StatelessWidget {
                       final refusal? => Text(
                         describeConnectionRefusal(l10n, refusal),
                         key: ValueKey(refusal),
-                        style: TextStyle(fontSize: 12, color: context.colors.danger),
+                        style: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(color: context.colors.danger),
                       ),
                       _ => Text(
                         l10n.pipelineGraphHint,

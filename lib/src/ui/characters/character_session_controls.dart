@@ -101,10 +101,8 @@ class CharacterSessionControls extends StatelessWidget {
               : pipeline.running
               ? l10n.snapshotInLive
               : l10n.charactersHowTo,
-          style: TextStyle(
-            color: canRecord ? context.colors.mutedInk : context.colors.warning,
-            fontSize: 12,
-          ),
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: canRecord ? context.colors.mutedInk : context.colors.warning),
         ),
       ],
     );

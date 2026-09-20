@@ -24,7 +24,7 @@ class DragFeedbackChip extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: context.colors.raised, fontSize: 13),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.colors.raised),
         ),
       ),
     ),

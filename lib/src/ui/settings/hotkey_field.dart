@@ -156,7 +156,8 @@ class _HotkeyFieldState extends State<HotkeyField> {
             padding: const EdgeInsets.only(top: 6),
             child: Text(
               problem,
-              style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.error),
             ),
           ),
       ],

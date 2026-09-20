@@ -34,7 +34,8 @@ class ModelFailureRow extends StatelessWidget {
           const SizedBox(height: 4),
           SelectableText(
             describeFailure(l10n, state.error!),
-            style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: Theme.of(context).colorScheme.error),
           ),
         ],
       ),

@@ -42,8 +42,7 @@ class GlossaryPackControls extends StatelessWidget {
               ),
               Text(
                 l10n.glossaryPackActive,
-                style: TextStyle(
-                  fontSize: 12,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: pack.active ? context.colors.accent : context.colors.mutedInk,
                 ),
               ),

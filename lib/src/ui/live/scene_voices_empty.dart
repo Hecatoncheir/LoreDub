@@ -27,10 +27,8 @@ class SceneVoicesEmpty extends StatelessWidget {
         AppLocalizations.of(context),
         tracksSpeakers: context.selection.tracksSpeakers,
       ),
-      style: TextStyle(
-        fontSize: 12,
-        color: listening ? context.colors.accent : context.colors.mutedInk,
-      ),
+      style: Theme.of(context).textTheme.labelSmall
+          ?.copyWith(color: listening ? context.colors.accent : context.colors.mutedInk),
     ),
   );
 }

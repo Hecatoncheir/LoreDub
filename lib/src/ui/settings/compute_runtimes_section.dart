@@ -102,7 +102,8 @@ class ComputeRuntimesSection extends StatelessWidget {
               padding: const EdgeInsets.only(top: 8),
               child: SelectableText(
                 '${runtimeName(l10n, runtime.package.id)}: ${describeFailure(l10n, error)}',
-                style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+                style: Theme.of(context).textTheme.labelSmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.error),
               ),
             ),
       ],
