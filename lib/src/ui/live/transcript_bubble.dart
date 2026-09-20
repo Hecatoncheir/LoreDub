@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'speak_again_button.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../domain/character.dart';
@@ -21,6 +23,7 @@ class TranscriptBubble extends StatelessWidget {
     required this.entry,
     this.characters = const [],
     this.onCorrect,
+    this.onSpeakAgain,
   });
 
   static const double _tailInset = 28;
@@ -35,6 +38,10 @@ class TranscriptBubble extends StatelessWidget {
   /// What to do with a correction the player writes for this line. Null
   /// where there is nothing to write it into.
   final void Function(TranscriptEntry entry, String reading, {bool silent})? onCorrect;
+
+  /// Reads this line again. Null where the session no longer holds what it
+  /// was read as -- an older line, or one that was never voiced.
+  final VoidCallback? onSpeakAgain;
 
   @override
   Widget build(BuildContext context) {
@@ -159,6 +166,10 @@ class TranscriptBubble extends StatelessWidget {
             // translated, and has nothing for the glossary to match on.
             if (onCorrect != null && entry.english.trim().isNotEmpty)
               CorrectLineButton(entry: entry, onCorrect: onCorrect!),
+            // A line goes by while the player is looking at the game;
+            // here it can be heard again.
+            if (onSpeakAgain != null && entry.spoken != null)
+              SpeakAgainButton(onPressed: onSpeakAgain!),
           ],
         ),
       ],

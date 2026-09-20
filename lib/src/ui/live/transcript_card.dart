@@ -59,13 +59,15 @@ class TranscriptCard extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
                       child: Row(
                         children: [
-                          Flexible(
+                          // The heading takes the room and gives way where
+                          // there is none, so the button that clears the
+                          // list sits against the card's edge.
+                          Expanded(
                             child: ModuleLabel(
                               number: number,
                               label: label ?? AppLocalizations.of(context).areaTranscript,
                             ),
                           ),
-                          const Spacer(),
                           ClearListButton(
                             tooltip: AppLocalizations.of(context).transcriptClearTooltip,
                             onPressed: transcript.isEmpty

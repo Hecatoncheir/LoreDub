@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../dashboard/cubits/pipeline_cubit.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -27,9 +29,9 @@ class TranscriptLines extends StatelessWidget {
   final List<Character> characters;
   final bool fromScreen;
 
-  /// Whether the list scrolls inside the card, as it does where the card
-  /// fills the window. Where the page scrolls instead, the list is grown to
-  /// what it holds: one gesture, one scrollbar.
+  /// Whether the card hands the list a height to fill. Where the page
+  /// scrolls instead, the list is grown to what it holds -- and scrolls
+  /// inside that once it has grown as far as the card allows.
   final bool scrolls;
 
   @override
@@ -45,12 +47,12 @@ class TranscriptLines extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       shrinkWrap: !scrolls,
-      physics: scrolls ? null : const NeverScrollableScrollPhysics(),
       itemCount: entries.length,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) => TranscriptBubble(
         entry: entries[index],
         characters: characters,
+        onSpeakAgain: () => context.read<PipelineCubit>().speakAgain(entries[index]),
         // A line is corrected where it was heard going wrong, which is the
         // only moment the player knows it did. The glossary screen is then
         // the list of what was collected rather than a place to remember to

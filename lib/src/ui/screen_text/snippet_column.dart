@@ -3,15 +3,12 @@
 
 import 'package:flutter/material.dart';
 
-import 'screen_layout.dart';
 import 'snapshot_history.dart';
 import 'snippet_only_card.dart';
 
-/// What the key picks out, and the list of what it has picked.
-///
-/// That list is a history rather than a running transcript -- the player
-/// asked for every line in it -- so it keeps a height of its own and
-/// scrolls inside it rather than growing the page without end.
+/// What the key picks out, and the list of what it has picked. The list
+/// grows with what it holds to the ten lines worth seeing at once, and
+/// scrolls inside itself past them.
 class SnippetColumn extends StatelessWidget {
   const SnippetColumn({super.key});
 
@@ -22,7 +19,7 @@ class SnippetColumn extends StatelessWidget {
     children: [
       SnippetOnlyCard(),
       const SizedBox(height: 16),
-      SizedBox(height: ScreenLayout.listHeight, child: SnapshotHistory()),
+      SnapshotHistory(),
     ],
   );
 }

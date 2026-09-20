@@ -883,6 +883,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get emptyTranscript => 'Здесь появятся распознанные и переведённые реплики';
 
   @override
+  String get transcriptSpeakAgain => 'Прочитать ещё раз';
+
+  @override
   String get transcriptClear => 'Очистить';
 
   @override

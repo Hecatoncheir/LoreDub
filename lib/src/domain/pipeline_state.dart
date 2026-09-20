@@ -26,6 +26,7 @@ class TranscriptEntry {
     required this.latency,
     this.speaker,
     this.silenced = false,
+    this.spoken,
   });
 
   final String original;
@@ -38,6 +39,12 @@ class TranscriptEntry {
   /// nothing could tell the speakers apart. Null in a snapshot, which is
   /// read off the screen and has no voice at all.
   final String? speaker;
+
+  /// What this line was read as, kept so the player can hear it again --
+  /// a line that went by while they were looking at the game. Null for a
+  /// line that was never voiced, and for one whose file the session has
+  /// since let go of.
+  final String? spoken;
 
   /// Whether the player silenced this line in the glossary. It was heard and
   /// shown, and only the voice was left out -- so a silence the player asked

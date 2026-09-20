@@ -506,6 +506,7 @@
     }
   },
   "emptyTranscript": "Здесь появятся распознанные и переведённые реплики",
+  "transcriptSpeakAgain": "Прочитать ещё раз",
   "transcriptClear": "Очистить",
   "transcriptClearTooltip": "Убрать все реплики из списка",
   "pipelineSummaryDirect": "Whisper → English → Vosk",

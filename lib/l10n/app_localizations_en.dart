@@ -876,6 +876,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emptyTranscript => 'Recognized and translated lines will appear here';
 
   @override
+  String get transcriptSpeakAgain => 'Read it again';
+
+  @override
   String get transcriptClear => 'Clear';
 
   @override

@@ -1509,6 +1509,12 @@ abstract class AppLocalizations {
   /// **'Здесь появятся распознанные и переведённые реплики'**
   String get emptyTranscript;
 
+  /// No description provided for @transcriptSpeakAgain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прочитать ещё раз'**
+  String get transcriptSpeakAgain;
+
   /// No description provided for @transcriptClear.
   ///
   /// In ru, this message translates to:

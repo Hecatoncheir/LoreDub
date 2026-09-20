@@ -670,7 +670,10 @@ true)`, its `transcript` event carries `snapshot: true` and lands in
 even while a live session is paused. Subtitle lines carry no such flag and go
 to `LivePipelineState.transcript`, which the screen draws beside the
 snapshots and which `toggleScreenText` clears at the start, a transcript
-belonging to one session. That list keeps `subtitlesKept` (10) lines
+belonging to one session. Every line that was voiced keeps the file it was read as
+(`TranscriptEntry.spoken`, the engine's `_spoken` queue of the last 60,
+emptied when the session ends), so the transcript can play it again rather
+than ask the worker for it a second time. That list keeps `subtitlesKept` (10) lines
 rather than the `linesKept` (50) Live keeps: the page scrolls as a whole
 and every area on it is as tall as what it holds, so a longer list would
 push the page down without being read. Starting live dubbing over a running screen session

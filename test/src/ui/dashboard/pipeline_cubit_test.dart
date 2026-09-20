@@ -245,6 +245,37 @@ void main() {
     expect(repository.stops, 1);
   });
 
+  group('a line already read', () {
+    test('keeps what it was read as, and is read again on request', () async {
+      pipeline
+        ..listen()
+        ..seed(const LivePipelineState(status: PipelineStatus.listening));
+
+      repository.push({
+        'type': 'transcript',
+        'original': 'Fire in the hole!',
+        'english': 'Fire in the hole!',
+        'translated': 'Ложись!',
+        'latencyMs': 900,
+        'wave': 'work/speech-7.wav',
+      });
+      await settle();
+
+      final line = pipeline.state.transcript.single;
+      expect(line.spoken, 'work/speech-7.wav');
+      await pipeline.speakAgain(line);
+      expect(repository.playedAgain, ['work/speech-7.wav']);
+    });
+
+    test('a line that was never voiced has nothing to play', () async {
+      await pipeline.speakAgain(
+        const TranscriptEntry(original: 'x', english: 'x', translated: 'x', latency: Duration.zero),
+      );
+
+      expect(repository.playedAgain, isEmpty);
+    });
+  });
+
   group('the voice picked while a session runs', () {
     test('reaches the worker rather than waiting for the next start', () async {
       pipeline.seed(
@@ -684,6 +715,12 @@ class _SlowStartRepository extends AppRepository {
 
   /// The voices a running session was told to read in.
   final voicesTold = <String>[];
+
+  /// The readings played again from the transcript.
+  final playedAgain = <String>[];
+
+  @override
+  Future<void> speakAgain(String wavePath) async => playedAgain.add(wavePath);
 
   @override
   Future<void> useVoice(String voice) async => voicesTold.add(voice);

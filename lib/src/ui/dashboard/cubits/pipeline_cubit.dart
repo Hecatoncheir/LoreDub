@@ -730,6 +730,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       latency: Duration(milliseconds: event['latencyMs'] as int? ?? 0),
       speaker: event['speaker'] as String?,
       silenced: event['silenced'] == true,
+      spoken: event['wave'] as String?,
     );
     // A selection answers the player's request, not the running capture, so
     // it has a list of its own.
@@ -835,6 +836,18 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   void followSettings() {
     followFrameOverlay();
     unawaited(_followVoice());
+  }
+
+  /// Reads a line the session has already read, again: one that went by
+  /// while the player was looking at the game rather than at the list.
+  Future<void> speakAgain(TranscriptEntry entry) async {
+    final spoken = entry.spoken;
+    if (spoken == null) return;
+    try {
+      await _appRepository.speakAgain(spoken);
+    } catch (exception) {
+      _errors.report(exception);
+    }
   }
 
   /// The voice picked while a session runs reaches the worker rather than

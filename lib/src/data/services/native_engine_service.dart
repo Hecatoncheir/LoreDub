@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:collection';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
@@ -688,6 +689,10 @@ class NativeEngineService {
     for (final wavePath in _playback.clear()) {
       unawaited(_deleteIfPresent(wavePath));
     }
+    // What was read is kept only while the session that read it is up.
+    while (_spoken.isNotEmpty) {
+      unawaited(_deleteIfPresent(_spoken.removeFirst()));
+    }
     // The game gets its own volume back, whichever duck took it: the
     // session-long one, or the one that lasts a line. Only the pause used to
     // do this, so a stopped session left the game quiet for good -- and the
@@ -1164,6 +1169,8 @@ class NativeEngineService {
       if (result.silenced) 'silenced': true,
       // Who said it, so the scene list can offer the voice a replacement.
       'speaker': ?result.speaker,
+      // What it was read as, so the line can be heard again.
+      'wave': ?result.wavePath,
     });
     // Which voice read it: the automatic choice can change it per phrase, so
     // the interface should not have to guess.
@@ -1187,6 +1194,9 @@ class NativeEngineService {
       unawaited(_deleteIfPresent(wavePath));
       return;
     }
+    // Kept after it has sounded, so the player can hear the line again
+    // from the transcript rather than wait for the game to say it twice.
+    _keepSpoken(wavePath);
     // The worker says who is speaking, so a different character may start
     // while the last one is still talking — when the settings allow it.
     _playback.add(wavePath, speaker: result.speaker);
@@ -1220,9 +1230,28 @@ class NativeEngineService {
       if (_activeConfig != null) await _playInIsolate(wavePath);
     } catch (error) {
       _reportFailure(error);
-    } finally {
-      await _deleteIfPresent(wavePath);
     }
+  }
+
+  /// How many readings are kept to be heard again: the lines the screens
+  /// still list, and nothing older. Each is a few hundred kilobytes, and
+  /// the lot goes when the session ends.
+  static const _spokenKept = 60;
+  final _spoken = Queue<String>();
+
+  /// Keeps what a line was read as, and lets the oldest go.
+  void _keepSpoken(String wavePath) {
+    _spoken.addLast(wavePath);
+    while (_spoken.length > _spokenKept) {
+      unawaited(_deleteIfPresent(_spoken.removeFirst()));
+    }
+  }
+
+  /// Plays a line the session has already read, as the transcript offers.
+  /// A file the session has let go of is nothing to play.
+  Future<void> speakAgain(String wavePath) async {
+    if (!_spoken.contains(wavePath)) return;
+    await _playInIsolate(wavePath);
   }
 
   /// Static so the isolate closure captures nothing but the path. Reaching it

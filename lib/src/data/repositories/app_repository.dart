@@ -374,6 +374,9 @@ class AppRepository {
     return hearsVoices ? 'ocrAndAudio' : 'ocr';
   }
 
+  /// Plays a line this session has already read.
+  Future<void> speakAgain(String wavePath) => _nativeEngine.speakAgain(wavePath);
+
   /// Reads the lines that follow in [voice], while a session runs.
   Future<void> useVoice(String voice) => _nativeEngine.useVoice(voice);
 
