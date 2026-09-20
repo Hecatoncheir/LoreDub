@@ -3,6 +3,8 @@
   "appTitle": "LoreDub",
   "navGroupDubbing": "ПЕРЕВОД",
   "navGroupSetup": "ПОДГОТОВКА",
+  "liveViewDubbing": "Дубляж",
+  "liveViewScheme": "Схема",
   "navLive": "Эфир",
   "headerLive": "ЖИВОЙ ГОЛОС",
   "headerScreen": "ТЕКСТ С ЭКРАНА",

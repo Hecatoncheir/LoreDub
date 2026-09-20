@@ -111,6 +111,18 @@ abstract class AppLocalizations {
   /// **'ПОДГОТОВКА'**
   String get navGroupSetup;
 
+  /// No description provided for @liveViewDubbing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дубляж'**
+  String get liveViewDubbing;
+
+  /// No description provided for @liveViewScheme.
+  ///
+  /// In ru, this message translates to:
+  /// **'Схема'**
+  String get liveViewScheme;
+
   /// No description provided for @navLive.
   ///
   /// In ru, this message translates to:

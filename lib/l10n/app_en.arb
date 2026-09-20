@@ -3,6 +3,8 @@
   "appTitle": "LoreDub",
   "navGroupDubbing": "DUBBING",
   "navGroupSetup": "SETUP",
+  "liveViewDubbing": "Dubbing",
+  "liveViewScheme": "Scheme",
   "navLive": "Live",
   "headerLive": "LIVE VOICE",
   "headerScreen": "SCREEN TEXT",

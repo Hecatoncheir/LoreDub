@@ -19,6 +19,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navGroupSetup => 'ПОДГОТОВКА';
 
   @override
+  String get liveViewDubbing => 'Дубляж';
+
+  @override
+  String get liveViewScheme => 'Схема';
+
+  @override
   String get navLive => 'Эфир';
 
   @override

@@ -429,7 +429,9 @@ entry that is gone is pruned when the file is read.
 
 The scheme ("Схема") draws the pipeline as nodes and is the second way to
 the same settings, not a second set of them. It is a half of Эфир rather
-than a screen of its own (`ShellState.liveView`, `LiveViewSwitch`): it is
+than a screen of its own (`ShellState.liveView`, `LiveTitleSwitch` --
+the title of the page is the switch: the half that is up is the heading in
+the accent, the other stands beside it smaller and quieter): it is
 where the dubbing is arranged, and reaching it meant leaving the dubbing --
 while it is the one arrangement that answers with a session running. Эфир
 carries the dubbing's own settings for the same reason: how far the game is

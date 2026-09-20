@@ -19,6 +19,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navGroupSetup => 'SETUP';
 
   @override
+  String get liveViewDubbing => 'Dubbing';
+
+  @override
+  String get liveViewScheme => 'Scheme';
+
+  @override
   String get navLive => 'Live';
 
   @override

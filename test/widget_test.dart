@@ -192,10 +192,10 @@ void main() {
 
     expect(find.text('LoreDub'), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
-    expect(find.text('Перевод игры'), findsOneWidget);
-    // Twice: the navigation item, and the switch between the dubbing and
-    // the scheme it runs by.
-    expect(find.text('Эфир'), findsNWidgets(2));
+    expect(find.text('Эфир'), findsOneWidget);
+    // The title of this screen is the switch between its two halves.
+    expect(find.text('Дубляж'), findsOneWidget);
+    expect(find.text('Схема'), findsOneWidget);
     expect(find.text('01  /  ЖИВОЙ ГОЛОС'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
   });
@@ -221,7 +221,7 @@ void main() {
     // the assertion -- an overflow is an exception the test would fail on.
     await pumpLoreDub(tester, const Size(1280, 560));
 
-    expect(find.text('Эфир'), findsNWidgets(2));
+    expect(find.text('Эфир'), findsOneWidget);
     expect(find.text('Настройки'), findsOneWidget);
   });
 
@@ -229,7 +229,7 @@ void main() {
     await pumpLoreDub(tester, const Size(760, 720));
 
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('Эфир'), findsNWidgets(2));
+    expect(find.text('Эфир'), findsOneWidget);
     expect(find.text('Модели'), findsOneWidget);
     expect(find.text('Настройки'), findsOneWidget);
   });
@@ -1441,7 +1441,7 @@ void main() {
   testWidgets('starts in Russian and remembers a switch to English', (tester) async {
     await pumpLoreDub(tester, const Size(1280, 900));
 
-    expect(find.text('Перевод игры'), findsOneWidget);
+    expect(find.text('Дубляж'), findsOneWidget);
     expect((await SettingsService().load()).interfaceLanguage, 'ru');
 
     await tester.tap(find.text('Настройки'));
@@ -1455,7 +1455,7 @@ void main() {
 
     await tester.tap(find.text('Live'));
     await tester.pumpAndSettle();
-    expect(find.text('Game dubbing'), findsOneWidget);
+    expect(find.text('Dubbing'), findsOneWidget);
     expect(find.text('Start dubbing'), findsOneWidget);
   });
 

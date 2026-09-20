@@ -8,7 +8,6 @@ import '../common/ease.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../graph/pipeline_panel.dart';
 import 'live_dubbing.dart';
-import 'live_view_switch.dart';
 
 /// The Эфир screen: where the sound comes from and in which language it is
 /// dubbed, the start button, and below them the transcript and the voices
@@ -18,24 +17,14 @@ class LivePanel extends StatelessWidget {
   const LivePanel({super.key});
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(28, 4, 28, 8),
-        child: Align(alignment: Alignment.centerLeft, child: LiveViewSwitch()),
-      ),
-      Expanded(
-        child: BlocSelector<ShellCubit, ShellState, LiveView>(
-          selector: (shell) => shell.liveView,
-          builder: (context, view) => AnimatedSwitcher(
-            duration: ease(context, 180),
-            child: switch (view) {
-              LiveView.dubbing => const LiveDubbing(key: ValueKey('dubbing')),
-              LiveView.scheme => PipelinePanel(key: const ValueKey('scheme')),
-            },
-          ),
-        ),
-      ),
-    ],
+  Widget build(BuildContext context) => BlocSelector<ShellCubit, ShellState, LiveView>(
+    selector: (shell) => shell.liveView,
+    builder: (context, view) => AnimatedSwitcher(
+      duration: ease(context, 180),
+      child: switch (view) {
+        LiveView.dubbing => const LiveDubbing(key: ValueKey('dubbing')),
+        LiveView.scheme => PipelinePanel(key: const ValueKey('scheme')),
+      },
+    ),
   );
 }

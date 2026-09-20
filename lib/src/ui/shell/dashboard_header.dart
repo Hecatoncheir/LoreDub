@@ -3,6 +3,8 @@
 
 import 'section_mark.dart';
 
+import '../live/live_title_switch.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -42,20 +44,29 @@ class DashboardHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-                Text(
-                  switch (shell.section) {
-                    // The scheme is the other half of Эфир, and says so.
-                    DashboardSection.live when shell.liveView == LiveView.scheme =>
-                      AppLocalizations.of(context).titlePipeline,
-                    DashboardSection.live => AppLocalizations.of(context).titleLive,
-                    DashboardSection.snapshot => AppLocalizations.of(context).titleSnapshot,
-                    DashboardSection.models => AppLocalizations.of(context).titleModels,
-                    DashboardSection.characters => AppLocalizations.of(context).titleCharacters,
-                    DashboardSection.glossary => AppLocalizations.of(context).titleGlossary,
-                    DashboardSection.settings => AppLocalizations.of(context).titleSettings,
-                  },
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
+                if (shell.section == DashboardSection.live)
+                  // The title is the switch between the two halves of this
+                  // screen: what is up is the heading, what is not stands
+                  // beside it.
+                  const Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: LiveTitleSwitch(),
+                  )
+                else
+                  Text(
+                    switch (shell.section) {
+                      // The scheme is the other half of Эфир, and says so.
+                      DashboardSection.live when shell.liveView == LiveView.scheme =>
+                        AppLocalizations.of(context).titlePipeline,
+                      DashboardSection.live => AppLocalizations.of(context).titleLive,
+                      DashboardSection.snapshot => AppLocalizations.of(context).titleSnapshot,
+                      DashboardSection.models => AppLocalizations.of(context).titleModels,
+                      DashboardSection.characters => AppLocalizations.of(context).titleCharacters,
+                      DashboardSection.glossary => AppLocalizations.of(context).titleGlossary,
+                      DashboardSection.settings => AppLocalizations.of(context).titleSettings,
+                    },
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
               ],
             ),
           ),
