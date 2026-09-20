@@ -20,6 +20,7 @@ import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
+import '../../../domain/session_coordinator.dart';
 import '../../../domain/voice_sample.dart';
 import 'downloads_cubit.dart';
 import 'settings_cubit.dart';
@@ -196,11 +197,14 @@ class CharactersCubit extends Cubit<CharactersState> {
     this._modelRepository,
     this._settings,
     this._downloads,
-    this._errors, {
+    this._errors,
+    this._sessions, {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        _ids = IdSource(clock: clock),
-       super(const CharactersState());
+       super(const CharactersState()) {
+    _sessions.cast = stopSession;
+  }
 
   /// A recording keeps the clearest voice it has heard, not the last: a
   /// character founded on a half-word would answer for them ever after.
@@ -211,6 +215,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   final SettingsCubit _settings;
   final DownloadsCubit _downloads;
   final FailureSink _errors;
+  final SessionCoordinator _sessions;
   final DateTime Function() _clock;
   final IdSource _ids;
 
@@ -221,12 +226,9 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// worker of its own. Begun over a session that was dubbing, it took that
   /// session's worker while the capture went on, and every phrase the game
   /// said from then on failed for want of whisper. Live takes the worker
-  /// from this screen by asking ([PipelineCubit.releaseWorker]); this screen
-  /// never takes it back. [DashboardCubits] wires up the answer, so neither
-  /// cubit has to know the other.
-  bool Function()? dubbingHoldsWorker;
-
-  bool get _workerTaken => dubbingHoldsWorker?.call() ?? false;
+  /// from this screen by asking ([SessionCoordinator.makeRoomForDubbing]);
+  /// this screen never takes it back.
+  bool get _workerTaken => _sessions.dubbingRuns;
 
   /// The best fingerprint this recording has heard so far.
   List<double>? _heard;

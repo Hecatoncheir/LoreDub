@@ -858,6 +858,15 @@ abstract final class AppTheme {
       `SessionCoordinator`. `DashboardCubits` после этого удаляется;
       первичная загрузка — `BlocProvider(lazy: false, create: … ..add(const
       XStarted()))`.
+      *`SessionCoordinator` — сделано:* `domain/session_coordinator.dart`.
+      Правило асимметрично, и это записано там же: дубляж забирает воркера
+      у экрана персонажей (в том нет whisper и нечего терять), обратно —
+      отказ, потому что запись или проба поверх идущего дубляжа вынимали
+      whisper из-под капчи, и каждая следующая реплика падала. Каждый экран
+      регистрирует свою половину сам, из конструктора, так что кубиты друг
+      о друге не знают и `DashboardCubits` больше не держит правило —
+      только сам координатор, чтобы его было кому передать.
+      Остальное — стримы у репозиториев и снос `DashboardCubits` — впереди.
 - [ ] Разрезать `AppRepository` по контекстам: `SettingsRepository`,
       `SessionRepository`, `CastRepository`, `GlossaryRepository`,
       `SchemeRepository`, `VoiceBankRepository`, `SystemRepository`

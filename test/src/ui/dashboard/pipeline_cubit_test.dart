@@ -114,6 +114,7 @@ void main() {
       cubits.settings,
       cubits.downloads,
       cubits.shell,
+      cubits.sessions,
       clock: () => now,
     );
     // The cubit under test stands in for the bag's own, so what the

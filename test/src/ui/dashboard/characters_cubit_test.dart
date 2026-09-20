@@ -18,6 +18,7 @@ import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/data/services/update_service.dart';
+import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/built_voice.dart';
@@ -39,6 +40,7 @@ void main() {
   late _CastRepository repository;
   late DashboardCubits cubits;
   late CharactersCubit characters;
+  late SessionCoordinator sessions;
 
   setUp(() {
     repository = _CastRepository();
@@ -71,6 +73,7 @@ void main() {
         ],
       ),
     );
+    sessions = SessionCoordinator();
     characters = CharactersCubit(
       repository,
       // The real one goes looking for the application directory, which a
@@ -79,6 +82,7 @@ void main() {
       cubits.settings,
       cubits.downloads,
       cubits.shell,
+      sessions,
     );
   });
 
@@ -447,7 +451,7 @@ void main() {
   group('while a dubbing session holds the worker', () {
     setUp(() {
       characters.seed(const CharactersState(loading: false, characters: [guard]));
-      characters.dubbingHoldsWorker = () => true;
+      sessions.dubbing = () => true;
     });
 
     test('speaks no sample, which would take the worker from under it', () async {
@@ -475,16 +479,25 @@ void main() {
   });
 
   test('is told by the pipeline whether a dubbing session holds the worker', () {
-    // Neither cubit knows the other: this is the wiring between them.
-    final held = cubits.characters.dubbingHoldsWorker!;
-    expect(held(), isFalse);
+    // Neither cubit knows the other; each registers its half with the
+    // coordinator, and this is what the cast screen reads there.
+    final bagged = cubits.sessions;
+    expect(bagged.dubbingRuns, isFalse);
 
     cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
-    expect(held(), isTrue);
+    expect(bagged.dubbingRuns, isTrue);
 
     // A session resting under a pause keeps its worker and its models.
     cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.paused));
-    expect(held(), isTrue);
+    expect(bagged.dubbingRuns, isTrue);
+  });
+
+  test('lets the dubbing screens end the session it holds', () async {
+    characters.seed(const CharactersState(loading: false, status: PipelineStatus.listening));
+
+    await sessions.makeRoomForDubbing();
+
+    expect(repository.stops, 1, reason: 'the cast screen registered how its session ends');
   });
 
   test('leaves the card alone when the recording heard nothing usable', () async {

@@ -20,6 +20,7 @@ import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
+import '../../../domain/session_coordinator.dart';
 import 'downloads_cubit.dart';
 import 'settings_cubit.dart';
 import 'shell_cubit.dart';
@@ -240,10 +241,13 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     this._modelRepository,
     this._settings,
     this._downloads,
-    this._errors, {
+    this._errors,
+    this._sessions, {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
-       super(const LivePipelineState());
+       super(const LivePipelineState()) {
+    _sessions.dubbing = () => state.running;
+  }
 
   /// How long after a start a second press is taken for the rest of a
   /// double-click. Windows counts clicks as double within 500 ms by default.
@@ -254,14 +258,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   final SettingsCubit _settings;
   final DownloadsCubit _downloads;
   final FailureSink _errors;
+  final SessionCoordinator _sessions;
   final DateTime Function() _clock;
   StreamSubscription<EngineEvent>? _events;
-
-  /// Ends the session another screen holds, so that starting one here takes
-  /// the worker over rather than colliding with it. The characters screen is
-  /// the one screen that keeps a session of its own; [DashboardCubits] wires
-  /// this up, so neither cubit has to know the other.
-  Future<void> Function()? releaseWorker;
 
   /// When the last start was asked for. The button that starts the pipeline
   /// also cancels a start in progress, so without this a double-click would
@@ -315,7 +314,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     _startRequestedAt = _clock();
     // The characters screen holds the worker with no whisper in it, the way
     // a snapshot session does; starting here takes it over.
-    await releaseWorker?.call();
+    await _sessions.makeRoomForDubbing();
     if (isClosed) return;
     emit(
       state.copyWith(
@@ -454,7 +453,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     _startRequestedAt = _clock();
     // The worker the characters screen holds has neither the translator nor
     // the voice loaded, so this session starts afresh over it.
-    await releaseWorker?.call();
+    await _sessions.makeRoomForDubbing();
     if (isClosed) return;
     emit(
       state.copyWith(
@@ -532,7 +531,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     _startRequestedAt = _clock();
     // Both sessions listen through the converter, but only one may hold the
     // worker; the one the characters screen started gives way.
-    await releaseWorker?.call();
+    await _sessions.makeRoomForDubbing();
     if (isClosed) return;
     emit(
       state.copyWith(

@@ -10,6 +10,7 @@ import '../../../data/repositories/update_repository.dart';
 import '../../../domain/engine_event.dart';
 import '../../../domain/failure.dart';
 import '../../../domain/model_selection.dart';
+import '../../../domain/session_coordinator.dart';
 import 'characters_cubit.dart';
 import 'downloads_cubit.dart';
 import 'glossary_cubit.dart';
@@ -31,20 +32,22 @@ class DashboardCubits {
     UpdateRepository updateRepository,
   ) : _appRepository = appRepository,
       shell = ShellCubit(updateRepository) {
+    // One engine holds one session. Each screen registers its own half of
+    // that with the coordinator, so neither knows the other and this bag
+    // does not hold the rule together.
     settings = SettingsCubit(appRepository, shell);
     downloads = DownloadsCubit(modelRepository, runtimeRepository, settings, shell);
-    pipeline = PipelineCubit(appRepository, modelRepository, settings, downloads, shell);
-    characters = CharactersCubit(appRepository, modelRepository, settings, downloads, shell);
+    pipeline = PipelineCubit(appRepository, modelRepository, settings, downloads, shell, sessions);
+    characters = CharactersCubit(
+      appRepository,
+      modelRepository,
+      settings,
+      downloads,
+      shell,
+      sessions,
+    );
     glossary = GlossaryCubit(appRepository, shell);
     graph = PipelineGraphBloc(appRepository, settings, characters, pipeline, shell);
-    // One engine holds one session: a dubbing session starting takes the
-    // worker over from the characters screen, which keeps it while it
-    // records. The other way round is the screen's own to refuse: its
-    // buttons are out while the pipeline runs, and the cubit behind them is
-    // told the same, so nothing it starts — the recording, a sample, a card
-    // measured from files — lands on a worker that is dubbing.
-    pipeline.releaseWorker = characters.stopSession;
-    characters.dubbingHoldsWorker = () => pipeline.state.running;
     // The frame over the game is made of the settings and the game chosen,
     // and neither cubit owns both.
     settings.onChanged = pipeline.followSettings;
@@ -61,6 +64,10 @@ class DashboardCubits {
 
   final AppRepository _appRepository;
   final ShellCubit shell;
+
+  /// Which screen may hold the one worker. Each of the two registers its
+  /// own half here, so neither knows the other.
+  final sessions = SessionCoordinator();
   late final SettingsCubit settings;
   late final DownloadsCubit downloads;
   late final PipelineCubit pipeline;
