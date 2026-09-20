@@ -14,6 +14,7 @@ import '../dashboard/dashboard_context.dart';
 import '../../domain/screen_reading.dart';
 import '../common/module_label.dart';
 import 'ocr_region_picker.dart';
+import 'screen_voices_switch.dart';
 import 'snapshot_start_button.dart';
 
 /// The frame the subtitles are read out of, drawn on a picture of the game's
@@ -101,6 +102,8 @@ class SubtitleFrameCard extends StatelessWidget {
               const SizedBox(height: 8),
             ],
             Text(l10n.screenHowTo, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 12),
+            ScreenVoicesSwitch(settings: settings, locked: running),
             const SizedBox(height: 14),
             SnapshotStartButton(reading: ScreenReading.subtitles),
           ],

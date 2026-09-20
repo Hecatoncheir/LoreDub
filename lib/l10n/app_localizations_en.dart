@@ -650,6 +650,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get screenVoices => 'Follow the characters\' voices';
+
+  @override
+  String get screenVoicesNote =>
+      'While the subtitles are read, LoreDub listens to the game and speaks a line in the voice of whoever was talking as it appeared. Nothing of that sound is recognized -- only who is speaking.';
+
+  @override
   String get screenHowTo =>
       'While the session runs the subtitles in the frame are read and voiced by themselves -- only what a line gained is spoken.';
 

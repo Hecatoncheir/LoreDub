@@ -1149,6 +1149,18 @@ abstract class AppLocalizations {
   /// **'Удерживайте {hotkey}, обведите мышью текст поверх игры и отпустите клавишу — LoreDub прочитает его, переведёт и озвучит.'**
   String snapshotHowTo(String hotkey);
 
+  /// No description provided for @screenVoices.
+  ///
+  /// In ru, this message translates to:
+  /// **'Определять голоса персонажей'**
+  String get screenVoices;
+
+  /// No description provided for @screenVoicesNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока субтитры читаются, LoreDub слушает игру и озвучивает реплику голосом того, кто говорил, когда она появилась. Речь при этом не распознаётся — слышно только, кто говорит.'**
+  String get screenVoicesNote;
+
   /// No description provided for @screenHowTo.
   ///
   /// In ru, this message translates to:

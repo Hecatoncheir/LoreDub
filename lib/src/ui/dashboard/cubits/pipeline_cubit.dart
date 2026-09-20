@@ -480,19 +480,31 @@ class PipelineCubit extends Cubit<LivePipelineState> {
           : null;
       final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
       final speechDirectory = await _modelRepository.directoryFor(speech);
+      // The voices behind the subtitles are followed only where the frame
+      // is read at all, and only with the converter to hear them by.
+      final converter = selection.voiceConverter;
+      final hearsVoices =
+          reading.readsSubtitles && settings.screenVoices && (converter?.installed ?? false);
       await _appRepository.startScreenText(
         reading: reading,
+        hearsVoices: hearsVoices,
+        // The same bank the dubbing session keeps, so a character met
+        // while the subtitles are read is met again when it runs.
+        voiceBank: hearsVoices ? await _appRepository.voiceBankFileFor(_game) : null,
         process: state.selectedProcess,
         settings: settings,
         modelDirectories: {
           if (translation != null) 'translation': await _modelRepository.directoryFor(translation),
           'speech': path.join(speechDirectory, speech.primaryFileName),
+          if (hearsVoices) 'converter': await _modelRepository.directoryFor(converter!.model),
         },
-        // A selected line has no audio to follow the speaker by.
+        // What a line is read in where nothing was heard saying it: a
+        // selected line has no sound of its own to follow a speaker by.
         speaker: selection.voice,
         translationPrefix: translation?.translationPrefix ?? '',
         translationBackend: _backendFor(ComputeStage.translation),
         speechBackend: _backendFor(ComputeStage.speech),
+        converterBackend: _backendFor(ComputeStage.voiceConversion),
         runtimeDirectory: _downloads.state.runtimeDirectoryPath,
       );
     } catch (exception) {

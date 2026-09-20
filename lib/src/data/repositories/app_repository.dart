@@ -275,13 +275,16 @@ class AppRepository {
   /// silence without taking the recognition with it.
   Future<void> startScreenText({
     required ScreenReading reading,
+    required bool hearsVoices,
     required GameProcess? process,
+    String? voiceBank,
     required AppSettings settings,
     required Map<String, String> modelDirectories,
     required String speaker,
     required String translationPrefix,
     required ComputeBackend translationBackend,
     required ComputeBackend speechBackend,
+    required ComputeBackend converterBackend,
     required String runtimeDirectory,
   }) async {
     final session = ++_sessions;
@@ -289,12 +292,7 @@ class AppRepository {
       final config = <String, Object?>{
         'speaker': speaker,
         // Named even when the screen is what is read: nothing is taken out
-        // of that window then, but it is still the game to turn down.
-        'processId': process?.pid ?? 0,
-        // Nothing is scanned for a session that only answers the key:
-        // the worker is up, the engine is running, and the screen is read
-        // when the player asks and not before.
-        'captureMode': reading.readsSubtitles ? 'ocr' : 'none',
+        'captureMode': _captureModeOf(reading, hearsVoices: hearsVoices),
         'ocrSource': settings.readsWholeScreen ? 'screen' : 'process',
         'targetLanguage': settings.targetLanguage,
         'textLanguage': settings.textLanguage,
@@ -316,6 +314,13 @@ class AppRepository {
         'speechBackend': speechBackend.name,
         'runtimeDirectory': runtimeDirectory,
         'characters': await _characters.file(),
+        // The voices are heard by the converter and carried over the
+        // reading, so this session asks for the same two as the original
+        // voice does -- and for the game's own bank, so a character met
+        // here is the one the dubbing session knows.
+        'revoice': hearsVoices,
+        'voiceConversionBackend': converterBackend.name,
+        'voiceBank': ?voiceBank,
       };
       _throwIfSuperseded(session);
       await _nativeEngine.startScreenText(config);
@@ -358,6 +363,16 @@ class AppRepository {
     frameOverlay: settings.showFrameOverlay ? settings.frameOverlayHotkey : null,
     textLanguage: settings.textLanguage,
   );
+
+  /// What a reading of the screen captures: the frame, the frame and the
+  /// game's own sound where the voices behind it are followed -- that
+  /// sound is never recognized, only placed -- or nothing at all, where
+  /// the key is the only way in and nothing is scanned until it is
+  /// pressed.
+  static String _captureModeOf(ScreenReading reading, {required bool hearsVoices}) {
+    if (!reading.readsSubtitles) return 'none';
+    return hearsVoices ? 'ocrAndAudio' : 'ocr';
+  }
 
   /// Turns the game down for the screen session. Nothing here listens to the
   /// game's sound, so this one may silence it outright.

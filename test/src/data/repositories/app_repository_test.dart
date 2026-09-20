@@ -69,18 +69,23 @@ void main() {
     runtimeDirectory: 'runtime',
   );
 
-  Future<void> readScreen({ScreenReading reading = ScreenReading.both}) =>
-      repository.startScreenText(
-        reading: reading,
-        process: game,
-        settings: const AppSettings(),
-        modelDirectories: const {},
-        speaker: 'aidar',
-        translationPrefix: '',
-        translationBackend: ComputeBackend.cpu,
-        speechBackend: ComputeBackend.cpu,
-        runtimeDirectory: 'runtime',
-      );
+  Future<void> readScreen({
+    ScreenReading reading = ScreenReading.both,
+    bool hearsVoices = false,
+  }) => repository.startScreenText(
+    reading: reading,
+    hearsVoices: hearsVoices,
+    voiceBank: hearsVoices ? 'voice_bank/game.json' : null,
+    process: game,
+    settings: const AppSettings(),
+    modelDirectories: const {},
+    speaker: 'aidar',
+    translationPrefix: '',
+    translationBackend: ComputeBackend.cpu,
+    speechBackend: ComputeBackend.cpu,
+    converterBackend: ComputeBackend.cpu,
+    runtimeDirectory: 'runtime',
+  );
 
   Matcher failsWith(FailureCode code) =>
       throwsA(isA<LoreDubFailure>().having((failure) => failure.code, 'code', code));
@@ -111,6 +116,14 @@ void main() {
       expect(engine.screenConfig['captureMode'], 'none');
       expect(engine.snapshotKey, isNotNull);
       expect(engine.frameKey, isNull, reason: 'there is no frame to redraw');
+    });
+
+    test('following the voices, the game is listened to as well', () async {
+      await began(readScreen(reading: ScreenReading.subtitles, hearsVoices: true));
+
+      expect(engine.screenConfig['captureMode'], 'ocrAndAudio');
+      expect(engine.screenConfig['revoice'], isTrue, reason: 'the timbre is carried over');
+      expect(engine.screenConfig['voiceBank'], isNotNull, reason: 'the game keeps its voices');
     });
 
     test('subtitles: the frame is scanned and the key is left alone', () async {

@@ -7,12 +7,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/screen_reading.dart';
 import '../common/module_label.dart';
+import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/dashboard_context.dart';
+import '../settings/voice_choice_field.dart';
 import 'snapshot_hotkey_line.dart';
 import 'snapshot_start_button.dart';
 
-/// The session that reads nothing until it is asked: the key picks a
-/// piece of the screen out, and that piece alone is translated and voiced.
+/// The session that reads nothing until it is asked: the key picks a piece
+/// of the screen out, and that piece alone is translated and voiced.
 ///
 /// It is the reading for a game whose subtitles stand nowhere in
 /// particular, and for a player who would rather ask than be read to.
@@ -21,18 +24,27 @@ class SnippetOnlyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
-    builder: (context, state) => Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ModuleLabel(number: '02', label: AppLocalizations.of(context).areaSnippetOnly),
-            const SizedBox(height: 14),
-            SnapshotHotkeyLine(settings: state.settings),
-            const SizedBox(height: 14),
-            SnapshotStartButton(reading: ScreenReading.snippets),
-          ],
+    builder: (context, state) => BlocSelector<PipelineCubit, LivePipelineState, bool>(
+      selector: (pipeline) => pipeline.running,
+      builder: (context, running) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ModuleLabel(number: '02', label: AppLocalizations.of(context).areaSnippetOnly),
+              const SizedBox(height: 14),
+              SnapshotHotkeyLine(settings: state.settings),
+              const SizedBox(height: 14),
+              // A snippet is read in one voice -- there is no sound to
+              // follow a speaker by -- so which voice that is belongs
+              // beside the button that starts it, as well as in the
+              // settings.
+              VoiceChoiceField(selection: context.selection, running: running),
+              const SizedBox(height: 14),
+              SnapshotStartButton(reading: ScreenReading.snippets),
+            ],
+          ),
         ),
       ),
     ),

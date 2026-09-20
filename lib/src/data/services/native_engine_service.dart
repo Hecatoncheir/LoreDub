@@ -262,6 +262,8 @@ class NativeEngineService {
             downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
             voiceConverter: models['converter'],
             voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
+            revoice: config['revoice'] as bool? ?? false,
+            voiceBank: config['voiceBank'] as String?,
             characters: config['characters'] as String?,
             glossary: config['glossary'] as String?,
           ),
@@ -270,8 +272,14 @@ class NativeEngineService {
           'translation': _inference.translationBackend,
           'speech': _inference.speechBackend,
         });
-        // No capture directory: the screen has no audio to cut into files, and
-        // the native side asks for one only when it listens.
+        // A capture directory only where the game is listened to as well:
+        // reading the screen alone cuts no sound into files, and the native
+        // side asks for one only when it does.
+        if (config['captureMode'] == 'ocrAndAudio') {
+          final capture = await _captureDirectory(start);
+          _beginCapture(start, {...config, 'captureDirectory': capture});
+          return;
+        }
         _beginCapture(start, config);
       });
 
@@ -805,6 +813,13 @@ class NativeEngineService {
 
   /// A phrase the capture cut out of the game's sound.
   void _onCapturedAudio(String wavePath) {
+    // While the screen is what is read, the sound is not a phrase to dub
+    // but the voice speaking as the words appeared: it is kept for the
+    // next line the frame gains rather than queued.
+    if (_listening && _session == PipelineSession.screen) {
+      _rememberVoiceHeard(wavePath);
+      return;
+    }
     // A segment queued a moment before the pause is dropped like one
     // captured during it, and so is everything heard between recordings.
     if (_listening && !_betweenRecordings) {
@@ -812,6 +827,31 @@ class NativeEngineService {
       return;
     }
     unawaited(_deleteIfPresent(wavePath));
+  }
+
+  /// The game's sound as it was last heard, while a screen session is
+  /// following the voices, and the ones a line still waiting is to be
+  /// coloured with. A file is kept until nothing points at it: the same
+  /// voice may colour several lines, and a line may be voiced long after
+  /// the sound it was placed by.
+  String? _voiceHeard;
+  final _voicesInUse = <String>{};
+
+  /// Keeps [wavePath] as the voice of the moment and lets the one before it
+  /// go, unless a line still waiting is to be read in it.
+  void _rememberVoiceHeard(String wavePath) {
+    final before = _voiceHeard;
+    _voiceHeard = wavePath;
+    if (before != null && before != wavePath && !_voicesInUse.contains(before)) {
+      unawaited(_deleteIfPresent(before));
+    }
+  }
+
+  /// Lets go of the voice a line was read in, now that it has been.
+  Future<void> _releaseVoiceHeard(String? wavePath) async {
+    if (wavePath == null) return;
+    _voicesInUse.remove(wavePath);
+    if (wavePath != _voiceHeard) await _deleteIfPresent(wavePath);
   }
 
   /// Whether captured sound is wanted at all right now.
@@ -826,7 +866,12 @@ class NativeEngineService {
     if (!_listening) return;
     final fresh = freshOcrText(_previousOcrText, text);
     _previousOcrText = text;
-    if (fresh != null) _phrases.add(PendingPhrase.text(fresh));
+    if (fresh == null) return;
+    // The voice heard as the line appeared, where the session is following
+    // them: held until the line has been read in it.
+    final heard = _voiceHeard;
+    if (heard != null) _voicesInUse.add(heard);
+    _phrases.add(PendingPhrase.text(fresh, heardWave: heard));
   }
 
   /// The subtitle frame, redrawn over the running game.
@@ -889,7 +934,11 @@ class NativeEngineService {
     final wavePath = phrase.wavePath;
     return wavePath != null
         ? _processSegment(wavePath)
-        : _processOcrText(phrase.text!, snapshot: phrase.snapshot);
+        : _processOcrText(
+            phrase.text!,
+            snapshot: phrase.snapshot,
+            heardWave: phrase.heardWave,
+          );
   }
 
   /// Measures a recorded voice for a character's card and hands it over; the
@@ -1009,7 +1058,11 @@ class NativeEngineService {
     }
   }
 
-  Future<void> _processOcrText(String recognizedText, {bool snapshot = false}) async {
+  Future<void> _processOcrText(
+    String recognizedText, {
+    bool snapshot = false,
+    String? heardWave,
+  }) async {
     final started = Stopwatch()..start();
     try {
       final config = _activeConfig;
@@ -1024,6 +1077,9 @@ class NativeEngineService {
       // Text read in the dubbing language itself is voiced as it is.
       final result = await _inference.processText(
         spoken,
+        // The voice heard as the words appeared, so the worker can place
+        // the speaker and lay their timbre over the reading.
+        originalWavePath: heardWave,
         translate: config['textLanguage'] != config['targetLanguage'],
         speed: _pace(config),
       );
@@ -1035,6 +1091,8 @@ class NativeEngineService {
       );
     } catch (error) {
       _reportFailure(error);
+    } finally {
+      await _releaseVoiceHeard(heardWave);
     }
   }
 

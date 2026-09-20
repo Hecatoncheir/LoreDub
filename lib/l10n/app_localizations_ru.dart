@@ -656,6 +656,13 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get screenVoices => 'Определять голоса персонажей';
+
+  @override
+  String get screenVoicesNote =>
+      'Пока субтитры читаются, LoreDub слушает игру и озвучивает реплику голосом того, кто говорил, когда она появилась. Речь при этом не распознаётся — слышно только, кто говорит.';
+
+  @override
   String get screenHowTo =>
       'Пока сеанс идёт, субтитры в рамке читаются и озвучиваются сами — озвучивается только то, что в них прибавилось.';
 

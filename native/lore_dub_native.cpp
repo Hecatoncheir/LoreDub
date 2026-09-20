@@ -788,17 +788,23 @@ int32_t ld_start(const char* config_json) {
   // Reading the whole screen needs no window, and so no process to find it
   // by -- one may still be named, to be turned down while the reading runs.
   const bool whole_screen = JsonString(config, "ocrSource") == "screen";
-  const bool reads_screen = capture_mode == "ocr";
+  // The screen read while the game is listened to as well: the words come
+  // off the frame, and the voice heard as they appeared is what colours
+  // them. Neither capture knows about the other.
+  const bool reads_screen = capture_mode == "ocr" || capture_mode == "ocrAndAudio";
+  const bool hears_voices = capture_mode == "ocrAndAudio";
   // A session that captures nothing at all: the worker is up and the keys
   // are registered, so a snippet the player picks out is read and voiced,
   // and nothing is scanned until they ask. It needs no window and no
   // directory to write segments into.
   const bool captures_nothing = capture_mode == "none";
-  const bool needs_process =
-      reads_screen ? !whole_screen
-                   : (!captures_nothing && audio_source != "system");
-  if ((needs_process && process_id == 0) ||
-      (!reads_screen && !captures_nothing && capture_directory.empty())) {
+  // Hearing the voices needs the game itself, whatever the frame is read
+  // out of: the sound is taken from that process.
+  const bool needs_process = reads_screen
+      ? (!whole_screen || hears_voices)
+      : (!captures_nothing && audio_source != "system");
+  const bool needs_directory = hears_voices || (!reads_screen && !captures_nothing);
+  if ((needs_process && process_id == 0) || (needs_directory && capture_directory.empty())) {
     running = false;
     return -5;
   }
@@ -824,7 +830,8 @@ int32_t ld_start(const char* config_json) {
       running = false;
       return -7;
     }
-  } else {
+  }
+  if (!captures_nothing && (!reads_screen || hears_voices)) {
     loopback_capture = std::make_unique<ProcessLoopbackCapture>();
     const bool capture_system = audio_source == "system";
     const uint32_t capture_process_id =
@@ -847,6 +854,10 @@ int32_t ld_start(const char* config_json) {
             })) {
       loopback_capture.reset();
       captured_process_id = 0;
+      if (ocr_capture) {
+        ocr_capture->Stop();
+        ocr_capture.reset();
+      }
       running = false;
       return -6;
     }

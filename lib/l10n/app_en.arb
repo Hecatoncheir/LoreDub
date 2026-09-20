@@ -327,6 +327,8 @@
   "pauseHint": "Pause: the models stay loaded and the game plays at full volume",
   "resumeDubbing": "Resume",
   "snapshotHowTo": "Hold {hotkey}, draw a frame around the text over the game and let go — LoreDub reads it, translates it and voices it.",
+  "screenVoices": "Follow the characters' voices",
+  "screenVoicesNote": "While the subtitles are read, LoreDub listens to the game and speaks a line in the voice of whoever was talking as it appeared. Nothing of that sound is recognized -- only who is speaking.",
   "screenHowTo": "While the session runs the subtitles in the frame are read and voiced by themselves -- only what a line gained is spoken.",
   "screenPickGame": "Choose the game whose screen to read",
   "@snapshotHowTo": {

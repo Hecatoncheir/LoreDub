@@ -128,6 +128,7 @@ class SettingsService {
         Hotkey.defaultFrameOverlay,
       ),
       showFrameOverlay: preferences.getBool('showFrameOverlay') ?? false,
+      screenVoices: preferences.getBool('screenVoices') ?? false,
       computeDevice: ComputeDevice.values.firstWhere(
         (device) => device.name == preferences.getString('computeDevice'),
         orElse: () => ComputeDevice.auto,
@@ -184,6 +185,7 @@ class SettingsService {
         settings.frameOverlayHotkey?.encode() ?? '',
       ),
       preferences.setBool('showFrameOverlay', settings.showFrameOverlay),
+      preferences.setBool('screenVoices', settings.screenVoices),
       preferences.setString('computeDevice', settings.computeDevice.name),
       _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
       _writeBackend(preferences, 'translationBackend', settings.translationBackend),

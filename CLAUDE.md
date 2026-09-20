@@ -607,7 +607,17 @@ says which of them a session does: the subtitle frame, which arrives as
 through `ld_set_hotkeys`; or both, which is what the page's top card starts.
 One engine and one worker serve all three and only the capture differs, so
 the button of one reading ends the session of another and starts its own --
-seconds, not the minute a worker takes. `ScreenReading.snippets` starts
+seconds, not the minute a worker takes. `AppSettings.screenVoices` adds the game's own sound to the subtitle
+reading: `captureMode: 'ocrAndAudio'` starts `OcrCapture` and
+`ProcessLoopbackCapture` together, the worker carries the converter and
+`--revoice`, and `NativeEngineService` keeps the newest captured segment as
+`_voiceHeard` rather than queueing it -- nothing of that sound is
+recognized. A line the frame gains is queued with it
+(`PendingPhrase.heardWave`) and reaches `processText` as `originalWavePath`,
+which is the same field a dubbed phrase carries, so the worker places the
+speaker and lays their timbre over the reading with nothing new in it. A
+file is kept while a line still points at it (`_voicesInUse`) and let go
+once that line has been read. `ScreenReading.snippets` starts
 `ld_start` with `captureMode: 'none'`: nothing is scanned, the engine is up,
 and the key is answered, which is why that reading needs no window and no
 game (`canStartScreen` asks for one only where the frame is read, and for

@@ -341,6 +341,21 @@ void main() {
       );
     });
 
+    test('follows the voices behind the subtitles when it is asked to', () async {
+      const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
+      pipeline.selectProcess(game);
+      await cubits.settings.update(const AppSettings(screenVoices: true));
+
+      await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.subtitles);
+
+      expect(repository.screenHeardVoices, isTrue);
+      expect(
+        repository.snapshotModels.keys,
+        contains('converter'),
+        reason: 'the converter is what hears who is speaking',
+      );
+    });
+
     test('reads a snippet without a game to take a window from', () async {
       // Nothing is scanned, so there is no window to read it out of: the
       // key picks out whatever is on the screen.
@@ -624,8 +639,10 @@ class _SlowStartRepository extends AppRepository {
   int stops = 0;
   int snapshotStarts = 0;
 
-  /// What each screen session was asked to read.
+  /// What each screen session was asked to read, and whether the last of
+  /// them was to follow the voices behind the subtitles.
   final screenReadings = <ScreenReading>[];
+  bool screenHeardVoices = false;
 
   /// What was drawn over the game, in order: a pair for every frame shown
   /// and null for every one taken off.
@@ -684,6 +701,8 @@ class _SlowStartRepository extends AppRepository {
   @override
   Future<void> startScreenText({
     required ScreenReading reading,
+    required bool hearsVoices,
+    String? voiceBank,
     required GameProcess? process,
     required AppSettings settings,
     required Map<String, String> modelDirectories,
@@ -691,9 +710,11 @@ class _SlowStartRepository extends AppRepository {
     required String translationPrefix,
     required ComputeBackend translationBackend,
     required ComputeBackend speechBackend,
+    required ComputeBackend converterBackend,
     required String runtimeDirectory,
   }) async {
     snapshotStarts++;
+    screenHeardVoices = hearsVoices;
     snapshotModels = modelDirectories;
     screenReadings.add(reading);
   }

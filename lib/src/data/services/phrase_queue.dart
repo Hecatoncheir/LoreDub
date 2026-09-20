@@ -6,9 +6,9 @@ import 'dart:collection';
 
 /// One captured phrase waiting to be recognized, translated and voiced.
 class PendingPhrase {
-  PendingPhrase.audio(String this.wavePath) : text = null, snapshot = false;
+  PendingPhrase.audio(String this.wavePath) : text = null, snapshot = false, heardWave = null;
 
-  PendingPhrase.text(String this.text, {this.snapshot = false}) : wavePath = null;
+  PendingPhrase.text(String this.text, {this.snapshot = false, this.heardWave}) : wavePath = null;
 
   /// Set for captured audio; the file is deleted once the phrase is handled.
   final String? wavePath;
@@ -19,6 +19,13 @@ class PendingPhrase {
   /// Whether the text comes from an area the player selected by hand,
   /// rather than from the running capture.
   final bool snapshot;
+
+  /// The game's own sound as the line appeared, for text read off the
+  /// screen while the voices are being followed: the worker places the
+  /// speaker by it and lays their timbre over the reading. The file is the
+  /// engine's to delete, not this phrase's -- the next line may be
+  /// coloured with the same voice.
+  final String? heardWave;
 }
 
 /// Processes captured phrases one at a time, in the order they were spoken.

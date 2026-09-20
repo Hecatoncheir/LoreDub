@@ -30,6 +30,7 @@ class AppSettings {
     this.originalVolume = 0.18,
     this.duckWhileSpeaking = true,
     this.showFrameOverlay = false,
+    this.screenVoices = false,
     this.hurryWhenQueued = true,
     this.roughRecognition = false,
     this.ttsSpeed = 1.12,
@@ -78,6 +79,15 @@ class AppSettings {
   /// effects stay under the dubbing the whole evening; on, they play at
   /// their own volume between lines and step aside for each one.
   final bool duckWhileSpeaking;
+
+  /// Whether the game is listened to while its subtitles are read, so the
+  /// voice speaking as a line appeared can be placed and laid over the
+  /// reading of it.
+  ///
+  /// Nothing of that sound is recognized -- the words come off the frame --
+  /// and it is the converter that hears who is speaking, so this asks for
+  /// it the way the original voice does.
+  final bool screenVoices;
 
   /// Whether the subtitle frame is drawn over the game itself, so the
   /// player can see where their words are read from without looking away
@@ -344,6 +354,7 @@ class AppSettings {
     double? originalVolume,
     bool? duckWhileSpeaking,
     bool? showFrameOverlay,
+    bool? screenVoices,
     bool? hurryWhenQueued,
     bool? roughRecognition,
     double? ttsSpeed,
@@ -387,6 +398,7 @@ class AppSettings {
     originalVolume: originalVolume ?? this.originalVolume,
     duckWhileSpeaking: duckWhileSpeaking ?? this.duckWhileSpeaking,
     showFrameOverlay: showFrameOverlay ?? this.showFrameOverlay,
+    screenVoices: screenVoices ?? this.screenVoices,
     hurryWhenQueued: hurryWhenQueued ?? this.hurryWhenQueued,
     roughRecognition: roughRecognition ?? this.roughRecognition,
     ttsSpeed: ttsSpeed ?? this.ttsSpeed,
