@@ -53,13 +53,11 @@ class GlossaryPacksSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Container(
+    // A `Card`, like the three lists it stands under: drawn by hand it had
+    // a corner of its own, sixteen against the twelve `docs/UI_DESIGN.md`
+    // promises and the theme gives.
+    return Card(
       key: const ValueKey('glossaryPacks'),
-      decoration: BoxDecoration(
-        color: context.colors.panel,
-        borderRadius: const BorderRadius.all(Radius.circular(16)),
-        border: Border.all(color: context.colors.outline),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

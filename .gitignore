@@ -50,3 +50,7 @@ app.*.map.json
 
 # Golden failures are written by a failing screenshot run, not kept.
 test/failures/
+
+# The installer `scripts/build_setup.ps1` writes, a quarter of a gigabyte
+# of it. The release workflow uploads it from here rather than keeping it.
+dist/
