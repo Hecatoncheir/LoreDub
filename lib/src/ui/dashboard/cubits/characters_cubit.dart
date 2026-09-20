@@ -15,6 +15,7 @@ import '../../../domain/character.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/engine_event.dart';
 import '../../../domain/failure.dart';
+import '../../../domain/id_source.dart';
 import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
@@ -195,8 +196,11 @@ class CharactersCubit extends Cubit<CharactersState> {
     this._modelRepository,
     this._settings,
     this._downloads,
-    this._errors,
-  ) : super(const CharactersState());
+    this._errors, {
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now,
+       _ids = IdSource(clock: clock),
+       super(const CharactersState());
 
   /// A recording keeps the clearest voice it has heard, not the last: a
   /// character founded on a half-word would answer for them ever after.
@@ -207,6 +211,8 @@ class CharactersCubit extends Cubit<CharactersState> {
   final SettingsCubit _settings;
   final DownloadsCubit _downloads;
   final FailureSink _errors;
+  final DateTime Function() _clock;
+  final IdSource _ids;
 
   /// Whether one of the dubbing screens holds the worker.
   ///
@@ -269,7 +275,7 @@ class CharactersCubit extends Cubit<CharactersState> {
 
   /// Adds an empty card for the player to name and record.
   Future<Character> add(String name) async {
-    final character = Character(id: _newId(), name: name, vector: const []);
+    final character = Character(id: _ids.next(), name: name, vector: const []);
     await _write(characters: [...state.characters, character]);
     return character;
   }
@@ -343,7 +349,7 @@ class CharactersCubit extends Cubit<CharactersState> {
 
   /// Adds an empty pack for the player to name and drop cards into.
   Future<CharacterPack> addPack(String name) async {
-    final pack = CharacterPack(id: _newId(), name: name);
+    final pack = CharacterPack(id: _ids.next(), name: name);
     await _write(packs: [...state.packs, pack]);
     return pack;
   }
@@ -485,13 +491,13 @@ class CharactersCubit extends Cubit<CharactersState> {
     unawaited(_appRepository.recordCharacterVoice(recording: true));
     // Nothing is measured until the take is stopped, so the card counts the
     // seconds itself rather than leaving the player without an answer.
-    _recordingSince = DateTime.now();
+    _recordingSince = _clock();
     _recordingTicks?.cancel();
     _recordingTicks = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (isClosed || _recordingSince == null) return;
       emit(
         state.copyWith(
-          heardSeconds: DateTime.now().difference(_recordingSince!).inMilliseconds / 1000,
+          heardSeconds: _clock().difference(_recordingSince!).inMilliseconds / 1000,
         ),
       );
     });
@@ -821,17 +827,6 @@ class CharactersCubit extends Cubit<CharactersState> {
       _errors.report(exception);
     }
   }
-
-  /// An id short enough to read in a file and never the same twice: two
-  /// cards added in one microsecond — a pack and the card dropped into it —
-  /// would otherwise answer to the same name.
-  String _newId() {
-    final now = DateTime.now().microsecondsSinceEpoch;
-    _lastId = now > _lastId ? now : _lastId + 1;
-    return _lastId.toRadixString(36);
-  }
-
-  int _lastId = 0;
 
   /// Stages a state a widget test wants to render without reading a file.
   @visibleForTesting

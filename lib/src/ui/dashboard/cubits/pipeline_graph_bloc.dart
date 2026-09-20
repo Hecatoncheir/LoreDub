@@ -10,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/services/model_catalog.dart';
 import '../../../domain/character.dart';
+import '../../../domain/id_source.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
 import '../../../domain/spoken_language.dart';
@@ -347,8 +348,10 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     this._settings,
     this._characters,
     this._pipeline,
-    this._errors,
-  ) : super(const PipelineGraphState()) {
+    this._errors, {
+    DateTime Function()? clock,
+  }) : _ids = IdSource(clock: clock),
+       super(const PipelineGraphState()) {
     on<PipelineGraphOpened>(_onOpened);
     on<PipelineGraphRefreshed>((event, emit) => emit(_redrawn(state)));
     on<PipelineNodeGrabbed>(_onGrabbed);
@@ -410,6 +413,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   final CharactersCubit _characters;
   final PipelineCubit _pipeline;
   final FailureSink _errors;
+  final IdSource _ids;
 
   late final StreamSubscription<SettingsState> _settingsChanges;
   late final StreamSubscription<CharactersState> _characterChanges;
@@ -482,7 +486,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   ) async {
     final name = event.name.trim();
     if (name.isEmpty) return;
-    final scheme = _asScheme(DateTime.now().microsecondsSinceEpoch.toRadixString(36), name);
+    final scheme = _asScheme(_ids.next(), name);
     await _keep([...state.schemes, scheme], emit);
   }
 

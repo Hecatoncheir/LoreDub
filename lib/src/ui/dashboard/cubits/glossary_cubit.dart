@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/app_repository.dart';
 import '../../../domain/glossary.dart';
+import '../../../domain/id_source.dart';
 import 'shell_cubit.dart';
 
 /// What the player has written down about their games, and whether it has
@@ -36,10 +37,13 @@ class GlossaryState extends Equatable {
 /// running: the player writes an entry down because they just heard the line
 /// go wrong, and mean the next one to be said their way.
 class GlossaryCubit extends Cubit<GlossaryState> {
-  GlossaryCubit(this._appRepository, this._errors) : super(const GlossaryState());
+  GlossaryCubit(this._appRepository, this._errors, {DateTime Function()? clock})
+    : _ids = IdSource(clock: clock),
+      super(const GlossaryState());
 
   final AppRepository _appRepository;
   final FailureSink _errors;
+  final IdSource _ids;
 
   Future<void> load() async {
     try {
@@ -82,7 +86,7 @@ class GlossaryCubit extends Cubit<GlossaryState> {
   /// Opens a pack with no entries in it. The player fills it by dragging
   /// what they have already written down into it.
   Future<GlossaryPack> addPack(String name) async {
-    final pack = GlossaryPack(id: _newId(), name: name);
+    final pack = GlossaryPack(id: _ids.next(), name: name);
     await _keep(state.glossary.keepingPack(pack));
     return pack;
   }
@@ -151,16 +155,6 @@ class GlossaryCubit extends Cubit<GlossaryState> {
   /// Stages a state a widget test wants to render without reading a file.
   @visibleForTesting
   void seed(GlossaryState value) => emit(value);
-
-  /// The same scheme the cast uses: the clock, never going backwards inside
-  /// one run, in base 36.
-  String _newId() {
-    final now = DateTime.now().microsecondsSinceEpoch;
-    _lastId = now > _lastId ? now : _lastId + 1;
-    return _lastId.toRadixString(36);
-  }
-
-  int _lastId = 0;
 
   Future<void> _keep(Glossary glossary) async {
     final previous = state.glossary;
