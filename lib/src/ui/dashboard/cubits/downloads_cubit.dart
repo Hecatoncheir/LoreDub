@@ -8,11 +8,13 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/settings_repository.dart';
+import '../../../data/services/artifact_downloader.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../data/repositories/runtime_repository.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/download_control.dart';
 import '../../../domain/model_package.dart';
+import '../../../domain/package_download.dart';
 import '../../../domain/progress_ticker.dart';
 import '../../../domain/runtime_package.dart';
 import 'shell_cubit.dart';
@@ -200,101 +202,96 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     );
   }
 
-  Future<void> installModel(ModelInstallState install) async {
-    final index = state.models.indexOf(install);
-    if (index < 0 || install.downloading) return;
-    _errors.report(null);
-    final control = DownloadControl();
-    final ticker = ProgressTicker();
-    _controls[install.model.id] = control;
-    _replaceModel(
-      index,
-      install.copyWith(progress: install.progress ?? 0, paused: false, clearError: true),
-    );
-    try {
-      final outcome = await _modelRepository.install(
-        install.model,
-        proxyUrl: _settings.settings.modelProxyUrl,
-        control: control,
-        onProgress: (progress) {
-          // Every chunk reports; only a change the reader can see redraws.
-          if (ticker.shouldReport(progress)) {
-            _replaceModel(index, state.models[index].copyWith(progress: progress));
-          }
-        },
-      );
-      _replaceModel(index, switch (outcome) {
-        DownloadOutcome.completed => state.models[index].copyWith(
-          installed: true,
-          clearProgress: true,
-        ),
-        // The bar stays where it stopped, so resuming reads as continuing.
-        DownloadOutcome.paused => state.models[index].copyWith(paused: true),
-        DownloadOutcome.cancelled => state.models[index].copyWith(
-          clearProgress: true,
-          paused: false,
-        ),
-      });
-    } catch (exception) {
-      _replaceModel(index, state.models[index].copyWith(clearProgress: true, error: exception));
-    }
-    _finished(install.model.id);
-  }
+  Future<void> installModel(ModelInstallState install) => _download(
+    install.model.id,
+    among: () => state.models,
+    replacing: (models) => emit(state.copyWith(models: models)),
+    run: (control, onProgress) => _modelRepository.install(
+      install.model,
+      proxyUrl: _settings.settings.modelProxyUrl,
+      control: control,
+      onProgress: onProgress,
+    ),
+  );
 
-  Future<void> installRuntime(RuntimeInstallState install) async {
-    // Found by id: the state a button was built with may already have been
-    // replaced by a newer one for the same package.
-    final index = state.runtimes.indexWhere((runtime) => runtime.package.id == install.package.id);
-    if (index < 0 || state.runtimes[index].installing) return;
-    final current = state.runtimes[index];
+  Future<void> installRuntime(RuntimeInstallState install) => _download(
+    install.package.id,
+    among: () => state.runtimes,
+    replacing: (runtimes) => emit(state.copyWith(runtimes: runtimes)),
+    run: (control, onProgress) => _runtimeRepository.install(
+      install.package,
+      proxyUrl: _settings.settings.modelProxyUrl,
+      pythonExecutable: _settings.settings.pythonExecutable,
+      control: control,
+      onProgress: onProgress,
+    ),
+    // A finished or discarded runtime changes which backends can be picked.
+    afterwards: refreshAvailability,
+  );
+
+  /// Fetches the package [id] names and writes what became of it on its own
+  /// row: a model and a GPU runtime arrive the same way, and this is that
+  /// way, once.
+  ///
+  /// Addressed by id from beginning to end. Both halves used to take the
+  /// row's index before the first `await` and then write the ticks and the
+  /// outcome through it, so a list rebuilt in between -- which is what
+  /// rereading what is on disk does -- had them writing on whatever stood
+  /// in that place by the time the download ended.
+  Future<void> _download<T extends PackageDownload<T>>(
+    String id, {
+    required List<T> Function() among,
+    required void Function(List<T>) replacing,
+    required Future<DownloadOutcome> Function(DownloadControl, DownloadProgress) run,
+    Future<void> Function()? afterwards,
+  }) async {
+    void change(T Function(T) becomes) {
+      if (isClosed) return;
+      final rows = [...among()];
+      final at = rows.indexWhere((row) => row.packageId == id);
+      if (at < 0) return;
+      rows[at] = becomes(rows[at]);
+      replacing(rows);
+    }
+
+    // The row a button was built from may already have been replaced by a
+    // newer one for the same package, so it is looked up rather than used.
+    final asking = among().where((row) => row.packageId == id).firstOrNull;
+    if (asking == null || asking.arriving) return;
     _errors.report(null);
     final control = DownloadControl();
     final ticker = ProgressTicker();
-    _controls[install.package.id] = control;
-    _replaceRuntime(
-      index,
-      current.copyWith(progress: current.progress ?? 0, paused: false, clearError: true),
-    );
+    _controls[id] = control;
+    change((row) => row.started());
     try {
-      final outcome = await _runtimeRepository.install(
-        install.package,
-        proxyUrl: _settings.settings.modelProxyUrl,
-        pythonExecutable: _settings.settings.pythonExecutable,
-        control: control,
-        onProgress: (progress) {
-          if (ticker.shouldReport(progress)) {
-            _replaceRuntime(index, state.runtimes[index].copyWith(progress: progress));
-          }
+      final outcome = await run(control, (progress) {
+        // Every chunk reports; only a change the reader can see redraws.
+        if (ticker.shouldReport(progress)) change((row) => row.reaching(progress));
+      });
+      change(
+        (row) => switch (outcome) {
+          DownloadOutcome.completed => row.arrived(),
+          // The bar stays where it stopped, so resuming reads as continuing.
+          DownloadOutcome.paused => row.held(),
+          DownloadOutcome.cancelled => row.dropped(),
         },
       );
-      _replaceRuntime(index, switch (outcome) {
-        DownloadOutcome.completed => state.runtimes[index].copyWith(
-          installed: true,
-          clearProgress: true,
-        ),
-        DownloadOutcome.paused => state.runtimes[index].copyWith(paused: true),
-        DownloadOutcome.cancelled => state.runtimes[index].copyWith(
-          clearProgress: true,
-          paused: false,
-        ),
-      });
-      // A finished or discarded runtime changes which backends can be picked.
-      await refreshAvailability();
+      await afterwards?.call();
     } catch (exception) {
-      _replaceRuntime(index, state.runtimes[index].copyWith(clearProgress: true, error: exception));
+      change((row) => row.failing(exception));
     }
-    _finished(install.package.id);
+    _finished(id);
   }
 
   /// Deletes a downloaded model to give its space back. A download still in
   /// flight is not a model yet; that one is cancelled instead.
   Future<void> removeModel(ModelInstallState install) async {
-    final index = state.models.indexWhere((model) => model.model.id == install.model.id);
-    if (index < 0 || state.models[index].stoppable) return;
+    final id = install.model.id;
+    if (_modelWithId(id)?.stoppable ?? true) return;
     _errors.report(null);
     try {
       await _modelRepository.remove(install.model);
-      _replaceModel(index, state.models[index].copyWith(installed: false, clearError: true));
+      _changeModel(id, (row) => row.copyWith(installed: false, clearError: true));
     } catch (exception) {
       _errors.report(exception);
     }
@@ -325,29 +322,25 @@ class DownloadsCubit extends Cubit<DownloadsState> {
 
   Future<void> _discardPaused(String id) async {
     try {
-      final model = state.models.indexWhere((install) => install.model.id == id);
-      if (model >= 0) {
-        final install = state.models[model];
+      if (_modelWithId(id) case final install?) {
         if (!install.paused || install.installed) return;
         await _modelRepository.remove(install.model);
-        _replaceModel(model, state.models[model].copyWith(clearProgress: true, paused: false));
+        _changeModel(id, (row) => row.dropped());
         return;
       }
       // A paused GPU runtime waits the same way, its part under
       // runtime/.downloads, which removing the runtime clears too.
-      final runtime = state.runtimes.indexWhere((install) => install.package.id == id);
-      if (runtime < 0) return;
-      final install = state.runtimes[runtime];
-      if (!install.paused || install.installed) return;
+      final install = state.runtimeWithId(id);
+      if (install == null || !install.paused || install.installed) return;
       await _runtimeRepository.remove(install.package);
-      _replaceRuntime(
-        runtime,
-        state.runtimes[runtime].copyWith(clearProgress: true, paused: false),
-      );
+      _changeRuntime(id, (row) => row.dropped());
     } catch (exception) {
       _errors.report(exception);
     }
   }
+
+  ModelInstallState? _modelWithId(String id) =>
+      state.models.where((install) => install.model.id == id).firstOrNull;
 
   void _stop(String id, void Function(DownloadControl) ask) {
     final control = _controls[id];
@@ -371,14 +364,22 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     }
   }
 
-  void _replaceModel(int index, ModelInstallState value) {
+  void _changeModel(String id, ModelInstallState Function(ModelInstallState) becomes) {
     if (isClosed) return;
-    emit(state.copyWith(models: [...state.models]..[index] = value));
+    final models = [...state.models];
+    final at = models.indexWhere((install) => install.model.id == id);
+    if (at < 0) return;
+    models[at] = becomes(models[at]);
+    emit(state.copyWith(models: models));
   }
 
-  void _replaceRuntime(int index, RuntimeInstallState value) {
+  void _changeRuntime(String id, RuntimeInstallState Function(RuntimeInstallState) becomes) {
     if (isClosed) return;
-    emit(state.copyWith(runtimes: [...state.runtimes]..[index] = value));
+    final runtimes = [...state.runtimes];
+    final at = runtimes.indexWhere((install) => install.package.id == id);
+    if (at < 0) return;
+    runtimes[at] = becomes(runtimes[at]);
+    emit(state.copyWith(runtimes: runtimes));
   }
 
   /// Stages a state a widget test wants to render without touching disk.

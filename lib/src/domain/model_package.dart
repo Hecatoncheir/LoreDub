@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'package_download.dart';
+
 enum HashAlgorithm { md5, sha256 }
 
 class ModelArtifact {
@@ -112,7 +114,7 @@ class ModelPackage {
       voicesOf(VoiceGender.male).isNotEmpty && voicesOf(VoiceGender.female).isNotEmpty;
 }
 
-class ModelInstallState {
+class ModelInstallState with PackageDownload<ModelInstallState> {
   const ModelInstallState({
     required this.model,
     this.installed = false,
@@ -122,20 +124,44 @@ class ModelInstallState {
   });
 
   final ModelPackage model;
+
+  @override
   final bool installed;
+
+  @override
   final double? progress;
 
   /// Stopped part way, with what arrived kept on disk. Asking again carries
   /// on from there rather than starting over.
+  @override
   final bool paused;
 
-  /// Why the download failed, as raised; written out by the interface.
+  @override
   final Object? error;
 
-  bool get downloading => progress != null && !paused;
+  @override
+  String get packageId => model.id;
 
-  /// Whether there is an attempt to pause or cancel.
-  bool get stoppable => progress != null;
+  /// [PackageDownload.arriving] in this screen's words.
+  bool get downloading => arriving;
+
+  @override
+  ModelInstallState started() => copyWith(progress: progress ?? 0, paused: false, clearError: true);
+
+  @override
+  ModelInstallState reaching(double progress) => copyWith(progress: progress);
+
+  @override
+  ModelInstallState arrived() => copyWith(installed: true, clearProgress: true);
+
+  @override
+  ModelInstallState held() => copyWith(paused: true);
+
+  @override
+  ModelInstallState dropped() => copyWith(clearProgress: true, paused: false);
+
+  @override
+  ModelInstallState failing(Object error) => copyWith(clearProgress: true, error: error);
 
   ModelInstallState copyWith({
     bool? installed,

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import 'model_package.dart';
+import 'package_download.dart';
 
 /// How a GPU runtime gets onto the machine.
 ///
@@ -60,7 +61,7 @@ class RuntimePackage {
   final String? wheelPython;
 }
 
-class RuntimeInstallState {
+class RuntimeInstallState with PackageDownload<RuntimeInstallState> {
   const RuntimeInstallState({
     required this.package,
     this.installed = false,
@@ -70,18 +71,46 @@ class RuntimeInstallState {
   });
 
   final RuntimePackage package;
+
+  @override
   final bool installed;
+
+  @override
   final double? progress;
 
   /// Stopped part way with the partial file kept, so asking again resumes.
   /// A runtime left wholly to pip cannot reach this: pip has no half-way point.
+  @override
   final bool paused;
 
-  /// Why the install failed, as raised; written out by the interface.
+  @override
   final Object? error;
 
-  bool get installing => progress != null && !paused;
-  bool get stoppable => progress != null;
+  @override
+  String get packageId => package.id;
+
+  /// [PackageDownload.arriving] in this screen's words. A runtime left
+  /// wholly to pip is installed rather than downloaded.
+  bool get installing => arriving;
+
+  @override
+  RuntimeInstallState started() =>
+      copyWith(progress: progress ?? 0, paused: false, clearError: true);
+
+  @override
+  RuntimeInstallState reaching(double progress) => copyWith(progress: progress);
+
+  @override
+  RuntimeInstallState arrived() => copyWith(installed: true, clearProgress: true);
+
+  @override
+  RuntimeInstallState held() => copyWith(paused: true);
+
+  @override
+  RuntimeInstallState dropped() => copyWith(clearProgress: true, paused: false);
+
+  @override
+  RuntimeInstallState failing(Object error) => copyWith(clearProgress: true, error: error);
 
   /// Whether stopping this one could be resumed later.
   bool get pausable => package.kind != RuntimeInstallKind.pip;

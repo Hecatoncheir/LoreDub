@@ -810,7 +810,7 @@ abstract final class AppTheme {
 | --- | --- | --- |
 | `PipelineCubit` (748 строк, состояние из 15 полей с шестью флагами `clearX`) | `SessionBloc` + `TranscriptBloc` + `GameProcessBloc` | По природе событийный: `_handleEvent` со `switch` по строке — это вручную написанная таблица `on<Event>`. Намерения игрока спорят с событиями движка; нужен журнал переходов (`BlocObserver`) и `emit.forEach` вместо ручной подписки с проверками `isClosed`. Три `toggle*` — один и тот же скелет трижды. |
 | `CharactersCubit` (769 строк, скрытые поля `_heard*`, `_recordingSince`, таймер) | `CastBloc` (карточки, паки, импорт/экспорт, `voicedBy`, `asHeard`) + `VoiceCaptureBloc` (сессия записи, дубль, сборка из файлов, предпрослушивание) | Две ответственности. Пять взаимоисключающих `xxxId` → sealed `CaptureActivity` (`idle` / `recording(id, since)` / `building(id)` / `playing(id)` / `previewing(id)`): невозможные состояния перестают быть представимыми. |
-| `DownloadsCubit` | `DownloadsBloc` | Долгие отменяемые процессы, несколько сразу. `installModel` / `installRuntime` — дубли; адресация по индексу, снятому до `await`, хрупкая → по id. |
+| `DownloadsCubit` | `DownloadsBloc` | Долгие отменяемые процессы, несколько сразу. ~~`installModel` / `installRuntime` — дубли; адресация по индексу, снятому до `await`, хрупкая → по id.~~ *Дубль и адресация — сделаны* (см. этап 4, задачи); сам перевод в Bloc — впереди. |
 | `SettingsCubit` | `SettingsBloc` | Запись на диск — через `debounce`-трансформер и строго последовательно, состояние — сразу. Лечит п. 7 оценки. |
 | `ShellCubit` | `NavigationCubit` + `FailureCubit` + `UpdateBloc` | Раздел и баннер — тривиальное синхронное состояние, здесь Cubit уместен: Bloc добавил бы по классу события на сеттер и ничего не дал. Проверка → загрузка → перезапуск — процесс с прогрессом, это Bloc. Текст тоста уходит из блока в слой представления (`BlocListener`), вместе с импортом `flutter/widgets`. |
 | `GlossaryCubit` (167 строк) | `GlossaryBloc` | Самый чистый из кубитов; переводить последним, ради единообразия и журнала. |
@@ -904,6 +904,25 @@ abstract final class AppTheme {
       `SessionRepository`, `CastRepository`, `GlossaryRepository`,
       `SchemeRepository`, `VoiceBankRepository`, `SystemRepository`
       (процессы, видеокарты, поиск Python).
+- [x] **Загрузки: один путь вместо двух, адресация по id.**
+      `installModel` и `installRuntime` были одним и тем же кодом дважды —
+      страж, ручка отмены, тикер, отметка «пошла», `switch` по исходу,
+      `catch`, уборка, — и оба брали индекс строки *до* первого `await`, а
+      потом писали через него и тики прогресса, и исход. Перечитывание
+      того, что лежит на диске (`load()`), строит список заново, так что
+      писали они в итоге по тому, что оказалось на этом месте.
+      *Сделано:* `domain/package_download.dart` — примесь
+      `PackageDownload<T>` с тем общим, что есть у модели и у GPU-рантайма:
+      прогресс, пауза, пять переходов и `packageId`. Кубит получил один
+      `_download<T>`, адресующий строку по id от начала до конца; `_replaceModel`
+      и `_replaceRuntime` (по индексу) стали `_changeModel`/`_changeRuntime`
+      (по id), и по индексу через `await` больше не ходит ни `removeModel`,
+      ни `_discardPaused`. Слова экранов остались своими: `downloading` у
+      модели, `installing` у рантайма (pip ставит, не скачивая) — оба
+      теперь через `arriving`.
+      У кубита не было ни одного теста — потому этот дефект там и жил.
+      Появился `downloads_cubit_test.dart`: пять случаев, и тот, что про
+      перечитанный список, проверен на старом коде — падает.
 - [ ] `bloc_test` + `mocktail` в `dev_dependencies`; `seed()` и
       `PipelineGraphSeeded` удаляются — виджет-тесты получают
       `MockBloc` + `whenListen` через `BlocProvider.value`.
