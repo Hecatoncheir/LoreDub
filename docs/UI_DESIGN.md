@@ -9,17 +9,48 @@ are sparse, labelled, and visually connected to the signal flow.
 
 ## Visual system
 
-| Token | Value | Purpose |
+Colour is a set of roles, not a palette. `LoreDubColors`
+(`lib/src/ui/theme/tokens/lore_dub_colors.dart`) is a `ThemeExtension` that
+every widget reads as `context.colors.<role>`; the raw values below live in
+`LoreDubPalette` and no widget names them. The same roles carry the panel
+that opens on a node of the scheme, answered there by that node's face, so
+a widget standing in the panel is the widget of the window in another
+colour — which is why a colour named in a widget cannot be repainted and
+`tool/ratchet.dart` holds that count at zero.
+
+| Role | Light value | Purpose |
 | --- | --- | --- |
-| Ink | `#171717` | Primary text and high-contrast controls |
-| Graphite | `#292927` | Selected navigation and signal surfaces |
-| Canvas | `#D4D1CA` | Window background |
-| Panel | `#E9E6DF` | Equipment cards and navigation |
-| Raised | `#F7F5F0` | Inputs and raised controls |
-| Orange | `#FF4A16` | Primary action and active signal |
-| Success | `#277A52` | Listening and installed states |
-| Warning | `#9A5A00` | Loading and setup-required states |
-| Error | `#B42318` | Recoverable failures |
+| `canvas` | `#D4D1CA` | Window background; the ground a page stands on |
+| `panel` | `#E9E6DF` | Equipment cards and navigation |
+| `raised` | `#F7F5F0` | Inputs, raised controls, the surface a menu opens on |
+| `ink` | `#171717` | The text itself, and a control that carries it |
+| `mutedInk` | `#65645F` | The quieter half: a note, a unit, a name under a card |
+| `outline` | `#9D9A93` | The hairline around a panel, a tile, a field |
+| `strongOutline` | `#292927` | The same line where it must hold its own against the ink: the edge of a control the player can press |
+| `accent` | `#FF4A16` | What the player chose, and the active signal |
+| `accentStrong` | `#C92F00` | The accent where it has to hold its own against the paper |
+| `onAccent` | `#171717` | What is written on the accent |
+| `onAccentMuted` | `#CCF7F5F0` | Its quieter half |
+| `deep` | `#292927` | A dark surface: a card of the cast, a node's head, a chosen chip |
+| `onDeep` | `#F7F5F0` | What is written on the dark |
+| `onDeepMuted` | `#AAF7F5F0` | Its quieter half |
+| `success` | `#277A52` | Listening and installed states |
+| `warning` | `#9A5A00` | Loading and setup-required states |
+| `danger` | `#B42318` | Recoverable failures |
+| `shadow` | `#22171717` | What is cast under a card that is lifted |
+
+Lettering is roles too. Material's own `TextTheme` carries the headings, the
+running text and the three small ones a note is said in (`titleSmall`,
+`bodySmall`, `labelSmall`); what Material has no name for — the markings of
+an instrument — is `LoreDubTextStyles`, read as `context.textStyles`:
+
+| Role | Purpose |
+| --- | --- |
+| `moduleNumber` | The numeral an area is known by, on the accent |
+| `moduleLabel` | The name beside it, in capitals |
+| `cardTitle` | What a tile or a node is called |
+| `monoCaption` | A measured thing said under something else: seconds, megabytes, a count |
+| `monoMarking` | A state said in capitals — ЗВУК ИГРЫ, НЕ ПОДКЛЮЧЕНО |
 
 The type system has three voices, bundled as static instances cut from the
 upstream variable fonts so the weights are real and Cyrillic ships with them:

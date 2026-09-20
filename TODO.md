@@ -757,7 +757,11 @@ abstract final class AppTheme {
 - [ ] `MaterialApp(theme: AppTheme.light, darkTheme: AppTheme.dark,
       themeMode: …)`, `AppSettings.themeMode` (system / light / dark),
       переключатель в «Настройках». `test/screenshots.dart` рисует обе темы.
-- [ ] Обновить `docs/UI_DESIGN.md`: таблица токенов = поля `LoreDubColors`.
+- [x] Обновить `docs/UI_DESIGN.md`: таблица токенов = поля `LoreDubColors`.
+      *Сделано:* таблица цветов — восемнадцать ролей вместо девяти сырых
+      значений, и рядом вторая, из пяти ролей `LoreDubTextStyles`; сказано,
+      что виджет читает их как `context.colors`/`context.textStyles`, а не
+      называет цвет, и что те же роли несёт панель узла в грани этого узла.
 
 ---
 
