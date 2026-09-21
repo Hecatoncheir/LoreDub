@@ -32,7 +32,6 @@ import 'package:lore_dub/src/domain/pipeline_state.dart';
 
 import '../../../support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -107,12 +106,10 @@ void main() {
     cubits.settings.seed(
       const SettingsState(settings: AppSettings(audioCaptureSource: AudioCaptureSource.system)),
     );
-    cubits.downloads.seed(
-      DownloadsState(
-        models: [
-          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
-        ],
-      ),
+    cubits.stageInstalled(
+      models: [
+        for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
+      ],
     );
     now = DateTime(2026, 9, 11, 12);
     pipeline = SessionBloc(
@@ -713,16 +710,14 @@ void main() {
     });
 
     test('needs the converter, so it waits while nothing can hear', () {
-      cubits.downloads.seed(
-        DownloadsState(
-          models: [
-            for (final model in modelCatalog)
-              ModelInstallState(
-                model: model,
-                installed: model.kind != ModelKind.voiceConversion,
-              ),
-          ],
-        ),
+      cubits.stageInstalled(
+        models: [
+          for (final model in modelCatalog)
+            ModelInstallState(
+              model: model,
+              installed: model.kind != ModelKind.voiceConversion,
+            ),
+        ],
       );
 
       expect(

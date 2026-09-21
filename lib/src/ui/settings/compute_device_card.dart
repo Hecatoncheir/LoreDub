@@ -10,7 +10,7 @@ import '../../domain/compute_device.dart';
 import '../common/labeled_switch.dart';
 import '../common/setting_card.dart';
 import '../compute_names.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
@@ -33,7 +33,7 @@ class ComputeDeviceCard extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
+  Widget build(BuildContext context) => BlocBuilder<DownloadsBloc, DownloadsState>(
     builder: (context, downloads) => BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
         buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.backendSignature)),

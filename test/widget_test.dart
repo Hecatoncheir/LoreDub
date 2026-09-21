@@ -53,7 +53,7 @@ import 'package:lore_dub/src/ui/graph/inspector/pipeline_inspector.dart';
 
 import 'support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
@@ -77,13 +77,14 @@ import 'support/memory_cast.dart';
 
 void main() {
   // What `captureAny` stands in with before anything is captured.
-  setUpAll(() => registerFallbackValue(const GlossaryOpened()));
+  setUpAll(registerEventFallbacks);
 
   StagedDashboard buildCubits({
     RuntimeRepository? runtimes,
     GlossaryBloc? glossary,
     CastBloc? cast,
     VoiceCaptureBloc? capture,
+    DownloadsBloc? downloads,
   }) {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
@@ -99,6 +100,7 @@ void main() {
       cast: CastRepository(NativeEngineService(), MemoryCharacters()),
       castBloc: cast,
       captureBloc: capture,
+      downloadsBloc: downloads,
     );
     addTearDown(cubits.dispose);
     return cubits;
@@ -132,12 +134,18 @@ void main() {
       ),
     );
     if (settings != null) cubits.settings.seed(SettingsState(settings: settings));
+    // What is on disk, which every screen reads; a row with a download
+    // under way is staged over a mock instead (`downloadsShowing`).
     if (models != null || runtimes != null || availability != null) {
-      cubits.downloads.seed(
-        DownloadsState(
-          models: models ?? const [],
-          runtimes: runtimes ?? const [],
-          availability: availability ?? const ComputeAvailability(),
+      final machine = availability ?? const ComputeAvailability();
+      cubits.stageInstalled(
+        models: models ?? const [],
+        availability: machine.copyWith(
+          installedRuntimes: {
+            ...machine.installedRuntimes,
+            for (final runtime in runtimes ?? const <RuntimeInstallState>[])
+              if (runtime.installed) runtime.package.id,
+          },
         ),
       );
     }
@@ -242,7 +250,7 @@ void main() {
 
     expect(context.read<ShellCubit>(), isNotNull);
     expect(context.read<SettingsCubit>(), isNotNull);
-    expect(context.read<DownloadsCubit>(), isNotNull);
+    expect(context.read<DownloadsBloc>(), isNotNull);
     expect(context.read<SourcesBloc>(), isNotNull);
     expect(context.read<SessionBloc>(), isNotNull);
     expect(context.read<TranscriptBloc>(), isNotNull);
@@ -1357,11 +1365,12 @@ void main() {
       AppSettings settings = const AppSettings(),
       PipelineStatus status = PipelineStatus.idle,
     }) async {
+      final rows = models ?? catalogue();
       final cubits = stage(
-        buildCubits(),
+        buildCubits(downloads: downloadsShowing(DownloadsState(models: rows))),
         section: DashboardSection.models,
         settings: settings,
-        models: models ?? catalogue(),
+        models: rows,
         status: status,
       );
       await pumpDashboard(tester, cubits, const Size(1280, 1000));
@@ -1435,7 +1444,7 @@ void main() {
 
       await tester.tap(find.text('Оставить'));
       await tester.pumpAndSettle();
-      expect(cubits.selection.isLanguageReady('ru'), isTrue);
+      verifyNever(() => cubits.downloads.add(any<DownloadsEvent>()));
     });
 
     testWidgets('keeps the language in use while dubbing runs', (tester) async {
@@ -1817,25 +1826,31 @@ void main() {
   testWidgets('says why a GPU runtime did not install instead of looking untouched', (
     tester,
   ) async {
-    final cubits = stage(
-      buildCubits(),
-      section: DashboardSection.settings,
-      availability: const ComputeAvailability(
-        adapters: [
-          GraphicsAdapter(name: 'NVIDIA GeForce RTX 3080 Ti', vendor: GraphicsVendor.nvidia),
-        ],
-        cudaDriver: true,
-      ),
-      runtimes: [
-        RuntimeInstallState(package: runtimePackageById(whisperCudaRuntimeId)!),
-        RuntimeInstallState(
-          package: runtimePackageById(torchCudaRuntimeId)!,
-          error: const LoreDubFailure(
-            FailureCode.runtimeInstallFailed,
-            detail: '1\nERROR: Could not install packages due to an OSError',
-          ),
+    final failed = [
+      RuntimeInstallState(package: runtimePackageById(whisperCudaRuntimeId)!),
+      RuntimeInstallState(
+        package: runtimePackageById(torchCudaRuntimeId)!,
+        error: const LoreDubFailure(
+          FailureCode.runtimeInstallFailed,
+          detail: '1\nERROR: Could not install packages due to an OSError',
         ),
+      ),
+    ];
+    const nvidiaDriver = ComputeAvailability(
+      adapters: [
+        GraphicsAdapter(name: 'NVIDIA GeForce RTX 3080 Ti', vendor: GraphicsVendor.nvidia),
       ],
+      cudaDriver: true,
+    );
+    // A failure is a row's own, which only a download under way leaves: the
+    // rows are the mock's.
+    final cubits = stage(
+      buildCubits(
+        downloads: downloadsShowing(DownloadsState(runtimes: failed, availability: nvidiaDriver)),
+      ),
+      section: DashboardSection.settings,
+      availability: nvidiaDriver,
+      runtimes: failed,
     );
     await pumpDashboard(tester, cubits, const Size(1280, 1000));
 
@@ -2104,17 +2119,18 @@ void main() {
       required bool paused,
     }) async {
       final whisper = modelCatalog.firstWhere((model) => model.kind == ModelKind.recognition);
+      final rows = [
+        for (final model in modelCatalog)
+          ModelInstallState(
+            model: model,
+            progress: model.id == whisper.id ? 0.42 : null,
+            paused: model.id == whisper.id && paused,
+          ),
+      ];
       final cubits = stage(
-        buildCubits(),
+        buildCubits(downloads: downloadsShowing(DownloadsState(models: rows))),
         section: DashboardSection.models,
-        models: [
-          for (final model in modelCatalog)
-            ModelInstallState(
-              model: model,
-              progress: model.id == whisper.id ? 0.42 : null,
-              paused: model.id == whisper.id && paused,
-            ),
-        ],
+        models: rows,
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
       await tester.pumpAndSettle();
@@ -2137,16 +2153,33 @@ void main() {
       expect(find.text('42%'), findsOneWidget, reason: 'the ring keeps where it stopped');
     });
 
-    testWidgets('stopping what is not running changes nothing', (tester) async {
+    testWidgets('sends the pause and the cancel for the bar they are on', (tester) async {
+      final cubits = await pumpDownloading(tester, paused: false);
+      final bar = find.byKey(const ValueKey('whisperBar-$whisperModelId'));
+
+      await tester.tap(find.descendant(of: bar, matching: find.byTooltip('Приостановить')));
+      await tester.pumpAndSettle();
+      verify(() => cubits.downloads.add(const DownloadPaused(whisperModelId))).called(1);
+
+      await tester.tap(find.descendant(of: bar, matching: find.byTooltip('Отменить')));
+      await tester.pumpAndSettle();
+      verify(() => cubits.downloads.add(const DownloadCancelled(whisperModelId))).called(1);
+    });
+
+    testWidgets('fetches a model from its own bar', (tester) async {
       final cubits = await pumpDownloading(tester, paused: false);
 
-      // The staged state has no attempt in flight, so there is no control to
-      // signal. Asking anyway must be harmless rather than throwing.
-      cubits.downloads
-        ..pauseDownload(whisperModelId)
-        ..cancelDownload(whisperModelId);
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('whisperBar-whisper-small')),
+          matching: find.byTooltip('Скачать'),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-      expect(cubits.downloads.state.isStopping(whisperModelId), isFalse);
+      final sent =
+          verify(() => cubits.downloads.add(captureAny())).captured.single as ModelInstallAsked;
+      expect(sent.install.model.id, 'whisper-small');
     });
 
     testWidgets('a paused download is resumed from its own bar', (tester) async {
@@ -2193,7 +2226,7 @@ void main() {
       AppSettings settings = const AppSettings(),
     }) async {
       final cubits = stage(
-        buildCubits(),
+        buildCubits(downloads: downloadsShowing(DownloadsState(models: catalogue()))),
         section: DashboardSection.models,
         settings: settings,
         models: catalogue(),
@@ -2284,12 +2317,26 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Удалить модель?'), findsNothing);
-      expect(
-        cubits.downloads.state.models
-            .firstWhere((state) => state.model.id == 'whisper-small')
-            .installed,
-        isTrue,
+      verifyNever(() => cubits.downloads.add(any<DownloadsEvent>()));
+    });
+
+    testWidgets('deletes it once asked twice', (tester) async {
+      final cubits = await pumpModels(tester);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('whisperBar-whisper-small')),
+          matching: find.byTooltip('Удалить'),
+        ),
       );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(of: find.byType(AlertDialog), matching: find.text('Удалить')),
+      );
+      await tester.pumpAndSettle();
+
+      final sent = verify(() => cubits.downloads.add(captureAny())).captured.single as ModelRemoved;
+      expect(sent.install.model.id, 'whisper-small');
     });
 
     testWidgets('keeps the model in use while dubbing runs', (tester) async {

@@ -9,7 +9,7 @@ import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/runtime_package.dart';
 import '../compute_names.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../failure_messages.dart';
 import '../theme.dart';
@@ -62,7 +62,7 @@ class ComputeRuntimesSection extends StatelessWidget {
     final runtimes = _shown;
     if (runtimes.isEmpty) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context);
-    final cubit = context.read<DownloadsCubit>();
+    final cubit = context.read<DownloadsBloc>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -87,10 +87,10 @@ class ComputeRuntimesSection extends StatelessWidget {
                 inUse: _inUse(runtime.package.id),
                 running: pipeline.running,
                 stopping: downloads.isStopping(runtime.package.id),
-                onInstall: () => cubit.installRuntime(runtime),
-                onPause: () => cubit.pauseDownload(runtime.package.id),
-                onCancel: () => cubit.cancelDownload(runtime.package.id),
-                onRemove: () => cubit.removeRuntime(runtime),
+                onInstall: () => cubit.add(RuntimeInstallAsked(runtime)),
+                onPause: () => cubit.add(DownloadPaused(runtime.package.id)),
+                onCancel: () => cubit.add(DownloadCancelled(runtime.package.id)),
+                onRemove: () => cubit.add(RuntimeRemoved(runtime)),
               ),
           ],
         ),

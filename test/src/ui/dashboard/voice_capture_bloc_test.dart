@@ -33,7 +33,6 @@ import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
 
 import '../../../support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
@@ -74,12 +73,10 @@ void main() {
     );
     // Every package in place: a sample needs the speech model, and a
     // recording needs the converter.
-    cubits.downloads.seed(
-      DownloadsState(
-        models: [
-          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
-        ],
-      ),
+    cubits.stageInstalled(
+      models: [
+        for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
+      ],
     );
     sessions = SessionCoordinator();
     voices = VoiceCaptureBloc(

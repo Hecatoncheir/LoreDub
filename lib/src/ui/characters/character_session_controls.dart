@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
@@ -23,7 +23,7 @@ class CharacterSessionControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
-    builder: (context, shell) => BlocBuilder<DownloadsCubit, DownloadsState>(
+    builder: (context, shell) => BlocBuilder<DownloadsBloc, DownloadsState>(
       buildWhen: whenChanged((downloads) => downloads.installed),
       builder: (context, _) => BlocBuilder<SessionBloc, SessionState>(
         buildWhen: whenChanged(

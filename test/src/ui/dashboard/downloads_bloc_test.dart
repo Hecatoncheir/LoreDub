@@ -14,7 +14,7 @@ import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/download_control.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -22,7 +22,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _HeldModels models;
-  late DownloadsCubit downloads;
+  late DownloadsBloc downloads;
   late InstallRepository installed;
   late _Banner banner;
 
@@ -35,14 +35,15 @@ void main() {
     banner = _Banner();
     final runtimes = _NoRuntimes();
     installed = InstallRepository(models, runtimes);
-    downloads = DownloadsCubit(
+    downloads = DownloadsBloc(
       models,
       runtimes,
       installed,
       SettingsRepository(SettingsService()),
       banner,
     );
-    await downloads.load();
+    await installed.load();
+    await pumpEventQueue();
   });
 
   tearDown(() async {
@@ -53,7 +54,7 @@ void main() {
       downloads.state.models.firstWhere((install) => install.model.id == id);
 
   test('writes the progress and the end on the row it was asked for', () async {
-    final fetching = downloads.installModel(rowFor(first.id));
+    downloads.add(ModelInstallAsked(rowFor(first.id)));
     await pumpEventQueue();
 
     models.report(0.5);
@@ -61,7 +62,7 @@ void main() {
     expect(rowFor(first.id).progress, 0.5);
 
     models.finish(DownloadOutcome.completed);
-    await fetching;
+    await pumpEventQueue();
 
     expect(rowFor(first.id).installed, isTrue);
     expect(rowFor(first.id).progress, isNull);
@@ -72,11 +73,12 @@ void main() {
     // download was addressed by the index of the row it started on, so
     // after this it wrote its ticks and its outcome on whatever stood
     // there -- which, with the catalogue reordered, is another package.
-    final fetching = downloads.installModel(rowFor(first.id));
+    downloads.add(ModelInstallAsked(rowFor(first.id)));
     await pumpEventQueue();
 
     models.reversed = true;
-    await downloads.load();
+    await installed.load();
+    await pumpEventQueue();
     models.report(0.5);
     await pumpEventQueue();
 
@@ -86,40 +88,41 @@ void main() {
     }
 
     models.finish(DownloadOutcome.completed);
-    await fetching;
+    await pumpEventQueue();
 
     expect(rowFor(first.id).installed, isTrue);
   });
 
   test('a pause keeps the bar where it stopped and a cancel clears it', () async {
-    var fetching = downloads.installModel(rowFor(first.id));
+    downloads.add(ModelInstallAsked(rowFor(first.id)));
     await pumpEventQueue();
     models.report(0.4);
     await pumpEventQueue();
 
     models.finish(DownloadOutcome.paused);
-    await fetching;
+    await pumpEventQueue();
     expect(rowFor(first.id).progress, 0.4, reason: 'asking again reads as carrying on');
     expect(rowFor(first.id).paused, isTrue);
 
-    fetching = downloads.installModel(rowFor(first.id));
+    downloads.add(ModelInstallAsked(rowFor(first.id)));
     await pumpEventQueue();
     models.finish(DownloadOutcome.cancelled);
-    await fetching;
+    await pumpEventQueue();
 
     expect(rowFor(first.id).progress, isNull);
     expect(rowFor(first.id).paused, isFalse);
   });
 
   test('a second press while it is arriving is not a second download', () async {
-    final fetching = downloads.installModel(rowFor(first.id));
+    downloads.add(ModelInstallAsked(rowFor(first.id)));
     await pumpEventQueue();
 
-    await downloads.installModel(rowFor(first.id));
+    downloads.add(ModelInstallAsked(rowFor(first.id)));
+    await pumpEventQueue();
 
     expect(models.asked, 1);
     models.finish(DownloadOutcome.completed);
-    await fetching;
+    await pumpEventQueue();
   });
 
   test('a model that lands is on disk for every screen, not only this one', () async {
@@ -128,13 +131,13 @@ void main() {
       isFalse,
     );
 
-    final fetching = downloads.installModel(rowFor(first.id));
+    downloads.add(ModelInstallAsked(rowFor(first.id)));
     await pumpEventQueue();
     models.finish(DownloadOutcome.completed);
-    await fetching;
+    await pumpEventQueue();
 
     // What the dubbing screens and the cast screen read: they ask the
-    // repository, not this cubit.
+    // repository, not this bloc.
     expect(
       installed.parts.models.firstWhere((row) => row.model.id == first.id).installed,
       isTrue,
@@ -149,9 +152,11 @@ void main() {
         ],
       ),
     );
-    await downloads.load();
+    await installed.load();
+    await pumpEventQueue();
 
-    await downloads.removeModel(rowFor(first.id));
+    downloads.add(ModelRemoved(rowFor(first.id)));
+    await pumpEventQueue();
 
     expect(
       installed.parts.models.firstWhere((row) => row.model.id == first.id).installed,
@@ -159,12 +164,39 @@ void main() {
     );
   });
 
+  test('pausing or cancelling what is not arriving changes nothing', () async {
+    // A row staged with progress has no attempt in flight, so there is no
+    // control to signal. Asking anyway must be harmless rather than throw.
+    downloads
+      ..add(DownloadPaused(first.id))
+      ..add(DownloadCancelled(first.id));
+    await pumpEventQueue();
+
+    expect(downloads.state.isStopping(first.id), isFalse);
+    expect(banner.raised, isEmpty);
+  });
+
+  test('a pause reaches the download it stops while it is still arriving', () async {
+    downloads.add(ModelInstallAsked(rowFor(first.id)));
+    await pumpEventQueue();
+
+    downloads.add(DownloadPaused(first.id));
+    await pumpEventQueue();
+    expect(downloads.state.isStopping(first.id), isTrue, reason: 'answered mid-download');
+    expect(models.paused, isTrue);
+
+    models.finish(DownloadOutcome.paused);
+    await pumpEventQueue();
+    expect(downloads.state.isStopping(first.id), isFalse);
+    expect(rowFor(first.id).paused, isTrue);
+  });
+
   test('a failure is written on the row rather than raised to the banner', () async {
-    final fetching = downloads.installModel(rowFor(first.id));
+    downloads.add(ModelInstallAsked(rowFor(first.id)));
     await pumpEventQueue();
 
     models.fail(StateError('no route to host'));
-    await fetching;
+    await pumpEventQueue();
 
     expect(rowFor(first.id).error, isA<StateError>());
     expect(rowFor(first.id).progress, isNull);
@@ -182,6 +214,12 @@ class _HeldModels extends ModelRepository {
   bool reversed = false;
 
   int asked = 0;
+
+  /// The handle the download was given, which a pause or a cancel signals.
+  DownloadControl? _control;
+
+  /// Whether the download in flight was asked to pause.
+  bool get paused => _control?.requestedStop == DownloadOutcome.paused;
   Completer<DownloadOutcome>? _outcome;
   DownloadProgress? _onProgress;
 
@@ -208,6 +246,7 @@ class _HeldModels extends ModelRepository {
     DownloadControl? control,
   }) {
     asked++;
+    _control = control;
     _onProgress = onProgress;
     return (_outcome = Completer<DownloadOutcome>()).future;
   }

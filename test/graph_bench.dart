@@ -35,7 +35,6 @@ import 'package:lore_dub/src/domain/pipeline_graph.dart';
 
 import 'support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
@@ -93,12 +92,10 @@ void main() {
         initializing: false,
       ),
     );
-    cubits.downloads.seed(
-      DownloadsState(
-        models: [
-          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
-        ],
-      ),
+    cubits.stageInstalled(
+      models: [
+        for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
+      ],
     );
     cubits.cast.seed(CharacterLibrary(characters: cast()));
     cubits.graph.seed(

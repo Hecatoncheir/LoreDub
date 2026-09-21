@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/start_requirements.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
@@ -28,7 +28,7 @@ class StartChecklist extends StatelessWidget {
   // Whether a package is there rather than how far its download has got:
   // the card must not redraw through the hundred ticks of one.
   @override
-  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
+  Widget build(BuildContext context) => BlocBuilder<DownloadsBloc, DownloadsState>(
     buildWhen: whenChanged((downloads) => downloads.installed),
     builder: (context, _) => BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, _) => BlocSelector<SourcesBloc, CaptureSources, bool>(

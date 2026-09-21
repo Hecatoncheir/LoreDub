@@ -150,8 +150,93 @@ class DownloadsState extends Equatable {
   ];
 }
 
-class DownloadsCubit extends Cubit<DownloadsState> {
-  DownloadsCubit(
+sealed class DownloadsEvent extends Equatable {
+  const DownloadsEvent();
+
+  @override
+  List<Object?> get props => const [];
+}
+
+/// Fetches a model package, or resumes one that was paused.
+final class ModelInstallAsked extends DownloadsEvent {
+  const ModelInstallAsked(this.install);
+
+  final ModelInstallState install;
+
+  @override
+  List<Object?> get props => [install.model.id];
+}
+
+/// Deletes a downloaded model to give its space back.
+final class ModelRemoved extends DownloadsEvent {
+  const ModelRemoved(this.install);
+
+  final ModelInstallState install;
+
+  @override
+  List<Object?> get props => [install.model.id];
+}
+
+/// Fetches a GPU runtime, or resumes one that was paused.
+final class RuntimeInstallAsked extends DownloadsEvent {
+  const RuntimeInstallAsked(this.install);
+
+  final RuntimeInstallState install;
+
+  @override
+  List<Object?> get props => [install.package.id];
+}
+
+final class RuntimeRemoved extends DownloadsEvent {
+  const RuntimeRemoved(this.install);
+
+  final RuntimeInstallState install;
+
+  @override
+  List<Object?> get props => [install.package.id];
+}
+
+/// Stops a download and keeps what arrived, so asking again resumes.
+final class DownloadPaused extends DownloadsEvent {
+  const DownloadPaused(this.id);
+
+  final String id;
+
+  @override
+  List<Object?> get props => [id];
+}
+
+/// Stops a download and throws away what arrived.
+final class DownloadCancelled extends DownloadsEvent {
+  const DownloadCancelled(this.id);
+
+  final String id;
+
+  @override
+  List<Object?> get props => [id];
+}
+
+/// Shows the player where the models are kept.
+final class ModelDirectoryOpened extends DownloadsEvent {
+  const ModelDirectoryOpened();
+}
+
+final class _InstalledChanged extends DownloadsEvent {
+  const _InstalledChanged(this.parts);
+
+  final InstalledParts parts;
+}
+
+/// The models screen, and the GPU runtimes of the settings screen: what is
+/// on disk, with whatever is arriving laid over it.
+///
+/// Every download is a handler of its own and they run side by side --
+/// several packages come down at once, and a pause or a cancel has to be
+/// answered while the download it stops is still waiting on the network.
+/// The ticks of a download are emitted from inside its handler, which is
+/// the download's for as long as it runs.
+class DownloadsBloc extends Bloc<DownloadsEvent, DownloadsState> {
+  DownloadsBloc(
     this._modelRepository,
     this._runtimeRepository,
     this._installed,
@@ -161,7 +246,15 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     // What is on disk is read and published once, for everyone; this
     // screen lays its own rows over it, with the progress of whatever is
     // arriving.
-    _parts = _installed.changes.listen(_followInstalled);
+    on<_InstalledChanged>((event, emit) => _followInstalled(event.parts, emit));
+    on<ModelInstallAsked>((event, emit) => _installModel(event.install, emit));
+    on<RuntimeInstallAsked>((event, emit) => _installRuntime(event.install, emit));
+    on<ModelRemoved>((event, emit) => _removeModel(event.install, emit));
+    on<RuntimeRemoved>((event, emit) => _removeRuntime(event.install));
+    on<DownloadPaused>((event, emit) => _stop(event.id, (control) => control.pause(), emit));
+    on<DownloadCancelled>((event, emit) => _cancel(event.id, emit));
+    on<ModelDirectoryOpened>((event, emit) => _openModelDirectory());
+    _parts = _installed.changes.listen((parts) => add(_InstalledChanged(parts)));
   }
 
   final ModelRepository _modelRepository;
@@ -175,18 +268,10 @@ class DownloadsCubit extends Cubit<DownloadsState> {
   /// can pause or cancel the one it is showing.
   final _controls = <String, DownloadControl>{};
 
-  /// The repository publishes as it reads and this cubit is listening, so
-  /// a caller that awaited either of these has the rows when it returns.
-  Future<void> load() => _installed.load();
-
-  Future<void> refreshAvailability({ComputeAvailability? probe}) =>
-      _installed.refreshAvailability(probe: probe);
-
   /// What was read off disk, with whatever is arriving kept as it was: a
   /// download that is paused or still running keeps its progress, since
   /// rereading the list must not lose where it got to.
-  void _followInstalled(InstalledParts parts) {
-    if (isClosed) return;
+  void _followInstalled(InstalledParts parts, Emitter<DownloadsState> emit) {
     final runtimes = parts.availability.installedRuntimes;
     emit(
       state.copyWith(
@@ -209,8 +294,9 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     );
   }
 
-  Future<void> installModel(ModelInstallState install) => _download(
+  Future<void> _installModel(ModelInstallState install, Emitter<DownloadsState> emit) => _download(
     install.model.id,
+    emit,
     among: () => state.models,
     replacing: (models) => emit(state.copyWith(models: models)),
     run: (control, onProgress) => _modelRepository.install(
@@ -227,20 +313,22 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     ),
   );
 
-  Future<void> installRuntime(RuntimeInstallState install) => _download(
-    install.package.id,
-    among: () => state.runtimes,
-    replacing: (runtimes) => emit(state.copyWith(runtimes: runtimes)),
-    run: (control, onProgress) => _runtimeRepository.install(
-      install.package,
-      proxyUrl: _settings.settings.modelProxyUrl,
-      pythonExecutable: _settings.settings.pythonExecutable,
-      control: control,
-      onProgress: onProgress,
-    ),
-    // A finished or discarded runtime changes which backends can be picked.
-    afterwards: refreshAvailability,
-  );
+  Future<void> _installRuntime(RuntimeInstallState install, Emitter<DownloadsState> emit) =>
+      _download(
+        install.package.id,
+        emit,
+        among: () => state.runtimes,
+        replacing: (runtimes) => emit(state.copyWith(runtimes: runtimes)),
+        run: (control, onProgress) => _runtimeRepository.install(
+          install.package,
+          proxyUrl: _settings.settings.modelProxyUrl,
+          pythonExecutable: _settings.settings.pythonExecutable,
+          control: control,
+          onProgress: onProgress,
+        ),
+        // A finished or discarded runtime changes which backends can be picked.
+        afterwards: _installed.refreshAvailability,
+      );
 
   /// Fetches the package [id] names and writes what became of it on its own
   /// row: a model and a GPU runtime arrive the same way, and this is that
@@ -252,14 +340,14 @@ class DownloadsCubit extends Cubit<DownloadsState> {
   /// rereading what is on disk does -- had them writing on whatever stood
   /// in that place by the time the download ended.
   Future<void> _download<T extends PackageDownload<T>>(
-    String id, {
+    String id,
+    Emitter<DownloadsState> emit, {
     required List<T> Function() among,
     required void Function(List<T>) replacing,
     required Future<DownloadOutcome> Function(DownloadControl, DownloadProgress) run,
     Future<void> Function()? afterwards,
   }) async {
     void change(T Function(T) becomes) {
-      if (isClosed) return;
       final rows = [...among()];
       final at = rows.indexWhere((row) => row.packageId == id);
       if (at < 0) return;
@@ -293,53 +381,48 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     } catch (exception) {
       change((row) => row.failing(exception));
     }
-    _finished(id);
+    _finished(id, emit);
   }
 
   /// Deletes a downloaded model to give its space back. A download still in
   /// flight is not a model yet; that one is cancelled instead.
-  Future<void> removeModel(ModelInstallState install) async {
+  Future<void> _removeModel(ModelInstallState install, Emitter<DownloadsState> emit) async {
     final id = install.model.id;
     if (_modelWithId(id)?.stoppable ?? true) return;
     _errors.report(null);
     try {
       await _modelRepository.remove(install.model);
-      _changeModel(id, (row) => row.copyWith(installed: false, clearError: true));
+      _changeModel(id, (row) => row.copyWith(installed: false, clearError: true), emit);
       _installed.modelSettled(id, installed: false);
     } catch (exception) {
       _errors.report(exception);
     }
   }
 
-  Future<void> removeRuntime(RuntimeInstallState install) async {
+  Future<void> _removeRuntime(RuntimeInstallState install) async {
     _errors.report(null);
     try {
       await _runtimeRepository.remove(install.package);
-      await refreshAvailability();
+      await _installed.refreshAvailability();
     } catch (exception) {
       _errors.report(exception);
     }
   }
 
-  /// Stops a download and keeps what arrived, so asking again resumes.
-  void pauseDownload(String id) => _stop(id, (control) => control.pause());
-
-  /// Stops a download and throws away what arrived.
-  ///
   /// A paused model has no attempt left to signal — the pause ended it — so
   /// its waiting part files are deleted here instead. Without that the
   /// cancel button of a paused download did nothing at all.
-  void cancelDownload(String id) {
-    if (_controls.containsKey(id)) return _stop(id, (control) => control.cancel());
-    unawaited(_discardPaused(id));
+  Future<void> _cancel(String id, Emitter<DownloadsState> emit) async {
+    if (_controls.containsKey(id)) return _stop(id, (control) => control.cancel(), emit);
+    await _discardPaused(id, emit);
   }
 
-  Future<void> _discardPaused(String id) async {
+  Future<void> _discardPaused(String id, Emitter<DownloadsState> emit) async {
     try {
       if (_modelWithId(id) case final install?) {
         if (!install.paused || install.installed) return;
         await _modelRepository.remove(install.model);
-        _changeModel(id, (row) => row.dropped());
+        _changeModel(id, (row) => row.dropped(), emit);
         return;
       }
       // A paused GPU runtime waits the same way, its part under
@@ -347,7 +430,7 @@ class DownloadsCubit extends Cubit<DownloadsState> {
       final install = state.runtimeWithId(id);
       if (install == null || !install.paused || install.installed) return;
       await _runtimeRepository.remove(install.package);
-      _changeRuntime(id, (row) => row.dropped());
+      _changeRuntime(id, (row) => row.dropped(), emit);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -356,20 +439,20 @@ class DownloadsCubit extends Cubit<DownloadsState> {
   ModelInstallState? _modelWithId(String id) =>
       state.models.where((install) => install.model.id == id).firstOrNull;
 
-  void _stop(String id, void Function(DownloadControl) ask) {
+  void _stop(String id, void Function(DownloadControl) ask, Emitter<DownloadsState> emit) {
     final control = _controls[id];
     if (control == null) return;
     ask(control);
     emit(state.copyWith(stopping: {...state.stopping, id}));
   }
 
-  void _finished(String id) {
+  void _finished(String id, Emitter<DownloadsState> emit) {
     _controls.remove(id);
-    if (isClosed || !state.stopping.contains(id)) return;
+    if (!state.stopping.contains(id)) return;
     emit(state.copyWith(stopping: {...state.stopping}..remove(id)));
   }
 
-  Future<void> openModelDirectory() async {
+  Future<void> _openModelDirectory() async {
     _errors.report(null);
     try {
       await _modelRepository.openRootDirectory();
@@ -378,8 +461,11 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     }
   }
 
-  void _changeModel(String id, ModelInstallState Function(ModelInstallState) becomes) {
-    if (isClosed) return;
+  void _changeModel(
+    String id,
+    ModelInstallState Function(ModelInstallState) becomes,
+    Emitter<DownloadsState> emit,
+  ) {
     final models = [...state.models];
     final at = models.indexWhere((install) => install.model.id == id);
     if (at < 0) return;
@@ -387,36 +473,16 @@ class DownloadsCubit extends Cubit<DownloadsState> {
     emit(state.copyWith(models: models));
   }
 
-  void _changeRuntime(String id, RuntimeInstallState Function(RuntimeInstallState) becomes) {
-    if (isClosed) return;
+  void _changeRuntime(
+    String id,
+    RuntimeInstallState Function(RuntimeInstallState) becomes,
+    Emitter<DownloadsState> emit,
+  ) {
     final runtimes = [...state.runtimes];
     final at = runtimes.indexWhere((install) => install.package.id == id);
     if (at < 0) return;
     runtimes[at] = becomes(runtimes[at]);
     emit(state.copyWith(runtimes: runtimes));
-  }
-
-  /// Stages a state a widget test wants to render without touching disk.
-  ///
-  /// What is on disk goes to the repository as well: everything that asks
-  /// what is installed asks there, and a test that staged only this cubit
-  /// drew a screen full of packages over a pipeline that had none.
-  @visibleForTesting
-  void seed(DownloadsState value) {
-    _installed.seed(
-      InstalledParts(
-        models: [
-          for (final install in value.models)
-            ModelInstallState(model: install.model, installed: install.installed),
-        ],
-        availability: value.availability,
-        modelDirectory: value.modelDirectoryPath,
-        runtimeDirectory: value.runtimeDirectoryPath,
-      ),
-    );
-    // After the repository, so what it publishes does not land on top of
-    // the rows and their progress that this test is staging.
-    emit(value);
   }
 
   @override

@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/model_selection.dart';
 import '../common/module_label.dart';
 import '../common/section_note.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import 'language_pair_tile.dart';
 import 'model_failure_row.dart';
@@ -32,7 +32,7 @@ class LanguagePairsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final cubit = context.read<DownloadsCubit>();
+    final cubit = context.read<DownloadsBloc>();
     final settings = context.read<SettingsCubit>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -51,10 +51,10 @@ class LanguagePairsSection extends StatelessWidget {
                 running: running,
                 isStopping: downloads.isStopping,
                 onSelect: running ? null : () => settings.selectTargetLanguage(pair.language),
-                onInstall: cubit.installModel,
-                onPause: (state) => cubit.pauseDownload(state.model.id),
-                onCancel: (state) => cubit.cancelDownload(state.model.id),
-                onRemove: cubit.removeModel,
+                onInstall: (state) => cubit.add(ModelInstallAsked(state)),
+                onPause: (state) => cubit.add(DownloadPaused(state.model.id)),
+                onCancel: (state) => cubit.add(DownloadCancelled(state.model.id)),
+                onRemove: (state) => cubit.add(ModelRemoved(state)),
               ),
           ],
         ),

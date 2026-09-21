@@ -13,7 +13,7 @@ import 'package:mocktail/mocktail.dart';
 import '../../../support/mock_blocs.dart';
 
 void main() {
-  setUpAll(() => registerFallbackValue(const GlossaryOpened()));
+  setUpAll(registerEventFallbacks);
 
   Future<void> pump(WidgetTester tester, GlossaryBloc glossary, FileDialogs dialogs) =>
       tester.pumpWidget(

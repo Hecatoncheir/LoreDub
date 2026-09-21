@@ -51,7 +51,6 @@ import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
@@ -367,7 +366,7 @@ void main() {
         ),
       ),
     );
-    cubits.downloads.seed(DownloadsState(models: catalogue(language)));
+    cubits.stageInstalled(models: catalogue(language));
     cubits.pipeline.seed(
       SessionState(
         status: status,

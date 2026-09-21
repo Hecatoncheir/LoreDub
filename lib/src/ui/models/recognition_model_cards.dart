@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/model_selection.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import 'model_card.dart';
 
@@ -25,7 +25,7 @@ class RecognitionModelCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<DownloadsCubit>();
+    final cubit = context.read<DownloadsBloc>();
     final settings = context.read<SettingsCubit>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -34,9 +34,9 @@ class RecognitionModelCards extends StatelessWidget {
           const SizedBox(height: 12),
           ModelCard(
             state: state,
-            onInstall: () => cubit.installModel(state),
-            onPause: () => cubit.pauseDownload(state.model.id),
-            onCancel: () => cubit.cancelDownload(state.model.id),
+            onInstall: () => cubit.add(ModelInstallAsked(state)),
+            onPause: () => cubit.add(DownloadPaused(state.model.id)),
+            onCancel: () => cubit.add(DownloadCancelled(state.model.id)),
             stopping: downloads.isStopping(state.model.id),
             choosable: true,
             selected: state.model.id == selection.recognition?.model.id,

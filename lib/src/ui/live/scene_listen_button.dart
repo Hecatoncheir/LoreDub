@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
@@ -27,7 +27,7 @@ class SceneListenButton extends StatelessWidget {
   Widget build(BuildContext context) => BlocSelector<ShellCubit, ShellState, bool>(
     selector: (shell) => shell.initializing,
     builder: (context, initializing) => BlocBuilder<SettingsCubit, SettingsState>(
-      builder: (context, _) => BlocBuilder<DownloadsCubit, DownloadsState>(
+      builder: (context, _) => BlocBuilder<DownloadsBloc, DownloadsState>(
         buildWhen: whenChanged((downloads) => downloads.installed),
         builder: (context, _) => BlocBuilder<SessionBloc, SessionState>(
           buildWhen: whenChanged(

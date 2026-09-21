@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
@@ -22,7 +22,7 @@ class ModelsPanel extends StatelessWidget {
   const ModelsPanel({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
+  Widget build(BuildContext context) => BlocBuilder<DownloadsBloc, DownloadsState>(
     builder: (context, downloads) => BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, _) => BlocSelector<SessionBloc, SessionState, bool>(
         selector: (pipeline) => pipeline.running,

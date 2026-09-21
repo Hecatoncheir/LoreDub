@@ -9,7 +9,7 @@ import '../../domain/model_package.dart';
 import '../../domain/model_selection.dart';
 import '../common/module_label.dart';
 import '../common/section_note.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import 'whisper_model_chart.dart';
 import 'recognition_model_cards.dart';
@@ -33,7 +33,7 @@ class RecognitionModelsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final cubit = context.read<DownloadsCubit>();
+    final cubit = context.read<DownloadsBloc>();
     final settings = context.read<SettingsCubit>();
     final onSelect = running
         ? null
@@ -58,10 +58,10 @@ class RecognitionModelsSection extends StatelessWidget {
                     selectedId: selection.recognition?.model.id,
                     running: running,
                     isStopping: downloads.isStopping,
-                    onInstall: cubit.installModel,
-                    onPause: (state) => cubit.pauseDownload(state.model.id),
-                    onCancel: (state) => cubit.cancelDownload(state.model.id),
-                    onRemove: cubit.removeModel,
+                    onInstall: (state) => cubit.add(ModelInstallAsked(state)),
+                    onPause: (state) => cubit.add(DownloadPaused(state.model.id)),
+                    onCancel: (state) => cubit.add(DownloadCancelled(state.model.id)),
+                    onRemove: (state) => cubit.add(ModelRemoved(state)),
                     onSelect: onSelect,
                   ),
                 ),

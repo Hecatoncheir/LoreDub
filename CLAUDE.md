@@ -64,9 +64,12 @@ than one of them.
    `common/` for what every screen uses; one public widget per file and no
    private ones. `dashboard/` still holds the cubits and the files not yet
    taken apart (`TODO.md`, stage 2). State lives in `dashboard/cubits/`:
-   three cubits -- `ShellCubit` (section, first load, the failure banner,
-   the update check), `SettingsCubit` and `DownloadsCubit` (models, GPU
-   runtimes, what the machine can run) -- and the Blocs. The characters
+   two cubits -- `ShellCubit` (section, first load, the failure banner,
+   the update check) and `SettingsCubit` -- and the Blocs. `DownloadsBloc`
+   is the models and the GPU runtimes with what is arriving laid over what
+   is on disk: every download is a handler of its own, running side by
+   side, and emits its ticks from inside itself; a pause or a cancel is an
+   event answered while the download it stops still waits. The characters
    screen has two: `CastBloc`, the cards and the packs, and
    `VoiceCaptureBloc`, the session a voice is recorded through, the take,
    a card measured from files, a sample and a clip played back. Neither
@@ -1263,7 +1266,12 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   Do not let a widget test drive a real bloc into a write: the disk does not
   answer inside the test's fake time, and a handler under `sequential()` is
   waited for by `close()`, so the test hangs in its teardown rather than
-  failing. `widget_test.dart`'s `buildCubits` keeps the cast in memory
+  failing. What is on disk is staged through the repository
+  (`StagedDashboard.stageInstalled`), which the real `DownloadsBloc` follows
+  with rows that have nothing arriving; a row with a download under way is
+  a mock's (`downloadsShowing`), and `rebuild_scope_test.dart` sends a
+  download's ticks down the mock's stream. `registerEventFallbacks` is what
+  `any` stands in with. `widget_test.dart`'s `buildCubits` keeps the cast in memory
   (`MemoryCharacters`) for the same reason, since the canvas's and the
   inspector's tests drive the real `CastBloc`. The screens not yet taken
   this way still seed real cubits (`TODO.md`, stage 4).

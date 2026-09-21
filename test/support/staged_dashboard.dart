@@ -14,7 +14,7 @@ import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/domain/model_selection.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/cast_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
@@ -29,6 +29,8 @@ import 'package:lore_dub/src/data/repositories/scheme_repository.dart';
 import 'package:lore_dub/src/data/repositories/system_repository.dart';
 import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
+import 'package:lore_dub/src/domain/compute_device.dart';
+import 'package:lore_dub/src/domain/model_package.dart';
 
 /// Every screen's state, built by hand for a test to stage and then put on
 /// the screen through [provide].
@@ -60,6 +62,7 @@ class StagedDashboard {
     GlossaryBloc? glossaryBloc,
     CastBloc? castBloc,
     VoiceCaptureBloc? captureBloc,
+    DownloadsBloc? downloadsBloc,
   }) {
     final native = engine ?? NativeEngineService();
     this.system = system ?? SystemRepository(native);
@@ -84,13 +87,9 @@ class StagedDashboard {
       this.voiceBank,
       this.system,
     );
-    downloads = DownloadsCubit(
-      modelRepository,
-      runtimeRepository,
-      installed,
-      settingsRepository,
-      shell,
-    );
+    downloads =
+        downloadsBloc ??
+        DownloadsBloc(modelRepository, runtimeRepository, installed, settingsRepository, shell);
     sources = SourcesBloc(sourcesRepository, shell);
     pipeline = SessionBloc(
       sessionRepository,
@@ -148,7 +147,7 @@ class StagedDashboard {
 
   late final ShellCubit shell;
   late final SettingsCubit settings;
-  late final DownloadsCubit downloads;
+  late final DownloadsBloc downloads;
   late final SourcesBloc sources;
   late final SessionBloc pipeline;
   late final TranscriptBloc transcript;
@@ -161,6 +160,23 @@ class StagedDashboard {
   late final GlossaryBloc glossary;
   late final PipelineGraphBloc graph;
   late final PipelineFactsBloc facts;
+
+  /// Stages what is on disk and what the machine can run it on, where every
+  /// screen reads it: the repository, which the downloads bloc follows an
+  /// event later with rows that have nothing arriving. A row with a
+  /// download under way is a mock's to stage (`downloadsShowing`).
+  void stageInstalled({
+    List<ModelInstallState> models = const [],
+    ComputeAvailability availability = const ComputeAvailability(),
+  }) => installed.seed(
+    InstalledParts(
+      models: [
+        for (final install in models)
+          ModelInstallState(model: install.model, installed: install.installed),
+      ],
+      availability: availability,
+    ),
+  );
 
   /// What the settings and the installed packages together decided.
   ModelSelection get selection =>

@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/model_selection.dart';
 import '../common/module_label.dart';
 import '../common/section_note.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import 'converter_tile.dart';
 import 'model_failure_row.dart';
 import '../common/tile_grid.dart';
@@ -30,7 +30,7 @@ class VoiceConvertersSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final cubit = context.read<DownloadsCubit>();
+    final cubit = context.read<DownloadsBloc>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -47,10 +47,10 @@ class VoiceConvertersSection extends StatelessWidget {
                 inUse: selection.clonesVoice,
                 running: running,
                 isStopping: downloads.isStopping,
-                onInstall: cubit.installModel,
-                onPause: (state) => cubit.pauseDownload(state.model.id),
-                onCancel: (state) => cubit.cancelDownload(state.model.id),
-                onRemove: cubit.removeModel,
+                onInstall: (state) => cubit.add(ModelInstallAsked(state)),
+                onPause: (state) => cubit.add(DownloadPaused(state.model.id)),
+                onCancel: (state) => cubit.add(DownloadCancelled(state.model.id)),
+                onRemove: (state) => cubit.add(ModelRemoved(state)),
               ),
           ],
         ),

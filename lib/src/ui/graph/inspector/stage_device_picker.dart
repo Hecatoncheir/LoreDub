@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/compute_device.dart';
 import '../../compute_names.dart';
-import '../../dashboard/cubits/downloads_cubit.dart';
+import '../../dashboard/cubits/downloads_bloc.dart';
 import '../../dashboard/cubits/settings_cubit.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_field.dart';
@@ -33,7 +33,7 @@ class StageDevicePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final downloads = context.read<DownloadsCubit>().state;
+    final downloads = context.read<DownloadsBloc>().state;
     final ready = [
       for (final backend in stageBackends(stage))
         if (downloads.isBackendReady(stage, backend)) backend,

@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import 'settings_layout.dart';
 
 /// Where the downloaded models are kept, and a way to open that folder.
@@ -16,13 +16,13 @@ class ModelDirectoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final path = BlocSelector<DownloadsCubit, DownloadsState, String>(
+    final path = BlocSelector<DownloadsBloc, DownloadsState, String>(
       selector: (downloads) => downloads.modelDirectoryPath,
       builder: (context, directory) =>
           SelectableText(directory, style: Theme.of(context).textTheme.bodyMedium),
     );
     final open = OutlinedButton.icon(
-      onPressed: context.read<DownloadsCubit>().openModelDirectory,
+      onPressed: () => context.read<DownloadsBloc>().add(const ModelDirectoryOpened()),
       icon: const Icon(Icons.folder_open_rounded),
       label: Text(l10n.openInExplorer),
     );

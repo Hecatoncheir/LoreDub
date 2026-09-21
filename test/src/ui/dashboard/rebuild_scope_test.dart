@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,7 +27,7 @@ import 'package:lore_dub/src/domain/spoken_language.dart';
 
 import '../../../support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
@@ -33,6 +35,8 @@ import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
+
+import '../../../support/mock_blocs.dart';
 
 /// What one report of download progress costs the rest of the screen.
 ///
@@ -61,6 +65,12 @@ void main() {
     return rebuilt;
   }
 
+  /// The downloads of the screen under test, which a tick is sent down.
+  late StreamController<DownloadsState> ticks;
+
+  /// One tick of a download under way.
+  void tick() => ticks.add(DownloadsState(models: modelsAt(0.11)));
+
   Future<StagedDashboard> pumpAt(
     WidgetTester tester,
     DashboardSection section, {
@@ -87,10 +97,16 @@ void main() {
         ),
         NotificationService(plugin: FlutterLocalNotificationsPlugin()),
       ),
+      // A download is under way on a mock, whose ticks the test sends.
+      downloadsBloc: downloadsShowing(
+        DownloadsState(models: modelsAt(0.10)),
+        then: (ticks = StreamController<DownloadsState>.broadcast()).stream,
+      ),
     );
     addTearDown(cubits.dispose);
+    addTearDown(ticks.close);
     cubits.shell.seed(ShellState(section: section, liveView: liveView, initializing: false));
-    cubits.downloads.seed(DownloadsState(models: modelsAt(0.10)));
+    cubits.stageInstalled(models: modelsAt(0.10));
 
     tester.view.physicalSize = const Size(1280, 900);
     tester.view.devicePixelRatio = 1;
@@ -110,11 +126,11 @@ void main() {
   }
 
   testWidgets('a download tick leaves the live screen untouched', (tester) async {
-    final cubits = await pumpAt(tester, DashboardSection.live);
+    await pumpAt(tester, DashboardSection.live);
 
     final rebuilt = await rebuiltBy(
       tester,
-      () => cubits.downloads.seed(DownloadsState(models: modelsAt(0.11))),
+      tick,
     );
 
     expect(
@@ -125,11 +141,11 @@ void main() {
   });
 
   testWidgets('a download tick redraws the list that shows it', (tester) async {
-    final cubits = await pumpAt(tester, DashboardSection.models);
+    await pumpAt(tester, DashboardSection.models);
 
     await rebuiltBy(
       tester,
-      () => cubits.downloads.seed(DownloadsState(models: modelsAt(0.11))),
+      tick,
     );
 
     expect(find.text('11%'), findsOneWidget, reason: 'the bar has to move');
@@ -150,7 +166,7 @@ void main() {
 
     final rebuilt = await rebuiltBy(
       tester,
-      () => cubits.downloads.seed(DownloadsState(models: modelsAt(0.11))),
+      tick,
     );
 
     expect(

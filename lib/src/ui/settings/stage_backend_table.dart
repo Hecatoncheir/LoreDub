@@ -7,7 +7,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
 import '../compute_names.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import 'stage_backend_cell.dart';
 import 'stage_backend_status.dart';

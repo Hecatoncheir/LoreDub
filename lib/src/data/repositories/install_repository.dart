@@ -45,7 +45,7 @@ class InstalledParts {
 ///
 /// The dubbing screens and the cast screen all have to know which packages
 /// are on disk and what the machine can run them on, and they used to ask
-/// `DownloadsCubit` for it — a screen's cubit, holding progress bars and
+/// `DownloadsBloc` for it — a screen's cubit, holding progress bars and
 /// pause buttons, read by two other screens for the three fields of it
 /// that were not about downloading at all.
 ///

@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/model_selection.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
@@ -23,7 +23,7 @@ class ModelsNeededNotice extends StatelessWidget {
   // What is missing is decided by the packages and the chosen language
   // together, so this notice watches both.
   @override
-  Widget build(BuildContext context) => BlocBuilder<DownloadsCubit, DownloadsState>(
+  Widget build(BuildContext context) => BlocBuilder<DownloadsBloc, DownloadsState>(
     buildWhen: whenChanged((downloads) => downloads.installed),
     builder: (context, _) => BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, _) => ready(context.selection)

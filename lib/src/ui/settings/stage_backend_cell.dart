@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/compute_device.dart';
 import '../compute_names.dart';
 import 'backend_cell.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import 'stage_backend_status.dart';
 import 'backend_cell_look.dart';
@@ -67,7 +67,9 @@ class StageBackendCell extends StatelessWidget {
         tooltip:
             '${l10n.computeRuntimeMissing(formatPackageSize(l10n, runtime.package.approximateBytes))}'
             '\n${l10n.computeCellHintDownload}',
-        onTap: running ? null : () => context.read<DownloadsCubit>().installRuntime(runtime),
+        onTap: running
+            ? null
+            : () => context.read<DownloadsBloc>().add(RuntimeInstallAsked(runtime)),
       ),
       StageBackendNotShipped() => BackendCell(
         key: key,

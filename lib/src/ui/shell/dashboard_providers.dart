@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../dashboard/cubits/cast_bloc.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
+import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/glossary_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/pipeline_facts_bloc.dart';
@@ -60,7 +60,7 @@ class DashboardProviders extends StatelessWidget {
       ),
       BlocProvider(
         lazy: false,
-        create: (context) => DownloadsCubit(
+        create: (context) => DownloadsBloc(
           context.read(),
           context.read(),
           context.read(),
