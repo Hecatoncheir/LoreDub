@@ -200,7 +200,11 @@ class SessionRepository {
     try {
       final config = <String, Object?>{
         'speaker': speaker,
-        // Named even when the screen is what is read: nothing is taken out
+        // The window the frame is read out of, and the game whose sound is
+        // followed. Named even when the screen is what is read: nothing is
+        // taken out of that window then, but it is still the game to turn
+        // down for the length of a line.
+        'processId': process?.pid ?? 0,
         'captureMode': _captureModeOf(reading, hearsVoices: hearsVoices),
         'ocrSource': settings.readsWholeScreen ? 'screen' : 'process',
         'targetLanguage': settings.targetLanguage,

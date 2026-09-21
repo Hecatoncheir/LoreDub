@@ -101,6 +101,14 @@ void main() {
       expect(engine.frameKey, isNotNull);
     });
 
+    test('names the game, whose window the frame is read out of', () async {
+      // Without it the native start refuses a reading of the window
+      // outright, and the game is never turned down under a line.
+      await began(readScreen());
+
+      expect(engine.screenConfig['processId'], game.pid);
+    });
+
     test('snippets: nothing is captured until the key is pressed', () async {
       await began(readScreen(reading: ScreenReading.snippets));
 
