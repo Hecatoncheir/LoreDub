@@ -8,12 +8,12 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../domain/character.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../common/committed_text_field.dart';
-import '../../dashboard/cubits/characters_cubit.dart';
 import '../../dashboard/cubits/pipeline_graph_bloc.dart';
 import '../../dashboard/cubits/shell_cubit.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_field.dart';
 import 'inspector_note.dart';
+import '../../dashboard/cubits/cast_bloc.dart';
 
 /// A card's panel: its name, who reads it, what its voice was measured from,
 /// and the ways to its screen and off the canvas.
@@ -46,7 +46,7 @@ class CharacterNodeFields extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final characters = context.read<CharactersCubit>();
+    final cast = context.read<CastBloc>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -57,7 +57,7 @@ class CharacterNodeFields extends StatelessWidget {
             // that one's name rather than carrying this one's over.
             key: ValueKey('graph-name-${character.id}'),
             value: character.name,
-            onCommitted: (name) => characters.rename(character.id, name),
+            onCommitted: (name) => cast.add(CardRenamed(character.id, name)),
           ),
         ),
         InspectorField(
@@ -78,7 +78,7 @@ class CharacterNodeFields extends StatelessWidget {
               ))
                 DropdownMenuItem(value: other.id, child: Text(other.name, maxLines: 1)),
             ],
-            onChanged: (reader) => characters.voiceAs(character.id, reader),
+            onChanged: (reader) => cast.add(CardVoicedAs(character.id, reader)),
           ),
         ),
         if (chained) InspectorNote(text: l10n.pipelineChained),

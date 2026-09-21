@@ -47,7 +47,6 @@ import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 
 import 'support/staged_dashboard.dart';
 
@@ -65,6 +64,8 @@ import 'package:lore_dub/src/domain/capture_sources.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 
 import 'support/mock_blocs.dart';
+
+import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
 
 /// The size the pictures have always been kept at, and the one the page and
 /// the readme lay out for.
@@ -253,7 +254,7 @@ void main() {
   setUpAll(loadFonts);
   setUp(nameTheVersion);
 
-  StagedDashboard buildCubits({GlossaryBloc? glossary}) {
+  StagedDashboard buildCubits({GlossaryBloc? glossary, VoiceCaptureBloc? capture}) {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
       SessionRepository(NativeEngineService()),
@@ -262,6 +263,7 @@ void main() {
       RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(UpdateService(client: _offline), NotificationService(plugin: _silent)),
       glossaryBloc: glossary,
+      captureBloc: capture,
     );
     addTearDown(cubits.dispose);
     return cubits;
@@ -342,6 +344,7 @@ void main() {
   }) {
     final cubits = buildCubits(
       glossary: glossaryShowing(GlossaryState(glossary: glossary, loaded: true)),
+      capture: captureShowing(const VoiceCaptureState(clips: {'guard', 'smith', 'herbalist'})),
     );
     cubits.shell.seed(
       ShellState(
@@ -375,14 +378,9 @@ void main() {
       TranscriptState(transcript: transcript, speakers: speakers, snapshots: snapshots),
     );
     cubits.sources.seed(const CaptureSources(processes: [game], selected: game));
-    cubits.characters.seed(
-      CharactersState(
-        loading: false,
-        characters: cast[language]!,
-        packs: packs[language]!,
-        clips: const {'guard', 'smith', 'herbalist'},
-      ),
-    );
+    // The cards are the repository's, which the cast screen and the canvas
+    // both read; which of them has a clip to play is the capture's.
+    cubits.cast.seed(CharacterLibrary(characters: cast[language]!, packs: packs[language]!));
     cubits.graph.seed(
       PipelineGraphState(
         loading: false,

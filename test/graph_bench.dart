@@ -32,7 +32,6 @@ import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 
 import 'support/staged_dashboard.dart';
 
@@ -101,7 +100,7 @@ void main() {
         ],
       ),
     );
-    cubits.characters.seed(CharactersState(loading: false, characters: cast()));
+    cubits.cast.seed(CharacterLibrary(characters: cast()));
     cubits.graph.seed(
       PipelineGraphState(
         loading: false,

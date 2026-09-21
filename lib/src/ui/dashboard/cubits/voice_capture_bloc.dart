@@ -3,22 +3,20 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../data/repositories/cast_repository.dart';
 import '../../../data/repositories/install_repository.dart';
-import '../../../data/repositories/settings_repository.dart';
-import '../../../data/repositories/session_repository.dart';
 import '../../../data/repositories/model_repository.dart';
+import '../../../data/repositories/session_repository.dart';
+import '../../../data/repositories/settings_repository.dart';
 import '../../../domain/built_voice.dart';
 import '../../../domain/character.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/engine_event.dart';
 import '../../../domain/failure.dart';
-import '../../../domain/id_source.dart';
 import '../../../domain/game_process.dart';
 import '../../../domain/model_package.dart';
 import '../../../domain/model_selection.dart';
@@ -30,13 +28,11 @@ import 'shell_cubit.dart';
 /// What a card's record button does when pressed.
 enum RecordAction { start, stop }
 
-/// The characters screen: the player's cast, and the session that records a
-/// voice for one of them.
-class CharactersState extends Equatable {
-  const CharactersState({
-    this.characters = const [],
-    this.packs = const [],
-    this.loading = true,
+/// What the characters screen is doing with the engine: the session a voice
+/// is recorded through, the take, a card measured from files, and what is
+/// sounding.
+class VoiceCaptureState extends Equatable {
+  const VoiceCaptureState({
     this.status = PipelineStatus.idle,
     this.recordingId,
     this.heardSeconds = 0,
@@ -48,17 +44,6 @@ class CharactersState extends Equatable {
     this.builtId,
     this.built,
   });
-
-  final List<Character> characters;
-
-  /// The groups the cards are collected into. A character may be in several
-  /// of them, and every character is in the cast whether a pack holds them
-  /// or not.
-  final List<CharacterPack> packs;
-
-  /// Set until the file has been read once, so an empty screen does not
-  /// claim the player has no characters before anyone looked.
-  final bool loading;
 
   /// The recording session: idle until the screen starts it, listening once
   /// the converter is loaded and the game's audio is being captured.
@@ -131,18 +116,7 @@ class CharactersState extends Equatable {
   bool takesFiles({required bool dubbing, required bool converterInstalled}) =>
       converterInstalled && !dubbing && !building && !recording;
 
-  /// The cards [pack] holds, in the order they were dropped into it. An id
-  /// no card answers to is passed over rather than drawn as a gap.
-  List<Character> membersOf(CharacterPack pack) => [
-    for (final id in pack.characterIds)
-      for (final character in characters)
-        if (character.id == id) character,
-  ];
-
-  CharactersState copyWith({
-    List<Character>? characters,
-    List<CharacterPack>? packs,
-    bool? loading,
+  VoiceCaptureState copyWith({
     PipelineStatus? status,
     String? recordingId,
     bool clearRecordingId = false,
@@ -158,10 +132,7 @@ class CharactersState extends Equatable {
     BuiltVoice? built,
     bool clearBuilt = false,
     bool? previewReady,
-  }) => CharactersState(
-    characters: characters ?? this.characters,
-    packs: packs ?? this.packs,
-    loading: loading ?? this.loading,
+  }) => VoiceCaptureState(
     status: status ?? this.status,
     recordingId: clearRecordingId ? null : recordingId ?? this.recordingId,
     heardSeconds: heardSeconds ?? this.heardSeconds,
@@ -176,9 +147,6 @@ class CharactersState extends Equatable {
 
   @override
   List<Object?> get props => [
-    characters,
-    packs,
-    loading,
     status,
     recordingId,
     heardSeconds,
@@ -192,8 +160,111 @@ class CharactersState extends Equatable {
   ];
 }
 
-class CharactersCubit extends Cubit<CharactersState> {
-  CharactersCubit(
+sealed class VoiceCaptureEvent extends Equatable {
+  const VoiceCaptureEvent();
+
+  @override
+  List<Object?> get props => const [];
+}
+
+/// The screen is up: which cards have a clip beside them is read.
+final class VoiceCaptureOpened extends VoiceCaptureEvent {
+  const VoiceCaptureOpened();
+}
+
+/// Starts or ends the session the recordings listen through. [process] is
+/// the game to listen to, chosen on the screen.
+final class RecordingSessionToggled extends VoiceCaptureEvent {
+  const RecordingSessionToggled({required this.initializing, required this.process});
+
+  final bool initializing;
+  final GameProcess? process;
+
+  @override
+  List<Object?> get props => [initializing, process?.pid];
+}
+
+/// Ends the session this screen holds, recording or sample.
+final class RecordingSessionEnded extends VoiceCaptureEvent {
+  const RecordingSessionEnded();
+}
+
+/// Begins measuring what the game says for [id].
+final class RecordingStarted extends VoiceCaptureEvent {
+  const RecordingStarted(this.id);
+
+  final String id;
+
+  @override
+  List<Object?> get props => [id];
+}
+
+/// Closes the take and keeps what it heard as the character's voice.
+final class RecordingStopped extends VoiceCaptureEvent {
+  const RecordingStopped();
+}
+
+/// Measures the voice of [id] from the recordings the player dropped on it.
+final class VoiceFilesDropped extends VoiceCaptureEvent {
+  const VoiceFilesDropped(this.id, this.paths);
+
+  final String id;
+  final List<String> paths;
+
+  @override
+  List<Object?> get props => [id, paths];
+}
+
+/// Speaks a line in the voice the dubbing would read [id] in.
+final class SampleAsked extends VoiceCaptureEvent {
+  const SampleAsked(this.id);
+
+  final String id;
+
+  @override
+  List<Object?> get props => [id];
+}
+
+/// Plays back what [id] was recorded from.
+final class ClipPlayed extends VoiceCaptureEvent {
+  const ClipPlayed(this.id);
+
+  final String id;
+
+  @override
+  List<Object?> get props => [id];
+}
+
+/// Ends whatever is sounding -- a clip or a sample.
+final class SoundStopped extends VoiceCaptureEvent {
+  const SoundStopped();
+}
+
+final class _EngineSaid extends VoiceCaptureEvent {
+  const _EngineSaid(this.event);
+
+  final EngineEvent event;
+}
+
+final class _CastChanged extends VoiceCaptureEvent {
+  const _CastChanged(this.library);
+
+  final CharacterLibrary library;
+}
+
+final class _TakeTicked extends VoiceCaptureEvent {
+  const _TakeTicked();
+}
+
+/// The characters screen's side of the engine: the session a card's voice
+/// is recorded through, a card measured from files, and a sample spoken in
+/// the voice the dubbing would give a card.
+///
+/// It was half of `CharactersCubit`, beside the cards themselves; what a
+/// take is measured into is written to the card through `CastRepository`,
+/// which is where the cards are read from as well.
+class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
+  VoiceCaptureBloc(
     this._session,
     this._modelRepository,
     this._settings,
@@ -203,20 +274,28 @@ class CharactersCubit extends Cubit<CharactersState> {
     this._cast, {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
-       _ids = IdSource(clock: clock),
-       super(const CharactersState()) {
-    _sessions.cast = stopSession;
-    _sessions.castHolds = () => state.running || state.previewReady;
+       super(const VoiceCaptureState()) {
+    on<VoiceCaptureOpened>(_onOpened);
+    on<RecordingSessionToggled>(_onToggled);
+    on<RecordingSessionEnded>((event, emit) => _stopSession(emit));
+    on<RecordingStarted>(_onRecordingStarted);
+    on<RecordingStopped>((event, emit) => _stopRecording(emit));
+    on<VoiceFilesDropped>(_onFilesDropped);
+    on<SampleAsked>(_onSampleAsked);
+    on<ClipPlayed>(_onClipPlayed);
+    on<SoundStopped>((event, emit) {
+      if (state.sounding) _session.stopWave();
+    });
+    on<_EngineSaid>(_onEngine);
+    on<_CastChanged>(_onCastChanged);
+    on<_TakeTicked>(_onTicked);
+    _sessions
+      ..cast = _endForDubbing
+      ..castHolds = () => state.running || state.previewReady;
     // One engine serves every screen in turn and the same stream reaches
     // them all; this screen picks its own out of it.
-    _engine = _session.events.listen(handleEvent);
-    // The canvas works on the same cards, through the same repository, so
-    // a substitution drawn there shows up here without either screen
-    // knowing about the other.
-    _written = _cast.changes.listen(
-      (CharacterLibrary library) =>
-          emit(state.copyWith(characters: library.characters, packs: library.packs)),
-    );
+    _engine = _session.events.listen((event) => add(_EngineSaid(event)));
+    _written = _cast.changes.listen((library) => add(_CastChanged(library)));
   }
 
   /// A recording keeps the clearest voice it has heard, not the last: a
@@ -231,9 +310,8 @@ class CharactersCubit extends Cubit<CharactersState> {
   final SessionCoordinator _sessions;
   final CastRepository _cast;
   final DateTime Function() _clock;
-  StreamSubscription<CharacterLibrary>? _written;
-  StreamSubscription<EngineEvent>? _engine;
-  final IdSource _ids;
+  late final StreamSubscription<EngineEvent> _engine;
+  late final StreamSubscription<CharacterLibrary> _written;
 
   /// Whether one of the dubbing screens holds the worker.
   ///
@@ -254,6 +332,13 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// so the player can hear back what they recorded.
   String? _heardClip;
 
+  /// How much the take was measured to hold, as the converter read it.
+  double _heardSeconds = 0;
+
+  /// The clock the card counts a take by, and the ticks that show it.
+  DateTime? _recordingSince;
+  Timer? _recordingTicks;
+
   ModelSelection get _selection =>
       ModelSelection(models: _downloads.parts.models, settings: _settings.settings);
 
@@ -271,183 +356,37 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// voice they recorded went.
   bool get carriesTimbre => _selection.clonesVoice;
 
-  Future<void> load() async {
+  /// What a dubbing screen asks for to take the worker over: this screen's
+  /// session ended, and the call answering once it has.
+  Future<void> _endForDubbing() async {
+    if (isClosed || (!state.running && !state.previewReady)) return;
+    add(const RecordingSessionEnded());
+    await stream
+        .firstWhere((now) => !now.running && !now.previewReady)
+        .then<void>((_) {}, onError: (Object _) {});
+  }
+
+  /// The cards with a clip beside them. A directory that cannot be read
+  /// costs a play button, not the cast: the cards themselves are elsewhere.
+  Future<void> _onOpened(VoiceCaptureOpened event, Emitter<VoiceCaptureState> emit) async {
     try {
-      final library = await _cast.load();
-      final clips = await _listClips();
-      if (isClosed) return;
-      emit(
-        state.copyWith(
-          characters: library.characters,
-          packs: library.packs,
-          clips: clips,
-          loading: false,
-        ),
-      );
-    } catch (exception) {
-      if (isClosed) return;
-      emit(state.copyWith(loading: false));
-      _errors.report(exception);
+      emit(state.copyWith(clips: await _cast.clips()));
+    } on Object {
+      // No clips to play is the screen as it is for an imported cast.
     }
   }
 
-  /// Adds an empty card for the player to name and record.
-  Future<Character> add(String name) async {
-    final character = Character(id: _ids.next(), name: name, vector: const []);
-    await _write(characters: [...state.characters, character]);
-    return character;
-  }
-
-  Future<void> rename(String id, String name) async {
-    await _write(
-      characters: [
-        for (final character in state.characters)
-          if (character.id == id) character.copyWith(name: name) else character,
-      ],
-    );
-  }
-
-  /// Reads [id] in [target]'s voice wherever they are recognized, or in
-  /// their own again when [target] is null.
-  ///
-  /// This is the standing choice the card carries into every game; a game's
-  /// own choice in Live overrides it. A card cannot be given its own voice,
-  /// which would say nothing.
-  Future<void> voiceAs(String id, String? target) async {
-    try {
-      await _cast.voiceAs(id, target);
-    } catch (exception) {
-      _errors.report(exception);
-    }
-  }
-
-  /// The cards that are out of the mix, as the graph now draws them: each
-  /// of them lends its voice to nobody and is read as it is heard.
-  ///
-  /// Nothing of the cards changes — who stands in for whom waits in them —
-  /// so there is nothing to write; only a session already running has to be
-  /// told, or it would go on reading the cast until the next start.
-  Future<void> readAsHeard(Set<String> value) async {
-    try {
-      await _cast.readAsHeard(value);
-    } catch (exception) {
-      _errors.report(exception);
-    }
-  }
-
-  Future<void> remove(String id) async {
-    if (state.recordingId == id) await stopRecording();
-    await _dropClip(id);
-    if (isClosed) return;
-    emit(state.copyWith(clips: {...state.clips}..remove(id)));
-    await _write(
-      characters: [
-        for (final character in state.characters)
-          if (character.id != id) character,
-      ],
-      // A card thrown away leaves every pack that held it, so no pack draws
-      // a member that is no longer in the cast.
-      packs: [
-        for (final pack in state.packs) pack.withoutCharacter(id),
-      ],
-    );
-  }
-
-  /// Adds an empty pack for the player to name and drop cards into.
-  Future<CharacterPack> addPack(String name) async {
-    final pack = CharacterPack(id: _ids.next(), name: name);
-    await _write(packs: [...state.packs, pack]);
-    return pack;
-  }
-
-  Future<void> renamePack(String id, String name) async {
-    await _write(
-      packs: [
-        for (final pack in state.packs)
-          if (pack.id == id) pack.copyWith(name: name) else pack,
-      ],
-    );
-  }
-
-  /// Throws the group away and leaves the cards. The player recorded them;
-  /// only the grouping was ever the pack's.
-  Future<void> removePack(String id) async {
-    await _write(
-      packs: [
-        for (final pack in state.packs)
-          if (pack.id != id) pack,
-      ],
-    );
-  }
-
-  /// Puts [characterId] in [packId], where a card dropped on a pack lands.
-  Future<void> addToPack(String packId, String characterId) async {
-    if (!state.characters.any((character) => character.id == characterId)) return;
-    await _write(
-      packs: [
-        for (final pack in state.packs)
-          if (pack.id == packId) pack.withCharacter(characterId) else pack,
-      ],
-    );
-  }
-
-  Future<void> removeFromPack(String packId, String characterId) async {
-    await _write(
-      packs: [
-        for (final pack in state.packs)
-          if (pack.id == packId) pack.withoutCharacter(characterId) else pack,
-      ],
-    );
-  }
-
-  /// Lays imported cards and packs over the ones they came from. What comes
-  /// back is how many of each were read, so the screen can say so.
-  Future<({int characters, int packs})> import(List<String> files) async {
-    try {
-      final incoming = await _cast.readFiles(files);
-      final characters = mergeCharacters(state.characters, incoming.characters);
-      await _write(
-        characters: characters,
-        packs: prunePacks(mergePacks(state.packs, incoming.packs), characters),
-      );
-      return (characters: incoming.characters.length, packs: incoming.packs.length);
-    } catch (exception) {
-      _errors.report(exception);
-      return (characters: 0, packs: 0);
-    }
-  }
-
-  /// Writes one card, the whole cast, or a pack with the cards it holds.
-  Future<void> export(
-    String destination,
-    List<Character> characters, {
-    CharacterPack? pack,
-  }) async {
-    try {
-      await _cast.exportTo(
-        destination,
-        CharacterLibrary(characters: characters, packs: [?pack]),
-      );
-    } catch (exception) {
-      _errors.report(exception);
-    }
-  }
-
-  /// Starts or ends the session the recordings listen through. [process] is
-  /// the game to listen to, chosen on the screen.
-  Future<void> toggleSession({required bool initializing, required GameProcess? process}) async {
-    if (state.running) return stopSession();
-    if (initializing || _workerTaken || !canRecord) return;
+  Future<void> _onToggled(RecordingSessionToggled event, Emitter<VoiceCaptureState> emit) async {
+    if (state.running) return _stopSession(emit);
+    if (event.initializing || _workerTaken || !canRecord) return;
     _errors.report(null);
     emit(state.copyWith(status: PipelineStatus.starting));
     try {
       final settings = _settings.settings;
       await _session.startCharacterVoices(
-        process: process,
+        process: event.process,
         settings: settings,
-        converterDirectory: await _modelRepository.directoryFor(
-          _selection.voiceConverter!.model,
-        ),
+        converterDirectory: await _modelRepository.directoryFor(_selection.voiceConverter!.model),
         converterBackend: settings.backendFor(
           ComputeStage.voiceConversion,
           _downloads.parts.availability,
@@ -464,31 +403,26 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
   }
 
-  Future<void> stopSession() async {
-    _recordingTicks?.cancel();
-    _recordingTicks = null;
-    _recordingSince = null;
-    // Live calls this too, to take the worker over. Without a session of
+  Future<void> _stopSession(Emitter<VoiceCaptureState> emit) async {
+    _endTicks();
+    // Live asks for this too, to take the worker over. Without a session of
     // this screen's there is nothing to end, and stopping the engine would
     // take down the one that is about to start.
     if (!state.running && !state.previewReady) return;
-    if (state.recording) await stopRecording();
+    if (state.recording) await _stopRecording(emit);
     try {
       await _session.stop();
     } catch (exception) {
       _errors.report(exception);
     }
-    if (isClosed) return;
     emit(state.copyWith(status: PipelineStatus.idle, previewReady: false));
   }
 
-  /// Begins measuring what the game says for [id].
-  ///
   /// The take runs until it is stopped: nothing in the game — a pause, a
   /// line that runs long — ends it, so what the card is measured from is
   /// everything heard in between. Three minutes is the ceiling, since a
   /// recording nobody stopped is a mistake rather than a wish.
-  void startRecording(String id) {
+  void _onRecordingStarted(RecordingStarted event, Emitter<VoiceCaptureState> emit) {
     if (!state.running || state.recording) return;
     _heard = null;
     _heardGender = null;
@@ -499,35 +433,32 @@ class CharactersCubit extends Cubit<CharactersState> {
     // seconds itself rather than leaving the player without an answer.
     _recordingSince = _clock();
     _recordingTicks?.cancel();
-    _recordingTicks = Timer.periodic(const Duration(milliseconds: 200), (_) {
-      if (isClosed || _recordingSince == null) return;
-      emit(
-        state.copyWith(
-          heardSeconds: _clock().difference(_recordingSince!).inMilliseconds / 1000,
-        ),
-      );
-    });
-    emit(state.copyWith(recordingId: id, heardSeconds: 0));
+    _recordingTicks = Timer.periodic(
+      const Duration(milliseconds: 200),
+      (_) => add(const _TakeTicked()),
+    );
+    emit(state.copyWith(recordingId: event.id, heardSeconds: 0));
   }
 
-  /// The clock the card counts a take by, and the ticks that show it.
-  DateTime? _recordingSince;
-  Timer? _recordingTicks;
+  void _onTicked(_TakeTicked event, Emitter<VoiceCaptureState> emit) {
+    final since = _recordingSince;
+    if (since == null) return;
+    emit(state.copyWith(heardSeconds: _clock().difference(since).inMilliseconds / 1000));
+  }
 
-  /// How much the take was measured to hold, as the converter read it.
-  double _heardSeconds = 0;
-
-  /// Closes the take and keeps what it heard as the character's voice.
-  Future<void> stopRecording() async {
-    final id = state.recordingId;
-    if (id == null) return;
+  void _endTicks() {
     _recordingTicks?.cancel();
     _recordingTicks = null;
     _recordingSince = null;
+  }
+
+  Future<void> _stopRecording(Emitter<VoiceCaptureState> emit) async {
+    final id = state.recordingId;
+    if (id == null) return;
+    _endTicks();
     // The take is one recording, and it is this call that closes it: what
     // the converter makes of it lands while this waits.
     await _session.recordCharacterVoice(recording: false);
-    if (isClosed) return;
     final heard = _heard;
     final clip = _heardClip;
     var kept = state.clips;
@@ -543,53 +474,38 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
     emit(state.copyWith(clearRecordingId: true, clips: kept, heardSeconds: 0));
     if (heard == null) return;
-    await _write(
-      characters: [
-        for (final character in state.characters)
-          if (character.id == id)
-            character.copyWith(
-              vector: heard,
-              gender: _heardGender,
-              clearGender: _heardGender == null,
-              seconds: _heardSeconds,
-            )
-          else
-            character,
-      ],
+    await _writeVoice(
+      id,
+      vector: heard,
+      gender: _heardGender,
+      seconds: _heardSeconds,
     );
   }
 
-  /// What the session reported: the state it is in, and the voices it heard
-  /// while a card was recording.
-  void handleEvent(EngineEvent event) {
-    switch (event) {
-      case SessionStateChanged():
-        _onSessionState(event);
-      case CharacterVoiceMeasured():
+  void _onEngine(_EngineSaid said, Emitter<VoiceCaptureState> emit) {
+    switch (said.event) {
+      case final SessionStateChanged event:
+        // The dubbing screens hold the worker in their turn, and a session
+        // of theirs is not this screen's to show. An event naming no
+        // session is the engine coming to rest, which ends this one too.
+        if (!event.concerns(PipelineSession.characters)) return;
+        emit(
+          state.copyWith(
+            status: event.status,
+            // Whichever of the two this is, the worker a sample was loaded
+            // into is gone: at rest the engine holds none, and the one that
+            // records has no speech model in it. Left standing, the next
+            // sample skipped the loading and was told there was no worker.
+            previewReady: false,
+          ),
+        );
+      case final CharacterVoiceMeasured event:
         _onCharacterVoice(event);
       // The dubbing screens read the rest; this one is only in the stream
       // because the same engine serves them all in turn.
       default:
         break;
     }
-  }
-
-  /// The session has started, come up or come to rest.
-  void _onSessionState(SessionStateChanged event) {
-    // The dubbing screens hold the worker in their turn, and a session of
-    // theirs is not this screen's to show. An event naming no session is the
-    // engine coming to rest, which ends this one as well.
-    if (!event.concerns(PipelineSession.characters)) return;
-    emit(
-      state.copyWith(
-        status: event.status,
-        // Whichever of the two this is, the worker a sample was loaded into
-        // is gone: at rest the engine holds none, and the one that records
-        // has no speech model in it. Left standing, the next sample skipped
-        // the loading and was told there was no worker.
-        previewReady: false,
-      ),
-    );
   }
 
   /// What was measured from the take a card is recording.
@@ -607,28 +523,26 @@ class CharactersCubit extends Cubit<CharactersState> {
     _heardSeconds = seconds;
   }
 
-  /// Throws away the clip of a card that is going. A clip left behind costs
-  /// a few kilobytes; failing to remove it must not keep the card.
-  Future<void> _dropClip(String id) async {
-    try {
-      await _cast.removeClip(id);
-    } on Object {
-      // Nothing to tell the player: the card goes either way.
-    }
+  /// A card thrown away takes its clip and its take with it: the take is
+  /// closed rather than written to a card that is gone.
+  Future<void> _onCastChanged(_CastChanged event, Emitter<VoiceCaptureState> emit) async {
+    final ids = {for (final card in event.library.characters) card.id};
+    final recordingGone = state.recordingId != null && !ids.contains(state.recordingId);
+    if (recordingGone) await _stopRecording(emit);
+    final clips = state.clips.where(ids.contains).toSet();
+    if (clips.length != state.clips.length) emit(state.copyWith(clips: clips));
   }
 
-  /// Measures the voice of [id] from the recordings the player dropped onto
-  /// the card, whatever they are encoded as.
-  ///
   /// The files are averaged rather than picked between, which is what makes
   /// a card built this way steadier than one built from a single line, and
   /// what came of it — how many files were used, how well they agreed, which
-  /// ones held no voice — is kept in [CharactersState.built] for the card to
-  /// show. The clip the fingerprint stands closest to becomes the one the
+  /// ones held no voice — is kept in [VoiceCaptureState.built] for the card
+  /// to show. The clip the fingerprint stands closest to becomes the one the
   /// card plays back, so what the player hears is a recording they gave it.
-  Future<void> voiceFromFiles(String id, List<String> paths) async {
+  Future<void> _onFilesDropped(VoiceFilesDropped event, Emitter<VoiceCaptureState> emit) async {
+    final (id, paths) = (event.id, event.paths);
     if (paths.isEmpty || state.building || state.recording || _workerTaken || !canRecord) return;
-    if (!state.characters.any((character) => character.id == id)) return;
+    if (!_cast.cast.any((character) => character.id == id)) return;
     _errors.report(null);
     emit(state.copyWith(buildingId: id, clearBuilt: true));
     // A session the player started is theirs to end; one borrowed here to
@@ -638,24 +552,21 @@ class CharactersCubit extends Cubit<CharactersState> {
       if (!state.running) borrowed = await _startForFiles();
       final built = await _session.buildVoice(paths);
       final clips = await _keptClips(id, built.anchor);
-      if (isClosed) return;
       emit(state.copyWith(built: built, builtId: id, clips: clips));
-      await _write(characters: _withVoiceBuilt(id, built));
+      await _writeVoice(id, vector: built.vector, gender: built.gender, seconds: built.seconds);
     } catch (exception) {
       // Another screen taking the worker over is no failure of this one.
       if (!isPipelineStopped(exception)) _errors.report(exception);
     } finally {
       if (borrowed != null) await _stopBorrowed(borrowed);
-      if (!isClosed) {
-        emit(
-          state.copyWith(
-            clearBuildingId: true,
-            // A start that never came up borrowed nothing, and whatever the
-            // screen shows by now was put there by somebody else.
-            status: borrowed == null ? state.status : PipelineStatus.idle,
-          ),
-        );
-      }
+      emit(
+        state.copyWith(
+          clearBuildingId: true,
+          // A start that never came up borrowed nothing, and whatever the
+          // screen shows by now was put there by somebody else.
+          status: borrowed == null ? state.status : PipelineStatus.idle,
+        ),
+      );
     }
   }
 
@@ -675,11 +586,9 @@ class CharactersCubit extends Cubit<CharactersState> {
     );
   }
 
-  /// The clips with [anchor] kept as [id]'s: the recording the fingerprint
-  /// stands closest to, so the card plays back one the player gave it.
-  ///
-  /// A card without its clip is still a card — only the play button goes —
-  /// so a clip that cannot be kept is reported and passed over.
+  /// The clips with [anchor] kept as [id]'s. A card without its clip is still
+  /// a card — only the play button goes — so a clip that cannot be kept is
+  /// reported and passed over.
   Future<Set<String>> _keptClips(String id, String? anchor) async {
     if (anchor == null) return state.clips;
     try {
@@ -691,24 +600,10 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
   }
 
-  /// The cast with [id]'s card carrying what the files were measured into.
-  List<Character> _withVoiceBuilt(String id, BuiltVoice built) => [
-    for (final character in state.characters)
-      if (character.id == id)
-        character.copyWith(
-          vector: built.vector,
-          gender: built.gender,
-          clearGender: built.gender == null,
-          seconds: built.seconds,
-        )
-      else
-        character,
-  ];
-
   /// Puts down the session borrowed to measure files — that one, and no
-  /// other. The files may have taken a while, and Live starting meanwhile
-  /// takes the worker over without a word to this screen: what the engine
-  /// holds by now is the dubbing, which a plain stop used to end.
+  /// other. Live starting meanwhile takes the worker over without a word to
+  /// this screen: what the engine holds by now is the dubbing, which a plain
+  /// stop used to end.
   Future<void> _stopBorrowed(int session) async {
     try {
       await _session.stopSession(session);
@@ -717,38 +612,24 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
   }
 
-  /// Ends whatever the screen has sounding — a recording being played back
-  /// or a sample being spoken. The clip's own call returns as though it had
-  /// reached the end, so the card puts its button back by itself.
-  void stopSounding() {
-    if (!state.sounding) return;
-    _session.stopWave();
-  }
-
-  /// Speaks [text] in the voice the dubbing would read [id] in, and plays
-  /// it, so the player can hear a card before a word of the game is dubbed.
-  ///
-  /// The speech model is loaded for it, which the recording session does
-  /// without — the first sample waits for that, the ones after it do not.
-  /// Recording is the other way round, and so is measuring files, so neither
-  /// runs together with a sample.
-  Future<void> preview(String id) async {
+  /// The speech model is loaded for a sample, which the recording session
+  /// does without — the first sample waits for that, the ones after it do
+  /// not. Recording is the other way round, and so is measuring files, so
+  /// neither runs together with a sample.
+  Future<void> _onSampleAsked(SampleAsked event, Emitter<VoiceCaptureState> emit) async {
     if (state.sounding || state.running || state.building || _workerTaken || !canPreview) return;
-    final character = state.characters.where((value) => value.id == id).firstOrNull;
+    final cast = _cast.cast;
+    final character = cast.where((value) => value.id == event.id).firstOrNull;
     if (character == null) return;
-    emit(state.copyWith(previewingId: id));
+    emit(state.copyWith(previewingId: event.id));
     try {
       final selection = _selection;
       // A card read in another's voice is heard as that other: the sample
-      // answers what the dubbing will do, not what the card holds.
-      // One hop only, as the worker reads it: a card read by a card that is
-      // itself read by a third keeps its own reader.
-      final read =
-          state.characters.where((value) => value.id == character.voicedBy).firstOrNull ??
-          character;
+      // answers what the dubbing will do, not what the card holds. One hop
+      // only, as the worker reads it.
+      final read = cast.where((value) => value.id == character.voicedBy).firstOrNull ?? character;
       if (!state.previewReady) {
         await _loadSpeechForPreview();
-        if (isClosed) return;
         emit(state.copyWith(previewReady: true));
       }
       await _session.previewVoice(
@@ -762,12 +643,10 @@ class CharactersCubit extends Cubit<CharactersState> {
       // Another screen taking the worker over is no failure of this one.
       if (!isPipelineStopped(exception)) _errors.report(exception);
     } finally {
-      if (!isClosed) emit(state.copyWith(clearPreviewingId: true));
+      emit(state.copyWith(clearPreviewingId: true));
     }
   }
 
-  /// Loads the speech model and the converter, without the translator: the
-  /// first sample waits for that, the ones after it do not.
   Future<void> _loadSpeechForPreview() async {
     final selection = _selection;
     final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
@@ -791,49 +670,50 @@ class CharactersCubit extends Cubit<CharactersState> {
     );
   }
 
-  /// The cards with a clip beside them. A directory that cannot be read
-  /// costs a play button, not the cast: the cards themselves are elsewhere.
-  Future<Set<String>> _listClips() async {
-    try {
-      return await _cast.clips();
-    } on Object {
-      return const {};
-    }
-  }
-
   /// Plays back what the card was recorded from, so the player can hear
   /// whether they caught the right character.
-  Future<void> playClip(String id) async {
+  Future<void> _onClipPlayed(ClipPlayed event, Emitter<VoiceCaptureState> emit) async {
     if (state.sounding) return;
     try {
-      final clip = await _cast.clipFor(id);
+      final clip = await _cast.clipFor(event.id);
       if (clip == null) {
         // The file went missing under us; the button goes with it.
-        if (!isClosed) emit(state.copyWith(clips: {...state.clips}..remove(id)));
+        emit(state.copyWith(clips: {...state.clips}..remove(event.id)));
         return;
       }
-      if (!isClosed) emit(state.copyWith(playingId: id));
+      emit(state.copyWith(playingId: event.id));
       await _session.playWave(clip);
     } catch (exception) {
       _errors.report(exception);
     } finally {
-      if (!isClosed) emit(state.copyWith(clearPlayingId: true));
+      emit(state.copyWith(clearPlayingId: true));
     }
   }
 
-  /// Writes the cards and the packs -- they go in one file, so both are
-  /// written whichever changed.
-  ///
-  /// Nothing is emitted here. The repository publishes as it writes and
-  /// this cubit is listening, so the change is on screen before this
-  /// returns; emitting as well made the screen a second writer, and its
-  /// own echo arriving afterwards put the older list back.
-  Future<void> _write({List<Character>? characters, List<CharacterPack>? packs}) async {
+  /// Writes what was measured into [id]'s card, through the repository the
+  /// cards are read from.
+  Future<void> _writeVoice(
+    String id, {
+    required List<double> vector,
+    required String? gender,
+    required double seconds,
+  }) async {
     try {
       await _cast.save(
         CharacterLibrary(
-          characters: characters ?? _cast.cast,
-          packs: packs ?? _cast.library.packs,
+          characters: [
+            for (final character in _cast.cast)
+              if (character.id == id)
+                character.copyWith(
+                  vector: vector,
+                  gender: gender,
+                  clearGender: gender == null,
+                  seconds: seconds,
+                )
+              else
+                character,
+          ],
+          packs: _cast.library.packs,
         ),
       );
     } catch (exception) {
@@ -845,26 +725,16 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// game it records through is shared, and the other screens close their
   /// pickers on it.
   @override
-  void onChange(Change<CharactersState> change) {
+  void onChange(Change<VoiceCaptureState> change) {
     super.onChange(change);
     _sessions.reportCast(running: change.nextState.running);
   }
 
-  /// Stages a state a widget test wants to render without reading a file.
-  ///
-  /// The cards go to the repository as well: the canvas draws them from
-  /// there, and a test that staged only this cubit drew a cast on one
-  /// screen and none on the other.
-  @visibleForTesting
-  void seed(CharactersState value) {
-    emit(value);
-    _cast.seed(CharacterLibrary(characters: value.characters, packs: value.packs));
-  }
-
   @override
   Future<void> close() async {
-    await _written?.cancel();
-    await _engine?.cancel();
+    _endTicks();
+    await _engine.cancel();
+    await _written.cancel();
     return super.close();
   }
 }

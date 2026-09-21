@@ -97,7 +97,7 @@ void main() {
     graph = cubits.graph;
     repository.stored = const CharacterLibrary(characters: [guard, smith]);
     await cubits.settings.load();
-    await cubits.characters.load();
+    await cubits.cast.load();
     graph.add(const PipelineGraphOpened());
     graph.add(const PipelineCharacterPlaced('guard'));
     graph.add(const PipelineCharacterPlaced('smith'));
@@ -316,7 +316,7 @@ void main() {
       isNull,
     );
     expect(
-      cubits.characters.state.characters.firstWhere((value) => value.id == 'guard').voicedBy,
+      cubits.cast.cast.firstWhere((value) => value.id == 'guard').voicedBy,
       isNull,
       reason: 'a note on the canvas changes nothing of the cast',
     );
@@ -652,7 +652,7 @@ void main() {
       reason: 'asked to go, it goes, link or no link',
     );
     expect(
-      cubits.characters.state.characters.firstWhere((value) => value.id == 'guard').voicedBy,
+      cubits.cast.cast.firstWhere((value) => value.id == 'guard').voicedBy,
       'smith',
       reason: 'taking a card off the canvas is not taking the voice away',
     );

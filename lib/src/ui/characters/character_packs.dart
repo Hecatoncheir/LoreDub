@@ -10,12 +10,12 @@ import '../common/file_dialogs.dart';
 import '../../domain/character.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/characters_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/module_label.dart';
 import '../common/area_heading.dart';
 import '../common/confirm_dialog.dart';
 import 'character_pack_area.dart';
+import '../dashboard/cubits/cast_bloc.dart';
 
 /// The packs: named areas cards are dropped into, handed on and thrown away
 /// as a group. Throwing one away leaves the cards in the cast — the player
@@ -24,12 +24,17 @@ class CharacterPacks extends StatelessWidget {
   const CharacterPacks({super.key});
 
   Future<void> _import(BuildContext context) async {
-    final charactersCubit = context.read<CharactersCubit>();
-    final l10n = AppLocalizations.of(context);
+    final cast = context.read<CastBloc>();
     final chosen = await context.read<FileDialogs>().openJson();
     if (chosen.isEmpty) return;
-    final added = await charactersCubit.import(chosen);
-    if (!context.mounted) return;
+    cast.add(CastImported(chosen));
+  }
+
+  /// What an import read, said once it has been read.
+  static void _sayImported(BuildContext context, CastState state) {
+    final added = state.lastImport;
+    if (added == null) return;
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -42,15 +47,15 @@ class CharacterPacks extends StatelessWidget {
   }
 
   Future<void> _export(BuildContext context, CharacterPack pack, List<Character> members) async {
-    final characters = context.read<CharactersCubit>();
+    final cast = context.read<CastBloc>();
     final name = pack.name.trim().isEmpty ? 'pack' : pack.name;
     final location = await context.read<FileDialogs>().saveJson('$name.json');
     if (location == null) return;
-    await characters.export(location, members, pack: pack);
+    cast.add(CastExported(location, members, pack: pack));
   }
 
   Future<void> _confirmDelete(BuildContext context, CharacterPack pack) async {
-    final characters = context.read<CharactersCubit>();
+    final cast = context.read<CastBloc>();
     final l10n = AppLocalizations.of(context);
     final confirmed = await confirmRemoval(
       context,
@@ -59,14 +64,15 @@ class CharacterPacks extends StatelessWidget {
       cancelLabel: l10n.charactersDeleteCancel,
       confirmLabel: l10n.charactersDeleteConfirm,
     );
-    if (confirmed) await characters.removePack(pack.id);
+    if (confirmed) cast.add(PackRemoved(pack.id));
   }
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<CharactersCubit, CharactersState>(
-    buildWhen: whenChanged(
-      (characters) => (characters.characters, characters.packs, characters.loading),
-    ),
+  Widget build(BuildContext context) => BlocConsumer<CastBloc, CastState>(
+    // Once for each import, however much it held.
+    listenWhen: (was, now) => was.lastImport != now.lastImport,
+    listener: _sayImported,
+    buildWhen: whenChanged((cast) => (cast.characters, cast.packs, cast.loading)),
     builder: (context, state) {
       final l10n = AppLocalizations.of(context);
       return Card(
@@ -88,7 +94,7 @@ class CharacterPacks extends StatelessWidget {
                   ),
                   FilledButton.icon(
                     key: const ValueKey('packsAdd'),
-                    onPressed: () => context.read<CharactersCubit>().addPack(l10n.packsNewName),
+                    onPressed: () => context.read<CastBloc>().add(PackAdded(l10n.packsNewName)),
                     icon: const Icon(Icons.create_new_folder_outlined, size: 18),
                     label: Text(l10n.packsAdd),
                   ),
@@ -119,18 +125,17 @@ class CharacterPacks extends StatelessWidget {
                             pack: pack,
                             members: state.membersOf(pack),
                             onRename: (name) =>
-                                context.read<CharactersCubit>().renamePack(pack.id, name),
+                                context.read<CastBloc>().add(PackRenamed(pack.id, name)),
                             onExport: pack.characterIds.isEmpty
                                 ? null
                                 : () => _export(context, pack, state.membersOf(pack)),
                             onDelete: () => _confirmDelete(context, pack),
-                            onDrop: (drag) => context.read<CharactersCubit>().addToPack(
-                              pack.id,
-                              drag.character.id,
+                            onDrop: (drag) => context.read<CastBloc>().add(
+                              CardPacked(pack.id, drag.character.id),
                             ),
-                            onRemoveMember: (character) => context
-                                .read<CharactersCubit>()
-                                .removeFromPack(pack.id, character.id),
+                            onRemoveMember: (character) => context.read<CastBloc>().add(
+                              CardUnpacked(pack.id, character.id),
+                            ),
                           ),
                           const SizedBox(height: 12),
                         ],

@@ -3,12 +3,11 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
 
 void main() {
-  const idle = CharactersState(loading: false, clips: {'ann'});
-  const recording = CharactersState(
-    loading: false,
+  const idle = VoiceCaptureState(clips: {'ann'});
+  const recording = VoiceCaptureState(
     status: PipelineStatus.listening,
     recordingId: 'ann',
   );
@@ -34,7 +33,7 @@ void main() {
     expect(idle.recordActionFor('ann'), isNull, reason: 'no session to record through');
     expect(recording.recordActionFor('ann'), RecordAction.stop);
     expect(recording.recordActionFor('bob'), isNull, reason: 'another card is recording');
-    const listening = CharactersState(loading: false, status: PipelineStatus.listening);
+    const listening = VoiceCaptureState(status: PipelineStatus.listening);
     expect(listening.recordActionFor('bob'), RecordAction.start);
   });
 

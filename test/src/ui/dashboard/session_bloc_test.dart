@@ -29,7 +29,6 @@ import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/model_selection.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 
 import '../../../support/staged_dashboard.dart';
 
@@ -40,6 +39,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
 
 /// A dubbed line as the engine reports it, with only the parts a test
 /// cares about spelled out.
@@ -170,14 +170,13 @@ void main() {
   test('takes the worker over from the characters screen', () async {
     // The recording session holds the worker with no whisper in it, so live
     // dubbing cannot share it: it starts afresh, as it does over a snapshot.
-    cubits.characters.seed(
-      const CharactersState(loading: false, status: PipelineStatus.listening),
-    );
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    cubits.voices.emit(const VoiceCaptureState(status: PipelineStatus.listening));
 
     cubits.pipeline.add(const LiveToggled(initializing: false));
     await settle();
 
-    expect(cubits.characters.state.running, isFalse, reason: 'the recording gave way');
+    expect(cubits.voices.state.running, isFalse, reason: 'the recording gave way');
     expect(repository.stops, 1);
     expect(repository.starts, 1);
     expect(cubits.pipeline.state.session, PipelineSession.live);

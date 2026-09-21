@@ -11,37 +11,41 @@ import '../common/confirm_dialog.dart';
 import 'character_tile.dart';
 import 'character_tile_actions.dart';
 import 'character_tile_model.dart';
-import '../dashboard/cubits/characters_cubit.dart';
+import '../dashboard/cubits/cast_bloc.dart';
+import '../dashboard/cubits/voice_capture_bloc.dart';
 
 /// One card of the cast, wired to what can be done to it right now.
 ///
 /// Which of its buttons work is the state's to say (`canPlayClip`,
 /// `canPreview`, `recordActionFor`, `takesFiles`); this only hands the
-/// answers to the tile and the presses back to the cubit.
+/// answers to the tile and the presses back to the two blocs: what is done
+/// to the card is the cast's, what is done with its voice the capture's.
 class CastCard extends StatelessWidget {
   const CastCard({
     super.key,
     required this.character,
-    required this.state,
+    required this.cast,
+    required this.capture,
     required this.dubbing,
   });
 
   final Character character;
-  final CharactersState state;
+  final CastState cast;
+  final VoiceCaptureState capture;
 
   /// A dubbing session holds the worker.
   final bool dubbing;
 
   Future<void> _export(BuildContext context) async {
-    final cubit = context.read<CharactersCubit>();
+    final cast = context.read<CastBloc>();
     final name = character.name.trim().isEmpty ? 'character' : character.name;
     final location = await context.read<FileDialogs>().saveJson('$name.json');
     if (location == null) return;
-    await cubit.export(location, [character]);
+    cast.add(CastExported(location, [character]));
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
-    final cubit = context.read<CharactersCubit>();
+    final cast = context.read<CastBloc>();
     final l10n = AppLocalizations.of(context);
     final confirmed = await confirmRemoval(
       context,
@@ -50,7 +54,7 @@ class CastCard extends StatelessWidget {
       cancelLabel: l10n.charactersDeleteCancel,
       confirmLabel: l10n.charactersDeleteConfirm,
     );
-    if (confirmed) await cubit.remove(character.id);
+    if (confirmed) cast.add(CardRemoved(character.id));
   }
 
   /// The name of the card standing in for this one; a card deleted since
@@ -58,57 +62,58 @@ class CastCard extends StatelessWidget {
   String? _readerName() {
     final reader = character.voicedBy;
     if (reader == null) return null;
-    for (final other in state.characters) {
+    for (final other in cast.characters) {
       if (other.id == reader) return other.name;
     }
     return null;
   }
 
-  CharacterTileModel _model(CharactersCubit cubit) {
+  CharacterTileModel _model(VoiceCaptureBloc voices) {
     final id = character.id;
     return CharacterTileModel(
       character: character,
-      recording: state.recordingId == id,
-      heardSeconds: state.heardSeconds,
+      recording: capture.recordingId == id,
+      heardSeconds: capture.heardSeconds,
       packNames: [
-        for (final pack in state.packs)
+        for (final pack in cast.packs)
           if (pack.holds(id)) pack.name,
       ],
-      packs: state.packs,
+      packs: cast.packs,
       readerName: _readerName(),
-      playing: state.playingId == id,
-      previewing: state.previewingId == id,
-      carriesTimbre: cubit.carriesTimbre,
+      playing: capture.playingId == id,
+      previewing: capture.previewingId == id,
+      carriesTimbre: voices.carriesTimbre,
       dubbing: dubbing,
-      building: state.buildingId == id,
-      built: state.builtId == id ? state.built : null,
+      building: capture.buildingId == id,
+      built: capture.builtId == id ? capture.built : null,
     );
   }
 
-  CharacterTileActions _actions(BuildContext context, CharactersCubit cubit) {
+  CharacterTileActions _actions(BuildContext context, VoiceCaptureBloc voices) {
     final id = character.id;
-    final canPreview = state.canPreview(dubbing: dubbing, speechInstalled: cubit.canPreview);
-    final takesFiles = state.takesFiles(dubbing: dubbing, converterInstalled: cubit.canRecord);
+    final cards = context.read<CastBloc>();
+    final canPreview = capture.canPreview(dubbing: dubbing, speechInstalled: voices.canPreview);
+    final takesFiles = capture.takesFiles(dubbing: dubbing, converterInstalled: voices.canRecord);
     return CharacterTileActions(
-      onRename: (name) => cubit.rename(id, name),
+      onRename: (name) => cards.add(CardRenamed(id, name)),
       onDelete: () => _confirmDelete(context),
-      onRecord: switch (state.recordActionFor(id)) {
-        RecordAction.start => () => cubit.startRecording(id),
-        RecordAction.stop => cubit.stopRecording,
+      onRecord: switch (capture.recordActionFor(id)) {
+        RecordAction.start => () => voices.add(RecordingStarted(id)),
+        RecordAction.stop => () => voices.add(const RecordingStopped()),
         null => null,
       },
-      onPlay: state.canPlayClip(id) ? () => cubit.playClip(id) : null,
-      onPreview: canPreview ? () => cubit.preview(id) : null,
-      onStopSound: cubit.stopSounding,
+      onPlay: capture.canPlayClip(id) ? () => voices.add(ClipPlayed(id)) : null,
+      onPreview: canPreview ? () => voices.add(SampleAsked(id)) : null,
+      onStopSound: () => voices.add(const SoundStopped()),
       onExport: character.vector.isEmpty ? null : () => _export(context),
-      onFilesDropped: takesFiles ? (paths) => cubit.voiceFromFiles(id, paths) : null,
-      onFileInPack: (packId) => cubit.addToPack(packId, id),
+      onFilesDropped: takesFiles ? (paths) => voices.add(VoiceFilesDropped(id, paths)) : null,
+      onFileInPack: (packId) => cards.add(CardPacked(packId, id)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<CharactersCubit>();
-    return CharacterTile(model: _model(cubit), actions: _actions(context, cubit));
+    final voices = context.read<VoiceCaptureBloc>();
+    return CharacterTile(model: _model(voices), actions: _actions(context, voices));
   }
 }

@@ -13,7 +13,7 @@ import 'package:lore_dub/src/data/repositories/sources_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/domain/model_selection.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/cast_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
@@ -23,6 +23,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
 import 'package:lore_dub/src/data/repositories/glossary_repository.dart';
 import 'package:lore_dub/src/data/repositories/scheme_repository.dart';
 import 'package:lore_dub/src/data/repositories/system_repository.dart';
@@ -57,6 +58,8 @@ class StagedDashboard {
     GlossaryRepository? glossaryRepository,
     CastRepository? cast,
     GlossaryBloc? glossaryBloc,
+    CastBloc? castBloc,
+    VoiceCaptureBloc? captureBloc,
   }) {
     final native = engine ?? NativeEngineService();
     this.system = system ?? SystemRepository(native);
@@ -100,15 +103,18 @@ class StagedDashboard {
       this.voiceBank,
     );
     transcript = TranscriptBloc(sessionRepository, sessions, shell);
-    characters = CharactersCubit(
-      sessionRepository,
-      modelRepository,
-      settingsRepository,
-      installed,
-      shell,
-      sessions,
-      this.cast,
-    );
+    cards = castBloc ?? CastBloc(this.cast, shell);
+    voices =
+        captureBloc ??
+        VoiceCaptureBloc(
+          sessionRepository,
+          modelRepository,
+          settingsRepository,
+          installed,
+          shell,
+          sessions,
+          this.cast,
+        );
     // A screen test hands a mock over: what the screen shows is then what
     // the test says, and what it sends is kept.
     glossary = glossaryBloc ?? GlossaryBloc(this.glossaryRepository, shell);
@@ -146,7 +152,12 @@ class StagedDashboard {
   late final SourcesBloc sources;
   late final SessionBloc pipeline;
   late final TranscriptBloc transcript;
-  late final CharactersCubit characters;
+
+  /// The cards and the packs of the characters screen.
+  late final CastBloc cards;
+
+  /// The characters screen's side of the engine.
+  late final VoiceCaptureBloc voices;
   late final GlossaryBloc glossary;
   late final PipelineGraphBloc graph;
   late final PipelineFactsBloc facts;
@@ -178,7 +189,8 @@ class StagedDashboard {
         BlocProvider.value(value: sources),
         BlocProvider.value(value: pipeline),
         BlocProvider.value(value: transcript),
-        BlocProvider.value(value: characters),
+        BlocProvider.value(value: cards),
+        BlocProvider.value(value: voices),
         BlocProvider.value(value: glossary),
         BlocProvider.value(value: graph),
         BlocProvider.value(value: facts),
@@ -191,7 +203,8 @@ class StagedDashboard {
     await facts.close();
     await graph.close();
     await glossary.close();
-    await characters.close();
+    await voices.close();
+    await cards.close();
     await transcript.close();
     await pipeline.close();
     await sources.close();

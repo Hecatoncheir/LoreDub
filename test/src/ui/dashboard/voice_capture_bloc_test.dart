@@ -29,7 +29,7 @@ import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
 
 import '../../../support/staged_dashboard.dart';
 
@@ -45,7 +45,7 @@ void main() {
 
   late _CastRepository repository;
   late StagedDashboard cubits;
-  late CharactersCubit characters;
+  late VoiceCaptureBloc voices;
   late SessionCoordinator sessions;
 
   setUp(() {
@@ -82,7 +82,7 @@ void main() {
       ),
     );
     sessions = SessionCoordinator();
-    characters = CharactersCubit(
+    voices = VoiceCaptureBloc(
       repository,
       // The real one goes looking for the application directory, which a
       // unit test does not have.
@@ -96,74 +96,82 @@ void main() {
   });
 
   tearDown(() async {
-    await characters.close();
+    await voices.close();
     await cubits.dispose();
   });
 
   const guard = Character(id: 'a1', name: 'Стражник', vector: [0.2, 0.4]);
 
-  test('adds a card, names it and throws it away again', () async {
-    final added = await characters.add('Новый персонаж');
-    expect(characters.state.characters.single.name, 'Новый персонаж');
-    expect(repository.stored.characters.single.id, added.id, reason: 'written, not only shown');
+  /// [cards] as the cast holds them, and the capture standing as [capture]
+  /// -- what `blocTest`'s `seed` does, for a scenario of several steps.
+  void stage(List<Character> cards, {VoiceCaptureState capture = const VoiceCaptureState()}) {
+    cubits.cast.seed(CharacterLibrary(characters: cards));
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    voices.emit(capture);
+  }
 
-    await characters.rename(added.id, 'Кузнец');
-    expect(repository.stored.characters.single.name, 'Кузнец');
+  /// [event] handed to the bloc and answered.
+  Future<void> answered(VoiceCaptureEvent event) async {
+    voices.add(event);
+    await pumpEventQueue();
+  }
 
-    await characters.remove(added.id);
-    expect(characters.state.characters, isEmpty);
-    expect(repository.stored.characters, isEmpty);
-  });
+  /// What the engine said, as it reaches the bloc.
+  Future<void> said(EngineEvent event) async {
+    repository.push(event);
+    await pumpEventQueue();
+  }
 
   test('leaves a session the dubbing screens hold off this screen', () async {
-    characters.seed(const CharactersState(loading: false));
+    stage(const []);
 
     // One engine serves both screens; a live session is not this screen's to
     // show, and its record buttons open on nothing but a session of its own.
-    characters.handleEvent(
+    await said(
       const SessionStateChanged(
         status: PipelineStatus.listening,
         session: PipelineSession.live,
       ),
     );
 
-    expect(characters.state.running, isFalse);
+    expect(voices.state.running, isFalse);
 
-    characters.handleEvent(
+    await said(
       const SessionStateChanged(
         status: PipelineStatus.listening,
         session: PipelineSession.characters,
       ),
     );
 
-    expect(characters.state.running, isTrue);
+    expect(voices.state.running, isTrue);
 
     // The engine coming to rest names no session: it ends this one as well.
-    characters.handleEvent(const SessionStateChanged(status: PipelineStatus.idle));
+    await said(const SessionStateChanged(status: PipelineStatus.idle));
 
-    expect(characters.state.running, isFalse);
+    expect(voices.state.running, isFalse);
   });
 
   test('says nothing of a session the player stopped while it was starting', () async {
-    characters.seed(const CharactersState(loading: false));
+    stage(const []);
 
-    unawaited(characters.toggleSession(initializing: false, process: null));
+    voices.add(const RecordingSessionToggled(initializing: false, process: null));
     await Future<void>.delayed(Duration.zero);
-    expect(characters.state.status, PipelineStatus.starting);
+    expect(voices.state.status, PipelineStatus.starting);
 
     // The button that starts the session is the one that stops it, and a
     // start that is stopped fails — for being stopped, which is no news.
-    await characters.toggleSession(initializing: false, process: null);
+    voices.add(const RecordingSessionToggled(initializing: false, process: null));
+    await pumpEventQueue();
     await Future<void>.delayed(Duration.zero);
 
     expect(repository.stops, 1);
-    expect(characters.state.status, PipelineStatus.idle);
+    expect(voices.state.status, PipelineStatus.idle);
     expect(cubits.shell.state.error, isNull);
   });
 
   group('a card built from files', () {
     setUp(() {
-      characters.seed(const CharactersState(loading: false, characters: [guard]));
+      stage([guard]);
       repository.building = const BuiltVoice(
         vector: [0.1, 0.2],
         gender: 'male',
@@ -177,12 +185,14 @@ void main() {
     });
 
     test('measures every recording at once and keeps what came of it', () async {
-      await characters.voiceFromFiles('a1', const [
-        'C:/one.ogg',
-        'C:/two.ogg',
-        'C:/three.ogg',
-        'C:/music.mp3',
-      ]);
+      await answered(
+        VoiceFilesDropped('a1', const [
+          'C:/one.ogg',
+          'C:/two.ogg',
+          'C:/three.ogg',
+          'C:/music.mp3',
+        ]),
+      );
 
       expect(repository.builtFrom.single.length, 4, reason: 'all of them, in one go');
       expect(repository.stored.characters.single.vector, [0.1, 0.2]);
@@ -190,15 +200,15 @@ void main() {
       expect(repository.stored.characters.single.seconds, 12.5);
       // The clip the fingerprint stands closest to is what the card plays.
       expect(repository.kept['a1'], 'C:/work/dropped_1.wav');
-      expect(characters.state.clips, contains('a1'));
-      expect(characters.state.built?.used, 3);
-      expect(characters.state.built?.skipped, ['C:/music.mp3']);
-      expect(characters.state.builtId, 'a1');
-      expect(characters.state.building, isFalse);
+      expect(voices.state.clips, contains('a1'));
+      expect(voices.state.built?.used, 3);
+      expect(voices.state.built?.skipped, ['C:/music.mp3']);
+      expect(voices.state.builtId, 'a1');
+      expect(voices.state.building, isFalse);
     });
 
     test('borrows a session of its own and puts it down again', () async {
-      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+      await answered(VoiceFilesDropped('a1', const ['C:/one.ogg']));
 
       expect(repository.fileSessionStarts, 1, reason: 'no game to listen to, only the converter');
       expect(repository.stops, 1, reason: 'and it is not left running');
@@ -210,18 +220,18 @@ void main() {
       // holds when the measuring ends is the dubbing, which putting the
       // borrowed session down used to stop.
       repository.measuring = Completer<BuiltVoice>();
-      final building = characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+      voices.add(VoiceFilesDropped('a1', const ['C:/one.ogg']));
       await pumpEventQueue();
       expect(repository.builtFrom, hasLength(1), reason: 'the files are being measured');
 
       repository.takeOver();
       // The worker went with the session, so the measuring ends as stopped.
       repository.measuring!.completeError(const LoreDubFailure(FailureCode.pipelineStopped));
-      await building;
+      await pumpEventQueue();
 
       expect(repository.stops, 0, reason: 'the session the engine holds is not the borrowed one');
       expect(cubits.shell.state.error, isNull, reason: 'a worker taken over is no failure');
-      expect(characters.state.building, isFalse);
+      expect(voices.state.building, isFalse);
     });
 
     test('puts nothing down when the session it meant to borrow never came up', () async {
@@ -230,40 +240,29 @@ void main() {
       // the engine — so a stop here landed on the start that replaced it.
       repository.fileSessionFailure = const LoreDubFailure(FailureCode.pipelineStopped);
 
-      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+      await answered(VoiceFilesDropped('a1', const ['C:/one.ogg']));
 
       expect(repository.stops, 0);
       expect(repository.builtFrom, isEmpty);
       expect(cubits.shell.state.error, isNull);
-      expect(characters.state.building, isFalse);
+      expect(voices.state.building, isFalse);
     });
 
     test('measures through the session the screen is already recording with', () async {
-      characters.seed(
-        const CharactersState(
-          loading: false,
-          characters: [guard],
-          status: PipelineStatus.listening,
-        ),
-      );
+      stage([guard], capture: VoiceCaptureState(status: PipelineStatus.listening));
 
-      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+      await answered(VoiceFilesDropped('a1', const ['C:/one.ogg']));
 
       expect(repository.fileSessionStarts, 0);
       expect(repository.stops, 0, reason: "the player's own session is theirs to end");
     });
 
     test('leaves the card alone while another is being recorded', () async {
-      characters.seed(
-        const CharactersState(
-          loading: false,
-          characters: [guard],
-          status: PipelineStatus.listening,
-          recordingId: 'a1',
-        ),
-      );
+      stage([
+        guard,
+      ], capture: VoiceCaptureState(status: PipelineStatus.listening, recordingId: 'a1'));
 
-      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+      await answered(VoiceFilesDropped('a1', const ['C:/one.ogg']));
 
       expect(repository.builtFrom, isEmpty);
     });
@@ -271,195 +270,157 @@ void main() {
     test('keeps the fingerprint even when the clip cannot be kept', () async {
       repository.building = const BuiltVoice(vector: [0.3], used: 1, seconds: 2);
 
-      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+      await answered(VoiceFilesDropped('a1', const ['C:/one.ogg']));
 
       expect(repository.stored.characters.single.vector, [0.3]);
-      expect(characters.state.clips, isNot(contains('a1')), reason: 'no anchor, no play button');
+      expect(voices.state.clips, isNot(contains('a1')), reason: 'no anchor, no play button');
     });
   });
 
   test('keeps the whole take a recording heard', () async {
-    characters.seed(
-      const CharactersState(
-        loading: false,
-        status: PipelineStatus.listening,
-        characters: [guard],
-      ),
-    );
+    stage([guard], capture: VoiceCaptureState(status: PipelineStatus.listening));
 
-    characters.startRecording('a1');
+    await answered(const RecordingStarted('a1'));
     expect(repository.recordings, [true]);
 
     // The take is one recording, closed by the stop below: however long the
     // character went on, and whatever pauses they left, this is what the
     // card is measured from.
-    characters.handleEvent(
+    await said(
       const CharacterVoiceMeasured(vector: [0.7, 0.1], gender: 'male', seconds: 24.5),
     );
 
-    await characters.stopRecording();
+    await answered(const RecordingStopped());
 
     expect(repository.recordings, [true, false]);
-    final kept = characters.state.characters.single;
+    final kept = cubits.cast.cast.single;
     expect(kept.vector, [0.7, 0.1]);
     expect(kept.gender, 'male');
     expect(kept.seconds, 24.5, reason: 'the take, not the longest line in it');
-    expect(characters.state.heardSeconds, 0, reason: 'the clock is put away with the take');
+    expect(voices.state.heardSeconds, 0, reason: 'the clock is put away with the take');
   });
 
   test('leaves the card alone when a take held too little speech', () async {
-    characters.seed(
-      const CharactersState(
-        loading: false,
-        status: PipelineStatus.listening,
-        characters: [guard],
-      ),
-    );
+    stage([guard], capture: VoiceCaptureState(status: PipelineStatus.listening));
 
-    characters.startRecording('a1');
-    characters.handleEvent(const CharacterVoiceMeasured(vector: [9], seconds: 0.8));
+    await answered(const RecordingStarted('a1'));
+    await said(const CharacterVoiceMeasured(vector: [9], seconds: 0.8));
 
-    await characters.stopRecording();
+    await answered(const RecordingStopped());
 
-    expect(characters.state.characters.single.vector, guard.vector);
+    expect(cubits.cast.cast.single.vector, guard.vector);
   });
 
   test('keeps the clip the card was recorded from, and plays it back', () async {
-    characters.seed(
-      const CharactersState(
-        loading: false,
-        status: PipelineStatus.listening,
-        characters: [guard],
-      ),
-    );
+    stage([guard], capture: VoiceCaptureState(status: PipelineStatus.listening));
 
-    characters.startRecording('a1');
-    characters.handleEvent(
+    await answered(const RecordingStarted('a1'));
+    await said(
       const CharacterVoiceMeasured(
         vector: [0.7, 0.1],
         seconds: 2.4,
         clip: r'C:\work\capture\segment-2.wav',
       ),
     );
-    await characters.stopRecording();
+    await answered(const RecordingStopped());
 
     expect(repository.kept['a1'], r'C:\work\capture\segment-2.wav');
-    expect(characters.state.canPlay('a1'), isTrue);
+    expect(voices.state.canPlay('a1'), isTrue);
 
-    await characters.playClip('a1');
+    await answered(const ClipPlayed('a1'));
 
     expect(repository.played, [r'C:\work\capture\segment-2.wav']);
-    expect(characters.state.playingId, isNull, reason: 'it has finished sounding');
+    expect(voices.state.playingId, isNull, reason: 'it has finished sounding');
   });
 
   test('offers nothing to play for a card that came from a file', () async {
-    characters.seed(const CharactersState(loading: false, characters: [guard]));
+    stage([guard]);
 
-    expect(characters.state.canPlay('a1'), isFalse);
+    expect(voices.state.canPlay('a1'), isFalse);
 
-    await characters.playClip('a1');
+    await answered(const ClipPlayed('a1'));
 
     expect(repository.played, isEmpty);
   });
 
-  test('takes the clip away with the card', () async {
-    characters.seed(const CharactersState(loading: false, characters: [guard], clips: {'a1'}));
-    repository.kept['a1'] = 'clip.wav';
-
-    await characters.remove('a1');
-
-    expect(repository.kept, isEmpty);
-    expect(characters.state.clips, isEmpty);
-  });
-
   test('speaks a sample in the voice the dubbing would read the card in', () async {
-    characters.seed(const CharactersState(loading: false, characters: [guard]));
+    stage([guard]);
 
-    await characters.preview('a1');
+    await answered(const SampleAsked('a1'));
 
     expect(repository.previewStarts, 1, reason: 'the speech model is loaded once');
     expect(repository.spoken.single, contains('Стражник'));
-    expect(characters.state.previewReady, isTrue);
-    expect(characters.state.previewingId, isNull);
+    expect(voices.state.previewReady, isTrue);
+    expect(voices.state.previewingId, isNull);
 
-    await characters.preview('a1');
+    await answered(const SampleAsked('a1'));
 
     expect(repository.previewStarts, 1, reason: 'the one after it waits for nothing');
     expect(repository.spoken.length, 2);
   });
 
   test('leaves the sample alone while the game is being listened to', () async {
-    characters.seed(
-      const CharactersState(
-        loading: false,
-        status: PipelineStatus.listening,
-        characters: [guard],
-      ),
-    );
+    stage([guard], capture: VoiceCaptureState(status: PipelineStatus.listening));
 
-    await characters.preview('a1');
+    await answered(const SampleAsked('a1'));
 
     expect(repository.spoken, isEmpty, reason: 'that worker has no speech model in it');
   });
 
   test('leaves the sample alone while files are being measured', () async {
-    characters.seed(
-      const CharactersState(loading: false, characters: [guard], buildingId: 'a1'),
-    );
+    stage([guard], capture: VoiceCaptureState(buildingId: 'a1'));
 
-    await characters.preview('a1');
+    await answered(const SampleAsked('a1'));
 
     expect(repository.previewStarts, 0, reason: 'it would replace the worker measuring them');
     expect(repository.spoken, isEmpty);
   });
 
   test('loads the speech model again once the engine has come to rest', () async {
-    characters.seed(const CharactersState(loading: false, characters: [guard]));
-    await characters.preview('a1');
-    expect(characters.state.previewReady, isTrue);
+    stage([guard]);
+    await answered(const SampleAsked('a1'));
+    expect(voices.state.previewReady, isTrue);
 
     // A card measured from files puts its borrowed session down, or the
     // worker dies under the session it served: either way the engine stops,
     // and the speech model a sample was loaded into goes with it.
-    characters.handleEvent(const SessionStateChanged(status: PipelineStatus.idle));
+    await said(const SessionStateChanged(status: PipelineStatus.idle));
 
-    expect(characters.state.previewReady, isFalse);
+    expect(voices.state.previewReady, isFalse);
 
-    await characters.preview('a1');
+    await answered(const SampleAsked('a1'));
 
     expect(repository.previewStarts, 2, reason: 'skipped, the sample was told there is no worker');
     expect(repository.spoken, hasLength(2));
   });
 
   test('tells the session a sample was loaded for from the one that replaced it', () async {
-    characters.seed(
-      const CharactersState(loading: false, characters: [guard], previewReady: true),
-    );
+    stage([guard], capture: VoiceCaptureState(previewReady: true));
 
     // Loading for a sample announces itself as well, and must not undo itself.
-    characters.handleEvent(
+    await said(
       const SessionStateChanged(
         status: PipelineStatus.listening,
         session: PipelineSession.preview,
       ),
     );
 
-    expect(characters.state.previewReady, isTrue);
+    expect(voices.state.previewReady, isTrue);
 
     // A recording brings up a worker of its own, with no voice in it.
-    characters.handleEvent(
+    await said(
       const SessionStateChanged(
         status: PipelineStatus.listening,
         session: PipelineSession.characters,
       ),
     );
 
-    expect(characters.state.previewReady, isFalse);
+    expect(voices.state.previewReady, isFalse);
   });
 
   group('while a dubbing session holds the worker', () {
     setUp(() {
-      characters.seed(const CharactersState(loading: false, characters: [guard]));
+      stage([guard]);
       sessions.reportPipeline(
         status: PipelineStatus.listening,
         session: PipelineSession.live,
@@ -468,26 +429,27 @@ void main() {
     });
 
     test('speaks no sample, which would take the worker from under it', () async {
-      await characters.preview('a1');
+      await answered(const SampleAsked('a1'));
 
       expect(repository.previewStarts, 0);
       expect(repository.spoken, isEmpty);
-      expect(characters.state.previewingId, isNull);
+      expect(voices.state.previewingId, isNull);
     });
 
     test('measures no files', () async {
-      await characters.voiceFromFiles('a1', const ['C:/one.ogg']);
+      await answered(VoiceFilesDropped('a1', const ['C:/one.ogg']));
 
       expect(repository.fileSessionStarts, 0);
       expect(repository.builtFrom, isEmpty);
-      expect(characters.state.building, isFalse);
+      expect(voices.state.building, isFalse);
     });
 
     test('starts no recording', () async {
-      await characters.toggleSession(initializing: false, process: null);
+      voices.add(const RecordingSessionToggled(initializing: false, process: null));
+      await pumpEventQueue();
 
       expect(repository.sessionStarts, 0);
-      expect(characters.state.status, PipelineStatus.idle);
+      expect(voices.state.status, PipelineStatus.idle);
     });
   });
 
@@ -506,7 +468,7 @@ void main() {
   });
 
   test('lets the dubbing screens end the session it holds', () async {
-    characters.seed(const CharactersState(loading: false, status: PipelineStatus.listening));
+    stage(const [], capture: VoiceCaptureState(status: PipelineStatus.listening));
 
     await sessions.makeRoomForDubbing();
 
@@ -514,166 +476,14 @@ void main() {
   });
 
   test('leaves the card alone when the recording heard nothing usable', () async {
-    characters.seed(
-      const CharactersState(
-        loading: false,
-        status: PipelineStatus.listening,
-        characters: [guard],
-      ),
-    );
+    stage([guard], capture: VoiceCaptureState(status: PipelineStatus.listening));
 
-    characters.startRecording('a1');
-    characters.handleEvent(const CharacterVoiceMeasured(vector: [9], seconds: 0.5));
-    await characters.stopRecording();
+    await answered(const RecordingStarted('a1'));
+    await said(const CharacterVoiceMeasured(vector: [9], seconds: 0.5));
+    await answered(const RecordingStopped());
 
-    expect(characters.state.characters.single.vector, [0.2, 0.4], reason: 'as it was');
-    expect(characters.state.recording, isFalse);
-  });
-
-  test('lays imported cards over the ones they came from', () async {
-    characters.seed(const CharactersState(loading: false, characters: [guard]));
-    repository.incoming = const CharacterLibrary(
-      characters: [
-        Character(id: 'a1', name: 'Стражник у ворот', vector: [0.9]),
-        Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
-      ],
-    );
-
-    final added = await characters.import(['cast.json']);
-
-    expect(added.characters, 2);
-    expect(characters.state.characters.map((character) => character.name), [
-      'Стражник у ворот',
-      'Кузнец',
-    ]);
-  });
-
-  test('gives a card another character to be read by, and takes it back', () async {
-    characters.seed(
-      const CharactersState(
-        loading: false,
-        characters: [
-          guard,
-          Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
-        ],
-      ),
-    );
-
-    await characters.voiceAs('a1', 'b2');
-
-    expect(characters.state.characters.first.voicedBy, 'b2');
-    expect(repository.stored.characters.first.voicedBy, 'b2', reason: 'written, not only shown');
-
-    await characters.voiceAs('a1', null);
-
-    expect(characters.state.characters.first.voicedBy, isNull);
-    expect(repository.stored.characters.first.voicedBy, isNull);
-  });
-
-  test('refuses to read a card by itself, which would say nothing', () async {
-    characters.seed(const CharactersState(loading: false, characters: [guard]));
-
-    await characters.voiceAs('a1', 'a1');
-
-    expect(characters.state.characters.single.voicedBy, isNull);
-  });
-
-  test('collects cards into a pack and lets them out again', () async {
-    characters.seed(
-      const CharactersState(
-        loading: false,
-        characters: [
-          guard,
-          Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
-        ],
-      ),
-    );
-
-    final pack = await characters.addPack('Таверна');
-    await characters.addToPack(pack.id, 'a1');
-    await characters.addToPack(pack.id, 'b2');
-    // The same card dropped twice is in the pack once.
-    await characters.addToPack(pack.id, 'a1');
-
-    expect(characters.state.packs.single.characterIds, ['a1', 'b2']);
-    expect(repository.stored.packs.single.name, 'Таверна', reason: 'written, not only shown');
-
-    await characters.removeFromPack(pack.id, 'a1');
-
-    expect(characters.state.packs.single.characterIds, ['b2']);
-    expect(characters.state.characters.length, 2, reason: 'taken out of the pack, not the cast');
-  });
-
-  test('holds one card in as many packs as it was dropped into', () async {
-    characters.seed(const CharactersState(loading: false, characters: [guard]));
-
-    final tavern = await characters.addPack('Таверна');
-    final prologue = await characters.addPack('Пролог');
-    await characters.addToPack(tavern.id, 'a1');
-    await characters.addToPack(prologue.id, 'a1');
-
-    expect(characters.state.packs.map((pack) => pack.holds('a1')), [true, true]);
-  });
-
-  test('throwing a pack away leaves the cards it held', () async {
-    characters.seed(const CharactersState(loading: false, characters: [guard]));
-    final pack = await characters.addPack('Таверна');
-    await characters.addToPack(pack.id, 'a1');
-
-    await characters.removePack(pack.id);
-
-    expect(characters.state.packs, isEmpty);
-    expect(characters.state.characters.single.name, 'Стражник');
-    expect(repository.stored.characters, hasLength(1));
-  });
-
-  test('a deleted card leaves the packs that held it', () async {
-    characters.seed(const CharactersState(loading: false, characters: [guard]));
-    final pack = await characters.addPack('Таверна');
-    await characters.addToPack(pack.id, 'a1');
-
-    await characters.remove('a1');
-
-    expect(characters.state.packs.single.characterIds, isEmpty);
-  });
-
-  test('an imported pack brings its cards into the cast', () async {
-    characters.seed(const CharactersState(loading: false));
-    repository.incoming = const CharacterLibrary(
-      characters: [
-        Character(id: 'c3', name: 'Трактирщик', vector: [0.4]),
-        Character(id: 'd4', name: 'Бард', vector: [0.6]),
-      ],
-      packs: [
-        CharacterPack(id: 'p1', name: 'Таверна', characterIds: ['c3', 'd4']),
-      ],
-    );
-
-    final added = await characters.import(['tavern.json']);
-
-    expect((added.packs, added.characters), (1, 2));
-    expect(characters.state.characters.map((character) => character.name), [
-      'Трактирщик',
-      'Бард',
-    ]);
-    expect(characters.state.packs.single.characterIds, ['c3', 'd4']);
-  });
-
-  test('names the cards a pack holds, in the order they were dropped in', () {
-    const smith = Character(id: 'b2', name: 'Кузнец', vector: [0.3]);
-    const state = CharactersState(
-      loading: false,
-      characters: [guard, smith],
-      packs: [
-        CharacterPack(id: 'p1', name: 'Таверна', characterIds: ['b2', 'gone', 'a1']),
-      ],
-    );
-
-    expect(
-      state.membersOf(state.packs.single).map((character) => character.name),
-      ['Кузнец', 'Стражник'],
-      reason: 'an id no card answers to is passed over',
-    );
+    expect(cubits.cast.cast.single.vector, [0.2, 0.4], reason: 'as it was');
+    expect(voices.state.recording, isFalse);
   });
 }
 
@@ -801,6 +611,13 @@ class _CastRepository extends SessionRepository {
   Future<void> stopSession(int session) async {
     if (session == _session) await stop();
   }
+
+  final _said = StreamController<EngineEvent>.broadcast();
+
+  void push(EngineEvent event) => _said.add(event);
+
+  @override
+  Stream<EngineEvent> get events => _said.stream;
 
   @override
   void dispose() {}

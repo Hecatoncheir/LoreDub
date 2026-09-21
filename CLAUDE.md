@@ -64,11 +64,15 @@ than one of them.
    `common/` for what every screen uses; one public widget per file and no
    private ones. `dashboard/` still holds the cubits and the files not yet
    taken apart (`TODO.md`, stage 2). State lives in `dashboard/cubits/`:
-   four cubits -- `ShellCubit` (section, first load, the failure banner,
-   the update check), `SettingsCubit`, `DownloadsCubit` (models, GPU
-   runtimes, what the machine can run) and `CharactersCubit` (the player's
-   cast and the session that records a voice for a card) -- and five
-   Blocs. `SessionBloc` is the dubbing screens' session: the player's
+   three cubits -- `ShellCubit` (section, first load, the failure banner,
+   the update check), `SettingsCubit` and `DownloadsCubit` (models, GPU
+   runtimes, what the machine can run) -- and the Blocs. The characters
+   screen has two: `CastBloc`, the cards and the packs, and
+   `VoiceCaptureBloc`, the session a voice is recorded through, the take,
+   a card measured from files, a sample and a clip played back. Neither
+   reads the other; both read `CastRepository`, which is where a take's
+   fingerprint is written and where the cards come back from.
+   `GlossaryBloc` is the glossary. `SessionBloc` is the dubbing screens' session: the player's
    requests (`LiveToggled`, `ScreenToggled`, `SceneToggled`,
    `SessionStopped`, `SessionPaused`, `SessionResumed`) and the engine's
    answers are events of one kind, where `PipelineCubit` before it kept
@@ -172,7 +176,7 @@ than one of them.
    than a flag per session, and it is written onto every state and startup
    event on the
    way out: one engine serves the dubbing screens and the characters screen
-   in turn, and the same stream reaches `SessionBloc` and `CharactersCubit`
+   in turn, and the same stream reaches `SessionBloc` and `VoiceCaptureBloc`
    both, so unnamed, a start on one screen was read as a start on the other.
    A `SessionStateChanged` carrying no session is `ld_stop` coming to rest and ends
    what every screen was showing -- which is what `concerns` answers, in one
@@ -1004,7 +1008,8 @@ dubbing session knows it under the same `timbre:<n>` and a card recognized
 there is already the one the graph gave away. Starting live dubbing over it stops it
 first, as with the snapshot session.
 
-The Characters screen (`DashboardSection.characters`, `CharactersCubit`) is
+The Characters screen (`DashboardSection.characters`, `CastBloc` and
+`VoiceCaptureBloc`) is
 where the player records their own cast. `CharacterService` keeps them in one
 `<app support>/characters.json` for every game — unlike the per-game bank,
 because the player owns these cards — and `SessionRepository.startCharacterVoices`
@@ -1040,7 +1045,7 @@ own, and over a session that is dubbing that took the worker from under it
 while the capture went on, so every phrase after it failed for want of
 whisper: the three are out while the pipeline runs, and
 `SessionCoordinator.dubbingRuns`, which the dubbing screens register, has
-the cubit refuse them as well. `CharactersState.previewReady` says the speech-only
+the bloc refuse them as well. `VoiceCaptureState.previewReady` says the speech-only
 worker is still the one loaded, and is dropped on any `state` event the
 screen reads — the engine at rest holds no worker, and a recording holds one
 with no voice in it — or the next sample skips the loading and is told there
@@ -1080,7 +1085,7 @@ threshold cannot tell a stranger from an odd line of the right character
 (same-character pairs run 0.57 to 0.94, different-character pairs up to
 0.80), so `STRANGE_FILE` (0.45) only drops what is not a voice at all, and
 `LOOSE_SET` (0.80) is a warning that the set holds two voices rather than a
-rejection. `CharactersCubit.voiceFromFiles` borrows an embed-only session
+rejection. `VoiceFilesDropped` borrows an embed-only session
 (`startVoiceFiles`, no `ld_start`, no game) when the screen has none, and
 puts it down again — that one and no other. `startVoiceFiles` answers with
 the session's number out of `SessionRepository._sessions`, and
@@ -1258,8 +1263,10 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   Do not let a widget test drive a real bloc into a write: the disk does not
   answer inside the test's fake time, and a handler under `sequential()` is
   waited for by `close()`, so the test hangs in its teardown rather than
-  failing. The screens not yet taken this way still seed real cubits
-  (`TODO.md`, stage 4).
+  failing. `widget_test.dart`'s `buildCubits` keeps the cast in memory
+  (`MemoryCharacters`) for the same reason, since the canvas's and the
+  inspector's tests drive the real `CastBloc`. The screens not yet taken
+  this way still seed real cubits (`TODO.md`, stage 4).
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`) with an
   imperative summary, and a native change carries its regenerated bindings in
   the same commit. `AGENTS.md` holds the same guidance in shorter, more

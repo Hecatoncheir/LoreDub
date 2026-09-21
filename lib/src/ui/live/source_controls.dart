@@ -6,13 +6,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/app_settings.dart';
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/characters_cubit.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import 'language_controls.dart';
 import 'target_language_picker.dart';
 import '../common/game_picker.dart';
+import '../dashboard/cubits/voice_capture_bloc.dart';
 
 /// The card that picks the game and the source of its sound, with the
 /// dubbing language and the start button beside them.
@@ -29,10 +29,10 @@ class SourceControls extends StatelessWidget {
       ),
       // Only whether a card is being recorded: the seconds it has heard tick
       // as it goes, and this screen must not be redrawn for them.
-      builder: (context, pipeline) => BlocBuilder<CharactersCubit, CharactersState>(
-        buildWhen: whenChanged((characters) => characters.running),
-        builder: (context, characters) =>
-            _build(context, state.settings, pipeline, recording: characters.running),
+      builder: (context, pipeline) => BlocSelector<VoiceCaptureBloc, VoiceCaptureState, bool>(
+        selector: (capture) => capture.running,
+        builder: (context, recording) =>
+            _build(context, state.settings, pipeline, recording: recording),
       ),
     ),
   );

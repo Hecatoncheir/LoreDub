@@ -43,7 +43,6 @@ import 'package:lore_dub/src/domain/pipeline_state.dart'
     show PipelineSession, PipelineStatus, SceneSpeaker, TranscriptEntry;
 import 'package:lore_dub/src/ui/characters/character_pack_area.dart';
 import 'package:lore_dub/src/ui/characters/character_tile.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/domain/sound_files.dart';
 import 'package:lore_dub/src/ui/live/source_controls.dart';
@@ -70,11 +69,22 @@ import 'package:mocktail/mocktail.dart';
 
 import 'support/mock_blocs.dart';
 
+import 'package:lore_dub/src/ui/dashboard/cubits/cast_bloc.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/data/repositories/cast_repository.dart';
+
+import 'support/memory_cast.dart';
+
 void main() {
   // What `captureAny` stands in with before anything is captured.
   setUpAll(() => registerFallbackValue(const GlossaryOpened()));
 
-  StagedDashboard buildCubits({RuntimeRepository? runtimes, GlossaryBloc? glossary}) {
+  StagedDashboard buildCubits({
+    RuntimeRepository? runtimes,
+    GlossaryBloc? glossary,
+    CastBloc? cast,
+    VoiceCaptureBloc? capture,
+  }) {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
       SessionRepository(NativeEngineService()),
@@ -83,6 +93,12 @@ void main() {
       runtimes ?? RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(UpdateService(client: _offline), NotificationService(plugin: _silent)),
       glossaryBloc: glossary,
+      // The cards in memory: a real bloc editing them wrote a real file,
+      // which does not answer inside the test's fake time, and its close
+      // waited for the write for ever.
+      cast: CastRepository(NativeEngineService(), MemoryCharacters()),
+      castBloc: cast,
+      captureBloc: capture,
     );
     addTearDown(cubits.dispose);
     return cubits;
@@ -230,7 +246,8 @@ void main() {
     expect(context.read<SourcesBloc>(), isNotNull);
     expect(context.read<SessionBloc>(), isNotNull);
     expect(context.read<TranscriptBloc>(), isNotNull);
-    expect(context.read<CharactersCubit>(), isNotNull);
+    expect(context.read<CastBloc>(), isNotNull);
+    expect(context.read<VoiceCaptureBloc>(), isNotNull);
     expect(context.read<GlossaryBloc>(), isNotNull);
     expect(context.read<PipelineGraphBloc>(), isNotNull);
     expect(context.read<PipelineFactsBloc>(), isNotNull);
@@ -373,9 +390,8 @@ void main() {
 
     // The characters screen records through the game it started with, and
     // this is the same choice under another window.
-    cubits.characters.seed(
-      const CharactersState(loading: false, status: PipelineStatus.listening),
-    );
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    cubits.voices.emit(const VoiceCaptureState(status: PipelineStatus.listening));
     // Twice: a cubit hands its state to listeners a microtask later, and the
     // frame that draws it is the one after that.
     await tester.pump();
@@ -3025,19 +3041,23 @@ void main() {
       seconds: 2.5,
     );
 
+    /// The screen over the cards and the capture a test says there are.
+    /// What a press does is the blocs' (`cast_bloc_test.dart`,
+    /// `voice_capture_bloc_test.dart`); what is looked at here is what the
+    /// screen draws and which event a press sends.
     StagedDashboard stageCast({
-      CharactersState characters = const CharactersState(loading: false),
+      CastState cast = const CastState(loading: false),
+      VoiceCaptureState capture = const VoiceCaptureState(),
       AppSettings settings = const AppSettings(),
-    }) {
-      final cubits = stage(
-        buildCubits(),
-        section: DashboardSection.characters,
-        settings: settings,
-        models: catalogue(),
-      );
-      cubits.characters.seed(characters);
-      return cubits;
-    }
+    }) => stage(
+      buildCubits(
+        cast: castShowing(cast),
+        capture: captureShowing(capture, carriesTimbre: settings.originalVoice),
+      ),
+      section: DashboardSection.characters,
+      settings: settings,
+      models: catalogue(),
+    );
 
     testWidgets('sits before Settings and says how a voice is recorded', (tester) async {
       await pumpDashboard(tester, stageCast(), const Size(1280, 900));
@@ -3054,7 +3074,7 @@ void main() {
       await pumpDashboard(
         tester,
         stageCast(
-          characters: const CharactersState(
+          cast: const CastState(
             loading: false,
             characters: [
               Character(
@@ -3082,7 +3102,7 @@ void main() {
       await pumpDashboard(
         tester,
         stageCast(
-          characters: const CharactersState(
+          cast: const CastState(
             loading: false,
             characters: [
               Character(
@@ -3110,7 +3130,7 @@ void main() {
     testWidgets('shows what a card holds and waits for the session', (tester) async {
       await pumpDashboard(
         tester,
-        stageCast(characters: const CharactersState(loading: false, characters: [guard])),
+        stageCast(cast: const CastState(loading: false, characters: [guard])),
         const Size(1280, 900),
       );
 
@@ -3125,11 +3145,8 @@ void main() {
 
     testWidgets('records into a card once the session runs', (tester) async {
       final cubits = stageCast(
-        characters: const CharactersState(
-          loading: false,
-          status: PipelineStatus.listening,
-          characters: [guard],
-        ),
+        cast: const CastState(loading: false, characters: [guard]),
+        capture: const VoiceCaptureState(status: PipelineStatus.listening),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
@@ -3139,7 +3156,20 @@ void main() {
       await tester.tap(record);
       await tester.pumpAndSettle();
 
-      expect(cubits.characters.state.recordingId, 'a1');
+      verify(() => cubits.voices.add(const RecordingStarted('a1'))).called(1);
+    });
+
+    testWidgets('counts a take as it runs, and stops it by the same button', (tester) async {
+      final cubits = stageCast(
+        cast: const CastState(loading: false, characters: [guard]),
+        capture: const VoiceCaptureState(
+          status: PipelineStatus.listening,
+          recordingId: 'a1',
+          heardSeconds: 3,
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
       // The take runs until it is stopped, so the card counts it rather than
       // saying only that something is going on.
       expect(find.textContaining('Записано'), findsOneWidget);
@@ -3149,12 +3179,12 @@ void main() {
       await tester.tap(find.widgetWithIcon(IconButton, Icons.stop_rounded));
       await tester.pumpAndSettle();
 
-      expect(cubits.characters.state.recordingId, isNull);
+      verify(() => cubits.voices.add(const RecordingStopped())).called(1);
     });
 
     testWidgets('makes a pack and says a card can be dropped into it', (tester) async {
       final cubits = stageCast(
-        characters: const CharactersState(loading: false, characters: [guard]),
+        cast: const CastState(loading: false, characters: [guard]),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
@@ -3163,13 +3193,12 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('packsAdd')));
       await tester.pumpAndSettle();
 
-      expect(cubits.characters.state.packs.single.name, 'Новый пакет');
-      expect(find.textContaining('Перетащите сюда'), findsOneWidget);
+      verify(() => cubits.cards.add(const PackAdded('Новый пакет'))).called(1);
     });
 
     testWidgets('says who reads a card, and leaves the setting to the graph', (tester) async {
       final cubits = stageCast(
-        characters: const CharactersState(
+        cast: const CastState(
           loading: false,
           characters: [
             Character(id: 'a1', name: 'Стражник', vector: [0.2], voicedBy: 'b2'),
@@ -3188,12 +3217,8 @@ void main() {
 
     testWidgets('turns the play button into a stop while a clip sounds', (tester) async {
       final cubits = stageCast(
-        characters: const CharactersState(
-          loading: false,
-          characters: [guard],
-          clips: {'a1'},
-          playingId: 'a1',
-        ),
+        cast: const CastState(loading: false, characters: [guard]),
+        capture: const VoiceCaptureState(clips: {'a1'}, playingId: 'a1'),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
@@ -3220,7 +3245,7 @@ void main() {
       // synthesized voice, and a sample that sounds like nobody in
       // particular is exactly right — so the button says why beforehand.
       final plain = stageCast(
-        characters: const CharactersState(loading: false, characters: [guard]),
+        cast: const CastState(loading: false, characters: [guard]),
       );
       await pumpDashboard(tester, plain, const Size(1280, 900));
 
@@ -3234,7 +3259,7 @@ void main() {
       );
 
       final cloning = stageCast(
-        characters: const CharactersState(loading: false, characters: [guard]),
+        cast: const CastState(loading: false, characters: [guard]),
         settings: const AppSettings(originalVoice: true),
       );
       await pumpDashboard(tester, cloning, const Size(1280, 900));
@@ -3244,7 +3269,7 @@ void main() {
 
     testWidgets('holds the sample and the files back while dubbing runs', (tester) async {
       final cubits = stageCast(
-        characters: const CharactersState(loading: false, characters: [guard]),
+        cast: const CastState(loading: false, characters: [guard]),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
@@ -3289,13 +3314,16 @@ void main() {
       tester,
     ) async {
       final cubits = stageCast(
-        characters: const CharactersState(
+        cast: const CastState(
           loading: false,
           characters: [guard],
           packs: [CharacterPack(id: 'p1', name: 'Таверна')],
         ),
       );
       await pumpDashboard(tester, cubits, const Size(1400, 900));
+
+      // An empty pack says what it is for.
+      expect(find.textContaining('Перетащите сюда'), findsOneWidget);
 
       final cast = tester.getRect(find.byType(CharacterTile));
       final packs = tester.getRect(find.byType(CharacterPackArea));
@@ -3322,7 +3350,7 @@ void main() {
 
     testWidgets('drops a card into a pack and takes it back out', (tester) async {
       final cubits = stageCast(
-        characters: const CharactersState(
+        cast: const CastState(
           loading: false,
           characters: [guard],
           packs: [CharacterPack(id: 'p1', name: 'Таверна')],
@@ -3336,23 +3364,30 @@ void main() {
       await tester.timedDrag(card, distance, const Duration(milliseconds: 300));
       await tester.pumpAndSettle();
 
-      expect(cubits.characters.state.packs.single.characterIds, ['a1']);
-      expect(
-        cubits.characters.state.characters.single.name,
-        'Стражник',
-        reason: 'dropped into the pack, not moved out of the cast',
-      );
+      verify(() => cubits.cards.add(const CardPacked('p1', 'a1'))).called(1);
+    });
 
-      // The cross on the card inside the pack takes it out again.
+    testWidgets('takes a card out of a pack by the cross on it', (tester) async {
+      final cubits = stageCast(
+        cast: const CastState(
+          loading: false,
+          characters: [guard],
+          packs: [
+            CharacterPack(id: 'p1', name: 'Таверна', characterIds: ['a1']),
+          ],
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
       await tester.tap(find.byTooltip('Убрать из пакета'));
       await tester.pumpAndSettle();
 
-      expect(cubits.characters.state.packs.single.characterIds, isEmpty);
+      verify(() => cubits.cards.add(const CardUnpacked('p1', 'a1'))).called(1);
     });
 
     testWidgets('keeps saving and throwing away a card behind its menu', (tester) async {
       final cubits = stageCast(
-        characters: const CharactersState(loading: false, characters: [guard]),
+        cast: const CastState(loading: false, characters: [guard]),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
@@ -3369,7 +3404,7 @@ void main() {
       expect(find.text('Удалить персонажа?'), findsOneWidget);
       await tester.tap(find.text('Отмена'));
       await tester.pumpAndSettle();
-      expect(cubits.characters.state.characters, hasLength(1));
+      verifyNever(() => cubits.cards.add(const CardRemoved('a1')));
     });
   });
 
@@ -3405,7 +3440,7 @@ void main() {
         models: catalogue(),
         speakers: speakers,
       );
-      cubits.characters.seed(CharactersState(loading: false, characters: characters));
+      cubits.cast.seed(CharacterLibrary(characters: characters));
       return cubits;
     }
 
@@ -3433,7 +3468,6 @@ void main() {
         models: catalogue(missingLanguage: null)
           ..removeWhere((state) => state.model.kind == ModelKind.voiceConversion),
       );
-      cubits.characters.seed(const CharactersState(loading: false));
       await pumpDashboard(tester, cubits, const Size(1400, 900));
 
       expect(
@@ -3590,7 +3624,7 @@ void main() {
         settings: settings,
         models: catalogue(),
       );
-      cubits.characters.seed(CharactersState(characters: characters, loading: false));
+      cubits.cast.seed(CharacterLibrary(characters: characters));
       cubits.graph.seed(
         PipelineGraphState(loading: false, layout: PipelineLayout.drawing(placed)),
       );
@@ -3638,13 +3672,8 @@ void main() {
 
       // The node is a second window onto the same choice, and the characters
       // screen is recording through the game it names.
-      cubits.characters.seed(
-        const CharactersState(
-          loading: false,
-          characters: [guard, smith],
-          status: PipelineStatus.listening,
-        ),
-      );
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      cubits.voices.emit(const VoiceCaptureState(status: PipelineStatus.listening));
       await tester.pump();
       await tester.pump();
 
@@ -3736,9 +3765,8 @@ void main() {
       // The canvas refuses that line, but the card's own panel used to list
       // the whole cast, so the two could be set to read each other there.
       final cubits = await pumpGraph(tester);
-      cubits.characters.seed(
-        const CharactersState(
-          loading: false,
+      cubits.cast.seed(
+        const CharacterLibrary(
           characters: [
             Character(id: 'guard', name: 'Стражник', vector: [0.2, 0.4]),
             Character(id: 'smith', name: 'Кузнец', vector: [0.1, 0.9], voicedBy: 'guard'),
@@ -3846,7 +3874,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        cubits.characters.state.characters.firstWhere((value) => value.id == 'guard').name,
+        cubits.cast.cast.firstWhere((value) => value.id == 'guard').name,
         'Часовой',
       );
       // The node is drawn from the cast, so its own header follows at once.
@@ -3893,7 +3921,7 @@ void main() {
       await tester.tap(find.text('Кузнец').last);
       await tester.pumpAndSettle();
 
-      expect(cubits.characters.state.characters.first.voicedBy, 'smith');
+      expect(cubits.cast.cast.first.voicedBy, 'smith');
       expect(find.text('Кузнец'), findsWidgets, reason: 'the reader joins the canvas');
     });
 

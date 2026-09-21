@@ -4,7 +4,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../dashboard/cubits/characters_cubit.dart';
+import '../dashboard/cubits/cast_bloc.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/glossary_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
@@ -14,6 +14,7 @@ import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/cubits/sources_bloc.dart';
 import '../dashboard/cubits/transcript_bloc.dart';
+import '../dashboard/cubits/voice_capture_bloc.dart';
 
 /// Every screen's state, made out of the repositories above it and put
 /// under [child].
@@ -92,7 +93,12 @@ class DashboardProviders extends StatelessWidget {
       ),
       BlocProvider(
         lazy: false,
-        create: (context) => CharactersCubit(
+        create: (context) =>
+            CastBloc(context.read(), context.read<ShellCubit>())..add(const CastOpened()),
+      ),
+      BlocProvider(
+        lazy: false,
+        create: (context) => VoiceCaptureBloc(
           context.read(),
           context.read(),
           context.read(),
@@ -100,7 +106,7 @@ class DashboardProviders extends StatelessWidget {
           context.read<ShellCubit>(),
           context.read(),
           context.read(),
-        )..load(),
+        )..add(const VoiceCaptureOpened()),
       ),
       BlocProvider(
         lazy: false,

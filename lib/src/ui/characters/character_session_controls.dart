@@ -7,7 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/characters_cubit.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/shell_cubit.dart';
@@ -15,6 +14,7 @@ import '../dashboard/dashboard_context.dart';
 import '../common/language_row.dart';
 import '../common/game_picker.dart';
 import '../dashboard/cubits/sources_bloc.dart';
+import '../dashboard/cubits/voice_capture_bloc.dart';
 
 /// Which game to listen to, and whether the session that measures voices is
 /// running. Live dubbing holds the same worker, so the two never run at once.
@@ -29,7 +29,7 @@ class CharacterSessionControls extends StatelessWidget {
         buildWhen: whenChanged(
           (pipeline) => pipeline.running,
         ),
-        builder: (context, pipeline) => BlocBuilder<CharactersCubit, CharactersState>(
+        builder: (context, pipeline) => BlocBuilder<VoiceCaptureBloc, VoiceCaptureState>(
           buildWhen: whenChanged((characters) => (characters.status, characters.recordingId)),
           builder: (context, characters) =>
               _build(context, pipeline, characters, initializing: shell.initializing),
@@ -41,11 +41,11 @@ class CharacterSessionControls extends StatelessWidget {
   Widget _build(
     BuildContext context,
     SessionState pipeline,
-    CharactersState characters, {
+    VoiceCaptureState characters, {
     required bool initializing,
   }) {
     final l10n = AppLocalizations.of(context);
-    final canRecord = context.read<CharactersCubit>().canRecord;
+    final canRecord = context.read<VoiceCaptureBloc>().canRecord;
     final locked = characters.running || pipeline.running;
     final picker = GamePicker(enabled: !locked);
     return Column(
@@ -66,9 +66,11 @@ class CharacterSessionControls extends StatelessWidget {
                 key: const ValueKey('charactersSession'),
                 onPressed: !canRecord || initializing || pipeline.running
                     ? null
-                    : () => context.read<CharactersCubit>().toggleSession(
-                        initializing: initializing,
-                        process: context.read<SourcesBloc>().state.selected,
+                    : () => context.read<VoiceCaptureBloc>().add(
+                        RecordingSessionToggled(
+                          initializing: initializing,
+                          process: context.read<SourcesBloc>().state.selected,
+                        ),
                       ),
                 icon: characters.status == PipelineStatus.starting
                     ? SizedBox(

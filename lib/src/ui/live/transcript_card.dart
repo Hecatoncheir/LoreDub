@@ -7,12 +7,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/character.dart';
 import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/characters_cubit.dart';
 import '../common/module_label.dart';
 import '../common/clear_list_button.dart';
 import 'transcript_body.dart';
 import 'transcript_lines.dart';
 import '../dashboard/cubits/transcript_bloc.dart';
+import '../dashboard/cubits/cast_bloc.dart';
 
 /// What the running session heard, newest first.
 class TranscriptCard extends StatelessWidget {
@@ -45,54 +45,53 @@ class TranscriptCard extends StatelessWidget {
   Widget build(BuildContext context) =>
       BlocSelector<TranscriptBloc, TranscriptState, List<TranscriptEntry>>(
         selector: (lists) => lists.transcript,
-        builder: (context, transcript) =>
-            BlocSelector<CharactersCubit, CharactersState, List<Character>>(
-              selector: (characters) => characters.characters,
-              builder: (context, cast) => Card(
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  mainAxisSize: fillsHeight ? MainAxisSize.max : MainAxisSize.min,
-                  children: [
-                    Padding(
-                      // Tighter than a bare label row would need: the button
-                      // has to fit without making the header taller.
-                      padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
-                      child: Row(
-                        children: [
-                          // The heading takes the room and gives way where
-                          // there is none, so the button that clears the
-                          // list sits against the card's edge.
-                          Expanded(
-                            child: ModuleLabel(
-                              number: number,
-                              label: label ?? AppLocalizations.of(context).areaTranscript,
-                            ),
-                          ),
-                          ClearListButton(
-                            tooltip: AppLocalizations.of(context).transcriptClearTooltip,
-                            onPressed: transcript.isEmpty
-                                ? null
-                                : () => context.read<TranscriptBloc>().add(
-                                    const TranscriptCleared(),
-                                  ),
-                          ),
-                        ],
+        builder: (context, transcript) => BlocSelector<CastBloc, CastState, List<Character>>(
+          selector: (characters) => characters.characters,
+          builder: (context, cast) => Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: fillsHeight ? MainAxisSize.max : MainAxisSize.min,
+              children: [
+                Padding(
+                  // Tighter than a bare label row would need: the button
+                  // has to fit without making the header taller.
+                  padding: const EdgeInsets.fromLTRB(20, 9, 12, 8),
+                  child: Row(
+                    children: [
+                      // The heading takes the room and gives way where
+                      // there is none, so the button that clears the
+                      // list sits against the card's edge.
+                      Expanded(
+                        child: ModuleLabel(
+                          number: number,
+                          label: label ?? AppLocalizations.of(context).areaTranscript,
+                        ),
                       ),
-                    ),
-                    const Divider(height: 1),
-                    TranscriptBody(
-                      fillsHeight: fillsHeight,
-                      empty: transcript.isEmpty,
-                      lines: TranscriptLines(
-                        entries: transcript,
-                        characters: cast,
-                        fromScreen: fromScreen,
-                        scrolls: fillsHeight,
+                      ClearListButton(
+                        tooltip: AppLocalizations.of(context).transcriptClearTooltip,
+                        onPressed: transcript.isEmpty
+                            ? null
+                            : () => context.read<TranscriptBloc>().add(
+                                const TranscriptCleared(),
+                              ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                const Divider(height: 1),
+                TranscriptBody(
+                  fillsHeight: fillsHeight,
+                  empty: transcript.isEmpty,
+                  lines: TranscriptLines(
+                    entries: transcript,
+                    characters: cast,
+                    fromScreen: fromScreen,
+                    scrolls: fillsHeight,
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
       );
 }
