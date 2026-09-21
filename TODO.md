@@ -1012,6 +1012,17 @@ abstract final class AppTheme {
       после выбора игры: её `buildWhen` про игру не знал.
       Пирамиде `PipelinePanel` это прибавило ступень (игра — ещё один
       источник фактов); снята вместе с остальными (этап 1).
+- [x] **Второй кусок `PipelineCubit` — транскрипт.** *Сделано:*
+      `TranscriptBloc` (`transcript`, `speakers`, `snapshots`,
+      `snapshotReading`, `snapshotMissed`). Он слушает движок сам, а о
+      сессии знает одно — что началась сессия какого-то вида (это очищает
+      списки прошлой) и сколько строк держит этот вид; и то и другое
+      публикует `SessionCoordinator` (`EngineActivity` теперь несёт статус
+      и вид сессии, а не два флага). Реплика больше не новое состояние
+      сессии: виджеты кнопок и статуса перестали объяснять в `buildWhen`,
+      что строки им не интересны. `clearTranscript`/`clearSnapshots`/
+      `speakAgain` стали событиями `TranscriptCleared`/`SnapshotsCleared`/
+      `LineSpokenAgain`.
 - [ ] `bloc_test` + `mocktail` в `dev_dependencies`; `seed()` и
       `PipelineGraphSeeded` удаляются — виджет-тесты получают
       `MockBloc` + `whenListen` через `BlocProvider.value`.

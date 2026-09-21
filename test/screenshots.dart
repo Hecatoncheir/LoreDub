@@ -62,6 +62,7 @@ import 'package:lore_dub/src/ui/graph/node_faces.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/domain/capture_sources.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 
 /// The size the pictures have always been kept at, and the one the page and
 /// the readme lay out for.
@@ -363,10 +364,10 @@ void main() {
       LivePipelineState(
         status: status,
         session: session,
-        transcript: transcript,
-        speakers: speakers,
-        snapshots: snapshots,
       ),
+    );
+    cubits.transcript.seed(
+      TranscriptState(transcript: transcript, speakers: speakers, snapshots: snapshots),
     );
     cubits.sources.seed(const CaptureSources(processes: [game], selected: game));
     cubits.glossary.seed(GlossaryState(glossary: glossary, loaded: true));

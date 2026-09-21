@@ -25,8 +25,6 @@ class SnapshotControls extends StatelessWidget {
         (pipeline) => (
           pipeline.status,
           pipeline.session,
-          pipeline.snapshotReading,
-          pipeline.snapshotMissed,
           pipeline.frameMissed,
         ),
       ),

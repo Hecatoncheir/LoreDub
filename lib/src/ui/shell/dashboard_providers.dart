@@ -13,6 +13,7 @@ import '../dashboard/cubits/pipeline_graph_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/cubits/sources_bloc.dart';
+import '../dashboard/cubits/transcript_bloc.dart';
 
 /// Every screen's state, made out of the repositories above it and put
 /// under [child].
@@ -76,6 +77,11 @@ class DashboardProviders extends StatelessWidget {
           context.read<ShellCubit>(),
           context.read(),
         )..listen(),
+      ),
+      BlocProvider(
+        lazy: false,
+        create: (context) =>
+            TranscriptBloc(context.read(), context.read(), context.read<ShellCubit>()),
       ),
       BlocProvider(
         lazy: false,

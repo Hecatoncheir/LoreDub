@@ -1,8 +1,6 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import '../dashboard/cubits/pipeline_cubit.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -13,6 +11,7 @@ import '../dashboard/cubits/glossary_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import 'empty_transcript.dart';
 import 'transcript_bubble.dart';
+import '../dashboard/cubits/transcript_bloc.dart';
 
 /// What a transcript card holds: the lines, newest first, or the line
 /// saying where they will come from while there are none.
@@ -52,7 +51,7 @@ class TranscriptLines extends StatelessWidget {
       itemBuilder: (context, index) => TranscriptBubble(
         entry: entries[index],
         characters: characters,
-        onSpeakAgain: () => context.read<PipelineCubit>().speakAgain(entries[index]),
+        onSpeakAgain: () => context.read<TranscriptBloc>().add(LineSpokenAgain(entries[index])),
         // A line is corrected where it was heard going wrong, which is the
         // only moment the player knows it did. The glossary screen is then
         // the list of what was collected rather than a place to remember to

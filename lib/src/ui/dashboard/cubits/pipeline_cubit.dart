@@ -31,8 +31,6 @@ import 'shell_cubit.dart';
 class LivePipelineState extends Equatable {
   const LivePipelineState({
     this.status = PipelineStatus.idle,
-    this.transcript = const [],
-    this.speakers = const [],
     this.startupProgress,
     this.startupStage = '',
     this.detectedLanguage,
@@ -40,18 +38,10 @@ class LivePipelineState extends Equatable {
     this.activeBackends = const {},
     this.session = PipelineSession.live,
     this.screenReading = ScreenReading.both,
-    this.snapshots = const [],
-    this.snapshotReading = false,
-    this.snapshotMissed = false,
     this.frameMissed = false,
   });
 
   final PipelineStatus status;
-  final List<TranscriptEntry> transcript;
-
-  /// The voices this session has heard, in the order they first spoke, so
-  /// the player can give any of them a character's voice.
-  final List<SceneSpeaker> speakers;
 
   /// How far the pipeline is through starting, and what it is doing.
   final double? startupProgress;
@@ -75,26 +65,9 @@ class LivePipelineState extends Equatable {
   /// buttons of that page which of them is the one running.
   final ScreenReading screenReading;
 
-  /// What the player selected and had translated, newest first. Kept apart
-  /// from [transcript], which follows the running capture.
-  final List<TranscriptEntry> snapshots;
-
-  /// Set from the moment a selection is let go until its translation, or
-  /// the news that it held no text, arrives.
-  final bool snapshotReading;
-
-  /// Whether the last selection held no text Windows could read.
-  final bool snapshotMissed;
-
   /// Whether the last frame drawn over the game missed its window, so the
   /// subtitles go on being read where they were.
   final bool frameMissed;
-
-  /// How many lines a list keeps, newest first. The screen's subtitles keep
-  /// ten: that area grows with what it holds rather than scrolling inside
-  /// itself, so a longer list would push the page down without being read.
-  static const linesKept = 50;
-  static const subtitlesKept = 10;
 
   /// A paused session is still a session: its settings stay locked and its
   /// models loaded.
@@ -185,8 +158,6 @@ class LivePipelineState extends Equatable {
 
   LivePipelineState copyWith({
     PipelineStatus? status,
-    List<TranscriptEntry>? transcript,
-    List<SceneSpeaker>? speakers,
     double? startupProgress,
     bool clearStartupProgress = false,
     String? startupStage,
@@ -197,14 +168,9 @@ class LivePipelineState extends Equatable {
     Map<ComputeStage, ComputeBackend>? activeBackends,
     PipelineSession? session,
     ScreenReading? screenReading,
-    List<TranscriptEntry>? snapshots,
-    bool? snapshotReading,
-    bool? snapshotMissed,
     bool? frameMissed,
   }) => LivePipelineState(
     status: status ?? this.status,
-    transcript: transcript ?? this.transcript,
-    speakers: speakers ?? this.speakers,
     startupProgress: clearStartupProgress ? null : startupProgress ?? this.startupProgress,
     startupStage: startupStage ?? this.startupStage,
     detectedLanguage: clearDetectedLanguage ? null : detectedLanguage ?? this.detectedLanguage,
@@ -212,17 +178,12 @@ class LivePipelineState extends Equatable {
     activeBackends: activeBackends ?? this.activeBackends,
     session: session ?? this.session,
     screenReading: screenReading ?? this.screenReading,
-    snapshots: snapshots ?? this.snapshots,
-    snapshotReading: snapshotReading ?? this.snapshotReading,
-    snapshotMissed: snapshotMissed ?? this.snapshotMissed,
     frameMissed: frameMissed ?? this.frameMissed,
   );
 
   @override
   List<Object?> get props => [
     status,
-    transcript,
-    speakers,
     startupProgress,
     startupStage,
     detectedLanguage,
@@ -230,9 +191,6 @@ class LivePipelineState extends Equatable {
     activeBackends,
     session,
     screenReading,
-    snapshots,
-    snapshotReading,
-    snapshotMissed,
     frameMissed,
   ];
 }
@@ -319,10 +277,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         startupStage: '',
         clearDetectedLanguage: true,
         clearSpokenVoice: true,
-        // Whoever spoke in the last session is not in this one yet. Who
-        // reads whom is not kept here at all: it is the graph's, and it is
-        // in the cards.
-        speakers: const [],
       ),
     );
     await _startLive(selection);
@@ -464,11 +418,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         clearStartupProgress: true,
         startupStage: '',
         clearSpokenVoice: true,
-        snapshotReading: false,
-        snapshotMissed: false,
         frameMissed: false,
-        // The list under the frame is this session's, not the last one's.
-        transcript: const [],
       ),
     );
     try {
@@ -540,7 +490,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         session: PipelineSession.scene,
         clearStartupProgress: true,
         startupStage: '',
-        speakers: const [],
       ),
     );
     try {
@@ -585,7 +534,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         clearDetectedLanguage: true,
         clearSpokenVoice: true,
         activeBackends: const {},
-        snapshotReading: false,
       ),
     );
     // The stop dropped every key the session held, the one that shows
@@ -619,33 +567,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// name the whole default output shares.
   String get _game => _process?.name ?? '';
 
-  /// The scene list with this voice in it: one heard before keeps its place
-  /// and shows what it just said, a new one joins the end.
-  List<SceneSpeaker> _withSpeaker(String? key, {String line = '', double seconds = 0}) {
-    if (key == null || key.isEmpty) return state.speakers;
-    final at = state.speakers.indexWhere((speaker) => speaker.key == key);
-    if (at < 0) {
-      return [...state.speakers, SceneSpeaker(key: key, line: line, seconds: seconds)];
-    }
-    return [
-      for (final speaker in state.speakers)
-        if (speaker.key == key) speaker.heard(line: line, seconds: seconds) else speaker,
-    ];
-  }
-
-  /// Empties the transcript. The pipeline is untouched: a running session
-  /// keeps appending to the now-clear list.
-  void clearTranscript() {
-    if (state.transcript.isEmpty) return;
-    emit(state.copyWith(transcript: const []));
-  }
-
-  /// Empties the list of selections, leaving the session alone.
-  void clearSnapshots() {
-    if (state.snapshots.isEmpty) return;
-    emit(state.copyWith(snapshots: const []));
-  }
-
   /// Hands one engine event to the part of the state it changes.
   ///
   /// The switch only names the handler: each kind of event is a method of a
@@ -656,14 +577,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     switch (event) {
       case SessionStateChanged():
         _onSessionState(event);
-      case LineDubbed():
-        _onTranscript(event);
-      case SceneVoiceHeard():
-        _onSceneVoice(event);
-      case SnapshotReading():
-        emit(state.copyWith(snapshotReading: true, snapshotMissed: false));
-      case SnapshotRead():
-        _onSnapshot(event);
+      // The lists are `TranscriptBloc`'s, which hears the engine itself.
+      case LineDubbed() || SceneVoiceHeard() || SnapshotReading() || SnapshotRead():
+        break;
       case SubtitleFrameMoved():
         _onSubtitleFrame(event);
       case StartupProgressed():
@@ -726,43 +642,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     );
   }
 
-  /// One dubbed line, from the capture or from a selection.
-  void _onTranscript(LineDubbed event) {
-    final entry = event.line;
-    // A selection answers the player's request, not the running capture, so
-    // it has a list of its own.
-    if (event.snapshot) {
-      emit(
-        state.copyWith(
-          snapshots: [entry, ...state.snapshots.take(LivePipelineState.linesKept - 1)],
-          snapshotReading: false,
-        ),
-      );
-      return;
-    }
-    emit(
-      state.copyWith(
-        transcript: [entry, ...state.transcript.take(_linesKept - 1)],
-        speakers: _withSpeaker(
-          entry.speaker,
-          line: entry.translated.trim().isEmpty ? entry.original : entry.translated,
-        ),
-      ),
-    );
-  }
-
-  /// A voice placed before the dubbing runs: no words, only who spoke.
-  void _onSceneVoice(SceneVoiceHeard event) {
-    emit(state.copyWith(speakers: _withSpeaker(event.speaker, seconds: event.seconds)));
-  }
-
-  /// What the screen selection was read as, or that nothing was read.
-  void _onSnapshot(SnapshotRead event) {
-    // Text that was found stays in reading until its translation lands.
-    if (event.text.isNotEmpty) return;
-    emit(state.copyWith(snapshotReading: false, snapshotMissed: !event.failed));
-  }
-
   /// How far the worker is through its startup.
   void _onStartup(StartupProgressed event) {
     emit(
@@ -795,18 +674,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   Future<void> _toggleFrameOverlay() async {
     final settings = _settings.settings;
     await _settings.save(settings.copyWith(showFrameOverlay: !settings.showFrameOverlay));
-  }
-
-  /// Reads a line the session has already read, again: one that went by
-  /// while the player was looking at the game rather than at the list.
-  Future<void> speakAgain(TranscriptEntry entry) async {
-    final spoken = entry.spoken;
-    if (spoken == null) return;
-    try {
-      await _appRepository.speakAgain(spoken);
-    } catch (exception) {
-      _errors.report(exception);
-    }
   }
 
   /// The voice picked while a session runs reaches the worker rather than
@@ -852,11 +719,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     }
   }
 
-  /// How much of the transcript this session keeps.
-  int get _linesKept => state.session == PipelineSession.screen
-      ? LivePipelineState.subtitlesKept
-      : LivePipelineState.linesKept;
-
   /// Something went wrong with one phrase.
   ///
   /// A phrase failing does not stop the capture, so the pipeline keeps its
@@ -864,11 +726,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// used to leave it stuck: neither startable nor stoppable. An event
   /// without a failure has nothing to show, and reporting null would clear a
   /// banner raised a moment earlier.
-  void _onError(EngineFailed event) {
-    // Whatever failed, a selection still waiting will not be answered.
-    if (state.snapshotReading) emit(state.copyWith(snapshotReading: false));
-    _errors.report(event.failure);
-  }
+  void _onError(EngineFailed event) => _errors.report(event.failure);
 
   /// Every state this screen moves to is told to the coordinator, which
   /// is where the other screens learn whether the engine is theirs to use
@@ -878,8 +736,8 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     super.onChange(change);
     final now = change.nextState;
     _sessions.reportPipeline(
-      running: now.running,
-      paused: now.status == PipelineStatus.paused,
+      status: now.status,
+      session: now.session,
       backends: now.activeBackends,
     );
   }

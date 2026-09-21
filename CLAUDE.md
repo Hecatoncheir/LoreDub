@@ -66,13 +66,14 @@ than one of them.
    taken apart (`TODO.md`, stage 2). State lives in five cubits
    (`dashboard/cubits/`): `ShellCubit` (section, first load, the failure banner, the
    update check), `SettingsCubit`, `DownloadsCubit` (models, GPU runtimes,
-   what the machine can run), `PipelineCubit` (status and transcript) and
+   what the machine can run), `PipelineCubit` (the dubbing screens' session) and
    `CharactersCubit` (the player's cast and the session that records a
    voice for a card), plus two Blocs — `PipelineGraphBloc`, the node
    canvas, which is event-driven because a gesture there is a sequence
    (grab, move, drop) rather than a call, `SourcesBloc`, the game the
-   player names and the monitors, the first piece taken out of
-   `PipelineCubit` on the way to the Blocs of `TODO.md`, stage 4, and
+   player names and the monitors, and `TranscriptBloc`, the lines, the
+   voices of the scene and the snippets -- the two pieces taken out of
+   `PipelineCubit` on the way to the Blocs of `TODO.md`, stage 4 -- and
    `PipelineFactsBloc`, what the scheme's nodes write on themselves.
    No cubit reads another cubit. What more than one screen needs lives in a
    repository that owns it and publishes it: `SettingsRepository`
@@ -747,11 +748,15 @@ screen, a click-through orange frame above it, a nested message loop, and
 events are `snapshotReading`, then `snapshot` with the text (`failed` when
 OCR could not run). The text is queued as `PendingPhrase.text(snapshot:
 true)`, its `transcript` event carries `snapshot: true` and lands in
-`LivePipelineState.snapshots` rather than the transcript, and it is voiced
+`TranscriptState.snapshots` rather than the transcript, and it is voiced
 even while a live session is paused. Subtitle lines carry no such flag and go
-to `LivePipelineState.transcript`, which the screen draws beside the
-snapshots and which `toggleScreenText` clears at the start, a transcript
-belonging to one session. Every line that was voiced keeps the file it was read as
+to `TranscriptState.transcript`, which the screen draws beside the
+snapshots and which is emptied when a screen session starts, a transcript
+belonging to one session. The lists are `TranscriptBloc`'s rather than the
+session's: it hears the engine itself, and learns that a session of some
+kind began -- which empties what belonged to the last one -- from
+`SessionCoordinator.activity`, which also says how many lines that kind
+keeps. Every line that was voiced keeps the file it was read as
 (`TranscriptEntry.spoken`, the engine's `_spoken` queue of the last 60,
 emptied when the session ends), so the transcript can play it again rather
 than ask the worker for it a second time. That list keeps `subtitlesKept` (10) lines
@@ -927,7 +932,7 @@ never averaged — the user asked for that explicitly — and replies carry
 `bankSize` so the settings count can be refreshed.
 
 Every worker reply carries the speaker it *heard* (`speaker`), and
-`PipelineCubit` collects those into `LivePipelineState.speakers` — the
+`TranscriptBloc` collects those into `TranscriptState.speakers` — the
 "Scene voices" area beside the transcript. That area shows and does not set:
 who reads whom is drawn on the graph, and there is no second place to change
 it. One scheme decides who speaks for whom, because three screens that could

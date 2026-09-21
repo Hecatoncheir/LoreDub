@@ -22,6 +22,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 
 /// Every screen's state, built by hand for a test to stage and then put on
 /// the screen through [provide].
@@ -63,6 +64,7 @@ class StagedDashboard {
       shell,
       sessions,
     );
+    transcript = TranscriptBloc(appRepository, sessions, shell);
     characters = CharactersCubit(
       appRepository,
       modelRepository,
@@ -89,6 +91,7 @@ class StagedDashboard {
   late final DownloadsCubit downloads;
   late final SourcesBloc sources;
   late final PipelineCubit pipeline;
+  late final TranscriptBloc transcript;
   late final CharactersCubit characters;
   late final GlossaryCubit glossary;
   late final PipelineGraphBloc graph;
@@ -116,6 +119,7 @@ class StagedDashboard {
         BlocProvider.value(value: downloads),
         BlocProvider.value(value: sources),
         BlocProvider.value(value: pipeline),
+        BlocProvider.value(value: transcript),
         BlocProvider.value(value: characters),
         BlocProvider.value(value: glossary),
         BlocProvider.value(value: graph),
@@ -130,6 +134,7 @@ class StagedDashboard {
     await graph.close();
     await glossary.close();
     await characters.close();
+    await transcript.close();
     await pipeline.close();
     await sources.close();
     await downloads.close();

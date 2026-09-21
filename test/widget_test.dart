@@ -65,6 +65,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/domain/capture_sources.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 
 void main() {
   StagedDashboard buildCubits({RuntimeRepository? runtimes}) {
@@ -120,13 +121,14 @@ void main() {
     cubits.pipeline.seed(
       LivePipelineState(
         status: status,
-        transcript: transcript,
-        speakers: speakers,
         detectedLanguage: detectedLanguage,
         startupProgress: startupProgress,
         startupStage: startupStage,
       ),
     );
+    // After the session: its start empties the lists, and what is staged
+    // here is what a running one has said.
+    cubits.transcript.seed(TranscriptState(transcript: transcript, speakers: speakers));
     return cubits;
   }
 
@@ -220,6 +222,7 @@ void main() {
     expect(context.read<DownloadsCubit>(), isNotNull);
     expect(context.read<SourcesBloc>(), isNotNull);
     expect(context.read<PipelineCubit>(), isNotNull);
+    expect(context.read<TranscriptBloc>(), isNotNull);
     expect(context.read<CharactersCubit>(), isNotNull);
     expect(context.read<GlossaryCubit>(), isNotNull);
     expect(context.read<PipelineGraphBloc>(), isNotNull);
@@ -1147,7 +1150,7 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
     await tester.pumpAndSettle();
 
-    expect(cubits.pipeline.state.transcript, isEmpty);
+    expect(cubits.transcript.state.transcript, isEmpty);
     expect(find.text('Ворота закрыты.'), findsNothing);
     expect(
       find.text('Здесь появятся распознанные и переведённые реплики'),
@@ -1184,7 +1187,7 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
     await tester.pumpAndSettle();
 
-    expect(cubits.pipeline.state.transcript, isEmpty);
+    expect(cubits.transcript.state.transcript, isEmpty);
     expect(cubits.pipeline.state.status, PipelineStatus.listening);
     expect(find.text('Остановить'), findsOneWidget);
   });
@@ -2799,6 +2802,7 @@ void main() {
       AppSettings settings = const AppSettings(),
       List<ModelInstallState>? models,
       LivePipelineState pipeline = const LivePipelineState(),
+      TranscriptState lists = const TranscriptState(),
     }) {
       final cubits = stage(
         buildCubits(),
@@ -2809,6 +2813,7 @@ void main() {
       // The frame is read out of one window, so this session waits for a
       // game as live dubbing does.
       cubits.pipeline.seed(pipeline);
+      cubits.transcript.seed(lists);
       cubits.sources.seed(const CaptureSources(processes: [game], selected: game));
       return cubits;
     }
@@ -2943,8 +2948,8 @@ void main() {
         pipeline: const LivePipelineState(
           status: PipelineStatus.listening,
           session: PipelineSession.screen,
-          snapshots: [snippet],
         ),
+        lists: const TranscriptState(snapshots: [snippet]),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
@@ -2958,8 +2963,8 @@ void main() {
         pipeline: const LivePipelineState(
           status: PipelineStatus.listening,
           session: PipelineSession.screen,
-          snapshotMissed: true,
         ),
+        lists: const TranscriptState(snapshotMissed: true),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
@@ -3501,9 +3506,9 @@ void main() {
               Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
             ],
           )
-          ..pipeline.seed(
-            const LivePipelineState(
-              status: PipelineStatus.listening,
+          ..pipeline.seed(const LivePipelineState(status: PipelineStatus.listening))
+          ..transcript.seed(
+            const TranscriptState(
               speakers: [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
               transcript: [
                 TranscriptEntry(

@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'compute_device.dart';
 import 'engine_activity.dart';
+import 'pipeline_state.dart';
 
 /// One engine holds one session, and the two screens that can start one do
 /// not settle it between themselves.
@@ -36,10 +37,10 @@ class SessionCoordinator {
   /// The dubbing screens say where their session stands. The cast screen
   /// asks it before starting anything.
   void reportPipeline({
-    required bool running,
-    required bool paused,
+    required PipelineStatus status,
+    required PipelineSession session,
     required Map<ComputeStage, ComputeBackend> backends,
-  }) => _publish(_activity.copyWith(pipelineRuns: running, paused: paused, backends: backends));
+  }) => _publish(_activity.copyWith(status: status, session: session, backends: backends));
 
   /// The cast screen says whether its session is up.
   void reportCast({required bool running}) => _publish(_activity.copyWith(recordingVoice: running));

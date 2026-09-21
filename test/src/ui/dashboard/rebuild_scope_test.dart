@@ -26,13 +26,13 @@ import 'package:lore_dub/src/domain/spoken_language.dart';
 import '../../../support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 
 /// What one report of download progress costs the rest of the screen.
 ///
@@ -165,8 +165,8 @@ void main() {
 
     final rebuilt = await rebuiltBy(
       tester,
-      () => cubits.pipeline.seed(
-        const LivePipelineState(
+      () => cubits.transcript.seed(
+        const TranscriptState(
           transcript: [
             TranscriptEntry(
               original: 'Take cover.',
@@ -179,7 +179,7 @@ void main() {
       ),
     );
 
-    expect(rebuilt, 0, reason: 'only what reads the session redraws');
+    expect(rebuilt, 0, reason: 'only what reads the transcript redraws');
   });
 }
 

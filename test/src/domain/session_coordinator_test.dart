@@ -4,6 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/engine_activity.dart';
+import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 
 void main() {
@@ -14,7 +15,11 @@ void main() {
 
   test('each screen reports its own half, and neither undoes the other', () {
     sessions
-      ..reportPipeline(running: true, paused: false, backends: const {})
+      ..reportPipeline(
+        status: PipelineStatus.listening,
+        session: PipelineSession.live,
+        backends: const {},
+      )
       ..reportCast(running: true);
 
     expect(sessions.activity.pipelineRuns, isTrue);
@@ -33,9 +38,21 @@ void main() {
 
     const backends = {ComputeStage.speech: ComputeBackend.cpu};
     sessions
-      ..reportPipeline(running: true, paused: false, backends: backends)
-      ..reportPipeline(running: true, paused: false, backends: {...backends})
-      ..reportPipeline(running: true, paused: true, backends: backends);
+      ..reportPipeline(
+        status: PipelineStatus.listening,
+        session: PipelineSession.live,
+        backends: backends,
+      )
+      ..reportPipeline(
+        status: PipelineStatus.listening,
+        session: PipelineSession.live,
+        backends: {...backends},
+      )
+      ..reportPipeline(
+        status: PipelineStatus.paused,
+        session: PipelineSession.live,
+        backends: backends,
+      );
 
     expect(heard.map((activity) => activity.paused), [false, true]);
   });

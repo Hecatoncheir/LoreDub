@@ -12,6 +12,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/capture_sources.dart';
 import '../dashboard/cubits/sources_bloc.dart';
+import '../dashboard/cubits/transcript_bloc.dart';
+import '../dashboard/dashboard_context.dart';
 
 /// What became of the last selection, or that live dubbing holds the key --
 /// nothing at all when there is nothing to say.
@@ -23,15 +25,16 @@ class SnapshotStatusLine extends StatelessWidget {
 
   (IconData, String, Color)? _said(
     AppLocalizations l10n,
-    LoreDubColors colors, {
+    LoreDubColors colors,
+    TranscriptState lists, {
     required bool gameChosen,
   }) => switch (pipeline) {
-    _ when pipeline.snapshotReading => (
+    _ when lists.snapshotReading => (
       Icons.hourglass_top_rounded,
       l10n.snapshotReading,
       colors.warning,
     ),
-    _ when pipeline.snapshotMissed => (
+    _ when lists.snapshotMissed => (
       Icons.search_off_rounded,
       l10n.snapshotMissed,
       colors.warning,
@@ -59,11 +62,20 @@ class SnapshotStatusLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocSelector<SourcesBloc, CaptureSources, bool>(
     selector: (sources) => sources.selected != null,
-    builder: (context, gameChosen) => _build(context, gameChosen: gameChosen),
+    // What became of the last selection is the lists' to say.
+    builder: (context, gameChosen) => BlocBuilder<TranscriptBloc, TranscriptState>(
+      buildWhen: whenChanged((lists) => (lists.snapshotReading, lists.snapshotMissed)),
+      builder: (context, lists) => _build(context, lists, gameChosen: gameChosen),
+    ),
   );
 
-  Widget _build(BuildContext context, {required bool gameChosen}) {
-    final said = _said(AppLocalizations.of(context), context.colors, gameChosen: gameChosen);
+  Widget _build(BuildContext context, TranscriptState lists, {required bool gameChosen}) {
+    final said = _said(
+      AppLocalizations.of(context),
+      context.colors,
+      lists,
+      gameChosen: gameChosen,
+    );
     if (said == null) return const SizedBox.shrink();
     final (icon, text, color) = said;
     return Padding(

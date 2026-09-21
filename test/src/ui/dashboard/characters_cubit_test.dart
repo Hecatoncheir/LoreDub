@@ -456,7 +456,11 @@ void main() {
   group('while a dubbing session holds the worker', () {
     setUp(() {
       characters.seed(const CharactersState(loading: false, characters: [guard]));
-      sessions.reportPipeline(running: true, paused: false, backends: const {});
+      sessions.reportPipeline(
+        status: PipelineStatus.listening,
+        session: PipelineSession.live,
+        backends: const {},
+      );
     });
 
     test('speaks no sample, which would take the worker from under it', () async {

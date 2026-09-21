@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import 'compute_device.dart';
+import 'pipeline_state.dart';
 
 /// What the one engine is doing, as the screens that run it say.
 ///
@@ -10,20 +11,21 @@ import 'compute_device.dart';
 /// the dubbing screen's cubit and the cast screen's, which is one screen's
 /// state being part of another's workings. The screens report it to
 /// `SessionCoordinator` instead, each its own half, and whoever draws it
-/// listens there.
+/// listens there. The transcript does too: it is emptied when a session of
+/// its kind begins, and keeps as many lines as that kind of session shows.
 class EngineActivity {
   const EngineActivity({
-    this.pipelineRuns = false,
-    this.paused = false,
+    this.status = PipelineStatus.idle,
+    this.session = PipelineSession.live,
     this.backends = const {},
     this.recordingVoice = false,
   });
 
-  /// A session of the dubbing screens is starting, up or resting.
-  final bool pipelineRuns;
+  /// Where the dubbing screens' session stands.
+  final PipelineStatus status;
 
-  /// That session is resting.
-  final bool paused;
+  /// Which of their sessions [status] is about. Meaningless while idle.
+  final PipelineSession session;
 
   /// What that session reported it settled on, stage by stage.
   final Map<ComputeStage, ComputeBackend> backends;
@@ -32,14 +34,23 @@ class EngineActivity {
   /// started with.
   final bool recordingVoice;
 
+  /// A session of the dubbing screens is starting, up or resting.
+  bool get pipelineRuns =>
+      status == PipelineStatus.starting ||
+      status == PipelineStatus.listening ||
+      status == PipelineStatus.paused;
+
+  /// That session is resting.
+  bool get paused => status == PipelineStatus.paused;
+
   EngineActivity copyWith({
-    bool? pipelineRuns,
-    bool? paused,
+    PipelineStatus? status,
+    PipelineSession? session,
     Map<ComputeStage, ComputeBackend>? backends,
     bool? recordingVoice,
   }) => EngineActivity(
-    pipelineRuns: pipelineRuns ?? this.pipelineRuns,
-    paused: paused ?? this.paused,
+    status: status ?? this.status,
+    session: session ?? this.session,
     backends: backends ?? this.backends,
     recordingVoice: recordingVoice ?? this.recordingVoice,
   );
@@ -47,16 +58,16 @@ class EngineActivity {
   @override
   bool operator ==(Object other) =>
       other is EngineActivity &&
-      other.pipelineRuns == pipelineRuns &&
-      other.paused == paused &&
+      other.status == status &&
+      other.session == session &&
       other.recordingVoice == recordingVoice &&
       other.backends.length == backends.length &&
       backends.entries.every((entry) => other.backends[entry.key] == entry.value);
 
   @override
   int get hashCode => Object.hash(
-    pipelineRuns,
-    paused,
+    status,
+    session,
     recordingVoice,
     Object.hashAllUnordered(backends.entries.map((entry) => Object.hash(entry.key, entry.value))),
   );

@@ -8,11 +8,11 @@ import '../../domain/character.dart';
 import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../dashboard/cubits/characters_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
 import '../common/module_label.dart';
 import '../common/clear_list_button.dart';
 import 'transcript_body.dart';
 import 'transcript_lines.dart';
+import '../dashboard/cubits/transcript_bloc.dart';
 
 /// What the running session heard, newest first.
 class TranscriptCard extends StatelessWidget {
@@ -43,8 +43,8 @@ class TranscriptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      BlocSelector<PipelineCubit, LivePipelineState, List<TranscriptEntry>>(
-        selector: (pipeline) => pipeline.transcript,
+      BlocSelector<TranscriptBloc, TranscriptState, List<TranscriptEntry>>(
+        selector: (lists) => lists.transcript,
         builder: (context, transcript) =>
             BlocSelector<CharactersCubit, CharactersState, List<Character>>(
               selector: (characters) => characters.characters,
@@ -72,7 +72,9 @@ class TranscriptCard extends StatelessWidget {
                             tooltip: AppLocalizations.of(context).transcriptClearTooltip,
                             onPressed: transcript.isEmpty
                                 ? null
-                                : context.read<PipelineCubit>().clearTranscript,
+                                : () => context.read<TranscriptBloc>().add(
+                                    const TranscriptCleared(),
+                                  ),
                           ),
                         ],
                       ),

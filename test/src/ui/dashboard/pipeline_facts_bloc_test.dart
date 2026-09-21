@@ -20,6 +20,7 @@ import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
+import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
 
@@ -69,8 +70,8 @@ void main() {
     );
     sessions
       ..reportPipeline(
-        running: true,
-        paused: true,
+        status: PipelineStatus.paused,
+        session: PipelineSession.live,
         backends: const {ComputeStage.recognition: ComputeBackend.cuda},
       )
       ..reportCast(running: true);

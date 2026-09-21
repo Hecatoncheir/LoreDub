@@ -38,6 +38,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 
 /// A dubbed line as the engine reports it, with only the parts a test
 /// cares about spelled out.
@@ -298,16 +299,20 @@ void main() {
       );
       await settle();
 
-      final line = pipeline.state.transcript.single;
+      final line = cubits.transcript.state.transcript.single;
       expect(line.spoken, 'work/speech-7.wav');
-      await pipeline.speakAgain(line);
+      cubits.transcript.add(LineSpokenAgain(line));
+      await settle();
       expect(repository.playedAgain, ['work/speech-7.wav']);
     });
 
     test('a line that was never voiced has nothing to play', () async {
-      await pipeline.speakAgain(
-        const TranscriptEntry(original: 'x', english: 'x', translated: 'x', latency: Duration.zero),
+      cubits.transcript.add(
+        const LineSpokenAgain(
+          TranscriptEntry(original: 'x', english: 'x', translated: 'x', latency: Duration.zero),
+        ),
       );
+      await settle();
 
       expect(repository.playedAgain, isEmpty);
     });
@@ -437,10 +442,10 @@ void main() {
       }
       await settle();
 
-      expect(pipeline.state.transcript, hasLength(LivePipelineState.subtitlesKept));
-      expect(pipeline.state.transcript.first.original, 'line 12');
+      expect(cubits.transcript.state.transcript, hasLength(TranscriptState.subtitlesKept));
+      expect(cubits.transcript.state.transcript.first.original, 'line 12');
       expect(
-        pipeline.state.transcript.last.original,
+        cubits.transcript.state.transcript.last.original,
         'line 3',
         reason: 'the older two left as the newer arrived',
       );
@@ -540,7 +545,11 @@ void main() {
         ..push(const SnapshotReading())
         ..push(const SnapshotRead(text: 'Press E to open'));
       await settle();
-      expect(pipeline.state.snapshotReading, isTrue, reason: 'the translation is on its way');
+      expect(
+        cubits.transcript.state.snapshotReading,
+        isTrue,
+        reason: 'the translation is on its way',
+      );
 
       repository.push(
         dubbed(
@@ -551,9 +560,9 @@ void main() {
         ),
       );
       await settle();
-      expect(pipeline.state.snapshots.single.translated, 'Нажмите E, чтобы открыть');
-      expect(pipeline.state.transcript, isEmpty);
-      expect(pipeline.state.snapshotReading, isFalse);
+      expect(cubits.transcript.state.snapshots.single.translated, 'Нажмите E, чтобы открыть');
+      expect(cubits.transcript.state.transcript, isEmpty);
+      expect(cubits.transcript.state.snapshotReading, isFalse);
     });
 
     test('says when a selection held no text', () async {
@@ -566,8 +575,8 @@ void main() {
         ..push(const SnapshotRead(text: ''));
       await settle();
 
-      expect(pipeline.state.snapshotMissed, isTrue);
-      expect(pipeline.state.snapshotReading, isFalse);
+      expect(cubits.transcript.state.snapshotMissed, isTrue);
+      expect(cubits.transcript.state.snapshotReading, isFalse);
     });
 
     test('gives the worker over when live dubbing starts', () async {
@@ -615,7 +624,7 @@ void main() {
     repository.push(dubbed('Move along.', translated: 'Проходи.', speaker: 'timbre:0'));
     await settle();
 
-    final speakers = pipeline.state.speakers;
+    final speakers = cubits.transcript.state.speakers;
     expect(
       speakers.map((speaker) => speaker.key),
       ['timbre:0', 'character:a1'],
@@ -631,8 +640,8 @@ void main() {
     repository.push(dubbed('Hello', translated: 'Привет'));
     await settle();
 
-    expect(pipeline.state.transcript, hasLength(1));
-    expect(pipeline.state.speakers, isEmpty);
+    expect(cubits.transcript.state.transcript, hasLength(1));
+    expect(cubits.transcript.state.speakers, isEmpty);
   });
 
   group('placing the voices before the dubbing', () {
@@ -666,7 +675,7 @@ void main() {
       repository.push(const SceneVoiceHeard(speaker: 'character:a1', seconds: 2));
       await settle();
 
-      final voices = pipeline.state.speakers;
+      final voices = cubits.transcript.state.speakers;
       expect(voices.map((voice) => voice.key), ['timbre:0', 'character:a1']);
       expect(voices.first.lines, 2);
       expect(voices.first.seconds, 3.2, reason: 'the longest phrase stands');
