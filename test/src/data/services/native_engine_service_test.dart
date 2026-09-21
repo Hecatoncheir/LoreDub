@@ -9,6 +9,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/local_inference_service.dart';
+import 'package:lore_dub/src/data/services/native_bridge.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
@@ -518,7 +519,7 @@ class _HeldWorkDirectory {
 
 /// The native library as a start and a stop see it: `ld_start` and `ld_stop`
 /// queue the states the real ones do, and the poll hands them out.
-class _FakeNative implements NativeSessionCalls {
+class _FakeNative extends NativeBridge {
   /// The configs `ld_start` was given, in the order it was given them.
   final started = <Map<String, Object?>>[];
 

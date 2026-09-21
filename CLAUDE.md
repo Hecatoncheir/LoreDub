@@ -365,9 +365,9 @@ and only while `_workerOf` still names it: stopped, the worker is gone
 already, and replaced, a later start may hold the inference service by then,
 where a blind `_inference.stop()` would end a worker that was never this
 start's. The engine's seams are its constructor's: `inference`, `native`
-(`NativeSessionCalls` — `ld_start`, `ld_stop`, the poll, the volumes given
-back and the error text, which is all a start and a stop ask of the
-library) and `workDirectory`, which the engine's test holds back so that a
+(`NativeBridge`, `data/services/native_bridge.dart` — every `ld_*` call in
+Dart's own types, the one place a pointer is made and freed; a test
+extends it and overrides what it needs) and `workDirectory`, which the engine's test holds back so that a
 stop can land inside either wait.
 
 Playback is not sequential in the same way. Every worker reply carries a

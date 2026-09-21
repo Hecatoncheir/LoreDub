@@ -4,11 +4,8 @@
 import 'dart:collection';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
-
-import 'package:ffi/ffi.dart';
 
 import '../../domain/compute_device.dart';
 import '../../domain/engine_event.dart';
@@ -26,65 +23,22 @@ import '../../domain/sound_captions.dart';
 import '../../domain/speech_pace.dart';
 import '../../domain/voice_files.dart';
 import '../../domain/wave_slices.dart';
-import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
 import 'phrase_queue.dart';
 import 'playback_scheduler.dart';
 import 'worker_arguments.dart';
 import 'voice_take.dart';
 import 'game_ducker.dart';
-
-typedef NativeStringReader = int Function(Pointer<Char> output, int capacity);
+import 'native_bridge.dart';
 
 /// Where the work directory is: what a start sweeps of stale audio, and what
 /// the capture cuts the game's sound into.
 typedef WorkDirectoryProvider = Future<Directory> Function();
 
-/// A call into the library that answered with an error code.
-///
-/// A [LoreDubFailure] rather than an exception of its own: it reaches the
-/// banner like everything else, and `describeFailure` shows anything that
-/// is not one as it came -- so this used to be read by the player as
-/// `NativeEngineException(-3): ...`.
-LoreDubFailure nativeCallFailed(int code, String message) =>
-    LoreDubFailure(FailureCode.nativeCallFailed, detail: '$code: $message');
-
-/// What every start and every stop ask of the native library.
-///
-/// The tests load no native library, so these few calls are made through
-/// here, where a test can answer in its place. Everything else the engine
-/// asks of the library — volumes, hotkeys, a take, playback — it still asks
-/// directly.
-class NativeSessionCalls {
-  const NativeSessionCalls();
-
-  /// `ld_start`, given the config as the JSON it crosses the boundary as.
-  int start(String configJson) {
-    final pointer = configJson.toNativeUtf8();
-    try {
-      return ld_start(pointer.cast());
-    } finally {
-      malloc.free(pointer);
-    }
-  }
-
-  /// `ld_stop`: ends the capture and drops the hotkeys with it.
-  int stop() => ld_stop();
-
-  /// `ld_poll_event_json`, read the way every native string is.
-  int pollEvent(Pointer<Char> output, int capacity) => ld_poll_event_json(output, capacity);
-
-  /// `ld_restore_process_volumes`.
-  int restoreProcessVolumes() => ld_restore_process_volumes();
-
-  /// `ld_error_message`: what a negative answer from any of them means.
-  String errorMessage(int code) => ld_error_message(code).cast<Utf8>().toDartString();
-}
-
 class NativeEngineService {
   NativeEngineService({
     LocalInferenceService? inference,
-    this._native = const NativeSessionCalls(),
+    this._native = const NativeBridge(),
     WorkDirectoryProvider? workDirectory,
   }) : _inference = inference ?? LocalInferenceService(),
        _workDirectory = workDirectory ?? LocalInferenceService.createWorkDirectory {
@@ -96,14 +50,14 @@ class NativeEngineService {
 
   final _events = StreamController<EngineEvent>.broadcast();
   final LocalInferenceService _inference;
-  final NativeSessionCalls _native;
+  final NativeBridge _native;
   final WorkDirectoryProvider _workDirectory;
   Timer? _pollTimer;
   late final _phrases = PhraseQueue(process: _processPhrase);
 
   /// How far the game is turned down, for the session or for a line.
   late final _ducker = GameDucker(
-    setVolume: ld_set_process_volume,
+    setVolume: _native.setProcessVolume,
     restore: _native.restoreProcessVolumes,
   );
 
@@ -158,7 +112,7 @@ class NativeEngineService {
 
   /// The take a card is recorded from. Between takes what the game says is
   /// thrown away.
-  late final _take = VoiceTake(hold: ld_hold_take, discard: _deleteIfPresent);
+  late final _take = VoiceTake(hold: _native.holdTake, discard: _deleteIfPresent);
 
   /// What subtitle mode read last, so a line that grows in place is voiced
   /// only for what it gained, and one that comes back unchanged — even after
@@ -166,10 +120,10 @@ class NativeEngineService {
   String? _previousOcrText;
 
   Stream<EngineEvent> get events => _events.stream;
-  bool get processLoopbackSupported => ld_is_process_loopback_supported() == 1;
+  bool get processLoopbackSupported => _native.processLoopbackSupported;
 
   Future<List<GameProcess>> listProcesses() async {
-    final json = _readNativeString(ld_list_processes_json);
+    final json = _native.processesJson();
     final values = jsonDecode(json) as List<Object?>;
     final processes = values
         .map((value) => GameProcess.fromJson(value! as Map<String, Object?>))
@@ -181,14 +135,14 @@ class NativeEngineService {
   /// Where the monitors stand, which is what a frame over the whole screen
   /// is a share of.
   Future<MonitorLayout> monitorLayout() async =>
-      MonitorLayout.fromJson(jsonDecode(_readNativeString(ld_list_monitors_json)) as List<Object?>);
+      MonitorLayout.fromJson(jsonDecode(_native.monitorsJson()) as List<Object?>);
 
   /// What the machine's graphics adapters and GPU drivers offer.
   ///
   /// Only the hardware half is filled in: whether the runtime for a backend
   /// has been downloaded is a question for the storage service.
   Future<ComputeAvailability> probeGraphics() async {
-    final json = _readNativeString(ld_probe_graphics_json);
+    final json = _native.graphicsJson();
     return ComputeAvailability.fromProbeJson(jsonDecode(json) as Map<String, Object?>);
   }
 
@@ -277,7 +231,7 @@ class NativeEngineService {
     final unreadable = <String>[];
     for (final (index, source) in paths.indexed) {
       final target = '${work.path}${Platform.pathSeparator}dropped_$index.wav';
-      final milliseconds = await Isolate.run(() => _decodeAudio(source, target));
+      final milliseconds = await Isolate.run(() => NativeBridge.decodeAudio(source, target));
       if (milliseconds < 0) {
         unreadable.add(source);
       } else {
@@ -490,7 +444,7 @@ class NativeEngineService {
 
   /// Ends whatever is sounding. A card's recording may run for three
   /// minutes, and the button that started it is the one that stops it.
-  void stopWave() => ld_stop_wave();
+  void stopWave() => _native.stopWave();
 
   /// Carries a card's standing substitution into the running session, which
   /// read the cast when it started.
@@ -562,7 +516,7 @@ class NativeEngineService {
   void setPaused(bool paused) {
     if (_active == null) return;
     _paused = paused;
-    _throwIfError(ld_set_paused(paused ? 1 : 0));
+    _throwIfError(_native.setPaused(paused: paused));
     if (!paused) return _ducker.resume();
     // Nothing heard before the pause is voiced after it.
     for (final phrase in _phrases.clear()) {
@@ -611,12 +565,8 @@ class NativeEngineService {
       // hideFrame, knowing what the player asked for and over which game.
       'frameOverlayKey': frameOverlay?.keyCode ?? 0,
       'frameOverlayModifiers': frameOverlay?.modifiers ?? 0,
-    }).toNativeUtf8();
-    try {
-      _throwIfError(ld_set_hotkeys(config.cast()));
-    } finally {
-      malloc.free(config);
-    }
+    });
+    _throwIfError(_native.setHotkeys(config));
   }
 
   /// Draws the subtitle frame over the running game, or moves one already
@@ -629,16 +579,12 @@ class NativeEngineService {
       'ocrRegionTop': region.top,
       'ocrRegionRight': region.right,
       'ocrRegionBottom': region.bottom,
-    }).toNativeUtf8();
-    try {
-      _throwIfError(ld_show_frame(config.cast()));
-    } finally {
-      malloc.free(config);
-    }
+    });
+    _throwIfError(_native.showFrame(config));
   }
 
   /// Takes that frame off the screen. Drawing nothing is no error.
-  void hideFrame() => _throwIfError(ld_hide_frame());
+  void hideFrame() => _throwIfError(_native.hideFrame());
 
   /// Reads the lines that follow in [voice]. The session keeps it too, so
   /// a line that asks what this session was started with is answered with
@@ -655,7 +601,11 @@ class NativeEngineService {
   /// event to the part that knows what to do with it.
   void _pollEvents() {
     for (var index = 0; index < 16; index++) {
-      final json = _readNativeString(_native.pollEvent, emptyAllowed: true);
+      final json = readNativeUtf8String(
+        _native.pollEvent,
+        emptyAllowed: true,
+        throwIfError: _throwIfError,
+      );
       if (json.isEmpty) break;
       final event = jsonDecode(json) as Map<String, Object?>;
       switch (event['type']) {
@@ -1062,33 +1012,8 @@ class NativeEngineService {
   /// Static so the isolate closure captures nothing but the path. Reaching it
   /// from an instance closure would drag the whole service — and its futures,
   /// which cannot cross an isolate boundary — into the message.
-  static Future<void> _playInIsolate(String wavePath) => Isolate.run(() => _playWave(wavePath));
-
-  /// The length in milliseconds of what was written, or a negative code.
-  /// Static for the same reason, and run apart because a long file is a
-  /// wait rather than a moment.
-  static int _decodeAudio(String source, String target) {
-    final from = source.toNativeUtf8();
-    final to = target.toNativeUtf8();
-    try {
-      return ld_decode_audio(from.cast(), to.cast());
-    } finally {
-      malloc.free(from);
-      malloc.free(to);
-    }
-  }
-
-  static void _playWave(String wavePath) {
-    final pointer = wavePath.toNativeUtf8();
-    try {
-      final code = ld_play_wave(pointer.cast());
-      if (code < 0) {
-        throw nativeCallFailed(code, ld_error_message(code).cast<Utf8>().toDartString());
-      }
-    } finally {
-      malloc.free(pointer);
-    }
-  }
+  static Future<void> _playInIsolate(String wavePath) =>
+      Isolate.run(() => NativeBridge.playWave(wavePath));
 
   static Future<void> _deleteIfPresent(String filePath) async {
     try {
@@ -1097,17 +1022,6 @@ class NativeEngineService {
     } on FileSystemException {
       // Temporary audio cleanup is best effort.
     }
-  }
-
-  String _readNativeString(
-    NativeStringReader reader, {
-    bool emptyAllowed = false,
-  }) {
-    return readNativeUtf8String(
-      reader,
-      emptyAllowed: emptyAllowed,
-      throwIfError: _throwIfError,
-    );
   }
 
   void _throwIfError(int code) {
@@ -1167,40 +1081,3 @@ EngineEvent? fromNativeEvent(Map<String, Object?> event, {PipelineSession? sessi
       ),
       _ => null,
     };
-
-String readNativeUtf8String(
-  NativeStringReader reader, {
-  bool emptyAllowed = false,
-  required void Function(int code) throwIfError,
-}) {
-  var required = reader(nullptr, 0);
-  if (required < 0) throwIfError(required);
-  if (required == 0 && emptyAllowed) return '';
-
-  // A native value can grow between the size query and the copy (for example,
-  // when a Windows process starts while the process list is being built).
-  // Retry with the newly reported size instead of decoding an untouched or
-  // undersized buffer.
-  for (var attempt = 0; attempt < 8; attempt++) {
-    final capacity = required + 1;
-    final buffer = calloc<Char>(capacity);
-    try {
-      final written = reader(buffer, capacity);
-      if (written < 0) throwIfError(written);
-      if (written < capacity) {
-        return buffer.cast<Utf8>().toDartString(length: written);
-      }
-      required = written;
-    } finally {
-      calloc.free(buffer);
-    }
-  }
-
-  // Eight tries at a value that grows between the size query and the copy
-  // is a library that is not going to settle. Raised as a failure rather
-  // than a `FormatException`, which the banner printed as it came.
-  throw const LoreDubFailure(
-    FailureCode.nativeCallFailed,
-    detail: 'a native value kept changing while it was being read',
-  );
-}
