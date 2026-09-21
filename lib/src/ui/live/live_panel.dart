@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../common/ease.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/navigation_cubit.dart';
 import '../graph/pipeline_panel.dart';
 import 'live_dubbing.dart';
 
@@ -17,7 +17,7 @@ class LivePanel extends StatelessWidget {
   const LivePanel({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocSelector<ShellCubit, ShellState, LiveView>(
+  Widget build(BuildContext context) => BlocSelector<NavigationCubit, NavigationState, LiveView>(
     selector: (shell) => shell.liveView,
     builder: (context, view) => AnimatedSwitcher(
       duration: ease(context, 180),

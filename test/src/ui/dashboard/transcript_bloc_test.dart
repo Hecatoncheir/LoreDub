@@ -9,7 +9,7 @@ import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 
 void main() {

@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../app_icons.dart';
 import '../theme.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/navigation_cubit.dart';
 import 'footer_insets.dart';
 import 'navigation_group.dart';
 import 'navigation_item.dart';
@@ -61,7 +61,7 @@ class SideNavigation extends StatelessWidget {
         // the panel: six entries under two headings are taller than a short
         // window, and taller still under a raised interface scale.
         Expanded(
-          child: BlocBuilder<ShellCubit, ShellState>(
+          child: BlocBuilder<NavigationCubit, NavigationState>(
             builder: (context, shell) => SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,14 +71,15 @@ class SideNavigation extends StatelessWidget {
                     icon: (color) => LoreDubIcons.audioCapture(color: color, size: 21),
                     label: AppLocalizations.of(context).navLive,
                     selected: shell.section == DashboardSection.live,
-                    onTap: () => context.read<ShellCubit>().selectSection(DashboardSection.live),
+                    onTap: () =>
+                        context.read<NavigationCubit>().selectSection(DashboardSection.live),
                   ),
                   NavigationItem(
                     icon: (color) => Icon(Icons.highlight_alt_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navSnapshot,
                     selected: shell.section == DashboardSection.snapshot,
                     onTap: () =>
-                        context.read<ShellCubit>().selectSection(DashboardSection.snapshot),
+                        context.read<NavigationCubit>().selectSection(DashboardSection.snapshot),
                   ),
                   NavigationGroup(label: AppLocalizations.of(context).navGroupSetup),
                   NavigationItem(
@@ -86,27 +87,28 @@ class SideNavigation extends StatelessWidget {
                     label: AppLocalizations.of(context).navCharacters,
                     selected: shell.section == DashboardSection.characters,
                     onTap: () =>
-                        context.read<ShellCubit>().selectSection(DashboardSection.characters),
+                        context.read<NavigationCubit>().selectSection(DashboardSection.characters),
                   ),
                   NavigationItem(
                     icon: (color) => Icon(Icons.menu_book_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navGlossary,
                     selected: shell.section == DashboardSection.glossary,
                     onTap: () =>
-                        context.read<ShellCubit>().selectSection(DashboardSection.glossary),
+                        context.read<NavigationCubit>().selectSection(DashboardSection.glossary),
                   ),
                   NavigationItem(
                     icon: (color) => Icon(Icons.memory_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navModels,
                     selected: shell.section == DashboardSection.models,
-                    onTap: () => context.read<ShellCubit>().selectSection(DashboardSection.models),
+                    onTap: () =>
+                        context.read<NavigationCubit>().selectSection(DashboardSection.models),
                   ),
                   NavigationItem(
                     icon: (color) => Icon(Icons.tune_rounded, size: 21, color: color),
                     label: AppLocalizations.of(context).navSettings,
                     selected: shell.section == DashboardSection.settings,
                     onTap: () =>
-                        context.read<ShellCubit>().selectSection(DashboardSection.settings),
+                        context.read<NavigationCubit>().selectSection(DashboardSection.settings),
                   ),
                 ],
               ),

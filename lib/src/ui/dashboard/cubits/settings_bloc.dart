@@ -15,7 +15,7 @@ import '../../../domain/compute_device.dart';
 import '../../../domain/engine_event.dart';
 import '../../../domain/pipeline_state.dart';
 import '../../../domain/failure.dart';
-import 'shell_cubit.dart';
+import 'failure_cubit.dart';
 import '../../../data/repositories/voice_bank_repository.dart';
 import '../../../data/repositories/system_repository.dart';
 

@@ -86,7 +86,7 @@ void main() {
       _FixedModelRepository(),
       cubits.settingsRepository,
       cubits.installed,
-      cubits.shell,
+      cubits.failures,
       sessions,
       cubits.cast,
     );
@@ -163,7 +163,7 @@ void main() {
 
     expect(repository.stops, 1);
     expect(voices.state.status, PipelineStatus.idle);
-    expect(cubits.shell.state.error, isNull);
+    expect(cubits.failures.state, isNull);
   });
 
   group('a card built from files', () {
@@ -227,7 +227,7 @@ void main() {
       await pumpEventQueue();
 
       expect(repository.stops, 0, reason: 'the session the engine holds is not the borrowed one');
-      expect(cubits.shell.state.error, isNull, reason: 'a worker taken over is no failure');
+      expect(cubits.failures.state, isNull, reason: 'a worker taken over is no failure');
       expect(voices.state.building, isFalse);
     });
 
@@ -241,7 +241,7 @@ void main() {
 
       expect(repository.stops, 0);
       expect(repository.builtFrom, isEmpty);
-      expect(cubits.shell.state.error, isNull);
+      expect(cubits.failures.state, isNull);
       expect(voices.state.building, isFalse);
     });
 

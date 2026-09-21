@@ -9,7 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/navigation_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import 'start_step_row.dart';
 import '../../domain/capture_sources.dart';
@@ -77,10 +77,12 @@ class StartChecklist extends StatelessWidget {
                   // screen, a finger's width above, so that step leads
                   // nowhere and only says what is missing.
                   onPressed: switch (step) {
-                    StartStep.models => () => context.read<ShellCubit>().selectSection(
+                    StartStep.models => () => context.read<NavigationCubit>().selectSection(
                       DashboardSection.models,
                     ),
-                    StartStep.route => () => context.read<ShellCubit>().showOnLive(LiveView.scheme),
+                    StartStep.route => () => context.read<NavigationCubit>().showOnLive(
+                      LiveView.scheme,
+                    ),
                     StartStep.game => null,
                   },
                 ),

@@ -7,14 +7,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../app_icons.dart';
 import '../theme.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/navigation_cubit.dart';
 
 /// The sections along the foot of a window too narrow for the sidebar.
 class BottomNavigation extends StatelessWidget {
   const BottomNavigation({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
+  Widget build(BuildContext context) => BlocBuilder<NavigationCubit, NavigationState>(
     builder: (context, shell) => _build(context, shell.section),
   );
 
@@ -26,7 +26,7 @@ class BottomNavigation extends StatelessWidget {
       indicatorColor: context.colors.accent,
       selectedIndex: section.index,
       onDestinationSelected: (index) =>
-          context.read<ShellCubit>().selectSection(DashboardSection.values[index]),
+          context.read<NavigationCubit>().selectSection(DashboardSection.values[index]),
       destinations: [
         NavigationDestination(
           // The bar tints its font icons itself, which leaves the drawing

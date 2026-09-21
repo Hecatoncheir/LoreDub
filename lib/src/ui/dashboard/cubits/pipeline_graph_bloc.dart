@@ -19,7 +19,7 @@ import '../../../domain/id_source.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
 import '../../../domain/spoken_language.dart';
-import 'shell_cubit.dart';
+import 'failure_cubit.dart';
 import '../../../data/repositories/scheme_repository.dart';
 
 /// What the canvas was asked to do.

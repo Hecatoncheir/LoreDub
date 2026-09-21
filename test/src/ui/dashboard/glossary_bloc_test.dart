@@ -9,7 +9,7 @@ import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 
 void main() {
   const fire = GlossaryEntry(

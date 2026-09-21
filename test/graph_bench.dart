@@ -36,7 +36,7 @@ import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -85,13 +85,7 @@ void main() {
       ),
     );
     addTearDown(cubits.dispose);
-    cubits.shell.seed(
-      const ShellState(
-        section: DashboardSection.live,
-        liveView: LiveView.scheme,
-        initializing: false,
-      ),
-    );
+    cubits.stageSection(DashboardSection.live, LiveView.scheme);
     cubits.stageInstalled(
       models: [
         for (final model in modelCatalog) ModelInstallState(model: model, installed: true),

@@ -16,7 +16,7 @@ import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 
 import '../../../support/staged_dashboard.dart';
 

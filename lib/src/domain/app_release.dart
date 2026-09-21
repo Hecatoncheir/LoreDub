@@ -60,6 +60,7 @@ class UpdateState {
     this.installable = false,
     this.installProgress,
     this.installerPath,
+    this.announce = false,
   });
 
   final UpdateStatus status;
@@ -84,6 +85,12 @@ class UpdateState {
   /// The downloaded setup, waiting for the restart that runs it.
   final String? installerPath;
 
+  /// The newer release is news, to be announced once: a check made at
+  /// startup found it. A check the player asked for themselves is answered
+  /// on the screen they asked it from, and sets nothing here. The toast is
+  /// worded by the interface, which has the language to word it in.
+  final bool announce;
+
   bool get checking => status == UpdateStatus.checking;
   bool get hasUpdate => status == UpdateStatus.available && release != null;
   bool get installing => installProgress != null;
@@ -100,6 +107,7 @@ class UpdateState {
     double? installProgress,
     bool clearInstallProgress = false,
     String? installerPath,
+    bool? announce,
   }) => UpdateState(
     status: status ?? this.status,
     currentVersion: currentVersion ?? this.currentVersion,
@@ -108,5 +116,6 @@ class UpdateState {
     installable: installable ?? this.installable,
     installProgress: clearInstallProgress ? null : installProgress ?? this.installProgress,
     installerPath: installerPath ?? this.installerPath,
+    announce: announce ?? this.announce,
   );
 }

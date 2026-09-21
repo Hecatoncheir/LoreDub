@@ -1,29 +1,22 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
-import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/install_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
-import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
-import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
-import 'package:lore_dub/src/domain/session_coordinator.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/startup_cubit.dart';
 import 'package:lore_dub/src/data/repositories/system_repository.dart';
 
 void main() {
@@ -32,48 +25,43 @@ void main() {
   late _Machine machine;
   late _Disk disk;
   late InstallRepository installed;
-  late ShellCubit shell;
+  late FailureCubit failures;
+  late StartupCubit startup;
 
   setUp(() {
     final settings = SettingsRepository(SettingsService())..seed(const AppSettings());
     machine = _Machine();
     disk = _Disk();
     installed = InstallRepository(disk, _Runtimes());
-    shell = ShellCubit(
-      UpdateRepository(
-        UpdateService(client: MockClient((_) async => http.Response('offline', 503))),
-        NotificationService(plugin: FlutterLocalNotificationsPlugin()),
-      ),
-      settings,
-      SessionRepository(NativeEngineService()),
-      SessionCoordinator(),
-      installed,
-      machine,
-    );
+    failures = FailureCubit();
+    startup = StartupCubit(settings, installed, machine, failures);
   });
 
-  tearDown(() => shell.close());
+  tearDown(() async {
+    await startup.close();
+    await failures.close();
+  });
 
   test('a start waits for what is installed and what the machine can run', () async {
-    expect(shell.state.initializing, isTrue);
+    expect(startup.state, isTrue, reason: 'initializing');
 
-    await shell.start();
+    await startup.start();
 
-    expect(shell.state.initializing, isFalse);
+    expect(startup.state, isFalse);
     expect(installed.parts.models.single.installed, isTrue);
     expect(installed.parts.availability.cudaDriver, isTrue, reason: 'the probe was read');
     expect(installed.parts.availability.installedRuntimes, {'torch-cuda'});
-    expect(shell.state.error, isNull);
+    expect(failures.state, isNull);
   });
 
   test('a first load that fails is said, and does not hold the screen', () async {
     disk.fails = true;
 
-    await shell.start();
+    await startup.start();
 
-    expect(shell.state.initializing, isFalse, reason: 'the buttons are not left waiting');
+    expect(startup.state, isFalse, reason: 'the buttons are not left waiting');
     expect(
-      shell.state.error,
+      failures.state,
       isA<LoreDubFailure>().having(
         (failure) => failure.code,
         'code',

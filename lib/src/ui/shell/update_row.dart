@@ -8,7 +8,7 @@ import '../../domain/app_release.dart';
 import '../../../l10n/app_localizations.dart';
 import '../app_icons.dart';
 import '../theme.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/update_bloc.dart';
 import 'footer_insets.dart';
 
 /// A newer version, in three steps on the spot the version held: where the
@@ -54,7 +54,7 @@ class UpdateRow extends StatelessWidget {
             message: l10n.updateRestartHint,
             child: TextButton.icon(
               key: const ValueKey('updateRestart'),
-              onPressed: context.read<ShellCubit>().restartToUpdate,
+              onPressed: () => context.read<UpdateBloc>().add(const UpdateRestartAsked()),
               icon: LoreDubIcons.directorySync(color: context.colors.accent, size: 16),
               label: Text(l10n.updateRestart),
               style: TextButton.styleFrom(
@@ -92,7 +92,7 @@ class UpdateRow extends StatelessWidget {
           : l10n.updateOpenRelease(release.version),
       child: TextButton(
         key: const ValueKey('updateAvailable'),
-        onPressed: context.read<ShellCubit>().installUpdate,
+        onPressed: () => context.read<UpdateBloc>().add(const UpdateInstallAsked()),
         style: TextButton.styleFrom(
           foregroundColor: context.colors.ink,
           alignment: Alignment.centerLeft,

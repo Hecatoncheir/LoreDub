@@ -9,6 +9,8 @@ import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/domain/app_release.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/update_bloc.dart';
 
 /// The glossary screen's state as a test says it is, and every event the
 /// screen sends kept for the test to look at.
@@ -79,6 +81,7 @@ void registerEventFallbacks() {
   registerFallbackValue(const ModelDirectoryOpened());
   registerFallbackValue(const SessionStopped());
   registerFallbackValue(const TranscriptCleared());
+  registerFallbackValue(const UpdatesChecked());
 }
 
 /// The dubbing screens' session as a test says it stands.
@@ -104,6 +107,19 @@ MockTranscriptBloc transcriptShowing(
   Stream<TranscriptState> then = const Stream.empty(),
 }) {
   final bloc = MockTranscriptBloc();
+  whenListen(bloc, then, initialState: state);
+  return bloc;
+}
+
+/// The version row's state as a test says it stands.
+class MockUpdateBloc extends MockBloc<UpdateEvent, UpdateState> implements UpdateBloc {}
+
+/// An update bloc standing still on [state], or moving through [then].
+MockUpdateBloc updatesShowing(
+  UpdateState state, {
+  Stream<UpdateState> then = const Stream.empty(),
+}) {
+  final bloc = MockUpdateBloc();
   whenListen(bloc, then, initialState: state);
   return bloc;
 }

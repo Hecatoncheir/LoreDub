@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/app_release.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/update_bloc.dart';
 import 'footer_insets.dart';
 import 'update_row.dart';
 
@@ -27,8 +27,8 @@ class VersionButton extends StatelessWidget {
   };
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
-    builder: (context, shell) => _build(context, shell.updates),
+  Widget build(BuildContext context) => BlocBuilder<UpdateBloc, UpdateState>(
+    builder: _build,
   );
 
   Widget _build(BuildContext context, UpdateState updates) {
@@ -50,7 +50,7 @@ class VersionButton extends StatelessWidget {
               child: TextButton(
                 onPressed: updates.checking
                     ? null
-                    : () => context.read<ShellCubit>().checkForUpdates(),
+                    : () => context.read<UpdateBloc>().add(const UpdatesChecked()),
                 style: TextButton.styleFrom(
                   foregroundColor: context.colors.mutedInk,
                   alignment: Alignment.centerLeft,

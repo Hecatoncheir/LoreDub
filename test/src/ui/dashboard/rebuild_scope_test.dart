@@ -28,7 +28,7 @@ import 'package:lore_dub/src/domain/spoken_language.dart';
 import '../../../support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -104,7 +104,7 @@ void main() {
     );
     addTearDown(cubits.dispose);
     addTearDown(ticks.close);
-    cubits.shell.seed(ShellState(section: section, liveView: liveView, initializing: false));
+    cubits.stageSection(section, liveView);
     cubits.stageInstalled(models: modelsAt(0.10));
 
     tester.view.physicalSize = const Size(1280, 900);

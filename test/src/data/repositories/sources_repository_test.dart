@@ -8,7 +8,7 @@ import 'package:lore_dub/src/data/repositories/sources_repository.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/monitor_layout.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
 import 'package:lore_dub/src/data/repositories/system_repository.dart';
 

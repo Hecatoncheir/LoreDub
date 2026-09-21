@@ -12,7 +12,7 @@ import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/navigation_cubit.dart';
 import '../common/status_chip.dart';
 
 /// The top of every screen: where the section stands, its title, and how
@@ -26,7 +26,7 @@ class DashboardHeader extends StatelessWidget {
     child: Row(
       children: [
         Expanded(
-          child: BlocBuilder<ShellCubit, ShellState>(
+          child: BlocBuilder<NavigationCubit, NavigationState>(
             builder: (context, shell) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

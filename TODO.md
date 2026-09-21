@@ -827,7 +827,7 @@ abstract final class AppTheme {
 | ~~`CharactersCubit` (769 строк, скрытые поля `_heard*`, `_recordingSince`, таймер)~~ *разделён, кроме `CaptureActivity`* | `CastBloc` (карточки, паки, импорт/экспорт, `voicedBy`, `asHeard`) + `VoiceCaptureBloc` (сессия записи, дубль, сборка из файлов, предпрослушивание) | Две ответственности. Пять взаимоисключающих `xxxId` → sealed `CaptureActivity` (`idle` / `recording(id, since)` / `building(id)` / `playing(id)` / `previewing(id)`): невозможные состояния перестают быть представимыми. |
 | ~~`DownloadsCubit`~~ *сделано* | `DownloadsBloc` | Долгие отменяемые процессы, несколько сразу. ~~`installModel` / `installRuntime` — дубли; адресация по индексу, снятому до `await`, хрупкая → по id.~~ *Дубль и адресация — сделаны* (см. этап 4, задачи); сам перевод в Bloc — впереди. |
 | ~~`SettingsCubit`~~ *сделано* | `SettingsBloc` | Запись на диск — через `debounce`-трансформер и строго последовательно, состояние — сразу. Лечит п. 7 оценки. |
-| `ShellCubit` | `NavigationCubit` + `FailureCubit` + `UpdateBloc` | Раздел и баннер — тривиальное синхронное состояние, здесь Cubit уместен: Bloc добавил бы по классу события на сеттер и ничего не дал. Проверка → загрузка → перезапуск — процесс с прогрессом, это Bloc. Текст тоста уходит из блока в слой представления (`BlocListener`), вместе с импортом `flutter/widgets`. |
+| ~~`ShellCubit`~~ *сделано, плюс `StartupCubit`* | `NavigationCubit` + `FailureCubit` + `UpdateBloc` | Раздел и баннер — тривиальное синхронное состояние, здесь Cubit уместен: Bloc добавил бы по классу события на сеттер и ничего не дал. Проверка → загрузка → перезапуск — процесс с прогрессом, это Bloc. Текст тоста уходит из блока в слой представления (`BlocListener`), вместе с импортом `flutter/widgets`. |
 | ~~`GlossaryCubit` (167 строк)~~ *сделано* | `GlossaryBloc` | Самый чистый из кубитов; переводить последним, ради единообразия и журнала. |
 | `PipelineGraphBloc` | остаётся | Уже Bloc. Убрать зависимость от трёх кубитов (см. ниже). |
 
@@ -1052,7 +1052,7 @@ abstract final class AppTheme {
       `seed()` остаётся синхронным (через `emit` с подавлением
       `invalid_use_of_visible_for_testing_member`): тесты сеют сессию и
       сразу чего-то от неё просят. Уходит вместе с остальными `seed()`.
-- [ ] `bloc_test` + `mocktail` в `dev_dependencies`; `seed()` и
+- [x] `bloc_test` + `mocktail` в `dev_dependencies`; `seed()` и
       `PipelineGraphSeeded` удаляются — виджет-тесты получают
       `MockBloc` + `whenListen` через `BlocProvider.value`.
       *Идёт по экрану.* Экран за экраном: его кубит становится блоком (и
@@ -1146,7 +1146,22 @@ abstract final class AppTheme {
         памяти, теперь по умолчанию в `StagedDashboard`, как и состав) и
         шлёт `PipelineGraphOpened`. Выбранный узел на скриншотах — обычный
         `PipelineNodeSelected`. Замер кадра не изменился.
-      - [ ] Оболочка (`ShellCubit.seed`).
+      - [x] **Оболочка.** `ShellCubit` разобран по таблице: `FailureCubit`
+        (баннер и `FailureSink`), `NavigationCubit` (раздел и половина
+        «Эфира») и `UpdateBloc` (проверка → загрузка → перезапуск) — плюс
+        четвёртый, которого в таблице не было: `StartupCubit` (идёт ли
+        первая загрузка). Первая загрузка — не навигация и не баннер, а
+        положить её в `UpdateBloc` значило бы снова связать проверку с
+        загрузкой внутри одного класса. Текст тоста ушёл в
+        `UpdateAnnouncer` (`BlocListener`), с ним и `flutter/widgets` с
+        l10n из блока; блок лишь помечает находку стартовой проверки
+        (`UpdateState.announce`). Тот же слушатель просит проверку, когда
+        `StartupCubit` говорит, что загрузка пришла: без этого проверка
+        запускалась сразу, и в тестах, поднимающих всё приложение, версия
+        так и не приходила — индикатор крутился, `pumpAndSettle` не
+        дожидался. `seed()` ушёл; тесты строки версии — на
+        `MockUpdateBloc`, переходы — в `update_bloc_test`, первая
+        загрузка — в `startup_cubit_test`.
 - [x] `bloc_concurrency`: `sequential()` для событий движка, `droppable()`
       для запросов запуска, `restartable()` + debounce для записи настроек.
       *Сделано иначе в двух местах из трёх, и вот почему.*
@@ -1466,10 +1481,12 @@ abstract final class AppTheme {
       После разреза `AppRepository` (этап 4) у репозиториев появляются
       интерфейсы, фейки переезжают в `test/support/fakes/`, по одному на
       интерфейс.
-- [ ] `bloc_test` 10 + `mocktail`: переходы — `blocTest(build:, seed:, act:,
+- [x] `bloc_test` 10 + `mocktail`: переходы — `blocTest(build:, seed:, act:,
       expect:)`, виджет-тесты — `MockBloc` + `whenListen`. В тестах 98 мест
       с `seed()` / `PipelineGraphSeeded` / `DashboardView(cubits:)`, поэтому
       делается вместе с разбиением файла, экран за экраном.
+      *Сделано экран за экраном (этап 4); разбиение `widget_test.dart` —
+      пункт выше, отдельно.*
 - [ ] Тесты на то, чего сейчас нет: `NativeEngineService` и
       `LocalInferenceService` (после `NativeBridge` / `WorkerChannel`),
       Python (`pytest`), натив (исполняемый файл на `assert`).

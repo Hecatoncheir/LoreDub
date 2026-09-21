@@ -9,7 +9,7 @@ import '../../../domain/character.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../common/committed_text_field.dart';
 import '../../dashboard/cubits/pipeline_graph_bloc.dart';
-import '../../dashboard/cubits/shell_cubit.dart';
+import '../../dashboard/cubits/navigation_cubit.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_field.dart';
 import 'inspector_note.dart';
@@ -89,7 +89,8 @@ class CharacterNodeFields extends StatelessWidget {
         OutlinedButton.icon(
           icon: const Icon(Icons.groups_rounded, size: 18),
           label: Text(l10n.navCharacters),
-          onPressed: () => context.read<ShellCubit>().selectSection(DashboardSection.characters),
+          onPressed: () =>
+              context.read<NavigationCubit>().selectSection(DashboardSection.characters),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(

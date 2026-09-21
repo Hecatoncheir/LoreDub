@@ -53,7 +53,7 @@ import 'support/staged_dashboard.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/graph/node_faces.dart';
 import 'package:lore_dub/src/ui/theme.dart';
@@ -344,14 +344,8 @@ void main() {
       glossary: glossaryShowing(GlossaryState(glossary: glossary, loaded: true)),
       capture: captureShowing(const VoiceCaptureState(clips: {'guard', 'smith', 'herbalist'})),
     );
-    cubits.shell.seed(
-      ShellState(
-        section: section,
-        liveView: liveView,
-        initializing: false,
-        updates: const UpdateState(currentVersion: '0.15.0'),
-      ),
-    );
+    cubits.stageSection(section, liveView);
+    cubits.stageUpdates(const UpdateState(currentVersion: '0.15.0'));
     cubits.settingsRepository.seed(
       settings.copyWith(
         interfaceLanguage: language,

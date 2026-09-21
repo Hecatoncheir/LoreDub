@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/navigation_cubit.dart';
 import '../theme.dart';
 
 /// How a snippet is taken -- the key held -- or, with no key set, the way to
@@ -32,7 +32,7 @@ class SnapshotHotkeyLine extends StatelessWidget {
           style: TextStyle(color: context.colors.warning, fontWeight: FontWeight.w600),
         ),
         TextButton(
-          onPressed: () => context.read<ShellCubit>().selectSection(DashboardSection.settings),
+          onPressed: () => context.read<NavigationCubit>().selectSection(DashboardSection.settings),
           child: Text(l10n.snapshotOpenSettings),
         ),
       ],

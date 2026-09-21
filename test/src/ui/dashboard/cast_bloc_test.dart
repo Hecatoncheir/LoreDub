@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/cast_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 
 import '../../../support/memory_cast.dart';
 

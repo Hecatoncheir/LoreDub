@@ -60,7 +60,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/domain/capture_sources.dart';
@@ -76,6 +76,9 @@ import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 import 'support/memory_cast.dart';
 
 import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/update_bloc.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/startup_cubit.dart';
 
 void main() {
   // What `captureAny` stands in with before anything is captured.
@@ -90,6 +93,7 @@ void main() {
     VoiceBankRepository? voiceBank,
     SessionBloc? session,
     TranscriptBloc? transcript,
+    UpdateBloc? updates,
   }) {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
@@ -109,6 +113,7 @@ void main() {
       voiceBank: voiceBank,
       sessionBloc: session,
       transcriptBloc: transcript,
+      updateBloc: updates,
     );
     addTearDown(cubits.dispose);
     return cubits;
@@ -133,14 +138,8 @@ void main() {
     double? startupProgress,
     String startupStage = '',
   }) {
-    cubits.shell.seed(
-      ShellState(
-        section: section,
-        liveView: liveView,
-        initializing: false,
-        updates: updates,
-      ),
-    );
+    cubits.stageSection(section, liveView);
+    cubits.stageUpdates(updates);
     if (settings != null) cubits.settingsRepository.seed(settings);
     // What is on disk, which every screen reads; a row with a download
     // under way is staged over a mock instead (`downloadsShowing`).
@@ -256,7 +255,10 @@ void main() {
     await pumpLoreDub(tester, const Size(1280, 720));
     final context = tester.element(find.byType(DashboardScaffold));
 
-    expect(context.read<ShellCubit>(), isNotNull);
+    expect(context.read<FailureCubit>(), isNotNull);
+    expect(context.read<NavigationCubit>(), isNotNull);
+    expect(context.read<StartupCubit>(), isNotNull);
+    expect(context.read<UpdateBloc>(), isNotNull);
     expect(context.read<SettingsBloc>(), isNotNull);
     expect(context.read<DownloadsBloc>(), isNotNull);
     expect(context.read<SourcesBloc>(), isNotNull);
@@ -1305,7 +1307,7 @@ void main() {
     // chosen in the picker above the card, so that step leads nowhere.
     await tester.tap(find.widgetWithText(TextButton, 'Открыть модели'));
     await tester.pumpAndSettle();
-    expect(cubits.shell.state.section, DashboardSection.models);
+    expect(cubits.navigation.state.section, DashboardSection.models);
   });
 
   testWidgets('takes the card away once nothing is left to ask for', (tester) async {
@@ -2039,21 +2041,7 @@ void main() {
     });
 
     group('installing it', () {
-      late _FakeUpdateRepository updates;
-
-      StagedDashboard withInstaller(UpdateState state) {
-        SharedPreferences.setMockInitialValues({});
-        updates = _FakeUpdateRepository();
-        final cubits = StagedDashboard(
-          SessionRepository(NativeEngineService()),
-          SettingsRepository(SettingsService()),
-          ModelRepository(ModelStorageService()),
-          RuntimeRepository(RuntimeStorageService()),
-          updates,
-        );
-        addTearDown(cubits.dispose);
-        return stage(cubits, updates: state);
-      }
+      StagedDashboard withInstaller(UpdateBloc updates) => stage(buildCubits(updates: updates));
 
       final available = UpdateState(
         status: UpdateStatus.available,
@@ -2062,40 +2050,41 @@ void main() {
         installable: true,
       );
 
-      testWidgets('downloads the setup and then offers the restart', (tester) async {
-        final cubits = withInstaller(available);
-        await pumpDashboard(tester, cubits, const Size(1280, 900));
+      // What the download and the restart do is the bloc's, and is pinned in
+      // `update_bloc_test.dart`; here, what each step is drawn as and sends.
+      testWidgets('asks for the setup from the row that offers it', (tester) async {
+        final updates = updatesShowing(available);
+        await pumpDashboard(tester, withInstaller(updates), const Size(1280, 900));
 
         expect(find.byTooltip('Нажмите, чтобы скачать и установить обновление'), findsOneWidget);
         await tester.tap(find.byKey(const ValueKey('updateAvailable')));
         await tester.pumpAndSettle();
 
-        expect(updates.downloaded, ['LoreDub-0.3.0-windows-x64-setup.exe']);
-        expect(find.text('Текущая версия v0.2.1 → v0.3.0'), findsNothing);
-        expect(find.text('Обновлено'), findsOneWidget);
-        expect(find.text('Перезапустить'), findsOneWidget);
+        verify(() => updates.add(const UpdateInstallAsked())).called(1);
       });
 
       testWidgets('shows a bar and the share in place of the text while it downloads', (
         tester,
       ) async {
-        final cubits = withInstaller(available.copyWith(installProgress: 0.42));
-        await pumpDashboard(tester, cubits, const Size(1280, 900));
+        final updates = updatesShowing(available.copyWith(installProgress: 0.42));
+        await pumpDashboard(tester, withInstaller(updates), const Size(1280, 900));
 
         expect(find.text('42%'), findsOneWidget);
         expect(find.text('Текущая версия v0.2.1 → v0.3.0'), findsNothing);
       });
 
-      testWidgets('restarts into the downloaded setup', (tester) async {
-        final cubits = withInstaller(
+      testWidgets('offers the restart once the setup is down, and asks for it', (tester) async {
+        final updates = updatesShowing(
           available.copyWith(installerPath: r'C:\updates\LoreDub-0.3.0-windows-x64-setup.exe'),
         );
-        await pumpDashboard(tester, cubits, const Size(1280, 900));
+        await pumpDashboard(tester, withInstaller(updates), const Size(1280, 900));
 
+        expect(find.text('Текущая версия v0.2.1 → v0.3.0'), findsNothing);
+        expect(find.text('Обновлено'), findsOneWidget);
         await tester.tap(find.byKey(const ValueKey('updateRestart')));
         await tester.pumpAndSettle();
 
-        expect(updates.restarted, [r'C:\updates\LoreDub-0.3.0-windows-x64-setup.exe']);
+        verify(() => updates.add(const UpdateRestartAsked())).called(1);
       });
     });
 
@@ -2109,18 +2098,54 @@ void main() {
       expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
     });
 
+    testWidgets('asks for the newest release once the first load is back', (tester) async {
+      final updates = updatesShowing(const UpdateState());
+      final cubits = stage(buildCubits(updates: updates));
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      cubits.startup.emit(true);
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+      verifyNever(() => updates.add(any()));
+
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      cubits.startup.emit(false);
+      await tester.pump();
+
+      verify(() => updates.add(const UpdatesChecked(announce: true))).called(1);
+    });
+
+    testWidgets('words the toast about news in the interface language', (tester) async {
+      const before = UpdateState(status: UpdateStatus.current, currentVersion: '0.2.1');
+      final news = UpdateState(
+        status: UpdateStatus.available,
+        currentVersion: '0.2.1',
+        release: release,
+        announce: true,
+      );
+      final updates = updatesShowing(before, then: Stream.value(news));
+      await pumpDashboard(tester, stage(buildCubits(updates: updates)), const Size(1280, 900));
+
+      verify(
+        () => updates.add(
+          const UpdateAnnounced(
+            title: 'Вышла новая версия LoreDub',
+            body:
+                'Доступна версия 0.3.0. Нажмите на строку с версиями внизу слева, '
+                'чтобы обновиться.',
+          ),
+        ),
+      ).called(1);
+    });
+
     testWidgets('checks again when the version is tapped', (tester) async {
-      final cubits = withUpdates(
+      final updates = updatesShowing(
         const UpdateState(status: UpdateStatus.current, currentVersion: '0.2.1'),
       );
-      await pumpDashboard(tester, cubits, const Size(1280, 900));
+      await pumpDashboard(tester, stage(buildCubits(updates: updates)), const Size(1280, 900));
 
       await tester.tap(find.text('Версия 0.2.1'));
       await tester.pump();
 
-      // The offline client the harness uses answers 503, so the check ends
-      // in failure — what matters is that it ran.
-      expect(cubits.shell.state.updates.status, isNot(UpdateStatus.current));
+      verify(() => updates.add(const UpdatesChecked())).called(1);
     });
   });
 
@@ -4390,37 +4415,6 @@ class _RecordingRuntimeRepository extends RuntimeRepository {
 
   @override
   Future<String> rootDirectory() async => r'C:\runtime';
-}
-
-/// Records the update the interface asked for instead of downloading a setup
-/// or closing the test runner.
-class _FakeUpdateRepository extends UpdateRepository {
-  _FakeUpdateRepository()
-    : super(UpdateService(client: _offline), NotificationService(plugin: _silent));
-
-  final downloaded = <String>[];
-  final restarted = <String>[];
-
-  @override
-  bool get canInstall => true;
-
-  @override
-  Future<String?> downloadedInstaller(ReleaseInstaller installer) async => null;
-
-  @override
-  Future<String> downloadInstaller(
-    ReleaseInstaller installer, {
-    required DownloadProgress onProgress,
-    String proxyUrl = '',
-  }) async {
-    onProgress(0.5);
-    onProgress(1);
-    downloaded.add(installer.name);
-    return 'C:\\updates\\${installer.name}';
-  }
-
-  @override
-  Future<void> restartInto(String setup) async => restarted.add(setup);
 }
 
 /// The tests never reach the network: the update check is answered with a

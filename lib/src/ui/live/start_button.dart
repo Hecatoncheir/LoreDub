@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/pipeline_state.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/startup_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import 'session_buttons.dart';
 import 'start_dubbing_button.dart';
@@ -32,8 +32,8 @@ class StartButton extends StatelessWidget {
     ),
     // Whether it can start at all depends on the first load having finished
     // and on the packages being there.
-    builder: (context, pipeline) => BlocBuilder<ShellCubit, ShellState>(
-      builder: (context, shell) => BlocBuilder<DownloadsBloc, DownloadsState>(
+    builder: (context, pipeline) => BlocBuilder<StartupCubit, bool>(
+      builder: (context, initializing) => BlocBuilder<DownloadsBloc, DownloadsState>(
         buildWhen: whenChanged((downloads) => downloads.installed),
         // A snapshot session is not this screen's to show: starting here
         // takes the worker over from it.
@@ -49,10 +49,10 @@ class StartButton extends StatelessWidget {
                       pipeline.liveRunning ||
                       pipeline.canStart(
                         context.selection,
-                        initializing: shell.initializing,
+                        initializing: initializing,
                         process: process,
                       ),
-                  initializing: shell.initializing,
+                  initializing: initializing,
                 ),
         ),
       ),

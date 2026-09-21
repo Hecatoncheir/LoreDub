@@ -9,7 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/startup_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/language_row.dart';
 import '../common/game_picker.dart';
@@ -22,8 +22,8 @@ class CharacterSessionControls extends StatelessWidget {
   const CharacterSessionControls({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
-    builder: (context, shell) => BlocBuilder<DownloadsBloc, DownloadsState>(
+  Widget build(BuildContext context) => BlocBuilder<StartupCubit, bool>(
+    builder: (context, initializing) => BlocBuilder<DownloadsBloc, DownloadsState>(
       buildWhen: whenChanged((downloads) => downloads.installed),
       builder: (context, _) => BlocBuilder<SessionBloc, SessionState>(
         buildWhen: whenChanged(
@@ -32,7 +32,7 @@ class CharacterSessionControls extends StatelessWidget {
         builder: (context, pipeline) => BlocBuilder<VoiceCaptureBloc, VoiceCaptureState>(
           buildWhen: whenChanged((characters) => (characters.status, characters.recordingId)),
           builder: (context, characters) =>
-              _build(context, pipeline, characters, initializing: shell.initializing),
+              _build(context, pipeline, characters, initializing: initializing),
         ),
       ),
     ),

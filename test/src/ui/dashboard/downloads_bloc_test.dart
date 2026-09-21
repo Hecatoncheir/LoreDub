@@ -15,7 +15,7 @@ import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/download_control.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

@@ -122,7 +122,7 @@ void main() {
       cubits.settingsRepository,
       cubits.installed,
       cubits.sourcesRepository,
-      cubits.shell,
+      cubits.failures,
       cubits.sessions,
       _Banks(),
       clock: () => now,
@@ -226,7 +226,7 @@ void main() {
     // about a stop under a session that was only ever cancelled.
     expect(statuses, isNot(contains(PipelineStatus.error)));
     expect(pipeline.state.status, PipelineStatus.idle);
-    expect(cubits.shell.state.error, isNull);
+    expect(cubits.failures.state, isNull);
   });
 
   test('comes to rest when another screen takes the worker from a start', () async {
@@ -241,7 +241,7 @@ void main() {
     await settle();
 
     expect(pipeline.state.status, PipelineStatus.idle);
-    expect(cubits.shell.state.error, isNull);
+    expect(cubits.failures.state, isNull);
     expect(repository.stops, 0);
   });
 
@@ -254,7 +254,7 @@ void main() {
 
     expect(pipeline.state.status, PipelineStatus.error);
     expect(
-      cubits.shell.state.error,
+      cubits.failures.state,
       isA<LoreDubFailure>().having((f) => f.code, 'code', FailureCode.workerStartTimeout),
     );
   });
@@ -642,7 +642,7 @@ void main() {
     repository.push(const EngineFailed(failure));
     await settle();
 
-    expect(cubits.shell.state.error, same(failure));
+    expect(cubits.failures.state, same(failure));
   });
 
   test('collects the voices of the scene, newest line first', () async {

@@ -20,7 +20,10 @@ import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/startup_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/update_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
@@ -35,6 +38,8 @@ import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
 
 import 'memory_cast.dart';
+
+import 'package:lore_dub/src/domain/app_release.dart';
 
 /// Every screen's state, built by hand for a test to stage and then put on
 /// the screen through [provide].
@@ -69,6 +74,7 @@ class StagedDashboard {
     DownloadsBloc? downloadsBloc,
     SessionBloc? sessionBloc,
     TranscriptBloc? transcriptBloc,
+    UpdateBloc? updateBloc,
   }) {
     final native = engine ?? NativeEngineService();
     this.system = system ?? SystemRepository(native);
@@ -85,25 +91,30 @@ class StagedDashboard {
     this.cast = cast ?? CastRepository(native, MemoryCharacters());
     installed = InstallRepository(modelRepository, runtimeRepository);
     sourcesRepository = SourcesRepository(this.system);
-    shell = ShellCubit(
-      updateRepository,
-      settingsRepository,
-      sessionRepository,
-      sessions,
-      installed,
-      this.system,
-    );
+    updates =
+        updateBloc ??
+        UpdateBloc(
+          updateRepository,
+          settingsRepository,
+          sessionRepository,
+          sessions,
+          failures,
+        );
+    // The first load has come back, as it has on any screen a test looks
+    // at; `startup_cubit_test.dart` is where it is run.
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    startup.emit(false);
     settings = SettingsBloc(
       sessionRepository,
       settingsRepository,
-      shell,
+      failures,
       this.voiceBank,
       this.system,
     );
     downloads =
         downloadsBloc ??
-        DownloadsBloc(modelRepository, runtimeRepository, installed, settingsRepository, shell);
-    sources = SourcesBloc(sourcesRepository, shell);
+        DownloadsBloc(modelRepository, runtimeRepository, installed, settingsRepository, failures);
+    sources = SourcesBloc(sourcesRepository, failures);
     pipeline =
         sessionBloc ??
         SessionBloc(
@@ -112,12 +123,12 @@ class StagedDashboard {
           settingsRepository,
           installed,
           sourcesRepository,
-          shell,
+          failures,
           sessions,
           this.voiceBank,
         );
-    transcript = transcriptBloc ?? TranscriptBloc(sessionRepository, sessions, shell);
-    cards = castBloc ?? CastBloc(this.cast, shell);
+    transcript = transcriptBloc ?? TranscriptBloc(sessionRepository, sessions, failures);
+    cards = castBloc ?? CastBloc(this.cast, failures);
     voices =
         captureBloc ??
         VoiceCaptureBloc(
@@ -125,20 +136,20 @@ class StagedDashboard {
           modelRepository,
           settingsRepository,
           installed,
-          shell,
+          failures,
           sessions,
           this.cast,
         );
     // A screen test hands a mock over: what the screen shows is then what
     // the test says, and what it sends is kept.
-    glossary = glossaryBloc ?? GlossaryBloc(this.glossaryRepository, shell);
+    glossary = glossaryBloc ?? GlossaryBloc(this.glossaryRepository, failures);
     graph = PipelineGraphBloc(
       this.schemes,
       settingsRepository,
       this.cast,
       installed,
       sessions,
-      shell,
+      failures,
     );
     facts = PipelineFactsBloc(
       settingsRepository,
@@ -160,7 +171,13 @@ class StagedDashboard {
   late final CastRepository cast;
   late final SourcesRepository sourcesRepository;
 
-  late final ShellCubit shell;
+  /// The banner every bloc reports what went wrong to.
+  final failures = FailureCubit();
+  final navigation = NavigationCubit();
+
+  /// Staged as done: the first load is `StartupCubit`'s own test.
+  late final startup = StartupCubit(settingsRepository, installed, system, failures);
+  late final UpdateBloc updates;
   late final SettingsBloc settings;
   late final DownloadsBloc downloads;
   late final SourcesBloc sources;
@@ -215,6 +232,19 @@ class StagedDashboard {
     graph.add(const PipelineGraphOpened());
   }
 
+  /// Stages what is known about newer versions -- what `blocTest`'s
+  /// `seed` does. What the version row sends is a mock's
+  /// (`updatesShowing`), and the check itself `update_bloc_test.dart`'s.
+  void stageUpdates(UpdateState value) =>
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      updates.emit(value);
+
+  /// Stages the section open, and the half of Эфир where it is Эфир.
+  void stageSection(DashboardSection section, [LiveView liveView = LiveView.dubbing]) {
+    navigation.showOnLive(liveView);
+    navigation.selectSection(section);
+  }
+
   /// Stages what the dubbing screens' sessions have said.
   void stageLists(TranscriptState value) =>
       // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
@@ -241,7 +271,10 @@ class StagedDashboard {
     ],
     child: MultiBlocProvider(
       providers: [
-        BlocProvider.value(value: shell),
+        BlocProvider.value(value: failures),
+        BlocProvider.value(value: navigation),
+        BlocProvider.value(value: startup),
+        BlocProvider.value(value: updates),
         BlocProvider.value(value: settings),
         BlocProvider.value(value: downloads),
         BlocProvider.value(value: sources),
@@ -268,7 +301,10 @@ class StagedDashboard {
     await sources.close();
     await downloads.close();
     await settings.close();
-    await shell.close();
+    await updates.close();
+    await startup.close();
+    await navigation.close();
+    await failures.close();
     await sessions.dispose();
   }
 }

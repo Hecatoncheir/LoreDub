@@ -18,7 +18,7 @@ import '../../../domain/model_package.dart';
 import '../../../domain/package_download.dart';
 import '../../../domain/progress_ticker.dart';
 import '../../../domain/runtime_package.dart';
-import 'shell_cubit.dart';
+import 'failure_cubit.dart';
 
 /// Which model packages and GPU runtimes are on disk, compared by what they
 /// hold rather than by which set instance holds it.

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/navigation_cubit.dart';
 
 /// The strap over the title: where the section stands in the order the work
 /// is done in, and the name of its area.

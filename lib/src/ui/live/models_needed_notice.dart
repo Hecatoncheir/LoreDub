@@ -9,7 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/navigation_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 
 /// Says the packages a screen needs are missing, and leads to them. What
@@ -37,7 +37,7 @@ class ModelsNeededNotice extends StatelessWidget {
                   subtitle: Text(AppLocalizations.of(context).modelsNeededNote),
                   trailing: TextButton(
                     onPressed: () =>
-                        context.read<ShellCubit>().selectSection(DashboardSection.models),
+                        context.read<NavigationCubit>().selectSection(DashboardSection.models),
                     child: Text(AppLocalizations.of(context).modelsNeededAction),
                   ),
                 ),

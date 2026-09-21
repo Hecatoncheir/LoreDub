@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/shell_cubit.dart';
+import '../dashboard/cubits/navigation_cubit.dart';
 import '../theme.dart';
 import 'live_title_word.dart';
 
@@ -19,7 +19,7 @@ class LiveTitleSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return BlocSelector<ShellCubit, ShellState, LiveView>(
+    return BlocSelector<NavigationCubit, NavigationState, LiveView>(
       selector: (shell) => shell.liveView,
       builder: (context, view) => Row(
         mainAxisSize: MainAxisSize.min,
@@ -31,7 +31,7 @@ class LiveTitleSwitch extends StatelessWidget {
             label: l10n.liveViewDubbing,
             icon: Icons.graphic_eq_rounded,
             selected: view == LiveView.dubbing,
-            onPressed: () => context.read<ShellCubit>().showOnLive(LiveView.dubbing),
+            onPressed: () => context.read<NavigationCubit>().showOnLive(LiveView.dubbing),
           ),
           // The two are one title with a choice in it, so they are
           // parted the way the marking above them parts its halves.
@@ -46,7 +46,7 @@ class LiveTitleSwitch extends StatelessWidget {
             label: l10n.liveViewScheme,
             icon: Icons.account_tree_rounded,
             selected: view == LiveView.scheme,
-            onPressed: () => context.read<ShellCubit>().showOnLive(LiveView.scheme),
+            onPressed: () => context.read<NavigationCubit>().showOnLive(LiveView.scheme),
           ),
         ],
       ),

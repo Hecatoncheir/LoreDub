@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/repositories/sources_repository.dart';
 import '../../../domain/capture_sources.dart';
 import '../../../domain/game_process.dart';
-import 'shell_cubit.dart';
+import 'failure_cubit.dart';
 
 sealed class SourcesEvent {
   const SourcesEvent();

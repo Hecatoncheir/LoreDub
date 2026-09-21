@@ -10,7 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/repositories/cast_repository.dart';
 import '../../../domain/character.dart';
 import '../../../domain/id_source.dart';
-import 'shell_cubit.dart';
+import 'failure_cubit.dart';
 
 /// How many cards and packs one import read, numbered so that two imports
 /// of the same size are still two things to say.

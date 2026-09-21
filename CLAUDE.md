@@ -64,8 +64,16 @@ than one of them.
    `common/` for what every screen uses; one public widget per file and no
    private ones. `dashboard/` still holds the cubits and the files not yet
    taken apart (`TODO.md`, stage 2). State lives in `dashboard/cubits/`:
-   one cubit -- `ShellCubit` (section, first load, the failure banner,
-   the update check) -- and the Blocs. `SettingsBloc` writes the settings
+   three cubits for what is a setter and nothing more -- `FailureCubit`
+   (the banner, and the `FailureSink` every bloc reports to),
+   `NavigationCubit` (the section and the half of Эфир) and `StartupCubit`
+   (whether the first load is back) -- and the Blocs for the rest, the
+   update check (`UpdateBloc`: check, download, restart) among them.
+   `UpdateAnnouncer` (`ui/shell/`) is where the two meet without either
+   reading the other: it asks for the check once `StartupCubit` says the
+   load is back, and words the toast when the bloc says a startup check
+   found news (`UpdateState.announce`), since the wording is the
+   interface's. `SettingsBloc` writes the settings
    through `SettingsRepository` and follows them back; what is made of the
    settings as they stand -- a language, a device, a pinned stage -- is an
    event of its own, built when answered from the repository rather than
@@ -121,12 +129,12 @@ than one of them.
    the repositories `LoreDubBootstrap` provides above it, and starts its
    own first read there (none is lazy); the first load a start waits for
    -- the settings, what is installed and the machine's adapters -- is
-   `ShellCubit.start`, and every other read is its screen's own. The
+   `StartupCubit.start`, and every other read is its screen's own. The
    arguments are read off the context by type, which the compiler cannot
    check, so a test pumps the whole application and reads each one back
    (`builds every screen out of the repositories above it`). The providers
    stand above `MaterialApp`, so a dialog reads the same states as the page
-   that opened it. Errors from any of them go to the shell through
+   that opened it. Errors from any of them go to the banner through
    `FailureSink`. Anything
    derived from settings *and* packages together is `ModelSelection`
    (`domain/model_selection.dart`), so neither cubit owns it; widgets read it
@@ -522,7 +530,7 @@ entry that is gone is pruned when the file is read.
 
 The scheme ("Схема") draws the pipeline as nodes and is the second way to
 the same settings, not a second set of them. It is a half of Эфир rather
-than a screen of its own (`ShellState.liveView`, `LiveTitleSwitch` --
+than a screen of its own (`NavigationState.liveView`, `LiveTitleSwitch` --
 the title of the page is the switch: the half that is up is the heading in
 the accent, the other stands beside it smaller and quieter): it is
 where the dubbing is arranged, and reaching it meant leaving the dubbing --
@@ -1291,8 +1299,10 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `blocTest`'s `seed` does, and the rest is staged through the
   repositories the blocs follow (`stageInstalled`, `settingsRepository`,
   `sourcesRepository`, `cast`, and `stageScheme`, which fills
-  `MemorySchemes` and opens the canvas the way the application does). The
-  shell still carries a `seed` (`TODO.md`, stage 4).
+  `MemorySchemes` and opens the canvas the way the application does;
+  `stageSection` through `NavigationCubit`'s own calls; `stageUpdates`
+  emitting as `stageSession` does). `StagedDashboard` puts `StartupCubit`
+  at rest as it is built, the first load being that cubit's own test.
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`) with an
   imperative summary, and a native change carries its regenerated bindings in
   the same commit. `AGENTS.md` holds the same guidance in shorter, more
