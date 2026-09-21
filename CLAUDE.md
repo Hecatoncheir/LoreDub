@@ -62,7 +62,7 @@ than one of them.
    for the frame around them (`DashboardScaffold`, `DashboardProviders`,
    navigation, header) and
    `common/` for what every screen uses; one public widget per file and no
-   private ones. `dashboard/` still holds the cubits and the files not yet
+   private ones. `dashboard/` still holds the Blocs and the files not yet
    taken apart (`TODO.md`, stage 2). State lives in `dashboard/cubits/`:
    three cubits for what is a setter and nothing more -- `FailureCubit`
    (the banner, and the `FailureSink` every bloc reports to),
@@ -98,7 +98,7 @@ than one of them.
    event-driven because a gesture there is a sequence (grab, move, drop)
    rather than a call, and `PipelineFactsBloc` what the scheme's nodes
    write on themselves.
-   No cubit reads another cubit. What more than one screen needs lives in a
+   No Bloc reads another Bloc. What more than one screen needs lives in a
    repository that owns it and publishes it: `SettingsRepository`
    (`AppSettings`), `InstallRepository` (what is on disk, what the machine
    can run it on, where the runtimes are), `CastRepository` (the cards
@@ -124,7 +124,7 @@ than one of them.
    reporting its half from `onChange` -- so the canvas knows whether the
    route is locked, and on what a stage runs, without reading either
    screen's cubit.
-   Nothing holds the cubits together. `DashboardProviders`
+   Nothing holds the Blocs together. `DashboardProviders`
    (`ui/shell/`) makes each one in its own `BlocProvider.create`, out of
    the repositories `LoreDubBootstrap` provides above it, and starts its
    own first read there (none is lazy); the first load a start waits for
@@ -148,7 +148,7 @@ than one of them.
    disk -- or a download tick will redraw the screen.
    `test/src/ui/dashboard/rebuild_scope_test.dart` counts that and fails if
    it does. There is no DI framework: `LoreDubBootstrap` (`lib/src/app.dart`)
-   constructs services -> repositories, and the providers the cubits. The
+   constructs services -> repositories, and the providers the Blocs. The
    widget tests build them by hand instead (`test/support/staged_dashboard.dart`,
    `StagedDashboard`), to seed each one without anything being read, and
    put them on the screen with `provide`.
@@ -303,7 +303,7 @@ is what ends the wait at once rather than after `startupLimit`. A worker that
 never says `ready` inside that limit is ended and reported as
 `workerStartTimeout`. `SessionRepository._sessions` is the same counter a layer
 up: a failed start clears the engine only while the session is still its own,
-and otherwise ends as `pipelineStopped`, which the cubits pass over
+and otherwise ends as `pipelineStopped`, which the Blocs pass over
 (`isPipelineStopped`) — a stop that was asked for is not an error. Its
 starts write their config out before calling the engine (the session's
 glossary, the cast, the cut read off the graph), so each builds the map
@@ -1380,7 +1380,7 @@ cache key in `release.yml` is turned over only when a cache already saved
 cannot be trusted.
 
 The screenshots in `docs/screenshots/` that carry the interface are drawn by
-`test/screenshots.dart`, not captured by hand: it stages the cubits, loads the
+`test/screenshots.dart`, not captured by hand: it stages the Blocs, loads the
 real fonts and writes each screen as a golden at 1400x920 in both languages.
 It has no `_test` suffix, so a plain `flutter test` — the run CI makes — passes
 it by; run it with an explicit path and `--update-goldens` after a change that
