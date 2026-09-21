@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 import 'package:lore_dub/src/data/repositories/install_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
@@ -23,6 +22,7 @@ import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
+import 'package:lore_dub/src/data/repositories/system_repository.dart';
 
 void main() {
   const game = GameProcess(pid: 42, name: 'game.exe', path: 'C:/game.exe');
@@ -40,9 +40,9 @@ void main() {
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),
     );
-    final app = AppRepository(NativeEngineService(), settings);
-    cast = CastRepository(app);
-    sources = SourcesRepository(app);
+    final engine = NativeEngineService();
+    cast = CastRepository(engine);
+    sources = SourcesRepository(SystemRepository(engine));
     sessions = SessionCoordinator();
     facts = PipelineFactsBloc(settings, installed, cast, sources, sessions);
   });

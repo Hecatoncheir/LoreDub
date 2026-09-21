@@ -17,7 +17,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
@@ -67,7 +67,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final cubits = StagedDashboard(
-      AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
+      SessionRepository(NativeEngineService()),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),

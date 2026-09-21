@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../l10n/app_localizations.dart';
-import 'data/repositories/app_repository.dart';
+import 'data/repositories/session_repository.dart';
 import 'domain/app_settings.dart';
 import 'data/repositories/model_repository.dart';
 import 'data/repositories/runtime_repository.dart';
@@ -31,6 +31,10 @@ import 'ui/shell/dashboard_scaffold.dart';
 import 'ui/graph/node_faces.dart';
 import 'ui/theme.dart';
 import 'ui/app/interface_scale.dart';
+import 'data/repositories/glossary_repository.dart';
+import 'data/repositories/scheme_repository.dart';
+import 'data/repositories/system_repository.dart';
+import 'data/repositories/voice_bank_repository.dart';
 
 class LoreDubBootstrap extends StatefulWidget {
   const LoreDubBootstrap({super.key});
@@ -43,7 +47,19 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
   /// One settings file, read and published in one place: everything
   /// that follows a setting listens here rather than being told.
   final settingsRepository = SettingsRepository(SettingsService());
-  late final appRepository = AppRepository(NativeEngineService(), settingsRepository);
+
+  /// The one engine, which the sessions run on and several repositories
+  /// tell what changed while one runs.
+  final engine = NativeEngineService();
+
+  /// The sessions that engine runs.
+  late final sessionRepository = SessionRepository(engine);
+
+  /// What this machine has: the processes, the monitors, the adapters.
+  late final systemRepository = SystemRepository(engine);
+  final voiceBankRepository = VoiceBankRepository();
+  final schemeRepository = SchemeRepository();
+  late final glossaryRepository = GlossaryRepository(settingsRepository, engine);
   final modelRepository = ModelRepository(ModelStorageService());
   final runtimeRepository = RuntimeRepository(RuntimeStorageService());
   final updateRepository = UpdateRepository(UpdateService(), NotificationService());
@@ -53,10 +69,10 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
   late final installRepository = InstallRepository(modelRepository, runtimeRepository);
 
   /// The player's own cards, which two screens work on.
-  late final castRepository = CastRepository(appRepository);
+  late final castRepository = CastRepository(engine);
 
   /// The game every screen listens to, and where the monitors stand.
-  late final sourcesRepository = SourcesRepository(appRepository);
+  late final sourcesRepository = SourcesRepository(systemRepository);
 
   /// Which screen may hold the one worker, and what the engine is doing.
   final sessions = SessionCoordinator();
@@ -73,7 +89,7 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
         castRepository.dispose(),
         installRepository.dispose(),
         settingsRepository.dispose(),
-      ]).whenComplete(appRepository.dispose),
+      ]).whenComplete(sessionRepository.dispose),
     );
     super.dispose();
   }
@@ -81,7 +97,11 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
   @override
   Widget build(BuildContext context) => MultiRepositoryProvider(
     providers: [
-      RepositoryProvider.value(value: appRepository),
+      RepositoryProvider.value(value: sessionRepository),
+      RepositoryProvider.value(value: systemRepository),
+      RepositoryProvider.value(value: voiceBankRepository),
+      RepositoryProvider.value(value: schemeRepository),
+      RepositoryProvider.value(value: glossaryRepository),
       RepositoryProvider.value(value: modelRepository),
       RepositoryProvider.value(value: runtimeRepository),
       RepositoryProvider.value(value: settingsRepository),

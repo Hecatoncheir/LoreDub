@@ -44,12 +44,18 @@ class DashboardProviders extends StatelessWidget {
           context.read(),
           context.read(),
           context.read(),
+          context.read(),
         )..start(),
       ),
       BlocProvider(
         lazy: false,
-        create: (context) =>
-            SettingsCubit(context.read(), context.read(), context.read<ShellCubit>())..load(),
+        create: (context) => SettingsCubit(
+          context.read(),
+          context.read(),
+          context.read<ShellCubit>(),
+          context.read(),
+          context.read(),
+        )..load(),
       ),
       BlocProvider(
         lazy: false,
@@ -75,6 +81,7 @@ class DashboardProviders extends StatelessWidget {
           context.read(),
           context.read(),
           context.read<ShellCubit>(),
+          context.read(),
           context.read(),
         )..listen(),
       ),

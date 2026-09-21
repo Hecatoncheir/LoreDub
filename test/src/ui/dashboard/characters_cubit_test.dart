@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
@@ -36,6 +36,9 @@ import '../../../support/staged_dashboard.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:lore_dub/src/data/repositories/cast_repository.dart';
+
+import '../../../support/memory_cast.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +70,7 @@ void main() {
         ),
         NotificationService(plugin: FlutterLocalNotificationsPlugin()),
       ),
+      cast: CastRepository(NativeEngineService(), repository.cards),
     );
     // Every package in place: a sample needs the speech model, and a
     // recording needs the converter.
@@ -681,11 +685,17 @@ class _FixedModelRepository extends ModelRepository {
   Future<String> directoryFor(ModelPackage model) async => 'models';
 }
 
-class _CastRepository extends AppRepository {
-  _CastRepository() : super(NativeEngineService(), SettingsRepository(SettingsService()));
+class _CastRepository extends SessionRepository {
+  _CastRepository() : super(NativeEngineService());
 
-  CharacterLibrary stored = CharacterLibrary.empty;
-  CharacterLibrary incoming = CharacterLibrary.empty;
+  /// The cast's own files, which the cast repository reads rather than
+  /// this one; kept here so a test reaches them where it reaches the rest.
+  final cards = MemoryCharacters();
+  CharacterLibrary get stored => cards.stored;
+  set stored(CharacterLibrary value) => cards.stored = value;
+  CharacterLibrary get incoming => cards.incoming;
+  set incoming(CharacterLibrary value) => cards.incoming = value;
+  Map<String, String> get kept => cards.kept;
   final recordings = <bool>[];
 
   /// What a card built from files answers with, and what it was asked for.
@@ -710,23 +720,10 @@ class _CastRepository extends AppRepository {
   /// over without a word to this one.
   void takeOver() => _session++;
 
-  /// The clips kept beside the cards, by card, and what was played.
-  final kept = <String, String>{};
+  /// What was played.
   final played = <String>[];
   final spoken = <String>[];
   int previewStarts = 0;
-
-  @override
-  Future<Set<String>> characterClips() async => kept.keys.toSet();
-
-  @override
-  Future<String?> characterClip(String id) async => kept[id];
-
-  @override
-  Future<void> keepCharacterClip(String id, String source) async => kept[id] = source;
-
-  @override
-  Future<void> removeCharacterClip(String id) async => kept.remove(id);
 
   @override
   Future<void> playWave(String wavePath) async => played.add(wavePath);
@@ -769,15 +766,6 @@ class _CastRepository extends AppRepository {
     required String voice,
     List<double> timbre = const [],
   }) async => spoken.add(text);
-
-  @override
-  Future<CharacterLibrary> loadCharacters() async => stored;
-
-  @override
-  Future<void> saveCharacters(CharacterLibrary library) async => stored = library;
-
-  @override
-  Future<CharacterLibrary> readCharacterFiles(List<String> sources) async => incoming;
 
   @override
   Future<void> recordCharacterVoice({required bool recording}) async => recordings.add(recording);

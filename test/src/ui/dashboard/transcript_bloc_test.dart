@@ -4,10 +4,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
-import 'package:lore_dub/src/data/repositories/settings_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
-import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
@@ -94,8 +92,8 @@ void main() {
   });
 }
 
-class _Engine extends AppRepository {
-  _Engine() : super(NativeEngineService(), SettingsRepository(SettingsService()));
+class _Engine extends SessionRepository {
+  _Engine() : super(NativeEngineService());
 
   final said = StreamController<EngineEvent>.broadcast();
 

@@ -12,7 +12,7 @@ import 'package:path/path.dart' as path;
 
 import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/sources_repository.dart';
-import '../../../data/repositories/app_repository.dart';
+import '../../../data/repositories/session_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/compute_device.dart';
@@ -25,6 +25,7 @@ import '../../../domain/pipeline_state.dart';
 import '../../../domain/session_coordinator.dart';
 import '../../../data/repositories/settings_repository.dart';
 import 'shell_cubit.dart';
+import '../../../data/repositories/voice_bank_repository.dart';
 
 /// The dubbing screens' session: what it is doing and what it chose to run
 /// on. What it has said is `TranscriptBloc`'s.
@@ -252,13 +253,14 @@ final class _EngineSaid extends SessionEvent {
 /// `TranscriptBloc`'s, and the game is `SourcesBloc`'s.
 class SessionBloc extends Bloc<SessionEvent, SessionState> {
   SessionBloc(
-    this._appRepository,
+    this._session,
     this._modelRepository,
     this._settings,
     this._downloads,
     this._sources,
     this._errors,
-    this._sessions, {
+    this._sessions,
+    this._voiceBank, {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        super(const SessionState()) {
@@ -287,13 +289,16 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   /// double-click. Windows counts clicks as double within 500 ms by default.
   static const doubleClickGrace = Duration(milliseconds: 800);
 
-  final AppRepository _appRepository;
+  final SessionRepository _session;
   final ModelRepository _modelRepository;
   final SettingsRepository _settings;
   final InstallRepository _downloads;
   final SourcesRepository _sources;
   final FailureSink _errors;
   final SessionCoordinator _sessions;
+
+  /// The file each game's voices are kept in, which a session is handed.
+  final VoiceBankRepository _voiceBank;
   final DateTime Function() _clock;
   StreamSubscription<EngineEvent>? _events;
   StreamSubscription<AppSettings>? _written;
@@ -312,7 +317,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   ModelSelection get selection =>
       ModelSelection(models: _downloads.parts.models, settings: _settings.settings);
 
-  void listen() => _events = _appRepository.events.listen((event) => add(_EngineSaid(event)));
+  void listen() => _events = _session.events.listen((event) => add(_EngineSaid(event)));
 
   Future<void> _onLiveToggled(LiveToggled event, Emitter<SessionState> emit) async {
     final initializing = event.initializing;
@@ -363,7 +368,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
           ? selection.forTargetLanguage(ModelKind.translation)!.model
           : null;
       final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
-      await _appRepository.start(
+      await _session.start(
         process: selection.requiresProcess ? _process : null,
         settings: settings,
         modelDirectories: await _modelDirectories(selection),
@@ -381,9 +386,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         voiceConversionBackend: _backendFor(ComputeStage.voiceConversion),
         runtimeDirectory: _downloads.parts.runtimeDirectory,
         // Kept per game, so one game's cast does not answer for another's.
-        voiceBank: selection.keepsVoiceBank
-            ? await _appRepository.voiceBankFileFor(_process?.name ?? '')
-            : null,
+        voiceBank: selection.keepsVoiceBank ? await _voiceBank.fileFor(_process?.name ?? '') : null,
       );
     } catch (exception) {
       _onStartFailed(exception, emit);
@@ -496,12 +499,12 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       final converter = selection.voiceConverter;
       final hearsVoices =
           reading.readsSubtitles && settings.screenVoices && (converter?.installed ?? false);
-      await _appRepository.startScreenText(
+      await _session.startScreenText(
         reading: reading,
         hearsVoices: hearsVoices,
         // The same bank the dubbing session keeps, so a character met
         // while the subtitles are read is met again when it runs.
-        voiceBank: hearsVoices ? await _appRepository.voiceBankFileFor(_game) : null,
+        voiceBank: hearsVoices ? await _voiceBank.fileFor(_game) : null,
         process: _process,
         settings: settings,
         modelDirectories: {
@@ -556,7 +559,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     );
     try {
       final settings = _settings.settings;
-      await _appRepository.startSceneVoices(
+      await _session.startSceneVoices(
         process: selection.requiresProcess ? _process : null,
         settings: settings,
         converterDirectory: await _modelRepository.directoryFor(
@@ -566,7 +569,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         runtimeDirectory: _downloads.parts.runtimeDirectory,
         // The same bank the dubbing session reads, so a voice met now is
         // the same voice then.
-        voiceBank: await _appRepository.voiceBankFileFor(_game),
+        voiceBank: await _voiceBank.fileFor(_game),
       );
     } catch (exception) {
       _onStartFailed(exception, emit);
@@ -580,7 +583,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     emit(state.copyWith(status: PipelineStatus.stopping));
     var status = PipelineStatus.idle;
     try {
-      await _appRepository.stop();
+      await _session.stop();
     } catch (exception) {
       status = PipelineStatus.error;
       _errors.report(exception);
@@ -608,7 +611,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   Future<void> _onPaused(SessionPaused event, Emitter<SessionState> emit) async {
     if (state.status != PipelineStatus.listening || !state.liveRunning) return;
     try {
-      await _appRepository.pause();
+      await _session.pause();
       if (!isClosed) emit(state.copyWith(status: PipelineStatus.paused));
     } catch (exception) {
       _errors.report(exception);
@@ -618,7 +621,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   Future<void> _onResumed(SessionResumed event, Emitter<SessionState> emit) async {
     if (state.status != PipelineStatus.paused) return;
     try {
-      await _appRepository.resume();
+      await _session.resume();
       if (!isClosed) emit(state.copyWith(status: PipelineStatus.listening));
     } catch (exception) {
       _errors.report(exception);
@@ -746,7 +749,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     if (!state.running || voice.isEmpty || voice == _voiceTold) return;
     _voiceTold = voice;
     try {
-      await _appRepository.useVoice(voice);
+      await _session.useVoice(voice);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -771,12 +774,12 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     final drawable = settings.readsWholeScreen || processId != 0;
     try {
       if (settings.showFrameOverlay && drawable) {
-        _appRepository.showFrameOverlay(processId: processId, region: settings.ocrRegion);
+        _session.showFrameOverlay(processId: processId, region: settings.ocrRegion);
       } else {
-        _appRepository.hideFrameOverlay();
+        _session.hideFrameOverlay();
       }
       // A running session registered the keys itself, its own among them.
-      if (!state.running) _appRepository.setIdleHotkeys(settings);
+      if (!state.running) _session.setIdleHotkeys(settings);
     } catch (exception) {
       _errors.report(exception);
     }

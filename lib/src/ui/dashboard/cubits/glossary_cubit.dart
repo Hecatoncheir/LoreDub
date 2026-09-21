@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../data/repositories/app_repository.dart';
 import '../../../domain/glossary.dart';
 import '../../../domain/id_source.dart';
 import 'shell_cubit.dart';
+import '../../../data/repositories/glossary_repository.dart';
 
 /// What the player has written down about their games, and whether it has
 /// been read off disk yet.
@@ -37,17 +37,17 @@ class GlossaryState extends Equatable {
 /// running: the player writes an entry down because they just heard the line
 /// go wrong, and mean the next one to be said their way.
 class GlossaryCubit extends Cubit<GlossaryState> {
-  GlossaryCubit(this._appRepository, this._errors, {DateTime Function()? clock})
+  GlossaryCubit(this._glossary, this._errors, {DateTime Function()? clock})
     : _ids = IdSource(clock: clock),
       super(const GlossaryState());
 
-  final AppRepository _appRepository;
+  final GlossaryRepository _glossary;
   final FailureSink _errors;
   final IdSource _ids;
 
   Future<void> load() async {
     try {
-      emit(GlossaryState(glossary: await _appRepository.loadGlossary(), loaded: true));
+      emit(GlossaryState(glossary: await _glossary.load(), loaded: true));
     } catch (error) {
       emit(state.copyWith(loaded: true));
       _errors.report(error);
@@ -77,7 +77,7 @@ class GlossaryCubit extends Cubit<GlossaryState> {
   /// Writes everything down where the player asked.
   Future<void> export(String destination) async {
     try {
-      await _appRepository.exportGlossary(destination, state.glossary);
+      await _glossary.exportTo(destination, state.glossary);
     } catch (error) {
       _errors.report(error);
     }
@@ -118,7 +118,7 @@ class GlossaryCubit extends Cubit<GlossaryState> {
   /// on another machine where those entries do not exist yet.
   Future<void> exportPack(String destination, String packId) async {
     try {
-      await _appRepository.exportGlossary(destination, state.glossary.onlyPack(packId));
+      await _glossary.exportTo(destination, state.glossary.onlyPack(packId));
     } catch (error) {
       _errors.report(error);
     }
@@ -132,7 +132,7 @@ class GlossaryCubit extends Cubit<GlossaryState> {
   /// reported already.
   Future<({int entries, int packs})?> import(List<String> sources) async {
     try {
-      final incoming = await _appRepository.readGlossaryFiles(sources);
+      final incoming = await _glossary.readFiles(sources);
       var merged = state.glossary;
       for (final entry in incoming.entries) {
         merged = merged.keeping(entry);
@@ -160,7 +160,7 @@ class GlossaryCubit extends Cubit<GlossaryState> {
     final previous = state.glossary;
     emit(state.copyWith(glossary: glossary));
     try {
-      await _appRepository.saveGlossary(glossary);
+      await _glossary.save(glossary);
     } catch (error) {
       // Put back what is actually on disk rather than leave the screen
       // showing an entry the file does not hold.

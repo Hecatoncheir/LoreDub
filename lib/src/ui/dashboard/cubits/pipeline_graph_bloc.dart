@@ -12,7 +12,6 @@ import '../../../data/repositories/install_repository.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/session_coordinator.dart';
 import '../../../data/repositories/settings_repository.dart';
-import '../../../data/repositories/app_repository.dart';
 import '../../../data/services/model_catalog.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/character.dart';
@@ -21,6 +20,7 @@ import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
 import '../../../domain/spoken_language.dart';
 import 'shell_cubit.dart';
+import '../../../data/repositories/scheme_repository.dart';
 
 /// What the canvas was asked to do.
 ///
@@ -347,7 +347,7 @@ class _GraphMemento {
 
 class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   PipelineGraphBloc(
-    this._appRepository,
+    this._schemes,
     this._settings,
     this._characters,
     this._installed,
@@ -412,7 +412,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     _characterChanges = _characters.changes.listen((_) => add(const PipelineGraphRefreshed()));
   }
 
-  final AppRepository _appRepository;
+  final SchemeRepository _schemes;
   final SettingsRepository _settings;
   final CastRepository _characters;
   final InstallRepository _installed;
@@ -476,12 +476,12 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     var layout = PipelineLayout.standard;
     var schemes = const <SavedPipeline>[];
     try {
-      layout = await _appRepository.loadGraphLayout();
+      layout = await _schemes.loadLayout();
     } catch (exception) {
       debugPrint('pipeline layout not read: $exception');
     }
     try {
-      schemes = (await _appRepository.loadPipelines()).pipelines;
+      schemes = (await _schemes.loadSchemes()).pipelines;
     } catch (exception) {
       debugPrint('saved schemes not read: $exception');
     }
@@ -615,7 +615,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     final scheme = state.schemes.where((value) => value.id == event.id).firstOrNull;
     if (scheme == null) return;
     try {
-      await _appRepository.exportPipelines(event.destination, [scheme]);
+      await _schemes.exportSchemes(event.destination, [scheme]);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -629,7 +629,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   ) async {
     List<SavedPipeline> incoming;
     try {
-      incoming = await _appRepository.importPipelines(event.sources);
+      incoming = await _schemes.importSchemes(event.sources);
     } catch (exception) {
       _errors.report(exception);
       return;
@@ -646,7 +646,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   Future<void> _keep(List<SavedPipeline> schemes, Emitter<PipelineGraphState> emit) async {
     emit(state.copyWith(schemes: schemes));
     try {
-      await _appRepository.savePipelines(PipelineLibrary(pipelines: schemes));
+      await _schemes.saveSchemes(PipelineLibrary(pipelines: schemes));
     } catch (exception) {
       _errors.report(exception);
     }
@@ -993,7 +993,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   Future<void> _write() async {
     try {
-      await _appRepository.saveGraphLayout(state.layout);
+      await _schemes.saveLayout(state.layout);
     } catch (exception) {
       _errors.report(exception);
     }

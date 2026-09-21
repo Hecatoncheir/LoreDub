@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../data/repositories/app_repository.dart';
+import '../../../data/repositories/session_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/services/python_discovery.dart';
 import '../../../domain/app_settings.dart';
@@ -16,6 +16,8 @@ import '../../../domain/engine_event.dart';
 import '../../../domain/pipeline_state.dart';
 import '../../../domain/failure.dart';
 import 'shell_cubit.dart';
+import '../../../data/repositories/voice_bank_repository.dart';
+import '../../../data/repositories/system_repository.dart';
 
 /// Everything the user configured, plus the interpreter search that writes
 /// into it.
@@ -59,7 +61,7 @@ class SettingsState extends Equatable {
 }
 
 class SettingsCubit extends Cubit<SettingsState> {
-  SettingsCubit(this._appRepository, this._settings, this._errors)
+  SettingsCubit(this._session, this._settings, this._errors, this._voiceBank, this._system)
     : super(SettingsState(settings: _settings.settings)) {
     // Whoever writes a setting writes it to the repository, which is where
     // this reads it back from: the pipeline moving the subtitle frame or
@@ -71,7 +73,7 @@ class SettingsCubit extends Cubit<SettingsState> {
     // The bank grows while a session runs, and its last voices are written
     // as that session comes to rest. The count stands beside a switch here,
     // so it is this cubit's to keep and nobody else's to refresh.
-    _engine = _appRepository.events.listen((event) {
+    _engine = _session.events.listen((event) {
       if (event is VoiceBankGrew ||
           (event is SessionStateChanged && event.status == PipelineStatus.idle)) {
         unawaited(refreshVoiceBank());
@@ -79,7 +81,10 @@ class SettingsCubit extends Cubit<SettingsState> {
     });
   }
 
-  final AppRepository _appRepository;
+  /// Heard for the voices the running session adds to the bank.
+  final SessionRepository _session;
+  final VoiceBankRepository _voiceBank;
+  final SystemRepository _system;
   final SettingsRepository _settings;
   final FailureSink _errors;
   StreamSubscription<AppSettings>? _written;
@@ -96,7 +101,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   /// a bank that cannot be read shows as whatever was counted last.
   Future<void> refreshVoiceBank() async {
     try {
-      final size = await _appRepository.voiceBankSize();
+      final size = await _voiceBank.size();
       if (!isClosed) emit(state.copyWith(voiceBankSize: size));
     } catch (exception) {
       debugPrint('voice bank not counted: $exception');
@@ -106,7 +111,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   /// Forgets every kept voice of every game.
   Future<void> clearVoiceBank() async {
     try {
-      await _appRepository.clearVoiceBank();
+      await _voiceBank.clear();
     } catch (exception) {
       _errors.report(exception);
     }
@@ -142,7 +147,7 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(state.copyWith(searchingPython: true, rejectedPython: const []));
     _errors.report(null);
     try {
-      final result = await _appRepository.findPythonExecutable();
+      final result = await _system.findPythonExecutable();
       final executable = result.executable;
       if (executable == null) {
         _errors.report(result.failure);

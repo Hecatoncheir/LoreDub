@@ -972,10 +972,26 @@ abstract final class AppTheme {
       `test/support/staged_dashboard.dart` как `StagedDashboard` с
       `provide(child)`. Уходит вместе с `seed()`, когда тесты перейдут на
       `MockBloc` (задача ниже).
-- [ ] Разрезать `AppRepository` по контекстам: `SettingsRepository`,
+- [x] Разрезать `AppRepository` по контекстам: `SettingsRepository`,
       `SessionRepository`, `CastRepository`, `GlossaryRepository`,
       `SchemeRepository`, `VoiceBankRepository`, `SystemRepository`
       (процессы, видеокарты, поиск Python).
+      *Сделано:* `AppRepository` больше нет. Остаток — движок и сессии —
+      стал `SessionRepository`; `SystemRepository` (процессы, мониторы,
+      видеокарты, интерпретатор), `VoiceBankRepository`,
+      `SchemeRepository` (раскладка холста и полка схем) и
+      `GlossaryRepository` (словарь со встроенными пакетами) — новые;
+      `CastRepository` забрал клипы, экспорт и импорт карточек и сам
+      говорит работающему воркеру о подстановке. Каждый экран получает
+      то, что читает: словарь — только словарь, холст — схемы, состав и
+      установленное, настройки — банк голосов и систему. Три пути, которые
+      старт пишет в конфиг (словарь сессии, файл состава, вырезанные
+      карточки), `SessionRepository` читает у сервисов напрямую, чтобы не
+      зависеть от других репозиториев. Тестовые фейки, подменявшие весь
+      репозиторий ради двух методов, теперь подменяют то, что им нужно:
+      состав в памяти и движок-слушатель (`test/support/memory_cast.dart`),
+      полку схем, банк, систему. Неиспользуемый
+      `processLoopbackSupported` удалён.
 - [x] **Загрузки: один путь вместо двух, адресация по id.**
       `installModel` и `installRuntime` были одним и тем же кодом дважды —
       страж, ручка отмены, тикер, отметка «пошла», `switch` по исходу,

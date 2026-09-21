@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
@@ -28,6 +28,10 @@ import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lore_dub/src/data/repositories/cast_repository.dart';
+import 'package:lore_dub/src/data/repositories/scheme_repository.dart';
+
+import '../../../support/memory_cast.dart';
 
 /// The canvas as a script of gestures: what a link drawn between two sockets
 /// does to the settings and to the cast, and what one step back undoes.
@@ -87,6 +91,8 @@ void main() {
         ),
         NotificationService(plugin: FlutterLocalNotificationsPlugin()),
       ),
+      cast: CastRepository(repository.engine, repository.cards),
+      schemes: repository.schemes,
     );
     graph = cubits.graph;
     repository.stored = const CharacterLibrary(characters: [guard, smith]);
@@ -882,12 +888,41 @@ void main() {
 /// one at a time, and each one may write to the settings or the cast.
 Future<void> pumpEvents() => Future<void>.delayed(Duration.zero);
 
-/// An application repository with no disk behind it: the cast and the
-/// arrangement are kept in memory.
-class _GraphRepository extends AppRepository {
-  _GraphRepository() : super(NativeEngineService(), SettingsRepository(SettingsService()));
+/// The canvas's files and the cast with no disk behind them, and a worker
+/// that only listens to what it is told. Each is what one repository reads;
+/// they are kept on one object so a test reaches them in one place.
+class _GraphRepository extends SessionRepository {
+  _GraphRepository() : super(NativeEngineService());
 
-  CharacterLibrary stored = CharacterLibrary.empty;
+  final cards = MemoryCharacters();
+  final engine = TellingEngine();
+  final schemes = _Schemes();
+
+  CharacterLibrary get stored => cards.stored;
+  set stored(CharacterLibrary value) => cards.stored = value;
+  PipelineLayout get layout => schemes.layout;
+  set layout(PipelineLayout value) => schemes.layout = value;
+  PipelineLibrary get shelf => schemes.shelf;
+  set shelf(PipelineLibrary value) => schemes.shelf = value;
+  List<(String, List<SavedPipeline>)> get exported => schemes.exported;
+  List<SavedPipeline> get incoming => schemes.incoming;
+  set incoming(List<SavedPipeline> value) => schemes.incoming = value;
+
+  /// What a running worker was told to read anew, without a restart.
+  List<(String, String?)> get told => engine.told;
+
+  /// Every time a running worker was told which cards had left the mix.
+  List<Set<String>> get heard => engine.heard;
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  void dispose() {}
+}
+
+/// The arrangement and the shelf of schemes, kept in memory.
+class _Schemes extends SchemeRepository {
   PipelineLayout layout = PipelineLayout.standard;
 
   /// The shelf of schemes, what was written out of it and what is read in.
@@ -896,45 +931,21 @@ class _GraphRepository extends AppRepository {
   List<SavedPipeline> incoming = const [];
 
   @override
-  Future<CharacterLibrary> loadCharacters() async => stored;
+  Future<PipelineLayout> loadLayout() async => layout;
 
   @override
-  Future<void> saveCharacters(CharacterLibrary library) async => stored = library;
+  Future<void> saveLayout(PipelineLayout value) async => layout = value;
 
   @override
-  Future<PipelineLayout> loadGraphLayout() async => layout;
+  Future<PipelineLibrary> loadSchemes() async => shelf;
 
   @override
-  Future<void> saveGraphLayout(PipelineLayout value) async => layout = value;
+  Future<void> saveSchemes(PipelineLibrary library) async => shelf = library;
 
   @override
-  Future<PipelineLibrary> loadPipelines() async => shelf;
+  Future<void> exportSchemes(String destination, List<SavedPipeline> schemes) async =>
+      exported.add((destination, schemes));
 
   @override
-  Future<void> savePipelines(PipelineLibrary library) async => shelf = library;
-
-  @override
-  Future<void> exportPipelines(String destination, List<SavedPipeline> pipelines) async =>
-      exported.add((destination, pipelines));
-
-  @override
-  Future<List<SavedPipeline>> importPipelines(List<String> sources) async => incoming;
-
-  @override
-  Future<void> voiceCharacterAs(String id, String? target) async => told.add((id, target));
-
-  /// What a running worker was told to read anew, without a restart.
-  final told = <(String, String?)>[];
-
-  @override
-  Future<void> readAsHeard(Set<String> value) async => heard.add(value);
-
-  /// Every time a running worker was told which cards had left the mix.
-  final heard = <Set<String>>[];
-
-  @override
-  Future<void> stop() async {}
-
-  @override
-  void dispose() {}
+  Future<List<SavedPipeline>> importSchemes(List<String> sources) async => incoming;
 }

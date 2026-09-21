@@ -3,7 +3,7 @@
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 import 'package:lore_dub/src/data/repositories/install_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
@@ -23,6 +23,11 @@ import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
+import 'package:lore_dub/src/data/repositories/glossary_repository.dart';
+import 'package:lore_dub/src/data/repositories/scheme_repository.dart';
+import 'package:lore_dub/src/data/repositories/system_repository.dart';
+import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
+import 'package:lore_dub/src/data/services/native_engine_service.dart';
 
 /// Every screen's state, built by hand for a test to stage and then put on
 /// the screen through [provide].
@@ -35,18 +40,46 @@ import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 /// It goes once the widget tests stage mocked blocs instead (`TODO.md`,
 /// stage 4: `bloc_test` and `mocktail`).
 class StagedDashboard {
+  ///
+  /// The repositories a test does not hand over are made over the disk and
+  /// the native library as the application's are; one that is handed over
+  /// is usually a fake that keeps its files in memory.
   StagedDashboard(
-    this.appRepository,
+    this.sessionRepository,
     this.settingsRepository,
     ModelRepository modelRepository,
     RuntimeRepository runtimeRepository,
-    UpdateRepository updateRepository,
-  ) {
+    UpdateRepository updateRepository, {
+    NativeEngineService? engine,
+    SystemRepository? system,
+    VoiceBankRepository? voiceBank,
+    SchemeRepository? schemes,
+    GlossaryRepository? glossaryRepository,
+    CastRepository? cast,
+  }) {
+    final native = engine ?? NativeEngineService();
+    this.system = system ?? SystemRepository(native);
+    this.voiceBank = voiceBank ?? VoiceBankRepository();
+    this.schemes = schemes ?? SchemeRepository();
+    this.glossaryRepository = glossaryRepository ?? GlossaryRepository(settingsRepository, native);
+    this.cast = cast ?? CastRepository(native);
     installed = InstallRepository(modelRepository, runtimeRepository);
-    cast = CastRepository(appRepository);
-    sourcesRepository = SourcesRepository(appRepository);
-    shell = ShellCubit(updateRepository, settingsRepository, appRepository, sessions, installed);
-    settings = SettingsCubit(appRepository, settingsRepository, shell);
+    sourcesRepository = SourcesRepository(this.system);
+    shell = ShellCubit(
+      updateRepository,
+      settingsRepository,
+      sessionRepository,
+      sessions,
+      installed,
+      this.system,
+    );
+    settings = SettingsCubit(
+      sessionRepository,
+      settingsRepository,
+      shell,
+      this.voiceBank,
+      this.system,
+    );
     downloads = DownloadsCubit(
       modelRepository,
       runtimeRepository,
@@ -56,32 +89,50 @@ class StagedDashboard {
     );
     sources = SourcesBloc(sourcesRepository, shell);
     pipeline = SessionBloc(
-      appRepository,
+      sessionRepository,
       modelRepository,
       settingsRepository,
       installed,
       sourcesRepository,
       shell,
       sessions,
+      this.voiceBank,
     );
-    transcript = TranscriptBloc(appRepository, sessions, shell);
+    transcript = TranscriptBloc(sessionRepository, sessions, shell);
     characters = CharactersCubit(
-      appRepository,
+      sessionRepository,
       modelRepository,
       settingsRepository,
       installed,
       shell,
       sessions,
-      cast,
+      this.cast,
     );
-    glossary = GlossaryCubit(appRepository, shell);
-    graph = PipelineGraphBloc(appRepository, settingsRepository, cast, installed, sessions, shell);
-    facts = PipelineFactsBloc(settingsRepository, installed, cast, sourcesRepository, sessions);
+    glossary = GlossaryCubit(this.glossaryRepository, shell);
+    graph = PipelineGraphBloc(
+      this.schemes,
+      settingsRepository,
+      this.cast,
+      installed,
+      sessions,
+      shell,
+    );
+    facts = PipelineFactsBloc(
+      settingsRepository,
+      installed,
+      this.cast,
+      sourcesRepository,
+      sessions,
+    );
   }
 
-  final AppRepository appRepository;
+  final SessionRepository sessionRepository;
   final SettingsRepository settingsRepository;
   final sessions = SessionCoordinator();
+  late final SystemRepository system;
+  late final VoiceBankRepository voiceBank;
+  late final SchemeRepository schemes;
+  late final GlossaryRepository glossaryRepository;
   late final InstallRepository installed;
   late final CastRepository cast;
   late final SourcesRepository sourcesRepository;
@@ -105,8 +156,12 @@ class StagedDashboard {
   /// the way `DashboardProviders` puts the application's.
   Widget provide(Widget child) => MultiRepositoryProvider(
     providers: [
-      RepositoryProvider.value(value: appRepository),
+      RepositoryProvider.value(value: sessionRepository),
       RepositoryProvider.value(value: settingsRepository),
+      RepositoryProvider.value(value: system),
+      RepositoryProvider.value(value: voiceBank),
+      RepositoryProvider.value(value: schemes),
+      RepositoryProvider.value(value: glossaryRepository),
       RepositoryProvider.value(value: installed),
       RepositoryProvider.value(value: cast),
       RepositoryProvider.value(value: sourcesRepository),

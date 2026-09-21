@@ -15,7 +15,7 @@ import 'package:lore_dub/src/app.dart';
 import 'package:lore_dub/src/domain/screen_reading.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
@@ -71,7 +71,7 @@ void main() {
   StagedDashboard buildCubits({RuntimeRepository? runtimes}) {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
-      AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
+      SessionRepository(NativeEngineService()),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       runtimes ?? RuntimeRepository(RuntimeStorageService()),
@@ -1991,7 +1991,7 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         updates = _FakeUpdateRepository();
         final cubits = StagedDashboard(
-          AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
+          SessionRepository(NativeEngineService()),
           SettingsRepository(SettingsService()),
           ModelRepository(ModelStorageService()),
           RuntimeRepository(RuntimeStorageService()),

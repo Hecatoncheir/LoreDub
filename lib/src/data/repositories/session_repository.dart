@@ -1,118 +1,44 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import '../../domain/monitor_layout.dart';
 import '../../domain/engine_event.dart';
 import '../../domain/ocr_region.dart';
 import '../../domain/screen_reading.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/built_voice.dart';
-import '../../domain/character.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
-import '../../domain/glossary.dart';
-import '../../domain/pipeline_graph.dart';
-import '../../domain/saved_pipeline.dart';
-import 'settings_repository.dart';
 import '../services/character_service.dart';
-import '../services/glossary_catalog.dart';
 import '../services/glossary_service.dart';
 import '../services/native_engine_service.dart';
 import '../services/pipeline_graph_service.dart';
-import '../services/pipeline_library_service.dart';
-import '../services/python_discovery.dart';
-import '../services/voice_bank_service.dart';
 
-class AppRepository {
-  AppRepository(
-    this._nativeEngine,
-    this._settings, [
-    PythonDiscovery? pythonDiscovery,
-    VoiceBankService? voiceBank,
+/// The one engine and the sessions it runs: starting and stopping them,
+/// resting one, what it is told while it runs, and what it plays.
+///
+/// It was `AppRepository`, which held every file the application keeps
+/// besides -- the cast, the glossary, the schemes, the voice banks -- and
+/// what the machine has. Those are repositories of their own now. What a
+/// start still reads for itself is three paths it writes into the config:
+/// the glossary the session translates with, the cast it recognizes, and
+/// the cards the canvas cut out of the mix. It reads them off the services
+/// directly, which are only where the files are, rather than off the
+/// repositories that own what is in them.
+class SessionRepository {
+  SessionRepository(
+    this._nativeEngine, [
     CharacterService? characters,
     GlossaryService? glossary,
-    PipelineGraphService? graph,
-    PipelineLibraryService? pipelines,
-  ]) : _pythonDiscovery = pythonDiscovery ?? PythonDiscovery(),
-       _voiceBank = voiceBank ?? VoiceBankService(),
-       _characters = characters ?? CharacterService(),
+    PipelineGraphService? layout,
+  ]) : _characters = characters ?? CharacterService(),
        _glossary = glossary ?? GlossaryService(),
-       _graph = graph ?? PipelineGraphService(),
-       _pipelines = pipelines ?? PipelineLibraryService();
+       _layout = layout ?? PipelineGraphService();
 
   final NativeEngineService _nativeEngine;
-  final SettingsRepository _settings;
-  final PythonDiscovery _pythonDiscovery;
-  final VoiceBankService _voiceBank;
   final CharacterService _characters;
   final GlossaryService _glossary;
-  final PipelineGraphService _graph;
-  final PipelineLibraryService _pipelines;
-
-  /// Where the pipeline canvas was left. Only the arrangement: what the
-  /// pipeline does is the settings and the cast.
-  Future<PipelineLayout> loadGraphLayout() => _graph.load();
-  Future<void> saveGraphLayout(PipelineLayout layout) => _graph.save(layout);
-
-  /// The characters the player recorded and named. They belong to the player
-  /// rather than to one game, so every session is handed the same file.
-  Future<CharacterLibrary> loadCharacters() => _characters.load();
-  Future<void> saveCharacters(CharacterLibrary library) => _characters.save(library);
-  Future<String> charactersFile() => _characters.file();
-
-  /// What the player wrote down about their games. Theirs rather than one
-  /// game's, so every session that translates is handed the same file.
-  /// What is written down, with the packs LoreDub brings laid over it the
-  /// first time the screen is opened.
-  ///
-  /// Only where the dubbing is into the language they are written in. A
-  /// player dubbing into German is not offered a hundred Russian readings,
-  /// and is offered them if they ever switch: nothing is marked as offered
-  /// until it actually has been.
-  ///
-  /// Read off the settings as they stand, so they have to have been loaded
-  /// first — which is why the first load reads them before anything else.
-  Future<Glossary> loadGlossary() async {
-    final kept = await _glossary.load();
-    // The settings themselves rather than the file they came from: one
-    // owner, one read. Awaited rather than read off the field, so this
-    // does not depend on having been started after whoever loads them.
-    final settings = await _settings.load();
-    if (settings.targetLanguage != builtInGlossaryLanguage) return kept;
-    final offered = await _glossary.withBuiltIn(kept, builtInGlossary());
-    if (!identical(offered, kept)) await _glossary.save(offered);
-    return offered;
-  }
-
-  /// Writes the glossary where the player asked.
-  Future<void> exportGlossary(String destination, Glossary glossary) =>
-      _glossary.exportTo(destination, glossary);
-
-  /// What the files the player chose hold, for the screen to merge into what
-  /// is already written down.
-  Future<Glossary> readGlossaryFiles(List<String> sources) => _glossary.readFiles(sources);
-
-  /// Keeps it, and tells a session already running: the player writes an
-  /// entry because they just heard the line, and mean the next one to be
-  /// said their way rather than the next session.
-  Future<void> saveGlossary(Glossary glossary) async {
-    await _glossary.save(glossary);
-    // What the active packs leave in use, not the whole shelf: the worker
-    // applies what it is given and knows nothing of packs.
-    await _nativeEngine.writeGlossary(glossary.inUse);
-  }
-
-  /// The clip recorded for a card, when it kept one. An imported card
-  /// carries a fingerprint but no audio, so it may have none.
-  Future<String?> characterClip(String id) => _characters.clipFor(id);
-
-  /// The cards with a clip to play.
-  Future<Set<String>> characterClips() => _characters.clips();
-
-  Future<void> keepCharacterClip(String id, String source) => _characters.keepClip(id, source);
-
-  Future<void> removeCharacterClip(String id) => _characters.removeClip(id);
+  final PipelineGraphService _layout;
 
   /// Plays a file to its end, outside the dubbing's own queue: a clip the
   /// player asked to hear does not wait behind a scene.
@@ -121,33 +47,7 @@ class AppRepository {
   /// Ends whatever is sounding.
   void stopWave() => _nativeEngine.stopWave();
 
-  Future<void> exportCharacters(String destination, CharacterLibrary library) =>
-      _characters.exportTo(destination, library);
-
-  Future<CharacterLibrary> readCharacterFiles(List<String> sources) =>
-      _characters.readFiles(sources);
-
-  Future<PythonDiscoveryResult> findPythonExecutable() => _pythonDiscovery.find();
-
   Stream<EngineEvent> get events => _nativeEngine.events;
-  bool get processLoopbackSupported => _nativeEngine.processLoopbackSupported;
-
-  Future<List<GameProcess>> listProcesses() => _nativeEngine.listProcesses();
-
-  /// Where the monitors stand against each other.
-  Future<MonitorLayout> monitorLayout() => _nativeEngine.monitorLayout();
-
-  /// The bank file the original voice keeps [game]'s characters in; the game
-  /// is named by its executable.
-  Future<String> voiceBankFileFor(String game) => _voiceBank.fileFor(game);
-
-  /// How many voices the banks of all games hold together.
-  Future<int> voiceBankSize() => _voiceBank.count();
-  Future<void> clearVoiceBank() => _voiceBank.clear();
-
-  /// What the machine's adapters and drivers offer, before the download
-  /// state of the GPU runtimes is taken into account.
-  Future<ComputeAvailability> probeGraphics() => _nativeEngine.probeGraphics();
 
   /// Goes up with every session asked for and with every stop, so a start
   /// that fails can tell whether the engine still holds the session it began
@@ -492,17 +392,6 @@ class AppRepository {
     }
   }
 
-  /// The schemes kept on this machine.
-  Future<PipelineLibrary> loadPipelines() => _pipelines.load();
-
-  Future<void> savePipelines(PipelineLibrary library) => _pipelines.save(library);
-
-  Future<void> exportPipelines(String destination, List<SavedPipeline> pipelines) =>
-      _pipelines.exportTo(destination, pipelines);
-
-  Future<List<SavedPipeline>> importPipelines(List<String> sources) =>
-      _pipelines.readFiles(sources);
-
   /// One voice from the files at [paths], however they are encoded, measured
   /// through the session that was up when they were handed over or not at
   /// all.
@@ -562,11 +451,6 @@ class AppRepository {
     }
   }
 
-  /// Tells a running session that the cast has been taken out of the mix on
-  /// the graph, or joined back to it: out of it every voice is read as
-  /// itself, and the cards keep who stands in for whom meanwhile.
-  Future<void> readAsHeard(Set<String> value) => _nativeEngine.readAsHeard(value);
-
   /// The cards the canvas has cut out of the mix, as one comma-separated
   /// string: the config crosses to the native side as JSON of flat values.
   ///
@@ -576,21 +460,13 @@ class AppRepository {
   /// what the player last drew.
   Future<String> _cutFromMix() async {
     try {
-      return (await _graph.load()).silent.join(',');
+      return (await _layout.load()).silent.join(',');
     } on Object {
       // A scheme that cannot be read is no reason not to start: the cast
       // then plays the way it does with nothing cut.
       return '';
     }
   }
-
-  /// Tells a running session that [character] is read in [target]'s voice
-  /// from the next line on, as their card now says.
-  ///
-  /// The cast is read from the file when a session starts, so without this a
-  /// card edited mid-session would only be heard after a restart.
-  Future<void> voiceCharacterAs(String character, String? target) =>
-      _nativeEngine.voiceCharacterAs(character, target);
 
   /// Opens or closes the take a character's card is measured from. Closing
   /// it waits for what was recorded to be measured.

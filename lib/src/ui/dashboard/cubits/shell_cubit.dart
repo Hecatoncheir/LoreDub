@@ -8,7 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
-import '../../../data/repositories/app_repository.dart';
+import '../../../data/repositories/session_repository.dart';
 import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../domain/session_coordinator.dart';
@@ -17,6 +17,7 @@ import '../../../data/services/update_service.dart';
 import '../../../domain/app_release.dart';
 import '../../../domain/failure.dart';
 import '../../../domain/progress_ticker.dart';
+import '../../../data/repositories/system_repository.dart';
 
 /// In the order the navigation lists them; the compact bar picks by index.
 /// The order the sections are listed in, which is the order the work is
@@ -87,8 +88,14 @@ class ShellState extends Equatable {
 }
 
 class ShellCubit extends Cubit<ShellState> implements FailureSink {
-  ShellCubit(this._updateRepository, this._settings, this._app, this._sessions, this._installed)
-    : super(const ShellState());
+  ShellCubit(
+    this._updateRepository,
+    this._settings,
+    this._app,
+    this._sessions,
+    this._installed,
+    this._system,
+  ) : super(const ShellState());
 
   final UpdateRepository _updateRepository;
 
@@ -96,7 +103,7 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
   /// proxy the check goes through. Both are read off the repository rather
   /// than handed over by whoever built the screens.
   final SettingsRepository _settings;
-  final AppRepository _app;
+  final SessionRepository _app;
 
   /// Who is holding the engine, asked before closing for an update.
   final SessionCoordinator _sessions;
@@ -104,6 +111,9 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
   /// What is on disk and what the machine can run it on, which is what a
   /// session cannot be started without knowing.
   final InstallRepository _installed;
+
+  /// The machine's adapters, which the first load asks for.
+  final SystemRepository _system;
 
   @override
   void report(Object? error) {
@@ -132,7 +142,7 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
   /// start.
   Future<void> start() async {
     try {
-      final graphics = _app.probeGraphics();
+      final graphics = _system.probeGraphics();
       await Future.wait([_settings.load(), _installed.load()]);
       await _installed.refreshAvailability(probe: await graphics);
     } catch (exception) {

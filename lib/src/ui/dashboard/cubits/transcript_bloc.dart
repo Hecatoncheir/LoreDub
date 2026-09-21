@@ -7,7 +7,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../data/repositories/app_repository.dart';
+import '../../../data/repositories/session_repository.dart';
 import '../../../domain/engine_activity.dart';
 import '../../../domain/engine_event.dart';
 import '../../../domain/pipeline_state.dart';
@@ -133,7 +133,7 @@ class TranscriptBloc extends Bloc<TranscriptEvent, TranscriptState> {
     });
   }
 
-  final AppRepository _app;
+  final SessionRepository _app;
   final SessionCoordinator _sessions;
   final FailureSink _errors;
   late final StreamSubscription<EngineEvent> _engine;

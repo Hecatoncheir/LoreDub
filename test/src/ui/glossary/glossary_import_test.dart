@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/glossary.dart';
@@ -14,6 +13,7 @@ import 'package:lore_dub/src/ui/common/file_dialogs.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/glossary/glossary_panel.dart';
+import 'package:lore_dub/src/data/repositories/glossary_repository.dart';
 
 void main() {
   testWidgets('says what an imported glossary held, read through the file seam', (tester) async {
@@ -61,13 +61,13 @@ class _Failures implements FailureSink {
   void report(Object? error) => fail('reported $error');
 }
 
-class _GlossaryRepository extends AppRepository {
-  _GlossaryRepository() : super(NativeEngineService(), SettingsRepository(SettingsService()));
+class _GlossaryRepository extends GlossaryRepository {
+  _GlossaryRepository() : super(SettingsRepository(SettingsService()), NativeEngineService());
 
   List<String> read = const [];
 
   @override
-  Future<Glossary> readGlossaryFiles(List<String> sources) async {
+  Future<Glossary> readFiles(List<String> sources) async {
     read = sources;
     return const Glossary(
       entries: [
@@ -79,5 +79,5 @@ class _GlossaryRepository extends AppRepository {
   }
 
   @override
-  Future<void> saveGlossary(Glossary glossary) async {}
+  Future<void> save(Glossary glossary) async {}
 }

@@ -5,7 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/install_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
@@ -24,6 +24,7 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
+import 'package:lore_dub/src/data/repositories/system_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +36,7 @@ void main() {
 
   setUp(() {
     final settings = SettingsRepository(SettingsService())..seed(const AppSettings());
-    machine = _Machine(settings);
+    machine = _Machine();
     disk = _Disk();
     installed = InstallRepository(disk, _Runtimes());
     shell = ShellCubit(
@@ -44,9 +45,10 @@ void main() {
         NotificationService(plugin: FlutterLocalNotificationsPlugin()),
       ),
       settings,
-      machine,
+      SessionRepository(NativeEngineService()),
       SessionCoordinator(),
       installed,
+      machine,
     );
   });
 
@@ -81,8 +83,8 @@ void main() {
   });
 }
 
-class _Machine extends AppRepository {
-  _Machine(SettingsRepository settings) : super(NativeEngineService(), settings);
+class _Machine extends SystemRepository {
+  _Machine() : super(NativeEngineService());
 
   @override
   Future<ComputeAvailability> probeGraphics() async => const ComputeAvailability(cudaDriver: true);

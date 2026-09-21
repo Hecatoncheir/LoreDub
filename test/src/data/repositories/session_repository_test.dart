@@ -5,13 +5,11 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/screen_reading.dart';
-import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/services/character_service.dart';
 import 'package:lore_dub/src/data/services/glossary_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/pipeline_graph_service.dart';
-import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/built_voice.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
@@ -23,20 +21,12 @@ import 'package:lore_dub/src/domain/voice_files.dart';
 void main() {
   late _SlowEngine engine;
   late _SlowGlossary glossary;
-  late AppRepository repository;
+  late SessionRepository repository;
 
   setUp(() {
     engine = _SlowEngine();
     glossary = _SlowGlossary();
-    repository = AppRepository(
-      engine,
-      SettingsRepository(SettingsService()),
-      null,
-      null,
-      _Characters(),
-      glossary,
-      _Graph(),
-    );
+    repository = SessionRepository(engine, _Characters(), glossary, _Graph());
   });
 
   /// The start with the least to it: the converter alone, and no game. It

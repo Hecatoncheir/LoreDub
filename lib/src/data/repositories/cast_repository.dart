@@ -4,7 +4,8 @@
 import 'dart:async';
 
 import '../../domain/character.dart';
-import 'app_repository.dart';
+import '../services/character_service.dart';
+import '../services/native_engine_service.dart';
 
 /// The cards the player recorded and named, and the packs they are filed
 /// in: one file for every game, because the player owns these.
@@ -14,10 +15,17 @@ import 'app_repository.dart';
 /// canvas used to reach the cast through the characters *cubit* — reading
 /// its state and calling its methods — so a screen's cubit was part of
 /// another screen's machinery. Both read here instead.
+///
+/// The files that go with the cards are here as well: the clip each card
+/// was measured from, and the files the cast is exported to and imported
+/// from. A session is handed [file] and reads the cast itself.
 class CastRepository {
-  CastRepository(this._app);
+  CastRepository(this._engine, [CharacterService? service])
+    : _service = service ?? CharacterService();
 
-  final AppRepository _app;
+  /// Told of a substitution while it runs, so the next line is read anew.
+  final NativeEngineService _engine;
+  final CharacterService _service;
 
   /// Synchronous on purpose. A screen that writes here also listens here,
   /// and with the usual asynchronous delivery its own echo arrived a
@@ -45,7 +53,7 @@ class CastRepository {
   Future<CharacterLibrary>? _loading;
 
   Future<CharacterLibrary> _read() async {
-    _publish(await _app.loadCharacters());
+    _publish(await _service.load());
     return _library;
   }
 
@@ -53,7 +61,7 @@ class CastRepository {
   /// player just named is on screen before the disk has heard of it.
   Future<void> save(CharacterLibrary value) async {
     _publish(value);
-    await _app.saveCharacters(value);
+    await _service.save(value);
   }
 
   /// Reads [id] in [target]'s voice wherever they are recognized, or in
@@ -76,7 +84,7 @@ class CastRepository {
         packs: _library.packs,
       ),
     );
-    await _app.voiceCharacterAs(id, target);
+    await _engine.voiceCharacterAs(id, target);
   }
 
   /// The cards that are out of the mix, as the canvas now draws them: each
@@ -85,7 +93,27 @@ class CastRepository {
   /// Nothing of the cards changes — who stands in for whom waits in them —
   /// so there is nothing to write; only a session already running has to be
   /// told, or it would go on reading the cast until the next start.
-  Future<void> readAsHeard(Set<String> value) => _app.readAsHeard(value);
+  Future<void> readAsHeard(Set<String> value) => _engine.readAsHeard(value);
+
+  /// Where the cast is kept, which every session is handed.
+  Future<String> file() => _service.file();
+
+  /// The clip recorded for a card, when it kept one. An imported card
+  /// carries a fingerprint but no audio, so it may have none.
+  Future<String?> clipFor(String id) => _service.clipFor(id);
+
+  /// The cards with a clip to play.
+  Future<Set<String>> clips() => _service.clips();
+
+  Future<void> keepClip(String id, String source) => _service.keepClip(id, source);
+
+  Future<void> removeClip(String id) => _service.removeClip(id);
+
+  Future<void> exportTo(String destination, CharacterLibrary library) =>
+      _service.exportTo(destination, library);
+
+  /// What the files the player chose hold, for the screen to merge in.
+  Future<CharacterLibrary> readFiles(List<String> sources) => _service.readFiles(sources);
 
   /// Stages [value] as though it had been read, without writing it.
   void seed(CharacterLibrary value) {

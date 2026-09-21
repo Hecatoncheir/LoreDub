@@ -10,7 +10,7 @@ import 'package:http/testing.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/screen_reading.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
@@ -39,6 +39,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
+import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
 
 /// A dubbed line as the engine reports it, with only the parts a test
 /// cares about spelled out.
@@ -99,6 +100,7 @@ void main() {
         ),
         NotificationService(plugin: FlutterLocalNotificationsPlugin()),
       ),
+      voiceBank: _Banks(),
     );
     // The whole default output needs no process, and every package is in
     // place, so a press is all a start takes.
@@ -121,6 +123,7 @@ void main() {
       cubits.sourcesRepository,
       cubits.shell,
       cubits.sessions,
+      _Banks(),
       clock: () => now,
     );
   });
@@ -738,8 +741,8 @@ void main() {
 /// A start that never finishes, as a first start does while the worker loads
 /// Marian and Silero — unless it is stopped, which fails it the way the real
 /// one fails a start still on its way.
-class _SlowStartRepository extends AppRepository {
-  _SlowStartRepository() : super(NativeEngineService(), SettingsRepository(SettingsService()));
+class _SlowStartRepository extends SessionRepository {
+  _SlowStartRepository() : super(NativeEngineService());
 
   final _events = StreamController<EngineEvent>.broadcast();
   Completer<void>? _starting;
@@ -839,11 +842,6 @@ class _SlowStartRepository extends AppRepository {
     screenReadings.add(reading);
   }
 
-  // The characters are remembered by default, so a start asks for the game's
-  // bank; naming the file must not go looking for the application directory.
-  @override
-  Future<String> voiceBankFileFor(String game) async => 'voice_bank/$game.json';
-
   int sceneStarts = 0;
   String? sceneBank;
 
@@ -878,4 +876,11 @@ class _FixedModelRepository extends ModelRepository {
 
   @override
   Future<String> directoryFor(ModelPackage model) async => 'models';
+}
+
+/// The characters are remembered by default, so a start asks for the game's
+/// bank; naming the file must not go looking for the application directory.
+class _Banks extends VoiceBankRepository {
+  @override
+  Future<String> fileFor(String game) async => 'voice_bank/$game.json';
 }

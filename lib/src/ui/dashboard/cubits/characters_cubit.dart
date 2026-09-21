@@ -11,7 +11,7 @@ import 'package:path/path.dart' as path;
 import '../../../data/repositories/cast_repository.dart';
 import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
-import '../../../data/repositories/app_repository.dart';
+import '../../../data/repositories/session_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../domain/built_voice.dart';
 import '../../../domain/character.dart';
@@ -194,7 +194,7 @@ class CharactersState extends Equatable {
 
 class CharactersCubit extends Cubit<CharactersState> {
   CharactersCubit(
-    this._appRepository,
+    this._session,
     this._modelRepository,
     this._settings,
     this._downloads,
@@ -209,7 +209,7 @@ class CharactersCubit extends Cubit<CharactersState> {
     _sessions.castHolds = () => state.running || state.previewReady;
     // One engine serves every screen in turn and the same stream reaches
     // them all; this screen picks its own out of it.
-    _engine = _appRepository.events.listen(handleEvent);
+    _engine = _session.events.listen(handleEvent);
     // The canvas works on the same cards, through the same repository, so
     // a substitution drawn there shows up here without either screen
     // knowing about the other.
@@ -223,7 +223,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// character founded on a half-word would answer for them ever after.
   static const enoughSeconds = 1.5;
 
-  final AppRepository _appRepository;
+  final SessionRepository _session;
   final ModelRepository _modelRepository;
   final SettingsRepository _settings;
   final InstallRepository _downloads;
@@ -404,7 +404,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// back is how many of each were read, so the screen can say so.
   Future<({int characters, int packs})> import(List<String> files) async {
     try {
-      final incoming = await _appRepository.readCharacterFiles(files);
+      final incoming = await _cast.readFiles(files);
       final characters = mergeCharacters(state.characters, incoming.characters);
       await _write(
         characters: characters,
@@ -424,7 +424,7 @@ class CharactersCubit extends Cubit<CharactersState> {
     CharacterPack? pack,
   }) async {
     try {
-      await _appRepository.exportCharacters(
+      await _cast.exportTo(
         destination,
         CharacterLibrary(characters: characters, packs: [?pack]),
       );
@@ -442,7 +442,7 @@ class CharactersCubit extends Cubit<CharactersState> {
     emit(state.copyWith(status: PipelineStatus.starting));
     try {
       final settings = _settings.settings;
-      await _appRepository.startCharacterVoices(
+      await _session.startCharacterVoices(
         process: process,
         settings: settings,
         converterDirectory: await _modelRepository.directoryFor(
@@ -474,7 +474,7 @@ class CharactersCubit extends Cubit<CharactersState> {
     if (!state.running && !state.previewReady) return;
     if (state.recording) await stopRecording();
     try {
-      await _appRepository.stop();
+      await _session.stop();
     } catch (exception) {
       _errors.report(exception);
     }
@@ -494,7 +494,7 @@ class CharactersCubit extends Cubit<CharactersState> {
     _heardGender = null;
     _heardClip = null;
     _heardSeconds = 0;
-    unawaited(_appRepository.recordCharacterVoice(recording: true));
+    unawaited(_session.recordCharacterVoice(recording: true));
     // Nothing is measured until the take is stopped, so the card counts the
     // seconds itself rather than leaving the player without an answer.
     _recordingSince = _clock();
@@ -526,14 +526,14 @@ class CharactersCubit extends Cubit<CharactersState> {
     _recordingSince = null;
     // The take is one recording, and it is this call that closes it: what
     // the converter makes of it lands while this waits.
-    await _appRepository.recordCharacterVoice(recording: false);
+    await _session.recordCharacterVoice(recording: false);
     if (isClosed) return;
     final heard = _heard;
     final clip = _heardClip;
     var kept = state.clips;
     if (heard != null && clip != null) {
       try {
-        await _appRepository.keepCharacterClip(id, clip);
+        await _cast.keepClip(id, clip);
         kept = {...kept, id};
       } catch (exception) {
         // A card without its clip is still a card: only the play button goes.
@@ -611,7 +611,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// a few kilobytes; failing to remove it must not keep the card.
   Future<void> _dropClip(String id) async {
     try {
-      await _appRepository.removeCharacterClip(id);
+      await _cast.removeClip(id);
     } on Object {
       // Nothing to tell the player: the card goes either way.
     }
@@ -636,7 +636,7 @@ class CharactersCubit extends Cubit<CharactersState> {
     int? borrowed;
     try {
       if (!state.running) borrowed = await _startForFiles();
-      final built = await _appRepository.buildVoice(paths);
+      final built = await _session.buildVoice(paths);
       final clips = await _keptClips(id, built.anchor);
       if (isClosed) return;
       emit(state.copyWith(built: built, builtId: id, clips: clips));
@@ -664,7 +664,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// began, which is the one [_stopBorrowed] puts down.
   Future<int> _startForFiles() async {
     final settings = _settings.settings;
-    return _appRepository.startVoiceFiles(
+    return _session.startVoiceFiles(
       settings: settings,
       converterDirectory: await _modelRepository.directoryFor(_selection.voiceConverter!.model),
       converterBackend: settings.backendFor(
@@ -683,7 +683,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   Future<Set<String>> _keptClips(String id, String? anchor) async {
     if (anchor == null) return state.clips;
     try {
-      await _appRepository.keepCharacterClip(id, anchor);
+      await _cast.keepClip(id, anchor);
       return {...state.clips, id};
     } catch (exception) {
       _errors.report(exception);
@@ -711,7 +711,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// holds by now is the dubbing, which a plain stop used to end.
   Future<void> _stopBorrowed(int session) async {
     try {
-      await _appRepository.stopSession(session);
+      await _session.stopSession(session);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -722,7 +722,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// reached the end, so the card puts its button back by itself.
   void stopSounding() {
     if (!state.sounding) return;
-    _appRepository.stopWave();
+    _session.stopWave();
   }
 
   /// Speaks [text] in the voice the dubbing would read [id] in, and plays
@@ -751,7 +751,7 @@ class CharactersCubit extends Cubit<CharactersState> {
         if (isClosed) return;
         emit(state.copyWith(previewReady: true));
       }
-      await _appRepository.previewVoice(
+      await _session.previewVoice(
         // The line is in the language the voice speaks, which is the one
         // being dubbed into — not the one the interface is in.
         text: voiceSample(_settings.settings.targetLanguage, character.name),
@@ -771,7 +771,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   Future<void> _loadSpeechForPreview() async {
     final selection = _selection;
     final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
-    await _appRepository.startVoicePreview(
+    await _session.startVoicePreview(
       settings: _settings.settings,
       modelDirectories: {
         'speech': path.join(await _modelRepository.directoryFor(speech), speech.primaryFileName),
@@ -795,7 +795,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   /// costs a play button, not the cast: the cards themselves are elsewhere.
   Future<Set<String>> _listClips() async {
     try {
-      return await _appRepository.characterClips();
+      return await _cast.clips();
     } on Object {
       return const {};
     }
@@ -806,14 +806,14 @@ class CharactersCubit extends Cubit<CharactersState> {
   Future<void> playClip(String id) async {
     if (state.sounding) return;
     try {
-      final clip = await _appRepository.characterClip(id);
+      final clip = await _cast.clipFor(id);
       if (clip == null) {
         // The file went missing under us; the button goes with it.
         if (!isClosed) emit(state.copyWith(clips: {...state.clips}..remove(id)));
         return;
       }
       if (!isClosed) emit(state.copyWith(playingId: id));
-      await _appRepository.playWave(clip);
+      await _session.playWave(clip);
     } catch (exception) {
       _errors.report(exception);
     } finally {

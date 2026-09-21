@@ -2,23 +2,23 @@
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
-import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
-import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/character.dart';
+
+import '../../../support/memory_cast.dart';
 
 void main() {
   const guard = Character(id: 'a1', name: 'Стражник', vector: [0.2]);
   const smith = Character(id: 'b2', name: 'Кузнец', vector: [0.3]);
 
-  late _Cast app;
+  late MemoryCharacters files;
+  late TellingEngine engine;
   late CastRepository cast;
 
   setUp(() {
-    app = _Cast();
-    cast = CastRepository(app);
+    files = MemoryCharacters();
+    engine = TellingEngine();
+    cast = CastRepository(engine, files);
   });
 
   test('a listener has the change before the write returns', () async {
@@ -34,7 +34,7 @@ void main() {
     expect(heard, [1], reason: 'told before the disk is');
     expect(cast.cast.single.id, 'a1');
     await writing;
-    expect(app.stored?.characters.single.id, 'a1', reason: 'and written after');
+    expect(files.stored.characters.single.id, 'a1', reason: 'and written after');
   });
 
   test('writes build on each other rather than on what the last one saw', () async {
@@ -52,35 +52,17 @@ void main() {
     await cast.voiceAs('a1', 'b2');
 
     expect(cast.cast.firstWhere((one) => one.id == 'a1').voicedBy, 'b2');
-    expect(app.stored?.characters.first.voicedBy, 'b2', reason: 'kept for the next session');
-    expect(app.told, [('a1', 'b2')], reason: 'and the session already running');
+    expect(files.stored.characters.first.voicedBy, 'b2', reason: 'kept for the next session');
+    expect(engine.told, [('a1', 'b2')], reason: 'and the session already running');
   });
 
   test('a card cannot be given its own voice, which would say nothing', () async {
     await cast.save(const CharacterLibrary(characters: [guard]));
-    app.stored = null;
+    files.stored = CharacterLibrary.empty;
 
     await cast.voiceAs('a1', 'a1');
 
-    expect(app.stored, isNull);
-    expect(app.told, isEmpty);
+    expect(files.stored.characters, isEmpty, reason: 'nothing written');
+    expect(engine.told, isEmpty);
   });
-}
-
-/// The cast as a file and a running worker, without either.
-class _Cast extends AppRepository {
-  _Cast() : super(NativeEngineService(), SettingsRepository(SettingsService()));
-
-  CharacterLibrary? stored;
-  final told = <(String, String?)>[];
-
-  @override
-  Future<CharacterLibrary> loadCharacters() async => stored ?? CharacterLibrary.empty;
-
-  @override
-  Future<void> saveCharacters(CharacterLibrary library) async => stored = library;
-
-  @override
-  Future<void> voiceCharacterAs(String character, String? target) async =>
-      told.add((character, target));
 }

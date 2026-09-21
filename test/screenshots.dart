@@ -26,7 +26,7 @@ import 'package:http/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
+import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
@@ -254,7 +254,7 @@ void main() {
   StagedDashboard buildCubits() {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
-      AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
+      SessionRepository(NativeEngineService()),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),

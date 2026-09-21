@@ -4,15 +4,13 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/data/repositories/app_repository.dart';
-import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/sources_repository.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
-import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/monitor_layout.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
+import 'package:lore_dub/src/data/repositories/system_repository.dart';
 
 void main() {
   const game = GameProcess(pid: 42, name: 'game.exe', path: 'C:/game.exe');
@@ -98,8 +96,8 @@ void main() {
 }
 
 /// The processes and monitors of a machine, without the native library.
-class _Machine extends AppRepository {
-  _Machine() : super(NativeEngineService(), SettingsRepository(SettingsService()));
+class _Machine extends SystemRepository {
+  _Machine() : super(NativeEngineService());
 
   List<GameProcess> processes = const [];
   bool fails = false;

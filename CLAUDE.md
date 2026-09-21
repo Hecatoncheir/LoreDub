@@ -128,6 +128,20 @@ than one of them.
    widget tests build them by hand instead (`test/support/staged_dashboard.dart`,
    `StagedDashboard`), to seed each one without anything being read, and
    put them on the screen with `provide`.
+   The repositories are cut by what they hold rather than kept in one.
+   `SessionRepository` is the engine and its sessions -- the starts, the
+   stop, the rest, what a running worker is told, what is played.
+   `SystemRepository` is what the machine has (the processes, the
+   monitors, the adapters, an interpreter), `VoiceBankRepository` the
+   voices each game's dubbing met, `SchemeRepository` the canvas's own
+   files (the arrangement and the shelf of schemes), `GlossaryRepository`
+   the glossary with its built-in packs, and `CastRepository` the cards
+   with the clips and files beside them. A start still writes three paths
+   into its config -- the glossary it translates with, the cast it
+   recognizes, the cards cut out of the mix -- and reads them off the
+   services themselves, which are only where the files are, so the
+   session depends on no other repository. They were one `AppRepository`,
+   which every screen was handed whole to reach one corner of it.
 2. **Native C++ bridge** — `native/*.cpp`, loaded through Dart Native Assets
    (`hook/build.dart` compiles it with `CBuilder`; there is no `.dll` to ship
    manually). The C ABI in `native/lore_dub_native.h` is intentionally tiny:
@@ -259,7 +273,7 @@ interpreter is spawned, it kills that process itself, the stop having found no
 worker to end; `stop()` fails a pending handshake with `pipelineStopped`, which
 is what ends the wait at once rather than after `startupLimit`. A worker that
 never says `ready` inside that limit is ended and reported as
-`workerStartTimeout`. `AppRepository._sessions` is the same counter a layer
+`workerStartTimeout`. `SessionRepository._sessions` is the same counter a layer
 up: a failed start clears the engine only while the session is still its own,
 and otherwise ends as `pipelineStopped`, which the cubits pass over
 (`isPipelineStopped`) — a stop that was asked for is not an error. Its
@@ -423,7 +437,7 @@ heard, and `CorrectLineButton` beside its latency badge on Эфир opens on
 what was said with `TranscriptEntry.english` as the source, so the screen is
 the list of what was collected rather than a place to remember to visit. It
 is offered only where that English is there to file the correction under.
-`AppRepository.saveGlossary` writes the file and then tells a running worker
+`GlossaryRepository.save` writes the file and then tells a running worker
 (`{"glossary": {...}}`, the same shape the file holds, so the worker has one
 parser): the player writes an entry down because they just heard the line go
 wrong, and mean the next one to be said their way rather than the next
@@ -540,7 +554,7 @@ this is the one branch the canvas may rewire mid-session, and the running
 worker is told rather than restarted: `_voiceCard` writes the arrangement and
 then `CastRepository.readAsHeard` sends `{"asHeard": [...]}`, which rebinds the
 worker's own `as_heard` (not `args.as_heard`, which only seeds it). The set
-is a session's, so `AppRepository.start`/`startSceneVoices` read the
+is a session's, so `SessionRepository.start`/`startSceneVoices` read the
 arrangement off disk for `'asHeard': 'id,id'` — one flat string, the config
 crossing to the native side as JSON of flat values — and
 `NativeEngineService.readAsHeard` keeps `_activeConfig` in step with it. A card may be drawn more than once
@@ -670,7 +684,7 @@ value equality for this, position and all, so one moved card is told from the
 twenty-three that did not.
 
 The Screen screen ("Экран", `DashboardSection.snapshot`) runs the second kind of
-session, `PipelineSession.screen`: `AppRepository.startScreenText` ->
+session, `PipelineSession.screen`: `SessionRepository.startScreenText` ->
 `NativeEngineService.startScreenText` loads the worker with Marian and Vosk
 only (no whisper) and then calls `ld_start` with `captureMode: 'ocr'`, which
 starts `OcrCapture` over the game's window -- or over the virtual screen,
@@ -728,7 +742,7 @@ game is the application's to know. `SessionBloc._followFrameOverlay` is the
 one place that keeps the drawing in step -- with the settings, which it
 follows through `SettingsRepository.changes`, with the game chosen and with
 a session ending -- and it registers that one key through
-`AppRepository.setIdleHotkeys` while nothing else holds the keys, `ld_stop`
+`SessionRepository.setIdleHotkeys` while nothing else holds the keys, `ld_stop`
 having dropped them.
 
 A second held key draws that frame over the running game rather than over a
@@ -968,7 +982,7 @@ call — also sends `{"voicedBy": {...}}` to a running worker, so a scheme rearr
 under a pause is heard from the next line rather than at the next start.
 
 The voices can be placed before anything is dubbed. `PipelineSession.scene`
-(`SceneToggled` -> `AppRepository.startSceneVoices` ->
+(`SceneToggled` -> `SessionRepository.startSceneVoices` ->
 `NativeEngineService.startScene`) is the characters session with the bank and
 the cast added and the recording gate left open: `ld_start` on the
 game's audio plus the worker under `--embed-only`, so it is ready in seconds.
@@ -984,7 +998,7 @@ first, as with the snapshot session.
 The Characters screen (`DashboardSection.characters`, `CharactersCubit`) is
 where the player records their own cast. `CharacterService` keeps them in one
 `<app support>/characters.json` for every game — unlike the per-game bank,
-because the player owns these cards — and `AppRepository.startCharacterVoices`
+because the player owns these cards — and `SessionRepository.startCharacterVoices`
 runs a session for recording them: `ld_start` on the game's audio plus the
 worker under `--embed-only`, which loads the converter and neither Marian nor
 Vosk, so the screen is ready in seconds. While a card records the capture is held open
@@ -1060,8 +1074,8 @@ threshold cannot tell a stranger from an odd line of the right character
 rejection. `CharactersCubit.voiceFromFiles` borrows an embed-only session
 (`startVoiceFiles`, no `ld_start`, no game) when the screen has none, and
 puts it down again — that one and no other. `startVoiceFiles` answers with
-the session's number out of `AppRepository._sessions`, and
-`AppRepository.stopSession` ends it only while that number is still the
+the session's number out of `SessionRepository._sessions`, and
+`SessionRepository.stopSession` ends it only while that number is still the
 current one: Live starting while the files are measured takes the worker
 over without a word to this screen, and a plain stop then ended the dubbing.
 A start that never came up borrowed nothing and puts nothing down.

@@ -5,7 +5,7 @@ import 'dart:async';
 
 import '../../domain/capture_sources.dart';
 import '../../domain/game_process.dart';
-import 'app_repository.dart';
+import 'system_repository.dart';
 
 /// The game the player named, what else is running, and where the monitors
 /// stand -- and who to tell when any of it changes.
@@ -21,7 +21,7 @@ import 'app_repository.dart';
 class SourcesRepository {
   SourcesRepository(this._app);
 
-  final AppRepository _app;
+  final SystemRepository _app;
   final _changes = StreamController<CaptureSources>.broadcast(sync: true);
   CaptureSources _sources = const CaptureSources();
 
