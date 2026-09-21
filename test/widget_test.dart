@@ -3748,6 +3748,7 @@ void main() {
       AppSettings settings = const AppSettings(),
       List<Character> characters = const [guard, smith],
       List<String> placed = const ['guard'],
+      List<SavedPipeline> shelf = const [],
     }) async {
       final cubits = stage(
         buildCubits(),
@@ -3757,9 +3758,7 @@ void main() {
         models: catalogue(),
       );
       cubits.cast.seed(CharacterLibrary(characters: characters));
-      cubits.graph.seed(
-        PipelineGraphState(loading: false, layout: PipelineLayout.drawing(placed)),
-      );
+      cubits.stageScheme(layout: PipelineLayout.drawing(placed), shelf: shelf);
       await pumpDashboard(tester, cubits, const Size(1500, 950));
       await tester.pump();
       return cubits;
@@ -4218,16 +4217,13 @@ void main() {
     });
 
     testWidgets('offers to write the canvas over a scheme it has kept', (tester) async {
-      final cubits = await pumpGraph(tester);
       // A scheme kept when the canvas held nothing, which the canvas has
       // moved on from since. What choosing the item does is the bloc's, and
       // is pinned there; this is that the shelf offers it at all.
-      cubits.graph.seed(
-        cubits.graph.state.copyWith(
-          schemes: const [SavedPipeline(id: 's1', name: 'Вечер в таверне')],
-        ),
+      await pumpGraph(
+        tester,
+        shelf: const [SavedPipeline(id: 's1', name: 'Вечер в таверне')],
       );
-      await tester.pump();
       await tester.tap(find.textContaining('СОХРАНЁННЫЕ СХЕМЫ'));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));

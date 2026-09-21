@@ -222,15 +222,6 @@ final class PipelineGraphRedone extends PipelineGraphEvent {
   const PipelineGraphRedone();
 }
 
-/// A state staged by a widget test, so a screen can be drawn without a disk
-/// or a session behind it.
-@visibleForTesting
-final class PipelineGraphSeeded extends PipelineGraphEvent {
-  const PipelineGraphSeeded(this.state);
-
-  final PipelineGraphState state;
-}
-
 /// A link being pulled, from the socket it left to wherever the pointer is.
 class PipelineLinkDrag {
   const PipelineLinkDrag({required this.from, required this.at});
@@ -394,7 +385,6 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     );
     on<PipelineViewSet>((event, emit) => emit(_withView(event.view)));
     on<PipelineLayoutReset>(_onReset);
-    on<PipelineGraphSeeded>((event, emit) => emit(_redrawn(event.state)));
     on<PipelineSchemeSaved>(_onSchemeSaved);
     on<PipelineSchemeChosen>(_onSchemeChosen);
     on<PipelineSchemeReplaced>(_onSchemeReplaced);
@@ -998,12 +988,6 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       _errors.report(exception);
     }
   }
-
-  /// Stages a state a widget test wants to render without touching disk.
-  /// It goes through the event queue like everything else, so the screen has
-  /// it after the next pump rather than at once.
-  @visibleForTesting
-  void seed(PipelineGraphState value) => add(PipelineGraphSeeded(value));
 
   @override
   Future<void> close() async {

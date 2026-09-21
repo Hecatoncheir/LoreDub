@@ -377,39 +377,33 @@ void main() {
     // The cards are the repository's, which the cast screen and the canvas
     // both read; which of them has a clip to play is the capture's.
     cubits.cast.seed(CharacterLibrary(characters: cast[language]!, packs: packs[language]!));
-    cubits.graph.seed(
-      PipelineGraphState(
-        loading: false,
-        // Two kept schemes on the shelf, so the pictures on their cards are
-        // in the screenshot the readme shows.
-        schemes: [
-          SavedPipeline(
-            id: 's1',
-            name: language == 'ru' ? 'Вечер в таверне' : 'An evening at the inn',
-            layout: PipelineLayout(
-              cast: placed,
-              positions: {...PipelineLayout.standardPositions, ...where},
-            ),
-            readers: const {'smith': 'guard'},
-          ),
-          SavedPipeline(
-            id: 's2',
-            name: language == 'ru' ? 'Весь звук системы' : 'The whole output',
-            layout: PipelineLayout.standard,
-          ),
-        ],
-        // The node the panel is open on, where a shot wants one.
-        selected: chosen,
-        chosen: {?chosen},
-        layout: PipelineLayout(
-          cast: placed,
-          // Placed by hand, so the wire runs the way the signal does: the
-          // card whose part is handed on to the left of the card that reads
-          // it, and the copy that takes the part next to the part itself.
-          positions: {...PipelineLayout.standardPositions, ...where},
-        ),
-      ),
+    final layout = PipelineLayout(
+      cast: placed,
+      // Placed by hand, so the wire runs the way the signal does: the card
+      // whose part is handed on to the left of the card that reads it, and
+      // the copy that takes the part next to the part itself.
+      positions: {...PipelineLayout.standardPositions, ...where},
     );
+    cubits.stageScheme(
+      layout: layout,
+      // Two kept schemes on the shelf, so the pictures on their cards are in
+      // the screenshot the readme shows.
+      shelf: [
+        SavedPipeline(
+          id: 's1',
+          name: language == 'ru' ? 'Вечер в таверне' : 'An evening at the inn',
+          layout: layout,
+          readers: const {'smith': 'guard'},
+        ),
+        SavedPipeline(
+          id: 's2',
+          name: language == 'ru' ? 'Весь звук системы' : 'The whole output',
+          layout: PipelineLayout.standard,
+        ),
+      ],
+    );
+    // The node the panel is open on, where a shot wants one.
+    if (chosen != null) cubits.graph.add(PipelineNodeSelected(chosen));
     return cubits;
   }
 

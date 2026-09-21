@@ -28,7 +28,6 @@ import 'package:lore_dub/src/domain/spoken_language.dart';
 import '../../../support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/theme.dart';
@@ -157,7 +156,7 @@ void main() {
       DashboardSection.live,
       liveView: LiveView.scheme,
     );
-    cubits.graph.seed(const PipelineGraphState(loading: false));
+    cubits.stageScheme();
     // The canvas fits the scheme into the window after the frame that
     // measured it, so the screen settles a few frames after it is seeded.
     for (var frame = 0; frame < 4; frame++) {

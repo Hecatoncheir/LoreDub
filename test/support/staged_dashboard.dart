@@ -31,6 +31,10 @@ import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
+import 'package:lore_dub/src/domain/pipeline_graph.dart';
+import 'package:lore_dub/src/domain/saved_pipeline.dart';
+
+import 'memory_cast.dart';
 
 /// Every screen's state, built by hand for a test to stage and then put on
 /// the screen through [provide].
@@ -73,9 +77,12 @@ class StagedDashboard {
     // answer inside a widget test's fake time -- counted as a session came
     // to rest, it held every teardown for ever.
     this.voiceBank = voiceBank ?? MemoryVoiceBank();
-    this.schemes = schemes ?? SchemeRepository();
+    // In memory, as the cast and the bank are: the canvas writes its
+    // arrangement as it is drawn on, and the cards are read before it
+    // opens -- a real file answers neither inside a widget test.
+    this.schemes = schemes ?? MemorySchemes();
     this.glossaryRepository = glossaryRepository ?? GlossaryRepository(settingsRepository, native);
-    this.cast = cast ?? CastRepository(native);
+    this.cast = cast ?? CastRepository(native, MemoryCharacters());
     installed = InstallRepository(modelRepository, runtimeRepository);
     sourcesRepository = SourcesRepository(this.system);
     shell = ShellCubit(
@@ -193,6 +200,21 @@ class StagedDashboard {
       // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
       pipeline.emit(value);
 
+  /// Stages the canvas as it would open on [layout] and a shelf of
+  /// [shelf]: they are put where it reads them from, and it is opened the
+  /// way the application opens it. It is drawn an event later.
+  void stageScheme({
+    PipelineLayout layout = PipelineLayout.standard,
+    List<SavedPipeline> shelf = const [],
+  }) {
+    if (schemes case final MemorySchemes memory) {
+      memory
+        ..layout = layout
+        ..shelf = PipelineLibrary(pipelines: shelf);
+    }
+    graph.add(const PipelineGraphOpened());
+  }
+
   /// Stages what the dubbing screens' sessions have said.
   void stageLists(TranscriptState value) =>
       // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
@@ -269,4 +291,31 @@ class MemoryVoiceBank extends VoiceBankRepository {
     cleared = true;
     count = 0;
   }
+}
+
+/// The canvas's arrangement and its shelf of schemes, kept in memory.
+class MemorySchemes extends SchemeRepository {
+  PipelineLayout layout = PipelineLayout.standard;
+  PipelineLibrary shelf = PipelineLibrary.empty;
+  final exported = <(String, List<SavedPipeline>)>[];
+  List<SavedPipeline> incoming = const [];
+
+  @override
+  Future<PipelineLayout> loadLayout() async => layout;
+
+  @override
+  Future<void> saveLayout(PipelineLayout value) async => layout = value;
+
+  @override
+  Future<PipelineLibrary> loadSchemes() async => shelf;
+
+  @override
+  Future<void> saveSchemes(PipelineLibrary library) async => shelf = library;
+
+  @override
+  Future<void> exportSchemes(String destination, List<SavedPipeline> schemes) async =>
+      exported.add((destination, schemes));
+
+  @override
+  Future<List<SavedPipeline>> importSchemes(List<String> sources) async => incoming;
 }

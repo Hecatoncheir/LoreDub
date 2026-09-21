@@ -1281,15 +1281,18 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   session comes to rest -- and no widget test drives a real one. Nor
   `droppable()`: cancelling its subscription as the bloc closes never
   completes in a widget test's zone either, and the settings screen hung
-  every test that pumped it until it went. `widget_test.dart`'s `buildCubits` keeps the cast in memory
-  (`MemoryCharacters`) for the same reason, since the canvas's and the
-  inspector's tests drive the real `CastBloc`. No bloc carries a test hook of its own: a
+  every test that pumped it until it went. `StagedDashboard` keeps the
+  cast (`MemoryCharacters`) and the canvas's arrangement and shelf
+  (`MemorySchemes`) in memory for the same reason, since the canvas's and
+  the inspector's tests drive the real `CastBloc` and `PipelineGraphBloc`,
+  and the canvas writes its arrangement as it is drawn on. No bloc carries a test hook of its own: a
   state a test wants in place is put there by `StagedDashboard` --
   `stageSession` and `stageLists` emit on the real bloc, which is what
   `blocTest`'s `seed` does, and the rest is staged through the
   repositories the blocs follow (`stageInstalled`, `settingsRepository`,
-  `sourcesRepository`, `cast`). The shell and the canvas still carry a
-  `seed` (`TODO.md`, stage 4).
+  `sourcesRepository`, `cast`, and `stageScheme`, which fills
+  `MemorySchemes` and opens the canvas the way the application does). The
+  shell still carries a `seed` (`TODO.md`, stage 4).
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`) with an
   imperative summary, and a native change carries its regenerated bindings in
   the same commit. `AGENTS.md` holds the same guidance in shorter, more

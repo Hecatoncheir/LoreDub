@@ -1140,7 +1140,13 @@ abstract final class AppTheme {
         шлёт свой `ScreenToggled`, кнопка над выделениями —
         `SnapshotsCleared`. События сессии и транскрипта стали сравниваться
         по значению — без этого `verify` не находил `ScreenToggled`.
-      - [ ] Схема (`PipelineGraphSeeded`), оболочка (`ShellCubit.seed`).
+      - [x] **Схема.** Ушёл `PipelineGraphSeeded` вместе с `seed()`:
+        канвас открывается так же, как в приложении, — `stageScheme`
+        кладёт расстановку и полку в `MemorySchemes` (хранилище схем в
+        памяти, теперь по умолчанию в `StagedDashboard`, как и состав) и
+        шлёт `PipelineGraphOpened`. Выбранный узел на скриншотах — обычный
+        `PipelineNodeSelected`. Замер кадра не изменился.
+      - [ ] Оболочка (`ShellCubit.seed`).
 - [x] `bloc_concurrency`: `sequential()` для событий движка, `droppable()`
       для запросов запуска, `restartable()` + debounce для записи настроек.
       *Сделано иначе в двух местах из трёх, и вот почему.*

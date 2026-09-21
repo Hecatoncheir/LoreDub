@@ -98,12 +98,7 @@ void main() {
       ],
     );
     cubits.cast.seed(CharacterLibrary(characters: cast()));
-    cubits.graph.seed(
-      PipelineGraphState(
-        loading: false,
-        layout: PipelineLayout.drawing([for (final card in cast()) card.id]),
-      ),
-    );
+    cubits.stageScheme(layout: PipelineLayout.drawing([for (final card in cast()) card.id]));
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,

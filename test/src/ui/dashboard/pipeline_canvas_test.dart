@@ -89,7 +89,7 @@ void main() {
         for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
       ],
     );
-    cubits.graph.seed(const PipelineGraphState(loading: false, layout: PipelineLayout()));
+    cubits.stageScheme(layout: const PipelineLayout());
 
     await tester.pumpWidget(
       MaterialApp(
