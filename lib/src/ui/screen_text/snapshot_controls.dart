@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../common/language_row.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
@@ -20,7 +20,7 @@ class SnapshotControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
-    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+    builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged(
         (pipeline) => (
           pipeline.status,
@@ -32,7 +32,7 @@ class SnapshotControls extends StatelessWidget {
     ),
   );
 
-  Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
+  Widget _build(BuildContext context, AppSettings settings, SessionState pipeline) {
     final button = SnapshotStartButton();
     // The frame is read out of one window, so this session needs the game
     // named even though nothing of its sound is listened to.

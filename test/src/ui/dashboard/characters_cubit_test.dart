@@ -34,7 +34,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import '../../../support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
@@ -493,11 +493,11 @@ void main() {
     final bagged = cubits.sessions;
     expect(bagged.dubbingRuns, isFalse);
 
-    cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+    cubits.pipeline.seed(const SessionState(status: PipelineStatus.listening));
     expect(bagged.dubbingRuns, isTrue);
 
     // A session resting under a pause keeps its worker and its models.
-    cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.paused));
+    cubits.pipeline.seed(const SessionState(status: PipelineStatus.paused));
     expect(bagged.dubbingRuns, isTrue);
   });
 

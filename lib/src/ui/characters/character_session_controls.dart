@@ -9,7 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/characters_cubit.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/language_row.dart';
@@ -25,7 +25,7 @@ class CharacterSessionControls extends StatelessWidget {
   Widget build(BuildContext context) => BlocBuilder<ShellCubit, ShellState>(
     builder: (context, shell) => BlocBuilder<DownloadsCubit, DownloadsState>(
       buildWhen: whenChanged((downloads) => downloads.installed),
-      builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
+      builder: (context, _) => BlocBuilder<SessionBloc, SessionState>(
         buildWhen: whenChanged(
           (pipeline) => pipeline.running,
         ),
@@ -40,7 +40,7 @@ class CharacterSessionControls extends StatelessWidget {
 
   Widget _build(
     BuildContext context,
-    LivePipelineState pipeline,
+    SessionState pipeline,
     CharactersState characters, {
     required bool initializing,
   }) {

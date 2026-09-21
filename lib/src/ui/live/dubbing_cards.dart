@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../settings/original_volume_card.dart';
 import '../settings/paired_cards.dart';
@@ -23,7 +23,7 @@ class DubbingCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
-    builder: (context, state) => BlocSelector<PipelineCubit, LivePipelineState, bool>(
+    builder: (context, state) => BlocSelector<SessionBloc, SessionState, bool>(
       selector: (pipeline) => pipeline.running,
       builder: (context, running) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -26,10 +26,10 @@ import '../../../domain/session_coordinator.dart';
 import '../../../data/repositories/settings_repository.dart';
 import 'shell_cubit.dart';
 
-/// The running session: what it is doing, what it heard, and what it chose
-/// to run on.
-class LivePipelineState extends Equatable {
-  const LivePipelineState({
+/// The dubbing screens' session: what it is doing and what it chose to run
+/// on. What it has said is `TranscriptBloc`'s.
+class SessionState extends Equatable {
+  const SessionState({
     this.status = PipelineStatus.idle,
     this.startupProgress,
     this.startupStage = '',
@@ -156,7 +156,7 @@ class LivePipelineState extends Equatable {
       (!reading.readsSubtitles || selection.settings.readsWholeScreen || process != null) &&
       (!reading.readsSnippets || selection.settings.snapshotHotkey != null);
 
-  LivePipelineState copyWith({
+  SessionState copyWith({
     PipelineStatus? status,
     double? startupProgress,
     bool clearStartupProgress = false,
@@ -169,7 +169,7 @@ class LivePipelineState extends Equatable {
     PipelineSession? session,
     ScreenReading? screenReading,
     bool? frameMissed,
-  }) => LivePipelineState(
+  }) => SessionState(
     status: status ?? this.status,
     startupProgress: clearStartupProgress ? null : startupProgress ?? this.startupProgress,
     startupStage: startupStage ?? this.startupStage,
@@ -195,8 +195,63 @@ class LivePipelineState extends Equatable {
   ];
 }
 
-class PipelineCubit extends Cubit<LivePipelineState> {
-  PipelineCubit(
+sealed class SessionEvent {
+  const SessionEvent();
+}
+
+/// The start button of Эфир: starts live dubbing, cancels a start still
+/// loading, or ends the dubbing that runs.
+final class LiveToggled extends SessionEvent {
+  const LiveToggled({required this.initializing});
+
+  final bool initializing;
+}
+
+/// A start button of the Screen page, for one [reading] of the screen.
+final class ScreenToggled extends SessionEvent {
+  const ScreenToggled({required this.initializing, this.reading = ScreenReading.both});
+
+  final bool initializing;
+  final ScreenReading reading;
+}
+
+/// The button that places the voices of the scene before anything is dubbed.
+final class SceneToggled extends SessionEvent {
+  const SceneToggled({required this.initializing});
+
+  final bool initializing;
+}
+
+/// Ends the session, paused or not, and gives the game its volume back.
+final class SessionStopped extends SessionEvent {
+  const SessionStopped();
+}
+
+/// Rests a listening session without tearing it down.
+final class SessionPaused extends SessionEvent {
+  const SessionPaused();
+}
+
+final class SessionResumed extends SessionEvent {
+  const SessionResumed();
+}
+
+final class _EngineSaid extends SessionEvent {
+  const _EngineSaid(this.event);
+
+  final EngineEvent event;
+}
+
+/// The dubbing screens' session, as a sequence of what was asked of it and
+/// what the engine answered.
+///
+/// It was `PipelineCubit`, whose `_handleEvent` was a table of events
+/// written by hand; the player's requests and the engine's answers are now
+/// events of one kind, and the state journal sees both. What the session
+/// said -- the transcript, the voices of the scene, the snippets -- is
+/// `TranscriptBloc`'s, and the game is `SourcesBloc`'s.
+class SessionBloc extends Bloc<SessionEvent, SessionState> {
+  SessionBloc(
     this._appRepository,
     this._modelRepository,
     this._settings,
@@ -206,11 +261,18 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     this._sessions, {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
-       super(const LivePipelineState()) {
+       super(const SessionState()) {
+    on<LiveToggled>(_onLiveToggled);
+    on<ScreenToggled>(_onScreenToggled);
+    on<SceneToggled>(_onSceneToggled);
+    on<SessionStopped>((event, emit) => _stop(emit));
+    on<SessionPaused>(_onPaused);
+    on<SessionResumed>(_onResumed);
+    on<_EngineSaid>(_onEngine);
     // What is drawn over the game is made of the settings, so it follows
     // them from here rather than being called by whoever wrote one.
     _written = _settings.changes.listen((_) {
-      followFrameOverlay();
+      _followFrameOverlay();
       unawaited(_followVoice());
     });
     // The frame is drawn over the game, so naming another one -- here or
@@ -218,7 +280,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     _picked = _sources.changes
         .map((sources) => sources.selected)
         .distinct()
-        .listen((_) => followFrameOverlay());
+        .listen((_) => _followFrameOverlay());
   }
 
   /// How long after a start a second press is taken for the rest of a
@@ -250,18 +312,19 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   ModelSelection get selection =>
       ModelSelection(models: _downloads.parts.models, settings: _settings.settings);
 
-  void listen() => _events = _appRepository.events.listen(_handleEvent);
+  void listen() => _events = _appRepository.events.listen((event) => add(_EngineSaid(event)));
 
-  Future<void> toggle({required bool initializing}) async {
+  Future<void> _onLiveToggled(LiveToggled event, Emitter<SessionState> emit) async {
+    final initializing = event.initializing;
     if (_pressedTwice) return;
     _errors.report(null);
-    if (state.liveRunning) return stop();
+    if (state.liveRunning) return _stop(emit);
     final selection = this.selection;
     if (!state.canStart(selection, initializing: initializing, process: _process)) return;
     // The snapshot session holds the worker loaded without whisper, so live
     // dubbing takes it over by starting afresh.
     if (state.running) {
-      await stop();
+      await _stop(emit);
       if (isClosed || state.status != PipelineStatus.idle) return;
     }
     _startRequestedAt = _clock();
@@ -279,7 +342,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         clearSpokenVoice: true,
       ),
     );
-    await _startLive(selection);
+    await _startLive(selection, emit);
   }
 
   /// Whether the button was pressed again while the first press was still
@@ -292,7 +355,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }
 
   /// Hands the engine everything one live session needs.
-  Future<void> _startLive(ModelSelection selection) async {
+  Future<void> _startLive(ModelSelection selection, Emitter<SessionState> emit) async {
     try {
       final settings = _settings.settings;
       // Dubbing into English has no translator to carry a target token.
@@ -323,7 +386,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
             : null,
       );
     } catch (exception) {
-      _onStartFailed(exception);
+      _onStartFailed(exception, emit);
     }
   }
 
@@ -332,9 +395,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// One that was stopped is no failure: the button that starts a session
   /// also cancels a start in progress, and the start then ends the way it
   /// was asked to, with nothing to report.
-  void _onStartFailed(Object exception) {
+  void _onStartFailed(Object exception, Emitter<SessionState> emit) {
     if (isClosed) return;
-    if (isPipelineStopped(exception)) return _onStartStopped();
+    if (isPipelineStopped(exception)) return _onStartStopped(emit);
     emit(state.copyWith(status: PipelineStatus.error));
     _errors.report(exception);
   }
@@ -343,7 +406,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// says `stopping` before it waits for anything. Still `starting`, the
   /// worker was taken by another screen, which stops nothing here and tells
   /// this one nothing, so the start would go on looking alive for good.
-  void _onStartStopped() {
+  void _onStartStopped(Emitter<SessionState> emit) {
     if (state.status != PipelineStatus.starting) return;
     emit(
       state.copyWith(status: PipelineStatus.idle, clearStartupProgress: true, startupStage: ''),
@@ -384,17 +447,15 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// The button of the reading that is running ends it; the button of
   /// another ends it and starts its own, since one engine serves the three
   /// and only what it captures differs.
-  Future<void> toggleScreenText({
-    required bool initializing,
-    ScreenReading reading = ScreenReading.both,
-  }) async {
+  Future<void> _onScreenToggled(ScreenToggled event, Emitter<SessionState> emit) async {
+    final (initializing, reading) = (event.initializing, event.reading);
     if (_pressedTwice) return;
     _errors.report(null);
     if (state.running) {
       // Live dubbing is ended from its own screen.
       if (state.session != PipelineSession.screen) return;
       final wasReading = state.screenReading;
-      await stop();
+      await _stop(emit);
       if (wasReading == reading || isClosed) return;
     }
     final selection = this.selection;
@@ -458,7 +519,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         runtimeDirectory: _downloads.parts.runtimeDirectory,
       );
     } catch (exception) {
-      _onStartFailed(exception);
+      _onStartFailed(exception, emit);
     }
   }
 
@@ -469,12 +530,13 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// voices it meets join the game's bank under the numbers the dubbing
   /// session will know them by — and it is ready in seconds, since neither
   /// whisper nor the translator is loaded.
-  Future<void> toggleSceneVoices({required bool initializing}) async {
+  Future<void> _onSceneToggled(SceneToggled event, Emitter<SessionState> emit) async {
+    final initializing = event.initializing;
     if (_pressedTwice) return;
     _errors.report(null);
     if (state.running) {
       // Live dubbing and the snapshot session are ended where they started.
-      if (state.session == PipelineSession.scene) await stop();
+      if (state.session == PipelineSession.scene) await _stop(emit);
       return;
     }
     final selection = this.selection;
@@ -507,12 +569,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         voiceBank: await _appRepository.voiceBankFileFor(_game),
       );
     } catch (exception) {
-      _onStartFailed(exception);
+      _onStartFailed(exception, emit);
     }
   }
 
   /// Ends the session, paused or not, and gives the game its volume back.
-  Future<void> stop() async {
+  Future<void> _stop(Emitter<SessionState> emit) async {
     if (!state.running) return;
     _errors.report(null);
     emit(state.copyWith(status: PipelineStatus.stopping));
@@ -538,12 +600,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     );
     // The stop dropped every key the session held, the one that shows
     // the frame among them: it is the player's, not the session's.
-    followFrameOverlay();
+    _followFrameOverlay();
   }
 
   /// Rests a listening session without tearing it down: the models stay
   /// loaded, so resuming is instant rather than another minute of startup.
-  Future<void> pause() async {
+  Future<void> _onPaused(SessionPaused event, Emitter<SessionState> emit) async {
     if (state.status != PipelineStatus.listening || !state.liveRunning) return;
     try {
       await _appRepository.pause();
@@ -553,7 +615,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     }
   }
 
-  Future<void> resume() async {
+  Future<void> _onResumed(SessionResumed event, Emitter<SessionState> emit) async {
     if (state.status != PipelineStatus.paused) return;
     try {
       await _appRepository.resume();
@@ -573,17 +635,18 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// few lines below, so reading one of them never means reading the rest.
   /// [EngineEvent] is sealed, so a kind nobody answers is named by the
   /// analyzer rather than passed over at runtime.
-  void _handleEvent(EngineEvent event) {
+  void _onEngine(_EngineSaid said, Emitter<SessionState> emit) {
+    final event = said.event;
     switch (event) {
       case SessionStateChanged():
-        _onSessionState(event);
+        _onSessionState(event, emit);
       // The lists are `TranscriptBloc`'s, which hears the engine itself.
       case LineDubbed() || SceneVoiceHeard() || SnapshotReading() || SnapshotRead():
         break;
       case SubtitleFrameMoved():
-        _onSubtitleFrame(event);
+        _onSubtitleFrame(event, emit);
       case StartupProgressed():
-        _onStartup(event);
+        _onStartup(event, emit);
       case LanguageDetected():
         emit(
           state.copyWith(
@@ -617,7 +680,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// frame itself, so the picker on the screen shows where the reading
   /// moved to and the next session starts in the same place. A selection
   /// that missed the game's window changes nothing and says so.
-  void _onSubtitleFrame(SubtitleFrameMoved event) {
+  void _onSubtitleFrame(SubtitleFrameMoved event, Emitter<SessionState> emit) {
     if (event.region case final region?) {
       emit(state.copyWith(frameMissed: false));
       unawaited(_settings.save(_settings.settings.copyWith(ocrRegion: region)));
@@ -627,7 +690,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }
 
   /// The engine has started, come up or come to rest.
-  void _onSessionState(SessionStateChanged event) {
+  void _onSessionState(SessionStateChanged event, Emitter<SessionState> emit) {
     // The engine serves the characters screen in its turn, and that session
     // is not this screen's to show. An event naming no session is the engine
     // coming to rest, which ends whatever was running.
@@ -643,7 +706,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }
 
   /// How far the worker is through its startup.
-  void _onStartup(StartupProgressed event) {
+  void _onStartup(StartupProgressed event, Emitter<SessionState> emit) {
     emit(
       state.copyWith(
         startupProgress: event.value,
@@ -657,9 +720,9 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   void _onHotkey(HotkeyAction action) {
     switch (action) {
       case HotkeyAction.pause:
-        unawaited(pause());
+        add(const SessionPaused());
       case HotkeyAction.resume:
-        unawaited(resume());
+        add(const SessionResumed());
       case HotkeyAction.frameOverlay:
         unawaited(_toggleFrameOverlay());
       // Held rather than pressed: the native side answers them itself.
@@ -700,7 +763,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// Called whenever any of those change: a setting written, which the
   /// repository's stream brings here, or a game chosen and a session
   /// started or ended, which are this cubit's own.
-  void followFrameOverlay() {
+  void _followFrameOverlay() {
     final settings = _settings.settings;
     final processId = settings.readsWholeScreen ? 0 : _process?.pid ?? 0;
     // Over a window there has to be a window: with no game named there is
@@ -732,7 +795,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// is where the other screens learn whether the engine is theirs to use
   /// and the canvas what to draw locked.
   @override
-  void onChange(Change<LivePipelineState> change) {
+  void onChange(Change<SessionState> change) {
     super.onChange(change);
     final now = change.nextState;
     _sessions.reportPipeline(
@@ -743,8 +806,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   }
 
   /// Stages a state a widget test wants to render without starting anything.
+  ///
+  /// At once rather than an event later, as a test that seeds a session and
+  /// then asks it for something expects the session to be there.
   @visibleForTesting
-  void seed(LivePipelineState value) => emit(value);
+  // ignore: invalid_use_of_visible_for_testing_member
+  void seed(SessionState value) => emit(value);
 
   @override
   Future<void> close() {

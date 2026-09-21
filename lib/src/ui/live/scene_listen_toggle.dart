@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../theme.dart';
 
 /// The press that starts or ends listening for the voices of a scene, drawn
@@ -28,7 +28,7 @@ class SceneListenToggle extends StatelessWidget {
     return TextButton.icon(
       key: const ValueKey('sceneListen'),
       onPressed: enabled
-          ? () => context.read<PipelineCubit>().toggleSceneVoices(initializing: initializing)
+          ? () => context.read<SessionBloc>().add(SceneToggled(initializing: initializing))
           : null,
       icon: Icon(listening ? Icons.stop_rounded : Icons.hearing_rounded, size: 18),
       label: Text(listening ? l10n.sceneVoicesListenStop : l10n.sceneVoicesListen),

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../language_names.dart';
 import 'screen_source_picker.dart';
 import 'snapshot_status_line.dart';
@@ -22,7 +22,7 @@ class SnapshotDetails extends StatelessWidget {
   });
 
   final AppSettings settings;
-  final LivePipelineState pipeline;
+  final SessionState pipeline;
   final Widget game;
 
   @override

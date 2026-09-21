@@ -63,18 +63,22 @@ than one of them.
    navigation, header) and
    `common/` for what every screen uses; one public widget per file and no
    private ones. `dashboard/` still holds the cubits and the files not yet
-   taken apart (`TODO.md`, stage 2). State lives in five cubits
-   (`dashboard/cubits/`): `ShellCubit` (section, first load, the failure banner, the
-   update check), `SettingsCubit`, `DownloadsCubit` (models, GPU runtimes,
-   what the machine can run), `PipelineCubit` (the dubbing screens' session) and
-   `CharactersCubit` (the player's cast and the session that records a
-   voice for a card), plus two Blocs — `PipelineGraphBloc`, the node
-   canvas, which is event-driven because a gesture there is a sequence
-   (grab, move, drop) rather than a call, `SourcesBloc`, the game the
-   player names and the monitors, and `TranscriptBloc`, the lines, the
-   voices of the scene and the snippets -- the two pieces taken out of
-   `PipelineCubit` on the way to the Blocs of `TODO.md`, stage 4 -- and
-   `PipelineFactsBloc`, what the scheme's nodes write on themselves.
+   taken apart (`TODO.md`, stage 2). State lives in `dashboard/cubits/`:
+   four cubits -- `ShellCubit` (section, first load, the failure banner,
+   the update check), `SettingsCubit`, `DownloadsCubit` (models, GPU
+   runtimes, what the machine can run) and `CharactersCubit` (the player's
+   cast and the session that records a voice for a card) -- and five
+   Blocs. `SessionBloc` is the dubbing screens' session: the player's
+   requests (`LiveToggled`, `ScreenToggled`, `SceneToggled`,
+   `SessionStopped`, `SessionPaused`, `SessionResumed`) and the engine's
+   answers are events of one kind, where `PipelineCubit` before it kept
+   the second as a table written by hand. What that session said is
+   `TranscriptBloc`'s (the lines, the voices of the scene, the snippets),
+   and the game the player names, with the monitors, is `SourcesBloc`'s --
+   both taken out of it. `PipelineGraphBloc` is the node canvas,
+   event-driven because a gesture there is a sequence (grab, move, drop)
+   rather than a call, and `PipelineFactsBloc` what the scheme's nodes
+   write on themselves.
    No cubit reads another cubit. What more than one screen needs lives in a
    repository that owns it and publishes it: `SettingsRepository`
    (`AppSettings`), `InstallRepository` (what is on disk, what the machine
@@ -149,7 +153,7 @@ than one of them.
    than a flag per session, and it is written onto every state and startup
    event on the
    way out: one engine serves the dubbing screens and the characters screen
-   in turn, and the same stream reaches `PipelineCubit` and `CharactersCubit`
+   in turn, and the same stream reaches `SessionBloc` and `CharactersCubit`
    both, so unnamed, a start on one screen was read as a start on the other.
    A `SessionStateChanged` carrying no session is `ld_stop` coming to rest and ends
    what every screen was showing -- which is what `concerns` answers, in one
@@ -718,9 +722,9 @@ is always shown. It is started and moved by `ld_show_frame(config)` and
 taken off by `ld_hide_frame()`, both outside `ld_start`, so no session owns
 it. `AppSettings.frameOverlayHotkey` shows and hides it from inside the
 game: the key draws nothing itself, it arrives as
-`{"type":"hotkey","action":"frameOverlay"}` and `PipelineCubit` answers by
+`{"type":"hotkey","action":"frameOverlay"}` and `SessionBloc` answers by
 flipping the setting, since whether there is a frame to draw and over which
-game is the application's to know. `PipelineCubit.followFrameOverlay` is the
+game is the application's to know. `SessionBloc._followFrameOverlay` is the
 one place that keeps the drawing in step -- with the settings, which it
 follows through `SettingsRepository.changes`, with the game chosen and with
 a session ending -- and it registers that one key through
@@ -941,7 +945,7 @@ each change it disagreed about where the answer came from — a per-game
 `--speaker-map`, no `{"assign": {...}}` request.
 
 `AppSettings.voice` may be picked while a session runs: the write goes to
-`SettingsRepository`, `PipelineCubit` hears it on that repository's stream
+`SettingsRepository`, `SessionBloc` hears it on that repository's stream
 and sends `{"speaker": name}`
 to the worker (`useVoice`, one control request beside `{"glossary": ...}`
 and `{"asHeard": ...}`) and keeps `_activeConfig` in step. A name the
@@ -964,7 +968,7 @@ call — also sends `{"voicedBy": {...}}` to a running worker, so a scheme rearr
 under a pause is heard from the next line rather than at the next start.
 
 The voices can be placed before anything is dubbed. `PipelineSession.scene`
-(`toggleSceneVoices` -> `AppRepository.startSceneVoices` ->
+(`SceneToggled` -> `AppRepository.startSceneVoices` ->
 `NativeEngineService.startScene`) is the characters session with the bank and
 the cast added and the recording gate left open: `ld_start` on the
 game's audio plus the worker under `--embed-only`, so it is ready in seconds.

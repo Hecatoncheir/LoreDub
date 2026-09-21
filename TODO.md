@@ -1023,6 +1023,19 @@ abstract final class AppTheme {
       что строки им не интересны. `clearTranscript`/`clearSnapshots`/
       `speakAgain` стали событиями `TranscriptCleared`/`SnapshotsCleared`/
       `LineSpokenAgain`.
+- [x] **`PipelineCubit` → `SessionBloc`.** *Сделано:* после выноса игры и
+      транскрипта в кубите осталась сама сессия, и она стала блоком
+      (`dashboard/cubits/session_bloc.dart`, состояние — `SessionState`).
+      Шесть просьб игрока — `LiveToggled`, `ScreenToggled`, `SceneToggled`,
+      `SessionStopped`, `SessionPaused`, `SessionResumed` — и ответы
+      движка (`_EngineSaid`) теперь события одного рода, и журнал
+      состояний видит и то и другое. Клавиши паузы из игры стали
+      событиями, а не вызовом метода из обработчика. Логика не менялась:
+      обработчики — прежние методы, получившие `Emitter`; правило двойного
+      щелчка пока там же и уедет в трансформер с `bloc_concurrency`.
+      `seed()` остаётся синхронным (через `emit` с подавлением
+      `invalid_use_of_visible_for_testing_member`): тесты сеют сессию и
+      сразу чего-то от неё просят. Уходит вместе с остальными `seed()`.
 - [ ] `bloc_test` + `mocktail` в `dev_dependencies`; `seed()` и
       `PipelineGraphSeeded` удаляются — виджет-тесты получают
       `MockBloc` + `whenListen` через `BlocProvider.value`.

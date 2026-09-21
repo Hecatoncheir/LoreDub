@@ -16,7 +16,7 @@ import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
@@ -55,7 +55,7 @@ class StagedDashboard {
       shell,
     );
     sources = SourcesBloc(sourcesRepository, shell);
-    pipeline = PipelineCubit(
+    pipeline = SessionBloc(
       appRepository,
       modelRepository,
       settingsRepository,
@@ -90,7 +90,7 @@ class StagedDashboard {
   late final SettingsCubit settings;
   late final DownloadsCubit downloads;
   late final SourcesBloc sources;
-  late final PipelineCubit pipeline;
+  late final SessionBloc pipeline;
   late final TranscriptBloc transcript;
   late final CharactersCubit characters;
   late final GlossaryCubit glossary;

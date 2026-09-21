@@ -11,7 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../common/status_chip.dart';
 
@@ -65,7 +65,7 @@ class DashboardHeader extends StatelessWidget {
             ),
           ),
         ),
-        BlocSelector<PipelineCubit, LivePipelineState, (PipelineStatus, String, bool)>(
+        BlocSelector<SessionBloc, SessionState, (PipelineStatus, String, bool)>(
           selector: (pipeline) => (
             pipeline.status,
             pipeline.startupStage,

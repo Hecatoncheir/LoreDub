@@ -21,7 +21,7 @@ enum StartStep {
 /// What still stands between the player and the first press of Start, in the
 /// order the interface offers them.
 ///
-/// It is the reasons `LivePipelineState.canStart` refuses for, named: a
+/// It is the reasons `SessionState.canStart` refuses for, named: a
 /// button that is simply dead tells a player nothing about which of the
 /// three it is waiting on, and the first of them is met on a machine that
 /// has only just installed the application.

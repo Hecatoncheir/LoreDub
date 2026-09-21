@@ -8,7 +8,7 @@ import '../../data/services/model_catalog.dart';
 import '../../../l10n/app_localizations.dart';
 import '../language_names.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/language_row.dart';
@@ -25,7 +25,7 @@ class TargetLanguagePicker extends StatelessWidget {
     // Which languages read as ready depends on what is downloaded.
     builder: (context, settings) => BlocBuilder<DownloadsCubit, DownloadsState>(
       buildWhen: whenChanged((downloads) => downloads.installed),
-      builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
+      builder: (context, _) => BlocBuilder<SessionBloc, SessionState>(
         buildWhen: whenChanged((pipeline) => pipeline.running),
         builder: (context, pipeline) =>
             _build(context, settings.settings.targetLanguage, running: pipeline.running),

@@ -8,7 +8,7 @@ import '../../domain/app_settings.dart';
 import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
 import '../language_names.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/language_row.dart';
@@ -21,7 +21,7 @@ class TextLanguagePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
-    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+    builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged((pipeline) => pipeline.running),
       builder: (context, pipeline) => _build(context, state.settings, locked: pipeline.running),
     ),

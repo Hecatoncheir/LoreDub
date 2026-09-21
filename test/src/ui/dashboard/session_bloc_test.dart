@@ -34,7 +34,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import '../../../support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -68,7 +68,7 @@ void main() {
   late _SlowStartRepository repository;
   late StagedDashboard cubits;
   late DateTime now;
-  late PipelineCubit pipeline;
+  late SessionBloc pipeline;
 
   /// Lets every pending microtask run, which is as far as a start that never
   /// finishes can get.
@@ -113,7 +113,7 @@ void main() {
       ),
     );
     now = DateTime(2026, 9, 11, 12);
-    pipeline = PipelineCubit(
+    pipeline = SessionBloc(
       repository,
       _FixedModelRepository(),
       cubits.settingsRepository,
@@ -171,7 +171,7 @@ void main() {
       const CharactersState(loading: false, status: PipelineStatus.listening),
     );
 
-    unawaited(cubits.pipeline.toggle(initializing: false));
+    cubits.pipeline.add(const LiveToggled(initializing: false));
     await settle();
 
     expect(cubits.characters.state.running, isFalse, reason: 'the recording gave way');
@@ -181,24 +181,26 @@ void main() {
   });
 
   test('takes a second press straight after Start for the rest of a double-click', () async {
-    unawaited(pipeline.toggle(initializing: false));
+    pipeline.add(const LiveToggled(initializing: false));
     await settle();
     expect(pipeline.state.status, PipelineStatus.starting);
     expect(repository.starts, 1);
 
     now = now.add(const Duration(milliseconds: 300));
-    await pipeline.toggle(initializing: false);
+    pipeline.add(const LiveToggled(initializing: false));
+    await pumpEventQueue();
 
     expect(pipeline.state.status, PipelineStatus.starting, reason: 'the start goes on');
     expect(repository.stops, 0);
   });
 
   test('still cancels a start when asked once the double-click is over', () async {
-    unawaited(pipeline.toggle(initializing: false));
+    pipeline.add(const LiveToggled(initializing: false));
     await settle();
 
-    now = now.add(PipelineCubit.doubleClickGrace);
-    await pipeline.toggle(initializing: false);
+    now = now.add(SessionBloc.doubleClickGrace);
+    pipeline.add(const LiveToggled(initializing: false));
+    await pumpEventQueue();
 
     expect(pipeline.state.status, PipelineStatus.idle);
     expect(repository.stops, 1);
@@ -208,11 +210,12 @@ void main() {
     final statuses = <PipelineStatus>[];
     final watching = pipeline.stream.listen((state) => statuses.add(state.status));
     addTearDown(watching.cancel);
-    unawaited(pipeline.toggle(initializing: false));
+    pipeline.add(const LiveToggled(initializing: false));
     await settle();
 
-    now = now.add(PipelineCubit.doubleClickGrace);
-    await pipeline.toggle(initializing: false);
+    now = now.add(SessionBloc.doubleClickGrace);
+    pipeline.add(const LiveToggled(initializing: false));
+    await pumpEventQueue();
     await settle();
 
     // The start ends as stopped, which is what was asked of it: an error
@@ -224,7 +227,7 @@ void main() {
   });
 
   test('comes to rest when another screen takes the worker from a start', () async {
-    unawaited(pipeline.toggle(initializing: false));
+    pipeline.add(const LiveToggled(initializing: false));
     await settle();
     expect(pipeline.state.status, PipelineStatus.starting);
 
@@ -240,7 +243,7 @@ void main() {
   });
 
   test('still says why a start failed on its own', () async {
-    unawaited(pipeline.toggle(initializing: false));
+    pipeline.add(const LiveToggled(initializing: false));
     await settle();
 
     repository.failStart(const LoreDubFailure(FailureCode.workerStartTimeout));
@@ -256,7 +259,7 @@ void main() {
   test('pauses and resumes on the hotkeys pressed in the game', () async {
     pipeline
       ..listen()
-      ..seed(const LivePipelineState(status: PipelineStatus.listening));
+      ..seed(const SessionState(status: PipelineStatus.listening));
 
     repository.push(const HotkeyPressed(HotkeyAction.pause));
     await settle();
@@ -274,9 +277,10 @@ void main() {
   });
 
   test('stops for good from a pause', () async {
-    pipeline.seed(const LivePipelineState(status: PipelineStatus.paused));
+    pipeline.seed(const SessionState(status: PipelineStatus.paused));
 
-    await pipeline.stop();
+    pipeline.add(const SessionStopped());
+    await pumpEventQueue();
 
     expect(pipeline.state.status, PipelineStatus.idle);
     expect(repository.stops, 1);
@@ -286,7 +290,7 @@ void main() {
     test('keeps what it was read as, and is read again on request', () async {
       pipeline
         ..listen()
-        ..seed(const LivePipelineState(status: PipelineStatus.listening));
+        ..seed(const SessionState(status: PipelineStatus.listening));
 
       repository.push(
         dubbed(
@@ -321,7 +325,7 @@ void main() {
   group('the voice picked while a session runs', () {
     test('reaches the worker rather than waiting for the next start', () async {
       pipeline.seed(
-        const LivePipelineState(
+        const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.screen,
         ),
@@ -337,7 +341,7 @@ void main() {
       expect(repository.voicesTold, isEmpty, reason: 'the next start will carry it');
 
       pipeline.seed(
-        const LivePipelineState(
+        const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.live,
         ),
@@ -412,7 +416,7 @@ void main() {
   });
 
   group('the screen session', () {
-    const waiting = LivePipelineState(
+    const waiting = SessionState(
       status: PipelineStatus.listening,
       session: PipelineSession.screen,
     );
@@ -422,7 +426,8 @@ void main() {
       cubits.sourcesRepository.select(
         const GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe'),
       );
-      await pipeline.toggleScreenText(initializing: false);
+      pipeline.add(const ScreenToggled(initializing: false));
+      await pumpEventQueue();
 
       expect(repository.snapshotStarts, 1);
       expect(repository.snapshotModels.keys, unorderedEquals(['translation', 'speech']));
@@ -456,7 +461,8 @@ void main() {
       cubits.sourcesRepository.select(game);
       await cubits.settings.update(const AppSettings(screenVoices: true));
 
-      await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.subtitles);
+      pipeline.add(const ScreenToggled(initializing: false, reading: ScreenReading.subtitles));
+      await pumpEventQueue();
 
       expect(repository.screenHeardVoices, isTrue);
       expect(
@@ -469,7 +475,8 @@ void main() {
     test('reads a snippet without a game to take a window from', () async {
       // Nothing is scanned, so there is no window to read it out of: the
       // key picks out whatever is on the screen.
-      await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.snippets);
+      pipeline.add(const ScreenToggled(initializing: false, reading: ScreenReading.snippets));
+      await pumpEventQueue();
 
       expect(repository.screenReadings, [ScreenReading.snippets]);
       expect(pipeline.state.screenReading, ScreenReading.snippets);
@@ -478,14 +485,16 @@ void main() {
     test('changes what is read by starting that reading over the one running', () async {
       const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
       cubits.sourcesRepository.select(game);
-      await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.snippets);
+      pipeline.add(const ScreenToggled(initializing: false, reading: ScreenReading.snippets));
+      await pumpEventQueue();
       // The frame is read out of the game's window, so the session that
       // takes over is one that knows which game.
       pipeline.seed(
         waiting.copyWith(screenReading: ScreenReading.snippets),
       );
 
-      await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.subtitles);
+      pipeline.add(const ScreenToggled(initializing: false, reading: ScreenReading.subtitles));
+      await pumpEventQueue();
 
       expect(repository.stops, 1, reason: 'the session that was running ended');
       expect(repository.screenReadings, [ScreenReading.snippets, ScreenReading.subtitles]);
@@ -495,10 +504,12 @@ void main() {
     test('its own button ends it rather than starting it again', () async {
       const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
       cubits.sourcesRepository.select(game);
-      await pipeline.toggleScreenText(initializing: false);
+      pipeline.add(const ScreenToggled(initializing: false));
+      await pumpEventQueue();
       pipeline.seed(waiting);
 
-      await pipeline.toggleScreenText(initializing: false);
+      pipeline.add(const ScreenToggled(initializing: false));
+      await pumpEventQueue();
 
       expect(repository.stops, 1);
       expect(repository.snapshotStarts, 1);
@@ -582,7 +593,7 @@ void main() {
     test('gives the worker over when live dubbing starts', () async {
       pipeline.seed(waiting);
 
-      unawaited(pipeline.toggle(initializing: false));
+      pipeline.add(const LiveToggled(initializing: false));
       await settle();
 
       expect(repository.stops, 1, reason: 'the worker was loaded without whisper');
@@ -591,9 +602,10 @@ void main() {
     });
 
     test('leaves live dubbing to be stopped from its own screen', () async {
-      pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+      pipeline.seed(const SessionState(status: PipelineStatus.listening));
 
-      await pipeline.toggleScreenText(initializing: false);
+      pipeline.add(const ScreenToggled(initializing: false));
+      await pumpEventQueue();
 
       expect(repository.stops, 0);
       expect(repository.snapshotStarts, 0);
@@ -646,7 +658,7 @@ void main() {
 
   group('placing the voices before the dubbing', () {
     test('listens through the converter alone, translating nothing', () async {
-      unawaited(pipeline.toggleSceneVoices(initializing: false));
+      pipeline.add(const SceneToggled(initializing: false));
       await settle();
 
       expect(repository.sceneStarts, 1);
@@ -664,7 +676,7 @@ void main() {
       pipeline
         ..listen()
         ..seed(
-          const LivePipelineState(
+          const SessionState(
             status: PipelineStatus.listening,
             session: PipelineSession.scene,
           ),
@@ -684,13 +696,13 @@ void main() {
 
     test('gives the worker over when the dubbing starts', () async {
       pipeline.seed(
-        const LivePipelineState(
+        const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.scene,
         ),
       );
 
-      unawaited(pipeline.toggle(initializing: false));
+      pipeline.add(const LiveToggled(initializing: false));
       await settle();
 
       expect(repository.stops, 1, reason: 'the listening session is ended first');

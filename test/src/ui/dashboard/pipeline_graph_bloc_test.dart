@@ -24,7 +24,7 @@ import 'package:lore_dub/src/domain/pipeline_state.dart';
 
 import '../../../support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -177,7 +177,7 @@ void main() {
   });
 
   test('the route cannot be changed while a session is running', () async {
-    cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+    cubits.pipeline.seed(const SessionState(status: PipelineStatus.listening));
 
     graph.add(PipelineLinkCut(graph.state.graph.linkInto(speechIn)!));
     await pumpEvents();
@@ -199,7 +199,7 @@ void main() {
   });
 
   test('a card is still given away while a session is running', () async {
-    cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+    cubits.pipeline.seed(const SessionState(status: PipelineStatus.listening));
 
     await drawLink(voiceOf('guard'), readBy('smith'));
 
@@ -420,7 +420,7 @@ void main() {
       await pumpEvents();
       final cut = await keep('Путь разобран');
       await drawLink(gameAudio, speechIn);
-      cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+      cubits.pipeline.seed(const SessionState(status: PipelineStatus.listening));
       await pumpEvents();
 
       graph.add(PipelineSchemeChosen(cut.id));
@@ -679,7 +679,7 @@ void main() {
   /// told of every one of those without a restart.
   group('while the dubbing rests', () {
     setUp(() {
-      cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.paused));
+      cubits.pipeline.seed(const SessionState(status: PipelineStatus.paused));
     });
 
     test('the way into the pipeline cannot be taken apart', () async {

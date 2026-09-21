@@ -9,7 +9,7 @@ import '../../domain/ocr_region.dart';
 import '../../domain/monitor_layout.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import '../../domain/screen_reading.dart';
@@ -30,7 +30,7 @@ class SubtitleFrameCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
-    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+    builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged((pipeline) => pipeline.running),
       builder: (context, pipeline) => BlocSelector<SourcesBloc, CaptureSources, MonitorLayout?>(
         selector: (sources) => sources.monitors,

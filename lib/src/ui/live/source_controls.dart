@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/app_settings.dart';
 import '../../../l10n/app_localizations.dart';
 import '../dashboard/cubits/characters_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import 'language_controls.dart';
@@ -23,7 +23,7 @@ class SourceControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
-    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+    builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged(
         (pipeline) => pipeline.running,
       ),
@@ -40,7 +40,7 @@ class SourceControls extends StatelessWidget {
   Widget _build(
     BuildContext context,
     AppSettings settings,
-    LivePipelineState pipeline, {
+    SessionState pipeline, {
     required bool recording,
   }) {
     final l10n = AppLocalizations.of(context);

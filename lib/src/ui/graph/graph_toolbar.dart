@@ -10,7 +10,7 @@ import '../common/ease.dart';
 import '../common/file_dialogs.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/pipeline_graph_bloc.dart';
 import 'add_character_button.dart';
 import 'shelf/pipeline_shelf.dart';
@@ -76,14 +76,14 @@ class GraphToolbar extends StatelessWidget {
                       color: facts.paused ? context.colors.accent : null,
                     ),
                     onPressed: facts.paused
-                        ? context.read<PipelineCubit>().resume
-                        : context.read<PipelineCubit>().pause,
+                        ? () => context.read<SessionBloc>().add(const SessionResumed())
+                        : () => context.read<SessionBloc>().add(const SessionPaused()),
                   ),
                   IconButton(
                     key: const ValueKey('graphStop'),
                     tooltip: l10n.stopDubbing,
                     icon: const Icon(Icons.stop_rounded, size: 20),
-                    onPressed: context.read<PipelineCubit>().stop,
+                    onPressed: () => context.read<SessionBloc>().add(const SessionStopped()),
                   ),
                 ],
                 IconButton(

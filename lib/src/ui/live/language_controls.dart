@@ -8,7 +8,7 @@ import '../../domain/app_settings.dart';
 import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
 import '../language_names.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/language_row.dart';
@@ -20,13 +20,13 @@ class LanguageControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
-    builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
+    builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.detectedLanguage)),
       builder: (context, pipeline) => _build(context, state.settings, pipeline),
     ),
   );
 
-  Widget _build(BuildContext context, AppSettings settings, LivePipelineState pipeline) {
+  Widget _build(BuildContext context, AppSettings settings, SessionState pipeline) {
     final l10n = AppLocalizations.of(context);
     final locked = pipeline.running;
     final detected = settings.detectSourceLanguage ? pipeline.detectedLanguage : null;

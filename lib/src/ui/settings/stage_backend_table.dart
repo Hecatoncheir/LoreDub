@@ -8,7 +8,7 @@ import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
 import '../compute_names.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import 'stage_backend_cell.dart';
 import 'stage_backend_status.dart';
 
@@ -26,7 +26,7 @@ class StageBackendTable extends StatelessWidget {
   final List<ComputeStage> stages;
   final DownloadsState downloads;
   final AppSettings settings;
-  final LivePipelineState pipeline;
+  final SessionState pipeline;
 
   @override
   Widget build(BuildContext context) {

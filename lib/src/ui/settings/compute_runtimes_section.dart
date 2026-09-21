@@ -10,7 +10,7 @@ import '../../domain/compute_device.dart';
 import '../../domain/runtime_package.dart';
 import '../compute_names.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../failure_messages.dart';
 import '../theme.dart';
 import '../common/tile_grid.dart';
@@ -31,7 +31,7 @@ class ComputeRuntimesSection extends StatelessWidget {
   final List<ComputeStage> stages;
   final DownloadsState downloads;
   final AppSettings settings;
-  final LivePipelineState pipeline;
+  final SessionState pipeline;
 
   /// Whether any stage could put runtime [id] to use on this machine.
   static bool _servesHardware(String id, ComputeAvailability availability) =>

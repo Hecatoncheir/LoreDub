@@ -58,7 +58,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
@@ -119,7 +119,7 @@ void main() {
       );
     }
     cubits.pipeline.seed(
-      LivePipelineState(
+      SessionState(
         status: status,
         detectedLanguage: detectedLanguage,
         startupProgress: startupProgress,
@@ -221,7 +221,7 @@ void main() {
     expect(context.read<SettingsCubit>(), isNotNull);
     expect(context.read<DownloadsCubit>(), isNotNull);
     expect(context.read<SourcesBloc>(), isNotNull);
-    expect(context.read<PipelineCubit>(), isNotNull);
+    expect(context.read<SessionBloc>(), isNotNull);
     expect(context.read<TranscriptBloc>(), isNotNull);
     expect(context.read<CharactersCubit>(), isNotNull);
     expect(context.read<GlossaryCubit>(), isNotNull);
@@ -511,7 +511,8 @@ void main() {
     await pumpDashboard(tester, cubits, const Size(1280, 720));
     expect(find.text('Определён: Японский'), findsOneWidget);
 
-    await cubits.pipeline.toggle(initializing: false);
+    cubits.pipeline.add(const LiveToggled(initializing: false));
+    await tester.pump();
     await tester.pumpAndSettle();
 
     expect(cubits.pipeline.state.detectedLanguage, isNull);
@@ -2801,7 +2802,7 @@ void main() {
     StagedDashboard stageSnapshot({
       AppSettings settings = const AppSettings(),
       List<ModelInstallState>? models,
-      LivePipelineState pipeline = const LivePipelineState(),
+      SessionState pipeline = const SessionState(),
       TranscriptState lists = const TranscriptState(),
     }) {
       final cubits = stage(
@@ -2838,7 +2839,7 @@ void main() {
 
     testWidgets('says when a frame drawn over the game missed its window', (tester) async {
       final cubits = stageSnapshot(
-        pipeline: const LivePipelineState(
+        pipeline: const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.screen,
           frameMissed: true,
@@ -2945,7 +2946,7 @@ void main() {
 
     testWidgets('shows what was selected while the session waits', (tester) async {
       final cubits = stageSnapshot(
-        pipeline: const LivePipelineState(
+        pipeline: const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.screen,
         ),
@@ -2960,7 +2961,7 @@ void main() {
 
     testWidgets('says when the selection held no text', (tester) async {
       final cubits = stageSnapshot(
-        pipeline: const LivePipelineState(
+        pipeline: const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.screen,
         ),
@@ -2973,7 +2974,7 @@ void main() {
 
     testWidgets('leaves the key to live dubbing while it runs', (tester) async {
       final cubits = stageSnapshot(
-        pipeline: const LivePipelineState(status: PipelineStatus.listening),
+        pipeline: const SessionState(status: PipelineStatus.listening),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
@@ -2988,7 +2989,7 @@ void main() {
         models: catalogue(),
       );
       cubits.pipeline.seed(
-        const LivePipelineState(
+        const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.screen,
         ),
@@ -3249,7 +3250,7 @@ void main() {
       // One engine serves one session. Either of the two brings up a worker
       // of its own, and over a session that is dubbing it took that one's:
       // the capture went on, and every phrase after it failed.
-      cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+      cubits.pipeline.seed(const SessionState(status: PipelineStatus.listening));
       await tester.pump();
       await tester.pump();
 
@@ -3264,7 +3265,7 @@ void main() {
       );
 
       // Stopped, and both are back.
-      cubits.pipeline.seed(const LivePipelineState());
+      cubits.pipeline.seed(const SessionState());
       await tester.pump();
       await tester.pump();
 
@@ -3433,7 +3434,7 @@ void main() {
     testWidgets('says it is listening while the voices are placed', (tester) async {
       final cubits = stageScene();
       cubits.pipeline.seed(
-        const LivePipelineState(
+        const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.scene,
         ),
@@ -3506,7 +3507,7 @@ void main() {
               Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
             ],
           )
-          ..pipeline.seed(const LivePipelineState(status: PipelineStatus.listening))
+          ..pipeline.seed(const SessionState(status: PipelineStatus.listening))
           ..transcript.seed(
             const TranscriptState(
               speakers: [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
@@ -3775,7 +3776,7 @@ void main() {
       final cubits = await pumpGraph(tester);
       expect(find.byKey(const ValueKey('graphPause')), findsNothing);
 
-      cubits.pipeline.seed(const LivePipelineState(status: PipelineStatus.listening));
+      cubits.pipeline.seed(const SessionState(status: PipelineStatus.listening));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('graphPause')));

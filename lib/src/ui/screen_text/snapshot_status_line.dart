@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../theme.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,7 +20,7 @@ import '../dashboard/dashboard_context.dart';
 class SnapshotStatusLine extends StatelessWidget {
   const SnapshotStatusLine({super.key, required this.pipeline, required this.settings});
 
-  final LivePipelineState pipeline;
+  final SessionState pipeline;
   final AppSettings settings;
 
   (IconData, String, Color)? _said(

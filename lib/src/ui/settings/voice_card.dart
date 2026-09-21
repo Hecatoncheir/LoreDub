@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../common/setting_card.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import 'voice_card_body.dart';
@@ -26,7 +26,7 @@ class VoiceCard extends StatelessWidget {
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
     builder: (context, state) => BlocBuilder<DownloadsCubit, DownloadsState>(
       buildWhen: whenChanged((downloads) => downloads.installed),
-      builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
+      builder: (context, _) => BlocBuilder<SessionBloc, SessionState>(
         buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.spokenVoice)),
         builder: (context, pipeline) {
           final l10n = AppLocalizations.of(context);

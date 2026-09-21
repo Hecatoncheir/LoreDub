@@ -10,7 +10,7 @@ import '../../domain/character.dart';
 import '../common/area_heading.dart';
 import '../common/module_label.dart';
 import '../dashboard/cubits/characters_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../theme.dart';
 import 'cast_drop_area.dart';
 
@@ -34,7 +34,7 @@ class CharacterCast extends StatelessWidget {
   /// own, which would be taken from under that session, so both wait for it
   /// to end — and a recognized phrase must not redraw every card.
   @override
-  Widget build(BuildContext context) => BlocSelector<PipelineCubit, LivePipelineState, bool>(
+  Widget build(BuildContext context) => BlocSelector<SessionBloc, SessionState, bool>(
     selector: (pipeline) => pipeline.running,
     builder: (context, dubbing) => BlocBuilder<CharactersCubit, CharactersState>(
       builder: (context, state) {

@@ -10,7 +10,7 @@ import 'app_repository.dart';
 /// The game the player named, what else is running, and where the monitors
 /// stand -- and who to tell when any of it changes.
 ///
-/// The game was a field of `PipelineCubit`, and three other screens reached
+/// The game was a field of `SessionBloc`, and three other screens reached
 /// into that cubit to read it and to change it: the characters' recording
 /// listens to the same game, the node panel names it on the source node,
 /// and the Screen page reads its window. A choice several screens share is

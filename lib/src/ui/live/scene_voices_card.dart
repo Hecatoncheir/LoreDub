@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../common/module_label.dart';
 import 'scene_listen_button.dart';
 import 'scene_voices_empty.dart';
@@ -26,7 +26,7 @@ class SceneVoicesCard extends StatelessWidget {
   Widget build(BuildContext context) =>
       BlocSelector<TranscriptBloc, TranscriptState, List<SceneSpeaker>>(
         selector: (transcript) => transcript.speakers,
-        builder: (context, speakers) => BlocSelector<PipelineCubit, LivePipelineState, bool>(
+        builder: (context, speakers) => BlocSelector<SessionBloc, SessionState, bool>(
           selector: (pipeline) => pipeline.sceneRunning,
           builder: (context, listening) => _build(context, speakers, listening: listening),
         ),

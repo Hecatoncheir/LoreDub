@@ -10,7 +10,7 @@ import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../failure_messages.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
@@ -30,7 +30,7 @@ class SnapshotStartButton extends StatelessWidget {
   final ScreenReading reading;
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<PipelineCubit, LivePipelineState>(
+  Widget build(BuildContext context) => BlocBuilder<SessionBloc, SessionState>(
     buildWhen: whenChanged(
       (pipeline) => (
         pipeline.status,
@@ -59,7 +59,7 @@ class SnapshotStartButton extends StatelessWidget {
 
   Widget _build(
     BuildContext context,
-    LivePipelineState pipeline,
+    SessionState pipeline,
     GameProcess? process, {
     required bool initializing,
   }) {
@@ -81,9 +81,8 @@ class SnapshotStartButton extends StatelessWidget {
       child: FilledButton.icon(
         key: ValueKey('snapshotStart-${reading.name}'),
         onPressed: running || canStart
-            ? () => context.read<PipelineCubit>().toggleScreenText(
-                initializing: initializing,
-                reading: reading,
+            ? () => context.read<SessionBloc>().add(
+                ScreenToggled(initializing: initializing, reading: reading),
               )
             : null,
         icon: starting

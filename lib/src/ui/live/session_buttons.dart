@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 
 /// A live session's two controls: rest or wake it, and end it.
 ///
@@ -26,7 +26,7 @@ class SessionButtons extends StatelessWidget {
           Expanded(
             child: FilledButton.icon(
               key: const ValueKey('resumeButton'),
-              onPressed: context.read<PipelineCubit>().resume,
+              onPressed: () => context.read<SessionBloc>().add(const SessionResumed()),
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(l10n.resumeDubbing),
             ),
@@ -36,7 +36,7 @@ class SessionButtons extends StatelessWidget {
             message: l10n.stopHint,
             child: IconButton.outlined(
               key: const ValueKey('stopButton'),
-              onPressed: context.read<PipelineCubit>().stop,
+              onPressed: () => context.read<SessionBloc>().add(const SessionStopped()),
               icon: const Icon(Icons.stop_rounded),
             ),
           ),
@@ -49,7 +49,7 @@ class SessionButtons extends StatelessWidget {
           message: l10n.pauseHint,
           child: IconButton.outlined(
             key: const ValueKey('pauseButton'),
-            onPressed: context.read<PipelineCubit>().pause,
+            onPressed: () => context.read<SessionBloc>().add(const SessionPaused()),
             icon: const Icon(Icons.pause_rounded),
           ),
         ),
@@ -57,7 +57,7 @@ class SessionButtons extends StatelessWidget {
         Expanded(
           child: FilledButton.icon(
             key: const ValueKey('stopButton'),
-            onPressed: context.read<PipelineCubit>().stop,
+            onPressed: () => context.read<SessionBloc>().add(const SessionStopped()),
             icon: const Icon(Icons.stop_rounded),
             label: Text(l10n.stopDubbing),
           ),

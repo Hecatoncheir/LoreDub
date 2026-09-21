@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/session_bloc.dart';
 import '../failure_messages.dart';
 import 'starting_spinner.dart';
 
@@ -19,7 +19,7 @@ class StartDubbingButton extends StatelessWidget {
     required this.initializing,
   });
 
-  final LivePipelineState pipeline;
+  final SessionState pipeline;
 
   /// Running, or able to start: either way a press does something.
   final bool enabled;
@@ -47,7 +47,7 @@ class StartDubbingButton extends StatelessWidget {
       message: _tooltip(l10n),
       child: FilledButton.icon(
         onPressed: enabled
-            ? () => context.read<PipelineCubit>().toggle(initializing: initializing)
+            ? () => context.read<SessionBloc>().add(LiveToggled(initializing: initializing))
             : null,
         icon: pipeline.liveStarting
             ? StartingSpinner(progress: pipeline.startupProgress)
