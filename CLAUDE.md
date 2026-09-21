@@ -166,6 +166,15 @@ than one of them.
    services themselves, which are only where the files are, so the
    session depends on no other repository. They were one `AppRepository`,
    which every screen was handed whole to reach one corner of it.
+   The four files the player's own work is kept in -- the cast, the
+   glossary, the shelf of schemes and the canvas's arrangement -- are one
+   `JsonFileStore<T>` each (`data/services/json_file_store.dart`): read as
+   empty when missing or damaged, JSON of the wrong shape included (the
+   `TypeError` of a `fromJson` cast), written whole through a temporary
+   file and one write at a time, since the canvas saves on every drop
+   without waiting and two writes through one temporary file renamed over
+   each other. `importJsonFiles` is the player naming a file, so a file of
+   the wrong shape is refused by name there rather than read as empty.
 2. **Native C++ bridge** — `native/*.cpp`, loaded through Dart Native Assets
    (`hook/build.dart` compiles it with `CBuilder`; there is no `.dll` to ship
    manually). The C ABI in `native/lore_dub_native.h` is intentionally tiny:

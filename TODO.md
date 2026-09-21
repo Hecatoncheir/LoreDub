@@ -1252,7 +1252,7 @@ abstract final class AppTheme {
       `PreviewSession`, `VoiceFilesSession`) с `toNativeJson()`;
       16 параметров `AppRepository.start` → один `SessionPlan`, который домен
       строит из `ModelSelection`. Вместе с `EngineEvent` из этапа 4.
-- [ ] **Четыре JSON-хранилища — один класс, написанный четырежды**
+- [x] **Четыре JSON-хранилища — один класс, написанный четырежды**
       (`glossary_service`, `character_service`, `pipeline_library_service`,
       `pipeline_graph_service`: одинаковые `file/load/save/exportTo/readFiles`
       и пять одинаковых `*RootProvider`) → `JsonFileStore<T>({fileName,
@@ -1265,6 +1265,17 @@ abstract final class AppTheme {
     (`pipeline_graph.dart:541`, `:547`; `character.dart:22–31`;
     `glossary.dart:168–174`; `saved_pipeline.dart:62–76`) ломают обещанное
     «повреждённый файл читается как пустой».
+      *Сделано:* `data/services/json_file_store.dart` — `JsonFileStore<T>`,
+      `exportJson`, `importJsonFiles<T>` и один `DirectoryProvider` вместо
+      четырёх `*RootProvider`. Строк почти не убавилось (455 → 442): у
+      состава и словаря свои клипы, файл сессии и встроенные паки, а
+      остальное — документация. Зато оба дефекта закрыты в одном месте и с
+      тестами (`json_file_store_test.dart`): записи идут по одной, и из
+      пришедших во время записи последняя ложится последней; JSON не той
+      формы (`TypeError` из приведений) читается как пустой, а при импорте
+      называется по имени файла. Заодно закрыт дефект из пункта про
+      `AppRepository`: `GlossaryService.withBuiltIn` сам сохраняет словарь
+      и только потом пишет метку.
 - [ ] **`AppSettings`: 35 полей, каждое записано в шести местах**
       (конструктор, поле, параметр и тело `copyWith`, `load`, `save`);
       умолчания продублированы литералами в `settings_service.dart:78–110`;
@@ -1291,10 +1302,10 @@ abstract final class AppTheme {
       Настоящая ценность — сборка конфига, страж «старт или стоп»,
       приглушение и предложение встроенных паков. Шесть копий
       `try / catch(_) / stop / rethrow` → один `_orStop()`. Деление — см.
-      этап 4. `GlossaryService.withBuiltIn` пишет файл-метку **до** того, как
+      этап 4. ~~`GlossaryService.withBuiltIn` пишет файл-метку **до** того, как
       `app_repository.dart:73` сохранит словарь: сорвавшееся сохранение теряет
       встроенный пак навсегда → загрузка, слияние, сохранение и метка одним
-      методом.
+      методом.~~ *Сделано вместе с `JsonFileStore`.*
 - [ ] **Подпроцессы без присмотра:** `Process.run` для whisper
       (`local_inference_service.dart:459`) без таймаута, и `stop()` не может
       его убить; `_runPip` отменяет сторожевой таймер вне `finally`
