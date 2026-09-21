@@ -5,23 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/compute_device.dart';
-import '../../domain/model_selection.dart';
 import '../../domain/pipeline_graph.dart';
-import '../../domain/pipeline_state.dart';
-import '../dashboard/cubits/characters_cubit.dart';
-import '../dashboard/cubits/downloads_cubit.dart';
-import '../dashboard/cubits/pipeline_cubit.dart';
+import '../dashboard/cubits/pipeline_facts_bloc.dart';
 import '../dashboard/cubits/pipeline_graph_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
-import '../dashboard/dashboard_context.dart';
 import 'canvas/pipeline_canvas.dart';
 import 'inspector/pipeline_inspector.dart';
 import 'graph_toolbar.dart';
 import 'inspector_slot.dart';
 import 'canvas/pipeline_facts.dart';
-import '../dashboard/cubits/sources_bloc.dart';
-import '../../domain/capture_sources.dart';
-import '../../domain/game_process.dart';
 
 /// The pipeline as a scheme: the stages as nodes, the route between them,
 /// and the cards of the cast that take a voice from one another.
@@ -33,49 +24,18 @@ import '../../domain/game_process.dart';
 class PipelinePanel extends StatelessWidget {
   const PipelinePanel({super.key});
 
-  /// The scheme is listened to innermost, under everything it is drawn
+  /// The scheme is listened to innermost, under the facts it is drawn
   /// from. A pan or a dragged node is a new graph state every frame, and
-  /// with that listener on the outside each of those frames built a fresh
-  /// `ModelSelection` and `PipelineFacts` and handed the canvas cards it
-  /// could tell apart from the ones it already had. Under them, what the
-  /// scheme is drawn from keeps the instance it had between edits.
+  /// with that listener on the outside each of those frames built fresh
+  /// facts and handed the canvas cards it could tell apart from the ones
+  /// it already had. Under them, the facts keep the instance they had
+  /// between edits -- `PipelineFactsBloc` makes a new one only when one of
+  /// the things the scheme is drawn from moves.
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
-    child: BlocBuilder<SettingsCubit, SettingsState>(
-      builder: (context, settings) => BlocBuilder<DownloadsCubit, DownloadsState>(
-        // What is on disk and what the machine can run it on. A download
-        // ticking must not redraw the scheme.
-        buildWhen: whenChanged((downloads) => downloads.installed),
-        builder: (context, downloads) => BlocBuilder<PipelineCubit, LivePipelineState>(
-          buildWhen: whenChanged(
-            (pipeline) => (pipeline.running, pipeline.status, pipeline.backendSignature),
-          ),
-          builder: (context, pipeline) => BlocBuilder<CharactersCubit, CharactersState>(
-            buildWhen: whenChanged((characters) => (characters.characters, characters.running)),
-            builder: (context, characters) =>
-                BlocSelector<SourcesBloc, CaptureSources, GameProcess?>(
-                  selector: (sources) => sources.selected,
-                  builder: (context, process) {
-                    final facts = PipelineFacts(
-                      settings: settings.settings,
-                      selection: ModelSelection(
-                        models: downloads.models,
-                        settings: settings.settings,
-                      ),
-                      process: process,
-                      characters: characters.characters,
-                      activeBackends: pipeline.activeBackends,
-                      running: pipeline.running,
-                      paused: pipeline.status == PipelineStatus.paused,
-                      recordingVoice: characters.running,
-                    );
-                    return _build(context, availability: downloads.availability, facts: facts);
-                  },
-                ),
-          ),
-        ),
-      ),
+    child: BlocBuilder<PipelineFactsBloc, PipelineFacts>(
+      builder: (context, facts) => _build(context, availability: facts.availability, facts: facts),
     ),
   );
 

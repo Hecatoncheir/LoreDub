@@ -19,6 +19,7 @@ class PipelineFacts {
     this.running = false,
     this.paused = false,
     this.recordingVoice = false,
+    this.availability = const ComputeAvailability(),
   });
 
   final AppSettings settings;
@@ -39,6 +40,9 @@ class PipelineFacts {
   /// by every screen — so it is not to be changed from here either, idle as
   /// the pipeline itself is.
   final bool recordingVoice;
+
+  /// What this machine can run each stage on.
+  final ComputeAvailability availability;
 
   Character? character(String? id) {
     if (id == null) return null;

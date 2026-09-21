@@ -8,6 +8,9 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/cast_repository.dart';
+import '../../../data/repositories/install_repository.dart';
+import '../../../domain/model_selection.dart';
+import '../../../domain/session_coordinator.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/services/model_catalog.dart';
@@ -17,7 +20,6 @@ import '../../../domain/id_source.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
 import '../../../domain/spoken_language.dart';
-import 'pipeline_cubit.dart';
 import 'shell_cubit.dart';
 
 /// What the canvas was asked to do.
@@ -348,7 +350,8 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     this._appRepository,
     this._settings,
     this._characters,
-    this._pipeline,
+    this._installed,
+    this._sessions,
     this._errors, {
     DateTime Function()? clock,
   }) : _ids = IdSource(clock: clock),
@@ -412,7 +415,10 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   final AppRepository _appRepository;
   final SettingsRepository _settings;
   final CastRepository _characters;
-  final PipelineCubit _pipeline;
+  final InstallRepository _installed;
+
+  /// Where the engine stands, which the route may not be changed under.
+  final SessionCoordinator _sessions;
   final FailureSink _errors;
   final IdSource _ids;
 
@@ -449,7 +455,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   /// Whether the route may be changed at all. A running session holds the
   /// models it started with, so the way in is settled until it stops; whose
   /// voice reads whom is not, and the worker is told of it as it runs.
-  bool get routeLocked => _pipeline.state.running;
+  bool get routeLocked => _sessions.dubbingRuns;
 
   Future<void> _onOpened(PipelineGraphOpened event, Emitter<PipelineGraphState> emit) async {
     if (!state.loading) return;
@@ -739,7 +745,8 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   /// The models screen shows at once which it was, and one step back undoes
   /// it, so the guess costs nothing when it is wrong.
   String? get _languageToTranslateInto {
-    for (final pair in _pipeline.selection.languagePairs) {
+    final selection = ModelSelection(models: _installed.parts.models, settings: _settings.settings);
+    for (final pair in selection.languagePairs) {
       if (pair.language == untranslatedDubbingLanguage) continue;
       if (pair.installed) return pair.language;
     }

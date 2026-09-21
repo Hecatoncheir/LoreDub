@@ -249,7 +249,6 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        super(const LivePipelineState()) {
-    _sessions.dubbing = () => state.running;
     // What is drawn over the game is made of the settings, so it follows
     // them from here rather than being called by whoever wrote one.
     _written = _settings.changes.listen((_) {
@@ -869,6 +868,20 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     // Whatever failed, a selection still waiting will not be answered.
     if (state.snapshotReading) emit(state.copyWith(snapshotReading: false));
     _errors.report(event.failure);
+  }
+
+  /// Every state this screen moves to is told to the coordinator, which
+  /// is where the other screens learn whether the engine is theirs to use
+  /// and the canvas what to draw locked.
+  @override
+  void onChange(Change<LivePipelineState> change) {
+    super.onChange(change);
+    final now = change.nextState;
+    _sessions.reportPipeline(
+      running: now.running,
+      paused: now.status == PipelineStatus.paused,
+      backends: now.activeBackends,
+    );
   }
 
   /// Stages a state a widget test wants to render without starting anything.

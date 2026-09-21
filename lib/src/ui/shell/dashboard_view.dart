@@ -28,6 +28,7 @@ class DashboardView extends StatelessWidget {
       BlocProvider.value(value: cubits.characters),
       BlocProvider.value(value: cubits.glossary),
       BlocProvider.value(value: cubits.graph),
+      BlocProvider.value(value: cubits.facts),
     ],
     child: const DashboardScaffold(),
   );

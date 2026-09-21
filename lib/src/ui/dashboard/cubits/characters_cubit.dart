@@ -841,6 +841,15 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
   }
 
+  /// Whether this screen's session is up is told to the coordinator: the
+  /// game it records through is shared, and the other screens close their
+  /// pickers on it.
+  @override
+  void onChange(Change<CharactersState> change) {
+    super.onChange(change);
+    _sessions.reportCast(running: change.nextState.running);
+  }
+
   /// Stages a state a widget test wants to render without reading a file.
   ///
   /// The cards go to the repository as well: the canvas draws them from

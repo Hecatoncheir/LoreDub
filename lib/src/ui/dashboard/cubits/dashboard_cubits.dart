@@ -18,6 +18,7 @@ import 'characters_cubit.dart';
 import 'downloads_cubit.dart';
 import 'glossary_cubit.dart';
 import 'pipeline_cubit.dart';
+import 'pipeline_facts_bloc.dart';
 import 'pipeline_graph_bloc.dart';
 import 'settings_cubit.dart';
 import 'shell_cubit.dart';
@@ -70,7 +71,8 @@ class DashboardCubits {
       cast,
     );
     glossary = GlossaryCubit(appRepository, shell);
-    graph = PipelineGraphBloc(appRepository, settingsRepository, cast, pipeline, shell);
+    graph = PipelineGraphBloc(appRepository, settingsRepository, cast, installed, sessions, shell);
+    facts = PipelineFactsBloc(settingsRepository, installed, cast, sourcesRepository, sessions);
   }
 
   final AppRepository _appRepository;
@@ -111,6 +113,10 @@ class DashboardCubits {
   /// replayed and undone.
   late final PipelineGraphBloc graph;
 
+  /// What the scheme's nodes write on themselves, from everything it is
+  /// drawn from.
+  late final PipelineFactsBloc facts;
+
   /// What the settings and the installed packages together decided.
   ModelSelection get selection =>
       ModelSelection(models: downloads.state.models, settings: settings.settings);
@@ -144,6 +150,7 @@ class DashboardCubits {
   }
 
   Future<void> dispose() async {
+    await facts.close();
     await graph.close();
     await glossary.close();
     await characters.close();
@@ -152,5 +159,6 @@ class DashboardCubits {
     await downloads.close();
     await settings.close();
     await shell.close();
+    await sessions.dispose();
   }
 }

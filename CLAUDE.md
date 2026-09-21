@@ -69,9 +69,10 @@ than one of them.
    `CharactersCubit` (the player's cast and the session that records a
    voice for a card), plus two Blocs — `PipelineGraphBloc`, the node
    canvas, which is event-driven because a gesture there is a sequence
-   (grab, move, drop) rather than a call, and `SourcesBloc`, the game the
+   (grab, move, drop) rather than a call, `SourcesBloc`, the game the
    player names and the monitors, the first piece taken out of
-   `PipelineCubit` on the way to the Blocs of `TODO.md`, stage 4.
+   `PipelineCubit` on the way to the Blocs of `TODO.md`, stage 4, and
+   `PipelineFactsBloc`, what the scheme's nodes write on themselves.
    No cubit reads another cubit. What more than one screen needs lives in a
    repository that owns it and publishes it: `SettingsRepository`
    (`AppSettings`), `InstallRepository` (what is on disk, what the machine
@@ -88,7 +89,11 @@ than one of them.
    the file once whoever asks first, so nothing depends on being started in
    a particular order. The one rule that is not a value is
    `SessionCoordinator` (`domain/`): one engine, one session, and each
-   screen registers its own half of it.
+   screen registers its own half of it. It also publishes what the engine
+   is doing (`EngineActivity`) the way a repository publishes, each screen
+   reporting its half from `onChange` -- so the canvas knows whether the
+   route is locked, and on what a stage runs, without reading either
+   screen's cubit.
    `DashboardCubits` builds the cubits and runs `initialize()`;
    errors from any of them go to the shell through `FailureSink`. Anything
    derived from settings *and* packages together is `ModelSelection`
@@ -624,9 +629,13 @@ A frame of that canvas is watched, because a drag and a pan are a new state
 sixty times a second: `test/graph_bench.dart` times one over a scheme of
 twenty-four cards (by hand — it has no `_test` suffix). Three things keep it
 down, and all three can be undone by accident. The graph is listened to
-*innermost* in `PipelinePanel`, under everything the scheme is drawn from,
-so `PipelineFacts` and `ModelSelection` are not built afresh for a frame that
-only moved the canvas; the toolbar has a listener of its own with a
+*innermost* in `PipelinePanel`, under the one listener to
+`PipelineFactsBloc`, so `PipelineFacts` and `ModelSelection` are not built
+afresh for a frame that only moved the canvas -- that bloc makes new facts
+only when one of the five things the scheme is drawn from moves (the
+settings, what is installed, the cast, the game named, and
+`SessionCoordinator.activity`), and a download on its way is filtered out
+before it reaches it; the toolbar has a listener of its own with a
 `buildWhen`, so it is not built again for a drag. And the canvas keeps what
 it drew: `NodeLayerCache` (`node_layer_cache.dart`) hands back each node's
 `NodeLayer` -- its card and sockets -- as the same widget while its
