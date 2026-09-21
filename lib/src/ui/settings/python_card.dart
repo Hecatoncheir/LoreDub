@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/runtime_paths.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import 'python_actions.dart';
 import 'python_search_button.dart';
 
@@ -32,7 +32,7 @@ class _PythonCardState extends State<PythonCard> with AutomaticKeepAliveClientMi
   @override
   void initState() {
     super.initState();
-    final chosen = context.read<SettingsCubit>().settings.pythonExecutable;
+    final chosen = context.read<SettingsBloc>().settings.pythonExecutable;
     _path = TextEditingController(text: chosen.isEmpty ? bundledPythonExecutablePath() : chosen);
   }
 
@@ -42,16 +42,15 @@ class _PythonCardState extends State<PythonCard> with AutomaticKeepAliveClientMi
     super.dispose();
   }
 
-  Future<void> _find() async {
-    final executable = await context.read<SettingsCubit>().findPythonExecutable();
-    if (executable == null || !mounted) return;
-    _path.text = executable;
-  }
+  /// What the search finds is written to the settings; the field picks it
+  /// up from there (the listener in [build]), as it would a path written by
+  /// anything else.
+  void _find() => context.read<SettingsBloc>().add(const PythonSearched());
 
   void _save() {
     if (!(_form.currentState?.validate() ?? false)) return;
-    final settings = context.read<SettingsCubit>();
-    settings.update(settings.settings.copyWith(pythonExecutable: _path.text.trim()));
+    final settings = context.read<SettingsBloc>();
+    settings.add(SettingsChanged(settings.settings.copyWith(pythonExecutable: _path.text.trim())));
   }
 
   void _useBundled() {
@@ -63,47 +62,54 @@ class _PythonCardState extends State<PythonCard> with AutomaticKeepAliveClientMi
   Widget build(BuildContext context) {
     super.build(context);
     final l10n = AppLocalizations.of(context);
-    return SettingCard(
-      title: l10n.settingsPython,
-      subtitle: l10n.pythonNote,
-      child: Form(
-        key: _form,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextFormField(
-              controller: _path,
-              keyboardType: TextInputType.url,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                labelText: l10n.pythonFieldLabel,
-                helperText: l10n.pythonFieldHelper,
-                prefixIcon: const Icon(Icons.terminal_rounded),
+    return BlocListener<SettingsBloc, SettingsState>(
+      listenWhen: (was, now) =>
+          was.settings.pythonExecutable != now.settings.pythonExecutable &&
+          now.settings.pythonExecutable.isNotEmpty,
+      listener: (context, state) => _path.text = state.settings.pythonExecutable,
+      child: SettingCard(
+        title: l10n.settingsPython,
+        subtitle: l10n.pythonNote,
+        child: Form(
+          key: _form,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _path,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: l10n.pythonFieldLabel,
+                  helperText: l10n.pythonFieldHelper,
+                  prefixIcon: const Icon(Icons.terminal_rounded),
+                ),
+                validator: (value) =>
+                    (value ?? '').trim().isEmpty ? l10n.pythonFieldRequired : null,
+                onFieldSubmitted: (_) => _save(),
               ),
-              validator: (value) => (value ?? '').trim().isEmpty ? l10n.pythonFieldRequired : null,
-              onFieldSubmitted: (_) => _save(),
-            ),
-            const SizedBox(height: 12),
-            // Side by side where the card is wide enough for all three, and
-            // one under another at a shared width where it is not: wrapped at
-            // their own widths they came out ragged, each button a different
-            // length down the right edge.
-            PythonActions(
-              children: [
-                PythonSearchButton(onSearch: _find),
-                OutlinedButton.icon(
-                  onPressed: _useBundled,
-                  icon: const Icon(Icons.settings_backup_restore_rounded),
-                  label: Text(l10n.pythonBundled),
-                ),
-                FilledButton.icon(
-                  onPressed: _save,
-                  icon: const Icon(Icons.save_outlined),
-                  label: Text(l10n.save),
-                ),
-              ],
-            ),
-          ],
+              const SizedBox(height: 12),
+              // Side by side where the card is wide enough for all three, and
+              // one under another at a shared width where it is not: wrapped at
+              // their own widths they came out ragged, each button a different
+              // length down the right edge.
+              PythonActions(
+                children: [
+                  PythonSearchButton(onSearch: _find),
+                  OutlinedButton.icon(
+                    onPressed: _useBundled,
+                    icon: const Icon(Icons.settings_backup_restore_rounded),
+                    label: Text(l10n.pythonBundled),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _save,
+                    icon: const Icon(Icons.save_outlined),
+                    label: Text(l10n.save),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

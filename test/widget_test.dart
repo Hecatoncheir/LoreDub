@@ -59,7 +59,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/settings_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -75,6 +75,8 @@ import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 
 import 'support/memory_cast.dart';
 
+import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
+
 void main() {
   // What `captureAny` stands in with before anything is captured.
   setUpAll(registerEventFallbacks);
@@ -85,6 +87,7 @@ void main() {
     CastBloc? cast,
     VoiceCaptureBloc? capture,
     DownloadsBloc? downloads,
+    VoiceBankRepository? voiceBank,
   }) {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
@@ -101,6 +104,7 @@ void main() {
       castBloc: cast,
       captureBloc: capture,
       downloadsBloc: downloads,
+      voiceBank: voiceBank,
     );
     addTearDown(cubits.dispose);
     return cubits;
@@ -133,7 +137,7 @@ void main() {
         updates: updates,
       ),
     );
-    if (settings != null) cubits.settings.seed(SettingsState(settings: settings));
+    if (settings != null) cubits.settingsRepository.seed(settings);
     // What is on disk, which every screen reads; a row with a download
     // under way is staged over a mock instead (`downloadsShowing`).
     if (models != null || runtimes != null || availability != null) {
@@ -249,7 +253,7 @@ void main() {
     final context = tester.element(find.byType(DashboardScaffold));
 
     expect(context.read<ShellCubit>(), isNotNull);
-    expect(context.read<SettingsCubit>(), isNotNull);
+    expect(context.read<SettingsBloc>(), isNotNull);
     expect(context.read<DownloadsBloc>(), isNotNull);
     expect(context.read<SourcesBloc>(), isNotNull);
     expect(context.read<SessionBloc>(), isNotNull);
@@ -1496,7 +1500,8 @@ void main() {
     expect(cubits.settings.settings.targetLanguage, 'ru');
     expect(cubits.selection.requiredModelsInstalled, isTrue);
 
-    await cubits.settings.selectTargetLanguage('de');
+    cubits.settings.add(const TargetLanguageChosen('de'));
+    await tester.pump();
 
     expect(
       cubits.selection.requiredModelsInstalled,
@@ -2450,12 +2455,15 @@ void main() {
       WidgetTester tester, {
       AppSettings settings = const AppSettings(),
       List<ModelInstallState>? models,
+      VoiceBankRepository? voiceBank,
     }) async {
       final cubits = stage(
-        buildCubits(),
+        buildCubits(voiceBank: voiceBank),
         settings: settings,
         models: models ?? catalogue(),
       );
+      // Counts the kept voices, as opening the application does.
+      cubits.settings.add(const SettingsOpened());
       await pumpDashboard(tester, cubits, const Size(1280, 1000));
       await tester.scrollUntilVisible(
         find.text('Голос озвучки'),
@@ -2641,14 +2649,12 @@ void main() {
     });
 
     testWidgets('asks before clearing the kept voices', (tester) async {
-      final cubits = await pumpSettings(tester, settings: const AppSettings(originalVoice: true));
-      cubits.settings.seed(
-        const SettingsState(
-          settings: AppSettings(originalVoice: true, voiceBank: true),
-          voiceBankSize: 3,
-        ),
+      final bank = MemoryVoiceBank(3);
+      final cubits = await pumpSettings(
+        tester,
+        settings: const AppSettings(originalVoice: true, voiceBank: true),
+        voiceBank: bank,
       );
-      await tester.pumpAndSettle();
 
       expect(find.text('Сохранено 3 голоса'), findsOneWidget);
       await tester.tap(clearButton());
@@ -2660,6 +2666,17 @@ void main() {
 
       expect(find.text('Очистить банк голосов?'), findsNothing);
       expect(cubits.settings.state.voiceBankSize, 3, reason: 'a cancel keeps every voice');
+      expect(bank.cleared, isFalse);
+
+      await tester.tap(clearButton());
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(of: find.byType(AlertDialog), matching: find.text('Очистить')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(bank.cleared, isTrue);
+      expect(cubits.settings.state.voiceBankSize, 0, reason: 'counted again once cleared');
     });
 
     testWidgets('leaves OpenVoice out of the devices without the original voice', (tester) async {

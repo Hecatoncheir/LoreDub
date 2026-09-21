@@ -8,7 +8,7 @@ import '../../domain/character.dart';
 import '../../domain/glossary.dart';
 import '../../domain/pipeline_state.dart';
 import '../dashboard/cubits/glossary_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import 'empty_transcript.dart';
 import 'transcript_bubble.dart';
 import '../dashboard/cubits/transcript_bloc.dart';
@@ -36,7 +36,7 @@ class TranscriptLines extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
-      return BlocBuilder<SettingsCubit, SettingsState>(
+      return BlocBuilder<SettingsBloc, SettingsState>(
         builder: (context, settings) => EmptyTranscript(
           targetLanguage: settings.settings.targetLanguage,
           fromScreen: fromScreen,

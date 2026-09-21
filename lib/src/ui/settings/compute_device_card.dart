@@ -12,7 +12,7 @@ import '../common/setting_card.dart';
 import '../compute_names.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/dashboard_context.dart';
 import 'compute_preset_detail.dart';
 import 'compute_runtimes_section.dart';
@@ -34,14 +34,14 @@ class ComputeDeviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<DownloadsBloc, DownloadsState>(
-    builder: (context, downloads) => BlocBuilder<SettingsCubit, SettingsState>(
+    builder: (context, downloads) => BlocBuilder<SettingsBloc, SettingsState>(
       builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
         buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.backendSignature)),
         builder: (context, pipeline) {
           final l10n = AppLocalizations.of(context);
           final settings = state.settings;
           final running = pipeline.running;
-          final settingsCubit = context.read<SettingsCubit>();
+          final settingsCubit = context.read<SettingsBloc>();
           return SettingCard(
             title: l10n.settingsComputeDevice,
             subtitle: l10n.computeDeviceNote,
@@ -56,7 +56,7 @@ class ComputeDeviceCard extends StatelessWidget {
                   selected: {settings.computeDevice},
                   onSelectionChanged: running
                       ? null
-                      : (picked) => settingsCubit.selectComputeDevice(picked.first),
+                      : (picked) => settingsCubit.add(ComputeDeviceChosen(picked.first)),
                 ),
                 ComputePresetDetail(
                   settings: settings,
@@ -74,7 +74,9 @@ class ComputeDeviceCard extends StatelessWidget {
                   label: l10n.roughRecognition,
                   onChanged: running
                       ? null
-                      : (value) => settingsCubit.update(settings.copyWith(roughRecognition: value)),
+                      : (value) => settingsCubit.add(
+                          SettingsChanged(settings.copyWith(roughRecognition: value)),
+                        ),
                 ),
                 const SizedBox(height: 4),
                 Text(

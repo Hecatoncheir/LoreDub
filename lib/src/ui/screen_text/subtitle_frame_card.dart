@@ -10,7 +10,7 @@ import '../../domain/monitor_layout.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/dashboard_context.dart';
 import '../../domain/screen_reading.dart';
 import '../common/module_label.dart';
@@ -29,7 +29,7 @@ class SubtitleFrameCard extends StatelessWidget {
   const SubtitleFrameCard({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+  Widget build(BuildContext context) => BlocBuilder<SettingsBloc, SettingsState>(
     builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged((pipeline) => pipeline.running),
       builder: (context, pipeline) => BlocSelector<SourcesBloc, CaptureSources, MonitorLayout?>(
@@ -64,8 +64,9 @@ class SubtitleFrameCard extends StatelessWidget {
               monitors: settings.readsWholeScreen ? monitors : null,
               onChanged: running
                   ? null
-                  : (region) =>
-                        context.read<SettingsCubit>().update(settings.copyWith(ocrRegion: region)),
+                  : (region) => context.read<SettingsBloc>().add(
+                      SettingsChanged(settings.copyWith(ocrRegion: region)),
+                    ),
             ),
             const SizedBox(height: 14),
             Wrap(
@@ -85,8 +86,10 @@ class SubtitleFrameCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: running || settings.ocrRegion == OcrRegion.standard
                       ? null
-                      : () => context.read<SettingsCubit>().update(
-                          settings.copyWith(ocrRegion: OcrRegion.standard),
+                      : () => context.read<SettingsBloc>().add(
+                          SettingsChanged(
+                            settings.copyWith(ocrRegion: OcrRegion.standard),
+                          ),
                         ),
                   icon: const Icon(Icons.restart_alt_rounded),
                   label: Text(l10n.ocrRegionReset),
@@ -101,8 +104,10 @@ class SubtitleFrameCard extends StatelessWidget {
                 Switch(
                   key: const ValueKey('showFrameOverlay'),
                   value: settings.showFrameOverlay,
-                  onChanged: (value) => context.read<SettingsCubit>().update(
-                    settings.copyWith(showFrameOverlay: value),
+                  onChanged: (value) => context.read<SettingsBloc>().add(
+                    SettingsChanged(
+                      settings.copyWith(showFrameOverlay: value),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),

@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../common/module_label.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import 'compute_device_card.dart';
 import 'hotkeys_card.dart';
 import 'interface_language_card.dart';
@@ -35,7 +35,7 @@ class SettingsPanel extends StatelessWidget {
   const SettingsPanel({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+  Widget build(BuildContext context) => BlocBuilder<SettingsBloc, SettingsState>(
     builder: (context, state) => BlocSelector<SessionBloc, SessionState, bool>(
       selector: (pipeline) => pipeline.running,
       builder: (context, running) {

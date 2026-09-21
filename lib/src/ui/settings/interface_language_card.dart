@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/spoken_language.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../language_names.dart';
 
 /// The language LoreDub speaks to the player in. Where the original comes
@@ -33,8 +33,10 @@ class InterfaceLanguageCard extends StatelessWidget {
               ButtonSegment(value: language, label: Text(interfaceLanguageName(language))),
           ],
           selected: {settings.interfaceLanguage},
-          onSelectionChanged: (selection) => context.read<SettingsCubit>().update(
-            settings.copyWith(interfaceLanguage: selection.first),
+          onSelectionChanged: (selection) => context.read<SettingsBloc>().add(
+            SettingsChanged(
+              settings.copyWith(interfaceLanguage: selection.first),
+            ),
           ),
         ),
       ),

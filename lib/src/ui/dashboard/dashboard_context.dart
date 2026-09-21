@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/model_selection.dart';
 import 'cubits/downloads_bloc.dart';
-import 'cubits/settings_cubit.dart';
+import 'cubits/settings_bloc.dart';
 import '../shell/dashboard_providers.dart';
 
 /// What the dashboard's widgets read off the cubits [DashboardProviders] provides
@@ -16,7 +16,7 @@ extension DashboardContext on BuildContext {
   /// without subscribing: whoever draws it listens to both for itself.
   ModelSelection get selection => ModelSelection(
     models: read<DownloadsBloc>().state.models,
-    settings: read<SettingsCubit>().settings,
+    settings: read<SettingsBloc>().settings,
   );
 }
 

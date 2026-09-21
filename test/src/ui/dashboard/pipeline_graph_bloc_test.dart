@@ -96,7 +96,7 @@ void main() {
     );
     graph = cubits.graph;
     repository.stored = const CharacterLibrary(characters: [guard, smith]);
-    await cubits.settings.load();
+    await cubits.settingsRepository.load();
     await cubits.cast.load();
     graph.add(const PipelineGraphOpened());
     graph.add(const PipelineCharacterPlaced('guard'));

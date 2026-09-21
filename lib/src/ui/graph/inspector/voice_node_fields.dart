@@ -8,7 +8,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/compute_device.dart';
 import '../../compute_names.dart';
-import '../../dashboard/cubits/settings_cubit.dart';
+import '../../dashboard/cubits/settings_bloc.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_choices.dart';
 import 'inspector_field.dart';
@@ -25,7 +25,7 @@ class VoiceNodeFields extends StatelessWidget {
   final ComputeAvailability availability;
 
   void _update(BuildContext context, AppSettings value) =>
-      context.read<SettingsCubit>().update(value);
+      context.read<SettingsBloc>().add(SettingsChanged(value));
 
   @override
   Widget build(BuildContext context) {

@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/app_settings.dart';
-import '../../dashboard/cubits/settings_cubit.dart';
+import '../../dashboard/cubits/settings_bloc.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_field.dart';
 import 'inspector_note.dart';
@@ -20,7 +20,7 @@ class OutputNodeFields extends StatelessWidget {
   final PipelineFacts facts;
 
   void _update(BuildContext context, AppSettings value) =>
-      context.read<SettingsCubit>().update(value);
+      context.read<SettingsBloc>().add(SettingsChanged(value));
 
   @override
   Widget build(BuildContext context) {

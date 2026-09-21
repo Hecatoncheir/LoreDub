@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../common/labeled_switch.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 
 /// Whether lines of different speakers may play over one another, with what
 /// that means written under it.
@@ -28,8 +28,9 @@ class OverlapVoicesControls extends StatelessWidget {
           label: l10n.voiceOverlap,
           onChanged: running
               ? null
-              : (value) =>
-                    context.read<SettingsCubit>().update(settings.copyWith(overlapVoices: value)),
+              : (value) => context.read<SettingsBloc>().add(
+                  SettingsChanged(settings.copyWith(overlapVoices: value)),
+                ),
         ),
         const SizedBox(height: 4),
         Text(

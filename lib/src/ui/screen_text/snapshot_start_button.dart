@@ -11,7 +11,7 @@ import '../../../l10n/app_localizations.dart';
 import '../failure_messages.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import '../../domain/capture_sources.dart';
@@ -44,7 +44,7 @@ class SnapshotStartButton extends StatelessWidget {
     builder: (context, pipeline) => BlocBuilder<ShellCubit, ShellState>(
       builder: (context, shell) => BlocBuilder<DownloadsBloc, DownloadsState>(
         buildWhen: whenChanged((downloads) => downloads.installed),
-        builder: (context, _) => BlocBuilder<SettingsCubit, SettingsState>(
+        builder: (context, _) => BlocBuilder<SettingsBloc, SettingsState>(
           // The game named opens the button for the frame, which reads
           // that game's window.
           builder: (context, _) => BlocSelector<SourcesBloc, CaptureSources, GameProcess?>(

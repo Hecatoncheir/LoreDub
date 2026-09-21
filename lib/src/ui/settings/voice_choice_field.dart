@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/model_selection.dart';
 import '../compute_names.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 
 /// The voice picked by hand out of those the language's package ships.
 ///
@@ -20,7 +20,7 @@ class VoiceChoiceField extends StatelessWidget {
 
   void _choose(BuildContext context, String? voice) {
     if (voice == null) return;
-    context.read<SettingsCubit>().update(selection.settings.copyWith(voice: voice));
+    context.read<SettingsBloc>().add(SettingsChanged(selection.settings.copyWith(voice: voice)));
   }
 
   @override

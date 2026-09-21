@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/app_settings.dart';
 import '../../../l10n/app_localizations.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/dashboard_context.dart';
 import 'language_controls.dart';
 import 'target_language_picker.dart';
@@ -22,7 +22,7 @@ class SourceControls extends StatelessWidget {
   final bool compact;
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+  Widget build(BuildContext context) => BlocBuilder<SettingsBloc, SettingsState>(
     builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged(
         (pipeline) => pipeline.running,
@@ -69,8 +69,10 @@ class SourceControls extends StatelessWidget {
       selected: {settings.audioCaptureSource},
       onSelectionChanged: running
           ? null
-          : (selection) => context.read<SettingsCubit>().update(
-              settings.copyWith(audioCaptureSource: selection.first),
+          : (selection) => context.read<SettingsBloc>().add(
+              SettingsChanged(
+                settings.copyWith(audioCaptureSource: selection.first),
+              ),
             ),
     );
     // The picker carries its own refresh button, so it travels whole into

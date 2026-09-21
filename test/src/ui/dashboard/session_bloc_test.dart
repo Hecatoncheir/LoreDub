@@ -33,7 +33,6 @@ import 'package:lore_dub/src/domain/pipeline_state.dart';
 import '../../../support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
@@ -103,8 +102,8 @@ void main() {
     );
     // The whole default output needs no process, and every package is in
     // place, so a press is all a start takes.
-    cubits.settings.seed(
-      const SettingsState(settings: AppSettings(audioCaptureSource: AudioCaptureSource.system)),
+    cubits.settingsRepository.seed(
+      const AppSettings(audioCaptureSource: AudioCaptureSource.system),
     );
     cubits.stageInstalled(
       models: [
@@ -330,13 +329,13 @@ void main() {
         ),
       );
 
-      await cubits.settings.update(const AppSettings(voice: 'male_0'));
+      await cubits.settingsRepository.save(const AppSettings(voice: 'male_0'));
 
       expect(repository.voicesTold, ['male_0']);
     });
 
     test('is not sent twice, and not at all while nothing runs', () async {
-      await cubits.settings.update(const AppSettings(voice: 'male_1'));
+      await cubits.settingsRepository.save(const AppSettings(voice: 'male_1'));
       expect(repository.voicesTold, isEmpty, reason: 'the next start will carry it');
 
       pipeline.seed(
@@ -345,8 +344,8 @@ void main() {
           session: PipelineSession.live,
         ),
       );
-      await cubits.settings.update(const AppSettings(voice: 'male_1'));
-      await cubits.settings.update(const AppSettings(voice: 'male_1'));
+      await cubits.settingsRepository.save(const AppSettings(voice: 'male_1'));
+      await cubits.settingsRepository.save(const AppSettings(voice: 'male_1'));
 
       expect(repository.voicesTold, ['male_1']);
     });
@@ -365,7 +364,7 @@ void main() {
         reason: 'nothing was asked for yet',
       );
 
-      await cubits.settings.update(
+      await cubits.settingsRepository.save(
         const AppSettings(showFrameOverlay: true, ocrRegion: OcrRegion(top: 0.8)),
       );
 
@@ -379,7 +378,7 @@ void main() {
     });
 
     test('is drawn over the whole screen where that is what is read', () async {
-      await cubits.settings.update(
+      await cubits.settingsRepository.save(
         const AppSettings(showFrameOverlay: true, screenSource: ScreenSource.wholeScreen),
       );
 
@@ -389,9 +388,9 @@ void main() {
     test('is taken off with the switch, and its key with it', () async {
       const game = GameProcess(pid: 7, name: 'game.exe', path: 'game.exe');
       cubits.sourcesRepository.select(game);
-      await cubits.settings.update(const AppSettings(showFrameOverlay: true));
+      await cubits.settingsRepository.save(const AppSettings(showFrameOverlay: true));
 
-      await cubits.settings.update(const AppSettings());
+      await cubits.settingsRepository.save(const AppSettings());
 
       expect(repository.framesDrawn.last, isNull);
       expect(repository.idleKeys.last, isNull);
@@ -458,7 +457,7 @@ void main() {
     test('follows the voices behind the subtitles when it is asked to', () async {
       const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
       cubits.sourcesRepository.select(game);
-      await cubits.settings.update(const AppSettings(screenVoices: true));
+      await cubits.settingsRepository.save(const AppSettings(screenVoices: true));
 
       pipeline.add(const ScreenToggled(initializing: false, reading: ScreenReading.subtitles));
       await pumpEventQueue();

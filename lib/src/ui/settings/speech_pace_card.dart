@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../common/labeled_switch.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 
 /// How fast a line is read, and whether the voice hurries while lines queue
 /// up for it.
@@ -19,7 +19,7 @@ class SpeechPaceCard extends StatelessWidget {
   final bool running;
 
   void _update(BuildContext context, AppSettings value) =>
-      context.read<SettingsCubit>().update(value);
+      context.read<SettingsBloc>().add(SettingsChanged(value));
 
   @override
   Widget build(BuildContext context) {

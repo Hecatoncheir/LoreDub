@@ -64,8 +64,12 @@ than one of them.
    `common/` for what every screen uses; one public widget per file and no
    private ones. `dashboard/` still holds the cubits and the files not yet
    taken apart (`TODO.md`, stage 2). State lives in `dashboard/cubits/`:
-   two cubits -- `ShellCubit` (section, first load, the failure banner,
-   the update check) and `SettingsCubit` -- and the Blocs. `DownloadsBloc`
+   one cubit -- `ShellCubit` (section, first load, the failure banner,
+   the update check) -- and the Blocs. `SettingsBloc` writes the settings
+   through `SettingsRepository` and follows them back; what is made of the
+   settings as they stand -- a language, a device, a pinned stage -- is an
+   event of its own, built when answered from the repository rather than
+   from a copy a widget held. `DownloadsBloc`
    is the models and the GPU runtimes with what is arriving laid over what
    is on disk: every download is a handler of its own, running side by
    side, and emits its ticks from inside itself; a pause or a cancel is an
@@ -1271,7 +1275,13 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   with rows that have nothing arriving; a row with a download under way is
   a mock's (`downloadsShowing`), and `rebuild_scope_test.dart` sends a
   download's ticks down the mock's stream. `registerEventFallbacks` is what
-  `any` stands in with. `widget_test.dart`'s `buildCubits` keeps the cast in memory
+  `any` stands in with. A bloc waits for its running handlers as it
+  closes, so whatever a handler may read from disk is in memory in
+  `StagedDashboard` -- the voice bank (`MemoryVoiceBank`), counted as a
+  session comes to rest -- and no widget test drives a real one. Nor
+  `droppable()`: cancelling its subscription as the bloc closes never
+  completes in a widget test's zone either, and the settings screen hung
+  every test that pumped it until it went. `widget_test.dart`'s `buildCubits` keeps the cast in memory
   (`MemoryCharacters`) for the same reason, since the canvas's and the
   inspector's tests drive the real `CastBloc`. The screens not yet taken
   this way still seed real cubits (`TODO.md`, stage 4).

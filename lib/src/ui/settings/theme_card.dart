@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 
 /// Which of the two the window is drawn in, beside the language it speaks
 /// and the size it is drawn at: the third thing a player sets for their own
@@ -48,8 +48,10 @@ class ThemeCard extends StatelessWidget {
               ),
           ],
           selected: {settings.interfaceTheme},
-          onSelectionChanged: (selection) => context.read<SettingsCubit>().update(
-            settings.copyWith(interfaceTheme: selection.first),
+          onSelectionChanged: (selection) => context.read<SettingsBloc>().add(
+            SettingsChanged(
+              settings.copyWith(interfaceTheme: selection.first),
+            ),
           ),
         ),
       ),

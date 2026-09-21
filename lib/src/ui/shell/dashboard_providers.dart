@@ -10,7 +10,7 @@ import '../dashboard/cubits/glossary_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/pipeline_facts_bloc.dart';
 import '../dashboard/cubits/pipeline_graph_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/cubits/sources_bloc.dart';
 import '../dashboard/cubits/transcript_bloc.dart';
@@ -50,13 +50,13 @@ class DashboardProviders extends StatelessWidget {
       ),
       BlocProvider(
         lazy: false,
-        create: (context) => SettingsCubit(
+        create: (context) => SettingsBloc(
           context.read(),
           context.read(),
           context.read<ShellCubit>(),
           context.read(),
           context.read(),
-        )..load(),
+        )..add(const SettingsOpened()),
       ),
       BlocProvider(
         lazy: false,

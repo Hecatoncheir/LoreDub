@@ -11,7 +11,7 @@ import '../services/settings_service.dart';
 /// Everything in the application reads these: the pipeline for what to
 /// dub and how far to turn the game down, the shell for the language a
 /// toast is worded in and the proxy an update check goes through, the
-/// canvas for what it draws. They used to be read off `SettingsCubit`,
+/// canvas for what it draws. They used to be read off `SettingsBloc`,
 /// which meant every part that needed them had to be handed that cubit or
 /// a closure over it, and every part that had to follow a change had to be
 /// wired to it by whatever built them both.
@@ -99,7 +99,7 @@ class SettingsRepository {
 
   /// Publishes [value] as though it had been read, without writing it.
   ///
-  /// What `SettingsCubit.seed` stages through, so a test arranging the
+  /// What `SettingsBloc.seed` stages through, so a test arranging the
   /// settings a screen is drawn from arranges them where everything reads
   /// them rather than in one cubit's own state. Staged settings count as
   /// read: nothing goes to the disk afterwards and puts them back.

@@ -25,7 +25,7 @@ import 'data/repositories/install_repository.dart';
 import 'data/repositories/sources_repository.dart';
 import 'domain/session_coordinator.dart';
 import 'ui/common/file_dialogs.dart';
-import 'ui/dashboard/cubits/settings_cubit.dart';
+import 'ui/dashboard/cubits/settings_bloc.dart';
 import 'ui/shell/dashboard_providers.dart';
 import 'ui/shell/dashboard_scaffold.dart';
 import 'ui/graph/node_faces.dart';
@@ -115,7 +115,7 @@ class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
     // Above the application rather than under it, so a dialog pushed on the
     // navigator reads the same screens the page it came from does.
     child: DashboardProviders(
-      child: BlocBuilder<SettingsCubit, SettingsState>(
+      child: BlocBuilder<SettingsBloc, SettingsState>(
         // Only the settings are watched here, so switching the interface
         // language takes effect without a restart and nothing else rebuilds the
         // application above the dashboard.

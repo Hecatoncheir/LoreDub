@@ -10,7 +10,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/runtime_paths.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 
 /// What the preset leaves to say: the card a GPU run would use, or --
 /// everything being on the processor -- how much of it to use. Automatic
@@ -30,7 +30,7 @@ class ComputePresetDetail extends StatelessWidget {
 
   void _chooseThreads(BuildContext context, int? threads) {
     if (threads == null) return;
-    context.read<SettingsCubit>().update(settings.copyWith(cpuThreads: threads));
+    context.read<SettingsBloc>().add(SettingsChanged(settings.copyWith(cpuThreads: threads)));
   }
 
   @override

@@ -9,7 +9,7 @@ import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
 import '../language_names.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/language_row.dart';
 
@@ -19,7 +19,7 @@ class LanguageControls extends StatelessWidget {
   const LanguageControls({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+  Widget build(BuildContext context) => BlocBuilder<SettingsBloc, SettingsState>(
     builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.detectedLanguage)),
       builder: (context, pipeline) => _build(context, state.settings, pipeline),
@@ -48,7 +48,9 @@ class LanguageControls extends StatelessWidget {
             ? null
             : (value) {
                 if (value != null) {
-                  context.read<SettingsCubit>().update(settings.copyWith(sourceLanguage: value));
+                  context.read<SettingsBloc>().add(
+                    SettingsChanged(settings.copyWith(sourceLanguage: value)),
+                  );
                 }
               },
       ),
@@ -59,8 +61,10 @@ class LanguageControls extends StatelessWidget {
             value: settings.detectSourceLanguage,
             onChanged: locked
                 ? null
-                : (value) => context.read<SettingsCubit>().update(
-                    settings.copyWith(detectSourceLanguage: value),
+                : (value) => context.read<SettingsBloc>().add(
+                    SettingsChanged(
+                      settings.copyWith(detectSourceLanguage: value),
+                    ),
                   ),
           ),
           const SizedBox(width: 6),

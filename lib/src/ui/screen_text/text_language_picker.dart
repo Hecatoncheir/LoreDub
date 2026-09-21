@@ -9,7 +9,7 @@ import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
 import '../language_names.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/language_row.dart';
 
@@ -20,7 +20,7 @@ class TextLanguagePicker extends StatelessWidget {
   const TextLanguagePicker({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+  Widget build(BuildContext context) => BlocBuilder<SettingsBloc, SettingsState>(
     builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged((pipeline) => pipeline.running),
       builder: (context, pipeline) => _build(context, state.settings, locked: pipeline.running),
@@ -47,7 +47,9 @@ class TextLanguagePicker extends StatelessWidget {
             ? null
             : (value) {
                 if (value != null) {
-                  context.read<SettingsCubit>().update(settings.copyWith(screenLanguage: value));
+                  context.read<SettingsBloc>().add(
+                    SettingsChanged(settings.copyWith(screenLanguage: value)),
+                  );
                 }
               },
       ),

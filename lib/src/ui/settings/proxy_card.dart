@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/model_proxy.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import 'settings_layout.dart';
 
 /// The proxy the downloads go through. It is written down only once it
@@ -31,7 +31,7 @@ class _ProxyCardState extends State<ProxyCard> with AutomaticKeepAliveClientMixi
   @override
   void initState() {
     super.initState();
-    _address = TextEditingController(text: context.read<SettingsCubit>().settings.modelProxyUrl);
+    _address = TextEditingController(text: context.read<SettingsBloc>().settings.modelProxyUrl);
   }
 
   @override
@@ -51,8 +51,8 @@ class _ProxyCardState extends State<ProxyCard> with AutomaticKeepAliveClientMixi
 
   void _save() {
     if (!(_form.currentState?.validate() ?? false)) return;
-    final settings = context.read<SettingsCubit>();
-    settings.update(settings.settings.copyWith(modelProxyUrl: _address.text.trim()));
+    final settings = context.read<SettingsBloc>();
+    settings.add(SettingsChanged(settings.settings.copyWith(modelProxyUrl: _address.text.trim())));
   }
 
   @override

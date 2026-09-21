@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../dashboard/cubits/downloads_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/dashboard_context.dart';
 import 'language_pairs_section.dart';
 import 'recognition_models_section.dart';
@@ -23,7 +23,7 @@ class ModelsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocBuilder<DownloadsBloc, DownloadsState>(
-    builder: (context, downloads) => BlocBuilder<SettingsCubit, SettingsState>(
+    builder: (context, downloads) => BlocBuilder<SettingsBloc, SettingsState>(
       builder: (context, _) => BlocSelector<SessionBloc, SessionState, bool>(
         selector: (pipeline) => pipeline.running,
         builder: (context, running) => ListView(

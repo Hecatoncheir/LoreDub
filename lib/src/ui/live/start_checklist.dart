@@ -8,7 +8,7 @@ import '../../domain/start_requirements.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import 'start_step_row.dart';
@@ -30,7 +30,7 @@ class StartChecklist extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocBuilder<DownloadsBloc, DownloadsState>(
     buildWhen: whenChanged((downloads) => downloads.installed),
-    builder: (context, _) => BlocBuilder<SettingsCubit, SettingsState>(
+    builder: (context, _) => BlocBuilder<SettingsBloc, SettingsState>(
       builder: (context, _) => BlocSelector<SourcesBloc, CaptureSources, bool>(
         selector: (sources) => sources.selected != null,
         builder: (context, gameChosen) =>

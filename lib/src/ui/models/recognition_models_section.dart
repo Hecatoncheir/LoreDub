@@ -10,7 +10,7 @@ import '../../domain/model_selection.dart';
 import '../common/module_label.dart';
 import '../common/section_note.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import 'whisper_model_chart.dart';
 import 'recognition_model_cards.dart';
 
@@ -34,10 +34,10 @@ class RecognitionModelsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<DownloadsBloc>();
-    final settings = context.read<SettingsCubit>();
+    final settings = context.read<SettingsBloc>();
     final onSelect = running
         ? null
-        : (ModelInstallState state) => settings.selectRecognitionModel(state.model.id);
+        : (ModelInstallState state) => settings.add(RecognitionModelChosen(state.model.id));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

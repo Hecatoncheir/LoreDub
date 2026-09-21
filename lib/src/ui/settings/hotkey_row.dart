@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import 'hotkey_field.dart';
 import '../hotkey_names.dart';
 
@@ -28,7 +28,7 @@ class HotkeyRow extends StatelessWidget {
   final bool enabled;
 
   String? _problem(BuildContext context, AppLocalizations l10n, Hotkey hotkey) {
-    final current = context.read<SettingsCubit>().settings;
+    final current = context.read<SettingsBloc>().settings;
     final problem = bindingProblem(hotkey, {
       for (final other in HotkeyAction.values)
         if (other != action) other: current.hotkeyFor(other),
@@ -59,8 +59,8 @@ class HotkeyRow extends StatelessWidget {
             enabled: enabled,
             validate: (hotkey) => _problem(context, l10n, hotkey),
             onChanged: (hotkey) {
-              final settings = context.read<SettingsCubit>();
-              settings.update(settings.settings.withHotkey(action, hotkey));
+              final settings = context.read<SettingsBloc>();
+              settings.add(SettingsChanged(settings.settings.withHotkey(action, hotkey)));
             },
           ),
         ),

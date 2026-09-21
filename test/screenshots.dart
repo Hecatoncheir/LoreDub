@@ -53,7 +53,6 @@ import 'support/staged_dashboard.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/graph/node_faces.dart';
@@ -353,17 +352,15 @@ void main() {
         updates: const UpdateState(currentVersion: '0.15.0'),
       ),
     );
-    cubits.settings.seed(
-      SettingsState(
-        settings: settings.copyWith(
-          interfaceLanguage: language,
-          whisperModel: 'whisper-small',
-          targetLanguage: 'ru',
-          sourceLanguage: 'en',
-          detectSourceLanguage: false,
-          originalVoice: true,
-          voiceBank: true,
-        ),
+    cubits.settingsRepository.seed(
+      settings.copyWith(
+        interfaceLanguage: language,
+        whisperModel: 'whisper-small',
+        targetLanguage: 'ru',
+        sourceLanguage: 'en',
+        detectSourceLanguage: false,
+        originalVoice: true,
+        voiceBank: true,
       ),
     );
     cubits.stageInstalled(models: catalogue(language));

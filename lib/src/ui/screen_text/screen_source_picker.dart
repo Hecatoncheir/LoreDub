@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 
 /// Whether the game's window is read or the whole screen.
 ///
@@ -42,8 +42,10 @@ class ScreenSourcePicker extends StatelessWidget {
         selected: {settings.screenSource},
         onSelectionChanged: locked
             ? null
-            : (selection) => context.read<SettingsCubit>().update(
-                settings.copyWith(screenSource: selection.first),
+            : (selection) => context.read<SettingsBloc>().add(
+                SettingsChanged(
+                  settings.copyWith(screenSource: selection.first),
+                ),
               ),
       ),
     );

@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/compute_device.dart';
-import '../../dashboard/cubits/settings_cubit.dart';
+import '../../dashboard/cubits/settings_bloc.dart';
 import '../../model_names.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_field.dart';
@@ -24,7 +24,7 @@ class RecognitionNodeFields extends StatelessWidget {
 
   void _choose(BuildContext context, String? model) {
     if (model == null) return;
-    context.read<SettingsCubit>().selectRecognitionModel(model);
+    context.read<SettingsBloc>().add(RecognitionModelChosen(model));
   }
 
   @override
@@ -61,8 +61,10 @@ class RecognitionNodeFields extends StatelessWidget {
           label: l10n.roughRecognition,
           value: settings.roughRecognition,
           enabled: !facts.running,
-          onChanged: (value) => context.read<SettingsCubit>().update(
-            settings.copyWith(roughRecognition: value),
+          onChanged: (value) => context.read<SettingsBloc>().add(
+            SettingsChanged(
+              settings.copyWith(roughRecognition: value),
+            ),
           ),
         ),
         InspectorNote(text: l10n.roughRecognitionNote),

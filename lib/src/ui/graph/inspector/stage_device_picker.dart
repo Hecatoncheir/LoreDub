@@ -8,7 +8,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../domain/compute_device.dart';
 import '../../compute_names.dart';
 import '../../dashboard/cubits/downloads_bloc.dart';
-import '../../dashboard/cubits/settings_cubit.dart';
+import '../../dashboard/cubits/settings_bloc.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_field.dart';
 
@@ -27,7 +27,7 @@ class StageDevicePicker extends StatelessWidget {
 
   void _choose(BuildContext context, ComputeBackend? backend) {
     if (backend == null) return;
-    context.read<SettingsCubit>().selectStageBackend(stage, backend);
+    context.read<SettingsBloc>().add(StageBackendPinned(stage, backend));
   }
 
   @override

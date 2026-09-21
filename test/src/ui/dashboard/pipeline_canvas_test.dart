@@ -28,7 +28,6 @@ import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import '../../../support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/graph/canvas/dot_field_painter.dart';
@@ -84,7 +83,7 @@ void main() {
         initializing: false,
       ),
     );
-    cubits.settings.seed(SettingsState(settings: settings));
+    cubits.settingsRepository.seed(settings);
     cubits.stageInstalled(
       models: [
         for (final model in modelCatalog) ModelInstallState(model: model, installed: true),

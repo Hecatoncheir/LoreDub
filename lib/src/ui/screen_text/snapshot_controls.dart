@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/app_settings.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../common/language_row.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/dashboard_context.dart';
 import 'screen_layout.dart';
 import 'snapshot_details.dart';
@@ -19,7 +19,7 @@ class SnapshotControls extends StatelessWidget {
   const SnapshotControls({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+  Widget build(BuildContext context) => BlocBuilder<SettingsBloc, SettingsState>(
     builder: (context, state) => BlocBuilder<SessionBloc, SessionState>(
       buildWhen: whenChanged(
         (pipeline) => (

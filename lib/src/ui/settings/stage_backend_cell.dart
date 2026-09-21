@@ -9,7 +9,7 @@ import '../../domain/compute_device.dart';
 import '../compute_names.dart';
 import 'backend_cell.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import 'stage_backend_status.dart';
 import 'backend_cell_look.dart';
 
@@ -90,7 +90,7 @@ class StageBackendCell extends StatelessWidget {
         tooltip: running ? l10n.computeCellLocked : l10n.computeCellSelect,
         onTap: running
             ? null
-            : () => context.read<SettingsCubit>().selectStageBackend(stage, backend),
+            : () => context.read<SettingsBloc>().add(StageBackendPinned(stage, backend)),
       ),
     };
   }

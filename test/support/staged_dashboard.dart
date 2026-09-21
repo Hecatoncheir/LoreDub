@@ -19,7 +19,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/settings_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
@@ -66,7 +66,11 @@ class StagedDashboard {
   }) {
     final native = engine ?? NativeEngineService();
     this.system = system ?? SystemRepository(native);
-    this.voiceBank = voiceBank ?? VoiceBankRepository();
+    // Kept in memory unless a test hands one over: a bloc waits for its
+    // handlers as it closes, and the real bank reads a disk that does not
+    // answer inside a widget test's fake time -- counted as a session came
+    // to rest, it held every teardown for ever.
+    this.voiceBank = voiceBank ?? MemoryVoiceBank();
     this.schemes = schemes ?? SchemeRepository();
     this.glossaryRepository = glossaryRepository ?? GlossaryRepository(settingsRepository, native);
     this.cast = cast ?? CastRepository(native);
@@ -80,7 +84,7 @@ class StagedDashboard {
       installed,
       this.system,
     );
-    settings = SettingsCubit(
+    settings = SettingsBloc(
       sessionRepository,
       settingsRepository,
       shell,
@@ -146,7 +150,7 @@ class StagedDashboard {
   late final SourcesRepository sourcesRepository;
 
   late final ShellCubit shell;
-  late final SettingsCubit settings;
+  late final SettingsBloc settings;
   late final DownloadsBloc downloads;
   late final SourcesBloc sources;
   late final SessionBloc pipeline;
@@ -228,5 +232,25 @@ class StagedDashboard {
     await settings.close();
     await shell.close();
     await sessions.dispose();
+  }
+}
+
+/// The kept voices with no disk behind them.
+class MemoryVoiceBank extends VoiceBankRepository {
+  MemoryVoiceBank([this.count = 0]);
+
+  int count;
+  bool cleared = false;
+
+  @override
+  Future<String> fileFor(String game) async => 'voice_bank/$game.json';
+
+  @override
+  Future<int> size() async => count;
+
+  @override
+  Future<void> clear() async {
+    cleared = true;
+    count = 0;
   }
 }

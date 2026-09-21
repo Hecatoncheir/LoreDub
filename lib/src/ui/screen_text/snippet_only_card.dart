@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/screen_reading.dart';
 import '../common/module_label.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/dashboard_context.dart';
 import '../settings/voice_choice_field.dart';
 import 'snapshot_hotkey_line.dart';
@@ -22,7 +22,7 @@ class SnippetOnlyCard extends StatelessWidget {
   const SnippetOnlyCard({super.key});
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
+  Widget build(BuildContext context) => BlocBuilder<SettingsBloc, SettingsState>(
     builder: (context, state) => Card(
       child: Padding(
         padding: const EdgeInsets.all(20),

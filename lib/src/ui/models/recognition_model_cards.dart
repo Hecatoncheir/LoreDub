@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/model_selection.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import 'model_card.dart';
 
 /// The Whisper builds one card under another, for a window too narrow for
@@ -26,7 +26,7 @@ class RecognitionModelCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<DownloadsBloc>();
-    final settings = context.read<SettingsCubit>();
+    final settings = context.read<SettingsBloc>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -40,7 +40,7 @@ class RecognitionModelCards extends StatelessWidget {
             stopping: downloads.isStopping(state.model.id),
             choosable: true,
             selected: state.model.id == selection.recognition?.model.id,
-            onSelect: running ? null : () => settings.selectRecognitionModel(state.model.id),
+            onSelect: running ? null : () => settings.add(RecognitionModelChosen(state.model.id)),
           ),
         ],
       ],

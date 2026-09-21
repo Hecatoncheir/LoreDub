@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../dashboard/dashboard_context.dart';
 
 /// Whether the game is listened to while its subtitles are read, so a line
@@ -38,8 +38,10 @@ class ScreenVoicesSwitch extends StatelessWidget {
               value: settings.screenVoices && ready,
               onChanged: locked || !ready
                   ? null
-                  : (value) => context.read<SettingsCubit>().update(
-                      settings.copyWith(screenVoices: value),
+                  : (value) => context.read<SettingsBloc>().add(
+                      SettingsChanged(
+                        settings.copyWith(screenVoices: value),
+                      ),
                     ),
             ),
             const SizedBox(width: 6),

@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/model_selection.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../theme.dart';
 import 'overlap_voices_controls.dart';
 import 'voice_bank_controls.dart';
@@ -67,8 +67,9 @@ class VoiceCardBody extends StatelessWidget {
           selected: {mode},
           onSelectionChanged: running
               ? null
-              : (picked) =>
-                    context.read<SettingsCubit>().update(settings.withVoiceMode(picked.first)),
+              : (picked) => context.read<SettingsBloc>().add(
+                  SettingsChanged(settings.withVoiceMode(picked.first)),
+                ),
         ),
         if (mode == VoiceMode.original) ...[
           const SizedBox(height: 10),

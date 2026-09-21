@@ -10,7 +10,7 @@ import '../../domain/app_settings.dart';
 import '../../../l10n/app_localizations.dart';
 import '../common/labeled_switch.dart';
 import '../theme.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import '../common/confirm_dialog.dart';
 
 /// Whether the original voice remembers the characters, how many it has,
@@ -28,7 +28,7 @@ class VoiceBankControls extends StatelessWidget {
   final bool running;
 
   Future<void> _confirmClear(BuildContext context) async {
-    final settings = context.read<SettingsCubit>();
+    final settings = context.read<SettingsBloc>();
     final l10n = AppLocalizations.of(context);
     final confirmed = await confirmRemoval(
       context,
@@ -37,7 +37,7 @@ class VoiceBankControls extends StatelessWidget {
       cancelLabel: l10n.voiceBankClearCancel,
       confirmLabel: l10n.voiceBankClearConfirm,
     );
-    if (confirmed) await settings.clearVoiceBank();
+    if (confirmed) settings.add(const VoiceBankCleared());
   }
 
   @override
@@ -51,8 +51,9 @@ class VoiceBankControls extends StatelessWidget {
           label: l10n.voiceBank,
           onChanged: running
               ? null
-              : (value) =>
-                    context.read<SettingsCubit>().update(settings.copyWith(voiceBank: value)),
+              : (value) => context.read<SettingsBloc>().add(
+                  SettingsChanged(settings.copyWith(voiceBank: value)),
+                ),
         ),
         const SizedBox(height: 4),
         Text(

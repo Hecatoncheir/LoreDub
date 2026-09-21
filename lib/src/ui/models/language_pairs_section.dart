@@ -9,7 +9,7 @@ import '../../domain/model_selection.dart';
 import '../common/module_label.dart';
 import '../common/section_note.dart';
 import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_cubit.dart';
+import '../dashboard/cubits/settings_bloc.dart';
 import 'language_pair_tile.dart';
 import 'model_failure_row.dart';
 import '../common/tile_grid.dart';
@@ -33,7 +33,7 @@ class LanguagePairsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<DownloadsBloc>();
-    final settings = context.read<SettingsCubit>();
+    final settings = context.read<SettingsBloc>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -50,7 +50,7 @@ class LanguagePairsSection extends StatelessWidget {
                 selected: pair.language == selection.settings.targetLanguage,
                 running: running,
                 isStopping: downloads.isStopping,
-                onSelect: running ? null : () => settings.selectTargetLanguage(pair.language),
+                onSelect: running ? null : () => settings.add(TargetLanguageChosen(pair.language)),
                 onInstall: (state) => cubit.add(ModelInstallAsked(state)),
                 onPause: (state) => cubit.add(DownloadPaused(state.model.id)),
                 onCancel: (state) => cubit.add(DownloadCancelled(state.model.id)),
