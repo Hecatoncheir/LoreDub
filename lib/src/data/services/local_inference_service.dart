@@ -17,6 +17,7 @@ import '../../domain/built_voice.dart';
 import '../../domain/failure.dart';
 import '../../domain/glossary.dart';
 import 'runtime_catalog.dart';
+import 'worker_channel.dart';
 
 class InferenceResult {
   const InferenceResult({
@@ -136,8 +137,10 @@ class LocalInferenceService {
   Process? _worker;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
-  final _pending = <int, Completer<Map<String, Object?>>>{};
   final _diagnostics = WorkerDiagnostics();
+  late final _channel = WorkerChannel(
+    lastWords: () => _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
+  );
   Completer<void>? _workerReady;
   String? _whisperExecutable;
 
@@ -154,7 +157,6 @@ class LocalInferenceService {
 
   /// Detected once per session and reused; null means detection is still due.
   String? _spokenLanguage;
-  var _requestId = 0;
 
   /// Reports how far the worker is through its startup, which takes long
   /// enough that the application must not look frozen while it happens.
@@ -489,10 +491,7 @@ class LocalInferenceService {
     _workerReady = null;
     final starting = !ready.isCompleted;
     if (starting) ready.completeError(error);
-    for (final request in _pending.values) {
-      if (!request.isCompleted) request.completeError(error);
-    }
-    _pending.clear();
+    _channel.failAll(error);
     // A start still waiting has just been told, and fails with the reason.
     // A session already running has nobody waiting on the worker as a whole.
     if (!starting) onWorkerLost?.call(error);
@@ -512,7 +511,7 @@ class LocalInferenceService {
             message['stage'] as String? ?? '',
           );
         default:
-          _answerRequest(message);
+          _channel.answer(message);
       }
     } catch (error) {
       // Keep the offending line: a reply nobody can parse would otherwise only
@@ -529,12 +528,6 @@ class LocalInferenceService {
     _converterDevice = message['converterDevice'] as String?;
     final ready = _workerReady;
     if (ready != null && !ready.isCompleted) ready.complete();
-  }
-
-  /// Hands a reply to whoever asked for it. A line carrying no request id
-  /// answers nobody and is passed over.
-  void _answerRequest(Map<String, Object?> message) {
-    if (message['id'] case final int id) _pending.remove(id)?.complete(message);
   }
 
   /// The audio context `-ac` is given when recognition is asked to hurry.
@@ -622,26 +615,7 @@ class LocalInferenceService {
   Future<({List<double> vector, String? gender, double seconds})> fingerprint(
     String wavePath,
   ) async {
-    final worker = _worker;
-    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(jsonEncode({'id': id, 'fingerprint': wavePath}));
-    final response = await completer.future.timeout(
-      const Duration(seconds: 30),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
+    final response = await _ask({'fingerprint': wavePath}, timeout: const Duration(seconds: 30));
     return (
       vector: [
         for (final value in response['vector'] as List<Object?>? ?? const [])
@@ -659,28 +633,11 @@ class LocalInferenceService {
   /// steadier than one built from a single line, and says how well they
   /// agreed so the player can see they were one voice.
   Future<BuiltVoice> buildVoice(List<String> wavePaths) async {
-    final worker = _worker;
-    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(jsonEncode({'id': id, 'voiceFrom': wavePaths}));
     // The converter runs once per file; a folder of them is a wait, not a
     // moment, and a card the player is watching must not give up first.
-    final response = await completer.future.timeout(
-      Duration(seconds: 30 + 15 * wavePaths.length),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
+    final response = await _ask({
+      'voiceFrom': wavePaths,
+    }, timeout: Duration(seconds: 30 + 15 * wavePaths.length));
     return BuiltVoice.fromJson(response);
   }
 
@@ -691,31 +648,9 @@ class LocalInferenceService {
     required String voice,
     List<double> timbre = const [],
   }) async {
-    final worker = _worker;
-    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(
-      jsonEncode({
-        'id': id,
-        'preview': {'text': text, 'voice': voice, if (timbre.isNotEmpty) 'vector': timbre},
-      }),
-    );
-    final response = await completer.future.timeout(
-      const Duration(minutes: 2),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
+    final response = await _ask({
+      'preview': {'text': text, 'voice': voice, if (timbre.isNotEmpty) 'vector': timbre},
+    }, timeout: const Duration(minutes: 2));
     return response['wave']! as String;
   }
 
@@ -723,26 +658,7 @@ class LocalInferenceService {
   /// cut the recording there and have each speaker recognized and voiced on
   /// their own. Empty when the worker has no converter to hear them with.
   Future<List<double>> speakerCuts(String wavePath) async {
-    final worker = _worker;
-    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(jsonEncode({'id': id, 'diarize': wavePath}));
-    final response = await completer.future.timeout(
-      const Duration(seconds: 30),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
+    final response = await _ask({'diarize': wavePath}, timeout: const Duration(seconds: 30));
     return [
       for (final cut in response['cuts'] as List<Object?>? ?? const [])
         if (cut is num) cut.toDouble(),
@@ -755,31 +671,19 @@ class LocalInferenceService {
   /// starts: only the converter is loaded, and a voice it has not met joins
   /// the game's bank here exactly as it would during a session.
   Future<({String? speaker, double seconds})> listenSpeaker(String wavePath) async {
-    final worker = _worker;
-    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(jsonEncode({'id': id, 'listen': wavePath}));
-    final response = await completer.future.timeout(
-      const Duration(seconds: 30),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
+    final response = await _ask({'listen': wavePath}, timeout: const Duration(seconds: 30));
     return (
       speaker: response['speaker'] as String?,
       seconds: (response['seconds'] as num?)?.toDouble() ?? 0,
     );
   }
+
+  /// Hands a running worker what the player has just written down.
+  ///
+  /// The same shape the file holds, so the worker reads it with the parser
+  /// it already has. Sent whether or not the worker translates: one that
+  /// does not simply keeps it unread.
+  Future<void> updateGlossary(Glossary glossary) => _tell({'glossary': glossary.toJson()});
 
   /// Reads every voice as itself from now on, or lets the cast stand in
   /// again: the branch from the cast into the mix, cut or drawn on the graph
@@ -787,61 +691,9 @@ class LocalInferenceService {
   ///
   /// The cards keep who stands in for whom either way; this is only whether
   /// any of it is applied.
-  /// Hands a running worker what the player has just written down.
-  ///
-  /// The same shape the file holds, so the worker reads it with the parser
-  /// it already has. Sent whether or not the worker translates: one that
-  /// does not simply keeps it unread.
-  Future<void> updateGlossary(Glossary glossary) async {
-    final worker = _worker;
-    if (worker == null) return;
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(jsonEncode({'id': id, 'glossary': glossary.toJson()}));
-    final response = await completer.future.timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
-  }
-
-  Future<void> readAsHeard(Set<String> value) async {
-    final worker = _worker;
-    if (worker == null) return;
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(
-      jsonEncode({
-        'id': id,
-        'asHeard': [...value],
-      }),
-    );
-    final response = await completer.future.timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
-  }
+  Future<void> readAsHeard(Set<String> value) => _tell({
+    'asHeard': [...value],
+  });
 
   /// Reads the lines that follow in [voice], which is what the picker on
   /// the settings and screen pages changes while a session runs.
@@ -849,60 +701,32 @@ class LocalInferenceService {
   /// The voice is given to the worker when it starts, so this is what
   /// carries a change made meanwhile: the next line is read in it rather
   /// than the next session.
-  Future<void> useVoice(String voice) async {
-    final worker = _worker;
-    if (worker == null) return;
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(jsonEncode({'id': id, 'speaker': voice}));
-    final response = await completer.future.timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
-  }
+  Future<void> useVoice(String voice) => _tell({'speaker': voice});
 
   /// Reads [character] in [target]'s voice wherever they are recognized, as
   /// their card now says, or in their own again when [target] is null.
   ///
   /// The cast is read from its file when a session starts, so this is what
   /// carries an edit made meanwhile into the session already running.
-  Future<void> voiceCharacterAs(String character, String? target) async {
+  Future<void> voiceCharacterAs(String character, String? target) => _tell({
+    'voicedBy': {'character': character, 'target': target ?? ''},
+  });
+
+  /// Asks the running worker for something only it can answer, failing as
+  /// `workerNotRunning` when there is none to ask.
+  Future<Map<String, Object?>> _ask(Map<String, Object?> body, {required Duration timeout}) async {
+    final worker = _worker;
+    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
+    return _channel.request(worker.stdin, body, timeout: timeout);
+  }
+
+  /// Tells a running worker something that changes how it reads from now
+  /// on. With no worker there is nobody to tell: the next session reads the
+  /// same thing from its files when it starts.
+  Future<void> _tell(Map<String, Object?> body) async {
     final worker = _worker;
     if (worker == null) return;
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(
-      jsonEncode({
-        'id': id,
-        'voicedBy': {'character': character, 'target': target ?? ''},
-      }),
-    );
-    final response = await completer.future.timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
+    await _channel.request(worker.stdin, body, timeout: const Duration(seconds: 10));
   }
 
   /// [originalWavePath] is the captured phrase, when there is one. The
@@ -921,34 +745,12 @@ class LocalInferenceService {
     final normalized = english.trim();
     if (normalized.isEmpty) throw ArgumentError.value(english, 'english', 'is empty');
 
-    final worker = _worker;
-    if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
-
-    final id = ++_requestId;
-    final completer = Completer<Map<String, Object?>>();
-    _pending[id] = completer;
-    worker.stdin.writeln(
-      jsonEncode({
-        'id': id,
-        'text': normalized,
-        'wave': ?originalWavePath,
-        'speed': ?speed,
-        if (!translate) 'translate': false,
-      }),
-    );
-    final response = await completer.future.timeout(
-      const Duration(minutes: 2),
-      onTimeout: () {
-        _pending.remove(id);
-        throw LoreDubFailure(
-          FailureCode.workerTimeout,
-          detail: _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-        );
-      },
-    );
-    if (response['error'] case final String error) {
-      throw LoreDubFailure(FailureCode.workerFailed, detail: error);
-    }
+    final response = await _ask({
+      'text': normalized,
+      'wave': ?originalWavePath,
+      'speed': ?speed,
+      if (!translate) 'translate': false,
+    }, timeout: const Duration(minutes: 2));
     final silenced = response['silenced'] == true;
     return InferenceResult(
       english: normalized,
@@ -972,10 +774,7 @@ class LocalInferenceService {
   /// this to the worker it replaces, which is not a stop of the start itself.
   Future<void> _endWorker() async {
     const stopped = LoreDubFailure(FailureCode.pipelineStopped);
-    for (final completer in _pending.values) {
-      if (!completer.isCompleted) completer.completeError(stopped);
-    }
-    _pending.clear();
+    _channel.failAll(stopped);
     // A start waiting for the handshake is told now. Left unanswered it sat
     // out the whole startup limit: the exit of a worker already let go of is
     // nobody's, so nothing else was ever going to end that wait.
