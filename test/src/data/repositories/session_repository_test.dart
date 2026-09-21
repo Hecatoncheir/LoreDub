@@ -230,29 +230,7 @@ void main() {
       await stopping;
 
       expect(engine.hotkeys, 0, reason: 'ld_stop dropped them, and nothing may bring them back');
-      expect(engine.volumes, isEmpty, reason: 'nor is the game turned down for it');
       expect(engine.stops, 1, reason: 'the stop has ended the engine; the start must not again');
-    });
-
-    test('while the game is turned down registers no hotkeys either', () async {
-      glossary.written.complete('glossary.session.json');
-      engine.volume = Completer<void>();
-      final stopped = expectLater(
-        dub(settings: const AppSettings(duckWhileSpeaking: false)),
-        failsWith(FailureCode.pipelineStopped),
-      );
-      await pumpEventQueue();
-      engine.starts.single.complete();
-      await pumpEventQueue();
-      expect(engine.volumes, [game.pid]);
-
-      final stopping = repository.stop();
-      engine.volume!.complete();
-      await stopped;
-      await stopping;
-
-      expect(engine.hotkeys, 0);
-      expect(engine.stops, 1);
     });
 
     test('and not landing at all lets the session run whole', () async {
@@ -353,8 +331,6 @@ class _SlowEngine extends NativeEngineService {
   int hotkeys = 0;
 
   /// The processes turned down, and — when set — the wait that takes.
-  final volumes = <int>[];
-  Completer<void>? volume;
 
   Future<void> _starting() {
     final starting = Completer<void>();
@@ -385,12 +361,6 @@ class _SlowEngine extends NativeEngineService {
 
   @override
   Future<void> startVoiceFiles(VoiceFilesSessionConfig config) => _starting();
-
-  @override
-  Future<void> setProcessVolume(int processId, double volume) async {
-    volumes.add(processId);
-    await this.volume?.future;
-  }
 
   @override
   void setHotkeys({

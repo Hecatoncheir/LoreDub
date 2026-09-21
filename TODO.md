@@ -1241,8 +1241,12 @@ abstract final class AppTheme {
   сессией, сохранить клип; `ld_hold_take` передаётся параметром, так что
   класс проверяется без библиотеки), и остаток `stop()` в `finally` —
   `ld_stop`, ответивший ошибкой, раньше оставлял опрос и воркер жить (тест
-  «a stop the library refuses still ends the worker»). Осталось:
-  `NativeBridge`, `EngineSession`, `PhraseProcessor`, `GameDucker`.
+  «a stop the library refuses still ends the worker»). `GameDucker`
+  (`game_ducker.dart`) — приглушение на сеанс, после паузы и на реплику в
+  одном месте; из репозитория ушли `_duck`, `_duckScreen` и запомненные
+  процесс с настройками для продолжения, а сбой приглушения больше не
+  роняет старт — как и на реплике, недоступное устройство не повод.
+  Осталось: `NativeBridge`, `EngineSession`, `PhraseProcessor`.
 - [ ] **`LocalInferenceService`: протокол запроса написан девять раз**
       (`:500–531`, `:539–563`, `:567–598`, `:603–628`, `:635–660`,
       `:673–694`, `:696–722`, `:729–755`, `:761–811`, по ~20 одинаковых

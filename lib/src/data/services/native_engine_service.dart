@@ -32,6 +32,7 @@ import 'phrase_queue.dart';
 import 'playback_scheduler.dart';
 import 'worker_arguments.dart';
 import 'voice_take.dart';
+import 'game_ducker.dart';
 
 typedef NativeStringReader = int Function(Pointer<Char> output, int capacity);
 
@@ -90,7 +91,7 @@ class NativeEngineService {
     _inference.onStartupProgress = (value, stage) =>
         _events.add(StartupProgressed(value: value, stage: stage, session: _session));
     _inference.onWorkerLost = _onWorkerLost;
-    _playback.onSpeaking = _duckForSpeech;
+    _playback.onSpeaking = _ducker.speaking;
   }
 
   final _events = StreamController<EngineEvent>.broadcast();
@@ -99,6 +100,12 @@ class NativeEngineService {
   final WorkDirectoryProvider _workDirectory;
   Timer? _pollTimer;
   late final _phrases = PhraseQueue(process: _processPhrase);
+
+  /// How far the game is turned down, for the session or for a line.
+  late final _ducker = GameDucker(
+    setVolume: ld_set_process_volume,
+    restore: _native.restoreProcessVolumes,
+  );
 
   /// Playback runs beside recognition instead of inside it. Voicing a reply
   /// takes as long as the reply itself, and holding the pipeline for that
@@ -206,6 +213,7 @@ class NativeEngineService {
       'voiceConversion': _inference.voiceConversionBackend,
     });
     _beginCapture(start, config, captureDirectory: await _captureDirectory(start));
+    _ducker.begin(config);
   });
 
   /// Loads the translator and the voice for the screen session, and starts
@@ -235,6 +243,7 @@ class NativeEngineService {
       config,
       captureDirectory: config.capture.cutsSound ? await _captureDirectory(start) : null,
     );
+    _ducker.begin(config);
   });
 
   /// Loads the speech model and the converter, and nothing else: the
@@ -544,18 +553,8 @@ class NativeEngineService {
     while (_spoken.isNotEmpty) {
       unawaited(_deleteIfPresent(_spoken.removeFirst()));
     }
-    // The game gets its own volume back, whichever duck took it: the
-    // session-long one, or the one that lasts a line. Only the pause used to
-    // do this, so a stopped session left the game quiet for good -- and the
-    // next session then had nothing left to turn down, which is how it was
-    // found: the dubbing seemed not to duck the original at all.
-    // `_duckForSpeech` cannot do it either, since the line still sounding as
-    // the session ends finishes after `_active` is already null.
-    _native.restoreProcessVolumes();
-  }
-
-  Future<void> setProcessVolume(int processId, double volume) async {
-    _throwIfError(ld_set_process_volume(processId, volume));
+    // The game gets its own volume back, whichever duck took it.
+    _ducker.end();
   }
 
   /// Rests or wakes the running session without tearing it down, so the
@@ -564,7 +563,7 @@ class NativeEngineService {
     if (_active == null) return;
     _paused = paused;
     _throwIfError(ld_set_paused(paused ? 1 : 0));
-    if (!paused) return;
+    if (!paused) return _ducker.resume();
     // Nothing heard before the pause is voiced after it.
     for (final phrase in _phrases.clear()) {
       final wavePath = phrase.wavePath;
@@ -573,10 +572,8 @@ class NativeEngineService {
     for (final wavePath in _playback.clear()) {
       unawaited(_deleteIfPresent(wavePath));
     }
-    // The game plays at its own volume while dubbing rests. A device that
-    // cannot be reached is no reason to refuse the pause, so the result is
-    // not checked.
-    _native.restoreProcessVolumes();
+    // The game plays at its own volume while dubbing rests.
+    _ducker.rest();
   }
 
   /// Registers the system-wide combinations that pause and resume the
@@ -1031,29 +1028,6 @@ class NativeEngineService {
     // The worker says who is speaking, so a different character may start
     // while the last one is still talking — when the settings allow it.
     _playback.add(wavePath, speaker: result.speaker);
-  }
-
-  /// Turns the game down for as long as the dubbing speaks, when the session
-  /// asked for that rather than for a session-long duck.
-  ///
-  /// The capture hears the game through this same volume, but a line being
-  /// voiced now was recorded and recognized seconds ago — what is turned
-  /// down is what the player hears, not what the pipeline listens to. A line
-  /// the game starts while the dubbing speaks is captured as quietly as it
-  /// would have been under the session-long duck.
-  ///
-  /// A device that cannot be reached is no reason to drop the line, so the
-  /// result is not checked.
-  void _duckForSpeech({required bool speaking}) {
-    final lines = _active?.lines;
-    if (lines == null || !lines.duckWhileSpeaking) return;
-    final processId = _active?.capture?.processId ?? 0;
-    if (processId == 0) return;
-    if (speaking) {
-      ld_set_process_volume(processId, lines.duckVolume);
-    } else {
-      _native.restoreProcessVolumes();
-    }
   }
 
   Future<void> _playQueued(String wavePath) async {

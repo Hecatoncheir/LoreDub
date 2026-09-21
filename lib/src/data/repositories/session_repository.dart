@@ -127,10 +127,6 @@ class SessionRepository {
       _throwIfSuperseded(session);
       await _nativeEngine.start(config);
       _throwIfSuperseded(session);
-      await _duck(process, settings);
-      _throwIfSuperseded(session);
-      _sessionProcess = process;
-      _sessionSettings = settings;
       _nativeEngine.setHotkeys(
         pause: settings.pauseHotkey,
         resume: settings.resumeHotkey,
@@ -191,10 +187,6 @@ class SessionRepository {
       _throwIfSuperseded(session);
       await _nativeEngine.startScreenText(config);
       _throwIfSuperseded(session);
-      await _duckScreen(process, settings);
-      _throwIfSuperseded(session);
-      _sessionProcess = process;
-      _sessionSettings = settings;
       _nativeEngine.setHotkeys(
         snapshot: reading.readsSnippets ? settings.snapshotHotkey : null,
         // Drawn over the game rather than over a picture of it, and
@@ -245,13 +237,6 @@ class SessionRepository {
 
   /// Reads the lines that follow in [voice], while a session runs.
   Future<void> useVoice(String voice) => _nativeEngine.useVoice(voice);
-
-  /// Turns the game down for the screen session. Nothing here listens to the
-  /// game's sound, so this one may silence it outright.
-  Future<void> _duckScreen(GameProcess? process, AppSettings settings) async {
-    if (process == null || settings.duckWhileSpeaking) return;
-    await _nativeEngine.setProcessVolume(process.pid, settings.duckedVolume);
-  }
 
   /// Loads the speech model and the converter so a card's voice can be
   /// heard before anything is dubbed. Nothing is captured: the line is the
@@ -398,40 +383,17 @@ class SessionRepository {
   Future<void> recordCharacterVoice({required bool recording}) =>
       _nativeEngine.setRecordingVoice(recording: recording);
 
-  /// What the running session was started with, so a resume can turn the
-  /// game down again exactly as the start did.
-  GameProcess? _sessionProcess;
-  AppSettings? _sessionSettings;
-
-  /// Turns the captured game down while it is dubbed.
-  ///
-  /// Only for the session as a whole. Asked to step aside for each line
-  /// instead, the engine does it: it is the one that knows when the dubbing
-  /// starts and stops speaking.
-  Future<void> _duck(GameProcess? process, AppSettings settings) async {
-    if (process == null) return;
-    if (settings.audioCaptureSource != AudioCaptureSource.process) return;
-    if (settings.duckWhileSpeaking) return;
-    await _nativeEngine.setProcessVolume(process.pid, settings.duckedVolume);
-  }
-
   /// Rests the session: capture hands nothing on, what was queued is
   /// dropped, and the game plays at its own volume.
   Future<void> pause() async => _nativeEngine.setPaused(true);
 
   /// Picks the session up where it rested.
-  Future<void> resume() async {
-    _nativeEngine.setPaused(false);
-    final settings = _sessionSettings;
-    if (settings != null) await _duck(_sessionProcess, settings);
-  }
+  Future<void> resume() async => _nativeEngine.setPaused(false);
 
   Future<void> stop() {
     // A start still on its way fails for being stopped, and must not take
     // that for a failure of its own to clean up after.
     _sessions++;
-    _sessionProcess = null;
-    _sessionSettings = null;
     return _nativeEngine.stop();
   }
 

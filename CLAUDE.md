@@ -397,7 +397,10 @@ a stored value inside them. `AppSettings.duckWhileSpeaking` replaces the
 session-long duck with one that lasts a line: `PlaybackScheduler.onSpeaking`
 reports the edges of the dubbing's own speech — consecutive lines are one
 stretch, so the game is not lifted between two lines of a scene — and
-`NativeEngineService._duckForSpeech` turns the game down and back. It is on
+`GameDucker` (`data/services/game_ducker.dart`) turns the game down and back.
+It is the one place either duck is decided -- the session's, again on a
+resume, and the line's -- which were spread over the repository and the
+engine until a stopped session left the game quiet for good. It is on
 by default, which the compensated speech threshold below is what makes safe.
 
 Whatever turns the game down tells the capture, because the threshold that
