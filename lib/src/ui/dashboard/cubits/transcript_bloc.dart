@@ -3,6 +3,7 @@
 
 import 'dart:async';
 
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -119,7 +120,9 @@ final class _Seeded extends TranscriptEvent {
 /// published by `SessionCoordinator`.
 class TranscriptBloc extends Bloc<TranscriptEvent, TranscriptState> {
   TranscriptBloc(this._app, this._sessions, this._errors) : super(const TranscriptState()) {
-    on<_EngineSaid>((event, emit) => _onEngine(event.event, emit));
+    // In the order the engine said it: a line and the selection it answers
+    // must not land the other way round.
+    on<_EngineSaid>((event, emit) => _onEngine(event.event, emit), transformer: sequential());
     on<_SessionMoved>(_onSessionMoved);
     on<TranscriptCleared>((event, emit) => emit(state.copyWith(transcript: const [])));
     on<SnapshotsCleared>((event, emit) => emit(state.copyWith(snapshots: const [])));

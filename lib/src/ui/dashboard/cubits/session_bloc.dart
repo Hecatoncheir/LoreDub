@@ -6,6 +6,7 @@ import '../../../domain/screen_reading.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
@@ -200,16 +201,26 @@ sealed class SessionEvent {
   const SessionEvent();
 }
 
+/// A start button: one of the three kinds of session, started, or a start
+/// still loading cancelled, or a session running ended.
+///
+/// One kind of event for the three so that they share one transformer:
+/// a double-click lands its second press on whichever button the first
+/// one was.
+sealed class SessionToggle extends SessionEvent {
+  const SessionToggle();
+}
+
 /// The start button of Эфир: starts live dubbing, cancels a start still
 /// loading, or ends the dubbing that runs.
-final class LiveToggled extends SessionEvent {
+final class LiveToggled extends SessionToggle {
   const LiveToggled({required this.initializing});
 
   final bool initializing;
 }
 
 /// A start button of the Screen page, for one [reading] of the screen.
-final class ScreenToggled extends SessionEvent {
+final class ScreenToggled extends SessionToggle {
   const ScreenToggled({required this.initializing, this.reading = ScreenReading.both});
 
   final bool initializing;
@@ -217,7 +228,7 @@ final class ScreenToggled extends SessionEvent {
 }
 
 /// The button that places the voices of the scene before anything is dubbed.
-final class SceneToggled extends SessionEvent {
+final class SceneToggled extends SessionToggle {
   const SceneToggled({required this.initializing});
 
   final bool initializing;
@@ -264,13 +275,20 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        super(const SessionState()) {
-    on<LiveToggled>(_onLiveToggled);
-    on<ScreenToggled>(_onScreenToggled);
-    on<SceneToggled>(_onSceneToggled);
+    on<SessionToggle>(
+      (event, emit) => switch (event) {
+        LiveToggled() => _onLiveToggled(event, emit),
+        ScreenToggled() => _onScreenToggled(event, emit),
+        SceneToggled() => _onSceneToggled(event, emit),
+      },
+      transformer: _ignoringDoubleClicks,
+    );
     on<SessionStopped>((event, emit) => _stop(emit));
     on<SessionPaused>(_onPaused);
     on<SessionResumed>(_onResumed);
-    on<_EngineSaid>(_onEngine);
+    // In the order the engine said it. The handler is synchronous today, so
+    // this changes nothing yet; it is what keeps it true if it ever waits.
+    on<_EngineSaid>(_onEngine, transformer: sequential());
     // What is drawn over the game is made of the settings, so it follows
     // them from here rather than being called by whoever wrote one.
     _written = _settings.changes.listen((_) {
@@ -321,7 +339,6 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
 
   Future<void> _onLiveToggled(LiveToggled event, Emitter<SessionState> emit) async {
     final initializing = event.initializing;
-    if (_pressedTwice) return;
     _errors.report(null);
     if (state.liveRunning) return _stop(emit);
     final selection = this.selection;
@@ -349,6 +366,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     );
     await _startLive(selection, emit);
   }
+
+  /// The presses of the start buttons, less the second press of a
+  /// double-click, each answered as it comes.
+  ///
+  /// Not `droppable()`, which would drop every press while one is being
+  /// answered: the button that starts a session also cancels a start, and
+  /// a start is minutes long. Concurrent, as a cubit's methods were: a
+  /// cancel has to be answered while the start it cancels is still waiting.
+  Stream<SessionToggle> _ignoringDoubleClicks(
+    Stream<SessionToggle> presses,
+    EventMapper<SessionToggle> answer,
+  ) => concurrent<SessionToggle>()(presses.where((_) => !_pressedTwice), answer);
 
   /// Whether the button was pressed again while the first press was still
   /// being answered. Starting takes minutes to show anything, and a second
@@ -452,7 +481,6 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   /// and only what it captures differs.
   Future<void> _onScreenToggled(ScreenToggled event, Emitter<SessionState> emit) async {
     final (initializing, reading) = (event.initializing, event.reading);
-    if (_pressedTwice) return;
     _errors.report(null);
     if (state.running) {
       // Live dubbing is ended from its own screen.
@@ -535,7 +563,6 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   /// whisper nor the translator is loaded.
   Future<void> _onSceneToggled(SceneToggled event, Emitter<SessionState> emit) async {
     final initializing = event.initializing;
-    if (_pressedTwice) return;
     _errors.report(null);
     if (state.running) {
       // Live dubbing and the snapshot session are ended where they started.

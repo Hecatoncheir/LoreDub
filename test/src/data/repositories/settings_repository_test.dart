@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
@@ -85,4 +87,57 @@ void main() {
 
     expect(heard, [4]);
   });
+
+  test('writes a drag as its first tick and its last, one write at a time', () async {
+    // A slider asks for a write on every tick, and each write rewrote the
+    // whole preferences file on the interface's isolate.
+    final disk = _HeldDisk();
+    final settings = SettingsRepository(disk);
+
+    final first = settings.save(const AppSettings(ttsSpeed: 1.1));
+    final middle = settings.save(const AppSettings(ttsSpeed: 1.2));
+    final last = settings.save(const AppSettings(ttsSpeed: 1.3));
+    await pumpEventQueue();
+
+    expect(disk.writes.map((value) => value.ttsSpeed), [1.1], reason: 'one write under way');
+    expect(settings.settings.ttsSpeed, 1.3, reason: 'while every tick is on screen at once');
+
+    disk.release();
+    await pumpEventQueue();
+    expect(disk.writes.map((value) => value.ttsSpeed), [1.1, 1.3], reason: 'the middle is passed');
+
+    disk.release();
+    await Future.wait([first, middle, last]);
+    expect(identical(first, last), isTrue, reason: 'every tick waits for the same writes');
+  });
+
+  test('a write after the disk is free starts one of its own', () async {
+    final disk = _HeldDisk();
+    final settings = SettingsRepository(disk);
+
+    final once = settings.save(const AppSettings(ttsSpeed: 1.1));
+    disk.release();
+    await once;
+    final again = settings.save(const AppSettings(ttsSpeed: 1.2));
+    disk.release();
+    await again;
+
+    expect(disk.writes.map((value) => value.ttsSpeed), [1.1, 1.2]);
+  });
+}
+
+/// A disk that holds every write until the test lets it go.
+class _HeldDisk extends SettingsService {
+  final writes = <AppSettings>[];
+  final _held = <Completer<void>>[];
+
+  void release() => _held.removeAt(0).complete();
+
+  @override
+  Future<void> save(AppSettings settings) {
+    writes.add(settings);
+    final held = Completer<void>();
+    _held.add(held);
+    return held.future;
+  }
 }

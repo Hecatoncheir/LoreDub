@@ -93,7 +93,12 @@ than one of them.
    cancelling a subscription to a generator that yields it first never
    completes inside a widget test's zone. `SettingsRepository.load()` reads
    the file once whoever asks first, so nothing depends on being started in
-   a particular order. The one rule that is not a value is
+   a particular order. `SettingsRepository.save` publishes at once and
+   writes one value at a time, only the newest of whatever arrived while
+   a write was under way: a slider saves on every tick, and every save
+   rewrote the whole preferences file on the interface's isolate. The
+   write in progress holds the next one back, not a timer, so no test has
+   to pump for it. The one rule that is not a value is
    `SessionCoordinator` (`domain/`): one engine, one session, and each
    screen registers its own half of it. It also publishes what the engine
    is doing (`EngineActivity`) the way a repository publishes, each screen
@@ -264,7 +269,11 @@ is a chained `Future` — so a small CPU is never asked to run two inferences at
 once. Preserve that when adding stages.
 
 A start is minutes long and can be stopped anywhere in them — the button that
-starts a session also cancels a start in progress. `LocalInferenceService`
+starts a session also cancels a start in progress. That is why the three
+start events of `SessionBloc` (`SessionToggle`) are answered concurrently
+rather than `droppable()`, and why the one thing their transformer drops is
+the second press of a double-click: a press within `doubleClickGrace` of
+the start, while it is still starting. `LocalInferenceService`
 counts starts and stops in `_generation`: `start()` takes its number before
 the first wait and asks after every wait whether it is still the one wanted
 (`_throwIfSuperseded`), keeping what it waited for in locals until then —

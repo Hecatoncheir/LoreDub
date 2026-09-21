@@ -59,9 +59,42 @@ class SettingsRepository {
 
   /// Publishes [value] at once and writes it behind that: what the player
   /// just did should be on screen before the disk has heard about it.
-  Future<void> save(AppSettings value) async {
+  ///
+  /// The writes go one at a time, and a value that arrives while one is
+  /// under way waits for it and is written only if nothing newer came
+  /// after it. A slider asks for a write on every tick of a drag, and each
+  /// write is some forty calls that `shared_preferences_windows` answers by
+  /// rewriting the whole file, synchronously, on the interface's isolate:
+  /// written as they came, one drag was thousands of them. Coalesced, it is
+  /// the first tick and then whatever the last one was each time the disk
+  /// is free. No timer does the waiting -- the write in progress is what
+  /// holds the next one back -- so nothing here has to be pumped in a test.
+  ///
+  /// What is returned completes once [value], or something newer, is on
+  /// disk.
+  Future<void> save(AppSettings value) {
     _publish(value);
-    await _service.save(value);
+    _unwritten = value;
+    return _writing ??= _writeWhatIsLeft();
+  }
+
+  /// The newest value not yet handed to the disk, if any.
+  AppSettings? _unwritten;
+
+  /// The write under way, which every save made meanwhile waits for.
+  Future<void>? _writing;
+
+  Future<void> _writeWhatIsLeft() async {
+    try {
+      // Checked and cleared in the same synchronous run as the loop ends,
+      // so a save cannot slip in between the last check and the `finally`.
+      for (var value = _unwritten; value != null; value = _unwritten) {
+        _unwritten = null;
+        await _service.save(value);
+      }
+    } finally {
+      _writing = null;
+    }
   }
 
   /// Publishes [value] as though it had been read, without writing it.
