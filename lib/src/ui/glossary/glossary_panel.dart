@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../common/file_dialogs.dart';
 import '../../domain/glossary.dart';
 import '../../domain/glossary_view.dart';
-import '../dashboard/cubits/glossary_cubit.dart';
+import '../dashboard/cubits/glossary_bloc.dart';
 import 'glossary_layout.dart';
 import 'glossary_lists.dart';
 import 'glossary_packs_section.dart';
@@ -33,39 +33,47 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
   var _filter = const GlossaryFilter();
 
   Future<void> _export() async {
-    final glossary = context.read<GlossaryCubit>();
+    final glossary = context.read<GlossaryBloc>();
     final location = await context.read<FileDialogs>().saveJson('loredub-glossary.json');
     if (location == null) return;
-    await glossary.export(location);
+    glossary.add(GlossaryExported(location));
   }
 
   /// A pack read back is merged the way the whole glossary is -- the entries
   /// it carries join the lists, and the grouping joins the shelf -- so one
-  /// import serves both. What was read is said, as it is for the cast: a
-  /// file that brought nothing new otherwise looks like one never opened.
+  /// import serves both. What was read is said by [_sayImported], as it is
+  /// for the cast: a file that brought nothing new otherwise looks like one
+  /// never opened.
   Future<void> _import() async {
-    final glossary = context.read<GlossaryCubit>();
-    final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
+    final glossary = context.read<GlossaryBloc>();
     final chosen = await context.read<FileDialogs>().openJson();
     if (chosen.isEmpty) return;
-    final read = await glossary.import(chosen);
+    glossary.add(GlossaryFilesImported(chosen));
+  }
+
+  void _sayImported(BuildContext context, GlossaryState state) {
+    final read = state.lastImport;
     if (read == null) return;
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.glossaryImported(read.entries, read.packs))),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context).glossaryImported(read.entries, read.packs)),
+      ),
     );
   }
 
   Future<void> _exportPack(GlossaryPack pack) async {
-    final glossary = context.read<GlossaryCubit>();
+    final glossary = context.read<GlossaryBloc>();
     final name = pack.name.trim().isEmpty ? 'pack' : pack.name.trim();
     final location = await context.read<FileDialogs>().saveJson('loredub-$name.json');
     if (location == null) return;
-    await glossary.exportPack(location, pack.id);
+    glossary.add(GlossaryPackExported(location, pack.id));
   }
 
   @override
-  Widget build(BuildContext context) => BlocBuilder<GlossaryCubit, GlossaryState>(
+  Widget build(BuildContext context) => BlocConsumer<GlossaryBloc, GlossaryState>(
+    // Once for each import, however much it held.
+    listenWhen: (was, now) => was.lastImport != now.lastImport,
+    listener: _sayImported,
     builder: (context, state) {
       final view = GlossaryView(state.glossary, _filter);
       final lists = GlossaryLists(view: view, loaded: state.loaded);

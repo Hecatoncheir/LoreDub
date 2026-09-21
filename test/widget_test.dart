@@ -55,7 +55,7 @@ import 'package:lore_dub/src/ui/graph/inspector/pipeline_inspector.dart';
 import 'support/staged_dashboard.dart';
 
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
@@ -66,9 +66,15 @@ import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/domain/capture_sources.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
+import 'package:mocktail/mocktail.dart';
+
+import 'support/mock_blocs.dart';
 
 void main() {
-  StagedDashboard buildCubits({RuntimeRepository? runtimes}) {
+  // What `captureAny` stands in with before anything is captured.
+  setUpAll(() => registerFallbackValue(const GlossaryOpened()));
+
+  StagedDashboard buildCubits({RuntimeRepository? runtimes, GlossaryBloc? glossary}) {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
       SessionRepository(NativeEngineService()),
@@ -76,6 +82,7 @@ void main() {
       ModelRepository(ModelStorageService()),
       runtimes ?? RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(UpdateService(client: _offline), NotificationService(plugin: _silent)),
+      glossaryBloc: glossary,
     );
     addTearDown(cubits.dispose);
     return cubits;
@@ -224,7 +231,7 @@ void main() {
     expect(context.read<SessionBloc>(), isNotNull);
     expect(context.read<TranscriptBloc>(), isNotNull);
     expect(context.read<CharactersCubit>(), isNotNull);
-    expect(context.read<GlossaryCubit>(), isNotNull);
+    expect(context.read<GlossaryBloc>(), isNotNull);
     expect(context.read<PipelineGraphBloc>(), isNotNull);
     expect(context.read<PipelineFactsBloc>(), isNotNull);
   });
@@ -553,8 +560,9 @@ void main() {
   });
 
   testWidgets('writes a line of the transcript into the glossary', (tester) async {
+    final glossary = glossaryShowing(const GlossaryState(loaded: true));
     final cubits = stage(
-      buildCubits(),
+      buildCubits(glossary: glossary),
       transcript: const [
         TranscriptEntry(
           original: 'Fire in the hole!',
@@ -588,19 +596,20 @@ void main() {
     await tester.tap(find.text('\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c'));
     await tester.pumpAndSettle();
 
-    final written = cubits.glossary.state.glossary.match(
-      GlossaryKind.phrase,
-      'Fire in the hole!',
-    );
-    expect(written?.reading, '\u041b\u043e\u0436\u0438\u0441\u044c!');
+    final written =
+        verify(() => glossary.add(captureAny())).captured.single as GlossaryEntryWritten;
+    expect(written.entry.kind, GlossaryKind.phrase);
+    expect(written.entry.source, 'Fire in the hole!');
+    expect(written.entry.reading, '\u041b\u043e\u0436\u0438\u0441\u044c!');
   });
 
   // The player opens the dialog on a line that came out right and presses
   // save without touching it: that pins the reading, and it used to write
   // nothing at all and say nothing either.
   testWidgets('writes a reading the player left as it was heard', (tester) async {
+    final glossary = glossaryShowing(const GlossaryState(loaded: true));
     final cubits = stage(
-      buildCubits(),
+      buildCubits(glossary: glossary),
       transcript: const [
         TranscriptEntry(
           original: 'Fire in the hole!',
@@ -618,18 +627,16 @@ void main() {
     await tester.tap(find.text('Сохранить'));
     await tester.pumpAndSettle();
 
-    final written = cubits.glossary.state.glossary.match(
-      GlossaryKind.phrase,
-      'Fire in the hole!',
-    );
-    expect(written?.reading, 'Огонь в дыру!');
+    final written =
+        verify(() => glossary.add(captureAny())).captured.single as GlossaryEntryWritten;
+    expect(written.entry.source, 'Fire in the hole!');
+    expect(written.entry.reading, 'Огонь в дыру!');
   });
 
   // What the entry is filed under is shown rather than edited, but a phrase
   // written down here is wanted elsewhere, so it can be selected and copied.
   testWidgets('lets a glossary phrase be selected', (tester) async {
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       const GlossaryState(
         loaded: true,
         glossary: Glossary(
@@ -643,6 +650,7 @@ void main() {
         ),
       ),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1280, 1000));
 
     expect(
@@ -655,8 +663,7 @@ void main() {
   });
 
   testWidgets('makes a glossary pack and fills it from the lists', (tester) async {
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       const GlossaryState(
         loaded: true,
         glossary: Glossary(
@@ -670,6 +677,7 @@ void main() {
         ),
       ),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
     final add = find.byKey(const ValueKey('glossary-pack-add'));
@@ -678,11 +686,9 @@ void main() {
     await tester.tap(add);
     await tester.pumpAndSettle();
 
-    expect(cubits.glossary.state.glossary.packs, hasLength(1));
-    // A new pack is empty and switched off: it must not narrow the glossary
-    // the moment it is made.
-    expect(cubits.glossary.state.glossary.packs.single.entryKeys, isEmpty);
-    expect(cubits.glossary.state.glossary.inUse.entries, hasLength(1));
+    // What a new pack holds, and that it narrows nothing, is the bloc's:
+    // `glossary_bloc_test.dart`.
+    verify(() => glossary.add(const GlossaryPackAdded('Новый пакет'))).called(1);
   });
 
   // The whole point of the switch: with a pack on, the dubbing is checked
@@ -698,8 +704,7 @@ void main() {
       source: 'Megaton',
       reading: 'Мегатон',
     );
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       GlossaryState(
         loaded: true,
         glossary: Glossary(
@@ -710,6 +715,7 @@ void main() {
         ),
       ),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
     final toggle = find.byKey(const ValueKey('glossary-pack-active-p1'));
@@ -718,7 +724,7 @@ void main() {
     await tester.tap(toggle);
     await tester.pumpAndSettle();
 
-    expect(cubits.glossary.state.glossary.inUse.entries, [megaton]);
+    verify(() => glossary.add(const GlossaryPackSwitched('p1', active: true))).called(1);
   });
 
   testWidgets('asks before a glossary pack is thrown away, and keeps its entries', (tester) async {
@@ -727,8 +733,7 @@ void main() {
       source: 'Megaton',
       reading: 'Мегатон',
     );
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       GlossaryState(
         loaded: true,
         glossary: Glossary(
@@ -739,6 +744,7 @@ void main() {
         ),
       ),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
     final l10n = await AppLocalizations.delegate.load(const Locale('ru'));
 
@@ -750,22 +756,22 @@ void main() {
     expect(find.text(l10n.glossaryPackDeleteMessage('Fallout')), findsOneWidget);
     await tester.tap(find.text(l10n.charactersDeleteCancel));
     await tester.pumpAndSettle();
-    expect(cubits.glossary.state.glossary.packs, hasLength(1));
+    verifyNever(() => glossary.add(const GlossaryPackRemoved('p1')));
 
     await tester.tap(delete);
     await tester.pumpAndSettle();
     await tester.tap(find.text(l10n.charactersDeleteConfirm));
     await tester.pumpAndSettle();
-    expect(cubits.glossary.state.glossary.packs, isEmpty);
-    expect(cubits.glossary.state.glossary.entries, [megaton]);
+    // The entries staying is the bloc's: `glossary_bloc_test.dart`.
+    verify(() => glossary.add(const GlossaryPackRemoved('p1'))).called(1);
   });
 
   // A pack is chosen while looking at what goes into it, so it stands beside
   // the lists where the window is wide enough to hold both.
   testWidgets('stands the packs beside the lists and under them when narrow', (tester) async {
     Future<double> widthAt(WidgetTester tester, Size size) async {
-      final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-      cubits.glossary.seed(const GlossaryState(loaded: true));
+      final glossary = glossaryShowing(const GlossaryState(loaded: true));
+      final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
       await pumpDashboard(tester, cubits, size);
       final packs = find.byKey(const ValueKey('glossaryPacks'));
       await tester.scrollUntilVisible(packs, 300, scrollable: glossaryScroller());
@@ -789,10 +795,10 @@ void main() {
       source: 'Megaton',
       reading: 'Мегатон',
     );
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       const GlossaryState(loaded: true, glossary: Glossary(entries: [fire, megaton])),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
     expect(find.byKey(ValueKey('glossary-silence-${megaton.packKey}')), findsNothing);
@@ -803,14 +809,16 @@ void main() {
     await tester.tap(silence);
     await tester.pumpAndSettle();
 
-    expect(cubits.glossary.state.glossary.match(GlossaryKind.phrase, 'Reloading!')?.silent, isTrue);
+    final written =
+        verify(() => glossary.add(captureAny())).captured.single as GlossaryEntryWritten;
+    expect(written.entry.source, 'Reloading!');
+    expect(written.entry.silent, isTrue);
   });
 
   // A glossary grows to hundreds of lines and the one being looked for is
   // remembered by a word of it, not by where it stands.
   testWidgets('narrows the lists to what the search asks for', (tester) async {
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       const GlossaryState(
         loaded: true,
         glossary: Glossary(
@@ -829,6 +837,7 @@ void main() {
         ),
       ),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
     expect(find.text('Fire in the hole!'), findsOneWidget);
@@ -862,13 +871,13 @@ void main() {
     const rapture = GlossaryEntry(kind: GlossaryKind.name, source: 'Rapture', reading: 'Рапчер');
     const vault = GlossaryEntry(kind: GlossaryKind.word, source: 'Хранилище', reading: 'Убежище');
     const whiterun = GlossaryEntry(kind: GlossaryKind.word, source: 'Белгород', reading: 'Вайтран');
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       const GlossaryState(
         loaded: true,
         glossary: Glossary(entries: [fire, megaton, rapture, vault, whiterun]),
       ),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
     Finder row(GlossaryEntry entry) => find.byKey(ValueKey('${entry.kind.name}:${entry.key}'));
@@ -908,8 +917,7 @@ void main() {
       source: 'Reloading!',
       reading: 'Перезарядка!',
     );
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       GlossaryState(
         loaded: true,
         glossary: Glossary(
@@ -924,6 +932,7 @@ void main() {
         ),
       ),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
     final pack = find.byKey(const ValueKey('glossary-pack-p1'));
@@ -966,8 +975,7 @@ void main() {
       reading: '',
       silent: true,
     );
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       GlossaryState(
         loaded: true,
         glossary: Glossary(
@@ -978,6 +986,7 @@ void main() {
         ),
       ),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
     // By the row's own key rather than by its text: the same line also shows
@@ -1024,8 +1033,7 @@ void main() {
       source: 'Белгород',
       reading: 'Вайтран',
     );
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       GlossaryState(
         loaded: true,
         glossary: Glossary(
@@ -1040,6 +1048,7 @@ void main() {
         ),
       ),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
     Finder row(GlossaryEntry entry) => find.byKey(ValueKey('${entry.kind.name}:${entry.key}'));
@@ -1070,10 +1079,10 @@ void main() {
   // not having been written at all.
   testWidgets('tells a list narrowed to nothing from one with nothing in it', (tester) async {
     const megaton = GlossaryEntry(kind: GlossaryKind.name, source: 'Megaton', reading: 'Мегатон');
-    final cubits = stage(buildCubits(), section: DashboardSection.glossary);
-    cubits.glossary.seed(
+    final glossary = glossaryShowing(
       const GlossaryState(loaded: true, glossary: Glossary(entries: [megaton])),
     );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
     await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
     const empty = 'Пока пусто.';
@@ -1093,8 +1102,9 @@ void main() {
   });
 
   testWidgets('passes a line over from the transcript', (tester) async {
+    final glossary = glossaryShowing(const GlossaryState(loaded: true));
     final cubits = stage(
-      buildCubits(),
+      buildCubits(glossary: glossary),
       transcript: const [
         TranscriptEntry(
           original: 'Reloading!',
@@ -1112,8 +1122,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('transcript-correction-silence')));
     await tester.pumpAndSettle();
 
-    final written = cubits.glossary.state.glossary.match(GlossaryKind.phrase, 'Reloading!');
-    expect(written?.silent, isTrue);
+    final written =
+        verify(() => glossary.add(captureAny())).captured.single as GlossaryEntryWritten;
+    expect(written.entry.source, 'Reloading!');
+    expect(written.entry.silent, isTrue);
   });
 
   testWidgets('offers no correction for a line that was never translated', (tester) async {

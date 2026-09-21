@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
 import '../../domain/glossary_view.dart';
 import '../theme.dart';
-import '../dashboard/cubits/glossary_cubit.dart';
+import '../dashboard/cubits/glossary_bloc.dart';
 import '../common/confirm_dialog.dart';
 import 'glossary_heading.dart';
 import 'glossary_pack_area.dart';
@@ -38,7 +38,7 @@ class GlossaryPacksSection extends StatelessWidget {
   /// leaves every entry in its list -- but the grouping took the player
   /// dragging to make, and is asked about like a pack of cards is.
   Future<void> _confirmDelete(BuildContext context, GlossaryPack pack) async {
-    final glossary = context.read<GlossaryCubit>();
+    final glossary = context.read<GlossaryBloc>();
     final l10n = AppLocalizations.of(context);
     final confirmed = await confirmRemoval(
       context,
@@ -47,7 +47,7 @@ class GlossaryPacksSection extends StatelessWidget {
       cancelLabel: l10n.charactersDeleteCancel,
       confirmLabel: l10n.charactersDeleteConfirm,
     );
-    if (confirmed) await glossary.removePack(pack.id);
+    if (confirmed) glossary.add(GlossaryPackRemoved(pack.id));
   }
 
   @override
@@ -80,7 +80,8 @@ class GlossaryPacksSection extends StatelessWidget {
                 ),
                 TextButton.icon(
                   key: const ValueKey('glossary-pack-add'),
-                  onPressed: () => context.read<GlossaryCubit>().addPack(l10n.packsNewName),
+                  onPressed: () =>
+                      context.read<GlossaryBloc>().add(GlossaryPackAdded(l10n.packsNewName)),
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(l10n.packsAdd),
                   style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
@@ -110,18 +111,19 @@ class GlossaryPacksSection extends StatelessWidget {
                     // the pack did not change, only what is shown of it.
                     held: pack.entryKeys.length,
                     searching: view.filter.searching,
-                    onRename: (name) => context.read<GlossaryCubit>().renamePack(pack.id, name),
-                    onActive: (active) =>
-                        context.read<GlossaryCubit>().activatePack(pack.id, active: active),
+                    onRename: (name) =>
+                        context.read<GlossaryBloc>().add(GlossaryPackRenamed(pack.id, name)),
+                    onActive: (active) => context.read<GlossaryBloc>().add(
+                      GlossaryPackSwitched(pack.id, active: active),
+                    ),
                     onExport: pack.entryKeys.isEmpty ? null : () => onExport(pack),
                     onDelete: () => _confirmDelete(context, pack),
-                    onDrop: (drag) => context.read<GlossaryCubit>().fileInPack(
-                      drag.entry,
-                      into: pack.id,
-                      from: drag.fromPackId,
+                    onDrop: (drag) => context.read<GlossaryBloc>().add(
+                      GlossaryEntryFiled(drag.entry, into: pack.id, from: drag.fromPackId),
                     ),
-                    onRemoveMember: (entry) =>
-                        context.read<GlossaryCubit>().takeFromPack(entry, from: pack.id),
+                    onRemoveMember: (entry) => context.read<GlossaryBloc>().add(
+                      GlossaryEntryUnfiled(entry, from: pack.id),
+                    ),
                   ),
                 ),
           ],

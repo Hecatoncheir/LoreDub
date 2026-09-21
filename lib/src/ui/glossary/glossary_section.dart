@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
-import '../dashboard/cubits/glossary_cubit.dart';
+import '../dashboard/cubits/glossary_bloc.dart';
 import 'glossary_kind_texts.dart';
 import 'glossary_add_row.dart';
 import 'glossary_entry_row.dart';
@@ -44,7 +44,7 @@ class GlossarySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final texts = GlossaryKindTexts.of(l10n, kind);
-    final glossary = context.read<GlossaryCubit>();
+    final glossary = context.read<GlossaryBloc>();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -81,17 +81,17 @@ class GlossarySection extends StatelessWidget {
                 entry: entry,
                 sourceLabel: texts.sourceLabel,
                 readingLabel: texts.readingLabel,
-                onWrite: (written) => glossary.write(written),
-                onRemove: () => glossary.remove(kind, entry.source),
+                onWrite: (written) => glossary.add(GlossaryEntryWritten(written)),
+                onRemove: () => glossary.add(GlossaryEntryRemoved(kind, entry.source)),
                 packs: packs,
-                onFileInPack: (packId) => glossary.fileInPack(entry, into: packId),
+                onFileInPack: (packId) => glossary.add(GlossaryEntryFiled(entry, into: packId)),
               ),
             const SizedBox(height: 6),
             GlossaryAddRow(
               kind: kind,
               sourceLabel: texts.sourceLabel,
               readingLabel: texts.readingLabel,
-              onWrite: (written) => glossary.write(written),
+              onWrite: (written) => glossary.add(GlossaryEntryWritten(written)),
             ),
           ],
         ),

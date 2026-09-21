@@ -15,7 +15,7 @@ import 'package:lore_dub/src/domain/model_selection.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
@@ -56,6 +56,7 @@ class StagedDashboard {
     SchemeRepository? schemes,
     GlossaryRepository? glossaryRepository,
     CastRepository? cast,
+    GlossaryBloc? glossaryBloc,
   }) {
     final native = engine ?? NativeEngineService();
     this.system = system ?? SystemRepository(native);
@@ -108,7 +109,9 @@ class StagedDashboard {
       sessions,
       this.cast,
     );
-    glossary = GlossaryCubit(this.glossaryRepository, shell);
+    // A screen test hands a mock over: what the screen shows is then what
+    // the test says, and what it sends is kept.
+    glossary = glossaryBloc ?? GlossaryBloc(this.glossaryRepository, shell);
     graph = PipelineGraphBloc(
       this.schemes,
       settingsRepository,
@@ -144,7 +147,7 @@ class StagedDashboard {
   late final SessionBloc pipeline;
   late final TranscriptBloc transcript;
   late final CharactersCubit characters;
-  late final GlossaryCubit glossary;
+  late final GlossaryBloc glossary;
   late final PipelineGraphBloc graph;
   late final PipelineFactsBloc facts;
 

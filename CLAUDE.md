@@ -386,7 +386,7 @@ order of `DashboardSection` itself: the compact navigation indexes into
 `section.index`, so a screen put between two others renumbers the rest by
 itself rather than by hand.
 
-The Glossary screen ("Словарь", `DashboardSection.glossary`, `GlossaryCubit`,
+The Glossary screen ("Словарь", `DashboardSection.glossary`, `GlossaryBloc`,
 `glossary_screen.dart`) is where the player writes down what no better model
 would know. `GlossaryService` keeps it in one `<app support>/glossary.json`
 for every game, like the cast and unlike the per-game bank, and every session
@@ -1248,6 +1248,18 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `NativeEngineService({inference, native, workDirectory})`,
   `SharedPreferences.setMockInitialValues`, the exported
   `readNativeUtf8String` helper).
+- A screen is tested in two halves, as the Glossary is. What its bloc does
+  with an event is `blocTest` against a fake repository
+  (`test/src/ui/dashboard/glossary_bloc_test.dart`); what the screen draws
+  and sends is a widget test over a `MockBloc` (`test/support/mock_blocs.dart`,
+  `glossaryShowing`), staged with `whenListen` and checked with `verify` on
+  `add` -- which is why the events compare by value. Staged through
+  `StagedDashboard(glossaryBloc: ...)` where the whole dashboard is pumped.
+  Do not let a widget test drive a real bloc into a write: the disk does not
+  answer inside the test's fake time, and a handler under `sequential()` is
+  waited for by `close()`, so the test hangs in its teardown rather than
+  failing. The screens not yet taken this way still seed real cubits
+  (`TODO.md`, stage 4).
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`) with an
   imperative summary, and a native change carries its regenerated bindings in
   the same commit. `AGENTS.md` holds the same guidance in shorter, more

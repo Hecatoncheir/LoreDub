@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../dashboard/cubits/characters_cubit.dart';
 import '../dashboard/cubits/downloads_cubit.dart';
-import '../dashboard/cubits/glossary_cubit.dart';
+import '../dashboard/cubits/glossary_bloc.dart';
 import '../dashboard/cubits/session_bloc.dart';
 import '../dashboard/cubits/pipeline_facts_bloc.dart';
 import '../dashboard/cubits/pipeline_graph_bloc.dart';
@@ -104,7 +104,8 @@ class DashboardProviders extends StatelessWidget {
       ),
       BlocProvider(
         lazy: false,
-        create: (context) => GlossaryCubit(context.read(), context.read<ShellCubit>())..load(),
+        create: (context) =>
+            GlossaryBloc(context.read(), context.read<ShellCubit>())..add(const GlossaryOpened()),
       ),
       BlocProvider(
         lazy: false,

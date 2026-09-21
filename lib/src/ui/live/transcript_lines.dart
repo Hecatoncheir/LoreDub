@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/character.dart';
 import '../../domain/glossary.dart';
 import '../../domain/pipeline_state.dart';
-import '../dashboard/cubits/glossary_cubit.dart';
+import '../dashboard/cubits/glossary_bloc.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import 'empty_transcript.dart';
 import 'transcript_bubble.dart';
@@ -56,12 +56,14 @@ class TranscriptLines extends StatelessWidget {
         // only moment the player knows it did. The glossary screen is then
         // the list of what was collected rather than a place to remember to
         // visit.
-        onCorrect: (entry, reading, {silent = false}) => context.read<GlossaryCubit>().write(
-          GlossaryEntry(
-            kind: GlossaryKind.phrase,
-            source: entry.english,
-            reading: reading,
-            silent: silent,
+        onCorrect: (entry, reading, {silent = false}) => context.read<GlossaryBloc>().add(
+          GlossaryEntryWritten(
+            GlossaryEntry(
+              kind: GlossaryKind.phrase,
+              source: entry.english,
+              reading: reading,
+              silent: silent,
+            ),
           ),
         ),
       ),
