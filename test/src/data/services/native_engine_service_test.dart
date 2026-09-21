@@ -451,6 +451,21 @@ void main() {
       expect(worker.killed, isTrue);
     });
 
+    test('a stop the library refuses still ends the worker on this side', () async {
+      final starting = engine.startScene(sceneOf(7));
+      final worker = await untilCaptureDirectory();
+      held.handOver();
+      await starting;
+
+      native.stopCode = -4;
+      await expectLater(engine.stop(), failsWith(FailureCode.nativeCallFailed));
+
+      // Left running, the worker held its models for nobody and the poll
+      // went on reading a capture that was meant to be over.
+      expect(worker.killed, isTrue);
+      native.stopCode = 0;
+    });
+
     test('a start still on its way when the engine is disposed of goes no further', () async {
       final starting = expectLater(
         engine.startScene(sceneOf(7)),
@@ -509,6 +524,9 @@ class _FakeNative implements NativeSessionCalls {
 
   /// What `ld_start` answers; negative is a capture that would not start.
   int startCode = 0;
+
+  /// What `ld_stop` answers; negative is a library that would not stop.
+  int stopCode = 0;
   int stops = 0;
   final _events = Queue<String>();
 
@@ -525,6 +543,7 @@ class _FakeNative implements NativeSessionCalls {
   @override
   int stop() {
     stops++;
+    if (stopCode < 0) return stopCode;
     _events.add('{"type":"state","state":"idle"}');
     return 0;
   }

@@ -31,6 +31,7 @@ import 'local_inference_service.dart';
 import 'phrase_queue.dart';
 import 'playback_scheduler.dart';
 import 'worker_arguments.dart';
+import 'voice_take.dart';
 
 typedef NativeStringReader = int Function(Pointer<Char> output, int capacity);
 
@@ -148,13 +149,9 @@ class NativeEngineService {
   /// worker that was never this start's to end.
   int? _workerOf;
 
-  /// Whether a card is recording right now. Between recordings what the game
-  /// says is thrown away.
-  bool _recordingVoice = false;
-
-  /// What the recording has heard so far, kept until it ends: the screen
-  /// picks one of them for the card, and cannot copy a file already gone.
-  final _recordedClips = <String>[];
+  /// The take a card is recorded from. Between takes what the game says is
+  /// thrown away.
+  late final _take = VoiceTake(hold: ld_hold_take, discard: _deleteIfPresent);
 
   /// What subtitle mode read last, so a line that grows in place is voiced
   /// only for what it gained, and one that comes back unchanged — even after
@@ -254,7 +251,7 @@ class NativeEngineService {
   /// to listen to. The screen waits seconds rather than a minute.
   Future<void> startVoiceFiles(VoiceFilesSessionConfig config) =>
       _startSession(config, (start) async {
-        _recordingVoice = false;
+        _take.reset();
         await _bringUpWorker(start, () => _load(config.worker, load: WorkerLoad.embedOnly));
         _listenWithoutCapture(start, config);
       });
@@ -342,7 +339,7 @@ class NativeEngineService {
   /// translator nor the speech model loaded.
   Future<void> startCharacters(CharactersSessionConfig config) =>
       _startSession(config, (start) async {
-        _recordingVoice = false;
+        _take.reset();
         await _removeStaleAudio(start);
         await _bringUpWorker(start, () => _load(config.worker, load: WorkerLoad.embedOnly));
         _beginCapture(start, config, captureDirectory: await _captureDirectory(start));
@@ -471,54 +468,11 @@ class NativeEngineService {
     return _inference.stop();
   }
 
-  /// Whether what the game says is measured for a card, or thrown away.
-  ///
-  /// What an ended recording heard is dropped: the screen has had its
-  /// chance to keep the clip that earned the card.
-  /// Opens or closes the take a card is recorded from.
-  ///
-  /// The capture holds it open meanwhile: neither a pause in the speech nor
-  /// the length of a phrase ends it, so what the card is measured from is
-  /// everything the player heard between pressing record and pressing stop.
-  /// Closing it waits for that recording to be written and measured — it is
-  /// the only one the take has, and the card is nothing without it.
+  /// Opens or closes the take a card is recorded from. Closing it waits for
+  /// what was recorded to be measured.
   Future<void> setRecordingVoice({required bool recording}) async {
-    if (recording) {
-      _dropRecordedClips();
-      _recordingVoice = true;
-      ld_hold_take(1);
-      return;
-    }
-    if (!_recordingVoice) return;
-    // What the take had gathered when it was let go of. Nothing means the
-    // game was silent throughout, and there is no recording to wait for.
-    final held = ld_hold_take(0);
-    if (held <= 0) {
-      _recordingVoice = false;
-      return;
-    }
-    final closing = Completer<void>();
-    _takeClosing = closing;
-    try {
-      // Long enough for the capture's own wake-up, the file, and the
-      // converter reading three minutes of it on a busy CPU.
-      await closing.future.timeout(const Duration(seconds: 90));
-    } on TimeoutException {
-      // Nothing came of it after all: what was gathered held no voice.
-    } finally {
-      if (identical(_takeClosing, closing)) _takeClosing = null;
-      _recordingVoice = false;
-    }
-  }
-
-  /// Waiting for the recording a closed take leaves behind, if anything is.
-  Completer<void>? _takeClosing;
-
-  void _dropRecordedClips() {
-    for (final clip in _recordedClips) {
-      unawaited(_deleteIfPresent(clip));
-    }
-    _recordedClips.clear();
+    if (recording) return _take.open();
+    await _take.close();
   }
 
   /// Plays a file to its end, outside the dubbing's own queue: a clip the
@@ -553,11 +507,7 @@ class NativeEngineService {
     // back from it.
     _starts++;
     // A take left open belongs to a session that is ending.
-    if (_recordingVoice) {
-      ld_hold_take(0);
-      _recordingVoice = false;
-      if (!(_takeClosing?.isCompleted ?? true)) _takeClosing!.complete();
-    }
+    _take.abandon();
     // Cleared first: segments captured moments ago are still travelling
     // through the queue, and failing them is expected once the user stops.
     _active = null;
@@ -565,12 +515,22 @@ class NativeEngineService {
     // Cleared before ld_stop, so the idle it announces belongs to no session
     // in particular and puts every screen that was showing one back to rest.
     _session = null;
-    _recordingVoice = false;
-    _dropRecordedClips();
     _previousOcrText = null;
-    // ld_stop drops the hotkeys too; nothing is left for them to pause.
-    _throwIfError(_native.stop());
-    _pollEvents();
+    try {
+      // ld_stop drops the hotkeys too; nothing is left for them to pause.
+      _throwIfError(_native.stop());
+      _pollEvents();
+    } finally {
+      // Whatever the library answered, the session is over here: a stop that
+      // failed half-way left the poll running and the worker up for nobody.
+      _endSessionHere();
+      await _endWorker();
+    }
+  }
+
+  /// What a stop clears on this side of the library, whatever the library
+  /// said about its own.
+  void _endSessionHere() {
     _pollTimer?.cancel();
     _pollTimer = null;
     for (final phrase in _phrases.clear()) {
@@ -592,7 +552,6 @@ class NativeEngineService {
     // `_duckForSpeech` cannot do it either, since the line still sounding as
     // the session ends finishes after `_active` is already null.
     _native.restoreProcessVolumes();
-    await _endWorker();
   }
 
   Future<void> setProcessVolume(int processId, double volume) async {
@@ -767,7 +726,7 @@ class NativeEngineService {
 
   /// The characters screen holds the capture open between takes, and what it
   /// hears then belongs to nobody.
-  bool get _betweenRecordings => _session == PipelineSession.characters && !_recordingVoice;
+  bool get _betweenRecordings => _session == PipelineSession.characters && !_take.recording;
 
   /// Subtitles read off the screen: only what the line gained is voiced.
   void _onScreenText(String text) {
@@ -838,8 +797,7 @@ class NativeEngineService {
       if (heard.vector.isEmpty) return;
       // Kept while the recording runs, so the screen can put the clip that
       // earned the card beside it and let the player hear it back.
-      kept = _recordingVoice;
-      if (kept) _recordedClips.add(wavePath);
+      kept = _take.keep(wavePath);
       _events.add(
         CharacterVoiceMeasured(
           vector: heard.vector,
@@ -853,7 +811,7 @@ class NativeEngineService {
     } finally {
       if (!kept) await _deleteIfPresent(wavePath);
       // Whoever is waiting for the take to close has what it heard now.
-      if (!(_takeClosing?.isCompleted ?? true)) _takeClosing!.complete();
+      _take.measured();
     }
   }
 

@@ -1235,6 +1235,14 @@ abstract final class AppTheme {
   - В сервисе остаётся один шаблон `_startSession(config, {capture})`, опрос
     и маршрутизация. `_pollEvents()` (`:643`) без `try/catch` зовётся из
     `stop()` до очистки → остаток `stop()` в `finally`.
+  *Идёт по частям.* Сделано: шаблон `_startSession` и типизированный
+  конфиг (`SessionConfig`, этот же этап), запись дубля — `VoiceTake`
+  (`voice_take.dart`: открыть, закрыть с ожиданием замера, бросить с
+  сессией, сохранить клип; `ld_hold_take` передаётся параметром, так что
+  класс проверяется без библиотеки), и остаток `stop()` в `finally` —
+  `ld_stop`, ответивший ошибкой, раньше оставлял опрос и воркер жить (тест
+  «a stop the library refuses still ends the worker»). Осталось:
+  `NativeBridge`, `EngineSession`, `PhraseProcessor`, `GameDucker`.
 - [ ] **`LocalInferenceService`: протокол запроса написан девять раз**
       (`:500–531`, `:539–563`, `:567–598`, `:603–628`, `:635–660`,
       `:673–694`, `:696–722`, `:729–755`, `:761–811`, по ~20 одинаковых
