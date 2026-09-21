@@ -16,8 +16,9 @@ import '../../domain/spoken_language.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/failure.dart';
 import '../../domain/glossary.dart';
-import 'runtime_catalog.dart';
 import 'worker_channel.dart';
+import 'worker_arguments.dart';
+import '../../domain/session_config.dart';
 
 class InferenceResult {
   const InferenceResult({
@@ -217,73 +218,12 @@ class LocalInferenceService {
     return directory;
   }
 
-  Future<void> start({
-    /// Empty with [embedOnly], which loads neither.
-    String translationModel = '',
-
-    /// Full path to the voice package's first file, `model.onnx`; the worker
-    /// reads the package from the directory it sits in.
-    String ttsModel = '',
-
-    /// Load the voice converter and nothing else: the characters screen
-    /// measures a voice without waiting a minute for Marian and Vosk.
-    bool embedOnly = false,
-
-    /// Load the speech model and the converter without the translator: a
-    /// sample of a voice speaks a line the application already wrote.
-    bool speechOnly = false,
-    String speaker = '',
-    required int threads,
-    required double speed,
-    required String pythonExecutable,
-    required bool requiresWhisper,
-    String sourceLanguage = autoSpokenLanguage,
-    ComputeBackend recognitionBackend = ComputeBackend.cpu,
-    ComputeBackend translationBackend = ComputeBackend.cpu,
-
-    /// Where the voice reads. Its own answer rather than the translator's,
-    /// and the one stage a card barely changes: some 30 ms off a line, paid
-    /// for with a second of the session's start.
-    ComputeBackend speechBackend = ComputeBackend.cpu,
-
-    /// Target-language token some translation models want in front of the
-    /// text; empty for the pairs that serve one language.
-    String translationPrefix = '',
-
-    /// Pick the voice per phrase from the gender of the original speaker.
-    bool followSpeaker = false,
-
-    /// Carry the original's timbre onto the voice. Without it a loaded
-    /// converter only tells the characters apart.
-    bool revoice = false,
-    List<String> maleVoices = const [],
-    List<String> femaleVoices = const [],
-
-    /// Where downloaded GPU runtimes live; needed by the CUDA backends.
-    String? downloadedRuntimeDirectory,
-
-    /// The OpenVoice converter directory, when each line is to be re-voiced
-    /// in the timbre of the phrase it answers.
-    String? voiceConverter,
-    ComputeBackend voiceConversionBackend = ComputeBackend.cpu,
-
-    /// The game's voice bank file, when the converter is to remember the
-    /// characters it meets rather than take each line's timbre afresh.
-    String? voiceBank,
-
-    /// The characters the player recorded and named, which belong to every
-    /// game rather than one.
-    String? characters,
-
-    /// What the player wrote down about their games: the names the model
-    /// leaves in Latin script and the sentences they have translated
-    /// themselves. One file for every game, as the cast is.
-    String? glossary,
-
-    /// The cards cut out of the mix on the graph, by id. Each of them is
-    /// read as it is heard: it lends its voice to nobody, and nobody stands
-    /// in for it, though what the cards say waits in them.
-    Set<String> asHeard = const {},
+  /// Brings up the worker [plan] describes, loading what [load] says of it.
+  /// [requiresWhisper] has the recognition binary found and checked too.
+  Future<void> start(
+    WorkerPlan plan, {
+    bool requiresWhisper = false,
+    WorkerLoad load = WorkerLoad.full,
   }) async {
     // Named before anything is waited for: each wait below is somewhere a
     // stop can land, and the start asks after every one of them whether it
@@ -300,78 +240,21 @@ class LocalInferenceService {
     _diagnostics.clear();
     // A language the user named is used as is; anything else is detected once
     // on the first phrase and then reused.
-    _spokenLanguage = sourceLanguage == autoSpokenLanguage ? null : sourceLanguage;
+    _spokenLanguage = plan.sourceLanguage == autoSpokenLanguage ? null : plan.sourceLanguage;
     // Both binaries are validated before the caller ducks the game, so a
     // broken installation cannot look like a silently working pipeline.
     final files = await _prepare(
-      pythonExecutable: pythonExecutable,
+      pythonExecutable: plan.pythonExecutable,
       requiresWhisper: requiresWhisper,
-      recognitionBackend: recognitionBackend,
-      downloadedRuntimeDirectory: downloadedRuntimeDirectory,
+      recognitionBackend: plan.backends.recognition,
+      downloadedRuntimeDirectory: plan.runtimeDirectory,
     );
     _throwIfSuperseded(generation);
     _whisperExecutable = files.whisper;
-    // The translator, the voice and the converter each ask for the CUDA build
-    // on their own, and whichever does brings it in for all three.
-    final cudaTorch =
-        translationBackend == ComputeBackend.cuda ||
-        (ttsModel.isNotEmpty && speechBackend == ComputeBackend.cuda) ||
-        (voiceConverter != null && voiceConversionBackend == ComputeBackend.cuda);
     onStartupProgress?.call(0.05, 'python');
     final worker = await _startWorker(
       files.python,
-      [
-        '-u',
-        files.script,
-        if (embedOnly) '--embed-only',
-        if (speechOnly) '--speech-only',
-        if (translationModel.isNotEmpty) ...['--translation-model', translationModel],
-        if (ttsModel.isNotEmpty) ...[
-          '--tts-model',
-          ttsModel,
-          '--speech-device',
-          speechBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
-        ],
-        '--speaker',
-        speaker,
-        '--work-directory',
-        files.work,
-        '--threads',
-        '$threads',
-        '--speed',
-        speed.toStringAsFixed(3),
-        '--device',
-        translationBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
-        if (translationPrefix.isNotEmpty) ...['--translation-prefix', translationPrefix],
-        if (followSpeaker) ...[
-          '--follow-speaker',
-          '--male-voices',
-          maleVoices.join(','),
-          '--female-voices',
-          femaleVoices.join(','),
-        ],
-        // CUDA torch is installed beside the models rather than over the
-        // bundled CPU build, so the worker is told where to find it.
-        if (cudaTorch && downloadedRuntimeDirectory != null) ...[
-          '--extra-packages',
-          path.join(downloadedRuntimeDirectory, torchCudaRuntimeId),
-        ],
-        // Outside the converter's own arguments: what the player wrote down
-        // is read whether or not the original voice is carried over, and
-        // nesting it there left a session without the original voice with no
-        // glossary at all until the next entry was written.
-        if (glossary != null) ...['--glossary', glossary],
-        if (voiceConverter != null) ...[
-          '--voice-converter',
-          voiceConverter,
-          '--converter-device',
-          voiceConversionBackend == ComputeBackend.cuda ? 'cuda' : 'cpu',
-          if (revoice) '--revoice',
-          if (voiceBank != null) ...['--voice-bank', voiceBank],
-          if (characters != null) ...['--characters', characters],
-          if (asHeard.isNotEmpty) ...['--as-heard', asHeard.join(',')],
-        ],
-      ],
+      workerArguments(plan, script: files.script, work: files.work, load: load),
     );
     if (generation != _generation) {
       // Stopped while the interpreter was coming up. The stop found no

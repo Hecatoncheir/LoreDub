@@ -30,6 +30,7 @@ import '../../native/lore_dub_native.g.dart';
 import 'local_inference_service.dart';
 import 'phrase_queue.dart';
 import 'playback_scheduler.dart';
+import 'worker_arguments.dart';
 
 typedef NativeStringReader = int Function(Pointer<Char> output, int capacity);
 
@@ -187,40 +188,13 @@ class NativeEngineService {
     return ComputeAvailability.fromProbeJson(jsonDecode(json) as Map<String, Object?>);
   }
 
-  /// Brings the worker up with what [plan] names. [embedOnly] loads the
-  /// converter and nothing else; [speechOnly] the voice and the converter.
+  /// Brings the worker up with what [plan] names, as much of it as [load]
+  /// says.
   Future<void> _load(
     WorkerPlan plan, {
     bool requiresWhisper = false,
-    bool embedOnly = false,
-    bool speechOnly = false,
-  }) => _inference.start(
-    embedOnly: embedOnly,
-    speechOnly: speechOnly,
-    translationModel: plan.models.translation ?? '',
-    ttsModel: plan.models.speech ?? '',
-    speaker: plan.speaker,
-    threads: plan.threads,
-    speed: plan.speed,
-    pythonExecutable: plan.pythonExecutable,
-    requiresWhisper: requiresWhisper,
-    sourceLanguage: plan.sourceLanguage,
-    translationPrefix: plan.translationPrefix,
-    followSpeaker: plan.followSpeaker,
-    revoice: plan.revoice,
-    maleVoices: plan.maleVoices,
-    femaleVoices: plan.femaleVoices,
-    recognitionBackend: plan.backends.recognition,
-    translationBackend: plan.backends.translation,
-    speechBackend: plan.backends.speech,
-    downloadedRuntimeDirectory: plan.runtimeDirectory,
-    voiceConverter: plan.models.converter,
-    voiceConversionBackend: plan.backends.voiceConversion,
-    voiceBank: plan.voiceBank,
-    characters: plan.characters,
-    glossary: plan.glossary,
-    asHeard: plan.asHeard,
-  );
+    WorkerLoad load = WorkerLoad.full,
+  }) => _inference.start(plan, requiresWhisper: requiresWhisper, load: load);
 
   Future<void> start(LiveSessionConfig config) => _startSession(config, (start) async {
     _reportedLanguage = null;
@@ -271,7 +245,7 @@ class NativeEngineService {
   /// whisper nor the translator is wanted — the line is one the application
   /// wrote — so the screen waits seconds rather than a minute.
   Future<void> startPreview(PreviewSessionConfig config) => _startSession(config, (start) async {
-    await _bringUpWorker(start, () => _load(config.worker, speechOnly: true));
+    await _bringUpWorker(start, () => _load(config.worker, load: WorkerLoad.speechOnly));
     _listenWithoutCapture(start, config);
   });
 
@@ -281,7 +255,7 @@ class NativeEngineService {
   Future<void> startVoiceFiles(VoiceFilesSessionConfig config) =>
       _startSession(config, (start) async {
         _recordingVoice = false;
-        await _bringUpWorker(start, () => _load(config.worker, embedOnly: true));
+        await _bringUpWorker(start, () => _load(config.worker, load: WorkerLoad.embedOnly));
         _listenWithoutCapture(start, config);
       });
 
@@ -370,7 +344,7 @@ class NativeEngineService {
       _startSession(config, (start) async {
         _recordingVoice = false;
         await _removeStaleAudio(start);
-        await _bringUpWorker(start, () => _load(config.worker, embedOnly: true));
+        await _bringUpWorker(start, () => _load(config.worker, load: WorkerLoad.embedOnly));
         _beginCapture(start, config, captureDirectory: await _captureDirectory(start));
       });
 
@@ -382,7 +356,7 @@ class NativeEngineService {
   /// recording gate left open: every phrase is placed, none is dubbed.
   Future<void> startScene(SceneSessionConfig config) => _startSession(config, (start) async {
     await _removeStaleAudio(start);
-    await _bringUpWorker(start, () => _load(config.worker, embedOnly: true));
+    await _bringUpWorker(start, () => _load(config.worker, load: WorkerLoad.embedOnly));
     _beginCapture(start, config, captureDirectory: await _captureDirectory(start));
   });
 

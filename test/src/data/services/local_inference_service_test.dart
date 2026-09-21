@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/local_inference_service.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
+import 'package:lore_dub/src/domain/session_config.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../support/fake_worker.dart';
@@ -151,10 +152,7 @@ void main() {
     }
 
     Future<void> startOn(LocalInferenceService service) => service.start(
-      threads: 2,
-      speed: 1,
-      pythonExecutable: 'python.exe',
-      requiresWhisper: false,
+      const WorkerPlan(threads: 2, pythonExecutable: 'python.exe', runtimeDirectory: 'runtime'),
     );
 
     Matcher failsWith(FailureCode code) =>
