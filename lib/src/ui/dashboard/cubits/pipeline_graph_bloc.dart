@@ -459,6 +459,15 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   Future<void> _onOpened(PipelineGraphOpened event, Emitter<PipelineGraphState> emit) async {
     if (!state.loading) return;
+    // Drawn from the settings and the cast, so after both are read; each
+    // is read once whoever asks first, so it does not matter who started.
+    // A read that failed is reported by the screen that owns it; the
+    // canvas draws what there is.
+    try {
+      await Future.wait([_settings.load(), _characters.load()]);
+    } catch (exception) {
+      debugPrint('scheme drawn without what it is drawn from: $exception');
+    }
     // What the canvas stood on when the disk was asked. A bloc serves each
     // kind of event on a stream of its own, so a card placed while this was
     // waiting has already landed — and the arrangement read here must not

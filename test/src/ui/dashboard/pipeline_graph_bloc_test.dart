@@ -21,7 +21,9 @@ import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+
+import '../../../support/staged_dashboard.dart';
+
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -33,7 +35,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _GraphRepository repository;
-  late DashboardCubits cubits;
+  late StagedDashboard cubits;
   late PipelineGraphBloc graph;
 
   const guard = Character(id: 'guard', name: 'Стражник', vector: [0.2, 0.4]);
@@ -65,7 +67,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     repository = _GraphRepository();
-    cubits = DashboardCubits(
+    cubits = StagedDashboard(
       repository,
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),

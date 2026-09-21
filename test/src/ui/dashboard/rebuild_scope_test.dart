@@ -22,12 +22,14 @@ import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+
+import '../../../support/staged_dashboard.dart';
+
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
-import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
+import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -59,13 +61,13 @@ void main() {
     return rebuilt;
   }
 
-  Future<DashboardCubits> pumpAt(
+  Future<StagedDashboard> pumpAt(
     WidgetTester tester,
     DashboardSection section, {
     LiveView liveView = LiveView.dubbing,
   }) async {
     SharedPreferences.setMockInitialValues({});
-    final cubits = DashboardCubits(
+    final cubits = StagedDashboard(
       AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
@@ -100,7 +102,7 @@ void main() {
         locale: const Locale(defaultInterfaceLanguage),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: DashboardView(cubits: cubits),
+        home: cubits.provide(const DashboardScaffold()),
       ),
     );
     await tester.pump();

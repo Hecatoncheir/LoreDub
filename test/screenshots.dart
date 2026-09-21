@@ -48,14 +48,16 @@ import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+
+import 'support/staged_dashboard.dart';
+
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
-import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
+import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/graph/node_faces.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -248,9 +250,9 @@ void main() {
   setUpAll(loadFonts);
   setUp(nameTheVersion);
 
-  DashboardCubits buildCubits() {
+  StagedDashboard buildCubits() {
     SharedPreferences.setMockInitialValues({});
-    final cubits = DashboardCubits(
+    final cubits = StagedDashboard(
       AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
@@ -265,7 +267,7 @@ void main() {
   /// frame to `docs/screenshots/<name>-<language>.png`.
   Future<void> shoot(
     WidgetTester tester,
-    DashboardCubits cubits,
+    StagedDashboard cubits,
     String name,
     String language, {
     double scroll = 0,
@@ -289,7 +291,7 @@ void main() {
         locale: Locale(language),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: DashboardView(cubits: cubits),
+        home: cubits.provide(const DashboardScaffold()),
       ),
     );
     await tester.pump();
@@ -319,7 +321,7 @@ void main() {
       ),
   ];
 
-  DashboardCubits stage(
+  StagedDashboard stage(
     String language, {
     required DashboardSection section,
     LiveView liveView = LiveView.dubbing,

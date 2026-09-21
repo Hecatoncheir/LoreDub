@@ -33,11 +33,13 @@ import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+
+import 'support/staged_dashboard.dart';
+
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
-import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
+import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,14 +59,14 @@ void main() {
       ),
   ];
 
-  Future<DashboardCubits> pumpGraph(WidgetTester tester) async {
+  Future<StagedDashboard> pumpGraph(WidgetTester tester) async {
     SharedPreferences.setMockInitialValues(const {});
     tester.view.physicalSize = const Size(1500, 950);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final cubits = DashboardCubits(
+    final cubits = StagedDashboard(
       AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
@@ -112,7 +114,7 @@ void main() {
         locale: const Locale('ru'),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: DashboardView(cubits: cubits),
+        home: cubits.provide(const DashboardScaffold()),
       ),
     );
     await tester.pumpAndSettle();

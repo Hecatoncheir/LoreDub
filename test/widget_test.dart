@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -47,12 +48,16 @@ import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/domain/sound_files.dart';
 import 'package:lore_dub/src/ui/live/source_controls.dart';
 import 'package:lore_dub/src/ui/settings/voice_card.dart';
-import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
+import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/graph/canvas/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/graph/inspector/pipeline_inspector.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+
+import 'support/staged_dashboard.dart';
+
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_cubit.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
+import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
@@ -62,9 +67,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/domain/capture_sources.dart';
 
 void main() {
-  DashboardCubits buildCubits({RuntimeRepository? runtimes}) {
+  StagedDashboard buildCubits({RuntimeRepository? runtimes}) {
     SharedPreferences.setMockInitialValues({});
-    final cubits = DashboardCubits(
+    final cubits = StagedDashboard(
       AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
@@ -78,8 +83,8 @@ void main() {
   /// Puts a state on the screen without running the load that would produce
   /// it. The first load never finishes inside a widget test — it reads the
   /// disk — so what the widgets read is seeded instead.
-  DashboardCubits stage(
-    DashboardCubits cubits, {
+  StagedDashboard stage(
+    StagedDashboard cubits, {
     DashboardSection section = DashboardSection.live,
     LiveView liveView = LiveView.dubbing,
     UpdateState updates = const UpdateState(),
@@ -137,7 +142,7 @@ void main() {
 
   /// Drives the dashboard from cubits the test owns, so pipeline states can
   /// be shown without starting anything.
-  Future<void> pumpDashboard(WidgetTester tester, DashboardCubits cubits, Size size) async {
+  Future<void> pumpDashboard(WidgetTester tester, StagedDashboard cubits, Size size) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -148,7 +153,7 @@ void main() {
         locale: const Locale(defaultInterfaceLanguage),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: DashboardView(cubits: cubits),
+        home: cubits.provide(const DashboardScaffold()),
       ),
     );
     await tester.pump();
@@ -203,6 +208,24 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
+  testWidgets('builds every screen out of the repositories above it', (tester) async {
+    // Each one is made in its own `create` with its arguments read off the
+    // context by type, which the compiler cannot check: a repository left
+    // unprovided is found only when the application starts.
+    await pumpLoreDub(tester, const Size(1280, 720));
+    final context = tester.element(find.byType(DashboardScaffold));
+
+    expect(context.read<ShellCubit>(), isNotNull);
+    expect(context.read<SettingsCubit>(), isNotNull);
+    expect(context.read<DownloadsCubit>(), isNotNull);
+    expect(context.read<SourcesBloc>(), isNotNull);
+    expect(context.read<PipelineCubit>(), isNotNull);
+    expect(context.read<CharactersCubit>(), isNotNull);
+    expect(context.read<GlossaryCubit>(), isNotNull);
+    expect(context.read<PipelineGraphBloc>(), isNotNull);
+    expect(context.read<PipelineFactsBloc>(), isNotNull);
+  });
+
   testWidgets('draws a scaled interface inside the window it was given', (tester) async {
     // A magnified interface reflows in a smaller window and is drawn back
     // over the real one. Laid out at the window's own size first, it was
@@ -215,7 +238,7 @@ void main() {
     await tester.pumpWidget(const LoreDubBootstrap());
     await tester.pump();
 
-    expect(tester.getSize(find.byType(DashboardView)), const Size(1120, 720));
+    expect(tester.getSize(find.byType(DashboardScaffold)), const Size(1120, 720));
   });
 
   testWidgets('scrolls the navigation rather than overflowing a short window', (tester) async {
@@ -1296,7 +1319,7 @@ void main() {
   });
 
   group('the language tiles', () {
-    Future<DashboardCubits> pumpTiles(
+    Future<StagedDashboard> pumpTiles(
       WidgetTester tester, {
       List<ModelInstallState>? models,
       AppSettings settings = const AppSettings(),
@@ -1606,7 +1629,7 @@ void main() {
     );
     late _RecordingRuntimeRepository runtimes;
 
-    Future<DashboardCubits> pumpTable(
+    Future<StagedDashboard> pumpTable(
       WidgetTester tester, {
       ComputeAvailability availability = nvidia,
     }) async {
@@ -1890,7 +1913,7 @@ void main() {
   });
 
   group('the version button', () {
-    DashboardCubits withUpdates(UpdateState updates) => stage(buildCubits(), updates: updates);
+    StagedDashboard withUpdates(UpdateState updates) => stage(buildCubits(), updates: updates);
 
     testWidgets('shows the version this build carries', (tester) async {
       final cubits = withUpdates(
@@ -1960,10 +1983,10 @@ void main() {
     group('installing it', () {
       late _FakeUpdateRepository updates;
 
-      DashboardCubits withInstaller(UpdateState state) {
+      StagedDashboard withInstaller(UpdateState state) {
         SharedPreferences.setMockInitialValues({});
         updates = _FakeUpdateRepository();
-        final cubits = DashboardCubits(
+        final cubits = StagedDashboard(
           AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
           SettingsRepository(SettingsService()),
           ModelRepository(ModelStorageService()),
@@ -2044,7 +2067,7 @@ void main() {
   });
 
   group('stopping a download from the interface', () {
-    Future<DashboardCubits> pumpDownloading(
+    Future<StagedDashboard> pumpDownloading(
       WidgetTester tester, {
       required bool paused,
     }) async {
@@ -2133,7 +2156,7 @@ void main() {
   });
 
   group('choosing a recognition model', () {
-    Future<DashboardCubits> pumpModels(
+    Future<StagedDashboard> pumpModels(
       WidgetTester tester, {
       AppSettings settings = const AppSettings(),
     }) async {
@@ -2344,7 +2367,7 @@ void main() {
     /// A dashboard with every model in place, sitting on the settings screen.
     /// The bootstrap's own load never finishes inside a widget test, so the
     /// state the card reads is put there directly.
-    Future<DashboardCubits> pumpSettings(
+    Future<StagedDashboard> pumpSettings(
       WidgetTester tester, {
       AppSettings settings = const AppSettings(),
       List<ModelInstallState>? models,
@@ -2618,7 +2641,7 @@ void main() {
   });
 
   group('the hotkeys', () {
-    Future<DashboardCubits> pumpHotkeys(WidgetTester tester) async {
+    Future<StagedDashboard> pumpHotkeys(WidgetTester tester) async {
       final cubits = stage(
         buildCubits(),
         section: DashboardSection.settings,
@@ -2772,7 +2795,7 @@ void main() {
 
     const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
 
-    DashboardCubits stageSnapshot({
+    StagedDashboard stageSnapshot({
       AppSettings settings = const AppSettings(),
       List<ModelInstallState>? models,
       LivePipelineState pipeline = const LivePipelineState(),
@@ -2984,7 +3007,7 @@ void main() {
       seconds: 2.5,
     );
 
-    DashboardCubits stageCast({
+    StagedDashboard stageCast({
       CharactersState characters = const CharactersState(loading: false),
       AppSettings settings = const AppSettings(),
     }) {
@@ -3353,7 +3376,7 @@ void main() {
   group('the voices of the scene', () {
     const guard = Character(id: 'a1', name: 'Стражник', vector: [0.2, 0.4]);
 
-    DashboardCubits stageScene({
+    StagedDashboard stageScene({
       List<SceneSpeaker> speakers = const [],
       List<Character> characters = const [guard],
     }) {
@@ -3536,7 +3559,7 @@ void main() {
 
     /// The canvas with the two cards on it, drawn from settings the test
     /// stages rather than from a disk it does not have.
-    Future<DashboardCubits> pumpGraph(
+    Future<StagedDashboard> pumpGraph(
       WidgetTester tester, {
       AppSettings settings = const AppSettings(),
       List<Character> characters = const [guard, smith],
@@ -4067,7 +4090,7 @@ void main() {
   });
 
   group('the subtitle area', () {
-    Future<DashboardCubits> pumpSubtitleArea(
+    Future<StagedDashboard> pumpSubtitleArea(
       WidgetTester tester, {
       OcrRegion region = OcrRegion.standard,
       PipelineStatus status = PipelineStatus.idle,

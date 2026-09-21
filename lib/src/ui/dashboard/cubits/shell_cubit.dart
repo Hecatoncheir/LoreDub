@@ -9,11 +9,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../data/repositories/app_repository.dart';
+import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../domain/session_coordinator.dart';
 import '../../../data/repositories/update_repository.dart';
 import '../../../data/services/update_service.dart';
 import '../../../domain/app_release.dart';
+import '../../../domain/failure.dart';
 import '../../../domain/progress_ticker.dart';
 
 /// In the order the navigation lists them; the compact bar picks by index.
@@ -85,7 +87,7 @@ class ShellState extends Equatable {
 }
 
 class ShellCubit extends Cubit<ShellState> implements FailureSink {
-  ShellCubit(this._updateRepository, this._settings, this._app, this._sessions)
+  ShellCubit(this._updateRepository, this._settings, this._app, this._sessions, this._installed)
     : super(const ShellState());
 
   final UpdateRepository _updateRepository;
@@ -98,6 +100,10 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
 
   /// Who is holding the engine, asked before closing for an update.
   final SessionCoordinator _sessions;
+
+  /// What is on disk and what the machine can run it on, which is what a
+  /// session cannot be started without knowing.
+  final InstallRepository _installed;
 
   @override
   void report(Object? error) {
@@ -114,6 +120,28 @@ class ShellCubit extends Cubit<ShellState> implements FailureSink {
       emit(state.copyWith(section: DashboardSection.live, liveView: view));
 
   void finishInitializing() => emit(state.copyWith(initializing: false));
+
+  /// The first load: what a start is refused without until it is known.
+  ///
+  /// The settings and what is installed, with the machine's adapters, and
+  /// nothing else. Every screen reads the rest for itself as it is created
+  /// -- the cast, the glossary, the processes -- and says itself what went
+  /// wrong with it; none of that stands between the player and a start.
+  /// Then the update check, left to run on its own: the dashboard should
+  /// not wait on GitHub, and a failed check must not look like a failed
+  /// start.
+  Future<void> start() async {
+    try {
+      final graphics = _app.probeGraphics();
+      await Future.wait([_settings.load(), _installed.load()]);
+      await _installed.refreshAvailability(probe: await graphics);
+    } catch (exception) {
+      report(LoreDubFailure(FailureCode.initializationFailed, detail: '$exception'));
+    } finally {
+      if (!isClosed) finishInitializing();
+    }
+    if (!isClosed) unawaited(checkForUpdates(announce: true));
+  }
 
   /// Asks the repository for the newest release.
   ///

@@ -30,7 +30,9 @@ import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+
+import '../../../support/staged_dashboard.dart';
+
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -39,13 +41,13 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _CastRepository repository;
-  late DashboardCubits cubits;
+  late StagedDashboard cubits;
   late CharactersCubit characters;
   late SessionCoordinator sessions;
 
   setUp(() {
     repository = _CastRepository();
-    cubits = DashboardCubits(
+    cubits = StagedDashboard(
       repository,
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),

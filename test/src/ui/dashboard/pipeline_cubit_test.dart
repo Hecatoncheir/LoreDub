@@ -30,7 +30,9 @@ import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/model_selection.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/characters_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+
+import '../../../support/staged_dashboard.dart';
+
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
@@ -63,7 +65,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _SlowStartRepository repository;
-  late DashboardCubits cubits;
+  late StagedDashboard cubits;
   late DateTime now;
   late PipelineCubit pipeline;
 
@@ -76,7 +78,7 @@ void main() {
     // reach the disk; without this the write lands on a missing plugin.
     SharedPreferences.setMockInitialValues(const {});
     repository = _SlowStartRepository();
-    cubits = DashboardCubits(
+    cubits = StagedDashboard(
       repository,
       SettingsRepository(SettingsService()),
       _FixedModelRepository(),

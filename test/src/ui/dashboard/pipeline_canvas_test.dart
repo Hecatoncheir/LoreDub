@@ -24,12 +24,14 @@ import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/dashboard_cubits.dart';
+
+import '../../../support/staged_dashboard.dart';
+
 import 'package:lore_dub/src/ui/dashboard/cubits/downloads_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
-import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
+import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/graph/canvas/dot_field_painter.dart';
 import 'package:lore_dub/src/ui/graph/canvas/node_metrics.dart';
 import 'package:lore_dub/src/ui/graph/canvas/pipeline_canvas.dart';
@@ -42,7 +44,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   /// The graph screen at [size], with every package in place.
-  Future<DashboardCubits> pumpGraph(
+  Future<StagedDashboard> pumpGraph(
     WidgetTester tester,
     Size size, {
     AppSettings settings = const AppSettings(),
@@ -54,7 +56,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final cubits = DashboardCubits(
+    final cubits = StagedDashboard(
       AppRepository(NativeEngineService(), SettingsRepository(SettingsService())),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
@@ -104,10 +106,10 @@ void main() {
             ? Builder(
                 builder: (context) => MediaQuery(
                   data: MediaQuery.of(context).copyWith(disableAnimations: true),
-                  child: DashboardView(cubits: cubits),
+                  child: cubits.provide(const DashboardScaffold()),
                 ),
               )
-            : DashboardView(cubits: cubits),
+            : cubits.provide(const DashboardScaffold()),
       ),
     );
     await tester.pumpAndSettle();
@@ -124,7 +126,7 @@ void main() {
       .duration;
 
   /// The route, which is the one link every scheme has.
-  PipelineLink routeOf(DashboardCubits cubits) => cubits.graph.state.graph.linkInto(
+  PipelineLink routeOf(StagedDashboard cubits) => cubits.graph.state.graph.linkInto(
     const PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn),
   )!;
 

@@ -7,9 +7,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/model_selection.dart';
 import 'cubits/downloads_cubit.dart';
 import 'cubits/settings_cubit.dart';
-import '../shell/dashboard_view.dart';
+import '../shell/dashboard_providers.dart';
 
-/// What the dashboard's widgets read off the cubits [DashboardView] provides
+/// What the dashboard's widgets read off the cubits [DashboardProviders] provides
 /// and that no one cubit owns.
 extension DashboardContext on BuildContext {
   /// What the settings and the installed packages together decided, read

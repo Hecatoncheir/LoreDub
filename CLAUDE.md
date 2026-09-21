@@ -59,7 +59,8 @@ than one of them.
 
 1. **Flutter/Dart UI** — `lib/src/ui/`, a folder per screen (`live/`,
    `screen_text/`, `characters/`, `models/`, `settings/`, `graph/`), `shell/`
-   for the frame around them (`DashboardView`, navigation, header) and
+   for the frame around them (`DashboardScaffold`, `DashboardProviders`,
+   navigation, header) and
    `common/` for what every screen uses; one public widget per file and no
    private ones. `dashboard/` still holds the cubits and the files not yet
    taken apart (`TODO.md`, stage 2). State lives in five cubits
@@ -94,13 +95,22 @@ than one of them.
    reporting its half from `onChange` -- so the canvas knows whether the
    route is locked, and on what a stage runs, without reading either
    screen's cubit.
-   `DashboardCubits` builds the cubits and runs `initialize()`;
-   errors from any of them go to the shell through `FailureSink`. Anything
+   Nothing holds the cubits together. `DashboardProviders`
+   (`ui/shell/`) makes each one in its own `BlocProvider.create`, out of
+   the repositories `LoreDubBootstrap` provides above it, and starts its
+   own first read there (none is lazy); the first load a start waits for
+   -- the settings, what is installed and the machine's adapters -- is
+   `ShellCubit.start`, and every other read is its screen's own. The
+   arguments are read off the context by type, which the compiler cannot
+   check, so a test pumps the whole application and reads each one back
+   (`builds every screen out of the repositories above it`). The providers
+   stand above `MaterialApp`, so a dialog reads the same states as the page
+   that opened it. Errors from any of them go to the shell through
+   `FailureSink`. Anything
    derived from settings *and* packages together is `ModelSelection`
    (`domain/model_selection.dart`), so neither cubit owns it; widgets read it
-   as `context.selection` (`dashboard_context.dart`). `DashboardView` puts
-   every cubit under a `MultiBlocProvider` and nothing below it takes the
-   `DashboardCubits` bag: a widget reads what it uses off the context
+   as `context.selection` (`dashboard_context.dart`). A widget reads what
+   it uses off the context
    (`context.read<X>()`, taken before any `await`). A widget that draws only
    a field or two subscribes through `BlocSelector`, or through `BlocBuilder`
    with `buildWhen: whenChanged((state) => ...)` where it still reads the
@@ -109,7 +119,10 @@ than one of them.
    disk -- or a download tick will redraw the screen.
    `test/src/ui/dashboard/rebuild_scope_test.dart` counts that and fails if
    it does. There is no DI framework: `LoreDubBootstrap` (`lib/src/app.dart`)
-   constructs services -> repositories -> cubits.
+   constructs services -> repositories, and the providers the cubits. The
+   widget tests build them by hand instead (`test/support/staged_dashboard.dart`,
+   `StagedDashboard`), to seed each one without anything being read, and
+   put them on the screen with `provide`.
 2. **Native C++ bridge** — `native/*.cpp`, loaded through Dart Native Assets
    (`hook/build.dart` compiles it with `CBuilder`; there is no `.dll` to ship
    manually). The C ABI in `native/lore_dub_native.h` is intentionally tiny:

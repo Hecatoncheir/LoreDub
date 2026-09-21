@@ -37,7 +37,14 @@ class CastRepository {
   /// gives.
   Stream<CharacterLibrary> get changes => _changes.stream;
 
-  Future<CharacterLibrary> load() async {
+  /// Reads the cards once, whoever asks first -- the characters screen
+  /// for its list, the canvas before it draws them -- so neither depends on
+  /// being started after the other.
+  Future<CharacterLibrary> load() => _loading ??= _read();
+
+  Future<CharacterLibrary>? _loading;
+
+  Future<CharacterLibrary> _read() async {
     _publish(await _app.loadCharacters());
     return _library;
   }
@@ -81,7 +88,12 @@ class CastRepository {
   Future<void> readAsHeard(Set<String> value) => _app.readAsHeard(value);
 
   /// Stages [value] as though it had been read, without writing it.
-  void seed(CharacterLibrary value) => _publish(value);
+  void seed(CharacterLibrary value) {
+    _publish(value);
+    // Staged cards count as read: nothing reads the disk afterwards and
+    // puts others in their place.
+    _loading = Future.value(value);
+  }
 
   void _publish(CharacterLibrary value) {
     _library = value;
