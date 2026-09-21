@@ -26,6 +26,7 @@ import '../../../domain/session_coordinator.dart';
 import '../../../data/repositories/settings_repository.dart';
 import 'failure_cubit.dart';
 import '../../../data/repositories/voice_bank_repository.dart';
+import '../../../domain/session_config.dart';
 
 /// The dubbing screens' session: what it is doing and what it chose to run
 /// on. What it has said is `TranscriptBloc`'s.
@@ -411,22 +412,25 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       await _session.start(
         process: selection.requiresProcess ? _process : null,
         settings: settings,
-        modelDirectories: await _modelDirectories(selection),
-        speaker: selection.voice,
-        translationPrefix: translation?.translationPrefix ?? '',
         translateSpeech: selection.recognitionTranslatesSpeech,
-        followSpeaker: selection.followsSpeaker,
-        // The converter may be loaded only to hear who is speaking.
-        revoice: selection.clonesVoice,
-        maleVoices: speech.voicesOf(VoiceGender.male),
-        femaleVoices: speech.voicesOf(VoiceGender.female),
-        recognitionBackend: _backendFor(ComputeStage.recognition),
-        translationBackend: _backendFor(ComputeStage.translation),
-        speechBackend: _backendFor(ComputeStage.speech),
-        voiceConversionBackend: _backendFor(ComputeStage.voiceConversion),
-        runtimeDirectory: _downloads.parts.runtimeDirectory,
-        // Kept per game, so one game's cast does not answer for another's.
-        voiceBank: selection.keepsVoiceBank ? await _voiceBank.fileFor(_process?.name ?? '') : null,
+        worker: WorkerPlan.under(
+          settings,
+          runtimeDirectory: _downloads.parts.runtimeDirectory,
+          models: await _modelPaths(selection),
+          backends: _backends,
+          speaker: selection.voice,
+          sourceLanguage: settings.effectiveSourceLanguage,
+          translationPrefix: translation?.translationPrefix ?? '',
+          followSpeaker: selection.followsSpeaker,
+          // The converter may be loaded only to hear who is speaking.
+          revoice: selection.clonesVoice,
+          maleVoices: speech.voicesOf(VoiceGender.male),
+          femaleVoices: speech.voicesOf(VoiceGender.female),
+          // Kept per game, so one game's cast does not answer for another's.
+          voiceBank: selection.keepsVoiceBank
+              ? await _voiceBank.fileFor(_process?.name ?? '')
+              : null,
+        ),
       );
     } catch (exception) {
       _onStartFailed(exception, emit);
@@ -458,31 +462,29 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
 
   /// Where each model this session runs on actually sits. Whisper and the
   /// speech model are named by file, the other two by directory.
-  Future<Map<String, String>> _modelDirectories(ModelSelection selection) async {
+  Future<ModelPaths> _modelPaths(ModelSelection selection) async {
     final recognition = selection.recognition!.model;
     // Dubbing into English names no translator: the session runs without one.
     final translation = selection.translates
         ? selection.forTargetLanguage(ModelKind.translation)!.model
         : null;
     final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
-    return {
-      'whisper': path.join(
+    return ModelPaths(
+      whisper: path.join(
         await _modelRepository.directoryFor(recognition),
         recognition.primaryFileName,
       ),
-      if (translation != null) 'translation': await _modelRepository.directoryFor(translation),
-      'speech': path.join(
-        await _modelRepository.directoryFor(speech),
-        speech.primaryFileName,
-      ),
-      if (selection.needsVoiceConverter)
-        'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
-    };
+      translation: translation == null ? null : await _modelRepository.directoryFor(translation),
+      speech: path.join(await _modelRepository.directoryFor(speech), speech.primaryFileName),
+      converter: selection.needsVoiceConverter
+          ? await _modelRepository.directoryFor(selection.voiceConverter!.model)
+          : null,
+    );
   }
 
-  /// Where [stage] runs, given what this machine turned out to have.
-  ComputeBackend _backendFor(ComputeStage stage) =>
-      _settings.settings.backendFor(stage, _downloads.parts.availability);
+  /// Where each stage runs, given what this machine turned out to have.
+  StageBackends get _backends =>
+      StageBackends.resolved(_settings.settings, _downloads.parts.availability);
 
   /// Starts or ends a session of the Screen page, reading what [reading]
   /// says: the frame, the key, or both.
@@ -541,24 +543,29 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       await _session.startScreenText(
         reading: reading,
         hearsVoices: hearsVoices,
-        // The same bank the dubbing session keeps, so a character met
-        // while the subtitles are read is met again when it runs.
-        voiceBank: hearsVoices ? await _voiceBank.fileFor(_game) : null,
         process: _process,
         settings: settings,
-        modelDirectories: {
-          if (translation != null) 'translation': await _modelRepository.directoryFor(translation),
-          'speech': path.join(speechDirectory, speech.primaryFileName),
-          if (hearsVoices) 'converter': await _modelRepository.directoryFor(converter!.model),
-        },
-        // What a line is read in where nothing was heard saying it: a
-        // selected line has no sound of its own to follow a speaker by.
-        speaker: selection.voice,
-        translationPrefix: translation?.translationPrefix ?? '',
-        translationBackend: _backendFor(ComputeStage.translation),
-        speechBackend: _backendFor(ComputeStage.speech),
-        converterBackend: _backendFor(ComputeStage.voiceConversion),
-        runtimeDirectory: _downloads.parts.runtimeDirectory,
+        worker: WorkerPlan.under(
+          settings,
+          runtimeDirectory: _downloads.parts.runtimeDirectory,
+          models: ModelPaths(
+            translation: translation == null
+                ? null
+                : await _modelRepository.directoryFor(translation),
+            speech: path.join(speechDirectory, speech.primaryFileName),
+            converter: hearsVoices ? await _modelRepository.directoryFor(converter!.model) : null,
+          ),
+          backends: _backends,
+          // What a line is read in where nothing was heard saying it: a
+          // selected line has no sound of its own to follow a speaker by.
+          speaker: selection.voice,
+          translationPrefix: translation?.translationPrefix ?? '',
+          // The voices are carried over the reading where they are heard.
+          revoice: hearsVoices,
+          // The same bank the dubbing session keeps, so a character met
+          // while the subtitles are read is met again when it runs.
+          voiceBank: hearsVoices ? await _voiceBank.fileFor(_game) : null,
+        ),
       );
     } catch (exception) {
       _onStartFailed(exception, emit);
@@ -600,14 +607,17 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       await _session.startSceneVoices(
         process: selection.requiresProcess ? _process : null,
         settings: settings,
-        converterDirectory: await _modelRepository.directoryFor(
-          selection.voiceConverter!.model,
+        worker: WorkerPlan.under(
+          settings,
+          runtimeDirectory: _downloads.parts.runtimeDirectory,
+          models: ModelPaths(
+            converter: await _modelRepository.directoryFor(selection.voiceConverter!.model),
+          ),
+          backends: _backends,
+          // The same bank the dubbing session reads, so a voice met now is
+          // the same voice then.
+          voiceBank: await _voiceBank.fileFor(_game),
         ),
-        converterBackend: _backendFor(ComputeStage.voiceConversion),
-        runtimeDirectory: _downloads.parts.runtimeDirectory,
-        // The same bank the dubbing session reads, so a voice met now is
-        // the same voice then.
-        voiceBank: await _voiceBank.fileFor(_game),
       );
     } catch (exception) {
       _onStartFailed(exception, emit);

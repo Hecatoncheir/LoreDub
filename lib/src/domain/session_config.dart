@@ -35,6 +35,14 @@ class StageBackends {
     this.voiceConversion = ComputeBackend.cpu,
   });
 
+  /// Where each stage will run under [settings], given what the machine
+  /// offers.
+  StageBackends.resolved(AppSettings settings, ComputeAvailability availability)
+    : recognition = settings.backendFor(ComputeStage.recognition, availability),
+      translation = settings.backendFor(ComputeStage.translation, availability),
+      speech = settings.backendFor(ComputeStage.speech, availability),
+      voiceConversion = settings.backendFor(ComputeStage.voiceConversion, availability);
+
   final ComputeBackend recognition;
   final ComputeBackend translation;
   final ComputeBackend speech;
@@ -62,6 +70,38 @@ class WorkerPlan {
     this.glossary,
     this.asHeard = const {},
   });
+
+  /// A worker started the way [settings] say: its threads, its
+  /// interpreter and the player's pace. What it loads is the caller's.
+  WorkerPlan.under(
+    AppSettings settings, {
+    required String runtimeDirectory,
+    ModelPaths models = const ModelPaths(),
+    StageBackends backends = const StageBackends(),
+    String speaker = '',
+    String sourceLanguage = autoSpokenLanguage,
+    String translationPrefix = '',
+    bool followSpeaker = false,
+    bool revoice = false,
+    List<String> maleVoices = const [],
+    List<String> femaleVoices = const [],
+    String? voiceBank,
+  }) : this(
+         threads: settings.cpuThreads,
+         pythonExecutable: settings.pythonExecutable,
+         runtimeDirectory: runtimeDirectory,
+         models: models,
+         backends: backends,
+         speaker: speaker,
+         speed: settings.chosenSpeed,
+         sourceLanguage: sourceLanguage,
+         translationPrefix: translationPrefix,
+         followSpeaker: followSpeaker,
+         revoice: revoice,
+         maleVoices: maleVoices,
+         femaleVoices: femaleVoices,
+         voiceBank: voiceBank,
+       );
 
   final int threads;
   final String pythonExecutable;
@@ -102,7 +142,12 @@ class WorkerPlan {
   /// The cards the canvas cut out of the mix.
   final Set<String> asHeard;
 
-  WorkerPlan copyWith({String? speaker, Set<String>? asHeard}) => WorkerPlan(
+  WorkerPlan copyWith({
+    String? speaker,
+    Set<String>? asHeard,
+    String? characters,
+    String? glossary,
+  }) => WorkerPlan(
     threads: threads,
     pythonExecutable: pythonExecutable,
     runtimeDirectory: runtimeDirectory,
@@ -117,8 +162,8 @@ class WorkerPlan {
     maleVoices: maleVoices,
     femaleVoices: femaleVoices,
     voiceBank: voiceBank,
-    characters: characters,
-    glossary: glossary,
+    characters: characters ?? this.characters,
+    glossary: glossary ?? this.glossary,
     asHeard: asHeard ?? this.asHeard,
   );
 }

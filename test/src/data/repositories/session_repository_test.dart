@@ -12,7 +12,6 @@ import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/pipeline_graph_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/built_voice.dart';
-import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
@@ -32,12 +31,14 @@ void main() {
 
   /// The start with the least to it: the converter alone, and no game. It
   /// answers with the number of the session it began.
-  Future<int> start() => repository.startVoiceFiles(
-    settings: const AppSettings(),
-    converterDirectory: 'converter',
-    converterBackend: ComputeBackend.cpu,
+  const worker = WorkerPlan(
+    threads: 2,
+    pythonExecutable: 'python.exe',
     runtimeDirectory: 'runtime',
+    speaker: 'aidar',
   );
+
+  Future<int> start() => repository.startVoiceFiles(worker);
 
   const game = GameProcess(pid: 42, name: 'game.exe', path: r'C:\game.exe');
 
@@ -46,19 +47,8 @@ void main() {
   Future<void> dub({AppSettings settings = const AppSettings()}) => repository.start(
     process: game,
     settings: settings,
-    modelDirectories: const {},
-    speaker: 'aidar',
-    translationPrefix: '',
+    worker: worker,
     translateSpeech: true,
-    followSpeaker: false,
-    revoice: false,
-    maleVoices: const [],
-    femaleVoices: const [],
-    recognitionBackend: ComputeBackend.cpu,
-    translationBackend: ComputeBackend.cpu,
-    speechBackend: ComputeBackend.cpu,
-    voiceConversionBackend: ComputeBackend.cpu,
-    runtimeDirectory: 'runtime',
   );
 
   Future<void> readScreen({
@@ -67,16 +57,17 @@ void main() {
   }) => repository.startScreenText(
     reading: reading,
     hearsVoices: hearsVoices,
-    voiceBank: hearsVoices ? 'voice_bank/game.json' : null,
     process: game,
     settings: const AppSettings(),
-    modelDirectories: const {},
-    speaker: 'aidar',
-    translationPrefix: '',
-    translationBackend: ComputeBackend.cpu,
-    speechBackend: ComputeBackend.cpu,
-    converterBackend: ComputeBackend.cpu,
-    runtimeDirectory: 'runtime',
+    worker: hearsVoices
+        ? const WorkerPlan(
+            threads: 2,
+            pythonExecutable: 'python.exe',
+            runtimeDirectory: 'runtime',
+            revoice: true,
+            voiceBank: 'voice_bank/game.json',
+          )
+        : worker,
   );
 
   Matcher failsWith(FailureCode code) =>
@@ -133,6 +124,23 @@ void main() {
       expect(engine.snapshotKey, isNull, reason: 'nothing is picked out by hand');
       expect(engine.frameKey, isNotNull);
     });
+  });
+
+  test('adds the files it keeps to the worker it is handed, and nothing else', () async {
+    final started = dub();
+    glossary.written.complete('glossary.session.json');
+    for (var turn = 0; engine.starts.isEmpty && turn < 1000; turn++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    engine.starts.last.complete();
+    await started;
+
+    final live = engine.live!;
+    expect(live.worker.glossary, 'glossary.session.json');
+    expect(live.worker.characters, 'characters.json');
+    expect(live.worker.asHeard, {'guard'}, reason: 'the cut drawn on the canvas');
+    expect(live.worker.speaker, 'aidar', reason: 'the rest is what it was handed');
+    expect(live.capture.processId, game.pid);
   });
 
   test('clears away what a failed start left behind', () async {
@@ -354,8 +362,14 @@ class _SlowEngine extends NativeEngineService {
     return starting.future;
   }
 
+  /// What the last live session was started with.
+  LiveSessionConfig? live;
+
   @override
-  Future<void> start(LiveSessionConfig config) => _starting();
+  Future<void> start(LiveSessionConfig config) {
+    live = config;
+    return _starting();
+  }
 
   /// What the last screen session was started with, and which keys it
   /// asked for.
@@ -435,5 +449,5 @@ class _Characters extends CharacterService {
 
 class _Graph extends PipelineGraphService {
   @override
-  Future<PipelineLayout> load() async => const PipelineLayout();
+  Future<PipelineLayout> load() async => const PipelineLayout(silent: {'guard'});
 }

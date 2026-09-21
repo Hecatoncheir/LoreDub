@@ -27,7 +27,6 @@ import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
-import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
 
@@ -36,6 +35,7 @@ import '../../../support/staged_dashboard.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
+import 'package:lore_dub/src/domain/session_config.dart';
 
 import '../../../support/memory_cast.dart';
 
@@ -536,12 +536,7 @@ class _CastRepository extends SessionRepository {
   Future<void> playWave(String wavePath) async => played.add(wavePath);
 
   @override
-  Future<int> startVoiceFiles({
-    required AppSettings settings,
-    required String converterDirectory,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
-  }) async {
+  Future<int> startVoiceFiles(WorkerPlan worker) async {
     fileSessionStarts++;
     final session = ++_session;
     if (fileSessionFailure case final failure?) throw failure;
@@ -555,14 +550,7 @@ class _CastRepository extends SessionRepository {
   }
 
   @override
-  Future<void> startVoicePreview({
-    required AppSettings settings,
-    required Map<String, String> modelDirectories,
-    required String speaker,
-    required ComputeBackend speechBackend,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
-  }) async {
+  Future<void> startVoicePreview(WorkerPlan worker) async {
     previewStarts++;
     _session++;
   }
@@ -585,9 +573,7 @@ class _CastRepository extends SessionRepository {
   Future<void> startCharacterVoices({
     required GameProcess? process,
     required AppSettings settings,
-    required String converterDirectory,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
+    required WorkerPlan worker,
   }) {
     sessionStarts++;
     _session++;

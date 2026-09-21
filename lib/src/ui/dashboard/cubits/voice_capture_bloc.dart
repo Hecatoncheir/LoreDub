@@ -14,7 +14,6 @@ import '../../../data/repositories/session_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../domain/built_voice.dart';
 import '../../../domain/character.dart';
-import '../../../domain/compute_device.dart';
 import '../../../domain/engine_event.dart';
 import '../../../domain/failure.dart';
 import '../../../domain/game_process.dart';
@@ -24,6 +23,7 @@ import '../../../domain/pipeline_state.dart';
 import '../../../domain/session_coordinator.dart';
 import '../../../domain/voice_sample.dart';
 import 'failure_cubit.dart';
+import '../../../domain/session_config.dart';
 
 /// What a card's record button does when pressed.
 enum RecordAction { start, stop }
@@ -386,12 +386,7 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
       await _session.startCharacterVoices(
         process: event.process,
         settings: settings,
-        converterDirectory: await _modelRepository.directoryFor(_selection.voiceConverter!.model),
-        converterBackend: settings.backendFor(
-          ComputeStage.voiceConversion,
-          _downloads.parts.availability,
-        ),
-        runtimeDirectory: _downloads.parts.runtimeDirectory,
+        worker: await _converterOnly(),
       );
     } catch (exception) {
       // The button that starts the session also stops one still starting,
@@ -573,18 +568,17 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
   /// Loads the converter and nothing else: there is no game to listen to,
   /// and the recordings are already on disk. Answers with the session it
   /// began, which is the one [_stopBorrowed] puts down.
-  Future<int> _startForFiles() async {
-    final settings = _settings.settings;
-    return _session.startVoiceFiles(
-      settings: settings,
-      converterDirectory: await _modelRepository.directoryFor(_selection.voiceConverter!.model),
-      converterBackend: settings.backendFor(
-        ComputeStage.voiceConversion,
-        _downloads.parts.availability,
-      ),
-      runtimeDirectory: _downloads.parts.runtimeDirectory,
-    );
-  }
+  Future<int> _startForFiles() async => _session.startVoiceFiles(await _converterOnly());
+
+  /// The worker that measures a voice and loads nothing else.
+  Future<WorkerPlan> _converterOnly() async => WorkerPlan.under(
+    _settings.settings,
+    runtimeDirectory: _downloads.parts.runtimeDirectory,
+    models: ModelPaths(
+      converter: await _modelRepository.directoryFor(_selection.voiceConverter!.model),
+    ),
+    backends: StageBackends.resolved(_settings.settings, _downloads.parts.availability),
+  );
 
   /// The clips with [anchor] kept as [id]'s. A card without its clip is still
   /// a card — only the play button goes — so a clip that cannot be kept is
@@ -651,22 +645,18 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
     final selection = _selection;
     final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
     await _session.startVoicePreview(
-      settings: _settings.settings,
-      modelDirectories: {
-        'speech': path.join(await _modelRepository.directoryFor(speech), speech.primaryFileName),
-        if (selection.needsVoiceConverter)
-          'converter': await _modelRepository.directoryFor(selection.voiceConverter!.model),
-      },
-      speaker: selection.voice,
-      speechBackend: _settings.settings.backendFor(
-        ComputeStage.speech,
-        _downloads.parts.availability,
+      WorkerPlan.under(
+        _settings.settings,
+        runtimeDirectory: _downloads.parts.runtimeDirectory,
+        models: ModelPaths(
+          speech: path.join(await _modelRepository.directoryFor(speech), speech.primaryFileName),
+          converter: selection.needsVoiceConverter
+              ? await _modelRepository.directoryFor(selection.voiceConverter!.model)
+              : null,
+        ),
+        backends: StageBackends.resolved(_settings.settings, _downloads.parts.availability),
+        speaker: selection.voice,
       ),
-      converterBackend: _settings.settings.backendFor(
-        ComputeStage.voiceConversion,
-        _downloads.parts.availability,
-      ),
-      runtimeDirectory: _downloads.parts.runtimeDirectory,
     );
   }
 

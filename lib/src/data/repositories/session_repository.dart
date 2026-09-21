@@ -6,7 +6,6 @@ import '../../domain/ocr_region.dart';
 import '../../domain/screen_reading.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/built_voice.dart';
-import '../../domain/compute_device.dart';
 import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
 import '../../domain/session_config.dart';
@@ -85,56 +84,20 @@ class SessionRepository {
     if (session != _sessions) throw const LoreDubFailure(FailureCode.pipelineStopped);
   }
 
-  /// [modelDirectories] carries the three paths the pipeline needs for the
-  /// chosen language: `whisper` and `translation` directories, and the
-  /// `speech` model file, plus the `converter` directory when the original
-  /// voice is on. [speaker] is the voice of that speech model.
-  /// [runtimeDirectory] is where downloaded GPU runtimes were unpacked.
-  /// [voiceBank] is the game's bank file, when characters are remembered.
+  /// Starts live dubbing with [worker] -- what the models are, where each
+  /// stage runs and in which voices -- and the files only this repository
+  /// knows the place of: the glossary, the cast and the cut off the canvas.
+  /// [translateSpeech] is whether whisper translates what it hears.
   Future<void> start({
     required GameProcess? process,
     required AppSettings settings,
-    required Map<String, String> modelDirectories,
-    required String speaker,
-    required String translationPrefix,
+    required WorkerPlan worker,
     required bool translateSpeech,
-    required bool followSpeaker,
-
-    /// Whether the converter carries the original's timbre over, rather than
-    /// only telling the characters apart.
-    required bool revoice,
-    required List<String> maleVoices,
-    required List<String> femaleVoices,
-    required ComputeBackend recognitionBackend,
-    required ComputeBackend translationBackend,
-    required ComputeBackend speechBackend,
-    required ComputeBackend voiceConversionBackend,
-    required String runtimeDirectory,
-    String? voiceBank,
   }) async {
     final session = ++_sessions;
     try {
       final config = LiveSessionConfig(
-        worker: WorkerPlan(
-          threads: settings.cpuThreads,
-          pythonExecutable: settings.pythonExecutable,
-          runtimeDirectory: runtimeDirectory,
-          models: _modelPaths(modelDirectories),
-          backends: StageBackends(
-            recognition: recognitionBackend,
-            translation: translationBackend,
-            speech: speechBackend,
-            voiceConversion: voiceConversionBackend,
-          ),
-          speaker: speaker,
-          speed: settings.chosenSpeed,
-          sourceLanguage: settings.effectiveSourceLanguage,
-          translationPrefix: translationPrefix,
-          followSpeaker: followSpeaker,
-          revoice: revoice,
-          maleVoices: maleVoices,
-          femaleVoices: femaleVoices,
-          voiceBank: voiceBank,
+        worker: worker.copyWith(
           glossary: await _glossary.sessionFile(),
           // The player's own characters, who speak in every game.
           characters: await _characters.file(),
@@ -191,38 +154,17 @@ class SessionRepository {
     required ScreenReading reading,
     required bool hearsVoices,
     required GameProcess? process,
-    String? voiceBank,
     required AppSettings settings,
-    required Map<String, String> modelDirectories,
-    required String speaker,
-    required String translationPrefix,
-    required ComputeBackend translationBackend,
-    required ComputeBackend speechBackend,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
+
+    /// With the bank and the converter where [hearsVoices]: the voices are
+    /// heard by the converter and carried over the reading, and a character
+    /// met here is the one the dubbing session knows.
+    required WorkerPlan worker,
   }) async {
     final session = ++_sessions;
     try {
       final config = ScreenSessionConfig(
-        worker: WorkerPlan(
-          threads: settings.cpuThreads,
-          pythonExecutable: settings.pythonExecutable,
-          runtimeDirectory: runtimeDirectory,
-          models: _modelPaths(modelDirectories),
-          backends: StageBackends(
-            translation: translationBackend,
-            speech: speechBackend,
-            voiceConversion: converterBackend,
-          ),
-          speaker: speaker,
-          speed: settings.chosenSpeed,
-          translationPrefix: translationPrefix,
-          // The voices are heard by the converter and carried over the
-          // reading, so this session asks for the same two as the original
-          // voice does -- and for the game's own bank, so a character met
-          // here is the one the dubbing session knows.
-          revoice: hearsVoices,
-          voiceBank: voiceBank,
+        worker: worker.copyWith(
           glossary: await _glossary.sessionFile(),
           characters: await _characters.file(),
         ),
@@ -288,28 +230,6 @@ class SessionRepository {
     textLanguage: settings.textLanguage,
   );
 
-  /// The paths a session's models are at, by the role each plays.
-  static ModelPaths _modelPaths(Map<String, String> directories) => ModelPaths(
-    whisper: directories['whisper'],
-    translation: directories['translation'],
-    speech: directories['speech'],
-    converter: directories['converter'],
-  );
-
-  /// The worker that measures a voice and loads nothing else.
-  static WorkerPlan _converterOnly(
-    AppSettings settings,
-    String converterDirectory,
-    ComputeBackend converterBackend,
-    String runtimeDirectory,
-  ) => WorkerPlan(
-    threads: settings.cpuThreads,
-    pythonExecutable: settings.pythonExecutable,
-    runtimeDirectory: runtimeDirectory,
-    models: ModelPaths(converter: converterDirectory),
-    backends: StageBackends(voiceConversion: converterBackend),
-  );
-
   /// What a reading of the screen captures: the frame, the frame and the
   /// game's own sound where the voices behind it are followed -- that
   /// sound is never recognized, only placed -- or nothing at all, where
@@ -337,29 +257,10 @@ class SessionRepository {
   /// heard before anything is dubbed. Nothing is captured: the line is the
   /// application's own, and the converter only lays the card's timbre over
   /// the voice the way the dubbing will.
-  Future<void> startVoicePreview({
-    required AppSettings settings,
-    required Map<String, String> modelDirectories,
-    required String speaker,
-    required ComputeBackend speechBackend,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
-  }) async {
+  Future<void> startVoicePreview(WorkerPlan worker) async {
     final session = ++_sessions;
     try {
-      await _nativeEngine.startPreview(
-        PreviewSessionConfig(
-          worker: WorkerPlan(
-            threads: settings.cpuThreads,
-            pythonExecutable: settings.pythonExecutable,
-            runtimeDirectory: runtimeDirectory,
-            models: _modelPaths(modelDirectories),
-            backends: StageBackends(speech: speechBackend, voiceConversion: converterBackend),
-            speaker: speaker,
-            speed: settings.chosenSpeed,
-          ),
-        ),
-      );
+      await _nativeEngine.startPreview(PreviewSessionConfig(worker: worker));
       _throwIfSuperseded(session);
     } catch (_) {
       await _endFailedStart(session);
@@ -380,15 +281,13 @@ class SessionRepository {
   Future<void> startCharacterVoices({
     required GameProcess? process,
     required AppSettings settings,
-    required String converterDirectory,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
+    required WorkerPlan worker,
   }) async {
     final session = ++_sessions;
     try {
       await _nativeEngine.startCharacters(
         CharactersSessionConfig(
-          worker: _converterOnly(settings, converterDirectory, converterBackend, runtimeDirectory),
+          worker: worker,
           capture: CapturePlan(
             mode: CaptureMode.audio,
             processId: process?.pid ?? 0,
@@ -409,19 +308,10 @@ class SessionRepository {
   ///
   /// It is borrowed rather than held — up for as long as the files take —
   /// so it answers with its number, which [stopSession] is handed back.
-  Future<int> startVoiceFiles({
-    required AppSettings settings,
-    required String converterDirectory,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
-  }) async {
+  Future<int> startVoiceFiles(WorkerPlan worker) async {
     final session = ++_sessions;
     try {
-      await _nativeEngine.startVoiceFiles(
-        VoiceFilesSessionConfig(
-          worker: _converterOnly(settings, converterDirectory, converterBackend, runtimeDirectory),
-        ),
-      );
+      await _nativeEngine.startVoiceFiles(VoiceFilesSessionConfig(worker: worker));
       _throwIfSuperseded(session);
       return session;
     } catch (_) {
@@ -460,21 +350,15 @@ class SessionRepository {
   Future<void> startSceneVoices({
     required GameProcess? process,
     required AppSettings settings,
-    required String converterDirectory,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
-    String? voiceBank,
+
+    /// The converter, with the game's bank: a voice met now is the same
+    /// voice once the dubbing runs.
+    required WorkerPlan worker,
   }) async {
     final session = ++_sessions;
     try {
       final config = SceneSessionConfig(
-        worker: WorkerPlan(
-          threads: settings.cpuThreads,
-          pythonExecutable: settings.pythonExecutable,
-          runtimeDirectory: runtimeDirectory,
-          models: ModelPaths(converter: converterDirectory),
-          backends: StageBackends(voiceConversion: converterBackend),
-          voiceBank: voiceBank,
+        worker: worker.copyWith(
           characters: await _characters.file(),
           asHeard: await _cutFromMix(),
         ),

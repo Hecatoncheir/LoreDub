@@ -38,6 +38,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/domain/session_config.dart';
 
 /// A dubbed line as the engine reports it, with only the parts a test
 /// cares about spelled out.
@@ -452,7 +453,10 @@ void main() {
       await pumpEventQueue();
 
       expect(repository.snapshotStarts, 1);
-      expect(repository.snapshotModels.keys, unorderedEquals(['translation', 'speech']));
+      expect(repository.snapshotModels.translation, isNotNull);
+      expect(repository.snapshotModels.speech, isNotNull);
+      expect(repository.snapshotModels.whisper, isNull, reason: 'nothing is heard');
+      expect(repository.snapshotModels.converter, isNull);
       expect(pipeline.state.session, PipelineSession.screen);
       expect(repository.starts, 0, reason: 'nothing is captured');
     });
@@ -487,8 +491,8 @@ void main() {
 
       expect(repository.screenHeardVoices, isTrue);
       expect(
-        repository.snapshotModels.keys,
-        contains('converter'),
+        repository.snapshotModels.converter,
+        isNotNull,
         reason: 'the converter is what hears who is speaking',
       );
     });
@@ -796,7 +800,7 @@ class _SlowStartRepository extends SessionRepository {
   void setIdleHotkeys(AppSettings settings) => idleKeys.add(
     settings.showFrameOverlay ? settings.frameOverlayHotkey : null,
   );
-  Map<String, String> snapshotModels = const {};
+  ModelPaths snapshotModels = const ModelPaths();
 
   void push(EngineEvent event) => _events.add(event);
 
@@ -813,20 +817,8 @@ class _SlowStartRepository extends SessionRepository {
   Future<void> start({
     required GameProcess? process,
     required AppSettings settings,
-    required Map<String, String> modelDirectories,
-    required String speaker,
-    required String translationPrefix,
+    required WorkerPlan worker,
     required bool translateSpeech,
-    required bool followSpeaker,
-    required bool revoice,
-    required List<String> maleVoices,
-    required List<String> femaleVoices,
-    required ComputeBackend recognitionBackend,
-    required ComputeBackend translationBackend,
-    required ComputeBackend speechBackend,
-    required ComputeBackend voiceConversionBackend,
-    required String runtimeDirectory,
-    String? voiceBank,
   }) {
     starts++;
     return (_starting = Completer<void>()).future;
@@ -836,20 +828,13 @@ class _SlowStartRepository extends SessionRepository {
   Future<void> startScreenText({
     required ScreenReading reading,
     required bool hearsVoices,
-    String? voiceBank,
     required GameProcess? process,
     required AppSettings settings,
-    required Map<String, String> modelDirectories,
-    required String speaker,
-    required String translationPrefix,
-    required ComputeBackend translationBackend,
-    required ComputeBackend speechBackend,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
+    required WorkerPlan worker,
   }) async {
     snapshotStarts++;
     screenHeardVoices = hearsVoices;
-    snapshotModels = modelDirectories;
+    snapshotModels = worker.models;
     screenReadings.add(reading);
   }
 
@@ -860,13 +845,10 @@ class _SlowStartRepository extends SessionRepository {
   Future<void> startSceneVoices({
     required GameProcess? process,
     required AppSettings settings,
-    required String converterDirectory,
-    required ComputeBackend converterBackend,
-    required String runtimeDirectory,
-    String? voiceBank,
+    required WorkerPlan worker,
   }) async {
     sceneStarts++;
-    sceneBank = voiceBank;
+    sceneBank = worker.voiceBank;
   }
 
   @override

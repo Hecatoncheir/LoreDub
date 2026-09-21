@@ -192,7 +192,11 @@ than one of them.
    `VoiceFilesSessionConfig`, `PreviewSessionConfig`) over three parts: the
    `WorkerPlan` the worker is started with, the `CapturePlan` `ld_start`
    takes, and the `LineRules` a line is read by. Only the capture crosses
-   the boundary, through `CapturePlan.toNativeJson` -- the worker's models
+   the boundary, through `CapturePlan.toNativeJson`. The blocs build the
+   `WorkerPlan` (`WorkerPlan.under(settings, ...)`, `StageBackends.resolved`)
+   and `SessionRepository` adds to it only what it alone knows the place
+   of -- the session's glossary file, the cast and the cut off the canvas --
+   and builds the capture and the line rules from the settings. The worker's models
    used to travel into the native parser as a nested object it had no use
    for, and a key the map lost on the way was found only by the native side
    refusing to start (the screen session's `processId`, gone from v0.23.0
