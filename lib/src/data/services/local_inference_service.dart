@@ -19,6 +19,7 @@ import '../../domain/glossary.dart';
 import 'worker_channel.dart';
 import 'worker_arguments.dart';
 import '../../domain/session_config.dart';
+import 'whisper_runner.dart';
 
 class InferenceResult {
   const InferenceResult({
@@ -124,12 +125,15 @@ class LocalInferenceService {
   LocalInferenceService({
     WorkerPreparation? prepare,
     WorkerStarter? startWorker,
+    WhisperRunner? whisper,
     this.startupLimit = const Duration(minutes: 5),
   }) : _prepare = prepare ?? _prepareOnThisMachine,
-       _startWorker = startWorker ?? _startInterpreter;
+       _startWorker = startWorker ?? _startInterpreter,
+       _whisper = whisper ?? WhisperRunner();
 
   final WorkerPreparation _prepare;
   final WorkerStarter _startWorker;
+  final WhisperRunner _whisper;
 
   /// Loading Marian and Vosk is minutes on a cold machine; past this, the
   /// worker is not coming up at all.
@@ -454,7 +458,7 @@ class LocalInferenceService {
     }
     final prefix = path.withoutExtension(wavePath);
     final detecting = _spokenLanguage == null;
-    final recognition = await Process.run(whisper, [
+    final recognition = await _whisper.run(whisper, [
       '-m',
       model,
       '-f',
@@ -475,7 +479,7 @@ class LocalInferenceService {
       if (!detecting) '-np',
     ]);
     if (recognition.exitCode != 0) {
-      throw LoreDubFailure(FailureCode.whisperFailed, detail: '${recognition.stderr}');
+      throw LoreDubFailure(FailureCode.whisperFailed, detail: recognition.stderr);
     }
     if (detecting) {
       _spokenLanguage = parseDetectedLanguage('${recognition.stderr}${recognition.stdout}');
@@ -650,6 +654,8 @@ class LocalInferenceService {
     // Whichever start is still in one of its waits is no longer wanted, and
     // finds that out when it comes back from it.
     _generation++;
+    // The phrase being recognized belongs to the session that is ending.
+    _whisper.cancel();
     return _endWorker();
   }
 

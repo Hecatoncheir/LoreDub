@@ -387,8 +387,14 @@ class RuntimeStorageService {
       ...packages,
     ]);
     final watch = _killWhenStopped(running, control);
-    final result = await running.result;
-    watch?.cancel();
+    // Cancelled however the run ends: a watch left ticking after pip threw
+    // would go on polling for a stop nobody can ask for any longer.
+    final ProcessResult result;
+    try {
+      result = await running.result;
+    } finally {
+      watch?.cancel();
+    }
     if (control?.requestedStop case final stop?) {
       // Whatever pip managed to unpack is not a runtime, and it must not be
       // mistaken for one on the next start.

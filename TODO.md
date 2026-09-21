@@ -1252,8 +1252,9 @@ abstract final class AppTheme {
       некому передать и нечего ждать. `start()` принимает `WorkerPlan` из
       `SessionConfig` вместо 25 параметров, а командная строка — чистая
       функция `workerArguments` с тестом, который держит `--glossary` вне
-      аргументов преобразователя. Остались `WorkerProcess` (запуск,
-      рукопожатие, выход) и `WhisperRunner`.
+      аргументов преобразователя. `WhisperRunner` тоже вынесен (см. пункт
+      про подпроцессы). Остался `WorkerProcess` (запуск, рукопожатие,
+      выход).
 - [x] **Строковые карты вместо типов.** `AppRepository` собирает конфиги
       руками (`:168–210`, `:243–270`, `:309–318`, `:343–352`, `:369–375`,
       `:412–424`), сервис распаковывает их приведениями
@@ -1335,10 +1336,17 @@ abstract final class AppTheme {
       `app_repository.dart:73` сохранит словарь: сорвавшееся сохранение теряет
       встроенный пак навсегда → загрузка, слияние, сохранение и метка одним
       методом.~~ *Сделано вместе с `JsonFileStore`.*
-- [ ] **Подпроцессы без присмотра:** `Process.run` для whisper
+- [x] **Подпроцессы без присмотра:** `Process.run` для whisper
       (`local_inference_service.dart:459`) без таймаута, и `stop()` не может
       его убить; `_runPip` отменяет сторожевой таймер вне `finally`
       (`runtime_storage_service.dart:320–322`).
+      *Сделано:* whisper запускается через `WhisperRunner`
+      (`whisper_runner.dart`) — `Process.start` с пределом в две минуты на
+      фразу, по истечении процесс убивается и фраза падает как
+      `whisperFailed`, а `LocalInferenceService.stop()` убивает идущий
+      запуск (`cancel`). Раньше зависший whisper держал все фразы за собой,
+      потому что они распознаются строго по одной. Сторожевой таймер pip
+      снимается в `finally`.
 - [x] **Сырые исключения мимо контракта ошибок:** `NativeEngineException`
       (`native_engine_service.dart:32`, `:1057`), `TimeoutException`
       (`local_inference_service.dart:333`), `FormatException` (`:1130`)
