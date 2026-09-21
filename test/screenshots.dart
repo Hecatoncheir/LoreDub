@@ -59,6 +59,7 @@ import 'package:lore_dub/src/ui/shell/dashboard_view.dart';
 import 'package:lore_dub/src/ui/graph/node_faces.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lore_dub/src/domain/capture_sources.dart';
 
 /// The size the pictures have always been kept at, and the one the page and
 /// the readme lay out for.
@@ -363,10 +364,9 @@ void main() {
         transcript: transcript,
         speakers: speakers,
         snapshots: snapshots,
-        processes: const [game],
-        selectedProcess: game,
       ),
     );
+    cubits.sources.seed(const CaptureSources(processes: [game], selected: game));
     cubits.glossary.seed(GlossaryState(glossary: glossary, loaded: true));
     cubits.characters.seed(
       CharactersState(

@@ -19,6 +19,9 @@ import 'inspector/pipeline_inspector.dart';
 import 'graph_toolbar.dart';
 import 'inspector_slot.dart';
 import 'canvas/pipeline_facts.dart';
+import '../dashboard/cubits/sources_bloc.dart';
+import '../../domain/capture_sources.dart';
+import '../../domain/game_process.dart';
 
 /// The pipeline as a scheme: the stages as nodes, the route between them,
 /// and the cards of the cast that take a voice from one another.
@@ -46,29 +49,30 @@ class PipelinePanel extends StatelessWidget {
         buildWhen: whenChanged((downloads) => downloads.installed),
         builder: (context, downloads) => BlocBuilder<PipelineCubit, LivePipelineState>(
           buildWhen: whenChanged(
-            (pipeline) => (
-              pipeline.running,
-              pipeline.status,
-              pipeline.selectedProcess,
-              pipeline.processes,
-              pipeline.backendSignature,
-            ),
+            (pipeline) => (pipeline.running, pipeline.status, pipeline.backendSignature),
           ),
           builder: (context, pipeline) => BlocBuilder<CharactersCubit, CharactersState>(
             buildWhen: whenChanged((characters) => (characters.characters, characters.running)),
-            builder: (context, characters) {
-              final facts = PipelineFacts(
-                settings: settings.settings,
-                selection: ModelSelection(models: downloads.models, settings: settings.settings),
-                process: pipeline.selectedProcess,
-                characters: characters.characters,
-                activeBackends: pipeline.activeBackends,
-                running: pipeline.running,
-                paused: pipeline.status == PipelineStatus.paused,
-                recordingVoice: characters.running,
-              );
-              return _build(context, availability: downloads.availability, facts: facts);
-            },
+            builder: (context, characters) =>
+                BlocSelector<SourcesBloc, CaptureSources, GameProcess?>(
+                  selector: (sources) => sources.selected,
+                  builder: (context, process) {
+                    final facts = PipelineFacts(
+                      settings: settings.settings,
+                      selection: ModelSelection(
+                        models: downloads.models,
+                        settings: settings.settings,
+                      ),
+                      process: process,
+                      characters: characters.characters,
+                      activeBackends: pipeline.activeBackends,
+                      running: pipeline.running,
+                      paused: pipeline.status == PipelineStatus.paused,
+                      recordingVoice: characters.running,
+                    );
+                    return _build(context, availability: downloads.availability, facts: facts);
+                  },
+                ),
           ),
         ),
       ),

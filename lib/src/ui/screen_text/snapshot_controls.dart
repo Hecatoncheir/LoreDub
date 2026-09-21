@@ -7,12 +7,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/app_settings.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../common/language_row.dart';
-import '../common/process_picker.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import 'screen_layout.dart';
 import 'snapshot_details.dart';
 import 'snapshot_start_button.dart';
+import '../common/game_picker.dart';
 
 /// How to select, what the last selection came to, and the session's button.
 class SnapshotControls extends StatelessWidget {
@@ -28,8 +28,6 @@ class SnapshotControls extends StatelessWidget {
           pipeline.snapshotReading,
           pipeline.snapshotMissed,
           pipeline.frameMissed,
-          pipeline.selectedProcess,
-          pipeline.processes,
         ),
       ),
       builder: (context, pipeline) => _build(context, state.settings, pipeline),
@@ -40,15 +38,9 @@ class SnapshotControls extends StatelessWidget {
     final button = SnapshotStartButton();
     // The frame is read out of one window, so this session needs the game
     // named even though nothing of its sound is listened to.
-    final picker = ProcessPicker(
-      processes: pipeline.processes,
-      selected: pipeline.selectedProcess,
-      // Nothing is read out of that window while the whole screen is what
-      // is read, so there is nothing to choose.
-      enabled: !pipeline.running && !settings.readsWholeScreen,
-      onSelected: context.read<PipelineCubit>().selectProcess,
-      onRefresh: context.read<PipelineCubit>().refreshProcesses,
-    );
+    // Nothing is read out of that window while the whole screen is what
+    // is read, so there is nothing to choose.
+    final picker = GamePicker(enabled: !pipeline.running && !settings.readsWholeScreen);
     return LayoutBuilder(
       // Where there is room the button stands on the row that names the
       // game, which is what it starts on. Beside the card as a whole it hung

@@ -4,11 +4,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
-import 'package:lore_dub/src/domain/screen_layout.dart';
+import 'package:lore_dub/src/domain/monitor_layout.dart';
 import 'package:lore_dub/src/ui/screen_text/ocr_region_picker.dart';
 
 void main() {
-  Future<Size> pictureOf(WidgetTester tester, {ScreenLayout? screens}) async {
+  Future<Size> pictureOf(WidgetTester tester, {MonitorLayout? monitors}) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -17,7 +17,7 @@ void main() {
               region: OcrRegion.standard,
               onChanged: (_) {},
               semanticLabel: 'frame',
-              screens: screens,
+              monitors: monitors,
             ),
           ),
         ),
@@ -29,7 +29,7 @@ void main() {
   testWidgets('over two monitors the picture has the shape of both', (tester) async {
     final picture = await pictureOf(
       tester,
-      screens: ScreenLayout.fromJson(const [
+      monitors: MonitorLayout.fromJson(const [
         {'left': 0, 'top': 0, 'right': 1920, 'bottom': 1080, 'primary': true},
         {'left': 1920, 'top': 0, 'right': 3840, 'bottom': 1080},
       ]),

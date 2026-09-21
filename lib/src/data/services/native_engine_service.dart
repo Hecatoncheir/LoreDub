@@ -20,7 +20,7 @@ import '../../domain/ocr_region.dart';
 import '../../domain/ocr_text_delta.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/pipeline_state.dart';
-import '../../domain/screen_layout.dart';
+import '../../domain/monitor_layout.dart';
 import '../../domain/sound_captions.dart';
 import '../../domain/spoken_language.dart';
 import '../../domain/speech_pace.dart';
@@ -172,8 +172,8 @@ class NativeEngineService {
 
   /// Where the monitors stand, which is what a frame over the whole screen
   /// is a share of.
-  Future<ScreenLayout> screenLayout() async =>
-      ScreenLayout.fromJson(jsonDecode(_readNativeString(ld_list_monitors_json)) as List<Object?>);
+  Future<MonitorLayout> monitorLayout() async =>
+      MonitorLayout.fromJson(jsonDecode(_readNativeString(ld_list_monitors_json)) as List<Object?>);
 
   /// What the machine's graphics adapters and GPU drivers offer.
   ///

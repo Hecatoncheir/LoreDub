@@ -65,16 +65,19 @@ than one of them.
    taken apart (`TODO.md`, stage 2). State lives in five cubits
    (`dashboard/cubits/`): `ShellCubit` (section, first load, the failure banner, the
    update check), `SettingsCubit`, `DownloadsCubit` (models, GPU runtimes,
-   what the machine can run), `PipelineCubit` (status, transcript,
-   processes) and `CharactersCubit` (the player's cast and the session that
-   records a voice for a card), plus one Bloc — `PipelineGraphBloc`, the
-   node canvas, which is event-driven because a gesture there is a sequence
-   (grab, move, drop) rather than a call.
+   what the machine can run), `PipelineCubit` (status and transcript) and
+   `CharactersCubit` (the player's cast and the session that records a
+   voice for a card), plus two Blocs — `PipelineGraphBloc`, the node
+   canvas, which is event-driven because a gesture there is a sequence
+   (grab, move, drop) rather than a call, and `SourcesBloc`, the game the
+   player names and the monitors, the first piece taken out of
+   `PipelineCubit` on the way to the Blocs of `TODO.md`, stage 4.
    No cubit reads another cubit. What more than one screen needs lives in a
    repository that owns it and publishes it: `SettingsRepository`
    (`AppSettings`), `InstallRepository` (what is on disk, what the machine
-   can run it on, where the runtimes are) and `CastRepository` (the cards
-   and the packs). Each has the value as it stands and a `changes` stream
+   can run it on, where the runtimes are), `CastRepository` (the cards
+   and the packs) and `SourcesRepository` (the processes running, the game
+   named out of them and where the monitors stand -- `CaptureSources`). Each has the value as it stands and a `changes` stream
    beside it, and each publishes **synchronously** -- a screen that writes
    to a repository also listens to it, and delivered a microtask later its
    own echo arrived after it had moved on and put the older value back. The
@@ -988,7 +991,8 @@ worker is still the one loaded, and is dropped on any `state` event the
 screen reads — the engine at rest holds no worker, and a recording holds one
 with no voice in it — or the next sample skips the loading and is told there
 is no worker. Which game to listen to is one choice for every screen
-(`PipelineCubit.selectedProcess`, asked for by the shared `ProcessPicker`), so
+(`SourcesRepository`, asked for by the shared `GamePicker`, which reads
+`SourcesBloc` itself), so
 while a card records the picker is closed on Live and in the node panel as
 well — the recording session holds the game it started with. Every
 session is handed `--characters`, and the worker matches a line against the

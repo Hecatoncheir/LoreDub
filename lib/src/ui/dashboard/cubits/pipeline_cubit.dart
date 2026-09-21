@@ -1,7 +1,6 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import '../../../domain/screen_layout.dart';
 import '../../../domain/screen_reading.dart';
 
 import 'dart:async';
@@ -12,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../data/repositories/install_repository.dart';
+import '../../../data/repositories/sources_repository.dart';
 import '../../../data/repositories/app_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../domain/app_settings.dart';
@@ -33,8 +33,6 @@ class LivePipelineState extends Equatable {
     this.status = PipelineStatus.idle,
     this.transcript = const [],
     this.speakers = const [],
-    this.processes = const [],
-    this.selectedProcess,
     this.startupProgress,
     this.startupStage = '',
     this.detectedLanguage,
@@ -46,13 +44,10 @@ class LivePipelineState extends Equatable {
     this.snapshotReading = false,
     this.snapshotMissed = false,
     this.frameMissed = false,
-    this.screens,
   });
 
   final PipelineStatus status;
   final List<TranscriptEntry> transcript;
-  final List<GameProcess> processes;
-  final GameProcess? selectedProcess;
 
   /// The voices this session has heard, in the order they first spoke, so
   /// the player can give any of them a character's voice.
@@ -94,10 +89,6 @@ class LivePipelineState extends Equatable {
   /// Whether the last frame drawn over the game missed its window, so the
   /// subtitles go on being read where they were.
   final bool frameMissed;
-
-  /// Where the monitors stand, once asked: a frame read over the whole
-  /// screen is a share of all of them together, and is drawn that way.
-  final ScreenLayout? screens;
 
   /// How many lines a list keeps, newest first. The screen's subtitles keep
   /// ten: that area grows with what it holds rather than scrolling inside
@@ -146,20 +137,31 @@ class LivePipelineState extends Equatable {
 
   /// Neither a running snapshot session nor one placing the voices of the
   /// scene stands in the way: starting live dubbing takes the worker over.
-  bool canStart(ModelSelection selection, {required bool initializing}) =>
+  ///
+  /// [process] is the game named, which is not this state's: every screen
+  /// shares it (`SourcesRepository`).
+  bool canStart(
+    ModelSelection selection, {
+    required bool initializing,
+    required GameProcess? process,
+  }) =>
       !initializing &&
       (status == PipelineStatus.idle || screenRunning || sceneRunning) &&
-      (!selection.requiresProcess || selectedProcess != null) &&
+      (!selection.requiresProcess || process != null) &&
       // Taken apart on the graph, the pipeline has nothing to work on.
       selection.settings.captureRouted &&
       selection.requiredModelsInstalled;
 
   /// The scene session needs the converter, a bank to keep the voices it
   /// founds in, and — like dubbing — a game to listen to.
-  bool canStartScene(ModelSelection selection, {required bool initializing}) =>
+  bool canStartScene(
+    ModelSelection selection, {
+    required bool initializing,
+    required GameProcess? process,
+  }) =>
       !initializing &&
       (status == PipelineStatus.idle || sceneRunning) &&
-      (!selection.requiresProcess || selectedProcess != null) &&
+      (!selection.requiresProcess || process != null) &&
       selection.tracksSpeakers;
 
   /// The screen session needs its pair of models, and then what the
@@ -172,21 +174,19 @@ class LivePipelineState extends Equatable {
   bool canStartScreen(
     ModelSelection selection, {
     required bool initializing,
+    required GameProcess? process,
     ScreenReading reading = ScreenReading.both,
   }) =>
       !initializing &&
       (status == PipelineStatus.idle || screenRunning) &&
       selection.screenModelsInstalled &&
-      (!reading.readsSubtitles || selection.settings.readsWholeScreen || selectedProcess != null) &&
+      (!reading.readsSubtitles || selection.settings.readsWholeScreen || process != null) &&
       (!reading.readsSnippets || selection.settings.snapshotHotkey != null);
 
   LivePipelineState copyWith({
     PipelineStatus? status,
     List<TranscriptEntry>? transcript,
     List<SceneSpeaker>? speakers,
-    List<GameProcess>? processes,
-    GameProcess? selectedProcess,
-    bool clearSelectedProcess = false,
     double? startupProgress,
     bool clearStartupProgress = false,
     String? startupStage,
@@ -201,13 +201,10 @@ class LivePipelineState extends Equatable {
     bool? snapshotReading,
     bool? snapshotMissed,
     bool? frameMissed,
-    ScreenLayout? screens,
   }) => LivePipelineState(
     status: status ?? this.status,
     transcript: transcript ?? this.transcript,
     speakers: speakers ?? this.speakers,
-    processes: processes ?? this.processes,
-    selectedProcess: clearSelectedProcess ? null : selectedProcess ?? this.selectedProcess,
     startupProgress: clearStartupProgress ? null : startupProgress ?? this.startupProgress,
     startupStage: startupStage ?? this.startupStage,
     detectedLanguage: clearDetectedLanguage ? null : detectedLanguage ?? this.detectedLanguage,
@@ -219,15 +216,12 @@ class LivePipelineState extends Equatable {
     snapshotReading: snapshotReading ?? this.snapshotReading,
     snapshotMissed: snapshotMissed ?? this.snapshotMissed,
     frameMissed: frameMissed ?? this.frameMissed,
-    screens: screens ?? this.screens,
   );
 
   @override
   List<Object?> get props => [
     status,
     transcript,
-    processes,
-    selectedProcess,
     speakers,
     startupProgress,
     startupStage,
@@ -240,7 +234,6 @@ class LivePipelineState extends Equatable {
     snapshotReading,
     snapshotMissed,
     frameMissed,
-    screens,
   ];
 }
 
@@ -250,6 +243,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     this._modelRepository,
     this._settings,
     this._downloads,
+    this._sources,
     this._errors,
     this._sessions, {
     DateTime Function()? clock,
@@ -262,6 +256,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       followFrameOverlay();
       unawaited(_followVoice());
     });
+    // The frame is drawn over the game, so naming another one -- here or
+    // on any other screen -- moves it.
+    _picked = _sources.changes
+        .map((sources) => sources.selected)
+        .distinct()
+        .listen((_) => followFrameOverlay());
   }
 
   /// How long after a start a second press is taken for the rest of a
@@ -272,11 +272,16 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   final ModelRepository _modelRepository;
   final SettingsRepository _settings;
   final InstallRepository _downloads;
+  final SourcesRepository _sources;
   final FailureSink _errors;
   final SessionCoordinator _sessions;
   final DateTime Function() _clock;
   StreamSubscription<EngineEvent>? _events;
   StreamSubscription<AppSettings>? _written;
+  StreamSubscription<GameProcess?>? _picked;
+
+  /// The game every screen listens to.
+  GameProcess? get _process => _sources.sources.selected;
 
   /// When the last start was asked for. The button that starts the pipeline
   /// also cancels a start in progress, so without this a double-click would
@@ -290,46 +295,12 @@ class PipelineCubit extends Cubit<LivePipelineState> {
 
   void listen() => _events = _appRepository.events.listen(_handleEvent);
 
-  Future<void> loadProcesses() async {
-    final processes = await _appRepository.listProcesses();
-    if (isClosed) return;
-    emit(state.copyWith(processes: processes));
-  }
-
-  /// Asked at the start and whenever the processes are, which is what the
-  /// player does after plugging a monitor in as much as a game.
-  Future<void> loadScreens() async {
-    final screens = await _appRepository.screenLayout();
-    if (isClosed) return;
-    emit(state.copyWith(screens: screens));
-  }
-
-  void selectProcess(GameProcess? value) {
-    emit(state.copyWith(selectedProcess: value, clearSelectedProcess: value == null));
-    // The frame is drawn over the game, so choosing another one moves it.
-    followFrameOverlay();
-  }
-
-  Future<void> refreshProcesses() async {
-    final processes = await _appRepository.listProcesses();
-    if (isClosed) return;
-    final matches = processes.where((process) => process.pid == state.selectedProcess?.pid);
-    emit(
-      state.copyWith(
-        processes: processes,
-        selectedProcess: matches.firstOrNull,
-        clearSelectedProcess: matches.isEmpty,
-      ),
-    );
-    await loadScreens();
-  }
-
   Future<void> toggle({required bool initializing}) async {
     if (_pressedTwice) return;
     _errors.report(null);
     if (state.liveRunning) return stop();
     final selection = this.selection;
-    if (!state.canStart(selection, initializing: initializing)) return;
+    if (!state.canStart(selection, initializing: initializing, process: _process)) return;
     // The snapshot session holds the worker loaded without whisper, so live
     // dubbing takes it over by starting afresh.
     if (state.running) {
@@ -377,7 +348,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
           : null;
       final speech = selection.forTargetLanguage(ModelKind.speech)!.model;
       await _appRepository.start(
-        process: selection.requiresProcess ? state.selectedProcess : null,
+        process: selection.requiresProcess ? _process : null,
         settings: settings,
         modelDirectories: await _modelDirectories(selection),
         speaker: selection.voice,
@@ -395,7 +366,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         runtimeDirectory: _downloads.parts.runtimeDirectory,
         // Kept per game, so one game's cast does not answer for another's.
         voiceBank: selection.keepsVoiceBank
-            ? await _appRepository.voiceBankFileFor(state.selectedProcess?.name ?? '')
+            ? await _appRepository.voiceBankFileFor(_process?.name ?? '')
             : null,
       );
     } catch (exception) {
@@ -474,7 +445,13 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       if (wasReading == reading || isClosed) return;
     }
     final selection = this.selection;
-    if (!state.canStartScreen(selection, initializing: initializing, reading: reading)) return;
+    final ready = state.canStartScreen(
+      selection,
+      initializing: initializing,
+      process: _process,
+      reading: reading,
+    );
+    if (!ready) return;
     _startRequestedAt = _clock();
     // The worker the characters screen holds has neither the translator nor
     // the voice loaded, so this session starts afresh over it.
@@ -515,7 +492,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         // The same bank the dubbing session keeps, so a character met
         // while the subtitles are read is met again when it runs.
         voiceBank: hearsVoices ? await _appRepository.voiceBankFileFor(_game) : null,
-        process: state.selectedProcess,
+        process: _process,
         settings: settings,
         modelDirectories: {
           if (translation != null) 'translation': await _modelRepository.directoryFor(translation),
@@ -552,7 +529,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
       return;
     }
     final selection = this.selection;
-    if (!state.canStartScene(selection, initializing: initializing)) return;
+    if (!state.canStartScene(selection, initializing: initializing, process: _process)) return;
     _startRequestedAt = _clock();
     // Both sessions listen through the converter, but only one may hold the
     // worker; the one the characters screen started gives way.
@@ -570,7 +547,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     try {
       final settings = _settings.settings;
       await _appRepository.startSceneVoices(
-        process: selection.requiresProcess ? state.selectedProcess : null,
+        process: selection.requiresProcess ? _process : null,
         settings: settings,
         converterDirectory: await _modelRepository.directoryFor(
           selection.voiceConverter!.model,
@@ -641,7 +618,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
 
   /// The game the per-game files are kept under: its executable, or the one
   /// name the whole default output shares.
-  String get _game => state.selectedProcess?.name ?? '';
+  String get _game => _process?.name ?? '';
 
   /// The scene list with this voice in it: one heard before keeps its place
   /// and shows what it just said, a new one joins the end.
@@ -859,7 +836,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   /// started or ended, which are this cubit's own.
   void followFrameOverlay() {
     final settings = _settings.settings;
-    final processId = settings.readsWholeScreen ? 0 : state.selectedProcess?.pid ?? 0;
+    final processId = settings.readsWholeScreen ? 0 : _process?.pid ?? 0;
     // Over a window there has to be a window: with no game named there is
     // nothing to draw the frame on.
     final drawable = settings.readsWholeScreen || processId != 0;
@@ -901,7 +878,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
   @override
   Future<void> close() {
     unawaited(_written?.cancel());
-    unawaited(_written?.cancel());
+    unawaited(_picked?.cancel());
     // The repository is shared with every other cubit: whoever made it
     // disposes of it, once they are all closed.
     _events?.cancel();

@@ -12,8 +12,9 @@ import '../dashboard/cubits/downloads_cubit.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
-import '../common/process_picker.dart';
 import '../common/language_row.dart';
+import '../common/game_picker.dart';
+import '../dashboard/cubits/sources_bloc.dart';
 
 /// Which game to listen to, and whether the session that measures voices is
 /// running. Live dubbing holds the same worker, so the two never run at once.
@@ -26,7 +27,7 @@ class CharacterSessionControls extends StatelessWidget {
       buildWhen: whenChanged((downloads) => downloads.installed),
       builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
         buildWhen: whenChanged(
-          (pipeline) => (pipeline.processes, pipeline.selectedProcess, pipeline.running),
+          (pipeline) => pipeline.running,
         ),
         builder: (context, pipeline) => BlocBuilder<CharactersCubit, CharactersState>(
           buildWhen: whenChanged((characters) => (characters.status, characters.recordingId)),
@@ -46,13 +47,7 @@ class CharacterSessionControls extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final canRecord = context.read<CharactersCubit>().canRecord;
     final locked = characters.running || pipeline.running;
-    final picker = ProcessPicker(
-      processes: pipeline.processes,
-      selected: pipeline.selectedProcess,
-      enabled: !locked,
-      onSelected: context.read<PipelineCubit>().selectProcess,
-      onRefresh: context.read<PipelineCubit>().refreshProcesses,
-    );
+    final picker = GamePicker(enabled: !locked);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -73,7 +68,7 @@ class CharacterSessionControls extends StatelessWidget {
                     ? null
                     : () => context.read<CharactersCubit>().toggleSession(
                         initializing: initializing,
-                        process: pipeline.selectedProcess,
+                        process: context.read<SourcesBloc>().state.selected,
                       ),
                 icon: characters.status == PipelineStatus.starting
                     ? SizedBox(

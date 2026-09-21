@@ -115,6 +115,7 @@ void main() {
       _FixedModelRepository(),
       cubits.settingsRepository,
       cubits.installed,
+      cubits.sourcesRepository,
       cubits.shell,
       cubits.sessions,
       clock: () => now,
@@ -344,7 +345,7 @@ void main() {
   group('the frame drawn over the game', () {
     test('follows the switch, the game and the region', () async {
       const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
-      pipeline.selectProcess(game);
+      cubits.sourcesRepository.select(game);
       // The pipeline puts the overlay in step whenever the settings reach
       // it, which now includes the value it gets on subscribing, so what
       // matters is that none of those asked for a frame.
@@ -377,7 +378,7 @@ void main() {
 
     test('is taken off with the switch, and its key with it', () async {
       const game = GameProcess(pid: 7, name: 'game.exe', path: 'game.exe');
-      pipeline.selectProcess(game);
+      cubits.sourcesRepository.select(game);
       await cubits.settings.update(const AppSettings(showFrameOverlay: true));
 
       await cubits.settings.update(const AppSettings());
@@ -387,9 +388,10 @@ void main() {
     });
 
     test('its key shows it and takes it off again', () async {
-      pipeline
-        ..listen()
-        ..selectProcess(const GameProcess(pid: 9, name: 'game.exe', path: 'game.exe'));
+      pipeline.listen();
+      cubits.sourcesRepository.select(
+        const GameProcess(pid: 9, name: 'game.exe', path: 'game.exe'),
+      );
 
       repository.push(const HotkeyPressed(HotkeyAction.frameOverlay));
       await settle();
@@ -410,7 +412,9 @@ void main() {
 
     test('loads only the translator and the voice', () async {
       // The frame is read out of one window, so the game is named first.
-      pipeline.selectProcess(const GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe'));
+      cubits.sourcesRepository.select(
+        const GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe'),
+      );
       await pipeline.toggleScreenText(initializing: false);
 
       expect(repository.snapshotStarts, 1);
@@ -442,7 +446,7 @@ void main() {
 
     test('follows the voices behind the subtitles when it is asked to', () async {
       const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
-      pipeline.selectProcess(game);
+      cubits.sourcesRepository.select(game);
       await cubits.settings.update(const AppSettings(screenVoices: true));
 
       await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.subtitles);
@@ -466,12 +470,12 @@ void main() {
 
     test('changes what is read by starting that reading over the one running', () async {
       const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
-      pipeline.selectProcess(game);
+      cubits.sourcesRepository.select(game);
       await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.snippets);
       // The frame is read out of the game's window, so the session that
       // takes over is one that knows which game.
       pipeline.seed(
-        waiting.copyWith(selectedProcess: game, screenReading: ScreenReading.snippets),
+        waiting.copyWith(screenReading: ScreenReading.snippets),
       );
 
       await pipeline.toggleScreenText(initializing: false, reading: ScreenReading.subtitles);
@@ -483,9 +487,9 @@ void main() {
 
     test('its own button ends it rather than starting it again', () async {
       const game = GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe');
-      pipeline.selectProcess(game);
+      cubits.sourcesRepository.select(game);
       await pipeline.toggleScreenText(initializing: false);
-      pipeline.seed(waiting.copyWith(selectedProcess: game));
+      pipeline.seed(waiting);
 
       await pipeline.toggleScreenText(initializing: false);
 
@@ -700,6 +704,7 @@ void main() {
         pipeline.state.canStartScene(
           ModelSelection(models: cubits.downloads.state.models, settings: const AppSettings()),
           initializing: false,
+          process: null,
         ),
         isFalse,
       );

@@ -10,9 +10,9 @@ import '../dashboard/cubits/characters_cubit.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/dashboard_context.dart';
-import '../common/process_picker.dart';
 import 'language_controls.dart';
 import 'target_language_picker.dart';
+import '../common/game_picker.dart';
 
 /// The card that picks the game and the source of its sound, with the
 /// dubbing language and the start button beside them.
@@ -25,7 +25,7 @@ class SourceControls extends StatelessWidget {
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
     builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
       buildWhen: whenChanged(
-        (pipeline) => (pipeline.running, pipeline.processes, pipeline.selectedProcess),
+        (pipeline) => pipeline.running,
       ),
       // Only whether a card is being recorded: the seconds it has heard tick
       // as it goes, and this screen must not be redrawn for them.
@@ -46,15 +46,9 @@ class SourceControls extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final running = pipeline.running;
     final requiresProcess = settings.audioCaptureSource == AudioCaptureSource.process;
-    final selector = ProcessPicker(
-      processes: pipeline.processes,
-      selected: pipeline.selectedProcess,
-      // A card recording on the characters screen listens to the game it
-      // started with; the choice is shared, so it is held there.
-      enabled: !running && requiresProcess && !recording,
-      onSelected: context.read<PipelineCubit>().selectProcess,
-      onRefresh: context.read<PipelineCubit>().refreshProcesses,
-    );
+    // A card recording on the characters screen listens to the game it
+    // started with; the choice is shared, so it is held there.
+    final selector = GamePicker(enabled: !running && requiresProcess && !recording);
     final helper = Text(
       requiresProcess ? l10n.captureProcessNote : l10n.captureSystemNote,
       style: Theme.of(context).textTheme.bodySmall,

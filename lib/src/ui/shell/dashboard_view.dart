@@ -24,6 +24,7 @@ class DashboardView extends StatelessWidget {
       BlocProvider.value(value: cubits.settings),
       BlocProvider.value(value: cubits.downloads),
       BlocProvider.value(value: cubits.pipeline),
+      BlocProvider.value(value: cubits.sources),
       BlocProvider.value(value: cubits.characters),
       BlocProvider.value(value: cubits.glossary),
       BlocProvider.value(value: cubits.graph),

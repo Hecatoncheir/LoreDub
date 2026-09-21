@@ -59,6 +59,7 @@ import 'package:lore_dub/src/ui/dashboard/cubits/settings_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/shell_cubit.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lore_dub/src/domain/capture_sources.dart';
 
 void main() {
   DashboardCubits buildCubits({RuntimeRepository? runtimes}) {
@@ -259,8 +260,8 @@ void main() {
     tester,
   ) async {
     final cubits = stage(buildCubits(), models: catalogue());
-    cubits.pipeline.seed(
-      LivePipelineState(
+    cubits.sources.seed(
+      CaptureSources(
         processes: [
           for (var index = 0; index < 40; index++)
             GameProcess(pid: 1000 + index, name: 'game$index.exe', path: 'C:\\game$index.exe'),
@@ -1198,7 +1199,7 @@ void main() {
         tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Начать перевод'));
     expect(startButton().onPressed, isNull, reason: 'no process named yet');
 
-    cubits.pipeline.selectProcess(
+    cubits.sourcesRepository.select(
       const GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe'),
     );
     // Twice: a cubit reaches its listeners a microtask later than the emit.
@@ -1236,7 +1237,7 @@ void main() {
 
   testWidgets('takes the card away once nothing is left to ask for', (tester) async {
     final cubits = stage(buildCubits(), models: catalogue());
-    cubits.pipeline.selectProcess(
+    cubits.sourcesRepository.select(
       const GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe'),
     );
     await pumpDashboard(tester, cubits, const Size(1280, 720));
@@ -2784,9 +2785,8 @@ void main() {
       );
       // The frame is read out of one window, so this session waits for a
       // game as live dubbing does.
-      cubits.pipeline.seed(
-        pipeline.copyWith(processes: const [game], selectedProcess: game),
-      );
+      cubits.pipeline.seed(pipeline);
+      cubits.sources.seed(const CaptureSources(processes: [game], selected: game));
       return cubits;
     }
 
@@ -2828,7 +2828,7 @@ void main() {
       // A game that keeps no ordinary window has none to read out of, and
       // the frame is then measured against the monitors themselves.
       final cubits = stageSnapshot(settings: const AppSettings());
-      cubits.pipeline.seed(const LivePipelineState());
+      cubits.sources.seed(const CaptureSources());
       await pumpDashboard(tester, cubits, const Size(1400, 1000));
       expect(startButton(tester).onPressed, isNull, reason: 'a window needs a game');
 
@@ -2885,7 +2885,7 @@ void main() {
 
     testWidgets('waits for the game whose window it reads', (tester) async {
       final cubits = stageSnapshot();
-      cubits.pipeline.seed(const LivePipelineState());
+      cubits.sources.seed(const CaptureSources());
       await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
       expect(find.text('Выберите игру, чтобы читать её экран'), findsOneWidget);
@@ -3858,8 +3858,8 @@ void main() {
 
     testWidgets('picks the game in a field that filters as it is typed', (tester) async {
       final cubits = await pumpGraph(tester);
-      cubits.pipeline.seed(
-        LivePipelineState(
+      cubits.sources.seed(
+        CaptureSources(
           processes: [
             for (var index = 0; index < 30; index++)
               GameProcess(

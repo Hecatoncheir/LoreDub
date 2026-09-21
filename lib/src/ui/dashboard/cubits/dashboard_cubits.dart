@@ -9,6 +9,7 @@ import '../../../data/repositories/install_repository.dart';
 import '../../../data/repositories/model_repository.dart';
 import '../../../data/repositories/runtime_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
+import '../../../data/repositories/sources_repository.dart';
 import '../../../data/repositories/update_repository.dart';
 import '../../../domain/failure.dart';
 import '../../../domain/model_selection.dart';
@@ -20,6 +21,7 @@ import 'pipeline_cubit.dart';
 import 'pipeline_graph_bloc.dart';
 import 'settings_cubit.dart';
 import 'shell_cubit.dart';
+import 'sources_bloc.dart';
 
 /// The parts of the dashboard, wired together.
 ///
@@ -48,11 +50,13 @@ class DashboardCubits {
       settingsRepository,
       shell,
     );
+    sources = SourcesBloc(sourcesRepository, shell);
     pipeline = PipelineCubit(
       appRepository,
       modelRepository,
       settingsRepository,
       installed,
+      sourcesRepository,
       shell,
       sessions,
     );
@@ -88,6 +92,11 @@ class DashboardCubits {
 
   /// The player's own cards, which two screens work on.
   late final CastRepository cast = CastRepository(_appRepository);
+
+  /// The game every screen listens to, and the monitors a frame over the
+  /// whole screen is drawn on.
+  late final SourcesRepository sourcesRepository = SourcesRepository(_appRepository);
+  late final SourcesBloc sources;
   late final PipelineCubit pipeline;
   late final CharactersCubit characters;
 
@@ -115,8 +124,7 @@ class DashboardCubits {
       // built-in packs are written in.
       await Future.wait([
         settings.load(),
-        pipeline.loadProcesses(),
-        pipeline.loadScreens(),
+        sourcesRepository.load(),
         downloads.load(),
         characters.load(),
         glossary.load(),
@@ -140,6 +148,7 @@ class DashboardCubits {
     await glossary.close();
     await characters.close();
     await pipeline.close();
+    await sources.close();
     await downloads.close();
     await settings.close();
     await shell.close();

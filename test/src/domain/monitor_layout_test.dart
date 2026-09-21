@@ -3,11 +3,11 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
-import 'package:lore_dub/src/domain/screen_layout.dart';
+import 'package:lore_dub/src/domain/monitor_layout.dart';
 
 void main() {
   test('reads the monitors as the native side lists them', () {
-    final layout = ScreenLayout.fromJson(const [
+    final layout = MonitorLayout.fromJson(const [
       {'left': 0, 'top': 0, 'right': 2560, 'bottom': 1440, 'primary': true},
       {'left': -1920, 'top': 360, 'right': 0, 'bottom': 1440},
     ]);
@@ -21,7 +21,7 @@ void main() {
   test('two monitors side by side make a picture twice as wide', () {
     // The frame over the whole screen is a share of both together: the
     // picture drawn on one monitor's shape is what put it in the wrong place.
-    final layout = ScreenLayout.fromJson(const [
+    final layout = MonitorLayout.fromJson(const [
       {'left': 0, 'top': 0, 'right': 1920, 'bottom': 1080, 'primary': true},
       {'left': 1920, 'top': 0, 'right': 3840, 'bottom': 1080},
     ]);
@@ -36,7 +36,7 @@ void main() {
   test('a monitor to the left of the primary one is measured from the far edge', () {
     // Windows puts the primary monitor at the origin, so one standing to its
     // left has negative coordinates; the virtual screen starts there.
-    final layout = ScreenLayout.fromJson(const [
+    final layout = MonitorLayout.fromJson(const [
       {'left': 0, 'top': 0, 'right': 2560, 'bottom': 1440, 'primary': true},
       {'left': -1920, 'top': 360, 'right': 0, 'bottom': 1440},
     ]);
@@ -51,10 +51,10 @@ void main() {
   });
 
   test('no monitor of any size leaves the shape to the window', () {
-    expect(const ScreenLayout([]).aspectRatio, isNull);
-    expect(const ScreenLayout([]).shares, isEmpty);
+    expect(const MonitorLayout([]).aspectRatio, isNull);
+    expect(const MonitorLayout([]).shares, isEmpty);
     expect(
-      ScreenLayout.fromJson(const [
+      MonitorLayout.fromJson(const [
         {'left': 0, 'top': 0, 'right': 0, 'bottom': 0},
       ]).bounds,
       isNull,

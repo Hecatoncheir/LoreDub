@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../domain/ocr_region.dart';
-import '../../domain/screen_layout.dart';
+import '../../domain/monitor_layout.dart';
 import '../theme.dart';
 
 /// What a drag that starts at a point takes hold of.
@@ -36,7 +36,7 @@ enum _Grip {
 /// A scaled-down screen, shaped like the user's monitor, on which the frame
 /// subtitle mode reads is drawn, moved and resized.
 ///
-/// Over the whole screen it is shaped like [screens] instead, every monitor
+/// Over the whole screen it is shaped like [monitors] instead, every monitor
 /// in its place: that frame is a share of all of them together, and drawn
 /// on one monitor's shape it showed a band across two as a band across one.
 ///
@@ -49,7 +49,7 @@ class OcrRegionPicker extends StatefulWidget {
     required this.region,
     required this.onChanged,
     required this.semanticLabel,
-    this.screens,
+    this.monitors,
   });
 
   final OcrRegion region;
@@ -57,7 +57,7 @@ class OcrRegionPicker extends StatefulWidget {
   final String semanticLabel;
 
   /// The monitors the frame is a share of, or null for a window's frame.
-  final ScreenLayout? screens;
+  final MonitorLayout? monitors;
 
   @override
   State<OcrRegionPicker> createState() => _OcrRegionPickerState();
@@ -172,7 +172,7 @@ class _OcrRegionPickerState extends State<OcrRegionPicker> {
     // A display that reports no size, as some test hosts do, gets the
     // commonest monitor shape rather than a division by zero.
     final aspectRatio =
-        widget.screens?.aspectRatio ??
+        widget.monitors?.aspectRatio ??
         (display.width > 0 && display.height > 0 ? display.width / display.height : 16 / 9);
     return Semantics(
       label: widget.semanticLabel,
@@ -234,7 +234,7 @@ class _OcrRegionPickerState extends State<OcrRegionPicker> {
         region: _shown,
         showGrips: _enabled,
         colors: context.colors,
-        monitors: widget.screens?.shares ?? const [],
+        monitors: widget.monitors?.shares ?? const [],
       ),
     );
     if (!_enabled) return painter;
@@ -290,10 +290,10 @@ class _RegionPainter extends CustomPainter {
     final screen = Offset.zero & size;
     // Where the monitors do not reach is left as the case behind them: the
     // frame may cross it, and nothing there is read.
-    final screens = monitors.isEmpty
+    final areas = monitors.isEmpty
         ? [(screen, true)]
         : [for (final (share, primary) in monitors) (_within(size, share).deflate(1.5), primary)];
-    for (final (area, primary) in screens) {
+    for (final (area, primary) in areas) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(area, const Radius.circular(4)),
         Paint()..color = colors.ink,

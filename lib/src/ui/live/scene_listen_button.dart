@@ -10,6 +10,9 @@ import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import 'scene_listen_toggle.dart';
+import '../../domain/capture_sources.dart';
+import '../../domain/game_process.dart';
+import '../dashboard/cubits/sources_bloc.dart';
 
 /// Starts the session that only listens for who speaks, or ends it.
 ///
@@ -28,14 +31,21 @@ class SceneListenButton extends StatelessWidget {
         buildWhen: whenChanged((downloads) => downloads.installed),
         builder: (context, _) => BlocBuilder<PipelineCubit, LivePipelineState>(
           buildWhen: whenChanged(
-            (pipeline) => (pipeline.status, pipeline.session, pipeline.selectedProcess),
+            (pipeline) => (pipeline.status, pipeline.session),
           ),
-          builder: (context, pipeline) => SceneListenToggle(
-            listening: pipeline.sceneRunning,
-            enabled:
-                pipeline.sceneRunning ||
-                pipeline.canStartScene(context.selection, initializing: initializing),
-            initializing: initializing,
+          builder: (context, pipeline) => BlocSelector<SourcesBloc, CaptureSources, GameProcess?>(
+            selector: (sources) => sources.selected,
+            builder: (context, process) => SceneListenToggle(
+              listening: pipeline.sceneRunning,
+              enabled:
+                  pipeline.sceneRunning ||
+                  pipeline.canStartScene(
+                    context.selection,
+                    initializing: initializing,
+                    process: process,
+                  ),
+              initializing: initializing,
+            ),
           ),
         ),
       ),

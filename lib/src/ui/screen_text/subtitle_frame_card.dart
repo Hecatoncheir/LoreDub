@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/app_settings.dart';
 import '../../domain/ocr_region.dart';
-import '../../domain/screen_layout.dart';
+import '../../domain/monitor_layout.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
@@ -17,6 +17,8 @@ import '../common/module_label.dart';
 import 'ocr_region_picker.dart';
 import 'screen_voices_switch.dart';
 import 'snapshot_start_button.dart';
+import '../../domain/capture_sources.dart';
+import '../dashboard/cubits/sources_bloc.dart';
 
 /// The frame the subtitles are read out of, drawn on a picture of the game's
 /// window, and whether the game is silenced while they are dubbed.
@@ -29,12 +31,11 @@ class SubtitleFrameCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
     builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
-      buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.screens)),
-      builder: (context, pipeline) => _build(
-        context,
-        state.settings,
-        running: pipeline.running,
-        screens: pipeline.screens,
+      buildWhen: whenChanged((pipeline) => pipeline.running),
+      builder: (context, pipeline) => BlocSelector<SourcesBloc, CaptureSources, MonitorLayout?>(
+        selector: (sources) => sources.monitors,
+        builder: (context, monitors) =>
+            _build(context, state.settings, running: pipeline.running, monitors: monitors),
       ),
     ),
   );
@@ -43,7 +44,7 @@ class SubtitleFrameCard extends StatelessWidget {
     BuildContext context,
     AppSettings settings, {
     required bool running,
-    required ScreenLayout? screens,
+    required MonitorLayout? monitors,
   }) {
     final l10n = AppLocalizations.of(context);
     return Card(
@@ -60,7 +61,7 @@ class SubtitleFrameCard extends StatelessWidget {
               semanticLabel: l10n.ocrRegionHelp,
               // A window's frame is a share of that window; the screen's is
               // a share of every monitor together, and drawn that way.
-              screens: settings.readsWholeScreen ? screens : null,
+              monitors: settings.readsWholeScreen ? monitors : null,
               onChanged: running
                   ? null
                   : (region) =>

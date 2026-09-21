@@ -1,7 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import '../../domain/screen_layout.dart';
+import '../../domain/monitor_layout.dart';
 import '../../domain/engine_event.dart';
 import '../../domain/ocr_region.dart';
 import '../../domain/screen_reading.dart';
@@ -135,7 +135,7 @@ class AppRepository {
   Future<List<GameProcess>> listProcesses() => _nativeEngine.listProcesses();
 
   /// Where the monitors stand against each other.
-  Future<ScreenLayout> screenLayout() => _nativeEngine.screenLayout();
+  Future<MonitorLayout> monitorLayout() => _nativeEngine.monitorLayout();
 
   /// The bank file the original voice keeps [game]'s characters in; the game
   /// is named by its executable.

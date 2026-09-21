@@ -14,6 +14,9 @@ import '../dashboard/cubits/pipeline_cubit.dart';
 import '../dashboard/cubits/settings_cubit.dart';
 import '../dashboard/cubits/shell_cubit.dart';
 import '../dashboard/dashboard_context.dart';
+import '../../domain/capture_sources.dart';
+import '../../domain/game_process.dart';
+import '../dashboard/cubits/sources_bloc.dart';
 
 /// Starts and ends a session of this page, reading what [reading] says.
 ///
@@ -42,13 +45,24 @@ class SnapshotStartButton extends StatelessWidget {
       builder: (context, shell) => BlocBuilder<DownloadsCubit, DownloadsState>(
         buildWhen: whenChanged((downloads) => downloads.installed),
         builder: (context, _) => BlocBuilder<SettingsCubit, SettingsState>(
-          builder: (context, _) => _build(context, pipeline, initializing: shell.initializing),
+          // The game named opens the button for the frame, which reads
+          // that game's window.
+          builder: (context, _) => BlocSelector<SourcesBloc, CaptureSources, GameProcess?>(
+            selector: (sources) => sources.selected,
+            builder: (context, process) =>
+                _build(context, pipeline, process, initializing: shell.initializing),
+          ),
         ),
       ),
     ),
   );
 
-  Widget _build(BuildContext context, LivePipelineState pipeline, {required bool initializing}) {
+  Widget _build(
+    BuildContext context,
+    LivePipelineState pipeline,
+    GameProcess? process, {
+    required bool initializing,
+  }) {
     final l10n = AppLocalizations.of(context);
     final own = pipeline.session == PipelineSession.screen && pipeline.screenReading == reading;
     final starting = own && pipeline.status == PipelineStatus.starting;
@@ -57,6 +71,7 @@ class SnapshotStartButton extends StatelessWidget {
     final canStart = pipeline.canStartScreen(
       context.selection,
       initializing: initializing,
+      process: process,
       reading: reading,
     );
     return Tooltip(

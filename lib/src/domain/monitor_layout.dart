@@ -6,14 +6,14 @@ import 'dart:math' as math;
 import 'ocr_region.dart';
 
 /// One monitor, in the virtual screen's physical pixels.
-class ScreenMonitor {
-  const ScreenMonitor(this.area, {this.primary = false});
+class Monitor {
+  const Monitor(this.area, {this.primary = false});
 
-  factory ScreenMonitor.fromJson(Map<String, Object?> json) {
+  factory Monitor.fromJson(Map<String, Object?> json) {
     int edge(String key) => (json[key] as num?)?.toInt() ?? 0;
     final left = edge('left');
     final top = edge('top');
-    return ScreenMonitor(
+    return Monitor(
       math.Rectangle(left, top, edge('right') - left, edge('bottom') - top),
       primary: json['primary'] == true,
     );
@@ -26,7 +26,7 @@ class ScreenMonitor {
 
   @override
   bool operator ==(Object other) =>
-      other is ScreenMonitor && other.area == area && other.primary == primary;
+      other is Monitor && other.area == area && other.primary == primary;
 
   @override
   int get hashCode => Object.hash(area, primary);
@@ -40,14 +40,14 @@ class ScreenMonitor {
 /// lower half of that band crosses both. A picture of the frame drawn on
 /// the shape of the monitor LoreDub happened to stand on put it somewhere
 /// it was not read from.
-class ScreenLayout {
-  const ScreenLayout(this.monitors);
+class MonitorLayout {
+  const MonitorLayout(this.monitors);
 
-  factory ScreenLayout.fromJson(List<Object?> json) => ScreenLayout([
-    for (final value in json) ScreenMonitor.fromJson(value! as Map<String, Object?>),
+  factory MonitorLayout.fromJson(List<Object?> json) => MonitorLayout([
+    for (final value in json) Monitor.fromJson(value! as Map<String, Object?>),
   ]);
 
-  final List<ScreenMonitor> monitors;
+  final List<Monitor> monitors;
 
   /// What they cover together: the virtual screen. Null with no monitor of
   /// any size, which leaves the picture to the shape of the window's own.
@@ -57,7 +57,7 @@ class ScreenLayout {
     return shown.map((monitor) => monitor.area).reduce((a, b) => a.boundingBox(b));
   }
 
-  Iterable<ScreenMonitor> get _shown =>
+  Iterable<Monitor> get _shown =>
       monitors.where((monitor) => monitor.area.width > 0 && monitor.area.height > 0);
 
   /// Width over height of [bounds], or null where there is none.
@@ -89,7 +89,7 @@ class ScreenLayout {
 
   @override
   bool operator ==(Object other) =>
-      other is ScreenLayout &&
+      other is MonitorLayout &&
       other.monitors.length == monitors.length &&
       Iterable<int>.generate(monitors.length).every((i) => other.monitors[i] == monitors[i]);
 
