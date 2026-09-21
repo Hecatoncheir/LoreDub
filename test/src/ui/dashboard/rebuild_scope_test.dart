@@ -181,7 +181,7 @@ void main() {
 
     final rebuilt = await rebuiltBy(
       tester,
-      () => cubits.transcript.seed(
+      () => cubits.stageLists(
         const TranscriptState(
           transcript: [
             TranscriptEntry(

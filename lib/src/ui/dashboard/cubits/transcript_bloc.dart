@@ -5,7 +5,6 @@ import 'dart:async';
 
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/session_repository.dart';
@@ -67,8 +66,11 @@ class TranscriptState extends Equatable {
   List<Object?> get props => [transcript, speakers, snapshots, snapshotReading, snapshotMissed];
 }
 
-sealed class TranscriptEvent {
+sealed class TranscriptEvent extends Equatable {
   const TranscriptEvent();
+
+  @override
+  List<Object?> get props => const [];
 }
 
 /// The player emptied the transcript. A running session keeps appending to
@@ -88,6 +90,9 @@ final class LineSpokenAgain extends TranscriptEvent {
   const LineSpokenAgain(this.entry);
 
   final TranscriptEntry entry;
+
+  @override
+  List<Object?> get props => [entry.english, entry.spoken];
 }
 
 final class _EngineSaid extends TranscriptEvent {
@@ -101,12 +106,6 @@ final class _SessionMoved extends TranscriptEvent {
 
   final EngineActivity was;
   final EngineActivity now;
-}
-
-final class _Seeded extends TranscriptEvent {
-  const _Seeded(this.state);
-
-  final TranscriptState state;
 }
 
 /// The lists the dubbing screens show, kept apart from the session that
@@ -127,7 +126,6 @@ class TranscriptBloc extends Bloc<TranscriptEvent, TranscriptState> {
     on<TranscriptCleared>((event, emit) => emit(state.copyWith(transcript: const [])));
     on<SnapshotsCleared>((event, emit) => emit(state.copyWith(snapshots: const [])));
     on<LineSpokenAgain>(_onSpokenAgain);
-    on<_Seeded>((event, emit) => emit(event.state));
     _engine = _app.events.listen((event) => add(_EngineSaid(event)));
     var was = _sessions.activity;
     _moves = _sessions.changes.listen((now) {
@@ -239,10 +237,6 @@ class TranscriptBloc extends Bloc<TranscriptEvent, TranscriptState> {
         if (speaker.key == key) speaker.heard(line: line, seconds: seconds) else speaker,
     ];
   }
-
-  /// Stages the lists a widget test wants to draw, an event later.
-  @visibleForTesting
-  void seed(TranscriptState value) => add(_Seeded(value));
 
   @override
   Future<void> close() async {

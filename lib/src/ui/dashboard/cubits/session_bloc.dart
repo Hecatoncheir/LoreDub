@@ -5,7 +5,6 @@ import '../../../domain/screen_reading.dart';
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -197,8 +196,11 @@ class SessionState extends Equatable {
   ];
 }
 
-sealed class SessionEvent {
+sealed class SessionEvent extends Equatable {
   const SessionEvent();
+
+  @override
+  List<Object?> get props => const [];
 }
 
 /// A start button: one of the three kinds of session, started, or a start
@@ -217,6 +219,9 @@ final class LiveToggled extends SessionToggle {
   const LiveToggled({required this.initializing});
 
   final bool initializing;
+
+  @override
+  List<Object?> get props => [initializing];
 }
 
 /// A start button of the Screen page, for one [reading] of the screen.
@@ -225,6 +230,9 @@ final class ScreenToggled extends SessionToggle {
 
   final bool initializing;
   final ScreenReading reading;
+
+  @override
+  List<Object?> get props => [initializing, reading];
 }
 
 /// The button that places the voices of the scene before anything is dubbed.
@@ -232,6 +240,9 @@ final class SceneToggled extends SessionToggle {
   const SceneToggled({required this.initializing});
 
   final bool initializing;
+
+  @override
+  List<Object?> get props => [initializing];
 }
 
 /// Ends the session, paused or not, and gives the game its volume back.
@@ -834,14 +845,6 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       backends: now.activeBackends,
     );
   }
-
-  /// Stages a state a widget test wants to render without starting anything.
-  ///
-  /// At once rather than an event later, as a test that seeds a session and
-  /// then asks it for something expects the session to be there.
-  @visibleForTesting
-  // ignore: invalid_use_of_visible_for_testing_member
-  void seed(SessionState value) => emit(value);
 
   @override
   Future<void> close() {

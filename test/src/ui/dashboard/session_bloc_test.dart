@@ -73,6 +73,11 @@ void main() {
   /// finishes can get.
   Future<void> settle() => Future<void>.delayed(Duration.zero);
 
+  /// The session standing as [value] -- what `blocTest`'s `seed` does.
+  void stage(SessionState value) =>
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      pipeline.emit(value);
+
   setUp(() {
     // A frame drawn over the game is written through the settings, which
     // reach the disk; without this the write lands on a missing plugin.
@@ -255,9 +260,8 @@ void main() {
   });
 
   test('pauses and resumes on the hotkeys pressed in the game', () async {
-    pipeline
-      ..listen()
-      ..seed(const SessionState(status: PipelineStatus.listening));
+    pipeline.listen();
+    stage(const SessionState(status: PipelineStatus.listening));
 
     repository.push(const HotkeyPressed(HotkeyAction.pause));
     await settle();
@@ -275,7 +279,7 @@ void main() {
   });
 
   test('stops for good from a pause', () async {
-    pipeline.seed(const SessionState(status: PipelineStatus.paused));
+    stage(const SessionState(status: PipelineStatus.paused));
 
     pipeline.add(const SessionStopped());
     await pumpEventQueue();
@@ -284,11 +288,31 @@ void main() {
     expect(repository.stops, 1);
   });
 
+  test('forgets what the session found out once it stops', () async {
+    // The detected language, the voice last read in and the devices it
+    // settled on belonged to that session; the next one finds them anew.
+    stage(
+      const SessionState(
+        status: PipelineStatus.listening,
+        detectedLanguage: 'ja',
+        spokenVoice: 'kseniya',
+        activeBackends: {ComputeStage.recognition: ComputeBackend.cuda},
+      ),
+    );
+
+    pipeline.add(const LiveToggled(initializing: false));
+    await pumpEventQueue();
+
+    expect(pipeline.state.status, PipelineStatus.idle);
+    expect(pipeline.state.detectedLanguage, isNull);
+    expect(pipeline.state.spokenVoice, isNull);
+    expect(pipeline.state.activeBackends, isEmpty);
+  });
+
   group('a line already read', () {
     test('keeps what it was read as, and is read again on request', () async {
-      pipeline
-        ..listen()
-        ..seed(const SessionState(status: PipelineStatus.listening));
+      pipeline.listen();
+      stage(const SessionState(status: PipelineStatus.listening));
 
       repository.push(
         dubbed(
@@ -322,7 +346,7 @@ void main() {
 
   group('the voice picked while a session runs', () {
     test('reaches the worker rather than waiting for the next start', () async {
-      pipeline.seed(
+      stage(
         const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.screen,
@@ -338,7 +362,7 @@ void main() {
       await cubits.settingsRepository.save(const AppSettings(voice: 'male_1'));
       expect(repository.voicesTold, isEmpty, reason: 'the next start will carry it');
 
-      pipeline.seed(
+      stage(
         const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.live,
@@ -434,9 +458,8 @@ void main() {
     });
 
     test('keeps the last ten subtitles, the newest on top', () async {
-      pipeline
-        ..listen()
-        ..seed(waiting);
+      pipeline.listen();
+      stage(waiting);
 
       for (var line = 1; line <= 12; line++) {
         repository.push(
@@ -487,7 +510,7 @@ void main() {
       await pumpEventQueue();
       // The frame is read out of the game's window, so the session that
       // takes over is one that knows which game.
-      pipeline.seed(
+      stage(
         waiting.copyWith(screenReading: ScreenReading.snippets),
       );
 
@@ -504,7 +527,7 @@ void main() {
       cubits.sourcesRepository.select(game);
       pipeline.add(const ScreenToggled(initializing: false));
       await pumpEventQueue();
-      pipeline.seed(waiting);
+      stage(waiting);
 
       pipeline.add(const ScreenToggled(initializing: false));
       await pumpEventQueue();
@@ -515,9 +538,8 @@ void main() {
     });
 
     test('moves the subtitle frame to what was drawn over the game', () async {
-      pipeline
-        ..listen()
-        ..seed(waiting);
+      pipeline.listen();
+      stage(waiting);
 
       repository.push(
         const SubtitleFrameMoved(OcrRegion(left: 0.1, top: 0.7, right: 0.9, bottom: 0.95)),
@@ -533,9 +555,8 @@ void main() {
     });
 
     test('leaves the frame where it was when the selection missed the window', () async {
-      pipeline
-        ..listen()
-        ..seed(waiting);
+      pipeline.listen();
+      stage(waiting);
       final before = cubits.settings.settings.ocrRegion;
 
       repository.push(const SubtitleFrameMoved(null));
@@ -546,9 +567,8 @@ void main() {
     });
 
     test('keeps a selection apart from the live transcript', () async {
-      pipeline
-        ..listen()
-        ..seed(waiting);
+      pipeline.listen();
+      stage(waiting);
 
       repository
         ..push(const SnapshotReading())
@@ -575,9 +595,8 @@ void main() {
     });
 
     test('says when a selection held no text', () async {
-      pipeline
-        ..listen()
-        ..seed(waiting);
+      pipeline.listen();
+      stage(waiting);
 
       repository
         ..push(const SnapshotReading())
@@ -589,7 +608,7 @@ void main() {
     });
 
     test('gives the worker over when live dubbing starts', () async {
-      pipeline.seed(waiting);
+      stage(waiting);
 
       pipeline.add(const LiveToggled(initializing: false));
       await settle();
@@ -600,7 +619,7 @@ void main() {
     });
 
     test('leaves live dubbing to be stopped from its own screen', () async {
-      pipeline.seed(const SessionState(status: PipelineStatus.listening));
+      stage(const SessionState(status: PipelineStatus.listening));
 
       pipeline.add(const ScreenToggled(initializing: false));
       await pumpEventQueue();
@@ -671,14 +690,13 @@ void main() {
     });
 
     test('places a voice by what was heard, with no words to show', () async {
-      pipeline
-        ..listen()
-        ..seed(
-          const SessionState(
-            status: PipelineStatus.listening,
-            session: PipelineSession.scene,
-          ),
-        );
+      pipeline.listen();
+      stage(
+        const SessionState(
+          status: PipelineStatus.listening,
+          session: PipelineSession.scene,
+        ),
+      );
 
       repository.push(const SceneVoiceHeard(speaker: 'timbre:0', seconds: 1.8));
       repository.push(const SceneVoiceHeard(speaker: 'timbre:0', seconds: 3.2));
@@ -693,7 +711,7 @@ void main() {
     });
 
     test('gives the worker over when the dubbing starts', () async {
-      pipeline.seed(
+      stage(
         const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.scene,

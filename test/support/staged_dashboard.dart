@@ -63,6 +63,8 @@ class StagedDashboard {
     CastBloc? castBloc,
     VoiceCaptureBloc? captureBloc,
     DownloadsBloc? downloadsBloc,
+    SessionBloc? sessionBloc,
+    TranscriptBloc? transcriptBloc,
   }) {
     final native = engine ?? NativeEngineService();
     this.system = system ?? SystemRepository(native);
@@ -95,17 +97,19 @@ class StagedDashboard {
         downloadsBloc ??
         DownloadsBloc(modelRepository, runtimeRepository, installed, settingsRepository, shell);
     sources = SourcesBloc(sourcesRepository, shell);
-    pipeline = SessionBloc(
-      sessionRepository,
-      modelRepository,
-      settingsRepository,
-      installed,
-      sourcesRepository,
-      shell,
-      sessions,
-      this.voiceBank,
-    );
-    transcript = TranscriptBloc(sessionRepository, sessions, shell);
+    pipeline =
+        sessionBloc ??
+        SessionBloc(
+          sessionRepository,
+          modelRepository,
+          settingsRepository,
+          installed,
+          sourcesRepository,
+          shell,
+          sessions,
+          this.voiceBank,
+        );
+    transcript = transcriptBloc ?? TranscriptBloc(sessionRepository, sessions, shell);
     cards = castBloc ?? CastBloc(this.cast, shell);
     voices =
         captureBloc ??
@@ -181,6 +185,18 @@ class StagedDashboard {
       availability: availability,
     ),
   );
+
+  /// Stages the dubbing screens' session as a test says it stands -- what
+  /// `blocTest`'s `seed` does -- and tells the coordinator, as the bloc's
+  /// own `onChange` does for every state it moves to.
+  void stageSession(SessionState value) =>
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      pipeline.emit(value);
+
+  /// Stages what the dubbing screens' sessions have said.
+  void stageLists(TranscriptState value) =>
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      transcript.emit(value);
 
   /// What the settings and the installed packages together decided.
   ModelSelection get selection =>

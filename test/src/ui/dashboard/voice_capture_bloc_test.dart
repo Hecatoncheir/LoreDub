@@ -456,11 +456,11 @@ void main() {
     final bagged = cubits.sessions;
     expect(bagged.dubbingRuns, isFalse);
 
-    cubits.pipeline.seed(const SessionState(status: PipelineStatus.listening));
+    cubits.stageSession(const SessionState(status: PipelineStatus.listening));
     expect(bagged.dubbingRuns, isTrue);
 
     // A session resting under a pause keeps its worker and its models.
-    cubits.pipeline.seed(const SessionState(status: PipelineStatus.paused));
+    cubits.stageSession(const SessionState(status: PipelineStatus.paused));
     expect(bagged.dubbingRuns, isTrue);
   });
 

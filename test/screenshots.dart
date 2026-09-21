@@ -364,16 +364,16 @@ void main() {
       ),
     );
     cubits.stageInstalled(models: catalogue(language));
-    cubits.pipeline.seed(
+    cubits.stageSession(
       SessionState(
         status: status,
         session: session,
       ),
     );
-    cubits.transcript.seed(
+    cubits.stageLists(
       TranscriptState(transcript: transcript, speakers: speakers, snapshots: snapshots),
     );
-    cubits.sources.seed(const CaptureSources(processes: [game], selected: game));
+    cubits.sourcesRepository.seed(const CaptureSources(processes: [game], selected: game));
     // The cards are the repository's, which the cast screen and the canvas
     // both read; which of them has a clip to play is the capture's.
     cubits.cast.seed(CharacterLibrary(characters: cast[language]!, packs: packs[language]!));

@@ -3,7 +3,6 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/sources_repository.dart';
@@ -58,11 +57,6 @@ class SourcesBloc extends Bloc<SourcesEvent, CaptureSources> {
       _errors.report(exception);
     }
   }
-
-  /// Stages what a widget test wants to draw, where every screen reads it.
-  /// The bloc hears it the way it hears any change, an event later.
-  @visibleForTesting
-  void seed(CaptureSources value) => _sources.seed(value);
 
   @override
   Future<void> close() async {

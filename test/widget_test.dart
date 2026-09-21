@@ -88,6 +88,8 @@ void main() {
     VoiceCaptureBloc? capture,
     DownloadsBloc? downloads,
     VoiceBankRepository? voiceBank,
+    SessionBloc? session,
+    TranscriptBloc? transcript,
   }) {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
@@ -105,6 +107,8 @@ void main() {
       captureBloc: capture,
       downloadsBloc: downloads,
       voiceBank: voiceBank,
+      sessionBloc: session,
+      transcriptBloc: transcript,
     );
     addTearDown(cubits.dispose);
     return cubits;
@@ -153,7 +157,7 @@ void main() {
         ),
       );
     }
-    cubits.pipeline.seed(
+    cubits.stageSession(
       SessionState(
         status: status,
         detectedLanguage: detectedLanguage,
@@ -163,7 +167,7 @@ void main() {
     );
     // After the session: its start empties the lists, and what is staged
     // here is what a running one has said.
-    cubits.transcript.seed(TranscriptState(transcript: transcript, speakers: speakers));
+    cubits.stageLists(TranscriptState(transcript: transcript, speakers: speakers));
     return cubits;
   }
 
@@ -322,7 +326,7 @@ void main() {
     tester,
   ) async {
     final cubits = stage(buildCubits(), models: catalogue());
-    cubits.sources.seed(
+    cubits.sourcesRepository.seed(
       CaptureSources(
         processes: [
           for (var index = 0; index < 40; index++)
@@ -546,11 +550,11 @@ void main() {
     await pumpDashboard(tester, cubits, const Size(1280, 720));
     expect(find.text('Определён: Японский'), findsOneWidget);
 
-    cubits.pipeline.add(const LiveToggled(initializing: false));
-    await tester.pump();
+    // What a stop leaves -- the detection is the session's and goes with
+    // it (`session_bloc_test.dart`).
+    cubits.stageSession(const SessionState());
     await tester.pumpAndSettle();
 
-    expect(cubits.pipeline.state.detectedLanguage, isNull);
     expect(find.text('Определять язык'), findsOneWidget);
     expect(find.text('Определён: Японский'), findsNothing);
   });
@@ -1174,30 +1178,30 @@ void main() {
   });
 
   testWidgets('clears the transcript on request', (tester) async {
-    final cubits = stage(
-      buildCubits(),
-      transcript: const [
-        TranscriptEntry(
-          original: 'The gate is sealed.',
-          english: 'The gate is sealed.',
-          translated: 'Ворота закрыты.',
-          latency: Duration(milliseconds: 1325),
-        ),
-      ],
+    const line = TranscriptEntry(
+      original: 'The gate is sealed.',
+      english: 'The gate is sealed.',
+      translated: 'Ворота закрыты.',
+      latency: Duration(milliseconds: 1325),
     );
+    final lists = transcriptShowing(const TranscriptState(transcript: [line]));
+    final cubits = stage(buildCubits(transcript: lists));
     await pumpDashboard(tester, cubits, const Size(1280, 720));
     await showTranscript(tester);
+    expect(find.text('Ворота закрыты.'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
     await tester.pumpAndSettle();
 
-    expect(cubits.transcript.state.transcript, isEmpty);
-    expect(find.text('Ворота закрыты.'), findsNothing);
-    expect(
-      find.text('Здесь появятся распознанные и переведённые реплики'),
-      findsOneWidget,
-      reason: 'the empty state comes back',
-    );
+    verify(() => lists.add(const TranscriptCleared())).called(1);
+  });
+
+  testWidgets('says the transcript is empty once it is', (tester) async {
+    final cubits = stage(buildCubits(transcript: transcriptShowing(const TranscriptState())));
+    await pumpDashboard(tester, cubits, const Size(1280, 720));
+    await showTranscript(tester);
+
+    expect(find.text('Здесь появятся распознанные и переведённые реплики'), findsOneWidget);
   });
 
   testWidgets('offers nothing to clear while the transcript is empty', (tester) async {
@@ -1210,26 +1214,28 @@ void main() {
   });
 
   testWidgets('keeps the session running when the transcript is cleared', (tester) async {
-    final cubits = stage(
-      buildCubits(),
-      status: PipelineStatus.listening,
-      transcript: const [
-        TranscriptEntry(
-          original: '',
-          english: 'The gate is sealed.',
-          translated: 'Ворота закрыты.',
-          latency: Duration(milliseconds: 900),
-        ),
-      ],
+    final session = sessionShowing(const SessionState(status: PipelineStatus.listening));
+    final lists = transcriptShowing(
+      const TranscriptState(
+        transcript: [
+          TranscriptEntry(
+            original: '',
+            english: 'The gate is sealed.',
+            translated: 'Ворота закрыты.',
+            latency: Duration(milliseconds: 900),
+          ),
+        ],
+      ),
     );
+    final cubits = stage(buildCubits(session: session, transcript: lists));
     await pumpDashboard(tester, cubits, const Size(1280, 720));
     await showTranscript(tester);
 
     await tester.tap(find.widgetWithText(TextButton, 'Очистить'));
     await tester.pumpAndSettle();
 
-    expect(cubits.transcript.state.transcript, isEmpty);
-    expect(cubits.pipeline.state.status, PipelineStatus.listening);
+    verify(() => lists.add(const TranscriptCleared())).called(1);
+    verifyNever(() => session.add(any()));
     expect(find.text('Остановить'), findsOneWidget);
   });
 
@@ -2715,8 +2721,9 @@ void main() {
   });
 
   group('pausing a session', () {
-    testWidgets('offers a pause beside a full stop, then a resume', (tester) async {
-      final cubits = stage(buildCubits(), models: catalogue(), status: PipelineStatus.listening);
+    testWidgets('offers a pause beside a full stop', (tester) async {
+      final session = sessionShowing(const SessionState(status: PipelineStatus.listening));
+      final cubits = stage(buildCubits(session: session), models: catalogue());
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 
       expect(find.byKey(const ValueKey('pauseButton')), findsOneWidget);
@@ -2724,15 +2731,25 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('pauseButton')));
       await tester.pumpAndSettle();
+      verify(() => session.add(const SessionPaused())).called(1);
 
-      expect(cubits.pipeline.state.status, PipelineStatus.paused);
+      await tester.tap(find.widgetWithText(FilledButton, 'Остановить'));
+      await tester.pumpAndSettle();
+      verify(() => session.add(const SessionStopped())).called(1);
+    });
+
+    testWidgets('says it rests, and offers the resume and the stop', (tester) async {
+      final session = sessionShowing(const SessionState(status: PipelineStatus.paused));
+      final cubits = stage(buildCubits(session: session), models: catalogue());
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+
       expect(find.text('Пауза'), findsOneWidget, reason: 'the status says so');
       expect(find.byKey(const ValueKey('stopButton')), findsOneWidget);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Продолжить'));
       await tester.pumpAndSettle();
 
-      expect(cubits.pipeline.state.status, PipelineStatus.listening);
+      verify(() => session.add(const SessionResumed())).called(1);
     });
   });
 
@@ -2905,11 +2922,62 @@ void main() {
       );
       // The frame is read out of one window, so this session waits for a
       // game as live dubbing does.
-      cubits.pipeline.seed(pipeline);
-      cubits.transcript.seed(lists);
-      cubits.sources.seed(const CaptureSources(processes: [game], selected: game));
+      cubits.stageSession(pipeline);
+      cubits.stageLists(lists);
+      cubits.sourcesRepository.seed(const CaptureSources(processes: [game], selected: game));
       return cubits;
     }
+
+    testWidgets('starts the reading its own button names', (tester) async {
+      final session = sessionShowing(const SessionState());
+      final cubits = stage(
+        buildCubits(session: session),
+        section: DashboardSection.snapshot,
+        models: catalogue(),
+      );
+      cubits.sourcesRepository.seed(const CaptureSources(processes: [game], selected: game));
+      await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+      for (final reading in ScreenReading.values) {
+        final button = find.byKey(ValueKey('snapshotStart-${reading.name}'));
+        await tester.ensureVisible(button);
+        await tester.pumpAndSettle();
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        verify(
+          () => session.add(ScreenToggled(initializing: false, reading: reading)),
+        ).called(1);
+      }
+    });
+
+    testWidgets('clears the selections by the button over them', (tester) async {
+      final lists = transcriptShowing(
+        const TranscriptState(
+          snapshots: [
+            TranscriptEntry(
+              original: 'Press E to open',
+              english: 'Press E to open',
+              translated: 'Нажмите E, чтобы открыть',
+              latency: Duration(milliseconds: 800),
+            ),
+          ],
+        ),
+      );
+      final cubits = stage(
+        buildCubits(transcript: lists),
+        section: DashboardSection.snapshot,
+        models: catalogue(),
+      );
+      await pumpDashboard(tester, cubits, const Size(1400, 1000));
+
+      final clear = find.byTooltip('Убрать фрагменты из списка');
+      await tester.ensureVisible(clear);
+      await tester.pumpAndSettle();
+      await tester.tap(clear);
+      await tester.pumpAndSettle();
+
+      verify(() => lists.add(const SnapshotsCleared())).called(1);
+    });
 
     testWidgets('reads the frame and the selection on one page', (tester) async {
       await pumpDashboard(tester, stageSnapshot(), const Size(1400, 1000));
@@ -2949,7 +3017,7 @@ void main() {
       // A game that keeps no ordinary window has none to read out of, and
       // the frame is then measured against the monitors themselves.
       final cubits = stageSnapshot(settings: const AppSettings());
-      cubits.sources.seed(const CaptureSources());
+      cubits.sourcesRepository.seed(const CaptureSources());
       await pumpDashboard(tester, cubits, const Size(1400, 1000));
       expect(startButton(tester).onPressed, isNull, reason: 'a window needs a game');
 
@@ -3006,7 +3074,7 @@ void main() {
 
     testWidgets('waits for the game whose window it reads', (tester) async {
       final cubits = stageSnapshot();
-      cubits.sources.seed(const CaptureSources());
+      cubits.sourcesRepository.seed(const CaptureSources());
       await pumpDashboard(tester, cubits, const Size(1400, 1000));
 
       expect(find.text('Выберите игру, чтобы читать её экран'), findsOneWidget);
@@ -3080,7 +3148,7 @@ void main() {
         settings: const AppSettings(audioCaptureSource: AudioCaptureSource.system),
         models: catalogue(),
       );
-      cubits.pipeline.seed(
+      cubits.stageSession(
         const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.screen,
@@ -3351,7 +3419,7 @@ void main() {
       // One engine serves one session. Either of the two brings up a worker
       // of its own, and over a session that is dubbing it took that one's:
       // the capture went on, and every phrase after it failed.
-      cubits.pipeline.seed(const SessionState(status: PipelineStatus.listening));
+      cubits.stageSession(const SessionState(status: PipelineStatus.listening));
       await tester.pump();
       await tester.pump();
 
@@ -3366,7 +3434,7 @@ void main() {
       );
 
       // Stopped, and both are back.
-      cubits.pipeline.seed(const SessionState());
+      cubits.stageSession(const SessionState());
       await tester.pump();
       await tester.pump();
 
@@ -3543,7 +3611,7 @@ void main() {
 
     testWidgets('says it is listening while the voices are placed', (tester) async {
       final cubits = stageScene();
-      cubits.pipeline.seed(
+      cubits.stageSession(
         const SessionState(
           status: PipelineStatus.listening,
           session: PipelineSession.scene,
@@ -3617,8 +3685,8 @@ void main() {
               Character(id: 'b2', name: 'Кузнец', vector: [0.3]),
             ],
           )
-          ..pipeline.seed(const SessionState(status: PipelineStatus.listening))
-          ..transcript.seed(
+          ..stageSession(const SessionState(status: PipelineStatus.listening))
+          ..stageLists(
             const TranscriptState(
               speakers: [SceneSpeaker(key: 'character:a1', line: 'Стоять!')],
               transcript: [
@@ -3880,7 +3948,7 @@ void main() {
       final cubits = await pumpGraph(tester);
       expect(find.byKey(const ValueKey('graphPause')), findsNothing);
 
-      cubits.pipeline.seed(const SessionState(status: PipelineStatus.listening));
+      cubits.stageSession(const SessionState(status: PipelineStatus.listening));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('graphPause')));
@@ -3991,7 +4059,7 @@ void main() {
 
     testWidgets('picks the game in a field that filters as it is typed', (tester) async {
       final cubits = await pumpGraph(tester);
-      cubits.sources.seed(
+      cubits.sourcesRepository.seed(
         CaptureSources(
           processes: [
             for (var index = 0; index < 30; index++)
