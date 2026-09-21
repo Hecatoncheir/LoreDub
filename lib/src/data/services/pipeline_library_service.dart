@@ -1,95 +1,51 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
-
 import '../../domain/failure.dart';
-import '../../domain/json_text.dart';
 import '../../domain/saved_pipeline.dart';
-
-typedef PipelineLibraryRootProvider = Future<Directory> Function();
+import 'json_file_store.dart';
 
 /// The schemes the player kept, in one file beside the arrangement the
 /// canvas is left in.
 ///
 /// `pipeline_graph.json` is where the canvas stands right now; this is the
-/// shelf of schemes to put it back to. They are written the same way the
-/// cast is — whole, through a temporary file — so a crash mid-write leaves
-/// the shelf as it was.
+/// shelf of schemes to put it back to.
 class PipelineLibraryService {
-  PipelineLibraryService({PipelineLibraryRootProvider? root})
-    : _root = root ?? getApplicationSupportDirectory;
+  PipelineLibraryService({DirectoryProvider? root})
+    : _store = JsonFileStore(
+        fileName: 'pipelines.json',
+        decode: PipelineLibrary.fromJson,
+        encode: (library) => library.toJson(),
+        empty: PipelineLibrary.empty,
+        saveFailure: FailureCode.pipelinesSaveFailed,
+        root: root,
+      );
 
-  final PipelineLibraryRootProvider _root;
+  final JsonFileStore<PipelineLibrary> _store;
 
-  Future<String> file() async {
-    final root = await _root();
-    await root.create(recursive: true);
-    return path.join(root.path, 'pipelines.json');
-  }
+  Future<String> file() => _store.file();
 
-  Future<PipelineLibrary> load() async {
-    try {
-      final source = File(await file());
-      if (!await source.exists()) return PipelineLibrary.empty;
-      return PipelineLibrary.fromJson(decodeJsonText(await source.readAsString()));
-    } on FormatException {
-      return PipelineLibrary.empty;
-    } on FileSystemException {
-      return PipelineLibrary.empty;
-    }
-  }
+  Future<PipelineLibrary> load() => _store.load();
 
-  Future<void> save(PipelineLibrary library) async {
-    final destination = await file();
-    final temporary = File('$destination.tmp');
-    try {
-      await temporary.writeAsString(jsonEncode(library.toJson()), flush: true);
-      await temporary.rename(destination);
-    } on FileSystemException catch (error) {
-      throw LoreDubFailure(FailureCode.pipelinesSaveFailed, detail: error.message);
-    }
-  }
+  Future<void> save(PipelineLibrary library) => _store.save(library);
 
   /// Writes [pipelines] to a file of the player's choosing: one scheme, or
   /// the whole shelf, in the same shape either way.
-  Future<void> exportTo(String destination, List<SavedPipeline> pipelines) async {
-    try {
-      await File(destination).writeAsString(
-        jsonEncode(PipelineLibrary(pipelines: pipelines).toJson()),
-        flush: true,
-      );
-    } on FileSystemException catch (error) {
-      throw LoreDubFailure(FailureCode.pipelinesExportFailed, detail: error.message);
-    }
-  }
+  Future<void> exportTo(String destination, List<SavedPipeline> pipelines) => exportJson(
+    destination,
+    PipelineLibrary(pipelines: pipelines).toJson(),
+    FailureCode.pipelinesExportFailed,
+  );
 
   /// What the files the player chose hold. A file with no scheme in it — the
   /// wrong file, or a damaged one — is reported rather than passed over.
-  Future<List<SavedPipeline>> readFiles(List<String> sources) async {
-    final pipelines = <SavedPipeline>[];
-    for (final source in sources) {
-      try {
-        final incoming = PipelineLibrary.pipelinesFromJson(
-          decodeJsonText(await File(source).readAsString()),
-        );
-        if (incoming.isEmpty) {
-          throw LoreDubFailure(
-            FailureCode.pipelinesImportFailed,
-            detail: path.basename(source),
-          );
-        }
-        pipelines.addAll(incoming);
-      } on FormatException {
-        throw LoreDubFailure(FailureCode.pipelinesImportFailed, detail: path.basename(source));
-      } on FileSystemException {
-        throw LoreDubFailure(FailureCode.pipelinesImportFailed, detail: path.basename(source));
-      }
-    }
-    return pipelines;
-  }
+  Future<List<SavedPipeline>> readFiles(List<String> sources) async => [
+    for (final read in await importJsonFiles(
+      sources,
+      decode: PipelineLibrary.pipelinesFromJson,
+      holdsNothing: (pipelines) => pipelines.isEmpty,
+      failure: FailureCode.pipelinesImportFailed,
+    ))
+      ...read,
+  ];
 }

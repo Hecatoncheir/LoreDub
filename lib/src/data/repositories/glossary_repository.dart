@@ -31,9 +31,8 @@ class GlossaryRepository {
     // does not depend on having been started after whoever loads them.
     final settings = await _settings.load();
     if (settings.targetLanguage != builtInGlossaryLanguage) return kept;
-    final offered = await _service.withBuiltIn(kept, builtInGlossary());
-    if (!identical(offered, kept)) await _service.save(offered);
-    return offered;
+    // Kept by the service before it is marked as offered.
+    return _service.withBuiltIn(kept, builtInGlossary());
   }
 
   /// Keeps it, and tells a session already running: the player writes an
