@@ -15,6 +15,7 @@ import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/hotkey.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
+import 'package:lore_dub/src/domain/session_config.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../support/fake_worker.dart';
@@ -188,22 +189,27 @@ void main() {
 
     /// The session that waits on both sides of its worker: stale audio is
     /// cleared before it, and the capture directory made after it.
-    Map<String, Object?> sceneOf(int processId) => {
-      'processId': processId,
-      'captureMode': 'audio',
-      'cpuThreads': 2,
-      'pythonExecutable': 'python.exe',
-      'models': {'converter': 'converter'},
-    };
+    const converterOnly = WorkerPlan(
+      threads: 2,
+      pythonExecutable: 'python.exe',
+      runtimeDirectory: 'runtime',
+      models: ModelPaths(converter: 'converter'),
+    );
+    SceneSessionConfig sceneOf(int processId) => SceneSessionConfig(
+      worker: converterOnly,
+      capture: CapturePlan(mode: CaptureMode.audio, processId: processId),
+    );
 
     /// The session with no wait of its own: the worker, and nothing native.
-    const preview = <String, Object?>{
-      'speaker': 'xenia',
-      'ttsSpeed': 1.0,
-      'cpuThreads': 2,
-      'pythonExecutable': 'python.exe',
-      'models': {'speech': 'speech.pt'},
-    };
+    const preview = PreviewSessionConfig(
+      worker: WorkerPlan(
+        threads: 2,
+        pythonExecutable: 'python.exe',
+        runtimeDirectory: 'runtime',
+        models: ModelPaths(speech: 'speech.pt'),
+        speaker: 'xenia',
+      ),
+    );
 
     Matcher failsWith(FailureCode code) =>
         throwsA(isA<LoreDubFailure>().having((failure) => failure.code, 'code', code));
@@ -235,6 +241,11 @@ void main() {
 
       final capture = path.join(work.path, 'capture');
       expect(native.started.single, containsPair('captureDirectory', capture));
+      // Only the capture crosses into the library, flat, as its hand-written
+      // parser wants: the worker's half stays on this side.
+      expect(native.started.single, containsPair('processId', 7));
+      expect(native.started.single.values.whereType<Map<Object?, Object?>>(), isEmpty);
+      expect(native.started.single, isNot(contains('models')));
       expect(Directory(capture).existsSync(), isTrue);
       // What the capture reports is read, and named for the session it is.
       await _until(() => eventsOf<SessionStateChanged>().length == 2);
@@ -251,13 +262,20 @@ void main() {
     });
 
     test('says where the worker put each stage before the capture starts', () async {
-      final starting = engine.start({
-        ...sceneOf(7),
-        'speaker': 'xenia',
-        'ttsSpeed': 1.0,
-        'sourceLanguage': 'en',
-        'models': {'whisper': 'ggml.bin', 'speech': 'speech.pt', 'converter': 'converter'},
-      });
+      final starting = engine.start(
+        const LiveSessionConfig(
+          worker: WorkerPlan(
+            threads: 2,
+            pythonExecutable: 'python.exe',
+            runtimeDirectory: 'runtime',
+            models: ModelPaths(whisper: 'ggml.bin', speech: 'speech.pt', converter: 'converter'),
+            speaker: 'xenia',
+            sourceLanguage: 'en',
+          ),
+          capture: CapturePlan(mode: CaptureMode.audio, processId: 7),
+          lines: LineRules(targetLanguage: 'ru'),
+        ),
+      );
       await untilCaptureDirectory(
         ready: {
           'type': 'ready',
@@ -395,7 +413,12 @@ void main() {
 
       // Still clearing stale audio: it has not reached the worker, so the
       // first start's is left running with nobody holding it.
-      final starting = engine.startCharacters(sceneOf(9));
+      final starting = engine.startCharacters(
+        const CharactersSessionConfig(
+          worker: converterOnly,
+          capture: CapturePlan(mode: CaptureMode.audio, processId: 9),
+        ),
+      );
       expect(held.asked, 3);
       held.handOver();
       await replaced;

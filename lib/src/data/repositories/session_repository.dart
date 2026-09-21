@@ -9,6 +9,7 @@ import '../../domain/built_voice.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
+import '../../domain/session_config.dart';
 import '../services/character_service.dart';
 import '../services/glossary_service.dart';
 import '../services/native_engine_service.dart';
@@ -113,49 +114,53 @@ class SessionRepository {
   }) async {
     final session = ++_sessions;
     try {
-      final config = <String, Object?>{
-        'speaker': speaker,
-        'processId': process?.pid ?? 0,
-        'captureMode': 'audio',
-        'audioSource': settings.audioCaptureSource.name,
-        'targetLanguage': settings.targetLanguage,
-        'sourceLanguage': settings.effectiveSourceLanguage,
-        // What the game is turned down to, and whether that happens for the
-        // length of a line rather than for the whole session.
-        'duckVolume': settings.duckedVolume,
-        'duckWhileSpeaking': settings.duckWhileSpeaking,
-        'hurryWhenQueued': settings.hurryWhenQueued,
-        'roughRecognition': settings.roughRecognition,
-        'glossary': await _glossary.sessionFile(),
-        'textLanguage': settings.textLanguage,
-        'ocrLanguage': settings.textLanguage,
-        'ttsSpeed': settings.chosenSpeed,
-        'cpuThreads': settings.cpuThreads,
-        'ocrRegionLeft': settings.ocrRegion.left,
-        'ocrRegionTop': settings.ocrRegion.top,
-        'ocrRegionRight': settings.ocrRegion.right,
-        'ocrRegionBottom': settings.ocrRegion.bottom,
-        'pythonExecutable': settings.pythonExecutable,
-        'models': modelDirectories,
-        'translationPrefix': translationPrefix,
-        'translateSpeech': translateSpeech,
-        'followSpeaker': followSpeaker,
-        'revoice': revoice,
-        'overlapVoices': settings.overlapVoices,
-        'maleVoices': maleVoices.join(','),
-        'femaleVoices': femaleVoices.join(','),
-        'recognitionBackend': recognitionBackend.name,
-        'translationBackend': translationBackend.name,
-        'speechBackend': speechBackend.name,
-        'voiceConversionBackend': voiceConversionBackend.name,
-        'runtimeDirectory': runtimeDirectory,
-        'voiceBank': ?voiceBank,
-        // The player's own characters, who speak in every game.
-        'characters': await _characters.file(),
-        // The cards cut out of the mix on the graph: each of them keeps who
-        // stands in for whom, and none of it is applied.
-        'asHeard': await _cutFromMix(),
-      };
+      final config = LiveSessionConfig(
+        worker: WorkerPlan(
+          threads: settings.cpuThreads,
+          pythonExecutable: settings.pythonExecutable,
+          runtimeDirectory: runtimeDirectory,
+          models: _modelPaths(modelDirectories),
+          backends: StageBackends(
+            recognition: recognitionBackend,
+            translation: translationBackend,
+            speech: speechBackend,
+            voiceConversion: voiceConversionBackend,
+          ),
+          speaker: speaker,
+          speed: settings.chosenSpeed,
+          sourceLanguage: settings.effectiveSourceLanguage,
+          translationPrefix: translationPrefix,
+          followSpeaker: followSpeaker,
+          revoice: revoice,
+          maleVoices: maleVoices,
+          femaleVoices: femaleVoices,
+          voiceBank: voiceBank,
+          glossary: await _glossary.sessionFile(),
+          // The player's own characters, who speak in every game.
+          characters: await _characters.file(),
+          // The cards cut out of the mix on the graph: each of them keeps who
+          // stands in for whom, and none of it is applied.
+          asHeard: await _cutFromMix(),
+        ),
+        capture: CapturePlan(
+          mode: CaptureMode.audio,
+          processId: process?.pid ?? 0,
+          audioSource: settings.audioCaptureSource,
+        ),
+        lines: LineRules(
+          targetLanguage: settings.targetLanguage,
+          textLanguage: settings.textLanguage,
+          translateSpeech: translateSpeech,
+          roughRecognition: settings.roughRecognition,
+          speed: settings.chosenSpeed,
+          hurryWhenQueued: settings.hurryWhenQueued,
+          // What the game is turned down to, and whether that happens for
+          // the length of a line rather than for the whole session.
+          duckWhileSpeaking: settings.duckWhileSpeaking,
+          duckVolume: settings.duckedVolume,
+          overlapVoices: settings.overlapVoices,
+        ),
+      );
       _throwIfSuperseded(session);
       await _nativeEngine.start(config);
       _throwIfSuperseded(session);
@@ -198,43 +203,49 @@ class SessionRepository {
   }) async {
     final session = ++_sessions;
     try {
-      final config = <String, Object?>{
-        'speaker': speaker,
-        // The window the frame is read out of, and the game whose sound is
-        // followed. Named even when the screen is what is read: nothing is
-        // taken out of that window then, but it is still the game to turn
-        // down for the length of a line.
-        'processId': process?.pid ?? 0,
-        'captureMode': _captureModeOf(reading, hearsVoices: hearsVoices),
-        'ocrSource': settings.readsWholeScreen ? 'screen' : 'process',
-        'targetLanguage': settings.targetLanguage,
-        'textLanguage': settings.textLanguage,
-        'ocrLanguage': settings.textLanguage,
-        'ocrRegionLeft': settings.ocrRegion.left,
-        'ocrRegionTop': settings.ocrRegion.top,
-        'ocrRegionRight': settings.ocrRegion.right,
-        'ocrRegionBottom': settings.ocrRegion.bottom,
-        'duckVolume': settings.duckedVolume,
-        'duckWhileSpeaking': settings.duckWhileSpeaking,
-        'ttsSpeed': settings.chosenSpeed,
-        'hurryWhenQueued': settings.hurryWhenQueued,
-        'glossary': await _glossary.sessionFile(),
-        'cpuThreads': settings.cpuThreads,
-        'pythonExecutable': settings.pythonExecutable,
-        'models': modelDirectories,
-        'translationPrefix': translationPrefix,
-        'translationBackend': translationBackend.name,
-        'speechBackend': speechBackend.name,
-        'runtimeDirectory': runtimeDirectory,
-        'characters': await _characters.file(),
-        // The voices are heard by the converter and carried over the
-        // reading, so this session asks for the same two as the original
-        // voice does -- and for the game's own bank, so a character met
-        // here is the one the dubbing session knows.
-        'revoice': hearsVoices,
-        'voiceConversionBackend': converterBackend.name,
-        'voiceBank': ?voiceBank,
-      };
+      final config = ScreenSessionConfig(
+        worker: WorkerPlan(
+          threads: settings.cpuThreads,
+          pythonExecutable: settings.pythonExecutable,
+          runtimeDirectory: runtimeDirectory,
+          models: _modelPaths(modelDirectories),
+          backends: StageBackends(
+            translation: translationBackend,
+            speech: speechBackend,
+            voiceConversion: converterBackend,
+          ),
+          speaker: speaker,
+          speed: settings.chosenSpeed,
+          translationPrefix: translationPrefix,
+          // The voices are heard by the converter and carried over the
+          // reading, so this session asks for the same two as the original
+          // voice does -- and for the game's own bank, so a character met
+          // here is the one the dubbing session knows.
+          revoice: hearsVoices,
+          voiceBank: voiceBank,
+          glossary: await _glossary.sessionFile(),
+          characters: await _characters.file(),
+        ),
+        capture: CapturePlan(
+          mode: _captureModeOf(reading, hearsVoices: hearsVoices),
+          // The window the frame is read out of, and the game whose sound is
+          // followed. Named even when the screen is what is read: nothing is
+          // taken out of that window then, but it is still the game to turn
+          // down for the length of a line.
+          processId: process?.pid ?? 0,
+          wholeScreen: settings.readsWholeScreen,
+          region: settings.ocrRegion,
+          ocrLanguage: settings.textLanguage,
+        ),
+        lines: LineRules(
+          targetLanguage: settings.targetLanguage,
+          textLanguage: settings.textLanguage,
+          speed: settings.chosenSpeed,
+          hurryWhenQueued: settings.hurryWhenQueued,
+          duckWhileSpeaking: settings.duckWhileSpeaking,
+          duckVolume: settings.duckedVolume,
+        ),
+      );
       _throwIfSuperseded(session);
       await _nativeEngine.startScreenText(config);
       _throwIfSuperseded(session);
@@ -277,14 +288,36 @@ class SessionRepository {
     textLanguage: settings.textLanguage,
   );
 
+  /// The paths a session's models are at, by the role each plays.
+  static ModelPaths _modelPaths(Map<String, String> directories) => ModelPaths(
+    whisper: directories['whisper'],
+    translation: directories['translation'],
+    speech: directories['speech'],
+    converter: directories['converter'],
+  );
+
+  /// The worker that measures a voice and loads nothing else.
+  static WorkerPlan _converterOnly(
+    AppSettings settings,
+    String converterDirectory,
+    ComputeBackend converterBackend,
+    String runtimeDirectory,
+  ) => WorkerPlan(
+    threads: settings.cpuThreads,
+    pythonExecutable: settings.pythonExecutable,
+    runtimeDirectory: runtimeDirectory,
+    models: ModelPaths(converter: converterDirectory),
+    backends: StageBackends(voiceConversion: converterBackend),
+  );
+
   /// What a reading of the screen captures: the frame, the frame and the
   /// game's own sound where the voices behind it are followed -- that
   /// sound is never recognized, only placed -- or nothing at all, where
   /// the key is the only way in and nothing is scanned until it is
   /// pressed.
-  static String _captureModeOf(ScreenReading reading, {required bool hearsVoices}) {
-    if (!reading.readsSubtitles) return 'none';
-    return hearsVoices ? 'ocrAndAudio' : 'ocr';
+  static CaptureMode _captureModeOf(ScreenReading reading, {required bool hearsVoices}) {
+    if (!reading.readsSubtitles) return CaptureMode.none;
+    return hearsVoices ? CaptureMode.ocrAndAudio : CaptureMode.ocr;
   }
 
   /// Plays a line this session has already read.
@@ -314,16 +347,19 @@ class SessionRepository {
   }) async {
     final session = ++_sessions;
     try {
-      await _nativeEngine.startPreview({
-        'speaker': speaker,
-        'ttsSpeed': settings.chosenSpeed,
-        'cpuThreads': settings.cpuThreads,
-        'pythonExecutable': settings.pythonExecutable,
-        'models': modelDirectories,
-        'speechBackend': speechBackend.name,
-        'voiceConversionBackend': converterBackend.name,
-        'runtimeDirectory': runtimeDirectory,
-      });
+      await _nativeEngine.startPreview(
+        PreviewSessionConfig(
+          worker: WorkerPlan(
+            threads: settings.cpuThreads,
+            pythonExecutable: settings.pythonExecutable,
+            runtimeDirectory: runtimeDirectory,
+            models: _modelPaths(modelDirectories),
+            backends: StageBackends(speech: speechBackend, voiceConversion: converterBackend),
+            speaker: speaker,
+            speed: settings.chosenSpeed,
+          ),
+        ),
+      );
       _throwIfSuperseded(session);
     } catch (_) {
       await _endFailedStart(session);
@@ -350,16 +386,16 @@ class SessionRepository {
   }) async {
     final session = ++_sessions;
     try {
-      await _nativeEngine.startCharacters({
-        'processId': process?.pid ?? 0,
-        'captureMode': 'audio',
-        'audioSource': settings.audioCaptureSource.name,
-        'cpuThreads': settings.cpuThreads,
-        'pythonExecutable': settings.pythonExecutable,
-        'models': {'converter': converterDirectory},
-        'voiceConversionBackend': converterBackend.name,
-        'runtimeDirectory': runtimeDirectory,
-      });
+      await _nativeEngine.startCharacters(
+        CharactersSessionConfig(
+          worker: _converterOnly(settings, converterDirectory, converterBackend, runtimeDirectory),
+          capture: CapturePlan(
+            mode: CaptureMode.audio,
+            processId: process?.pid ?? 0,
+            audioSource: settings.audioCaptureSource,
+          ),
+        ),
+      );
       _throwIfSuperseded(session);
     } catch (_) {
       await _endFailedStart(session);
@@ -381,13 +417,11 @@ class SessionRepository {
   }) async {
     final session = ++_sessions;
     try {
-      await _nativeEngine.startVoiceFiles({
-        'cpuThreads': settings.cpuThreads,
-        'pythonExecutable': settings.pythonExecutable,
-        'models': {'converter': converterDirectory},
-        'voiceConversionBackend': converterBackend.name,
-        'runtimeDirectory': runtimeDirectory,
-      });
+      await _nativeEngine.startVoiceFiles(
+        VoiceFilesSessionConfig(
+          worker: _converterOnly(settings, converterDirectory, converterBackend, runtimeDirectory),
+        ),
+      );
       _throwIfSuperseded(session);
       return session;
     } catch (_) {
@@ -433,19 +467,23 @@ class SessionRepository {
   }) async {
     final session = ++_sessions;
     try {
-      final config = <String, Object?>{
-        'processId': process?.pid ?? 0,
-        'captureMode': 'audio',
-        'audioSource': settings.audioCaptureSource.name,
-        'cpuThreads': settings.cpuThreads,
-        'pythonExecutable': settings.pythonExecutable,
-        'models': {'converter': converterDirectory},
-        'voiceConversionBackend': converterBackend.name,
-        'runtimeDirectory': runtimeDirectory,
-        'voiceBank': ?voiceBank,
-        'characters': await _characters.file(),
-        'asHeard': await _cutFromMix(),
-      };
+      final config = SceneSessionConfig(
+        worker: WorkerPlan(
+          threads: settings.cpuThreads,
+          pythonExecutable: settings.pythonExecutable,
+          runtimeDirectory: runtimeDirectory,
+          models: ModelPaths(converter: converterDirectory),
+          backends: StageBackends(voiceConversion: converterBackend),
+          voiceBank: voiceBank,
+          characters: await _characters.file(),
+          asHeard: await _cutFromMix(),
+        ),
+        capture: CapturePlan(
+          mode: CaptureMode.audio,
+          processId: process?.pid ?? 0,
+          audioSource: settings.audioCaptureSource,
+        ),
+      );
       _throwIfSuperseded(session);
       await _nativeEngine.startScene(config);
       _throwIfSuperseded(session);
@@ -455,20 +493,19 @@ class SessionRepository {
     }
   }
 
-  /// The cards the canvas has cut out of the mix, as one comma-separated
-  /// string: the config crosses to the native side as JSON of flat values.
+  /// The cards the canvas has cut out of the mix.
   ///
   /// Read off the arrangement rather than out of the settings, the cut being
   /// a card's own since a scheme is wired a card at a time. The canvas
   /// writes the file as it is drawn on, so what a session starts with is
   /// what the player last drew.
-  Future<String> _cutFromMix() async {
+  Future<Set<String>> _cutFromMix() async {
     try {
-      return (await _layout.load()).silent.join(',');
+      return (await _layout.load()).silent;
     } on Object {
       // A scheme that cannot be read is no reason not to start: the cast
       // then plays the way it does with nothing cut.
-      return '';
+      return const {};
     }
   }
 

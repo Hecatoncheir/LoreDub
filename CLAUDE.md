@@ -185,7 +185,18 @@ than one of them.
    them, and joins that thread before it lets go of the capture, which the
    frame key reaches into). Everything crosses the boundary as UTF-8
    JSON. The native side hand-rolls its JSON parsing/escaping (`JsonString`,
-   `EscapeJson`) — keep config keys flat and string/number valued.
+   `EscapeJson`) — keep config keys flat and string/number valued. What a
+   session is started with is `SessionConfig` (`domain/session_config.dart`),
+   sealed by kind (`LiveSessionConfig`, `ScreenSessionConfig`,
+   `SceneSessionConfig`, `CharactersSessionConfig`,
+   `VoiceFilesSessionConfig`, `PreviewSessionConfig`) over three parts: the
+   `WorkerPlan` the worker is started with, the `CapturePlan` `ld_start`
+   takes, and the `LineRules` a line is read by. Only the capture crosses
+   the boundary, through `CapturePlan.toNativeJson` -- the worker's models
+   used to travel into the native parser as a nested object it had no use
+   for, and a key the map lost on the way was found only by the native side
+   refusing to start (the screen session's `processId`, gone from v0.23.0
+   to v0.24.0).
    `NativeEngineService` polls `ld_poll_event_json` every 80 ms and turns
    what it finds into a `Stream<EngineEvent>`. That is the boundary: JSON is
    read in `fromNativeEvent` and nowhere above it, and what leaves is one of
@@ -592,9 +603,9 @@ worker is told rather than restarted: `_voiceCard` writes the arrangement and
 then `CastRepository.readAsHeard` sends `{"asHeard": [...]}`, which rebinds the
 worker's own `as_heard` (not `args.as_heard`, which only seeds it). The set
 is a session's, so `SessionRepository.start`/`startSceneVoices` read the
-arrangement off disk for `'asHeard': 'id,id'` — one flat string, the config
-crossing to the native side as JSON of flat values — and
-`NativeEngineService.readAsHeard` keeps `_activeConfig` in step with it. A card may be drawn more than once
+arrangement off disk for `WorkerPlan.asHeard` and
+`NativeEngineService.readAsHeard` keeps the running session's config in step
+with it (`SessionConfig.withAsHeard`). A card may be drawn more than once
 (`CastPlacement`, `PipelineLayout.cast`): the node id of the first copy is
 `character:<id>` — the name an arrangement written before copies already
 files its position under — and later ones carry `#2`, `#3`, which
@@ -999,7 +1010,8 @@ each change it disagreed about where the answer came from — a per-game
 `SettingsRepository`, `SessionBloc` hears it on that repository's stream
 and sends `{"speaker": name}`
 to the worker (`useVoice`, one control request beside `{"glossary": ...}`
-and `{"asHeard": ...}`) and keeps `_activeConfig` in step. A name the
+and `{"asHeard": ...}`) and keeps the running session's config in step
+(`SessionConfig.withSpeaker`). A name the
 package does not ship leaves the voice alone, and the worker answers with
 the one actually in use.
 

@@ -17,6 +17,7 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/voice_files.dart';
+import 'package:lore_dub/src/domain/session_config.dart';
 
 void main() {
   late _SlowEngine engine;
@@ -96,7 +97,7 @@ void main() {
     test('both: the frame is scanned and either key is registered', () async {
       await began(readScreen());
 
-      expect(engine.screenConfig['captureMode'], 'ocr');
+      expect(engine.screen!.capture.mode, CaptureMode.ocr);
       expect(engine.snapshotKey, isNotNull);
       expect(engine.frameKey, isNotNull);
     });
@@ -106,13 +107,13 @@ void main() {
       // outright, and the game is never turned down under a line.
       await began(readScreen());
 
-      expect(engine.screenConfig['processId'], game.pid);
+      expect(engine.screen!.capture.processId, game.pid);
     });
 
     test('snippets: nothing is captured until the key is pressed', () async {
       await began(readScreen(reading: ScreenReading.snippets));
 
-      expect(engine.screenConfig['captureMode'], 'none');
+      expect(engine.screen!.capture.mode, CaptureMode.none);
       expect(engine.snapshotKey, isNotNull);
       expect(engine.frameKey, isNull, reason: 'there is no frame to redraw');
     });
@@ -120,15 +121,15 @@ void main() {
     test('following the voices, the game is listened to as well', () async {
       await began(readScreen(reading: ScreenReading.subtitles, hearsVoices: true));
 
-      expect(engine.screenConfig['captureMode'], 'ocrAndAudio');
-      expect(engine.screenConfig['revoice'], isTrue, reason: 'the timbre is carried over');
-      expect(engine.screenConfig['voiceBank'], isNotNull, reason: 'the game keeps its voices');
+      expect(engine.screen!.capture.mode, CaptureMode.ocrAndAudio);
+      expect(engine.screen!.worker.revoice, isTrue, reason: 'the timbre is carried over');
+      expect(engine.screen!.worker.voiceBank, isNotNull, reason: 'the game keeps its voices');
     });
 
     test('subtitles: the frame is scanned and the key is left alone', () async {
       await began(readScreen(reading: ScreenReading.subtitles));
 
-      expect(engine.screenConfig['captureMode'], 'ocr');
+      expect(engine.screen!.capture.mode, CaptureMode.ocr);
       expect(engine.snapshotKey, isNull, reason: 'nothing is picked out by hand');
       expect(engine.frameKey, isNotNull);
     });
@@ -354,22 +355,22 @@ class _SlowEngine extends NativeEngineService {
   }
 
   @override
-  Future<void> start(Map<String, Object?> config) => _starting();
+  Future<void> start(LiveSessionConfig config) => _starting();
 
   /// What the last screen session was started with, and which keys it
   /// asked for.
-  Map<String, Object?> screenConfig = const {};
+  ScreenSessionConfig? screen;
   Hotkey? snapshotKey;
   Hotkey? frameKey;
 
   @override
-  Future<void> startScreenText(Map<String, Object?> config) {
-    screenConfig = config;
+  Future<void> startScreenText(ScreenSessionConfig config) {
+    screen = config;
     return _starting();
   }
 
   @override
-  Future<void> startVoiceFiles(Map<String, Object?> config) => _starting();
+  Future<void> startVoiceFiles(VoiceFilesSessionConfig config) => _starting();
 
   @override
   Future<void> setProcessVolume(int processId, double volume) async {

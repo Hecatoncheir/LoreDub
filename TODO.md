@@ -1252,6 +1252,20 @@ abstract final class AppTheme {
       `PreviewSession`, `VoiceFilesSession`) с `toNativeJson()`;
       16 параметров `AppRepository.start` → один `SessionPlan`, который домен
       строит из `ModelSelection`. Вместе с `EngineEvent` из этапа 4.
+      *Первая половина сделана:* между репозиторием и движком —
+      `domain/session_config.dart`, запечатанный `SessionConfig` по видам
+      сессий поверх трёх частей: `WorkerPlan` (с чем поднимается воркер),
+      `CapturePlan` (что берёт `ld_start`) и `LineRules` (как читается
+      реплика). Приведений `config['…']! as …` в движке больше нет, шесть
+      одинаковых вызовов `_inference.start` свелись к одному `_load`, а
+      через границу уходит только `CapturePlan.toNativeJson()` — плоские
+      ключи, которые натив и читает (это же закрывает половину пункта этапа 6
+      «конфиг через границу не плоский»). По дороге нашлась регрессия,
+      которую строковая карта и прятала: с 0.23.0 из конфига «Экрана»
+      пропал `processId`, и натив отказывался читать окно игры (исправлено
+      отдельным коммитом, с тестом). Осталась вторая половина: 16
+      параметров `SessionRepository.start` → `SessionPlan` из
+      `ModelSelection`.
 - [x] **Четыре JSON-хранилища — один класс, написанный четырежды**
       (`glossary_service`, `character_service`, `pipeline_library_service`,
       `pipeline_graph_service`: одинаковые `file/load/save/exportTo/readFiles`
@@ -1441,7 +1455,8 @@ abstract final class AppTheme {
       `native_engine_service.dart:168–169`). Работает, пока `jsonEncode` не
       ставит пробелов и ключи не совпали. `\uXXXX` декодируется неверно
       (`:146`); `std::stod` и `std::to_string(double)` зависят от локали C.
-      → Dart шлёт `_nativeConfig` только с нативными ключами; натив — один
+      → ~~Dart шлёт `_nativeConfig` только с нативными ключами~~ *сделано
+      (`CapturePlan.toNativeJson`)*; натив — один
       проход `FlatJson::Parse -> map`, числа через `from_chars` / `to_chars`.
       Тащить nlohmann/json незачем: вход — свои же плоские скаляры, выход —
       восемь форм событий; ~70 строк `flat_json.h` с тестами закрывают риск.

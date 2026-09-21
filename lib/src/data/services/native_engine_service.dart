@@ -19,10 +19,10 @@ import '../../domain/hotkey.dart';
 import '../../domain/ocr_region.dart';
 import '../../domain/ocr_text_delta.dart';
 import '../../domain/built_voice.dart';
+import '../../domain/session_config.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/monitor_layout.dart';
 import '../../domain/sound_captions.dart';
-import '../../domain/spoken_language.dart';
 import '../../domain/speech_pace.dart';
 import '../../domain/voice_files.dart';
 import '../../domain/wave_slices.dart';
@@ -102,7 +102,10 @@ class NativeEngineService {
   /// takes as long as the reply itself, and holding the pipeline for that
   /// would put every later phrase further behind the game.
   late final _playback = PlaybackScheduler(play: _playQueued);
-  Map<String, Object?>? _activeConfig;
+
+  /// What the running session was started with, kept in step with what is
+  /// changed under it; null while the engine rests.
+  SessionConfig? _active;
   String? _reportedLanguage;
   String? _reportedVoice;
   int? _reportedBankSize;
@@ -184,58 +187,55 @@ class NativeEngineService {
     return ComputeAvailability.fromProbeJson(jsonDecode(json) as Map<String, Object?>);
   }
 
-  static ComputeBackend _backendFrom(Object? name) => ComputeBackend.values.firstWhere(
-    (backend) => backend.name == name,
-    orElse: () => ComputeBackend.cpu,
+  /// Brings the worker up with what [plan] names. [embedOnly] loads the
+  /// converter and nothing else; [speechOnly] the voice and the converter.
+  Future<void> _load(
+    WorkerPlan plan, {
+    bool requiresWhisper = false,
+    bool embedOnly = false,
+    bool speechOnly = false,
+  }) => _inference.start(
+    embedOnly: embedOnly,
+    speechOnly: speechOnly,
+    translationModel: plan.models.translation ?? '',
+    ttsModel: plan.models.speech ?? '',
+    speaker: plan.speaker,
+    threads: plan.threads,
+    speed: plan.speed,
+    pythonExecutable: plan.pythonExecutable,
+    requiresWhisper: requiresWhisper,
+    sourceLanguage: plan.sourceLanguage,
+    translationPrefix: plan.translationPrefix,
+    followSpeaker: plan.followSpeaker,
+    revoice: plan.revoice,
+    maleVoices: plan.maleVoices,
+    femaleVoices: plan.femaleVoices,
+    recognitionBackend: plan.backends.recognition,
+    translationBackend: plan.backends.translation,
+    speechBackend: plan.backends.speech,
+    downloadedRuntimeDirectory: plan.runtimeDirectory,
+    voiceConverter: plan.models.converter,
+    voiceConversionBackend: plan.backends.voiceConversion,
+    voiceBank: plan.voiceBank,
+    characters: plan.characters,
+    glossary: plan.glossary,
+    asHeard: plan.asHeard,
   );
 
-  static List<String> _voiceList(Object? joined) =>
-      (joined as String? ?? '').split(',').where((name) => name.isNotEmpty).toList();
-
-  Future<void> start(Map<String, Object?> config) =>
-      _startSession(PipelineSession.live, (start) async {
-        _reportedLanguage = null;
-        _reportedVoice = null;
-        _reportedBankSize = null;
-        _playback.maxVoices = config['overlapVoices'] == true ? overlappingVoices : 1;
-        await _removeStaleAudio(start);
-        final models = config['models']! as Map<String, String>;
-        await _bringUpWorker(
-          start,
-          () => _inference.start(
-            translationModel: models['translation'] ?? '',
-            ttsModel: models['speech']!,
-            speaker: config['speaker']! as String,
-            threads: config['cpuThreads']! as int,
-            speed: config['ttsSpeed']! as double,
-            pythonExecutable: config['pythonExecutable']! as String,
-            requiresWhisper: config['captureMode'] != 'ocr',
-            sourceLanguage: config['sourceLanguage']! as String,
-            translationPrefix: config['translationPrefix'] as String? ?? '',
-            followSpeaker: config['followSpeaker'] as bool? ?? false,
-            revoice: config['revoice'] as bool? ?? false,
-            maleVoices: _voiceList(config['maleVoices']),
-            femaleVoices: _voiceList(config['femaleVoices']),
-            recognitionBackend: _backendFrom(config['recognitionBackend']),
-            translationBackend: _backendFrom(config['translationBackend']),
-            speechBackend: _backendFrom(config['speechBackend']),
-            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-            voiceConverter: models['converter'],
-            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-            voiceBank: config['voiceBank'] as String?,
-            characters: config['characters'] as String?,
-            glossary: config['glossary'] as String?,
-            asHeard: _cutFromMix(config['asHeard']),
-          ),
-        );
-        _reportWorkerUp(start, {
-          'translation': _inference.translationBackend,
-          'speech': _inference.speechBackend,
-          'voiceConversion': _inference.voiceConversionBackend,
-        });
-        final capture = await _captureDirectory(start);
-        _beginCapture(start, {...config, 'captureDirectory': capture});
-      });
+  Future<void> start(LiveSessionConfig config) => _startSession(config, (start) async {
+    _reportedLanguage = null;
+    _reportedVoice = null;
+    _reportedBankSize = null;
+    _playback.maxVoices = config.lines.overlapVoices ? overlappingVoices : 1;
+    await _removeStaleAudio(start);
+    await _bringUpWorker(start, () => _load(config.worker, requiresWhisper: true));
+    _reportWorkerUp(start, {
+      'translation': _inference.translationBackend,
+      'speech': _inference.speechBackend,
+      'voiceConversion': _inference.voiceConversionBackend,
+    });
+    _beginCapture(start, config, captureDirectory: await _captureDirectory(start));
+  });
 
   /// Loads the translator and the voice for the screen session, and starts
   /// the capture that reads the subtitle frame.
@@ -244,98 +244,44 @@ class NativeEngineService {
   /// gains as the game writes in it, and what the player picks out by hand
   /// while holding the snapshot key. Whisper takes no part in either --
   /// nothing here is heard -- so it is ready in seconds.
-  Future<void> startScreenText(Map<String, Object?> config) =>
-      _startSession(PipelineSession.screen, (start) async {
-        _reportedLanguage = null;
-        _reportedVoice = null;
-        _reportedBankSize = null;
-        // One line at a time is read, so there is no one to talk over.
-        _playback.maxVoices = 1;
-        await _removeStaleAudio(start);
-        final models = config['models']! as Map<String, String>;
-        await _bringUpWorker(
-          start,
-          () => _inference.start(
-            translationModel: models['translation'] ?? '',
-            ttsModel: models['speech']!,
-            speaker: config['speaker']! as String,
-            threads: config['cpuThreads']! as int,
-            speed: config['ttsSpeed']! as double,
-            pythonExecutable: config['pythonExecutable']! as String,
-            requiresWhisper: false,
-            translationPrefix: config['translationPrefix'] as String? ?? '',
-            translationBackend: _backendFrom(config['translationBackend']),
-            speechBackend: _backendFrom(config['speechBackend']),
-            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-            voiceConverter: models['converter'],
-            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-            revoice: config['revoice'] as bool? ?? false,
-            voiceBank: config['voiceBank'] as String?,
-            characters: config['characters'] as String?,
-            glossary: config['glossary'] as String?,
-          ),
-        );
-        _reportWorkerUp(start, {
-          'translation': _inference.translationBackend,
-          'speech': _inference.speechBackend,
-        });
-        // A capture directory only where the game is listened to as well:
-        // reading the screen alone cuts no sound into files, and the native
-        // side asks for one only when it does.
-        if (config['captureMode'] == 'ocrAndAudio') {
-          final capture = await _captureDirectory(start);
-          _beginCapture(start, {...config, 'captureDirectory': capture});
-          return;
-        }
-        _beginCapture(start, config);
-      });
+  Future<void> startScreenText(ScreenSessionConfig config) => _startSession(config, (start) async {
+    _reportedLanguage = null;
+    _reportedVoice = null;
+    _reportedBankSize = null;
+    // One line at a time is read, so there is no one to talk over.
+    _playback.maxVoices = 1;
+    await _removeStaleAudio(start);
+    await _bringUpWorker(start, () => _load(config.worker));
+    _reportWorkerUp(start, {
+      'translation': _inference.translationBackend,
+      'speech': _inference.speechBackend,
+    });
+    // A capture directory only where the game is listened to as well:
+    // reading the screen alone cuts no sound into files, and the native
+    // side asks for one only when it does.
+    _beginCapture(
+      start,
+      config,
+      captureDirectory: config.capture.cutsSound ? await _captureDirectory(start) : null,
+    );
+  });
 
   /// Loads the speech model and the converter, and nothing else: the
   /// characters screen plays a sample of a card's voice with them. Neither
   /// whisper nor the translator is wanted — the line is one the application
   /// wrote — so the screen waits seconds rather than a minute.
-  Future<void> startPreview(Map<String, Object?> config) =>
-      _startSession(PipelineSession.preview, (start) async {
-        final models = config['models']! as Map<String, String>;
-        await _bringUpWorker(
-          start,
-          () => _inference.start(
-            speechOnly: true,
-            ttsModel: models['speech']!,
-            speaker: config['speaker']! as String,
-            threads: config['cpuThreads']! as int,
-            speed: config['ttsSpeed']! as double,
-            pythonExecutable: config['pythonExecutable']! as String,
-            requiresWhisper: false,
-            speechBackend: _backendFrom(config['speechBackend']),
-            voiceConverter: models['converter'],
-            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-          ),
-        );
-        _listenWithoutCapture(start, config);
-      });
+  Future<void> startPreview(PreviewSessionConfig config) => _startSession(config, (start) async {
+    await _bringUpWorker(start, () => _load(config.worker, speechOnly: true));
+    _listenWithoutCapture(start, config);
+  });
 
   /// Loads the converter and nothing else, with no capture at all: the
   /// files a card is built from are already on disk, and there is no game
   /// to listen to. The screen waits seconds rather than a minute.
-  Future<void> startVoiceFiles(Map<String, Object?> config) =>
-      _startSession(PipelineSession.characters, (start) async {
+  Future<void> startVoiceFiles(VoiceFilesSessionConfig config) =>
+      _startSession(config, (start) async {
         _recordingVoice = false;
-        final models = config['models']! as Map<String, String>;
-        await _bringUpWorker(
-          start,
-          () => _inference.start(
-            embedOnly: true,
-            threads: config['cpuThreads']! as int,
-            speed: 1,
-            pythonExecutable: config['pythonExecutable']! as String,
-            requiresWhisper: false,
-            voiceConverter: models['converter'],
-            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-          ),
-        );
+        await _bringUpWorker(start, () => _load(config.worker, embedOnly: true));
         _listenWithoutCapture(start, config);
       });
 
@@ -420,26 +366,12 @@ class NativeEngineService {
   /// Starts the session the characters screen records through: the game's
   /// audio and the converter that measures a voice, with neither the
   /// translator nor the speech model loaded.
-  Future<void> startCharacters(Map<String, Object?> config) =>
-      _startSession(PipelineSession.characters, (start) async {
+  Future<void> startCharacters(CharactersSessionConfig config) =>
+      _startSession(config, (start) async {
         _recordingVoice = false;
         await _removeStaleAudio(start);
-        final models = config['models']! as Map<String, String>;
-        await _bringUpWorker(
-          start,
-          () => _inference.start(
-            embedOnly: true,
-            threads: config['cpuThreads']! as int,
-            speed: 1,
-            pythonExecutable: config['pythonExecutable']! as String,
-            requiresWhisper: false,
-            voiceConverter: models['converter'],
-            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-          ),
-        );
-        final capture = await _captureDirectory(start);
-        _beginCapture(start, {...config, 'captureDirectory': capture});
+        await _bringUpWorker(start, () => _load(config.worker, embedOnly: true));
+        _beginCapture(start, config, captureDirectory: await _captureDirectory(start));
       });
 
   /// Starts the session the voices of a scene are gathered through: the
@@ -448,29 +380,11 @@ class NativeEngineService {
   ///
   /// It is the characters session with the bank and the cast added and the
   /// recording gate left open: every phrase is placed, none is dubbed.
-  Future<void> startScene(Map<String, Object?> config) =>
-      _startSession(PipelineSession.scene, (start) async {
-        await _removeStaleAudio(start);
-        final models = config['models']! as Map<String, String>;
-        await _bringUpWorker(
-          start,
-          () => _inference.start(
-            embedOnly: true,
-            threads: config['cpuThreads']! as int,
-            speed: 1,
-            pythonExecutable: config['pythonExecutable']! as String,
-            requiresWhisper: false,
-            voiceConverter: models['converter'],
-            voiceConversionBackend: _backendFrom(config['voiceConversionBackend']),
-            downloadedRuntimeDirectory: config['runtimeDirectory'] as String?,
-            voiceBank: config['voiceBank'] as String?,
-            characters: config['characters'] as String?,
-            asHeard: _cutFromMix(config['asHeard']),
-          ),
-        );
-        final capture = await _captureDirectory(start);
-        _beginCapture(start, {...config, 'captureDirectory': capture});
-      });
+  Future<void> startScene(SceneSessionConfig config) => _startSession(config, (start) async {
+    await _removeStaleAudio(start);
+    await _bringUpWorker(start, () => _load(config.worker, embedOnly: true));
+    _beginCapture(start, config, captureDirectory: await _captureDirectory(start));
+  });
 
   /// Runs one start from its first line to its last.
   ///
@@ -483,12 +397,12 @@ class NativeEngineService {
   /// not begin — the worker it brought up is ended here, while it is still
   /// this start's to end.
   Future<void> _startSession(
-    PipelineSession session,
+    SessionConfig config,
     Future<void> Function(int start) steps,
   ) async {
     final start = ++_starts;
     _paused = false;
-    _session = session;
+    _session = config.session;
     try {
       await steps(start);
     } catch (_) {
@@ -548,20 +462,24 @@ class NativeEngineService {
   }
 
   /// Starts the native capture [config] describes, and the reading of what
-  /// it reports.
-  void _beginCapture(int start, Map<String, Object?> config) {
+  /// it reports. Only the capture crosses into the library: the rest of the
+  /// config is the worker's and this service's.
+  void _beginCapture(int start, SessionConfig config, {String? captureDirectory}) {
     _throwIfSuperseded(start);
-    _activeConfig = config;
-    _throwIfError(_native.start(jsonEncode(config)));
+    _active = config;
+    final capture = config.capture!;
+    _throwIfError(
+      _native.start(jsonEncode(capture.toNativeJson(captureDirectory: captureDirectory))),
+    );
     _pollRegularly();
   }
 
   /// Comes up with no capture at all: the session is its worker and nothing
   /// else, so nothing native starts to say it is listening, and the engine
   /// says so itself.
-  void _listenWithoutCapture(int start, Map<String, Object?> config) {
+  void _listenWithoutCapture(int start, SessionConfig config) {
     _throwIfSuperseded(start);
-    _activeConfig = config;
+    _active = config;
     _pollRegularly();
     _events.add(SessionStateChanged(status: PipelineStatus.listening, session: _session));
   }
@@ -642,24 +560,16 @@ class NativeEngineService {
   Future<void> voiceCharacterAs(String character, String? target) =>
       _inference.voiceCharacterAs(character, target);
 
-  /// The cards a config names as cut out of the mix. They travel as one
-  /// comma-separated string: the config crosses to the native side as JSON
-  /// of flat values, so a list of its own would not survive the trip.
-  static Set<String> _cutFromMix(Object? value) => {
-    for (final id in (value as String? ?? '').split(','))
-      if (id.isNotEmpty) id,
-  };
-
-  /// Tells a running session which cards are out of the mix. The config the
-  /// session started with is kept in step, so what the canvas says now is
-  /// what a restart of it would be given.
   /// Tells a running worker what the player has just written down. The
   /// file is read when a session starts, so without this an entry added
   /// while one runs would wait for the next start.
   Future<void> writeGlossary(Glossary glossary) => _inference.updateGlossary(glossary);
 
+  /// Tells a running session which cards are out of the mix. The config the
+  /// session started with is kept in step, so what the canvas says now is
+  /// what a restart of it would be given.
   Future<void> readAsHeard(Set<String> value) async {
-    _activeConfig?['asHeard'] = value.join(',');
+    _active = _active?.withAsHeard(value);
     await _inference.readAsHeard(value);
   }
 
@@ -676,7 +586,7 @@ class NativeEngineService {
     }
     // Cleared first: segments captured moments ago are still travelling
     // through the queue, and failing them is expected once the user stops.
-    _activeConfig = null;
+    _active = null;
     _paused = false;
     // Cleared before ld_stop, so the idle it announces belongs to no session
     // in particular and puts every screen that was showing one back to rest.
@@ -706,7 +616,7 @@ class NativeEngineService {
     // next session then had nothing left to turn down, which is how it was
     // found: the dubbing seemed not to duck the original at all.
     // `_duckForSpeech` cannot do it either, since the line still sounding as
-    // the session ends finishes after `_activeConfig` is already null.
+    // the session ends finishes after `_active` is already null.
     _native.restoreProcessVolumes();
     await _endWorker();
   }
@@ -718,7 +628,7 @@ class NativeEngineService {
   /// Rests or wakes the running session without tearing it down, so the
   /// worker keeps its models and resuming costs no startup.
   void setPaused(bool paused) {
-    if (_activeConfig == null) return;
+    if (_active == null) return;
     _paused = paused;
     _throwIfError(ld_set_paused(paused ? 1 : 0));
     if (!paused) return;
@@ -804,9 +714,9 @@ class NativeEngineService {
   /// a line that asks what this session was started with is answered with
   /// the voice actually in use.
   Future<void> useVoice(String voice) async {
-    final config = _activeConfig;
-    if (config == null || config['speaker'] == voice) return;
-    _activeConfig = {...config, 'speaker': voice};
+    final config = _active;
+    if (config == null || config.worker.speaker == voice) return;
+    _active = config.withSpeaker(voice);
     await _inference.useVoice(voice);
   }
 
@@ -879,7 +789,7 @@ class NativeEngineService {
   }
 
   /// Whether captured sound is wanted at all right now.
-  bool get _listening => _activeConfig != null && !_paused;
+  bool get _listening => _active != null && !_paused;
 
   /// The characters screen holds the capture open between takes, and what it
   /// hears then belongs to nobody.
@@ -907,7 +817,7 @@ class NativeEngineService {
   /// selection that landed off the game's window comes back `failed` and
   /// changes nothing.
   void _onSubtitleFrame(Map<String, Object?> event) {
-    if (_activeConfig == null) return;
+    if (_active == null) return;
     if (event['failed'] == true) {
       _events.add(const SubtitleFrameMoved(null));
       return;
@@ -920,20 +830,14 @@ class NativeEngineService {
       bottom: edge('bottom'),
     );
     _previousOcrText = null;
-    _activeConfig = {
-      ..._activeConfig!,
-      'ocrRegionLeft': region.left,
-      'ocrRegionTop': region.top,
-      'ocrRegionRight': region.right,
-      'ocrRegionBottom': region.bottom,
-    };
+    _active = _active?.withRegion(region);
     _events.add(SubtitleFrameMoved(region));
   }
 
   /// An area of the screen the player selected by hand. Read even while the
   /// dubbing rests: it was asked for, not overheard.
   void _onSnapshotText(Map<String, Object?> event) {
-    if (_activeConfig == null) return;
+    if (_active == null) return;
     // OCR reports the lines on screen apart; the translator wants prose.
     final text = (event['text'] as String? ?? '').split(RegExp(r'\s+')).join(' ').trim();
     if (text.isNotEmpty) _phrases.add(PendingPhrase.text(text, snapshot: true));
@@ -1009,11 +913,11 @@ class NativeEngineService {
   /// [wavePath] cut where the voice in it changes, or the recording itself
   /// when it holds one speaker — or when nobody can tell.
   Future<List<String>> _splitBySpeaker(String wavePath) async {
-    final config = _activeConfig;
+    final config = _active;
     if (config == null) return [wavePath];
     // The converter is what hears who is speaking; without it the segment
     // goes on whole.
-    if ((config['models']! as Map<String, String>)['converter'] == null) return [wavePath];
+    if (config.worker.models.converter == null) return [wavePath];
     try {
       final cuts = await _inference.speakerCuts(wavePath);
       if (cuts.isEmpty) return [wavePath];
@@ -1041,19 +945,19 @@ class NativeEngineService {
   Future<void> _recognizeSegment(String wavePath) async {
     final started = Stopwatch()..start();
     try {
-      final config = _activeConfig;
-      if (config == null) return;
-      final models = config['models']! as Map<String, String>;
+      final config = _active;
+      final lines = config?.lines;
+      if (config == null || lines == null) return;
       final result = await _inference.processSegment(
         wavePath: wavePath,
-        whisperModel: models['whisper']!,
-        threads: config['cpuThreads']! as int,
-        translateSpeech: config['translateSpeech'] as bool? ?? true,
-        roughRecognition: config['roughRecognition'] as bool? ?? false,
+        whisperModel: config.worker.models.whisper!,
+        threads: config.worker.threads,
+        translateSpeech: lines.translateSpeech,
+        roughRecognition: lines.roughRecognition,
         // What whisper hands over is English; dubbing into English reads it
         // as it is, and the worker was started without a translator anyway.
-        translate: config['targetLanguage'] != untranslatedDubbingLanguage,
-        speed: _pace(config),
+        translate: lines.translatesHeard,
+        speed: _pace(lines),
       );
       _publishSpokenLanguage();
       if (result == null) return;
@@ -1072,8 +976,8 @@ class NativeEngineService {
   }) async {
     final started = Stopwatch()..start();
     try {
-      final config = _activeConfig;
-      if (config == null) return;
+      final lines = _active?.lines;
+      if (lines == null) return;
       // Subtitles caption sounds the way whisper does: "[Music]" is not a line.
       final spoken = withoutSoundCaptions(recognizedText);
       if (spoken.isEmpty) {
@@ -1087,8 +991,8 @@ class NativeEngineService {
         // The voice heard as the words appeared, so the worker can place
         // the speaker and lay their timbre over the reading.
         originalWavePath: heardWave,
-        translate: config['textLanguage'] != config['targetLanguage'],
-        speed: _pace(config),
+        translate: lines.translatesText,
+        speed: _pace(lines),
       );
       await _publishResult(
         result,
@@ -1107,10 +1011,9 @@ class NativeEngineService {
   /// lines are already queued for the voice. Counted at the moment the line
   /// is asked for, which is the last moment anything can be done about it —
   /// the worker retimes the waveform as it synthesizes it.
-  double _pace(Map<String, Object?> config) {
-    final chosen = (config['ttsSpeed']! as num).toDouble();
-    if (config['hurryWhenQueued'] != true) return chosen;
-    return hurriedSpeed(chosen, _playback.waiting);
+  double _pace(LineRules lines) {
+    if (!lines.hurryWhenQueued) return lines.speed;
+    return hurriedSpeed(lines.speed, _playback.waiting);
   }
 
   /// Announces the language whisper settled on, once, so the interface can
@@ -1125,7 +1028,7 @@ class NativeEngineService {
   /// Work already in flight fails when the user stops the pipeline. That is
   /// the expected outcome of stopping, not something to alarm them with.
   void _reportFailure(Object error) {
-    if (_activeConfig == null) return;
+    if (_active == null) return;
     _events.add(EngineFailed(error));
   }
 
@@ -1210,12 +1113,12 @@ class NativeEngineService {
   /// A device that cannot be reached is no reason to drop the line, so the
   /// result is not checked.
   void _duckForSpeech({required bool speaking}) {
-    final config = _activeConfig;
-    if (config == null || config['duckWhileSpeaking'] != true) return;
-    final processId = config['processId'] as int? ?? 0;
+    final lines = _active?.lines;
+    if (lines == null || !lines.duckWhileSpeaking) return;
+    final processId = _active?.capture?.processId ?? 0;
     if (processId == 0) return;
     if (speaking) {
-      ld_set_process_volume(processId, (config['duckVolume'] as num?)?.toDouble() ?? 0.18);
+      ld_set_process_volume(processId, lines.duckVolume);
     } else {
       _native.restoreProcessVolumes();
     }
@@ -1223,7 +1126,7 @@ class NativeEngineService {
 
   Future<void> _playQueued(String wavePath) async {
     try {
-      if (_activeConfig != null) await _playInIsolate(wavePath);
+      if (_active != null) await _playInIsolate(wavePath);
     } catch (error) {
       _reportFailure(error);
     }
