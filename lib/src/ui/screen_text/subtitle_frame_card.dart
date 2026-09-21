@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/app_settings.dart';
 import '../../domain/ocr_region.dart';
+import '../../domain/screen_layout.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../dashboard/cubits/pipeline_cubit.dart';
@@ -28,12 +29,22 @@ class SubtitleFrameCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocBuilder<SettingsCubit, SettingsState>(
     builder: (context, state) => BlocBuilder<PipelineCubit, LivePipelineState>(
-      buildWhen: whenChanged((pipeline) => pipeline.running),
-      builder: (context, pipeline) => _build(context, state.settings, running: pipeline.running),
+      buildWhen: whenChanged((pipeline) => (pipeline.running, pipeline.screens)),
+      builder: (context, pipeline) => _build(
+        context,
+        state.settings,
+        running: pipeline.running,
+        screens: pipeline.screens,
+      ),
     ),
   );
 
-  Widget _build(BuildContext context, AppSettings settings, {required bool running}) {
+  Widget _build(
+    BuildContext context,
+    AppSettings settings, {
+    required bool running,
+    required ScreenLayout? screens,
+  }) {
     final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
@@ -47,6 +58,9 @@ class SubtitleFrameCard extends StatelessWidget {
               key: const ValueKey('ocrRegion'),
               region: settings.ocrRegion,
               semanticLabel: l10n.ocrRegionHelp,
+              // A window's frame is a share of that window; the screen's is
+              // a share of every monitor together, and drawn that way.
+              screens: settings.readsWholeScreen ? screens : null,
               onChanged: running
                   ? null
                   : (region) =>

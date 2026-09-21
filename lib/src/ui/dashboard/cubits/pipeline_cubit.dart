@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import '../../../domain/screen_layout.dart';
 import '../../../domain/screen_reading.dart';
 
 import 'dart:async';
@@ -45,6 +46,7 @@ class LivePipelineState extends Equatable {
     this.snapshotReading = false,
     this.snapshotMissed = false,
     this.frameMissed = false,
+    this.screens,
   });
 
   final PipelineStatus status;
@@ -92,6 +94,10 @@ class LivePipelineState extends Equatable {
   /// Whether the last frame drawn over the game missed its window, so the
   /// subtitles go on being read where they were.
   final bool frameMissed;
+
+  /// Where the monitors stand, once asked: a frame read over the whole
+  /// screen is a share of all of them together, and is drawn that way.
+  final ScreenLayout? screens;
 
   /// How many lines a list keeps, newest first. The screen's subtitles keep
   /// ten: that area grows with what it holds rather than scrolling inside
@@ -195,6 +201,7 @@ class LivePipelineState extends Equatable {
     bool? snapshotReading,
     bool? snapshotMissed,
     bool? frameMissed,
+    ScreenLayout? screens,
   }) => LivePipelineState(
     status: status ?? this.status,
     transcript: transcript ?? this.transcript,
@@ -212,6 +219,7 @@ class LivePipelineState extends Equatable {
     snapshotReading: snapshotReading ?? this.snapshotReading,
     snapshotMissed: snapshotMissed ?? this.snapshotMissed,
     frameMissed: frameMissed ?? this.frameMissed,
+    screens: screens ?? this.screens,
   );
 
   @override
@@ -232,6 +240,7 @@ class LivePipelineState extends Equatable {
     snapshotReading,
     snapshotMissed,
     frameMissed,
+    screens,
   ];
 }
 
@@ -287,6 +296,14 @@ class PipelineCubit extends Cubit<LivePipelineState> {
     emit(state.copyWith(processes: processes));
   }
 
+  /// Asked at the start and whenever the processes are, which is what the
+  /// player does after plugging a monitor in as much as a game.
+  Future<void> loadScreens() async {
+    final screens = await _appRepository.screenLayout();
+    if (isClosed) return;
+    emit(state.copyWith(screens: screens));
+  }
+
   void selectProcess(GameProcess? value) {
     emit(state.copyWith(selectedProcess: value, clearSelectedProcess: value == null));
     // The frame is drawn over the game, so choosing another one moves it.
@@ -304,6 +321,7 @@ class PipelineCubit extends Cubit<LivePipelineState> {
         clearSelectedProcess: matches.isEmpty,
       ),
     );
+    await loadScreens();
   }
 
   Future<void> toggle({required bool initializing}) async {

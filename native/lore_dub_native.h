@@ -27,6 +27,15 @@ LD_API int32_t ld_is_process_loopback_supported(void);
 // partial JSON is written.
 LD_API int32_t ld_list_processes_json(char* output, int32_t capacity);
 
+// Writes a UTF-8 JSON array of the monitors, each in the virtual screen's
+// physical pixels with right and bottom exclusive:
+// [{"left":0,"top":0,"right":2560,"bottom":1440,"primary":true}, ...].
+// The frame read "over the whole screen" is a share of the rectangle they
+// span together, so this is what a picture of that frame has to be drawn
+// on. Returns the number of bytes required, excluding the trailing NUL; if
+// capacity is too small, nothing is written.
+LD_API int32_t ld_list_monitors_json(char* output, int32_t capacity);
+
 // Writes a UTF-8 JSON object describing the graphics adapters and the GPU
 // driver libraries that are installed. Returns the number of bytes required,
 // excluding the trailing NUL. If capacity is too small, nothing is written.

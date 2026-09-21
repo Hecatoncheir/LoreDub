@@ -105,7 +105,7 @@ than one of them.
 2. **Native C++ bridge** — `native/*.cpp`, loaded through Dart Native Assets
    (`hook/build.dart` compiles it with `CBuilder`; there is no `.dll` to ship
    manually). The C ABI in `native/lore_dub_native.h` is intentionally tiny:
-   `ld_start(config_json)`, `ld_stop`, `ld_poll_event_json`, process listing,
+   `ld_start(config_json)`, `ld_stop`, `ld_poll_event_json`, process and monitor listing,
    per-process volume, WAV playback, `ld_set_paused` (capture drops what it
    finishes while set) and `ld_set_hotkeys` (RegisterHotKey on a thread with
    its own message loop, presses queued as `hotkey` events; `ld_stop` drops
@@ -650,7 +650,12 @@ the foreground one, so nothing laid over the game passes for its subtitles;
 the screen is read whatever is in front, which is the only way into a game
 that keeps no ordinary window, and needs no process at all (`canStartScreen`
 asks for one only for the window). A process may still be named there, to be
-turned down.
+turned down. The frame over the screen is a share of the virtual
+screen -- every monitor together -- so the picker draws it on
+`ScreenLayout` (`ld_list_monitors_json`, read at the start and with every
+refresh of the processes) rather than on the shape of the monitor the
+window of LoreDub stands on, which put a frame across two monitors where
+it was not read from.
 
 The screen is read two ways, and `ScreenReading` (`domain/screen_reading.dart`)
 says which of them a session does: the subtitle frame, which arrives as

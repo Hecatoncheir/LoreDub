@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../domain/ocr_region.dart';
+import '../../domain/screen_layout.dart';
 import '../theme.dart';
 
 /// What a drag that starts at a point takes hold of.
@@ -35,6 +36,10 @@ enum _Grip {
 /// A scaled-down screen, shaped like the user's monitor, on which the frame
 /// subtitle mode reads is drawn, moved and resized.
 ///
+/// Over the whole screen it is shaped like [screens] instead, every monitor
+/// in its place: that frame is a share of all of them together, and drawn
+/// on one monitor's shape it showed a band across two as a band across one.
+///
 /// The frame only reaches [onChanged] once a drag ends, so storage is not
 /// written on every pointer move. A null [onChanged] shows the frame
 /// without letting it change, as every setting does while the pipeline runs.
@@ -44,11 +49,15 @@ class OcrRegionPicker extends StatefulWidget {
     required this.region,
     required this.onChanged,
     required this.semanticLabel,
+    this.screens,
   });
 
   final OcrRegion region;
   final ValueChanged<OcrRegion>? onChanged;
   final String semanticLabel;
+
+  /// The monitors the frame is a share of, or null for a window's frame.
+  final ScreenLayout? screens;
 
   @override
   State<OcrRegionPicker> createState() => _OcrRegionPickerState();
@@ -162,9 +171,9 @@ class _OcrRegionPickerState extends State<OcrRegionPicker> {
     final display = View.of(context).display.size;
     // A display that reports no size, as some test hosts do, gets the
     // commonest monitor shape rather than a division by zero.
-    final aspectRatio = display.width > 0 && display.height > 0
-        ? display.width / display.height
-        : 16 / 9;
+    final aspectRatio =
+        widget.screens?.aspectRatio ??
+        (display.width > 0 && display.height > 0 ? display.width / display.height : 16 / 9);
     return Semantics(
       label: widget.semanticLabel,
       enabled: _enabled,
@@ -221,7 +230,12 @@ class _OcrRegionPickerState extends State<OcrRegionPicker> {
     final painter = CustomPaint(
       key: const ValueKey('ocrRegionScreen'),
       size: size,
-      painter: _RegionPainter(region: _shown, showGrips: _enabled, colors: context.colors),
+      painter: _RegionPainter(
+        region: _shown,
+        showGrips: _enabled,
+        colors: context.colors,
+        monitors: widget.screens?.shares ?? const [],
+      ),
     );
     if (!_enabled) return painter;
     return MouseRegion(
@@ -250,6 +264,7 @@ class _RegionPainter extends CustomPainter {
     required this.region,
     required this.showGrips,
     required this.colors,
+    required this.monitors,
   });
 
   /// The roles this picture is drawn in. A painter stands outside the
@@ -259,37 +274,34 @@ class _RegionPainter extends CustomPainter {
   final OcrRegion region;
   final bool showGrips;
 
+  /// Each monitor as a share of the picture, and whether it is the primary
+  /// one. Empty draws the picture as one screen.
+  final List<(OcrRegion, bool)> monitors;
+
+  static Rect _within(Size size, OcrRegion share) => Rect.fromLTRB(
+    share.left * size.width,
+    share.top * size.height,
+    share.right * size.width,
+    share.bottom * size.height,
+  );
+
   @override
   void paint(Canvas canvas, Size size) {
     final screen = Offset.zero & size;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(screen, const Radius.circular(4)),
-      Paint()..color = colors.ink,
-    );
-
-    // Two dim lines where games usually print dialogue, so the empty screen
-    // suggests what to look for without pretending to be the game.
-    final line = Paint()..color = colors.raised.withValues(alpha: 0.22);
-    for (final (top, width) in [(0.82, 0.46), (0.88, 0.3)]) {
+    // Where the monitors do not reach is left as the case behind them: the
+    // frame may cross it, and nothing there is read.
+    final screens = monitors.isEmpty
+        ? [(screen, true)]
+        : [for (final (share, primary) in monitors) (_within(size, share).deflate(1.5), primary)];
+    for (final (area, primary) in screens) {
       canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(
-            center: Offset(size.width / 2, size.height * top),
-            width: size.width * width,
-            height: size.height * 0.035,
-          ),
-          const Radius.circular(3),
-        ),
-        line,
+        RRect.fromRectAndRadius(area, const Radius.circular(4)),
+        Paint()..color = colors.ink,
       );
+      if (primary) _dialogue(canvas, area);
     }
 
-    final frame = Rect.fromLTRB(
-      region.left * size.width,
-      region.top * size.height,
-      region.right * size.width,
-      region.bottom * size.height,
-    );
+    final frame = _within(size, region);
     // Dim everything the scan leaves out. Black whatever the theme is:
     // what this lies over is a picture of the game, not a page of ours.
     canvas.drawPath(
@@ -327,9 +339,33 @@ class _RegionPainter extends CustomPainter {
     }
   }
 
+  /// Two dim lines where games usually print dialogue, so the empty screen
+  /// suggests what to look for without pretending to be the game. Drawn on
+  /// the primary monitor only, which is where a game usually runs.
+  void _dialogue(Canvas canvas, Rect area) {
+    final line = Paint()..color = colors.raised.withValues(alpha: 0.22);
+    for (final (top, width) in [(0.82, 0.46), (0.88, 0.3)]) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(area.center.dx, area.top + area.height * top),
+            width: area.width * width,
+            height: area.height * 0.035,
+          ),
+          const Radius.circular(3),
+        ),
+        line,
+      );
+    }
+  }
+
   @override
   bool shouldRepaint(covariant _RegionPainter oldDelegate) =>
       oldDelegate.region != region ||
       oldDelegate.showGrips != showGrips ||
-      oldDelegate.colors != colors;
+      oldDelegate.colors != colors ||
+      !_sameMonitors(oldDelegate.monitors, monitors);
+
+  static bool _sameMonitors(List<(OcrRegion, bool)> a, List<(OcrRegion, bool)> b) =>
+      a.length == b.length && Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
 }

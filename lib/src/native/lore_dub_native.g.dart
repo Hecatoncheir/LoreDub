@@ -48,6 +48,13 @@ external int ld_is_process_loopback_supported();
 
 @meta.RecordUse()
 @ffi.Native<ffi.Int32 Function(ffi.Pointer<ffi.Char>, ffi.Int32)>()
+external int ld_list_monitors_json(
+  ffi.Pointer<ffi.Char> output,
+  int capacity,
+);
+
+@meta.RecordUse()
+@ffi.Native<ffi.Int32 Function(ffi.Pointer<ffi.Char>, ffi.Int32)>()
 external int ld_list_processes_json(
   ffi.Pointer<ffi.Char> output,
   int capacity,

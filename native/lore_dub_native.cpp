@@ -276,6 +276,30 @@ std::string ProbeGraphics() {
   return out.str();
 }
 
+BOOL CALLBACK AddMonitor(HMONITOR monitor, HDC, LPRECT, LPARAM data) {
+  MONITORINFO info{};
+  info.cbSize = sizeof(info);
+  if (!GetMonitorInfoW(monitor, &info)) return TRUE;
+  auto& out = *reinterpret_cast<std::ostringstream*>(data);
+  if (out.tellp() > 1) out << ',';
+  const RECT& area = info.rcMonitor;
+  out << "{\"left\":" << area.left << ",\"top\":" << area.top << ",\"right\":" << area.right
+      << ",\"bottom\":" << area.bottom
+      << ",\"primary\":" << ((info.dwFlags & MONITORINFOF_PRIMARY) != 0 ? "true" : "false")
+      << '}';
+  return TRUE;
+}
+
+// Every monitor where the virtual screen puts it -- the same pixels
+// VirtualScreen() measures, the process being aware of each monitor's DPI.
+std::string ListMonitors() {
+  std::ostringstream out;
+  out << '[';
+  EnumDisplayMonitors(nullptr, nullptr, AddMonitor, reinterpret_cast<LPARAM>(&out));
+  out << ']';
+  return out.str();
+}
+
 int32_t VisitSessions(uint32_t process_id, float volume, bool restore) {
   const HRESULT initialized = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   const bool uninitialize = SUCCEEDED(initialized);
@@ -359,6 +383,14 @@ int32_t ld_is_process_loopback_supported(void) {
 int32_t ld_list_processes_json(char* output, int32_t capacity) {
 #if defined(_WIN32)
   return WriteString(ListProcesses(), output, capacity);
+#else
+  return WriteString("[]", output, capacity);
+#endif
+}
+
+int32_t ld_list_monitors_json(char* output, int32_t capacity) {
+#if defined(_WIN32)
+  return WriteString(ListMonitors(), output, capacity);
 #else
   return WriteString("[]", output, capacity);
 #endif

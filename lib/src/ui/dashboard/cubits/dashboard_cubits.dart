@@ -116,6 +116,7 @@ class DashboardCubits {
       await Future.wait([
         settings.load(),
         pipeline.loadProcesses(),
+        pipeline.loadScreens(),
         downloads.load(),
         characters.load(),
         glossary.load(),

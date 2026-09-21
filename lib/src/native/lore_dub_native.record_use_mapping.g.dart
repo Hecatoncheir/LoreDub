@@ -17,6 +17,7 @@ const recordUseMapping = {
   'ld_hide_frame': 'ld_hide_frame',
   'ld_hold_take': 'ld_hold_take',
   'ld_is_process_loopback_supported': 'ld_is_process_loopback_supported',
+  'ld_list_monitors_json': 'ld_list_monitors_json',
   'ld_list_processes_json': 'ld_list_processes_json',
   'ld_play_wave': 'ld_play_wave',
   'ld_poll_event_json': 'ld_poll_event_json',
