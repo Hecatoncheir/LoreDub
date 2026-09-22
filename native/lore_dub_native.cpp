@@ -23,7 +23,6 @@
 #include <memory>
 #include <vector>
 
-#if defined(_WIN32)
 #include <audioclient.h>
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>
@@ -33,7 +32,6 @@
 #include <wrl/client.h>
 #include <mmsystem.h>
 #include <dxgi.h>
-#endif
 
 namespace {
 
@@ -75,7 +73,6 @@ int32_t WriteString(const std::string& value, char* output, int32_t capacity) {
   return required;
 }
 
-#if defined(_WIN32)
 using Microsoft::WRL::ComPtr;
 
 std::mutex volumes_mutex;
@@ -341,64 +338,35 @@ int32_t RestoreDuckedSessions() {
   original_volumes.clear();
   return result;
 }
-#endif
 
 }  // namespace
 
 int32_t ld_abi_version(void) { return 1; }
 
 int32_t ld_is_process_loopback_supported(void) {
-#if defined(_WIN32)
   return 1;
-#else
-  return 0;
-#endif
 }
 
 int32_t ld_list_processes_json(char* output, int32_t capacity) {
-#if defined(_WIN32)
   return WriteString(ListProcesses(), output, capacity);
-#else
-  return WriteString("[]", output, capacity);
-#endif
 }
 
 int32_t ld_list_monitors_json(char* output, int32_t capacity) {
-#if defined(_WIN32)
   return WriteString(ListMonitors(), output, capacity);
-#else
-  return WriteString("[]", output, capacity);
-#endif
 }
 
 int32_t ld_probe_graphics_json(char* output, int32_t capacity) {
-#if defined(_WIN32)
   return WriteString(ProbeGraphics(), output, capacity);
-#else
-  return WriteString("{\"adapters\":[],\"cudaDriver\":false,\"vulkanLoader\":false}", output,
-                     capacity);
-#endif
 }
 
 int32_t ld_set_process_volume(uint32_t process_id, float volume) {
-#if defined(_WIN32)
   return DuckProcess(process_id, std::clamp(volume, 0.0f, 1.0f));
-#else
-  (void)process_id;
-  (void)volume;
-  return -2;
-#endif
 }
 
 int32_t ld_restore_process_volumes(void) {
-#if defined(_WIN32)
   return RestoreDuckedSessions();
-#else
-  return -2;
-#endif
 }
 
-#if defined(_WIN32)
 namespace {
 
 // RegisterHotKey delivers WM_HOTKEY to the thread that registered, so the
@@ -575,10 +543,8 @@ void StopHotkeys() {
 }
 
 }  // namespace
-#endif
 
 int32_t ld_hold_take(int32_t holding) {
-#if defined(_WIN32)
   if (!loopback_capture) return -5;
   // What the take had gathered when it was let go of, in milliseconds, so
   // the caller knows whether a recording is on its way. Opening one answers
@@ -586,10 +552,6 @@ int32_t ld_hold_take(int32_t holding) {
   const size_t held = holding != 0 ? 0 : loopback_capture->HeldSamples();
   loopback_capture->SetHoldingTake(holding != 0);
   return static_cast<int32_t>(held * 1000 / 16000);
-#else
-  (void)holding;
-  return -2;
-#endif
 }
 
 int32_t ld_set_paused(int32_t value) {
@@ -597,7 +559,6 @@ int32_t ld_set_paused(int32_t value) {
   return 0;
 }
 
-#if defined(_WIN32)
 namespace {
 
 // The frame drawn over the game, which outlives a session: the player asks
@@ -605,10 +566,8 @@ namespace {
 FrameOverlay frame_overlay;
 
 }  // namespace
-#endif
 
 int32_t ld_show_frame(const char* config_json) {
-#if defined(_WIN32)
   if (config_json == nullptr || config_json[0] == '\0') return -4;
   const std::string config(config_json);
   const OcrRegion region{JsonDouble(config, "ocrRegionLeft", 0.0),
@@ -616,23 +575,14 @@ int32_t ld_show_frame(const char* config_json) {
                          JsonDouble(config, "ocrRegionRight", 1.0),
                          JsonDouble(config, "ocrRegionBottom", 1.0)};
   return frame_overlay.Show(JsonUnsigned(config, "processId"), region) ? 0 : -8;
-#else
-  (void)config_json;
-  return -2;
-#endif
 }
 
 int32_t ld_hide_frame(void) {
-#if defined(_WIN32)
   frame_overlay.Hide();
   return 0;
-#else
-  return -2;
-#endif
 }
 
 int32_t ld_set_hotkeys(const char* config_json) {
-#if defined(_WIN32)
   StopHotkeys();
   if (config_json == nullptr || config_json[0] == '\0') return 0;
   const std::string config(config_json);
@@ -662,13 +612,8 @@ int32_t ld_set_hotkeys(const char* config_json) {
   // The thread holds [ready] only until it has registered.
   registered.wait();
   return 0;
-#else
-  (void)config_json;
-  return -2;
-#endif
 }
 
-#if defined(_WIN32)
 namespace {
 
 // A PCM WAV file's format and samples, as far as playback needs them.
@@ -725,14 +670,12 @@ std::mutex sounding_mutex;
 std::vector<HWAVEOUT> sounding_devices;
 
 }  // namespace
-#endif
 
 // Blocks until the clip has played, as PlaySound with SND_SYNC did. PlaySound
 // holds one sound per process and cuts off whatever is playing, so two
 // characters could never be heard at once; every call here opens a waveOut
 // stream of its own instead, and Windows mixes the ones that overlap.
 int32_t ld_play_wave(const char* utf8_path) {
-#if defined(_WIN32)
   if (utf8_path == nullptr || utf8_path[0] == '\0') return -20;
   WaveClip clip;
   if (!ReadWaveClip(Wide(utf8_path), clip)) return -21;
@@ -785,22 +728,14 @@ int32_t ld_play_wave(const char* utf8_path) {
   waveOutClose(device);
   CloseHandle(done);
   return result;
-#else
-  (void)utf8_path;
-  return -2;
-#endif
 }
 
 // Ends whatever is sounding. Resetting the device marks its buffer done, so
 // the call playing it returns as if the clip had finished.
 int32_t ld_stop_wave(void) {
-#if defined(_WIN32)
   std::lock_guard<std::mutex> lock(sounding_mutex);
   for (const HWAVEOUT device : sounding_devices) waveOutReset(device);
   return static_cast<int32_t>(sounding_devices.size());
-#else
-  return -2;
-#endif
 }
 
 int32_t ld_start(const char* config_json) {
@@ -809,7 +744,6 @@ int32_t ld_start(const char* config_json) {
   running = true;
   paused = false;
   PushEvent("{\"type\":\"state\",\"state\":\"starting\"}");
-#if defined(_WIN32)
   const std::string config(config_json);
   const uint32_t process_id = JsonUnsigned(config, "processId");
   const std::string capture_directory = JsonString(config, "captureDirectory");
@@ -894,20 +828,13 @@ int32_t ld_start(const char* config_json) {
   }
   PushEvent("{\"type\":\"state\",\"state\":\"listening\"}");
   return 0;
-#else
-  PushEvent("{\"type\":\"error\",\"message\":\"Process loopback is only available on Windows\"}");
-  running = false;
-  return -2;
-#endif
 }
 
 int32_t ld_stop(void) {
-#if defined(_WIN32)
   // The keys belong to the session and go with it. The thread holds its own
   // reference to the reading it moves, so the order below is not what keeps
   // a selection still on screen out of freed memory.
   StopHotkeys();
-#endif
   if (loopback_capture) {
     loopback_capture->Stop();
     loopback_capture.reset();
@@ -937,7 +864,6 @@ int32_t ld_poll_event_json(char* output, int32_t capacity) {
 // own decoders; what is ours is the rate and the loudness, which is what
 // lets a dropped file and a captured line answer for the same character.
 int32_t ld_decode_audio(const char* utf8_path, const char* utf8_output_path) {
-#if defined(_WIN32)
   if (utf8_path == nullptr || utf8_path[0] == '\0') return -30;
   if (utf8_output_path == nullptr || utf8_output_path[0] == '\0') return -30;
   double seconds = 0;
@@ -947,11 +873,6 @@ int32_t ld_decode_audio(const char* utf8_path, const char* utf8_output_path) {
     return result == kDecodeUnsupported ? -31 : (result == kDecodeNoAudio ? -32 : -33);
   }
   return static_cast<int32_t>(seconds * 1000.0);
-#else
-  (void)utf8_path;
-  (void)utf8_output_path;
-  return -2;
-#endif
 }
 
 const char* ld_error_message(int32_t error_code) {

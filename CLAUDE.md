@@ -187,7 +187,9 @@ than one of them.
    the wrong shape is refused by name there rather than read as empty.
 2. **Native C++ bridge** — `native/*.cpp`, loaded through Dart Native Assets
    (`hook/build.dart` compiles it with `CBuilder`; there is no `.dll` to ship
-   manually). The C ABI in `native/lore_dub_native.h` is intentionally tiny:
+   manually). Anywhere but Windows the hook compiles `native/stub.cpp`
+   instead, which answers every call as unsupported, so the real sources
+   carry no `#if defined(_WIN32)` fences -- do not add one. The C ABI in `native/lore_dub_native.h` is intentionally tiny:
    `ld_start(config_json)`, `ld_stop`, `ld_poll_event_json`, process and monitor listing,
    per-process volume, WAV playback, `ld_set_paused` (capture drops what it
    finishes while set) and `ld_set_hotkeys` (RegisterHotKey on a thread with

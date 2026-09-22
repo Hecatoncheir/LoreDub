@@ -3,10 +3,6 @@
 
 #include "audio_decoder.h"
 
-#if defined(_WIN32)
-
-// windows.h brings min and max as macros, which would swallow the std ones
-// wave_file.h calls.
 #include <windows.h>
 
 #include <mfapi.h>
@@ -120,11 +116,3 @@ int32_t DecodeAudioFile(const std::wstring& input, const std::wstring& output, d
   return wave_file::WriteMono(output, std::move(samples), kSampleRate) ? 0 : kDecodeNotWritten;
 }
 
-#else
-
-int32_t DecodeAudioFile(const std::wstring&, const std::wstring&, double* seconds) {
-  if (seconds != nullptr) *seconds = 0;
-  return kDecodeUnavailable;
-}
-
-#endif

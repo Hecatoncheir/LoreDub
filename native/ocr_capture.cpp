@@ -5,11 +5,6 @@
 
 #include "stable_text.h"
 
-#include <algorithm>
-#include <utility>
-
-#if defined(_WIN32)
-
 #include <windows.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -19,8 +14,9 @@
 #include <winrt/Windows.Security.Cryptography.h>
 
 #include <algorithm>
-#include <chrono>
 #include <cctype>
+#include <chrono>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -220,17 +216,8 @@ struct Apartment {
 
 }  // namespace
 
-#endif
-
 bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::string* text,
                          std::string* error) {
-#if !defined(_WIN32)
-  (void)area;
-  (void)language;
-  (void)text;
-  *error = "Windows OCR is only available on Windows";
-  return false;
-#else
   text->clear();
   const int width = area.right - area.left;
   const int height = area.bottom - area.top;
@@ -262,10 +249,8 @@ bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::stri
     *error = failure.what();
   }
   return false;
-#endif
 }
 
-#if defined(_WIN32)
 namespace {
 
 // The frame of [process_id]'s window, copied only while that window is the
@@ -278,25 +263,12 @@ bool CaptureWindowInFront(uint32_t process_id, const OcrRegion& region,
 }
 
 }  // namespace
-#endif
 
 bool RegionOfScreen(ScreenArea area, OcrRegion* region) {
-#if !defined(_WIN32)
-  (void)area;
-  (void)region;
-  return false;
-#else
   return RegionWithin(VirtualScreen(), area, region);
-#endif
 }
 
 bool RegionOfWindow(uint32_t process_id, ScreenArea area, OcrRegion* region) {
-#if !defined(_WIN32)
-  (void)process_id;
-  (void)area;
-  (void)region;
-  return false;
-#else
   const HWND window = FindProcessWindow(process_id);
   if (window == nullptr) return false;
   RECT client{};
@@ -306,16 +278,9 @@ bool RegionOfWindow(uint32_t process_id, ScreenArea area, OcrRegion* region) {
   return RegionWithin(
       ScreenArea{origin.x, origin.y, origin.x + client.right, origin.y + client.bottom}, area,
       region);
-#endif
 }
 
 bool AreaOfRegion(uint32_t process_id, const OcrRegion& region, ScreenArea* area) {
-#if !defined(_WIN32)
-  (void)process_id;
-  (void)region;
-  (void)area;
-  return false;
-#else
   ScreenArea bounds = VirtualScreen();
   if (process_id != 0) {
     const HWND window = FindProcessWindow(process_id);
@@ -335,17 +300,11 @@ bool AreaOfRegion(uint32_t process_id, const OcrRegion& region, ScreenArea* area
                      bounds.left + static_cast<int>(width * region.right),
                      bounds.top + static_cast<int>(height * region.bottom)};
   return area->right > area->left && area->bottom > area->top;
-#endif
 }
 
 bool WindowIsInFront(uint32_t process_id) {
-#if !defined(_WIN32)
-  (void)process_id;
-  return false;
-#else
   const HWND window = FindProcessWindow(process_id);
   return window != nullptr && window == GetForegroundWindow();
-#endif
 }
 
 OcrCapture::OcrCapture() = default;
@@ -378,12 +337,6 @@ void OcrCapture::Stop() {
 
 void OcrCapture::CaptureThread(uint32_t process_id, std::string language,
                                TextCallback on_text, ErrorCallback on_error) {
-#if !defined(_WIN32)
-  (void)process_id;
-  (void)language;
-  (void)on_text;
-  on_error("Windows OCR is only available on Windows");
-#else
   try {
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
     const auto recognizer = FindOcrLanguage(language);
@@ -420,5 +373,4 @@ void OcrCapture::CaptureThread(uint32_t process_id, std::string language,
   } catch (const std::exception& error) {
     on_error(error.what());
   }
-#endif
 }

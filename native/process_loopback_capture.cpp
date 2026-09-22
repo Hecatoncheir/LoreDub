@@ -6,8 +6,6 @@
 #include "phrase_segmenter.h"
 #include "wave_file.h"
 
-#if defined(_WIN32)
-
 #include <audioclient.h>
 #include <audioclientactivationparams.h>
 #include <mmdeviceapi.h>
@@ -222,8 +220,6 @@ bool WriteWave(const std::wstring& filename, std::vector<int16_t> samples) {
 
 }  // namespace
 
-#endif
-
 ProcessLoopbackCapture::ProcessLoopbackCapture() = default;
 ProcessLoopbackCapture::~ProcessLoopbackCapture() { Stop(); }
 
@@ -267,13 +263,6 @@ void ProcessLoopbackCapture::Stop() {
 void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_process_tree,
                                            std::wstring output_directory,
                                            SegmentCallback on_segment, ErrorCallback on_error) {
-#if !defined(_WIN32)
-  (void)process_id;
-  (void)exclude_process_tree;
-  (void)output_directory;
-  (void)on_segment;
-  on_error("Process loopback is only available on Windows");
-#else
   RoApartment apartment;
   if (apartment.failed()) {
     on_error(WindowsError(apartment.result()));
@@ -313,5 +302,4 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
     }
   }
   client->Stop();
-#endif
 }

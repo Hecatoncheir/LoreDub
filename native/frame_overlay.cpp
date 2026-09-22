@@ -3,8 +3,6 @@
 
 #include "frame_overlay.h"
 
-#if defined(_WIN32)
-
 #include <windows.h>
 
 namespace {
@@ -145,20 +143,3 @@ void FrameOverlay::Follow(void* window) {
   InvalidateRect(overlay, nullptr, TRUE);
 }
 
-#else
-
-FrameOverlay::~FrameOverlay() = default;
-
-bool FrameOverlay::Show(uint32_t process_id, OcrRegion region) {
-  (void)process_id;
-  (void)region;
-  return false;
-}
-
-void FrameOverlay::Hide() {}
-
-void FrameOverlay::OverlayThread() {}
-
-void FrameOverlay::Follow(void* window) { (void)window; }
-
-#endif

@@ -3,8 +3,6 @@
 
 #include "snapshot_overlay.h"
 
-#if defined(_WIN32)
-
 #include <windows.h>
 #include <windowsx.h>
 
@@ -254,10 +252,3 @@ SelectionResult SelectScreenArea(uint32_t key, ScreenArea* area,
   return SelectionResult::selected;
 }
 
-#else
-
-SelectionResult SelectScreenArea(uint32_t, ScreenArea*, const std::function<void(uintptr_t)>&) {
-  return SelectionResult::cancelled;
-}
-
-#endif

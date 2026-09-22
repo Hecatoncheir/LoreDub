@@ -12,14 +12,19 @@ Future<void> main(List<String> arguments) async {
     final builder = CBuilder.library(
       name: 'lore_dub_native',
       assetName: 'src/native/lore_dub_native.g.dart',
-      sources: const [
-        'native/audio_decoder.cpp',
-        'native/frame_overlay.cpp',
-        'native/lore_dub_native.cpp',
-        'native/process_loopback_capture.cpp',
-        'native/ocr_capture.cpp',
-        'native/snapshot_overlay.cpp',
-      ],
+      // Anywhere but Windows -- the Linux CI job -- the library is the stub,
+      // which answers every call as unsupported, so the real sources carry no
+      // fences for a platform they never run on.
+      sources: windows
+          ? const [
+              'native/audio_decoder.cpp',
+              'native/frame_overlay.cpp',
+              'native/lore_dub_native.cpp',
+              'native/process_loopback_capture.cpp',
+              'native/ocr_capture.cpp',
+              'native/snapshot_overlay.cpp',
+            ]
+          : const ['native/stub.cpp'],
       includes: const ['native'],
       language: Language.cpp,
       std: 'c++20',
