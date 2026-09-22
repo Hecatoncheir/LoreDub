@@ -1914,7 +1914,11 @@ abstract final class AppTheme {
       `/analyze /WX` с теми же флагами, что хук, заголовки SDK — внешние и
       не разбираются (все 13 находок были в них). Наших находок ноль;
       подложенное разыменование нуля ловит (C6011, код выхода 1).
-- [ ] Dependabot для `pub` и `github-actions`.
+- [x] Dependabot для `pub` и `github-actions`.
+      *Сделано:* `.github/dependabot.yml`, раз в неделю, коммиты в стиле
+      Conventional Commits. Версию Flutter он не трогает — она закреплена
+      в `windows.yml` ради goldens. Пока счёт GitHub не улажен, его
+      запуски могут не стартовать, как и остальные.
 
 ---
 
