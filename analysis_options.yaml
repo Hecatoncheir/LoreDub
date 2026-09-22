@@ -34,16 +34,23 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    # Beyond flutter_lints (TODO.md, stage 7): a future nobody waits for is
+    # said so with `unawaited`, a subscription is cancelled, nothing is
+    # called on `dynamic`, a local that is not reassigned is final, and an
+    # async function returns a Future rather than void.
+    unawaited_futures: true
+    cancel_subscriptions: true
+    avoid_dynamic_calls: true
+    prefer_final_locals: true
+    avoid_void_async: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
 
 # Read by `dart_code_linter:metrics analyze` alone -- the analyzer plugin is
-# not enabled, so these do not reach `flutter analyze`. `tool/structure.dart`
+# not enabled, so these do not reach `flutter analyze`. `tool/ratchet.dart`
 # counts what they find per rule and fails on any count above
-# `tool/structure_baseline.json`, which is only ever lowered.
+# `tool/ratchet_baseline.json`, which is only ever lowered.
 dart_code_linter:
   rules:
     - prefer-single-widget-per-file
