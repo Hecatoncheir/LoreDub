@@ -23,7 +23,16 @@ Future<void> main(List<String> arguments) async {
       includes: const ['native'],
       language: Language.cpp,
       std: 'c++20',
-      flags: windows ? const ['/EHsc'] : const [],
+      // Warnings at the fourth level and standard C++ rather than MSVC's
+      // leniencies, sources read as UTF-8 (they hold Cyrillic in comments and
+      // strings), and the SDL checks. The native tests build under the same
+      // flags with /WX (tool/native_tests.ps1).
+      flags: windows ? const ['/EHsc', '/W4', '/permissive-', '/utf-8', '/sdl'] : const [],
+      // Once for every file, rather than a #define NOMINMAX in each that
+      // must come before <windows.h> or std::max stops compiling.
+      defines: windows
+          ? const {'NOMINMAX': null, 'WIN32_LEAN_AND_MEAN': null, 'UNICODE': null, '_UNICODE': null}
+          : const {},
       libraries: windows
           ? const [
               'ole32',

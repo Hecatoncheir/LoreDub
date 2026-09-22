@@ -24,7 +24,6 @@
 #include <vector>
 
 #if defined(_WIN32)
-#define NOMINMAX
 #include <audioclient.h>
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>

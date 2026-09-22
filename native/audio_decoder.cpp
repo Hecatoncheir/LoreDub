@@ -7,7 +7,6 @@
 
 // windows.h brings min and max as macros, which would swallow the std ones
 // wave_file.h calls.
-#define NOMINMAX
 #include <windows.h>
 
 #include <mfapi.h>
@@ -23,6 +22,11 @@
 namespace {
 
 using Microsoft::WRL::ComPtr;
+
+// The reader's stream indices are negative enumerators that its calls take
+// as a DWORD; converted once, by name, rather than at every call.
+constexpr DWORD kAllStreams = static_cast<DWORD>(MF_SOURCE_READER_ALL_STREAMS);
+constexpr DWORD kFirstAudioStream = static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM);
 
 // What the pipeline hears everywhere else. A fingerprint measured at another
 // rate is not the same fingerprint: the same clip read at 48 kHz and at
@@ -64,8 +68,8 @@ int32_t DecodeAudioFile(const std::wstring& input, const std::wstring& output, d
     return kDecodeUnsupported;
   }
 
-  reader->SetStreamSelection(MF_SOURCE_READER_ALL_STREAMS, FALSE);
-  if (FAILED(reader->SetStreamSelection(MF_SOURCE_READER_FIRST_AUDIO_STREAM, TRUE))) {
+  reader->SetStreamSelection(kAllStreams, FALSE);
+  if (FAILED(reader->SetStreamSelection(kFirstAudioStream, TRUE))) {
     return kDecodeNoAudio;
   }
 
@@ -79,7 +83,7 @@ int32_t DecodeAudioFile(const std::wstring& input, const std::wstring& output, d
   wanted->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16);
   wanted->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, kSampleRate);
   wanted->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, 1);
-  if (FAILED(reader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, nullptr,
+  if (FAILED(reader->SetCurrentMediaType(kFirstAudioStream, nullptr,
                                          wanted.Get()))) {
     return kDecodeUnsupported;
   }
@@ -88,7 +92,7 @@ int32_t DecodeAudioFile(const std::wstring& input, const std::wstring& output, d
   while (true) {
     DWORD flags = 0;
     ComPtr<IMFSample> sample;
-    const HRESULT read = reader->ReadSample(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, nullptr,
+    const HRESULT read = reader->ReadSample(kFirstAudioStream, 0, nullptr,
                                             &flags, nullptr, &sample);
     if (FAILED(read)) return kDecodeUnsupported;
     if ((flags & MF_SOURCE_READERF_ENDOFSTREAM) != 0) break;

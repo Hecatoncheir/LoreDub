@@ -1689,10 +1689,18 @@ abstract final class AppTheme {
       `setHotkeys` только после старта, а сам ABI этого не требует →
       `std::shared_ptr<OcrCapture>` в `HotkeyConfig`, `ld_set_hotkeys`
       отказывает без сессии.
-- [ ] **Единственный флаг компилятора — `/EHsc`** (`hook/build.dart:25`) →
+- [x] **Единственный флаг компилятора — `/EHsc`** (`hook/build.dart:25`) →
       `/W4 /permissive- /utf-8 /sdl`, определения `NOMINMAX`, `UNICODE`,
       `WIN32_LEAN_AND_MEAN`; `/analyze` или clang-tidy в CI. Уйдут пять
       `#define NOMINMAX` по файлам и обход `(std::max)`.
+      *Сделано, кроме анализатора:* `/W4 /permissive- /utf-8 /sdl` и
+      определения `NOMINMAX`, `WIN32_LEAN_AND_MEAN`, `UNICODE` в хуке, пять
+      `#define NOMINMAX` ушли. Код и так был чистым: под `/W4` нашлись
+      только повторный `NOMINMAX` и отрицательные индексы потоков Media
+      Foundation, переданные как `DWORD` (теперь `kAllStreams` и
+      `kFirstAudioStream`). `(std::max)` в `wave_file.h` остался: заголовок
+      может попасть и туда, где `NOMINMAX` не определён. `/analyze` или
+      clang-tidy — вместе с остальным CI.
 - [ ] ~70 строк под `#ifdef _WIN32` существуют только ради Linux-задачи
       GitLab → `native/stub.cpp`, где все `ld_*` возвращают −2, выбор по
       `targetOS` в хуке; боевые исходники остаются без заборов.

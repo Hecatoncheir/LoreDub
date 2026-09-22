@@ -7,7 +7,6 @@
 
 #if defined(_WIN32)
 
-#define NOMINMAX
 #include <audioclient.h>
 #include <audioclientactivationparams.h>
 #include <mmdeviceapi.h>
