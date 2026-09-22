@@ -8,7 +8,6 @@ import 'app_settings.dart';
 import 'character.dart';
 import 'pipeline_graph_model.dart';
 import 'pipeline_layout.dart';
-import 'spoken_language.dart';
 
 /// The graph [settings] and [characters] describe, arranged as [layout].
 ///
@@ -28,7 +27,7 @@ PipelineGraph buildPipelineGraph({
   // text going past it. The canvas reads that off the language rather than
   // off a setting of its own: there is one answer to where the dubbing is
   // going, and it is chosen on the models screen or here.
-  final translates = settings.targetLanguage != untranslatedDubbingLanguage;
+  final translates = settings.translates;
   final castAt = {
     for (final (index, placement) in placed.indexed)
       placement.nodeId: layout.positions[placement.nodeId] ?? PipelineLayout.castPlace(index),

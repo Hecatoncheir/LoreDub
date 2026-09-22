@@ -28,47 +28,45 @@ class UpdateService {
   Future<String> currentVersion() async => (await _packageInfo).version;
 
   /// The newest published release, or null when the repository has none.
-  Future<AppRelease?> latestRelease({String proxyUrl = ''}) async {
-    final client = _client ?? await createDownloadClient(proxyUrl);
-    try {
-      final response = await client
-          .get(
-            releasesEndpoint,
-            headers: const {
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28',
-            },
-          )
-          .timeout(
-            const Duration(seconds: 15),
-            // Left to itself a `TimeoutException` reached the banner and
-            // was printed as it came, which says nothing to a player.
-            onTimeout: () => throw const LoreDubFailure(
-              FailureCode.updateCheckFailed,
-              detail: 'no answer in 15 s',
-            ),
-          );
-      // A repository with no releases answers 404, which is an answer rather
-      // than a failure: there is simply nothing newer to point at.
-      if (response.statusCode == HttpStatus.notFound) return null;
-      if (response.statusCode != HttpStatus.ok) {
-        throw LoreDubFailure(
-          FailureCode.updateCheckFailed,
-          detail: '${response.statusCode}',
+  Future<AppRelease?> latestRelease({String proxyUrl = ''}) =>
+      withDownloadClient(_client, proxyUrl, _latestRelease);
+
+  Future<AppRelease?> _latestRelease(http.Client client) async {
+    final response = await client
+        .get(
+          releasesEndpoint,
+          headers: const {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+        )
+        .timeout(
+          const Duration(seconds: 15),
+          // Left to itself a `TimeoutException` reached the banner and
+          // was printed as it came, which says nothing to a player.
+          onTimeout: () => throw const LoreDubFailure(
+            FailureCode.updateCheckFailed,
+            detail: 'no answer in 15 s',
+          ),
         );
-      }
-      final body = jsonDecode(response.body) as Map<String, Object?>;
-      final tag = body['tag_name'] as String?;
-      if (tag == null || parseReleaseVersion(tag) == null) return null;
-      final page = body['html_url'] as String?;
-      return AppRelease(
-        version: tag.startsWith('v') ? tag.substring(1) : tag,
-        page: Uri.parse(page ?? 'https://github.com/Hecatoncheir/LoreDub/releases'),
-        installer: releaseInstallerFrom(body['assets']),
+    // A repository with no releases answers 404, which is an answer rather
+    // than a failure: there is simply nothing newer to point at.
+    if (response.statusCode == HttpStatus.notFound) return null;
+    if (response.statusCode != HttpStatus.ok) {
+      throw LoreDubFailure(
+        FailureCode.updateCheckFailed,
+        detail: '${response.statusCode}',
       );
-    } finally {
-      if (_client == null) client.close();
     }
+    final body = jsonDecode(response.body) as Map<String, Object?>;
+    final tag = body['tag_name'] as String?;
+    if (tag == null || parseReleaseVersion(tag) == null) return null;
+    final page = body['html_url'] as String?;
+    return AppRelease(
+      version: tag.startsWith('v') ? tag.substring(1) : tag,
+      page: Uri.parse(page ?? 'https://github.com/Hecatoncheir/LoreDub/releases'),
+      installer: releaseInstallerFrom(body['assets']),
+    );
   }
 }
 

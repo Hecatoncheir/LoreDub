@@ -268,6 +268,21 @@ Future<bool> verifyArtifact(File file, ModelArtifact artifact) async {
   return true;
 }
 
+/// Runs [use] with [given], or -- when a test handed none over -- with a
+/// client of its own through [proxyUrl], closed once [use] is done.
+Future<T> withDownloadClient<T>(
+  http.Client? given,
+  String proxyUrl,
+  Future<T> Function(http.Client client) use,
+) async {
+  final client = given ?? await createDownloadClient(proxyUrl);
+  try {
+    return await use(client);
+  } finally {
+    if (given == null) client.close();
+  }
+}
+
 Future<http.Client> createDownloadClient(String proxyUrl) async {
   final proxy = parseModelProxyUrl(proxyUrl);
   if (proxy == null) return http.Client();

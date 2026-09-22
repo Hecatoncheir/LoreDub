@@ -154,21 +154,19 @@ class RuntimeStorageService {
     required String proxyUrl,
     DownloadControl? control,
   }) async {
-    final client = _client ?? await createDownloadClient(proxyUrl);
-    final DownloadOutcome outcome;
-    try {
-      // The download is the long half; unpacking gets the last tenth of the
-      // bar so the interface does not sit at 100% while it still works.
-      outcome = await downloadArtifacts(
+    // The download is the long half; unpacking gets the last tenth of the
+    // bar so the interface does not sit at 100% while it still works.
+    final outcome = await withDownloadClient(
+      _client,
+      proxyUrl,
+      (client) => downloadArtifacts(
         package.artifacts,
         directory: directory,
         client: client,
         onProgress: (value) => onProgress(value * 0.9),
         control: control,
-      );
-    } finally {
-      if (_client == null) client.close();
-    }
+      ),
+    );
     // Unpacking a half-downloaded archive would only produce rubbish; the
     // part stays for a pause and is already gone for a cancel.
     if (outcome != DownloadOutcome.completed) return outcome;
@@ -250,20 +248,18 @@ class RuntimeStorageService {
       );
     }
     final downloads = await _downloadsFor(package);
-    final client = _client ?? await createDownloadClient(proxyUrl);
-    final DownloadOutcome fetched;
-    try {
-      fetched = await downloadArtifacts(
+    final fetched = await withDownloadClient(
+      _client,
+      proxyUrl,
+      (client) => downloadArtifacts(
         package.artifacts,
         directory: downloads,
         client: client,
         // Installing the wheel gets the last tenth of the bar.
         onProgress: (value) => onProgress(value * 0.9),
         control: control,
-      );
-    } finally {
-      if (_client == null) client.close();
-    }
+      ),
+    );
     if (fetched == DownloadOutcome.cancelled) await _deleteIfExists(downloads);
     if (fetched != DownloadOutcome.completed) return fetched;
 

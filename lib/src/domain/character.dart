@@ -1,4 +1,6 @@
 // Copyright (c) 2026 LoreDub contributors.
+import 'upserting.dart';
+
 // SPDX-License-Identifier: MIT
 
 /// A character the player recorded and named, with the fingerprint their
@@ -122,14 +124,9 @@ List<Character> charactersFromJson(Object? json) {
 /// keep their own "Guard" and a card edited and sent back still lands on the
 /// one it came from.
 List<Character> mergeCharacters(List<Character> existing, List<Character> incoming) {
-  final merged = [...existing];
+  var merged = existing;
   for (final character in incoming) {
-    final at = merged.indexWhere((known) => known.id == character.id);
-    if (at >= 0) {
-      merged[at] = character;
-    } else {
-      merged.add(character);
-    }
+    merged = merged.upserting(character, (known) => known.id == character.id);
   }
   return merged;
 }
@@ -215,14 +212,9 @@ List<CharacterPack> packsFromJson(Object? json) {
 /// cards over cards: a pack sent back after an edit lands on the one it came
 /// from, and an unknown pack joins the end.
 List<CharacterPack> mergePacks(List<CharacterPack> existing, List<CharacterPack> incoming) {
-  final merged = [...existing];
+  var merged = existing;
   for (final pack in incoming) {
-    final at = merged.indexWhere((known) => known.id == pack.id);
-    if (at >= 0) {
-      merged[at] = pack;
-    } else {
-      merged.add(pack);
-    }
+    merged = merged.upserting(pack, (known) => known.id == pack.id);
   }
   return merged;
 }

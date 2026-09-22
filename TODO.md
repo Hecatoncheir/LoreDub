@@ -1437,13 +1437,23 @@ abstract final class AppTheme {
       `native_engine_service.dart:50`; `_inference` не внедряется, статические
       `LocalInferenceService.*` зовутся восемь раз → один `composition.dart` с
       обязательными именованными зависимостями. Фреймворк DI не нужен.
-- [ ] **Мелкие дубли домена:** `GlossaryPack` ≈ `CharacterPack`; «вставка с
+- [x] **Мелкие дубли домена:** `GlossaryPack` ≈ `CharacterPack`; «вставка с
       сохранением места» написана четырежды (`character.dart:124`, `:217`;
       `glossary.dart:292`, `:369`) → расширение `List.upserting`; правило
       `translates` живёт в трёх местах (`model_selection.dart:123`,
       `pipeline_graph.dart:625`, `native_engine_service.dart:856`) →
       `AppSettings.translates`; открытие/закрытие клиента загрузки — пять раз
       → `withDownloadClient`; `ProcessStarter` объявлен дважды и по-разному.
+      *Сделано, кроме паков.* `List.upserting` (`domain/upserting.dart`)
+      вместо четырёх копий вставки; правило перевода —
+      `AppSettings.translates`, которым пользуются выбор моделей, схема и
+      подпись узла; клиент загрузки открывается и закрывается в одном
+      `withDownloadClient` (копий было пять, с проверкой обновлений);
+      запуск процесса — один `ProcessLauncher` для воркера, whisper и
+      установщика, и имя `ProcessStarter` осталось только у pip с его
+      собственной сигнатурой. `GlossaryPack` и `CharacterPack` не слиты:
+      у пака словаря есть переключатель и ключи записей, у пака состава —
+      id карточек, и общий тип вышел бы только ради имени и списка.
 - [ ] `freshOcrText` (CC 33): замыкание меняет три захваченные переменные →
       `_lcsTable`, `_unmatched`, `_runs`.
 - [ ] Кодогенерация: домену `equatable` не нужен — равенств, написанных

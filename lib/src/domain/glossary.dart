@@ -1,4 +1,6 @@
 // Copyright (c) 2026 LoreDub contributors.
+import 'upserting.dart';
+
 // SPDX-License-Identifier: MIT
 
 /// What the player has told the dubbing about the games they play.
@@ -290,14 +292,10 @@ class Glossary {
   /// [pack] kept, replacing the one of the same id. Its place in the list is
   /// kept, the way an entry's is: a pack renamed must not jump to the end.
   Glossary keepingPack(GlossaryPack pack) {
-    final kept = [...packs];
-    final at = kept.indexWhere((one) => one.id == pack.id);
-    if (at < 0) {
-      kept.add(pack);
-    } else {
-      kept[at] = pack;
-    }
-    return Glossary(entries: entries, packs: kept);
+    return Glossary(
+      entries: entries,
+      packs: packs.upserting(pack, (one) => one.id == pack.id),
+    );
   }
 
   /// The pack taken off the shelf. The entries it named stay written down --
@@ -367,14 +365,10 @@ class Glossary {
   /// usually correcting what they just added, and a line that jumps to the
   /// end while being edited is hard to follow.
   Glossary keeping(GlossaryEntry entry) {
-    final kept = [...entries];
-    final at = kept.indexWhere((one) => one.kind == entry.kind && one.key == entry.key);
-    if (at < 0) {
-      kept.add(entry);
-    } else {
-      kept[at] = entry;
-    }
-    return Glossary(entries: kept, packs: packs);
+    return Glossary(
+      entries: entries.upserting(entry, (one) => one.kind == entry.kind && one.key == entry.key),
+      packs: packs,
+    );
   }
 
   Glossary without(GlossaryKind kind, String source) {

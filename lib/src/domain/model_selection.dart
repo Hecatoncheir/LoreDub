@@ -120,7 +120,7 @@ class ModelSelection {
   /// Dubbing into English does not: whisper is asked for English whatever the
   /// game speaks, so the line arrives in it and the translator is left out of
   /// the session entirely rather than run over its own language.
-  bool get translates => settings.targetLanguage != untranslatedDubbingLanguage;
+  bool get translates => settings.translates;
 
   ModelPackage? get speechPackage => forTargetLanguage(ModelKind.speech)?.model;
 

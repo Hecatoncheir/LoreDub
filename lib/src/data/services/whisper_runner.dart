@@ -5,9 +5,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../../domain/failure.dart';
-
-/// Starts a program with its arguments; the tests start none.
-typedef WhisperStarter = Future<Process> Function(String executable, List<String> arguments);
+import 'process_launcher.dart';
 
 /// What one run of whisper printed, and how it ended.
 typedef WhisperRun = ({int exitCode, String stdout, String stderr});
@@ -19,10 +17,10 @@ typedef WhisperRun = ({int exitCode, String stdout, String stderr});
 /// behind it, since phrases are recognized one at a time, and a stop could
 /// not end it. So a run is given [limit] and [cancel] ends the one under way.
 class WhisperRunner {
-  WhisperRunner({WhisperStarter? start, this.limit = const Duration(minutes: 2)})
+  WhisperRunner({ProcessLauncher? start, this.limit = const Duration(minutes: 2)})
     : _start = start ?? Process.start;
 
-  final WhisperStarter _start;
+  final ProcessLauncher _start;
 
   /// The longest one phrase may take. Recognition is seconds; this is only
   /// what tells a run that will never end from a slow one.

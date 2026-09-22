@@ -20,6 +20,7 @@ import 'worker_channel.dart';
 import 'worker_arguments.dart';
 import '../../domain/session_config.dart';
 import 'whisper_runner.dart';
+import 'process_launcher.dart';
 
 class InferenceResult {
   const InferenceResult({
@@ -115,13 +116,10 @@ typedef WorkerPreparation = Future<WorkerFiles> Function({
   String? downloadedRuntimeDirectory,
 });
 
-/// Starts the interpreter the worker runs in.
-typedef WorkerStarter = Future<Process> Function(String executable, List<String> arguments);
-
 class LocalInferenceService {
   LocalInferenceService({
     WorkerPreparation? prepare,
-    WorkerStarter? startWorker,
+    ProcessLauncher? startWorker,
     WhisperRunner? whisper,
     this.startupLimit = const Duration(minutes: 5),
   }) : _prepare = prepare ?? _prepareOnThisMachine,
@@ -129,7 +127,7 @@ class LocalInferenceService {
        _whisper = whisper ?? WhisperRunner();
 
   final WorkerPreparation _prepare;
-  final WorkerStarter _startWorker;
+  final ProcessLauncher _startWorker;
   final WhisperRunner _whisper;
 
   /// Loading Marian and Vosk is minutes on a cold machine; past this, the
@@ -324,7 +322,7 @@ class LocalInferenceService {
     return (python: python, script: script.path, work: work.path, whisper: whisper);
   }
 
-  /// The real [WorkerStarter].
+  /// The real [ProcessLauncher].
   static Future<Process> _startInterpreter(String executable, List<String> arguments) =>
       Process.start(executable, arguments, environment: const {'PYTHONIOENCODING': 'utf-8'});
 

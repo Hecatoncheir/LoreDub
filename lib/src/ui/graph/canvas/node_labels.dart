@@ -91,7 +91,7 @@ class _Reading {
   /// about this stage. Dubbing into English stands the stage aside: whisper
   /// has handed English over and the line is read as it arrived.
   String _translation() {
-    if (_settings.targetLanguage == untranslatedDubbingLanguage) return l10n.pipelineNoTranslation;
+    if (!_settings.translates) return l10n.pipelineNoTranslation;
     return '${spokenLanguageName(l10n, fallbackSpokenLanguage)}'
         ' → ${translationTargetName(l10n, _settings.targetLanguage)}';
   }

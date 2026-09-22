@@ -85,21 +85,20 @@ class ModelStorageService {
     String proxyUrl = '',
     DownloadControl? control,
   }) async {
-    final client = _client ?? await createDownloadClient(proxyUrl);
     final directory = await modelDirectory(model);
-    try {
-      final outcome = await downloadArtifacts(
+    final outcome = await withDownloadClient(
+      _client,
+      proxyUrl,
+      (client) => downloadArtifacts(
         model.artifacts,
         directory: directory,
         client: client,
         onProgress: onProgress,
         control: control,
-      );
-      if (outcome == DownloadOutcome.completed) await _removeStrangers(model, directory);
-      return outcome;
-    } finally {
-      if (_client == null) client.close();
-    }
+      ),
+    );
+    if (outcome == DownloadOutcome.completed) await _removeStrangers(model, directory);
+    return outcome;
   }
 
   /// Files left in a package's directory that the package no longer names.

@@ -353,6 +353,12 @@ class AppSettings {
       screenLanguage == targetLanguage ? targetLanguage : fallbackSpokenLanguage;
 
   /// What whisper.cpp should be told to expect.
+  /// Whether the dubbing translates at all. Whisper hands English over
+  /// whatever the game speaks, so a session dubbing into English has nothing
+  /// to translate -- no translator is loaded, and the canvas draws the stage
+  /// stepped over.
+  bool get translates => targetLanguage != untranslatedDubbingLanguage;
+
   String get effectiveSourceLanguage => detectSourceLanguage ? autoSpokenLanguage : sourceLanguage;
 
   AppSettings copyWith({

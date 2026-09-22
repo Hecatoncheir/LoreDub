@@ -12,9 +12,9 @@ import '../../domain/download_control.dart';
 import '../../domain/failure.dart';
 import '../../domain/model_package.dart';
 import 'artifact_downloader.dart';
+import 'process_launcher.dart';
 
 typedef UpdateRootProvider = Future<Directory> Function();
-typedef ProcessStarter = Future<Process> Function(String executable, List<String> arguments);
 
 /// Downloads a newer release's setup and hands the application over to it.
 ///
@@ -31,7 +31,7 @@ class UpdateInstaller {
     this._client,
     UpdateRootProvider? root,
     String? executable,
-    ProcessStarter? start,
+    ProcessLauncher? start,
     void Function(int code)? exit,
   }) : _root = root ?? _defaultRoot,
        _executable = executable ?? Platform.resolvedExecutable,
@@ -41,7 +41,7 @@ class UpdateInstaller {
   final http.Client? _client;
   final UpdateRootProvider _root;
   final String _executable;
-  final ProcessStarter _start;
+  final ProcessLauncher _start;
   final void Function(int code) _exit;
 
   /// What the setup is told when it replaces this copy. `/RELAUNCH` is ours:
@@ -100,21 +100,20 @@ class UpdateInstaller {
         // Best effort: a setup still held open goes next time.
       }
     }
-    final client = _client ?? await createDownloadClient(proxyUrl);
-    try {
-      final outcome = await downloadArtifacts(
+    final outcome = await withDownloadClient(
+      _client,
+      proxyUrl,
+      (client) => downloadArtifacts(
         [_artifact(installer)],
         directory: directory,
         client: client,
         onProgress: onProgress,
-      );
-      if (outcome != DownloadOutcome.completed) {
-        throw LoreDubFailure(FailureCode.updateInstallFailed, detail: outcome.name);
-      }
-      return path.join(directory.path, installer.name);
-    } finally {
-      if (_client == null) client.close();
+      ),
+    );
+    if (outcome != DownloadOutcome.completed) {
+      throw LoreDubFailure(FailureCode.updateInstallFailed, detail: outcome.name);
     }
+    return path.join(directory.path, installer.name);
   }
 
   /// Starts [setup] and ends this process. The setup writes what it did to

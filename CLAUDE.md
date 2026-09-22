@@ -344,7 +344,7 @@ that dies under a running session lets go of `_worker`, so the next phrase is
 told there is none rather than written into a dead pipe, and calls
 `onWorkerLost`, on which `NativeEngineService` reports why and stops the
 session. The seams for all of this are `WorkerPreparation` and
-`WorkerStarter`, with a fake `Process` (`test/support/fake_worker.dart`)
+`ProcessLauncher` (`startWorker`), with a fake `Process` (`test/support/fake_worker.dart`)
 in the service's test.
 
 `NativeEngineService._starts` is that counter once more, for the moments on
