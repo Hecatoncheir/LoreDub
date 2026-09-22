@@ -560,7 +560,7 @@ class _HeldWorkDirectory {
 
 /// The native library as a start and a stop see it: `ld_start` and `ld_stop`
 /// queue the states the real ones do, and the poll hands them out.
-class _FakeNative extends NativeBridge {
+class _FakeNative extends Fake implements NativeBridge {
   /// The configs `ld_start` was given, in the order it was given them.
   final started = <Map<String, Object?>>[];
 
@@ -605,6 +605,9 @@ class _FakeNative extends NativeBridge {
       ..[bytes.length] = 0;
     return bytes.length;
   }
+
+  @override
+  int setProcessVolume(int processId, double volume) => 0;
 
   @override
   int restoreProcessVolumes() => 0;

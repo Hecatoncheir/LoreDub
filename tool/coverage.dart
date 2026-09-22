@@ -64,7 +64,10 @@ class AreaCoverage {
 
 /// The coverage of every one of [areas] -- path prefixes such as
 /// `lib/src/data/` -- in an lcov report. Generated code is passed over: the
-/// bindings and the localizations are nobody's to test.
+/// bindings and the localizations are nobody's to test. So is the bridge
+/// that calls the bindings: a line of it runs only by calling the real
+/// library, which no test may do, and a share counted there was the tests
+/// registering hotkeys and drawing on the screen of whoever ran them.
 Map<String, AreaCoverage> coverageByArea(String lcov, Iterable<String> areas) {
   final hit = {for (final area in areas) area: 0};
   final lines = {for (final area in areas) area: 0};
@@ -85,7 +88,10 @@ Map<String, AreaCoverage> coverageByArea(String lcov, Iterable<String> areas) {
   return {for (final area in areas) area: AreaCoverage(hit[area]!, lines[area]!)};
 }
 
-bool _generated(String path) => path.endsWith('.g.dart') || path.contains('lib/l10n/');
+bool _generated(String path) =>
+    path.endsWith('.g.dart') ||
+    path.contains('lib/l10n/') ||
+    path.endsWith('lib/src/data/services/native_bridge.dart');
 
 /// Whether [file] -- relative, or absolute as some runners write it -- lies
 /// under [area].

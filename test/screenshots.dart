@@ -32,7 +32,6 @@ import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
@@ -64,6 +63,8 @@ import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
 import 'support/mock_blocs.dart';
 
 import 'package:lore_dub/src/ui/characters/bloc/voice_capture_bloc.dart';
+
+import 'support/fakes/memory_native.dart';
 
 /// The size the pictures have always been kept at, and the one the page and
 /// the readme lay out for.
@@ -255,7 +256,7 @@ void main() {
   StagedDashboard buildCubits({GlossaryBloc? glossary, VoiceCaptureBloc? capture}) {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
-      SessionRepository(NativeEngineService()),
+      SessionRepository(memoryEngine()),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),

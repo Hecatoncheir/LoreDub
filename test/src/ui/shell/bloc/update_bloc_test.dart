@@ -7,13 +7,14 @@ import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/artifact_downloader.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_release.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
 import 'package:lore_dub/src/ui/shell/bloc/update_bloc.dart';
+
+import '../../../../support/fakes/memory_native.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -53,7 +54,7 @@ void main() {
   });
 
   UpdateBloc build() =>
-      UpdateBloc(releases, settings, SessionRepository(NativeEngineService()), sessions, banner);
+      UpdateBloc(releases, settings, SessionRepository(memoryEngine()), sessions, banner);
 
   blocTest<UpdateBloc, UpdateState>(
     'finds a newer release through the proxy, and marks the startup check as news',

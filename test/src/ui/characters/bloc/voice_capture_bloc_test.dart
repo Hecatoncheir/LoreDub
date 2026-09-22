@@ -14,7 +14,6 @@ import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
@@ -39,6 +38,7 @@ import 'package:lore_dub/src/domain/session_config.dart';
 
 import '../../../../support/memory_cast.dart';
 import '../../../../support/fakes/fake_model_repository.dart';
+import '../../../../support/fakes/memory_native.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -70,7 +70,7 @@ void main() {
         ),
         NotificationService(plugin: FlutterLocalNotificationsPlugin()),
       ),
-      cast: CastRepository(NativeEngineService(), repository.cards),
+      cast: CastRepository(memoryEngine(), repository.cards),
     );
     // Every package in place: a sample needs the speech model, and a
     // recording needs the converter.

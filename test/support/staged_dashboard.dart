@@ -45,6 +45,7 @@ export 'fakes/memory_schemes.dart';
 export 'fakes/memory_voice_bank.dart';
 import 'fakes/memory_schemes.dart';
 import 'fakes/memory_voice_bank.dart';
+import 'fakes/memory_native.dart';
 
 /// Every screen's state, built by hand for a test to stage and then put on
 /// the screen through [provide].
@@ -60,9 +61,11 @@ import 'fakes/memory_voice_bank.dart';
 /// drive the real blocs it builds.
 class StagedDashboard {
   ///
-  /// The repositories a test does not hand over are made over the disk and
-  /// the native library as the application's are; one that is handed over
-  /// is usually a fake that keeps its files in memory.
+  /// The repositories a test does not hand over are made over the disk as
+  /// the application's are, and over an engine that answers from memory
+  /// ([memoryEngine]) rather than the native library, which would register
+  /// hotkeys and draw on the screen; one that is handed over is usually a
+  /// fake that keeps its files in memory.
   StagedDashboard(
     this.sessionRepository,
     this.settingsRepository,
@@ -83,7 +86,7 @@ class StagedDashboard {
     TranscriptBloc? transcriptBloc,
     UpdateBloc? updateBloc,
   }) {
-    final native = engine ?? NativeEngineService();
+    final native = engine ?? memoryEngine();
     this.system = system ?? SystemRepository(native);
     // Kept in memory unless a test hands one over: a bloc waits for its
     // handlers as it closes, and the real bank reads a disk that does not

@@ -22,7 +22,6 @@ import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
@@ -49,6 +48,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'memory_cast.dart';
 import 'staged_dashboard.dart';
+import 'fakes/memory_native.dart';
 
 StagedDashboard buildCubits({
   RuntimeRepository? runtimes,
@@ -63,7 +63,7 @@ StagedDashboard buildCubits({
 }) {
   SharedPreferences.setMockInitialValues({});
   final cubits = StagedDashboard(
-    SessionRepository(NativeEngineService()),
+    SessionRepository(memoryEngine()),
     SettingsRepository(SettingsService()),
     ModelRepository(ModelStorageService()),
     runtimes ?? RuntimeRepository(RuntimeStorageService()),
@@ -72,7 +72,7 @@ StagedDashboard buildCubits({
     // The cards in memory: a real bloc editing them wrote a real file,
     // which does not answer inside the test's fake time, and its close
     // waited for the write for ever.
-    cast: CastRepository(NativeEngineService(), MemoryCharacters()),
+    cast: CastRepository(memoryEngine(), MemoryCharacters()),
     castBloc: cast,
     captureBloc: capture,
     downloadsBloc: downloads,
@@ -197,7 +197,7 @@ Future<void> pumpLoreDub(WidgetTester tester, Size size) async {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   SharedPreferences.setMockInitialValues({});
-  await tester.pumpWidget(const LoreDubBootstrap());
+  await tester.pumpWidget(LoreDubBootstrap(native: MemoryNative()));
   await tester.pump();
 }
 

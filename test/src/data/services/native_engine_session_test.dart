@@ -360,7 +360,7 @@ Future<void> _until(bool Function() done) async {
 }
 
 /// The library, answering from memory and writing down what it was asked.
-class _Native extends NativeBridge {
+class _Native extends Fake implements NativeBridge {
   final started = <Map<String, Object?>>[];
   final hotkeys = <Map<String, Object?>>[];
   final frames = <Map<String, Object?>>[];

@@ -328,7 +328,8 @@ where a blind `_inference.stop()` would end a worker that was never this
 start's. The engine's seams are its constructor's: `inference`, `native`
 (`NativeBridge`, `data/services/native_bridge.dart` — every `ld_*` call in
 Dart's own types, the one place a pointer is made and freed; a test
-extends it and overrides what it needs) and `workDirectory`, which the engine's test holds back so that a
+implements it on `Fake`, and `MemoryNative` (`test/support/fakes/`) is the
+one every screen test's engine is built over, `memoryEngine()`) and `workDirectory`, which the engine's test holds back so that a
 stop can land inside either wait.
 
 Playback is not sequential in the same way. Every worker reply carries a
@@ -1171,7 +1172,12 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   seams (`ModelStorageService({http.Client?, ModelRootProvider?})`,
   `NativeEngineService({inference, native, workDirectory})`,
   `SharedPreferences.setMockInitialValues`, the exported
-  `readNativeUtf8String` helper).
+  `readNativeUtf8String` helper). `flutter test` builds the native assets,
+  so an engine left on its default bridge *does* load the real library, and
+  a screen seeded with settings registers global hotkeys and draws the
+  frame overlay on the machine running the tests: every engine a test
+  builds is `memoryEngine()`, and a test that pumps the whole application
+  hands `LoreDubBootstrap(native: MemoryNative())` down to `AppComposition`.
 - A fake implements the class it stands for on `Fake` (`extends Fake
   implements ModelRepository`) and never extends it: extended, whatever it
   did not override ran as production code, and a test leaned on the real

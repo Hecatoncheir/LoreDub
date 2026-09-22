@@ -16,7 +16,6 @@ import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
@@ -36,6 +35,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
 
 import '../../../support/mock_blocs.dart';
+import '../../../support/fakes/memory_native.dart';
 
 /// What one report of download progress costs the rest of the screen.
 ///
@@ -77,7 +77,7 @@ void main() {
   }) async {
     SharedPreferences.setMockInitialValues({});
     final cubits = StagedDashboard(
-      SessionRepository(NativeEngineService()),
+      SessionRepository(memoryEngine()),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),

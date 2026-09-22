@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../l10n/app_localizations.dart';
 import 'composition.dart';
+import 'data/services/native_bridge.dart';
 import 'domain/app_settings.dart';
 import 'ui/common/file_dialogs.dart';
 import 'ui/settings/bloc/settings_bloc.dart';
@@ -17,7 +18,11 @@ import 'ui/theme.dart';
 import 'ui/app/interface_scale.dart';
 
 class LoreDubBootstrap extends StatefulWidget {
-  const LoreDubBootstrap({super.key});
+  const LoreDubBootstrap({super.key, this.native = const NativeBridge()});
+
+  /// What the engine calls into: the library, save in a test that pumps
+  /// the whole application (`AppComposition`).
+  final NativeBridge native;
 
   @override
   State<LoreDubBootstrap> createState() => _LoreDubBootstrapState();
@@ -25,7 +30,7 @@ class LoreDubBootstrap extends StatefulWidget {
 
 class _LoreDubBootstrapState extends State<LoreDubBootstrap> {
   /// What the application is made of, below its screens.
-  final app = AppComposition();
+  late final app = AppComposition(native: widget.native);
 
   /// The repositories are this state's, not any one screen's. The screens'
   /// providers sit below and have been told to close by the time this

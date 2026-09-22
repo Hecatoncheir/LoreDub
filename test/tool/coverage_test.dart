@@ -23,6 +23,10 @@ end_of_record
 SF:lib/l10n/app_localizations.dart
 DA:1,0
 end_of_record
+SF:lib/src/data/services/native_bridge.dart
+DA:1,0
+DA:2,1
+end_of_record
 SF:lib/src/ui/c.dart
 DA:1,1
 end_of_record
@@ -37,7 +41,7 @@ end_of_record
     ]);
 
     expect(shares['lib/src/data/services/']!.hit, 2);
-    expect(shares['lib/src/data/services/']!.lines, 3);
+    expect(shares['lib/src/data/services/']!.lines, 3, reason: 'the bridge to the library too');
     expect(shares['lib/src/data/repositories/']!.lines, 2, reason: 'an absolute Windows path');
     expect(shares['lib/src/data/']!.lines, 5, reason: 'an area holds the ones inside it');
     expect(shares['lib/']!.lines, 6, reason: 'the bindings and the wording are passed over');

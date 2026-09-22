@@ -23,8 +23,9 @@ LoreDubFailure nativeCallFailed(int code, String message) =>
 ///
 /// The one place pointers are made and freed and strings are read back, so
 /// the engine above it holds none. It is also the engine's seam: the tests
-/// load no native library, and a test answers in its place by extending
-/// this and overriding what it needs. Answers are the library's codes,
+/// load no native library, and a test answers in its place by implementing
+/// this on `Fake` -- extended, whatever it did not override reached the
+/// library. Answers are the library's codes,
 /// negative for an error, which the engine words through [errorMessage];
 /// what is read back as a string throws on one instead.
 class NativeBridge {

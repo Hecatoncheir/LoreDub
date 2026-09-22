@@ -16,7 +16,6 @@ import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
@@ -38,6 +37,8 @@ import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../support/fakes/memory_native.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -55,7 +56,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final cubits = StagedDashboard(
-      SessionRepository(NativeEngineService()),
+      SessionRepository(memoryEngine()),
       SettingsRepository(SettingsService()),
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),

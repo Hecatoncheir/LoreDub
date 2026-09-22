@@ -28,6 +28,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../support/dashboard_harness.dart';
+import '../../../support/fakes/memory_native.dart';
 import '../../../support/mock_blocs.dart';
 import '../../../support/staged_dashboard.dart';
 
@@ -80,7 +81,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const LoreDubBootstrap());
+    await tester.pumpWidget(LoreDubBootstrap(native: MemoryNative()));
     await tester.pump();
 
     expect(tester.getSize(find.byType(DashboardScaffold)), const Size(1120, 720));

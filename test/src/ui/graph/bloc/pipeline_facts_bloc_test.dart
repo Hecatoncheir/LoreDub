@@ -10,7 +10,6 @@ import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/sources_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
@@ -23,6 +22,8 @@ import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/graph/bloc/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/data/repositories/system_repository.dart';
+
+import '../../../../support/fakes/memory_native.dart';
 
 void main() {
   const game = GameProcess(pid: 42, name: 'game.exe', path: 'C:/game.exe');
@@ -40,7 +41,7 @@ void main() {
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),
     );
-    final engine = NativeEngineService();
+    final engine = memoryEngine();
     cast = CastRepository(engine);
     sources = SourcesRepository(SystemRepository(engine));
     sessions = SessionCoordinator();

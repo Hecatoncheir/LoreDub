@@ -19,6 +19,7 @@ import 'data/services/character_service.dart';
 import 'data/services/glossary_service.dart';
 import 'data/services/local_inference_service.dart';
 import 'data/services/model_storage_service.dart';
+import 'data/services/native_bridge.dart';
 import 'data/services/native_engine_service.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/pipeline_graph_service.dart';
@@ -40,8 +41,15 @@ import 'domain/session_coordinator.dart';
 /// their own. Nothing here is a default -- every repository is handed what
 /// it stands on, so what the application runs on can be read off this file.
 /// The screens' blocs are built from these in `DashboardProviders`.
+///
+/// The bridge is the one exception, and only for the tests: the application
+/// runs on the library itself, and a test that pumps the whole of it hands
+/// over a bridge that answers from memory, or it would register the
+/// player's hotkeys and draw over the screen of whoever runs the tests.
 class AppComposition {
-  AppComposition();
+  AppComposition({this._native = const NativeBridge()});
+
+  final NativeBridge _native;
 
   // The files the player's work is kept in, one service each.
   final _characters = CharacterService();
@@ -51,7 +59,10 @@ class AppComposition {
 
   /// The one engine, which the sessions run on and several repositories
   /// tell what changed while one runs.
-  late final engine = NativeEngineService(inference: LocalInferenceService());
+  late final engine = NativeEngineService(
+    inference: LocalInferenceService(),
+    native: _native,
+  );
 
   /// One settings file, read and published in one place: everything that
   /// follows a setting listens here rather than being told.
