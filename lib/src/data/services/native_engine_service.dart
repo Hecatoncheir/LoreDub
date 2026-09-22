@@ -19,10 +19,7 @@ import '../../domain/built_voice.dart';
 import '../../domain/session_config.dart';
 import '../../domain/pipeline_state.dart';
 import '../../domain/monitor_layout.dart';
-import '../../domain/sound_captions.dart';
-import '../../domain/speech_pace.dart';
 import '../../domain/voice_files.dart';
-import '../../domain/wave_slices.dart';
 import 'local_inference_service.dart';
 import 'phrase_queue.dart';
 import 'playback_scheduler.dart';
@@ -31,6 +28,7 @@ import 'voice_take.dart';
 import 'game_ducker.dart';
 import 'native_bridge.dart';
 import 'engine_session.dart';
+import 'phrase_processor.dart';
 
 /// Where the work directory is: what a start sweeps of stale audio, and what
 /// the capture cuts the game's sound into.
@@ -54,7 +52,25 @@ class NativeEngineService {
   final NativeBridge _native;
   final WorkDirectoryProvider _workDirectory;
   Timer? _pollTimer;
-  late final _phrases = PhraseQueue(process: _processPhrase);
+  late final _phrases = PhraseQueue(process: _processor.process);
+
+  /// What becomes of each phrase, in the run that is up.
+  late final _processor = PhraseProcessor(
+    _inference,
+    run: () => _run,
+    emit: _events.add,
+    take: _take,
+    voice: (wavePath, {speaker}) {
+      // Kept after it has sounded, so the player can hear the line again
+      // from the transcript rather than wait for the game to say it twice.
+      _keepSpoken(wavePath);
+      _playback.add(wavePath, speaker: speaker);
+    },
+    waiting: () => _playback.waiting,
+    releaseVoiceHeard: _releaseVoiceHeard,
+    reportFailure: _reportFailure,
+    discard: _deleteIfPresent,
+  );
 
   /// How far the game is turned down, for the session or for a line.
   late final _ducker = GameDucker(
@@ -708,190 +724,6 @@ class NativeEngineService {
     _events.add(SnapshotRead(text: text, failed: event['failed'] == true));
   }
 
-  Future<void> _processPhrase(PendingPhrase phrase) {
-    final wavePath = phrase.wavePath;
-    return wavePath != null
-        ? _processSegment(wavePath)
-        : _processOcrText(
-            phrase.text!,
-            snapshot: phrase.snapshot,
-            heardWave: phrase.heardWave,
-          );
-  }
-
-  /// Measures a recorded voice for a character's card and hands it over; the
-  /// characters screen keeps the clearest one it hears.
-  Future<void> _measureVoice(String wavePath) async {
-    var kept = false;
-    try {
-      final heard = await _inference.fingerprint(wavePath);
-      if (heard.vector.isEmpty) return;
-      // Kept while the recording runs, so the screen can put the clip that
-      // earned the card beside it and let the player hear it back.
-      kept = _take.keep(wavePath);
-      _events.add(
-        CharacterVoiceMeasured(
-          vector: heard.vector,
-          gender: heard.gender,
-          seconds: heard.seconds,
-          clip: kept ? wavePath : null,
-        ),
-      );
-    } catch (error) {
-      _reportFailure(error);
-    } finally {
-      if (!kept) await _deleteIfPresent(wavePath);
-      // Whoever is waiting for the take to close has what it heard now.
-      _take.measured();
-    }
-  }
-
-  /// Places a phrase among the voices of the scene without dubbing it, which
-  /// is what Live does before the pipeline itself runs.
-  Future<void> _listenForSpeaker(String wavePath) async {
-    try {
-      final heard = await _inference.listenSpeaker(wavePath);
-      // Too short or too unvoiced to belong to anyone.
-      if (heard.speaker == null) return;
-      _events.add(SceneVoiceHeard(speaker: heard.speaker, seconds: heard.seconds));
-    } catch (error) {
-      _reportFailure(error);
-    } finally {
-      await _deleteIfPresent(wavePath);
-    }
-  }
-
-  Future<void> _processSegment(String wavePath) async {
-    // The characters screen listens for a voice, not for a phrase.
-    if (_session == PipelineSession.characters) return _measureVoice(wavePath);
-    // Live before it dubs: who is speaking, and nothing more.
-    if (_session == PipelineSession.scene) return _listenForSpeaker(wavePath);
-    // Two characters answering each other without a pause land in one
-    // segment; each of their halves earns its own recognition and voice.
-    for (final piece in await _splitBySpeaker(wavePath)) {
-      await _recognizeSegment(piece);
-    }
-  }
-
-  /// [wavePath] cut where the voice in it changes, or the recording itself
-  /// when it holds one speaker — or when nobody can tell.
-  Future<List<String>> _splitBySpeaker(String wavePath) async {
-    final config = _active;
-    if (config == null) return [wavePath];
-    // The converter is what hears who is speaking; without it the segment
-    // goes on whole.
-    if (config.worker.models.converter == null) return [wavePath];
-    try {
-      final cuts = await _inference.speakerCuts(wavePath);
-      if (cuts.isEmpty) return [wavePath];
-      final pieces = sliceWave(await File(wavePath).readAsBytes(), cuts);
-      if (pieces.length < 2) return [wavePath];
-      final stem = wavePath.endsWith('.wav')
-          ? wavePath.substring(0, wavePath.length - 4)
-          : wavePath;
-      final written = <String>[];
-      for (var index = 0; index < pieces.length; index++) {
-        final piece = '$stem-$index.wav';
-        await File(piece).writeAsBytes(pieces[index], flush: true);
-        written.add(piece);
-      }
-      await _deleteIfPresent(wavePath);
-      return written;
-    } catch (error) {
-      // Hearing a second speaker is a courtesy; a phrase nobody could split
-      // is still a phrase, and it is dubbed whole.
-      _reportFailure(error);
-      return [wavePath];
-    }
-  }
-
-  Future<void> _recognizeSegment(String wavePath) async {
-    final started = Stopwatch()..start();
-    try {
-      final run = _run;
-      final config = _active;
-      final lines = config?.lines;
-      if (run == null || config == null || lines == null) return;
-      final result = await _inference.processSegment(
-        wavePath: wavePath,
-        whisperModel: config.worker.models.whisper!,
-        threads: config.worker.threads,
-        translateSpeech: lines.translateSpeech,
-        roughRecognition: lines.roughRecognition,
-        // What whisper hands over is English; dubbing into English reads it
-        // as it is, and the worker was started without a translator anyway.
-        translate: lines.translatesHeard,
-        speed: _pace(lines),
-      );
-      if (identical(run, _run)) _publishSpokenLanguage();
-      if (result == null) return;
-      await _publishResult(run, result, started.elapsedMilliseconds, original: '');
-    } catch (error) {
-      _reportFailure(error);
-    } finally {
-      await _deleteIfPresent(wavePath);
-    }
-  }
-
-  Future<void> _processOcrText(
-    String recognizedText, {
-    bool snapshot = false,
-    String? heardWave,
-  }) async {
-    final started = Stopwatch()..start();
-    try {
-      final run = _run;
-      final lines = _active?.lines;
-      if (run == null || lines == null) return;
-      // Subtitles caption sounds the way whisper does: "[Music]" is not a line.
-      final spoken = withoutSoundCaptions(recognizedText);
-      if (spoken.isEmpty) {
-        // A selection is waiting for its answer; this one held no words.
-        if (snapshot) _events.add(const SnapshotRead(text: ''));
-        return;
-      }
-      // Text read in the dubbing language itself is voiced as it is.
-      final result = await _inference.processText(
-        spoken,
-        // The voice heard as the words appeared, so the worker can place
-        // the speaker and lay their timbre over the reading.
-        originalWavePath: heardWave,
-        translate: lines.translatesText,
-        speed: _pace(lines),
-      );
-      await _publishResult(
-        run,
-        result,
-        started.elapsedMilliseconds,
-        original: spoken,
-        snapshot: snapshot,
-      );
-    } catch (error) {
-      _reportFailure(error);
-    } finally {
-      await _releaseVoiceHeard(heardWave);
-    }
-  }
-
-  /// The pace the next line is read at: the player's own, hurried while
-  /// lines are already queued for the voice. Counted at the moment the line
-  /// is asked for, which is the last moment anything can be done about it —
-  /// the worker retimes the waveform as it synthesizes it.
-  double _pace(LineRules lines) {
-    if (!lines.hurryWhenQueued) return lines.speed;
-    return hurriedSpeed(lines.speed, _playback.waiting);
-  }
-
-  /// Announces the language whisper settled on, once, so the interface can
-  /// show what auto-detection actually decided.
-  void _publishSpokenLanguage() {
-    final detected = _inference.spokenLanguage;
-    final run = _run;
-    if (run == null || detected == null || detected == run.reportedLanguage) return;
-    run.reportedLanguage = detected;
-    _events.add(LanguageDetected(detected));
-  }
-
   /// Work already in flight fails when the user stops the pipeline. That is
   /// the expected outcome of stopping, not something to alarm them with.
   void _reportFailure(Object error) {
@@ -911,68 +743,6 @@ class NativeEngineService {
         if (!_events.isClosed) _events.add(EngineFailed(error));
       }),
     );
-  }
-
-  Future<void> _publishResult(
-    EngineSession run,
-    InferenceResult result,
-    int latencyMs, {
-    required String original,
-    bool snapshot = false,
-  }) async {
-    if (!identical(run, _run)) {
-      // Asked for by a run that has ended since: a line nobody is listening
-      // for any longer, or -- a new session up already -- one it never heard.
-      if (result.wavePath case final wave?) unawaited(_deleteIfPresent(wave));
-      return;
-    }
-    _events.add(
-      LineDubbed(
-        line: TranscriptEntry(
-          original: original,
-          english: result.english,
-          translated: result.translated,
-          latency: Duration(milliseconds: latencyMs),
-          // Shown as heard and passed over, rather than as a line that
-          // arrived with nothing in it.
-          silenced: result.silenced,
-          // Who said it, so the scene list can offer the voice a
-          // replacement.
-          speaker: result.speaker,
-          // What it was read as, so the line can be heard again.
-          spoken: result.wavePath,
-        ),
-        snapshot: snapshot,
-      ),
-    );
-    // Which voice read it: the automatic choice can change it per phrase, so
-    // the interface should not have to guess.
-    if (result.voice.isNotEmpty && result.voice != run.reportedVoice) {
-      run.reportedVoice = result.voice;
-      _events.add(VoiceSpoken(result.voice));
-    }
-    // A new character joined the bank, so the count in the settings is stale.
-    if (result.bankSize case final size? when size != run.reportedBankSize) {
-      run.reportedBankSize = size;
-      _events.add(VoiceBankGrew(size));
-    }
-    // A line that was already being translated when the pause came is shown
-    // in the transcript, but the pause means quiet. A selection is the
-    // exception: the player asked for that one.
-    final wavePath = result.wavePath;
-    // A line the player silenced has no audio at all: it was never
-    // synthesized, so there is nothing to play and nothing to delete.
-    if (wavePath == null) return;
-    if (_paused && !snapshot) {
-      unawaited(_deleteIfPresent(wavePath));
-      return;
-    }
-    // Kept after it has sounded, so the player can hear the line again
-    // from the transcript rather than wait for the game to say it twice.
-    _keepSpoken(wavePath);
-    // The worker says who is speaking, so a different character may start
-    // while the last one is still talking — when the settings allow it.
-    _playback.add(wavePath, speaker: result.speaker);
   }
 
   Future<void> _playQueued(String wavePath) async {

@@ -307,8 +307,8 @@ the model twice for an answer that was thrown away. More than two Latin words
 left behind is a line passed through rather than translated, and that is the one
 case where the second pass earns the time it costs.
 
-Segments are processed strictly sequentially — `NativeEngineService._processing`
-is a chained `Future` — so a small CPU is never asked to run two inferences at
+Segments are processed strictly sequentially — `PhraseQueue` hands them to
+`PhraseProcessor` (`data/services/phrase_processor.dart`) one at a time — so a small CPU is never asked to run two inferences at
 once. Preserve that when adding stages.
 
 A start is minutes long and can be stopped anywhere in them — the button that
@@ -1171,7 +1171,7 @@ itself, which for a substitution would be the voice being replaced.
 
 The same encoder splits a segment that holds two speakers. Capture cuts on
 silence, so a cutscene exchange without pauses arrives as one WAV;
-`_splitBySpeaker` asks the worker (`{"diarize": path}` -> `{"cuts": [s]}`,
+`PhraseProcessor._splitBySpeaker` asks the worker (`{"diarize": path}` -> `{"cuts": [s]}`,
 `speaker_cuts` in the worker: 1.5 s windows stepping 0.5 s, a cosine
 distance over 0.25 between neighbours, the cut moved to the quietest moment
 within 0.4 s), cuts the recording with `sliceWave`
