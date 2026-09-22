@@ -1881,9 +1881,11 @@ abstract final class AppTheme {
       закрывается в `dispose`, `stdin` фейкового процесса закрывает сам
       сервис (`ignore` с пояснением); `only_throw_errors` — четыре фейка
       бросали `Object?`, теперь `Error?`/`Exception?`.
-- [ ] Когнитивная сложность, «один виджет — один файл» и «нет методов,
+- [x] Когнитивная сложность, «один виджет — один файл» и «нет методов,
       возвращающих `Widget`» — `cognitive_complexity` и `dart_code_linter`,
       см. этап 0.
+      *Сделано на этапе 0:* оба идут шагами `windows.yml`, счётчики —
+      храповиком `tool/ratchet.dart`.
 
 ### CI
 
@@ -1892,8 +1894,12 @@ abstract final class AppTheme {
       ловится, только если ломает анализ); `concurrency:` с отменой
       устаревших прогонов; закреплённая версия Flutter вместо голого
       `channel: stable`; храповики из этапа 0; goldens.
-- [ ] `release.yml`: после починки кодов возврата (1а) — SHA-256 установщика
+- [x] `release.yml`: после починки кодов возврата (1а) — SHA-256 установщика
       в заметках к релизу.
+      *Сделано:* `prepare_release.dart --installer <setup.exe>` дописывает
+      к заметкам строку с SHA-256; `release.yml` сверяет версию до сборки,
+      а заметки пишет после неё, уже с суммой. Ручной порядок в
+      `CLAUDE.md` передаёт тот же флаг.
 - [ ] Python: `ruff` + `pytest`. C++: `/W4` и clang-tidy (этап 6).
 - [ ] Dependabot для `pub` и `github-actions`.
 

@@ -1416,7 +1416,9 @@ to be increased" -- and the run fails in three seconds without reaching a
 step. Until the account is settled a release is made by hand, which is the
 same three things the workflow does: `scripts/build_setup.ps1
 -ReleaseTag v<x.y.z>`, then
-`dart run tool/prepare_release.dart --tag v<x.y.z> --output <notes>`, then
+`dart run tool/prepare_release.dart --tag v<x.y.z> --output <notes>
+--installer dist/LoreDub-<x.y.z>-windows-x64-setup.exe` (which closes the
+notes with the setup's SHA-256), then
 `gh release create v<x.y.z> --title "LoreDub <x.y.z>" --notes-file <notes>
 dist/LoreDub-<x.y.z>-windows-x64-setup.exe`.
 

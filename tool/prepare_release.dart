@@ -3,6 +3,8 @@
 
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
+
 void main(List<String> arguments) {
   try {
     final options = _parseArguments(arguments);
@@ -11,7 +13,7 @@ void main(List<String> arguments) {
     if (tag == null || outputPath == null) {
       throw const FormatException(
         'Usage: dart run tool/prepare_release.dart '
-        '--tag v<major>.<minor>.<patch> --output <path>',
+        '--tag v<major>.<minor>.<patch> --output <path> [--installer <setup.exe>]',
       );
     }
 
@@ -27,10 +29,20 @@ void main(List<String> arguments) {
       );
     }
 
-    final notes = extractReleaseNotes(
+    var notes = extractReleaseNotes(
       File('CHANGELOG.md').readAsStringSync(),
       version,
     );
+    // The digest of what is published beside the notes, so a player who
+    // downloaded the setup somewhere else can tell it is the one released.
+    if (options['installer'] case final installer?) {
+      final setup = File(installer);
+      notes = withInstallerDigest(
+        notes,
+        setup.uri.pathSegments.last,
+        sha256.convert(setup.readAsBytesSync()).toString(),
+      );
+    }
     final output = File(outputPath);
     output.parent.createSync(recursive: true);
     output.writeAsStringSync('$notes\n');
@@ -48,6 +60,11 @@ String _readPubspecVersion(String contents) {
   }
   return match.group(1)!;
 }
+
+/// [notes] with a closing line naming the setup [file] and its SHA-256
+/// [digest], in the notes' own language: the players read them.
+String withInstallerDigest(String notes, String file, String digest) =>
+    '$notes\n\n---\n\nSHA-256 `$file`: `$digest`';
 
 String extractReleaseNotes(String changelog, String version) {
   final lines = changelog.split(RegExp(r'\r?\n'));

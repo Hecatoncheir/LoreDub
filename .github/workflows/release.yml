@@ -31,12 +31,19 @@ jobs:
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --yes --no-progress
-      - name: Validate version and prepare release notes
+      - name: Validate version against pubspec.yaml and CHANGELOG.md
         shell: pwsh
         run: dart run tool/prepare_release.dart --tag $env:GITHUB_REF_NAME --output dist/release-notes.md
       - name: Build Windows setup
         shell: pwsh
         run: ./scripts/build_setup.ps1 -ReleaseTag $env:GITHUB_REF_NAME
+      - name: Prepare release notes with the setup's SHA-256
+        shell: pwsh
+        run: |
+          $setup = @(Get-ChildItem "dist/*.exe")
+          if ($setup.Count -ne 1) { throw "Expected exactly one setup executable, found $($setup.Count)." }
+          dart run tool/prepare_release.dart --tag $env:GITHUB_REF_NAME --output dist/release-notes.md --installer $setup[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload setup artifact
         uses: actions/upload-artifact@v7
         with:
