@@ -45,8 +45,8 @@ The two ratchets CI runs, after `dart pub global activate cognitive_complexity 0
   absolute, and no function in `lib/` stands above it.
 - `dart pub global run dart_code_linter:metrics analyze lib --reporter=json
   --json-path=build/metrics.json --no-fatal-warnings`, then `dart run tool/ratchet.dart --metrics
-  build/metrics.json`, counts private widgets, methods returning widgets, nested conditionals and
-  palette/`TextStyle(` uses outside the theme against `tool/ratchet_baseline.json`. A count may
+  build/metrics.json`, counts private widgets, methods returning widgets, nested conditionals,
+  functions over 60 source lines and palette/`TextStyle(` uses outside the theme against `tool/ratchet_baseline.json`. A count may
   only fall; when it does, rerun with `--update` and commit the baseline. `tool/coverage.dart`
   works the same way over `tool/coverage_baseline.json`, the other way up.
 

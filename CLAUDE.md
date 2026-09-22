@@ -1233,7 +1233,9 @@ above it and growing, a second run over the whole of `lib/` fails any
 function above 15 at all, and `tool/ratchet.dart` holds the `dart_code_linter`
 counts (`prefer-single-widget-per-file`, `avoid-returning-widgets`,
 `avoid-nested-conditional-expressions`, configured under `dart_code_linter:`
-in `analysis_options.yaml`, which `flutter analyze` does not read) and the
+in `analysis_options.yaml`, which `flutter analyze` does not read), the
+functions longer than 60 source lines in the same report -- rule 1 of the
+plan, which holds a `build` to that -- and the
 `LoreDubPalette.`/`Color(0x`/`TextStyle(` uses outside the theme to
 `tool/ratchet_baseline.json`. A count that falls is written back with
 `--update` and committed in the same change, so it cannot creep up again.

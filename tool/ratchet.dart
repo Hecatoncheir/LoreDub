@@ -8,7 +8,8 @@ import 'dart:io';
 /// on any count above `tool/ratchet_baseline.json`, which is only lowered.
 ///
 /// Two sources: the issues `dart_code_linter:metrics analyze --reporter=json`
-/// wrote to `--metrics`, counted per rule, and the colours and text styles
+/// wrote to `--metrics`, counted per rule, with the functions longer than
+/// [longFunctionLines] in the same report, and the colours and text styles
 /// widgets write out by hand rather than read off the theme, counted over
 /// `lib/` outside the theme itself. Totals rather than places, so moving a
 /// widget into a file of its own leaves the numbers where they were.
@@ -21,6 +22,7 @@ void main(List<String> arguments) {
   final baselineFile = File('tool/ratchet_baseline.json');
   final counts = {
     if (metrics != null) ...countRuleIssues(File(metrics).readAsStringSync()),
+    if (metrics != null) ...countLongFunctions(File(metrics).readAsStringSync()),
     ...countHandWrittenStyles(_sources(Directory('lib'))),
   };
   final baseline = (jsonDecode(baselineFile.readAsStringSync()) as Map<String, Object?>).map(
@@ -60,6 +62,37 @@ Map<String, int> countRuleIssues(String report) {
     }
   }
   return counts;
+}
+
+/// The longest a function may run, in the report's `source-lines-of-code`:
+/// rule 1 of the plan holds `build` to it, and nothing else earns more.
+const longFunctionLines = 60;
+
+/// What [countLongFunctions] files its count under.
+const longFunctions = 'functions-over-$longFunctionLines-lines';
+
+/// Functions in a `dart_code_linter` JSON report longer than
+/// [longFunctionLines]. The theme and the list of providers are two of
+/// them: a catalogue is as long as what it lists, and the count holds them
+/// where they are rather than excusing them by name.
+Map<String, int> countLongFunctions(String report) {
+  final records = (jsonDecode(report) as Map<String, Object?>)['records']! as List<Object?>;
+  var count = 0;
+  for (final record in records.cast<Map<String, Object?>>()) {
+    final functions = (record['functions'] as Map<String, Object?>?) ?? const {};
+    for (final function in functions.values.cast<Map<String, Object?>>()) {
+      if (_linesOf(function) > longFunctionLines) count++;
+    }
+  }
+  return {longFunctions: count};
+}
+
+int _linesOf(Map<String, Object?> function) {
+  final metrics = (function['metrics'] as List<Object?>?) ?? const [];
+  for (final metric in metrics.cast<Map<String, Object?>>()) {
+    if (metric['metricsId'] == 'source-lines-of-code') return (metric['value']! as num).toInt();
+  }
+  return 0;
 }
 
 /// Occurrences of every [handWrittenStyles] pattern over [sources], which

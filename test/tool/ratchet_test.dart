@@ -32,6 +32,31 @@ void main() {
     });
   });
 
+  test('counts the functions longer than the ceiling, and no others', () {
+    Map<String, Object?> function(int lines) => {
+      'metrics': [
+        {'metricsId': 'cyclomatic-complexity', 'value': 90},
+        {'metricsId': 'source-lines-of-code', 'value': lines},
+      ],
+    };
+    final report = jsonEncode({
+      'records': [
+        {
+          'functions': {
+            'A.build': function(longFunctionLines + 1),
+            'A._small': function(longFunctionLines),
+          },
+        },
+        {
+          'functions': {'b': function(200)},
+        },
+        <String, Object?>{},
+      ],
+    });
+
+    expect(countLongFunctions(report), {longFunctions: 2});
+  });
+
   test('counts hand-written styles outside the theme and generated code', () {
     final counts = countHandWrittenStyles({
       'lib/src/ui/live/panel.dart':

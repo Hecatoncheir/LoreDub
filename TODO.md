@@ -2125,10 +2125,12 @@ Flutter в блоках не импортируется (правило 7, `bloc
    `appSettingsFromJson` 74, `_onScreenToggled` 65). У четырнадцати
    функций больше пяти параметров (`modelActions` 8; `_runPip`,
    `setHotkeys`, `processSegment`, `downloadArtifacts` — по 7).
-   - [ ] Ещё один счётчик в `tool/ratchet.dart`: функций с
+   - [x] Ещё один счётчик в `tool/ratchet.dart`: функций с
          `source-lines-of-code` > 60 по тому же JSON (метрика в нём есть у
          каждой функции) — база 23, только вниз. Тема и список
          провайдеров в ней остаются: это две, и они не растут.
+         Записан как `functions-over-60-lines` с базой 21: две функции,
+         `appSettingsFromJson` в их числе, ушли под 60 в пп. 2–3.
 
 5. **Двенадцать файлов длиннее 400 строк (P2).** Блоки держат события,
    состояние и сам блок в одном файле: `pipeline_graph_bloc.dart` 998 (26
