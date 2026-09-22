@@ -4,6 +4,13 @@
 планы (Piper, оверлей субтитров, сборка с Vulkan) живут в `README.md`, раздел
 «Планы»; здесь только качество кода и архитектура.
 
+План закрыт целиком к 0.25.1 (`2ebf946`, 2026-09-22): каждый пункт разделов
+1а–11 отмечен, и под ним записано, как именно сделано или почему решено
+иначе. Разделы 1–12 оставлены как были — на их номера ссылаются
+`analysis_options.yaml`, `tool/ratchet.dart`, `tool/coverage.dart` и
+`CLAUDE.md`. Что показал второй аудит на этой версии и что осталось —
+раздел 13.
+
 Обозначения: **P0** — первым, блокирует остальное · **P1** — основная работа ·
 **P2** — после P1 · **P3** — когда дойдут руки.
 
@@ -2002,3 +2009,270 @@ abstract final class AppTheme {
 каждый шаг должен вливаться в `main` зелёным; не вводить DI-фреймворк,
 роутер или кодогенерацию «заодно» — ни одна задача плана их не требует.
 
+---
+
+## 13. Второй аудит — 0.25.1 (2026-09-22)
+
+Проверено на `2ebf946` теми же командами, что идут в `windows.yml`, на этой
+машине: Flutter 3.47.5, `dart_code_linter` 4.4.0, `cognitive_complexity`
+0.2.4, `bloc_tools` 0.1.0-dev.24. Сначала что держится, потом что мешает.
+
+### Что держится
+
+| Проверка | Итог |
+| --- | --- |
+| `dart format --set-exit-if-changed` | чисто |
+| `flutter analyze --fatal-infos` | чисто |
+| `flutter test --coverage` | 1002 зелёных, 44 с |
+| `tool/coverage.dart` | ровно база: `repositories/` 74,0 %, `services/` 85,7 %, `domain/` 93,5 % |
+| `test/screenshots.dart` без `--update-goldens` | 21 из 21 совпал |
+| `test/graph_bench.dart` | drag 17,6 мс, pan 14,3, panel 21,8 — как записано в `CLAUDE.md` |
+| `bloc lint lib` | 0 |
+| `python -m unittest discover -s test/runtime` | 20, из них 6 пропущены (п. 9) |
+| `tool/native_tests.ps1`, `tool/native_analyze.ps1` | четыре теста держат, находок 0 |
+| **`tool/ratchet.dart`** | **красный:** `avoid-nested-conditional-expressions` 17 при базе 0 (п. 2) |
+
+Правила раздела 2 по коду: между `cubits/*` импортов нет (правило 6),
+Flutter в блоках не импортируется (правило 7, `bloc lint`), `DateTime.now()`
+в `lib/` нет, `ui → data/services` — те же три импорта каталога моделей,
+что оставил этап 5, палитры в виджетах нет (правило 8). История коммитов:
+178 после аудита, все в стиле Conventional (88 refactor, 24 fix, 19 docs,
+18 feat, 10 test, 9 ci, 8 chore, 2 build); правки `lore_dub_native.h` несут
+биндинги в том же коммите (`f976f2a` менял в нём только комментарий).
+
+Цифры раздела 1 сегодня (длина функций — SLOC по `dart_code_linter`,
+сложность — `cognitive_complexity`; методика та же, что у скрипта аудита,
+инструмент другой):
+
+| Метрика | 0.22.0 | 0.25.1 |
+| --- | ---: | ---: |
+| Файлов в `lib/` (без генерации) | 86 | 385 |
+| Самый большой файл | 5429 — `dashboard_view.dart` | 998 — `pipeline_graph_bloc.dart` |
+| Когнитивная сложность > 10 / > 15 / > 25 | 59 / 27 / 10 | 27 / 8 / 1 |
+| Максимум | 76 — `_CharacterCast.build` | 32 — `CastBloc._onEdit` |
+| Функций длиннее 50 / 80 / 150 строк | 79 / 33 / 5 | 38 / 7 / 0 |
+| Приватных виджетов / painter'ов | 90 / 7 | 0 / 1 |
+| Методов, возвращающих `Widget` | 65 | 0 |
+| `LoreDubPalette.` в виджетах | 264 | 0 |
+| `BlocProvider` / `context.read` / `BlocSelector` | 0 | 15 / 149 / 22 |
+| Тестов / покрытие `lib/` | 629 / 79,6 % | 1002 / 88,9 % |
+
+### Что мешает
+
+1. **CI не запускается с 19 сентября (P0).** Последний зелёный прогон
+   `windows.yml` — `990b90a`, 2026-09-19 00:09. После него 145 коммитов, и
+   каждый запуск, как и у `release.yml`, падает за три секунды: «recent
+   account payments have failed». Всё, что этапы 0 и 7 поставили
+   сторожить — храповики, goldens, покрытие, нативные тесты, ruff,
+   `bloc lint`, — с тех пор идёт только руками на этой машине, и два
+   сторожа уже пропустили (пп. 2 и 3). Пять PR Dependabot (#1–#5) никому
+   не проверить.
+   - [ ] Self-hosted runner на этой машине (`runs-on: self-hosted`): MSVC,
+         Flutter и Python здесь есть, минуты приватного репозитория не
+         тратятся, а движок для goldens один и тот же (снимает и п. 10).
+   - [ ] Пока счёт не улажен — `tool/verify.ps1`: те же шаги, что в
+         `windows.yml`, в том же порядке, каждый через `Invoke-Native`.
+         «Прогнать перед push» станет одной командой вместо двенадцати, и
+         `AGENTS.md` её называет.
+
+2. **Храповик красный на `main` (P0).** База
+   `avoid-nested-conditional-expressions` записана нулём в `ce65b21`
+   (20 сентября), а сегодня команда из `windows.yml` находит 17 — и все
+   семнадцать в строках старше того коммита (`port_dot.dart:34` — из
+   `854fd9e`, `runtime_tile.dart:103` — из `57f8f36`). Это не новый код, а
+   ноль, которого CI ни разу не проверил. Места: `app_settings.dart:268`,
+   `character_packs.dart:129`, `character_session_controls.dart:87,100`,
+   `node_card.dart:78–79`, `port_dot.dart:34–35`,
+   `start_dubbing_button.dart:54`, `download_controls.dart:37–38`,
+   `snapshot_start_button.dart:98,101,104`, `hotkey_field.dart:133`,
+   `runtime_tile.dart:103`, `version_button.dart:75`.
+   - [ ] Убрать по правилу 4, а не переписать базу: каждое — `a ? x : (b ?
+         y : z)` в дереве виджетов, то есть решение в `build`; это геттер
+         состояния или `switch` по sealed-типу, как у `ModelTileLook`.
+
+3. **Восемь функций выше потолка 15 (P0), пять из них написаны после
+   аудита.** Храповик по diff уронил бы их на работающем CI: перенесённая
+   функция для него новая, а новая выше 15 — отказ.
+
+   | CC | Где |
+   | ---: | --- |
+   | 32 | `cast_bloc.dart` `CastBloc._onEdit` — `switch` по десяти `CastEdit`, в каждой ветке `for` с `if` внутри литерала списка |
+   | 24 | `worker_arguments.dart` `workerArguments` |
+   | 19 | `pipeline_graph_builder.dart` `_carrying` |
+   | 19 | `python_discovery.dart` `PythonDiscovery._candidates` (до аудита) |
+   | 18 | `app_settings_json.dart` `appSettingsFromJson` |
+   | 18 | `local_inference_service.dart` `removeStaleAudio` (до аудита) |
+   | 17 | `wave_slices.dart` `_WaveClip.read` (до аудита) |
+   | 17 | `pipeline_graph_builder.dart` `buildPipelineGraph` (было 33) |
+
+   - [ ] Каждую под 15: `_onEdit` — по методу на правку (`_rename`,
+         `_pack`, …), `switch` только раздаёт; `workerArguments` — по
+         функции на стадию, список складывается из частей;
+         `appSettingsFromJson` — по функции на группу ключей.
+   - [ ] Когда все под 15 — второй прогон `cognitive_complexity
+         --fail-threshold 15 lib` **без** `--git-diff` рядом с первым:
+         потолок абсолютный, а не только по дельте. Сегодня он не пройдёт
+         из-за этих восьми.
+
+4. **Правило 1 про `build` ≤ 60 строк никто не считает (P1).** Двадцать
+   `build` длиннее: `AppTheme.build` 131 (тема — каталог, ей можно),
+   `DashboardProviders.build` 117 (список провайдеров, механика),
+   `SideNavigation.build` 111, `TranscriptBubble.build` 111,
+   `GraphToolbar.build` 96, `WhisperChartPlot.build` 86, `UpdateRow.build`
+   80, `CharacterPacks.build` 78, `SubtitleFrameCard._build` 77,
+   `VoiceNodeFields.build` 76, `SourceControls._build` 75 и ещё девять от
+   61 до 74; не-`build` длиннее 60 — три (`_canvas` 87,
+   `appSettingsFromJson` 74, `_onScreenToggled` 65). У четырнадцати
+   функций больше пяти параметров (`modelActions` 8; `_runPip`,
+   `setHotkeys`, `processSegment`, `downloadArtifacts` — по 7).
+   - [ ] Ещё один счётчик в `tool/ratchet.dart`: функций с
+         `source-lines-of-code` > 60 по тому же JSON (метрика в нём есть у
+         каждой функции) — база 23, только вниз. Тема и список
+         провайдеров в ней остаются: это две, и они не растут.
+
+5. **Двенадцать файлов длиннее 400 строк (P2).** Блоки держат события,
+   состояние и сам блок в одном файле: `pipeline_graph_bloc.dart` 998 (26
+   событий), `session_bloc.dart` 868, `voice_capture_bloc.dart` 721,
+   `downloads_bloc.dart` 474, `cast_bloc.dart` 406 — у библиотеки bloc для
+   этого есть `*_event.dart` / `*_state.dart` / `*_bloc.dart`. Сервисы:
+   `native_engine_service.dart` 849, `local_inference_service.dart` 556,
+   `runtime_storage_service.dart` 451. Домен: `session_config.dart` 449
+   (три части плана и шесть видов сессии в одном файле), `glossary.dart`
+   418, `app_settings.dart` 418. Холст — 437.
+   - [ ] Блоки — по соглашению bloc, механически, вместе с п. 6.
+   - [ ] `session_config.dart` → `worker_plan.dart`, `capture_plan.dart`,
+         `line_rules.dart` и сам `session_config.dart`.
+   - [ ] `native_engine_service.dart`: 849 строк и после выноса
+         процессора — старты (`_startSession` и его шесть шагов), опрос с
+         маршрутизацией событий и то, что сеанс сообщает игроку, — три
+         файла. В нём же больше всего непокрытого в `lib/` (53 строки).
+
+6. **Блоки лежат в `dashboard/cubits/` (P2).** Папка названа по тому,
+   чего в ней уже почти нет: двенадцать блоков и три кубита. Целевая
+   раскладка этапа 2 обещала `+ bloc/` в папке экрана, а `CLAUDE.md:31–32`
+   до сих пор говорит, что `dashboard/` держит «файлы, ещё не
+   разобранные», — там остались только блоки и `dashboard_context.dart`.
+   - [ ] По экранам: `shell/bloc/` (`failure_cubit`, `navigation_cubit`,
+         `startup_cubit`, `update_bloc`), `graph/bloc/`
+         (`pipeline_graph_bloc`, `pipeline_facts_bloc`), `models/bloc/`
+         (`downloads_bloc`, `installed_packages`), `settings/bloc/`,
+         `characters/bloc/` (`cast_bloc`, `voice_capture_bloc`),
+         `glossary/bloc/`. Что читают два экрана и больше —
+         `common/bloc/`: `session_bloc` и `transcript_bloc` («Эфир» и
+         «Экран»), `sources_bloc` (четыре экрана). `state_journal` —
+         `app/`, `dashboard_context.dart` — `common/`; тесты
+         `test/src/ui/dashboard/` — следом, в `CLAUDE.md` — «State lives
+         in `dashboard/cubits/`» переписать.
+
+7. **События трёх блоков не сравниваются по значению (P2, правило 9).**
+   26 подтипов `PipelineGraphEvent`, три `SourcesEvent` и
+   `PipelineFactsEvent` — ни `Equatable`, ни `==`. У остальных блоков
+   события сравнимы, и это дало `verify` в тестах экранов; тесты холста и
+   панели узла гоняют настоящий блок, потому не жаловались.
+   - [ ] `Equatable` на три sealed-корня; после этого тесты панели узла и
+         тулбара могут перейти на `MockPipelineGraphBloc` с `verify`, как
+         у остальных экранов.
+
+8. **Покрытие репозиториев 74 % — единственная область без цели 80 %
+   (P2).** `update_repository` 11,8 %, `scheme_repository` 20,0 %,
+   `glossary_repository` 30,8 %, `runtime_repository` 42,9 %,
+   `model_repository` 50,0 %, `voice_bank_repository` 50,0 % (4 строки),
+   `session_repository` 74,4 % (33 строки); остальные пять — от 85,7 до
+   100 %. Это тонкие пересылки над сервисами — по тесту на каждый над
+   фейком сервиса, как у `install_repository` (100 %). В интерфейсе ни
+   один тест не рисует узкую раскладку «Моделей» (`RecognitionModelCards`
+   с тремя виджетами карточки под ним: экран пампится в 1400 px, а
+   карточки берутся при ширине меньше `WhisperModelChart.minimumWidth`),
+   ряд неудавшейся загрузки (`ModelFailureRow`: `error` никто не ставит) и
+   баннер ошибки (`ErrorBanner`) — не мёртвый код, а три непоставленных
+   состояния.
+   - [ ] Репозитории до 80 %, `--update` базы; по тесту на узкие «Модели»,
+         на неудавшуюся загрузку и на баннер.
+
+9. **Шесть тестов воркера не идут нигде (P1).** `test_worker_pieces.py`
+   пропускается без numpy: на раннере CI его нет, на системном Python
+   тоже, так что `HANDLERS`, `most_heard` и `request_speed` проверяет
+   только тот, кто запустит их из встроенного интерпретатора руками.
+   Модули воркера на верхнем уровне тянут только numpy (torch — по
+   требованию), так что хватает одной строки.
+   - [ ] `python -m pip install --quiet numpy` в шаге `unittest` в
+         `windows.yml`, и в `AGENTS.md` — как запускать локально. Тест,
+         который CI не выполняет, — не тест.
+   - [ ] Следом — то, что этап 6 отложил «до numpy»: `median_f0`,
+         `change_speed`, `speaker_cuts` с `quietest_moment` в `audio.py`
+         пока без тестов.
+
+10. **Flutter 3.47.5 на машине против 3.47.4 в `windows.yml` (P1).**
+    Goldens — рисунок одного движка; последний зелёный прогон рисовал их
+    под 3.47.4 и совпал, но с тех пор снимки перерисованы здесь, под
+    3.47.5. Пока CI стоит, расхождения не видно; когда пойдёт — либо
+    совпадёт, либо упадёт первым же шагом.
+    - [ ] Держать пин и машину на одной версии: поднять пин до 3.47.5 и
+          посмотреть на goldens там, либо `fvm`, чтобы машина брала версию
+          из репозитория. Self-hosted runner (п. 1) снимает вопрос сам.
+
+11. **Документация отстала в трёх местах (P1, по строке каждое).**
+    - [ ] `README.md:1064` и `README.en.md:1091`: «`AppSettings.showOverlay`
+          сохраняется, но не читается» — поле удалено на этапе 5. План
+          оверлея остаётся, ссылка на поле — нет.
+    - [ ] `CLAUDE.md:31–32`: «`dashboard/` still holds … the files not yet
+          taken apart (stage 2)» — разобрано всё.
+    - [ ] `test/support/staged_dashboard.dart:57`: «It goes once the widget
+          tests stage mocked blocs instead» — моки пришли, класс остался и
+          описан в `CLAUDE.md` как способ ставить экраны; комментарий
+          обещает уход, которого не будет.
+
+12. **Последний приватный painter (P2, правило 2).** `_RegionPainter` в
+    `ocr_region_picker.dart:262` — сто строк рамки и мониторов;
+    `prefer-single-widget-per-file` painter'ы не считает, потому храповик
+    его пропускает.
+    - [ ] `screen_text/region_painter.dart`, публичный, с golden-тестом на
+          две раскладки мониторов — ровно то, что чинил `04081c5`.
+
+13. **Шкала отступов и радиусов не заведена (P3).** Этап 3 отложил
+    `Insets`/`Radii` «до переноса виджетов»; виджеты перенесены, шкалы нет:
+    114 `EdgeInsets` и 174 `SizedBox` числом, значения от 0 до 28, среди
+    них 5, 7, 9, 11, 15, 22, 26 — ни на сетке 4, ни на сетке 2; 29 радиусов
+    десяти значений (от 2 до 30) при одном «12 px» в `UI_DESIGN.md`, где
+    раздела про отступы нет вовсе.
+    - [ ] Либо `theme/tokens/insets.dart` (`Insets`, `Radii`) и счётчик
+          числовых `EdgeInsets` / `SizedBox` / `circular(` в храповике,
+          либо записанное в `UI_DESIGN.md` решение, что отступ принадлежит
+          виджету. Как в этапе 3: роль ради одного места — не роль, так
+          что имена — тому, что повторяется (8, 12, 14, 20, 28 — по 25–69
+          раз), а 5, 7, 9 и 11 — выровнять.
+
+14. **Регрессии на нативной границе находятся руками (P2).** После аудита
+    три починки того, что показала только собранная DLL: `9e9b539` (с
+    0.23.0 конфиг «Экрана» терял `processId`), `04081c5` (рамка на одном
+    мониторе из двух), `15dbb12`; сам план шесть раз пишет «проверено на
+    собранной DLL». `native/tests/` проверяют чистые заголовки, ABI не
+    зовёт никто, а `NativeBridge` (66 %) без библиотеки не проверить.
+    - [ ] `native/tests/abi_smoke_test.cpp`, собранный с боевыми
+          исходниками в `native_tests.ps1`: `ld_list_monitors_json` и
+          `ld_list_processes_json` отвечают JSON; `ld_start` с
+          `captureMode: none` → `ld_poll_event_json` отдаёт `state`;
+          `ld_set_hotkeys` без сессии не падает; чтение окна без
+          `processId` отклоняется с текстом; `ld_stop` — 0. Только
+          Windows — так это и есть раннер.
+
+15. **Что этапы оставили себе (P3).**
+    - [ ] Журнал `StateJournal` на диск с ротацией: этап 4 оставил «когда
+          будет из чего собирать отчёт» — отчёт об ошибке из приложения
+          его и соберёт.
+    - [ ] Аннотации типов в воркере — «когда будет инструмент»:
+          инструмент — `pyright` шагом CI рядом с `ruff`, по
+          `assets/runtime`.
+    - [ ] `.gitlab-ci.yml` идёт без ruff, `unittest`, храповиков и
+          нативных тестов; clang там стоит, и четыре чистых заголовка им
+          соберутся (этап 6 отложил это «проверить нечем»). Если GitLab —
+          запасной CI на время п. 1, ему нужны те же шаги.
+
+### Порядок
+
+1. Пп. 1–3 первыми: без CI остальное некому держать, а красный храповик и
+   восемь функций — ровно то, что он должен держать.
+2. Пп. 9–11 — по строке каждое, в те же коммиты.
+3. Пп. 4–7 — механика под goldens и тестами, как этап 2.
+4. Пп. 8, 12, 14 — тесты.
+5. Пп. 13 и 15 — когда дойдут руки.
