@@ -27,7 +27,6 @@ import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
-import 'package:lore_dub/src/data/repositories/scheme_repository.dart';
 
 import '../../../support/memory_cast.dart';
 import '../../../support/fakes/fake_session_repository.dart';
@@ -893,7 +892,7 @@ Future<void> pumpEvents() => Future<void>.delayed(Duration.zero);
 class _GraphRepository extends FakeSessionRepository {
   final cards = MemoryCharacters();
   final engine = TellingEngine();
-  final schemes = _Schemes();
+  final schemes = MemorySchemes();
 
   CharacterLibrary get stored => cards.stored;
   set stored(CharacterLibrary value) => cards.stored = value;
@@ -910,33 +909,4 @@ class _GraphRepository extends FakeSessionRepository {
 
   /// Every time a running worker was told which cards had left the mix.
   List<Set<String>> get heard => engine.heard;
-}
-
-/// The arrangement and the shelf of schemes, kept in memory.
-class _Schemes extends SchemeRepository {
-  PipelineLayout layout = PipelineLayout.standard;
-
-  /// The shelf of schemes, what was written out of it and what is read in.
-  PipelineLibrary shelf = PipelineLibrary.empty;
-  final exported = <(String, List<SavedPipeline>)>[];
-  List<SavedPipeline> incoming = const [];
-
-  @override
-  Future<PipelineLayout> loadLayout() async => layout;
-
-  @override
-  Future<void> saveLayout(PipelineLayout value) async => layout = value;
-
-  @override
-  Future<PipelineLibrary> loadSchemes() async => shelf;
-
-  @override
-  Future<void> saveSchemes(PipelineLibrary library) async => shelf = library;
-
-  @override
-  Future<void> exportSchemes(String destination, List<SavedPipeline> schemes) async =>
-      exported.add((destination, schemes));
-
-  @override
-  Future<List<SavedPipeline>> importSchemes(List<String> sources) async => incoming;
 }

@@ -41,6 +41,11 @@ import 'memory_cast.dart';
 
 import 'package:lore_dub/src/domain/app_release.dart';
 
+export 'fakes/memory_schemes.dart';
+export 'fakes/memory_voice_bank.dart';
+import 'fakes/memory_schemes.dart';
+import 'fakes/memory_voice_bank.dart';
+
 /// Every screen's state, built by hand for a test to stage and then put on
 /// the screen through [provide].
 ///
@@ -307,51 +312,4 @@ class StagedDashboard {
     await failures.close();
     await sessions.dispose();
   }
-}
-
-/// The kept voices with no disk behind them.
-class MemoryVoiceBank extends VoiceBankRepository {
-  MemoryVoiceBank([this.count = 0]);
-
-  int count;
-  bool cleared = false;
-
-  @override
-  Future<String> fileFor(String game) async => 'voice_bank/$game.json';
-
-  @override
-  Future<int> size() async => count;
-
-  @override
-  Future<void> clear() async {
-    cleared = true;
-    count = 0;
-  }
-}
-
-/// The canvas's arrangement and its shelf of schemes, kept in memory.
-class MemorySchemes extends SchemeRepository {
-  PipelineLayout layout = PipelineLayout.standard;
-  PipelineLibrary shelf = PipelineLibrary.empty;
-  final exported = <(String, List<SavedPipeline>)>[];
-  List<SavedPipeline> incoming = const [];
-
-  @override
-  Future<PipelineLayout> loadLayout() async => layout;
-
-  @override
-  Future<void> saveLayout(PipelineLayout value) async => layout = value;
-
-  @override
-  Future<PipelineLibrary> loadSchemes() async => shelf;
-
-  @override
-  Future<void> saveSchemes(PipelineLibrary library) async => shelf = library;
-
-  @override
-  Future<void> exportSchemes(String destination, List<SavedPipeline> schemes) async =>
-      exported.add((destination, schemes));
-
-  @override
-  Future<List<SavedPipeline>> importSchemes(List<String> sources) async => incoming;
 }

@@ -33,7 +33,6 @@ import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
-import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
 import 'package:lore_dub/src/domain/session_config.dart';
 
@@ -103,7 +102,7 @@ void main() {
         ),
         NotificationService(plugin: FlutterLocalNotificationsPlugin()),
       ),
-      voiceBank: _Banks(),
+      voiceBank: MemoryVoiceBank(),
     );
     // The whole default output needs no process, and every package is in
     // place, so a press is all a start takes.
@@ -124,7 +123,7 @@ void main() {
       cubits.sourcesRepository,
       cubits.failures,
       cubits.sessions,
-      _Banks(),
+      MemoryVoiceBank(),
       clock: () => now,
     );
   });
@@ -868,11 +867,4 @@ class _SlowStartRepository extends Fake implements SessionRepository {
   void dispose() {
     unawaited(_events.close());
   }
-}
-
-/// The characters are remembered by default, so a start asks for the game's
-/// bank; naming the file must not go looking for the application directory.
-class _Banks extends VoiceBankRepository {
-  @override
-  Future<String> fileFor(String game) async => 'voice_bank/$game.json';
 }
