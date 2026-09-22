@@ -1,7 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
-import 'runtime_package.dart';
-
 // SPDX-License-Identifier: MIT
+
+import 'runtime_package.dart';
 
 /// What the user asked the pipeline to run on.
 ///

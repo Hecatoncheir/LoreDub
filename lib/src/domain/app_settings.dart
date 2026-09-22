@@ -77,8 +77,8 @@ class AppSettings {
   /// a link is drawn back.
   final bool captureRouted;
 
-  /// Reserved for future language packs. Only Russian output is packaged, so
-  /// nothing reads this value yet.
+  /// The language the dubbing speaks: a voice and, unless it is English, a
+  /// translator (`dubbingLanguages`).
   final String targetLanguage;
   final double originalVolume;
 

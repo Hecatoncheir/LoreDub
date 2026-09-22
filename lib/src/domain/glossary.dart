@@ -1,12 +1,12 @@
 // Copyright (c) 2026 LoreDub contributors.
-import 'upserting.dart';
-
 // SPDX-License-Identifier: MIT
+
+import 'upserting.dart';
 
 /// What the player has told the dubbing about the games they play.
 ///
-/// Two kinds, because they reach the line at two different moments and
-/// neither can do the other's work.
+/// Three kinds, because they reach the line at different moments and none
+/// can do another's work.
 enum GlossaryKind {
   /// A word the translator left in Latin script, written the way the player
   /// wants it said. It replaces the transliteration the worker would write

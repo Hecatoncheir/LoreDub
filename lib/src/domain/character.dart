@@ -1,7 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
-import 'upserting.dart';
-
 // SPDX-License-Identifier: MIT
+
+import 'upserting.dart';
 
 /// A character the player recorded and named, with the fingerprint their
 /// voice is recognized by.
@@ -51,8 +51,8 @@ class Character {
   final double seconds;
 
   /// The character whose voice reads this one, when the player asked for a
-  /// substitution. It holds wherever this card is recognized, in every game,
-  /// and one game's own choice in Live overrides it.
+  /// substitution. It holds wherever this card is recognized, in every game;
+  /// it is drawn on the scheme, and there is no second place to set it.
   ///
   /// One hop only: if that character is in turn read by a third, this card
   /// still gets the second one's voice. A chain would be a riddle, and two
