@@ -3,6 +3,7 @@
 
 import 'dart:async';
 
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/cast_repository.dart';
@@ -14,8 +15,11 @@ import '../../../domain/model_selection.dart';
 import '../../../domain/session_coordinator.dart';
 import '../../graph/canvas/pipeline_facts.dart';
 
-sealed class PipelineFactsEvent {
+sealed class PipelineFactsEvent extends Equatable {
   const PipelineFactsEvent();
+
+  @override
+  List<Object?> get props => const [];
 }
 
 /// One of the things the scheme is drawn from changed.

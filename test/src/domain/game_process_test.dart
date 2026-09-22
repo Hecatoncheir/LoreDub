@@ -8,6 +8,17 @@ void main() {
   GameProcess process(String name, {DateTime? startedAt}) =>
       GameProcess(pid: name.hashCode, name: name, path: 'C:\\$name', startedAt: startedAt);
 
+  test('is the same process when listed again', () {
+    final started = DateTime(2026, 9, 22, 8);
+
+    expect(process('game.exe', startedAt: started), process('game.exe', startedAt: started));
+    expect(
+      process('game.exe', startedAt: started).hashCode,
+      process('game.exe', startedAt: started).hashCode,
+    );
+    expect(process('game.exe', startedAt: started), isNot(process('game.exe')));
+  });
+
   test('reads the start time the listing carries', () {
     final parsed = GameProcess.fromJson({
       'pid': 42,

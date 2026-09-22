@@ -321,4 +321,15 @@ class GraphView {
     ),
     _ => const GraphView(),
   };
+
+  @override
+  bool operator ==(Object other) =>
+      other is GraphView &&
+      other.x == x &&
+      other.y == y &&
+      other.zoom == zoom &&
+      other.placed == placed;
+
+  @override
+  int get hashCode => Object.hash(x, y, zoom, placed);
 }

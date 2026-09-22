@@ -23,6 +23,20 @@ class GameProcess {
   static DateTime? _time(Object? milliseconds) => milliseconds is int && milliseconds > 0
       ? DateTime.fromMillisecondsSinceEpoch(milliseconds)
       : null;
+
+  /// A process listed again is the same process: every refresh reads the
+  /// list afresh, and a copy that compared by identity told the screens it
+  /// had changed each time.
+  @override
+  bool operator ==(Object other) =>
+      other is GameProcess &&
+      other.pid == pid &&
+      other.name == name &&
+      other.path == path &&
+      other.startedAt == startedAt;
+
+  @override
+  int get hashCode => Object.hash(pid, name, path, startedAt);
 }
 
 /// Orders the picker: the most recently started process first.

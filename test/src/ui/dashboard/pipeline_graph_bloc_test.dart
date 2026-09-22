@@ -104,6 +104,24 @@ void main() {
 
   tearDown(() async => cubits.dispose());
 
+  test('tells an event from another by what it carries', () {
+    // What lets a screen's test verify the events it sends over a mock.
+    const port = PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast);
+    expect(const PipelineNodeMoved('mix', 1, 2), const PipelineNodeMoved('mix', 1, 2));
+    expect(const PipelineNodeMoved('mix', 1, 2), isNot(const PipelineNodeMoved('mix', 1, 3)));
+    expect(PipelineSelectionSet({'mix'}), PipelineSelectionSet({'mix'}));
+    expect(
+      const PipelineLinkStarted(port, GraphPoint(4, 5)),
+      const PipelineLinkStarted(port, GraphPoint(4, 5)),
+    );
+    expect(
+      const PipelineViewSet(GraphView(x: 1, zoom: 1.2)),
+      const PipelineViewSet(GraphView(x: 1, zoom: 1.2)),
+    );
+    expect(const PipelineGraphUndone(), const PipelineGraphUndone());
+    expect(const PipelineGraphUndone(), isNot(const PipelineGraphRedone()));
+  });
+
   test('draws the route the settings describe', () {
     expect(graph.state.graph.routed, isTrue);
     expect(graph.state.graph.linkInto(speechIn)?.from, gameAudio);

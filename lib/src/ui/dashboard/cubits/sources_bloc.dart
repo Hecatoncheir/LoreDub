@@ -3,6 +3,7 @@
 
 import 'dart:async';
 
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/sources_repository.dart';
@@ -10,8 +11,11 @@ import '../../../domain/capture_sources.dart';
 import '../../../domain/game_process.dart';
 import 'failure_cubit.dart';
 
-sealed class SourcesEvent {
+sealed class SourcesEvent extends Equatable {
   const SourcesEvent();
+
+  @override
+  List<Object?> get props => const [];
 }
 
 /// The player asked for the processes and the monitors to be listed again.
@@ -24,6 +28,9 @@ final class SourcePicked extends SourcesEvent {
   const SourcePicked(this.process);
 
   final GameProcess? process;
+
+  @override
+  List<Object?> get props => [process];
 }
 
 /// What the repository published, whoever changed it.
@@ -31,6 +38,9 @@ final class _SourcesChanged extends SourcesEvent {
   const _SourcesChanged(this.sources);
 
   final CaptureSources sources;
+
+  @override
+  List<Object?> get props => [sources];
 }
 
 /// The game picker's side of [SourcesRepository], for the widgets.

@@ -28,8 +28,11 @@ import '../../../data/repositories/scheme_repository.dart';
 /// canvas is worked by a sequence of gestures, not by calls: a grab, a
 /// hundred moves and a drop are one action, and an event each is what lets
 /// them be replayed, undone and tested as a script.
-sealed class PipelineGraphEvent {
+sealed class PipelineGraphEvent extends Equatable {
   const PipelineGraphEvent();
+
+  @override
+  List<Object?> get props => const [];
 }
 
 /// The screen was opened: read the arrangement and draw what the settings
@@ -50,6 +53,9 @@ final class PipelineNodeGrabbed extends PipelineGraphEvent {
   const PipelineNodeGrabbed(this.nodeId);
 
   final String nodeId;
+
+  @override
+  List<Object?> get props => [nodeId];
 }
 
 /// A node was dragged by [dx], [dy] on the canvas, zoom already taken out.
@@ -59,6 +65,9 @@ final class PipelineNodeMoved extends PipelineGraphEvent {
   final String nodeId;
   final double dx;
   final double dy;
+
+  @override
+  List<Object?> get props => [nodeId, dx, dy];
 }
 
 /// A gesture ended — a node let go, the canvas let go of — and the
@@ -77,6 +86,9 @@ final class PipelineNodeSelected extends PipelineGraphEvent {
   /// or leaves it if it was there. Without it the choice collapses to this
   /// one node, which is what a plain click has always done.
   final bool add;
+
+  @override
+  List<Object?> get props => [nodeId, add];
 }
 
 /// Everything the band covered, as the canvas worked it out. The canvas owns
@@ -86,6 +98,9 @@ final class PipelineSelectionSet extends PipelineGraphEvent {
   const PipelineSelectionSet(this.nodeIds);
 
   final Set<String> nodeIds;
+
+  @override
+  List<Object?> get props => [nodeIds];
 }
 
 /// A link is being pulled out of [port].
@@ -94,12 +109,18 @@ final class PipelineLinkStarted extends PipelineGraphEvent {
 
   final PipelinePort port;
   final GraphPoint at;
+
+  @override
+  List<Object?> get props => [port, at];
 }
 
 final class PipelineLinkDragged extends PipelineGraphEvent {
   const PipelineLinkDragged(this.at);
 
   final GraphPoint at;
+
+  @override
+  List<Object?> get props => [at];
 }
 
 /// The link was let go, over [target] or over nothing.
@@ -107,6 +128,9 @@ final class PipelineLinkReleased extends PipelineGraphEvent {
   const PipelineLinkReleased(this.target);
 
   final PipelinePort? target;
+
+  @override
+  List<Object?> get props => [target];
 }
 
 /// A substitution was cut, so the character is read by the pipeline again.
@@ -114,6 +138,9 @@ final class PipelineLinkCut extends PipelineGraphEvent {
   const PipelineLinkCut(this.link);
 
   final PipelineLink link;
+
+  @override
+  List<Object?> get props => [link];
 }
 
 /// A card was drawn on the canvas. A card already there is drawn again
@@ -123,6 +150,9 @@ final class PipelineCharacterPlaced extends PipelineGraphEvent {
   const PipelineCharacterPlaced(this.characterId);
 
   final String characterId;
+
+  @override
+  List<Object?> get props => [characterId];
 }
 
 /// One drawing of a card was taken off the canvas. The card keeps whatever
@@ -131,6 +161,9 @@ final class PipelineCharacterRemoved extends PipelineGraphEvent {
   const PipelineCharacterRemoved(this.nodeId);
 
   final String nodeId;
+
+  @override
+  List<Object?> get props => [nodeId];
 }
 
 final class PipelineViewPanned extends PipelineGraphEvent {
@@ -138,6 +171,9 @@ final class PipelineViewPanned extends PipelineGraphEvent {
 
   final double dx;
   final double dy;
+
+  @override
+  List<Object?> get props => [dx, dy];
 }
 
 final class PipelineViewZoomed extends PipelineGraphEvent {
@@ -147,6 +183,9 @@ final class PipelineViewZoomed extends PipelineGraphEvent {
 
   /// Where the pointer is on the screen, so what is under it stays there.
   final GraphPoint focus;
+
+  @override
+  List<Object?> get props => [zoom, focus];
 }
 
 /// The canvas put where it should be seen from: what the canvas works out
@@ -155,6 +194,9 @@ final class PipelineViewSet extends PipelineGraphEvent {
   const PipelineViewSet(this.view);
 
   final GraphView view;
+
+  @override
+  List<Object?> get props => [view];
 }
 
 /// Everything back where it started: the standard arrangement, seen whole.
@@ -167,6 +209,9 @@ final class PipelineSchemeSaved extends PipelineGraphEvent {
   const PipelineSchemeSaved(this.name);
 
   final String name;
+
+  @override
+  List<Object?> get props => [name];
 }
 
 /// A kept scheme is drawn again and becomes the one that runs.
@@ -174,6 +219,9 @@ final class PipelineSchemeChosen extends PipelineGraphEvent {
   const PipelineSchemeChosen(this.id);
 
   final String id;
+
+  @override
+  List<Object?> get props => [id];
 }
 
 /// Writes what is on the canvas over a scheme already kept, under the name
@@ -184,6 +232,9 @@ final class PipelineSchemeReplaced extends PipelineGraphEvent {
   const PipelineSchemeReplaced(this.id);
 
   final String id;
+
+  @override
+  List<Object?> get props => [id];
 }
 
 final class PipelineSchemeRenamed extends PipelineGraphEvent {
@@ -191,12 +242,18 @@ final class PipelineSchemeRenamed extends PipelineGraphEvent {
 
   final String id;
   final String name;
+
+  @override
+  List<Object?> get props => [id, name];
 }
 
 final class PipelineSchemeRemoved extends PipelineGraphEvent {
   const PipelineSchemeRemoved(this.id);
 
   final String id;
+
+  @override
+  List<Object?> get props => [id];
 }
 
 /// One scheme written to a file of the player's choosing.
@@ -205,6 +262,9 @@ final class PipelineSchemeExported extends PipelineGraphEvent {
 
   final String id;
   final String destination;
+
+  @override
+  List<Object?> get props => [id, destination];
 }
 
 /// Schemes read from files, added to the shelf by id.
@@ -212,6 +272,9 @@ final class PipelineSchemeImported extends PipelineGraphEvent {
   const PipelineSchemeImported(this.sources);
 
   final List<String> sources;
+
+  @override
+  List<Object?> get props => [sources];
 }
 
 final class PipelineGraphUndone extends PipelineGraphEvent {
