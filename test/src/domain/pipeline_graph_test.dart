@@ -934,6 +934,15 @@ void main() {
   });
 
   group('the view', () {
+    test('is the same view wherever it was worked out', () {
+      final panned = const GraphView(x: 10, y: 20).panned(5, -5);
+      final read = GraphView.fromJson(panned.toJson());
+
+      expect(read, panned);
+      expect(read.hashCode, panned.hashCode);
+      expect(read, isNot(const GraphView(x: 15, y: 15)));
+    });
+
     test('keeps what is under the pointer where it is', () {
       const view = GraphView(x: 100, y: 50);
       const pointer = GraphPoint(300, 200);
