@@ -1770,10 +1770,18 @@ abstract final class AppTheme {
 
 ### Тесты
 
-- [ ] `test/widget_test.dart` — 188 тестов и групп в одном файле почти на
+- [x] `test/widget_test.dart` — 188 тестов и групп в одном файле почти на
       4000 строк → по файлу на экран (`test/src/ui/live/…_test.dart` и т. д.)
       с общей постановкой в `test/support/` (сейчас там один помощник):
       `pumpDashboard(tester, …)`, фабрики состояний, общие фейки.
+      *Сделано:* 4426 строк и 190 тестов разошлись по восьми файлам —
+      `shell/dashboard_shell_test.dart`, `live/live_screen_test.dart`,
+      `glossary/…`, `models/…`, `settings/…`, `screen_text/…`,
+      `characters/…`, `graph/pipeline_graph_screen_test.dart`; `buildCubits`,
+      `stage`, `catalogue`, `pumpDashboard`, `pumpLoreDub` и прокрутчики
+      страниц — в `test/support/dashboard_harness.dart`. Ни один тест не
+      переписан; 931 зелёный, как и до разбиения, а прогон стал короче:
+      файлы идут параллельно.
 - [ ] Фейки наследуют **конкретные** репозитории
       (`_CastRepository extends AppRepository`,
       `_GraphRepository extends AppRepository`,
