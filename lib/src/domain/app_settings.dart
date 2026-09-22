@@ -43,7 +43,6 @@ class AppSettings {
     this.roughRecognition = false,
     this.ttsSpeed = 1.12,
     this.cpuThreads = 4,
-    this.showOverlay = true,
     this.ocrRegion = OcrRegion.standard,
     this.modelProxyUrl = '',
     this.audioCaptureSource = AudioCaptureSource.process,
@@ -164,10 +163,6 @@ class AppSettings {
   /// Playback rate of the synthesized speech, applied by the inference worker.
   final double ttsSpeed;
   final int cpuThreads;
-
-  /// TODO: draw the translated lines over the game. Persisted, but nothing
-  /// reads it yet.
-  final bool showOverlay;
 
   /// The part of the game window subtitle mode reads.
   final OcrRegion ocrRegion;
@@ -371,7 +366,6 @@ class AppSettings {
     bool? roughRecognition,
     double? ttsSpeed,
     int? cpuThreads,
-    bool? showOverlay,
     OcrRegion? ocrRegion,
     String? modelProxyUrl,
     AudioCaptureSource? audioCaptureSource,
@@ -416,7 +410,6 @@ class AppSettings {
     roughRecognition: roughRecognition ?? this.roughRecognition,
     ttsSpeed: ttsSpeed ?? this.ttsSpeed,
     cpuThreads: cpuThreads ?? this.cpuThreads,
-    showOverlay: showOverlay ?? this.showOverlay,
     ocrRegion: ocrRegion ?? this.ocrRegion,
     modelProxyUrl: modelProxyUrl ?? this.modelProxyUrl,
     audioCaptureSource: audioCaptureSource ?? this.audioCaptureSource,

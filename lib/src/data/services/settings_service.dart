@@ -1,205 +1,60 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/app_settings.dart';
-import '../../domain/compute_device.dart';
-import '../../domain/ocr_region.dart';
-import 'runtime_paths.dart';
-import '../../domain/spoken_language.dart';
-import 'model_catalog.dart';
+import '../../domain/app_settings_json.dart';
 import '../../domain/cpu_threads.dart';
+import 'model_catalog.dart';
+import 'runtime_paths.dart';
 
+/// Where the settings are kept: one JSON object under one preference.
+///
+/// Every setting used to be a preference of its own, and a save wrote all
+/// forty of them -- each a rewrite of the whole preferences file, on the
+/// interface's isolate, on every tick of a slider. Now a save is one write.
+/// A machine the older build ran on has no object yet, and its settings are
+/// read off the preferences it left, which carry the same names.
 class SettingsService {
-  /// A dubbing language this build no longer carries -- every one but
-  /// Russian was taken out of the catalogue -- falls back to the first it
-  /// does, or the session would have no translator and no voice to start with.
-  static String _readTargetLanguage(SharedPreferences preferences) {
-    final stored = preferences.getString('targetLanguage');
-    final offered = dubbingLanguages;
-    return stored != null && offered.contains(stored) ? stored : offered.first;
-  }
-
-  /// A code stored by an older build, or one whose entry has since been
-  /// removed, must not reach whisper.cpp as an unknown argument.
-  /// An interface language this build no longer offers falls back to the
-  /// default rather than leaving the app without any translation.
-  static String _readInterfaceLanguage(SharedPreferences preferences) {
-    final stored = preferences.getString('interfaceLanguage');
-    if (stored == null || !interfaceLanguages.contains(stored)) {
-      return defaultInterfaceLanguage;
-    }
-    return stored;
-  }
-
-  static String _readSourceLanguage(SharedPreferences preferences) {
-    final stored = preferences.getString('sourceLanguage');
-    if (stored == null || !isSupportedSpokenLanguage(stored)) return fallbackSpokenLanguage;
-    return stored;
-  }
-
-  /// Builds before the screen had a language of its own read this off the
-  /// game's own source language, so a file without the key starts at
-  /// English -- which is what the screen reads unless it is told otherwise.
-  static String _readScreenLanguage(SharedPreferences preferences) {
-    final stored = preferences.getString('screenLanguage');
-    if (stored == null || !isSupportedSpokenLanguage(stored)) return fallbackSpokenLanguage;
-    return stored;
-  }
-
-  /// A pin written by a build that offered more backends than this one must
-  /// not survive as a value no stage can resolve.
-  static ComputeBackend? _readBackend(SharedPreferences preferences, String key) {
-    final stored = preferences.getString(key);
-    if (stored == null) return null;
-    for (final backend in ComputeBackend.values) {
-      if (backend.name == stored) return backend;
-    }
-    return null;
-  }
-
-  /// Builds before the frame could be drawn stored only `ocrRegionTop`, the
-  /// top of a full-width band; the other edges then default to that band.
-  static OcrRegion _readOcrRegion(SharedPreferences preferences) => OcrRegion(
-    left: preferences.getDouble('ocrRegionLeft') ?? OcrRegion.standard.left,
-    top: preferences.getDouble('ocrRegionTop') ?? OcrRegion.standard.top,
-    right: preferences.getDouble('ocrRegionRight') ?? OcrRegion.standard.right,
-    bottom: preferences.getDouble('ocrRegionBottom') ?? OcrRegion.standard.bottom,
-  ).normalized();
-
-  /// Never set means the default; set to nothing means none.
-  static Hotkey? _readHotkey(SharedPreferences preferences, String key, Hotkey fallback) {
-    final value = preferences.getString(key);
-    if (value == null) return fallback;
-    if (value.isEmpty) return null;
-    return Hotkey.decode(value) ?? fallback;
-  }
-
-  static Future<void> _writeBackend(
-    SharedPreferences preferences,
-    String key,
-    ComputeBackend? backend,
-  ) => backend == null ? preferences.remove(key) : preferences.setString(key, backend.name);
+  static const _key = 'settings';
 
   Future<AppSettings> load() async {
     final preferences = await SharedPreferences.getInstance();
-    return AppSettings(
-      captureRouted: preferences.getBool('captureRouted') ?? const AppSettings().captureRouted,
-      targetLanguage: _readTargetLanguage(preferences),
-      originalVolume: preferences.getDouble('originalVolume') ?? 0.18,
-      duckWhileSpeaking:
-          preferences.getBool('duckWhileSpeaking') ?? const AppSettings().duckWhileSpeaking,
-      hurryWhenQueued:
-          preferences.getBool('hurryWhenQueued') ?? const AppSettings().hurryWhenQueued,
-      roughRecognition:
-          preferences.getBool('roughRecognition') ?? const AppSettings().roughRecognition,
-      ttsSpeed: preferences.getDouble('ttsSpeed') ?? 1.12,
-      cpuThreads:
-          preferences.getInt('cpuThreads') ?? defaultCpuThreads(Platform.numberOfProcessors),
-      showOverlay: preferences.getBool('showOverlay') ?? true,
-      ocrRegion: _readOcrRegion(preferences),
-      modelProxyUrl: preferences.getString('modelProxyUrl') ?? '',
-      audioCaptureSource: AudioCaptureSource.values.firstWhere(
-        (source) => source.name == preferences.getString('audioCaptureSource'),
-        orElse: () => AudioCaptureSource.process,
-      ),
-      screenSource: ScreenSource.values.firstWhere(
-        (source) => source.name == preferences.getString('screenSource'),
-        orElse: () => ScreenSource.gameWindow,
-      ),
-      pythonExecutable: preferences.getString('pythonExecutable') ?? bundledPythonExecutablePath(),
-      detectSourceLanguage: preferences.getBool('detectSourceLanguage') ?? true,
-      sourceLanguage: _readSourceLanguage(preferences),
-      screenLanguage: _readScreenLanguage(preferences),
-      interfaceLanguage: _readInterfaceLanguage(preferences),
-      interfaceScale: preferences.getDouble('interfaceScale') ?? const AppSettings().interfaceScale,
-      interfaceTheme: InterfaceTheme.values.firstWhere(
-        (theme) => theme.name == preferences.getString('interfaceTheme'),
-        orElse: () => const AppSettings().interfaceTheme,
-      ),
-      whisperModel: preferences.getString('whisperModel') ?? '',
-      automaticVoice: preferences.getBool('automaticVoice') ?? true,
-      voice: preferences.getString('voice') ?? '',
-      originalVoice: preferences.getBool('originalVoice') ?? false,
-      voiceBank: preferences.getBool('voiceBank') ?? const AppSettings().voiceBank,
-      overlapVoices: preferences.getBool('overlapVoices') ?? const AppSettings().overlapVoices,
-      pauseHotkey: _readHotkey(preferences, 'pauseHotkey', Hotkey.defaultPause),
-      resumeHotkey: _readHotkey(preferences, 'resumeHotkey', Hotkey.defaultResume),
-      snapshotHotkey: _readHotkey(preferences, 'snapshotHotkey', Hotkey.defaultSnapshot),
-      frameHotkey: _readHotkey(preferences, 'frameHotkey', Hotkey.defaultFrame),
-      frameOverlayHotkey: _readHotkey(
-        preferences,
-        'frameOverlayHotkey',
-        Hotkey.defaultFrameOverlay,
-      ),
-      showFrameOverlay: preferences.getBool('showFrameOverlay') ?? false,
-      screenVoices: preferences.getBool('screenVoices') ?? false,
-      computeDevice: ComputeDevice.values.firstWhere(
-        (device) => device.name == preferences.getString('computeDevice'),
-        orElse: () => ComputeDevice.auto,
-      ),
-      recognitionBackend: _readBackend(preferences, 'recognitionBackend'),
-      translationBackend: _readBackend(preferences, 'translationBackend'),
-      speechBackend: _readBackend(preferences, 'speechBackend'),
-      voiceConversionBackend: _readBackend(preferences, 'voiceConversionBackend'),
+    return appSettingsFromJson(
+      _stored(preferences),
+      dubbingLanguages: dubbingLanguages,
+      bundledPython: bundledPythonExecutablePath(),
+      defaultThreads: defaultCpuThreads(Platform.numberOfProcessors),
     );
   }
 
   Future<void> save(AppSettings settings) async {
     final preferences = await SharedPreferences.getInstance();
-    await Future.wait([
-      preferences.setBool('captureRouted', settings.captureRouted),
-      preferences.setString('targetLanguage', settings.targetLanguage),
-      preferences.setDouble('originalVolume', settings.originalVolume),
-      preferences.setBool('duckWhileSpeaking', settings.duckWhileSpeaking),
-      preferences.setBool('hurryWhenQueued', settings.hurryWhenQueued),
-      preferences.setBool('roughRecognition', settings.roughRecognition),
-      preferences.setDouble('ttsSpeed', settings.ttsSpeed),
-      preferences.setInt('cpuThreads', settings.cpuThreads),
-      preferences.setBool('showOverlay', settings.showOverlay),
-      preferences.setDouble('ocrRegionLeft', settings.ocrRegion.left),
-      preferences.setDouble('ocrRegionTop', settings.ocrRegion.top),
-      preferences.setDouble('ocrRegionRight', settings.ocrRegion.right),
-      preferences.setDouble('ocrRegionBottom', settings.ocrRegion.bottom),
-      preferences.setString('modelProxyUrl', settings.modelProxyUrl),
-      preferences.setString(
-        'audioCaptureSource',
-        settings.audioCaptureSource.name,
-      ),
-      preferences.setString('screenSource', settings.screenSource.name),
-      preferences.setString('pythonExecutable', settings.pythonExecutable),
-      preferences.setBool('detectSourceLanguage', settings.detectSourceLanguage),
-      preferences.setString('sourceLanguage', settings.sourceLanguage),
-      preferences.setString('screenLanguage', settings.screenLanguage),
-      preferences.setString('interfaceLanguage', settings.interfaceLanguage),
-      preferences.setDouble('interfaceScale', settings.interfaceScale),
-      preferences.setString('interfaceTheme', settings.interfaceTheme.name),
-      preferences.setString('whisperModel', settings.whisperModel),
-      preferences.setBool('automaticVoice', settings.automaticVoice),
-      preferences.setString('voice', settings.voice),
-      preferences.setBool('originalVoice', settings.originalVoice),
-      preferences.setBool('voiceBank', settings.voiceBank),
-      preferences.setBool('overlapVoices', settings.overlapVoices),
-      // An empty string is a combination the player removed on purpose,
-      // which must not come back as the default next time.
-      preferences.setString('pauseHotkey', settings.pauseHotkey?.encode() ?? ''),
-      preferences.setString('resumeHotkey', settings.resumeHotkey?.encode() ?? ''),
-      preferences.setString('snapshotHotkey', settings.snapshotHotkey?.encode() ?? ''),
-      preferences.setString('frameHotkey', settings.frameHotkey?.encode() ?? ''),
-      preferences.setString(
-        'frameOverlayHotkey',
-        settings.frameOverlayHotkey?.encode() ?? '',
-      ),
-      preferences.setBool('showFrameOverlay', settings.showFrameOverlay),
-      preferences.setBool('screenVoices', settings.screenVoices),
-      preferences.setString('computeDevice', settings.computeDevice.name),
-      _writeBackend(preferences, 'recognitionBackend', settings.recognitionBackend),
-      _writeBackend(preferences, 'translationBackend', settings.translationBackend),
-      _writeBackend(preferences, 'speechBackend', settings.speechBackend),
-      _writeBackend(preferences, 'voiceConversionBackend', settings.voiceConversionBackend),
-    ]);
+    await preferences.setString(_key, jsonEncode(settings.toJson()));
+  }
+
+  /// The settings as they were last written, or as an older build left them
+  /// one preference each. Damaged, they read as a fresh install's rather
+  /// than refusing to start.
+  static Map<String, Object?> _stored(SharedPreferences preferences) {
+    final kept = preferences.getString(_key);
+    if (kept == null) {
+      return {
+        for (final key in preferences.getKeys())
+          if (key != _key) key: preferences.get(key),
+      };
+    }
+    try {
+      return switch (jsonDecode(kept)) {
+        final Map<String, Object?> json => json,
+        _ => const {},
+      };
+    } on FormatException {
+      return const {};
+    }
   }
 }

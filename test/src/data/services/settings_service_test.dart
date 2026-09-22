@@ -4,6 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
+import 'package:lore_dub/src/domain/app_settings_json.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -316,5 +317,83 @@ void main() {
     await service.save(const AppSettings(overlapVoices: true));
 
     expect((await service.load()).overlapVoices, isTrue);
+  });
+
+  test('keeps every setting under one preference, written once a save', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+
+    await service.save(const AppSettings(ttsSpeed: 1.3, voice: 'xenia'));
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getKeys(), {'settings'});
+    final read = await service.load();
+    expect(read.ttsSpeed, 1.3);
+    expect(read.voice, 'xenia');
+  });
+
+  test('reads the preferences an older build left, one per setting', () async {
+    SharedPreferences.setMockInitialValues({
+      'ttsSpeed': 1.4,
+      'voiceBank': false,
+      'pauseHotkey': '',
+      'computeDevice': 'cpu',
+    });
+
+    final read = await SettingsService().load();
+
+    expect(read.ttsSpeed, 1.4);
+    expect(read.voiceBank, isFalse);
+    expect(read.pauseHotkey, isNull, reason: 'removed on purpose, and kept removed');
+    expect(read.computeDevice, ComputeDevice.cpu);
+  });
+
+  test('starts from a fresh install where what was kept cannot be read', () async {
+    SharedPreferences.setMockInitialValues({'settings': 'not json', 'ttsSpeed': 1.4});
+
+    final read = await SettingsService().load();
+
+    expect(read.ttsSpeed, const AppSettings().ttsSpeed, reason: 'the object is what is read');
+  });
+
+  test('reads back everything it wrote', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = SettingsService();
+    const written = AppSettings(
+      captureRouted: false,
+      originalVolume: 0.4,
+      duckWhileSpeaking: false,
+      hurryWhenQueued: false,
+      roughRecognition: true,
+      ttsSpeed: 0.9,
+      cpuThreads: 6,
+      ocrRegion: OcrRegion(left: 0.1, top: 0.6, right: 0.9, bottom: 0.95),
+      modelProxyUrl: 'socks5://proxy:1080',
+      audioCaptureSource: AudioCaptureSource.system,
+      screenSource: ScreenSource.wholeScreen,
+      pythonExecutable: r'C:\Python311\python.exe',
+      detectSourceLanguage: false,
+      sourceLanguage: 'ja',
+      screenLanguage: 'ru',
+      interfaceLanguage: 'en',
+      interfaceScale: 1.25,
+      interfaceTheme: InterfaceTheme.dark,
+      whisperModel: 'whisper-small',
+      automaticVoice: false,
+      voice: 'xenia',
+      originalVoice: true,
+      voiceBank: false,
+      overlapVoices: true,
+      frameHotkey: null,
+      showFrameOverlay: true,
+      screenVoices: true,
+      computeDevice: ComputeDevice.gpu,
+      recognitionBackend: ComputeBackend.vulkan,
+    );
+
+    await service.save(written);
+    final read = await service.load();
+
+    expect(read.toJson(), written.toJson());
   });
 }

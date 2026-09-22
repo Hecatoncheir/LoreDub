@@ -1577,11 +1577,8 @@ void main() {
     await tester.tap(find.widgetWithText(OutlinedButton, 'Сохранить'));
     await tester.pumpAndSettle();
 
-    final preferences = await SharedPreferences.getInstance();
-    expect(
-      preferences.getString('modelProxyUrl'),
-      'http://127.0.0.1:7890',
-    );
+    // What is on disk, read the way the next start reads it.
+    expect((await SettingsService().load()).modelProxyUrl, 'http://127.0.0.1:7890');
   });
 
   testWidgets('offers the compute device presets and a row per stage', (tester) async {
@@ -1810,8 +1807,7 @@ void main() {
     await tester.tap(preset);
     await tester.pumpAndSettle();
 
-    final preferences = await SharedPreferences.getInstance();
-    expect(preferences.getString('computeDevice'), 'cpu');
+    expect((await SettingsService().load()).computeDevice, ComputeDevice.cpu);
   });
 
   testWidgets('marks the live section with the audio capture drawing', (tester) async {

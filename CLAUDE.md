@@ -114,10 +114,14 @@ than one of them.
    the file once whoever asks first, so nothing depends on being started in
    a particular order. `SettingsRepository.save` publishes at once and
    writes one value at a time, only the newest of whatever arrived while
-   a write was under way: a slider saves on every tick, and every save
-   rewrote the whole preferences file on the interface's isolate. The
-   write in progress holds the next one back, not a timer, so no test has
-   to pump for it. The one rule that is not a value is
+   a write was under way: a slider saves on every tick. The write in
+   progress holds the next one back, not a timer, so no test has to pump
+   for it. What it writes is one JSON object under one preference
+   (`SettingsService`, parsed in `domain/app_settings_json.dart`, every
+   default the constructor's), where it used to be forty preferences and so
+   forty rewrites of the file on the interface's isolate; its keys are the
+   old preferences' names, which is how the settings an older build left
+   are read on the first start. The one rule that is not a value is
    `SessionCoordinator` (`domain/`): one engine, one session, and each
    screen registers its own half of it. It also publishes what the engine
    is doing (`EngineActivity`) the way a repository publishes, each screen
