@@ -6,7 +6,9 @@
 layout, every command, the style, the tests, the commits. This file adds what
 it does not carry -- how the pieces fit, the invariants that hold them, and
 the conventions in full -- for Claude Code. Guidance for every agent goes
-there, not here, so the two cannot drift apart.
+there, not here, so the two cannot drift apart. The decisions the code rests
+on, with what was measured to take them, are in `docs/adr/` (index in its
+`README.md`); the paragraphs below keep the rule and name the file.
 
 ## Project
 
