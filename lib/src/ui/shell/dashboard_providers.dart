@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -44,12 +46,17 @@ class DashboardProviders extends StatelessWidget {
       BlocProvider(create: (_) => NavigationCubit()),
       BlocProvider(
         lazy: false,
-        create: (context) => StartupCubit(
-          context.read(),
-          context.read(),
-          context.read(),
-          context.read<FailureCubit>(),
-        )..start(),
+        create: (context) {
+          final startup = StartupCubit(
+            context.read(),
+            context.read(),
+            context.read(),
+            context.read<FailureCubit>(),
+          );
+          // Its own failures go to the banner; nothing here waits for it.
+          unawaited(startup.start());
+          return startup;
+        },
       ),
       // Asked once the first load is back (`UpdateAnnouncer`).
       BlocProvider(

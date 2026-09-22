@@ -801,7 +801,7 @@ class NativeEngineService {
     _pollTimer?.cancel();
     _native.stop();
     unawaited(_endWorker());
-    _events.close();
+    unawaited(_events.close());
   }
 }
 

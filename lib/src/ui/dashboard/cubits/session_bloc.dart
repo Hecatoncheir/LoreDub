@@ -862,7 +862,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     unawaited(_picked?.cancel());
     // The repository is shared with every other cubit: whoever made it
     // disposes of it, once they are all closed.
-    _events?.cancel();
+    unawaited(_events?.cancel());
     return super.close();
   }
 }
