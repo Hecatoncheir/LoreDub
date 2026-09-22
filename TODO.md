@@ -1645,7 +1645,7 @@ abstract final class AppTheme {
       `wave_player.cpp`; в исходном файле остаётся только ABI. `ld_start`
       (`:728–804`) → `ParseStartConfig` + `StartOcrSession` +
       `StartAudioSession`. Каждый файл — строка в `hook/build.dart:15–21`.
-- [ ] **Конфиг через границу не плоский, вопреки `CLAUDE.md`.** Натив ищет
+- [x] **Конфиг через границу не плоский, вопреки `CLAUDE.md`.** Натив ищет
       ключ первой подстрокой по всему документу (`:121–170`), а Dart шлёт
       весь конфиг с вложенными объектами (`app_repository.dart:191`,
       `native_engine_service.dart:168–169`). Работает, пока `jsonEncode` не
@@ -1656,6 +1656,16 @@ abstract final class AppTheme {
       проход `FlatJson::Parse -> map`, числа через `from_chars` / `to_chars`.
       Тащить nlohmann/json незачем: вход — свои же плоские скаляры, выход —
       восемь форм событий; ~70 строк `flat_json.h` с тестами закрывают риск.
+      *Сделано:* `native/flat_json.h` — один проход по плоскому объекту,
+      ключ сравнивается целиком, `\uXXXX` и суррогатные пары пишутся в
+      UTF-8, числа читаются и пишутся через `from_chars`/`to_chars`;
+      `Escape` пишет управляющие символы как `\u00XX` вместо `?`.
+      `JsonString`/`JsonDouble`/`JsonUnsigned` — обёртки над ним, события
+      рамки пишут числа через `flat_json::Number`. Тест —
+      `native/tests/flat_json_test.cpp`, собирается и идёт через
+      `tool/native_tests.ps1` (vswhere + vcvars + cl), шагом CI. Проверено
+      и на собранной DLL: `ld_start` с режимом `none` стартует, чтение окна
+      без процесса отклоняется, как прежде.
 - [ ] **`CaptureThread` — 157 строк** (`process_loopback_capture.cpp:189–345`):
       активация, инициализация, VAD, концовка фразы, удержанный дубль и
       запись файла вместе; одна и та же очистка дескрипторов трижды. →

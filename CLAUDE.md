@@ -22,6 +22,7 @@ dart format --output=none --set-exit-if-changed lib test tool hook
 flutter analyze --fatal-infos      # CI is --fatal-infos; infos must be zero
 flutter test
 python -m unittest discover -s test/runtime   # the worker's text half, any Python
+powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1   # native/tests/*_test.cpp
 ```
 
 Single test:
@@ -194,7 +195,9 @@ than one of them.
    them, and joins that thread before it lets go of the capture, which the
    frame key reaches into). Everything crosses the boundary as UTF-8
    JSON. The native side hand-rolls its JSON parsing/escaping (`JsonString`,
-   `EscapeJson`) — keep config keys flat and string/number valued. What a
+   `EscapeJson`, both over `native/flat_json.h`, which reads a flat object in
+   one pass with keys compared whole and numbers read whatever the C locale
+   says) — keep config keys flat and string/number valued. What a
    session is started with is `SessionConfig` (`domain/session_config.dart`),
    sealed by kind (`LiveSessionConfig`, `ScreenSessionConfig`,
    `SceneSessionConfig`, `CharactersSessionConfig`,

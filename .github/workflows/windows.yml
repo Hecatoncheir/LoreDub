@@ -35,6 +35,8 @@ jobs:
       - run: flutter test
       - name: The worker's text half, on the runner's own Python
         run: python -m unittest discover -s test/runtime -v
+      - name: The native library's own tests
+        run: powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1
       - name: Screenshots still match the interface
         run: flutter test test/screenshots.dart
       - name: Cognitive complexity does not grow
