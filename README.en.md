@@ -1088,8 +1088,8 @@ being detected again for every phrase, which costs a full extra encoder pass.
   is the dominant cost, so that is where the remaining time is. Keeping the
   bundled `whisper-server.exe` resident would save only the ~160 ms model load
   and is not worth the complexity.
-- **Subtitle overlay.** `AppSettings.showOverlay` is persisted but nothing
-  reads it yet; the intent is to draw the translated lines over the game.
+- **Subtitle overlay.** Draw the translated lines over the game, the way the
+  screen reading's frame is drawn there already.
 - **Other dubbing languages — Piper or Kokoro.** English is dubbed by Kokoro
   already; the other languages went with Silero's voices for their CC BY-NC
   licence. Piper speaks 57 languages, among them German, Italian, Polish,

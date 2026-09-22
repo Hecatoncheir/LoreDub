@@ -54,8 +54,10 @@ import 'fakes/memory_voice_bank.dart';
 /// wants the opposite: states put in place without anything read, and a
 /// handle on each to seed and to look at. Nothing here runs a load.
 ///
-/// It goes once the widget tests stage mocked blocs instead (`TODO.md`,
-/// stage 4: `bloc_test` and `mocktail`).
+/// It stays beside the mocked blocs rather than giving way to them: a
+/// screen tested over a `MockBloc` is put on the screen through it as well
+/// (`StagedDashboard(glossaryBloc: ...)`), and the canvas and the inspector
+/// drive the real blocs it builds.
 class StagedDashboard {
   ///
   /// The repositories a test does not hand over are made over the disk and

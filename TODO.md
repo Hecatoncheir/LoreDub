@@ -2070,7 +2070,7 @@ Flutter в блоках не импортируется (правило 7, `bloc
    - [ ] Self-hosted runner на этой машине (`runs-on: self-hosted`): MSVC,
          Flutter и Python здесь есть, минуты приватного репозитория не
          тратятся, а движок для goldens один и тот же (снимает и п. 10).
-   - [ ] Пока счёт не улажен — `tool/verify.ps1`: те же шаги, что в
+   - [x] Пока счёт не улажен — `tool/verify.ps1`: те же шаги, что в
          `windows.yml`, в том же порядке, каждый через `Invoke-Native`.
          «Прогнать перед push» станет одной командой вместо двенадцати, и
          `AGENTS.md` её называет.
@@ -2195,10 +2195,10 @@ Flutter в блоках не импортируется (правило 7, `bloc
    только тот, кто запустит их из встроенного интерпретатора руками.
    Модули воркера на верхнем уровне тянут только numpy (torch — по
    требованию), так что хватает одной строки.
-   - [ ] `python -m pip install --quiet numpy` в шаге `unittest` в
+   - [x] `python -m pip install --quiet numpy` в шаге `unittest` в
          `windows.yml`, и в `AGENTS.md` — как запускать локально. Тест,
          который CI не выполняет, — не тест.
-   - [ ] Следом — то, что этап 6 отложил «до numpy»: `median_f0`,
+   - [x] Следом — то, что этап 6 отложил «до numpy»: `median_f0`,
          `change_speed`, `speaker_cuts` с `quietest_moment` в `audio.py`
          пока без тестов.
 
@@ -2207,17 +2207,17 @@ Flutter в блоках не импортируется (правило 7, `bloc
     под 3.47.4 и совпал, но с тех пор снимки перерисованы здесь, под
     3.47.5. Пока CI стоит, расхождения не видно; когда пойдёт — либо
     совпадёт, либо упадёт первым же шагом.
-    - [ ] Держать пин и машину на одной версии: поднять пин до 3.47.5 и
+    - [x] Держать пин и машину на одной версии: поднять пин до 3.47.5 и
           посмотреть на goldens там, либо `fvm`, чтобы машина брала версию
           из репозитория. Self-hosted runner (п. 1) снимает вопрос сам.
 
 11. **Документация отстала в трёх местах (P1, по строке каждое).**
-    - [ ] `README.md:1064` и `README.en.md:1091`: «`AppSettings.showOverlay`
+    - [x] `README.md:1064` и `README.en.md:1091`: «`AppSettings.showOverlay`
           сохраняется, но не читается» — поле удалено на этапе 5. План
           оверлея остаётся, ссылка на поле — нет.
-    - [ ] `CLAUDE.md:31–32`: «`dashboard/` still holds … the files not yet
+    - [x] `CLAUDE.md:31–32`: «`dashboard/` still holds … the files not yet
           taken apart (stage 2)» — разобрано всё.
-    - [ ] `test/support/staged_dashboard.dart:57`: «It goes once the widget
+    - [x] `test/support/staged_dashboard.dart:57`: «It goes once the widget
           tests stage mocked blocs instead» — моки пришли, класс остался и
           описан в `CLAUDE.md` как способ ставить экраны; комментарий
           обещает уход, которого не будет.

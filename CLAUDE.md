@@ -28,8 +28,8 @@ than one of them.
    for the frame around them (`DashboardScaffold`, `DashboardProviders`,
    navigation, header) and
    `common/` for what every screen uses; one public widget per file and no
-   private ones. `dashboard/` still holds the Blocs and the files not yet
-   taken apart (`TODO.md`, stage 2). State lives in `dashboard/cubits/`:
+   private ones. `dashboard/` holds the Blocs and `dashboard_context.dart`
+   and nothing else. State lives in `dashboard/cubits/`:
    three cubits for what is a setter and nothing more -- `FailureCubit`
    (the banner, and the `FailureSink` every bloc reports to),
    `NavigationCubit` (the section and the half of Эфир) and `StartupCubit`
