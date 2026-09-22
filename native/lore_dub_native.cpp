@@ -52,7 +52,10 @@ std::unique_ptr<ProcessLoopbackCapture> loopback_capture;
 // Zero while the whole default output is captured: nothing is turned down
 // there.
 uint32_t captured_process_id = 0;
-std::unique_ptr<OcrCapture> ocr_capture;
+// Shared with the hotkey thread, which moves the frame it reads: the thread
+// holds its own reference rather than reaching for this one, so a capture
+// let go of here is not let go of under a selection still on screen.
+std::shared_ptr<OcrCapture> ocr_capture;
 
 void PushEvent(std::string event) {
   std::lock_guard<std::mutex> lock(event_mutex);
@@ -433,6 +436,10 @@ struct HotkeyConfig {
 
   // The primary subtag a selected area is read in.
   std::string snapshot_language = "en";
+
+  // The reading a frame drawn with the frame key moves, when the session
+  // reads the screen at all.
+  std::shared_ptr<OcrCapture> subtitle_reader;
 };
 
 // What a reader's error becomes on the event queue: the one Dart can word
@@ -495,7 +502,7 @@ bool TakeSnapshot(uint32_t key, const std::string& language) {
 // The frame goes on being read where it was drawn -- nothing here reads the
 // area once -- and the new one reaches the settings as an event.
 // Returns false when a WM_QUIT arrived during the selection.
-bool DrawSubtitleFrame(uint32_t key, uint32_t process_id) {
+bool DrawSubtitleFrame(uint32_t key, uint32_t process_id, OcrCapture* reader) {
   ScreenArea area;
   const auto result = SelectScreenArea(key, &area, PushHotkeyPress);
   if (result == SelectionResult::quit) return false;
@@ -511,7 +518,7 @@ bool DrawSubtitleFrame(uint32_t key, uint32_t process_id) {
   }
   // The capture thread reads the frame on every scan, so it is enough to
   // hand it the new one: the session is not torn down and started again.
-  if (ocr_capture) ocr_capture->SetRegion(region);
+  if (reader != nullptr) reader->SetRegion(region);
   PushEvent("{\"type\":\"subtitleFrame\",\"left\":" + flat_json::Number(region.left) +
             ",\"top\":" + flat_json::Number(region.top) +
             ",\"right\":" + flat_json::Number(region.right) +
@@ -543,7 +550,10 @@ void HotkeyLoop(HotkeyConfig config, std::promise<void>* ready) {
       continue;
     }
     if (message.wParam == kFrameHotkey) {
-      if (!DrawSubtitleFrame(config.frame_key, config.frame_process_id)) break;
+      if (!DrawSubtitleFrame(config.frame_key, config.frame_process_id,
+                             config.subtitle_reader.get())) {
+        break;
+      }
       continue;
     }
     PushHotkeyPress(static_cast<uintptr_t>(message.wParam));
@@ -640,6 +650,7 @@ int32_t ld_set_hotkeys(const char* config_json) {
   if (const auto language = JsonString(config, "snapshotLanguage"); !language.empty()) {
     hotkeys.snapshot_language = language;
   }
+  hotkeys.subtitle_reader = ocr_capture;
   if (hotkeys.pause_key == 0 && hotkeys.resume_key == 0 && hotkeys.snapshot_key == 0 &&
       hotkeys.frame_key == 0 && hotkeys.frame_overlay_key == 0) {
     return 0;
@@ -830,7 +841,7 @@ int32_t ld_start(const char* config_json) {
   if (captures_nothing) {
     // Nothing to start; the state below says the engine is up.
   } else if (reads_screen) {
-    ocr_capture = std::make_unique<OcrCapture>();
+    ocr_capture = std::make_shared<OcrCapture>();
     const OcrRegion region{JsonDouble(config, "ocrRegionLeft", 0.0),
                            JsonDouble(config, "ocrRegionTop", 0.55),
                            JsonDouble(config, "ocrRegionRight", 1.0),
@@ -892,9 +903,9 @@ int32_t ld_start(const char* config_json) {
 
 int32_t ld_stop(void) {
 #if defined(_WIN32)
-  // First: the hotkey thread reaches into the capture to move the subtitle
-  // frame, and StopHotkeys joins it. Let go of the capture before that and a
-  // selection still on screen would land in freed memory.
+  // The keys belong to the session and go with it. The thread holds its own
+  // reference to the reading it moves, so the order below is not what keeps
+  // a selection still on screen out of freed memory.
   StopHotkeys();
 #endif
   if (loopback_capture) {

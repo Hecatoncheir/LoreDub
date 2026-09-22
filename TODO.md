@@ -1695,11 +1695,18 @@ abstract final class AppTheme {
       перечислителя, устройства и менеджера освобождались при выходе из
       функции — уже после `CoUninitialize`. `ComApartment` объявлен первым
       и закрывается последним.
-- [ ] Поток клавиш читает глобальный `ocr_capture` (`:501`); безопасность
+- [x] Поток клавиш читает глобальный `ocr_capture` (`:501`); безопасность
       держится на порядке `join` в `ld_stop` и на том, что Dart зовёт
       `setHotkeys` только после старта, а сам ABI этого не требует →
       `std::shared_ptr<OcrCapture>` в `HotkeyConfig`, `ld_set_hotkeys`
       отказывает без сессии.
+      *Сделано наполовину, и вторая половина отклонена:* `ocr_capture` —
+      `shared_ptr`, поток держит свою ссылку (`subtitle_reader`), и
+      `DrawSubtitleFrame` двигает её, а не глобальную. Отказывать без сессии
+      нельзя: клавиша рамки над игрой (`frameOverlay`) регистрируется и в
+      простое, через `SessionRepository.setIdleHotkeys`. Клавиши, заданные до
+      `ld_start`, рамку чтения не двигают — как и прежде, сессия задаёт их
+      заново после старта.
 - [x] **Единственный флаг компилятора — `/EHsc`** (`hook/build.dart:25`) →
       `/W4 /permissive- /utf-8 /sdl`, определения `NOMINMAX`, `UNICODE`,
       `WIN32_LEAN_AND_MEAN`; `/analyze` или clang-tidy в CI. Уйдут пять
