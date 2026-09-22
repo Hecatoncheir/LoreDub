@@ -1666,11 +1666,22 @@ abstract final class AppTheme {
       `tool/native_tests.ps1` (vswhere + vcvars + cl), шагом CI. Проверено
       и на собранной DLL: `ld_start` с режимом `none` стартует, чтение окна
       без процесса отклоняется, как прежде.
-- [ ] **`CaptureThread` — 157 строк** (`process_loopback_capture.cpp:189–345`):
+- [x] **`CaptureThread` — 157 строк** (`process_loopback_capture.cpp:189–345`):
       активация, инициализация, VAD, концовка фразы, удержанный дубль и
       запись файла вместе; одна и та же очистка дескрипторов трижды. →
       `ActivateLoopbackClient()`, чистый `PhraseSegmenter` (`Feed`, `Finish`),
       RAII `UniqueHandle` / `RoApartment`.
+      *Сделано:* `native/phrase_segmenter.h` — чистый класс без Windows и
+      без своих часов (`Feed` на пакет, `Finish` раз за пробуждение,
+      `Gathered` для удержанного дубля), константы порогов живут там же.
+      Поток — `RoApartment`, `UniqueHandle`, `ActivateLoopbackClient`,
+      `DrainPackets` и цикл в двадцать строк. Событие активации теперь
+      принадлежит обработчику: операция держит его, пока может перезвонить,
+      так что опоздавшее завершение не зовёт `SetEvent` по закрытому
+      дескриптору. Тест — `native/tests/phrase_segmenter_test.cpp`
+      (предзапись, пауза, часы без пакетов, короткий звук, 12 с, удержание
+      и его потолок); на собранной DLL проигрываемый клип нарезан, как
+      прежде.
 - [x] Проглоченные HRESULT у `GetNextPacketSize` / `GetBuffer` (`:275`,
       `:279`): захват с отвалившимся клиентом остаётся «слушающим» и не
       слышит ничего → `on_error(WindowsError(hr))` и выход из цикла.
@@ -1712,7 +1723,7 @@ abstract final class AppTheme {
       ожидание `WHDR_DONE` ограничено длиной клипа плюс пять секунд, после
       чего устройство сбрасывается и ответ — `-22` («устройство перестало
       отвечать»).
-- [ ] Нативных тестов нет. `flat_json`, `PhraseSegmenter`, `StableText`
+- [ ] Нативных тестов нет. ~~`flat_json`~~, ~~`PhraseSegmenter`~~, `StableText`
       (дебаунс OCR с безымянными 2, 6 и 13×50 на `ocr_capture.cpp:393–430`),
       `RegionWithin` — простым исполняемым файлом на `assert`; clang в
       GitLab-задаче уже стоит.

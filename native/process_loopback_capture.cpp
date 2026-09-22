@@ -3,6 +3,7 @@
 
 #include "process_loopback_capture.h"
 
+#include "phrase_segmenter.h"
 #include "wave_file.h"
 
 #if defined(_WIN32)
@@ -14,71 +15,60 @@
 #include <windows.h>
 #include <wrl.h>
 
-#include <algorithm>
-#include <chrono>
-#include <cmath>
 #include <cstdio>
-#include <deque>
-#include <fstream>
 #include <vector>
 
 namespace {
 
 using Microsoft::WRL::ComPtr;
 using Microsoft::WRL::FtmBase;
-using Microsoft::WRL::Make;
+using Microsoft::WRL::MakeAndInitialize;
 using Microsoft::WRL::RuntimeClass;
 using Microsoft::WRL::RuntimeClassFlags;
 using Microsoft::WRL::ClassicCom;
 
-constexpr uint32_t kSampleRate = 16000;
+using capture::kSampleRate;
+
 constexpr uint16_t kChannels = 1;
 constexpr uint16_t kBitsPerSample = 16;
-constexpr size_t kPreRollSamples = kSampleRate / 4;
-constexpr size_t kEndSilenceSamples = kSampleRate * 7 / 10;
-constexpr long long kEndSilenceMilliseconds = 700;
-constexpr size_t kMinimumSpeechSamples = kSampleRate * 35 / 100;
-constexpr size_t kMaximumSegmentSamples = kSampleRate * 12;
 
-// As long as a held take may run. A recording nobody stopped is a mistake
-// rather than a wish, and three minutes of one voice says more than a
-// fingerprint has any use for.
-constexpr size_t kHeldTakeSamples = kSampleRate * 180;
-constexpr double kSpeechRms = 180.0;
-
-/// The loudness of one packet, as the root mean square of its samples.
-///
-/// A packet Windows marks as silent carries no samples worth reading: it is
-/// a run of zeroes the audio engine did not bother to write out.
-double PacketRms(const int16_t* input, UINT32 frames, DWORD flags) {
-  if (frames == 0 || (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0) return 0;
-  double square_sum = 0;
-  for (UINT32 index = 0; index < frames; ++index) {
-    const double value = input[index];
-    square_sum += value * value;
+// A handle closed when it goes out of scope, so an early return cannot leak
+// one -- the thread below used to close its two in three places.
+class UniqueHandle {
+ public:
+  explicit UniqueHandle(HANDLE handle) : handle_(handle) {}
+  ~UniqueHandle() {
+    if (handle_ != nullptr) CloseHandle(handle_);
   }
-  return std::sqrt(square_sum / frames);
-}
+  UniqueHandle(const UniqueHandle&) = delete;
+  UniqueHandle& operator=(const UniqueHandle&) = delete;
 
-/// Adds one packet to the end of [segment], writing silence as zeroes.
-void AppendPacket(std::vector<int16_t>& segment, const int16_t* input, UINT32 frames,
-                  DWORD flags) {
-  const size_t old_size = segment.size();
-  segment.resize(old_size + frames, 0);
-  if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0) {
-    std::copy(input, input + frames, segment.begin() + static_cast<std::ptrdiff_t>(old_size));
-  }
-}
+  HANDLE get() const { return handle_; }
+  explicit operator bool() const { return handle_ != nullptr; }
 
-/// The same, into the quarter second kept ahead of a phrase so that its
-/// first syllable is not cut off.
-void AppendPreRoll(std::deque<int16_t>& pre_roll, const int16_t* input, UINT32 frames,
-                   DWORD flags) {
-  for (UINT32 index = 0; index < frames; ++index) {
-    pre_roll.push_back((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0 ? input[index] : 0);
+ private:
+  HANDLE handle_;
+};
+
+// The Windows Runtime on this thread for as long as this object lives, when
+// it was not on already. Declared before any COM object, it is let go of
+// after all of them.
+class RoApartment {
+ public:
+  RoApartment() : result_(RoInitialize(RO_INIT_MULTITHREADED)) {}
+  ~RoApartment() {
+    if (SUCCEEDED(result_)) RoUninitialize();
   }
-  while (pre_roll.size() > kPreRollSamples) pre_roll.pop_front();
-}
+  RoApartment(const RoApartment&) = delete;
+  RoApartment& operator=(const RoApartment&) = delete;
+
+  // A thread already in another apartment is still one COM can be used on.
+  bool failed() const { return FAILED(result_) && result_ != RPC_E_CHANGED_MODE; }
+  HRESULT result() const { return result_; }
+
+ private:
+  const HRESULT result_;
+};
 
 /// A path for the next captured phrase, named by this process and a number
 /// that only grows, so two segments can never share a file.
@@ -110,13 +100,20 @@ std::string WindowsError(HRESULT result) {
   return value;
 }
 
+// Answers the asynchronous activation. It owns the event it sets: the
+// operation holds the handler for as long as it may still call back, so the
+// event cannot be closed under a completion that arrives after the wait gave
+// up on it.
 class ActivationHandler final
     : public RuntimeClass<RuntimeClassFlags<ClassicCom>, FtmBase,
                           IActivateAudioInterfaceCompletionHandler> {
  public:
-  HRESULT RuntimeClassInitialize(HANDLE completed) {
-    completed_ = completed;
-    return S_OK;
+  HRESULT RuntimeClassInitialize() {
+    completed_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    return completed_ == nullptr ? HRESULT_FROM_WIN32(GetLastError()) : S_OK;
+  }
+  ~ActivationHandler() override {
+    if (completed_ != nullptr) CloseHandle(completed_);
   }
 
   IFACEMETHODIMP ActivateCompleted(IActivateAudioInterfaceAsyncOperation* operation) override {
@@ -132,7 +129,11 @@ class ActivationHandler final
     return S_OK;
   }
 
-  HRESULT result() const { return result_; }
+  // Waits for the activation, and answers how it went.
+  HRESULT Wait(DWORD milliseconds) const {
+    WaitForSingleObject(completed_, milliseconds);
+    return result_;
+  }
   ComPtr<IAudioClient> client() const { return client_; }
 
  private:
@@ -140,6 +141,80 @@ class ActivationHandler final
   HRESULT result_ = E_PENDING;
   ComPtr<IAudioClient> client_;
 };
+
+// Activates the loopback of [process_id] -- its own sound, or everything but
+// its own with [exclude_process_tree] -- as 16 kHz mono PCM that signals
+// [sample_ready] when a packet is waiting, and starts it.
+HRESULT ActivateLoopbackClient(uint32_t process_id, bool exclude_process_tree,
+                               HANDLE sample_ready, ComPtr<IAudioClient>& client,
+                               ComPtr<IAudioCaptureClient>& capture) {
+  ComPtr<ActivationHandler> handler;
+  HRESULT result = MakeAndInitialize<ActivationHandler>(&handler);
+  if (FAILED(result)) return result;
+  AUDIOCLIENT_ACTIVATION_PARAMS parameters{};
+  parameters.ActivationType = AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK;
+  parameters.ProcessLoopbackParams.TargetProcessId = process_id;
+  parameters.ProcessLoopbackParams.ProcessLoopbackMode = exclude_process_tree
+      ? PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE
+      : PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
+  PROPVARIANT variant{};
+  variant.vt = VT_BLOB;
+  variant.blob.cbSize = sizeof(parameters);
+  variant.blob.pBlobData = reinterpret_cast<BYTE*>(&parameters);
+  ComPtr<IActivateAudioInterfaceAsyncOperation> operation;
+  result = ActivateAudioInterfaceAsync(VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
+                                       __uuidof(IAudioClient), &variant, handler.Get(),
+                                       &operation);
+  if (FAILED(result)) return result;
+  result = handler->Wait(10000);
+  if (FAILED(result)) return result;
+
+  client = handler->client();
+  WAVEFORMATEX format{};
+  format.wFormatTag = WAVE_FORMAT_PCM;
+  format.nChannels = kChannels;
+  format.nSamplesPerSec = kSampleRate;
+  format.wBitsPerSample = kBitsPerSample;
+  format.nBlockAlign = kChannels * kBitsPerSample / 8;
+  format.nAvgBytesPerSec = kSampleRate * format.nBlockAlign;
+  result = client->Initialize(AUDCLNT_SHAREMODE_SHARED,
+                              AUDCLNT_STREAMFLAGS_LOOPBACK | AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
+                                  AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
+                                  AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+                              0, 0, &format, nullptr);
+  if (SUCCEEDED(result)) result = client->SetEventHandle(sample_ready);
+  if (SUCCEEDED(result)) result = client->GetService(IID_PPV_ARGS(&capture));
+  if (SUCCEEDED(result)) result = client->Start();
+  return result;
+}
+
+// Hands every packet waiting in [capture] to [segmenter], and answers the
+// error a client that has gone -- the device unplugged, the game's audio
+// session torn down -- answers every call with from then on. Passed over,
+// the capture went on "listening" to nothing, and the player heard the
+// dubbing go quiet with nothing to say why.
+HRESULT DrainPackets(IAudioCaptureClient* capture, capture::PhraseSegmenter& segmenter,
+                     const std::atomic<double>& attenuation) {
+  HRESULT result = S_OK;
+  UINT32 packet_frames = 0;
+  while (SUCCEEDED(result = capture->GetNextPacketSize(&packet_frames)) && packet_frames > 0) {
+    BYTE* bytes = nullptr;
+    DWORD flags = 0;
+    UINT32 frames = 0;
+    if (FAILED(result = capture->GetBuffer(&bytes, &frames, &flags, nullptr, nullptr))) break;
+    const auto* input = reinterpret_cast<const int16_t*>(bytes);
+    // A packet Windows marks as silent is a run of zeroes the audio engine
+    // did not bother to write out.
+    const bool silent = (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0;
+    // The threshold follows the game down: what reaches the tap is the
+    // game's own sound times whatever it has been turned down to.
+    const bool voiced = capture::PacketRms(input, frames, silent) >=
+                        capture::kSpeechRms * attenuation.load(std::memory_order_relaxed);
+    segmenter.Feed(input, frames, silent, voiced, capture::Clock::now());
+    capture->ReleaseBuffer(frames);
+  }
+  return result;
+}
 
 bool WriteWave(const std::wstring& filename, std::vector<int16_t> samples) {
   return wave_file::WriteMono(filename, std::move(samples), kSampleRate);
@@ -175,7 +250,7 @@ size_t ProcessLoopbackCapture::HeldSamples() const {
   // take away as a door or a footstep, and a caller told it had gathered
   // something waited ninety seconds for a recording that never came.
   const size_t held = held_samples_.load(std::memory_order_relaxed);
-  return held >= kMinimumSpeechSamples ? held : 0;
+  return held >= capture::kMinimumSpeechSamples ? held : 0;
 }
 
 void ProcessLoopbackCapture::SetSpeechAttenuation(double factor) {
@@ -199,159 +274,44 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
   (void)on_segment;
   on_error("Process loopback is only available on Windows");
 #else
-  const HRESULT ro_result = RoInitialize(RO_INIT_MULTITHREADED);
-  const bool uninitialize = SUCCEEDED(ro_result);
-  if (FAILED(ro_result) && ro_result != RPC_E_CHANGED_MODE) {
-    on_error(WindowsError(ro_result));
+  RoApartment apartment;
+  if (apartment.failed()) {
+    on_error(WindowsError(apartment.result()));
     return;
   }
-
-  HANDLE completed = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-  HANDLE sample_ready = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-  if (completed == nullptr || sample_ready == nullptr) {
+  const UniqueHandle sample_ready(CreateEventW(nullptr, FALSE, FALSE, nullptr));
+  if (!sample_ready) {
     on_error("Cannot create WASAPI synchronization events");
-    if (completed != nullptr) CloseHandle(completed);
-    if (sample_ready != nullptr) CloseHandle(sample_ready);
-    if (uninitialize) RoUninitialize();
     return;
   }
-
-  auto handler = Make<ActivationHandler>();
-  handler->RuntimeClassInitialize(completed);
-  AUDIOCLIENT_ACTIVATION_PARAMS parameters{};
-  parameters.ActivationType = AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK;
-  parameters.ProcessLoopbackParams.TargetProcessId = process_id;
-  parameters.ProcessLoopbackParams.ProcessLoopbackMode = exclude_process_tree
-      ? PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE
-      : PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
-  PROPVARIANT variant{};
-  variant.vt = VT_BLOB;
-  variant.blob.cbSize = sizeof(parameters);
-  variant.blob.pBlobData = reinterpret_cast<BYTE*>(&parameters);
-  ComPtr<IActivateAudioInterfaceAsyncOperation> operation;
-  HRESULT result = ActivateAudioInterfaceAsync(VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
-                                                __uuidof(IAudioClient), &variant,
-                                                handler.Get(), &operation);
-  if (SUCCEEDED(result)) {
-    WaitForSingleObject(completed, 10000);
-    result = handler->result();
-  }
-
-  ComPtr<IAudioClient> client = handler->client();
-  WAVEFORMATEX format{};
-  format.wFormatTag = WAVE_FORMAT_PCM;
-  format.nChannels = kChannels;
-  format.nSamplesPerSec = kSampleRate;
-  format.wBitsPerSample = kBitsPerSample;
-  format.nBlockAlign = kChannels * kBitsPerSample / 8;
-  format.nAvgBytesPerSec = kSampleRate * format.nBlockAlign;
-  if (SUCCEEDED(result)) {
-    result = client->Initialize(AUDCLNT_SHAREMODE_SHARED,
-                                AUDCLNT_STREAMFLAGS_LOOPBACK | AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
-                                    AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
-                                    AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
-                                0, 0, &format, nullptr);
-  }
-  if (SUCCEEDED(result)) result = client->SetEventHandle(sample_ready);
+  ComPtr<IAudioClient> client;
   ComPtr<IAudioCaptureClient> capture;
-  if (SUCCEEDED(result)) result = client->GetService(IID_PPV_ARGS(&capture));
-  if (SUCCEEDED(result)) result = client->Start();
+  const HRESULT result = ActivateLoopbackClient(process_id, exclude_process_tree,
+                                                sample_ready.get(), client, capture);
   if (FAILED(result)) {
     on_error(WindowsError(result));
-    CloseHandle(completed);
-    CloseHandle(sample_ready);
-    if (uninitialize) RoUninitialize();
     return;
   }
 
   CreateDirectoryW(output_directory.c_str(), nullptr);
-  std::deque<int16_t> pre_roll;
-  std::vector<int16_t> segment;
-  size_t silence_samples = 0;
-  bool speaking = false;
-  bool was_holding = false;
+  capture::PhraseSegmenter segmenter;
   uint64_t sequence = 0;
-  auto last_voice = std::chrono::steady_clock::now();
   while (!stopping_) {
-    WaitForSingleObject(sample_ready, 100);
-    // A client that has gone -- the device unplugged, the game's audio
-    // session torn down -- answers every call with an error from then on.
-    // Passed over, the capture went on "listening" to nothing, and the
-    // player heard the dubbing go quiet with nothing to say why.
-    HRESULT failure = S_OK;
-    UINT32 packet_frames = 0;
-    while (SUCCEEDED(failure = capture->GetNextPacketSize(&packet_frames)) && packet_frames > 0) {
-      BYTE* bytes = nullptr;
-      DWORD flags = 0;
-      UINT32 frames = 0;
-      if (FAILED(failure = capture->GetBuffer(&bytes, &frames, &flags, nullptr, nullptr))) break;
-      const auto* input = reinterpret_cast<const int16_t*>(bytes);
-      // The threshold follows the game down: what reaches the tap is the
-      // game's own sound times whatever it has been turned down to.
-      const bool voiced = PacketRms(input, frames, flags) >=
-                          kSpeechRms * attenuation_.load(std::memory_order_relaxed);
-      if (voiced) last_voice = std::chrono::steady_clock::now();
-      if (speaking) {
-        AppendPacket(segment, input, frames, flags);
-        silence_samples = voiced ? 0 : silence_samples + frames;
-      } else {
-        AppendPreRoll(pre_roll, input, frames, flags);
-        // A phrase begins with what was heard just before it.
-        if (voiced) {
-          speaking = true;
-          segment.assign(pre_roll.begin(), pre_roll.end());
-          pre_roll.clear();
-        }
-      }
-      capture->ReleaseBuffer(frames);
-    }
+    // At most 100 ms, so letting go of a held take lands the recording
+    // promptly and a phrase ends on the clock when no packets come at all.
+    WaitForSingleObject(sample_ready.get(), 100);
+    const HRESULT failure = DrainPackets(capture.Get(), segmenter, attenuation_);
     if (FAILED(failure)) {
       on_error(WindowsError(failure));
       break;
     }
-
-    // Endpointing is checked once per wake-up rather than per packet, and on
-    // the clock as well as on the samples. A process that keeps its render
-    // stream open delivers silent packets and the sample counter is enough,
-    // but one that stops rendering delivers nothing at all, which would leave
-    // a captured phrase open until the game speaks again.
-    const auto quiet = std::chrono::duration_cast<std::chrono::milliseconds>(
-                           std::chrono::steady_clock::now() - last_voice)
-                           .count();
-    // A held take ends when it is let go of, and not before: neither a
-    // pause in the speech nor the length of a phrase closes it. The wake-up
-    // above is at most 100 ms, so letting go lands the recording promptly.
     const bool holding = holding_.load(std::memory_order_relaxed);
-    // What a take has gathered, so the caller can tell a recording worth
-    // waiting for from a silence worth nothing.
-    if (holding) {
-      held_samples_.store(speaking ? segment.size() : 0, std::memory_order_relaxed);
-    }
-    const bool released = was_holding && !holding;
-    was_holding = holding;
-
-    // A phrase ends where the speech does, or where it has run long enough
-    // that the pipeline should not wait for the pause.
-    const bool phrase_over = silence_samples >= kEndSilenceSamples ||
-                             segment.size() >= kMaximumSegmentSamples ||
-                             quiet >= kEndSilenceMilliseconds;
-    // A held take ends only when it is let go of, or at the three-minute
-    // ceiling; neither a pause nor the length of a phrase closes it.
-    const bool take_over = released || segment.size() >= kHeldTakeSamples;
-    if (speaking && (holding ? take_over : (released || phrase_over))) {
-      // Too short to hold speech: what was caught was a door or a footstep.
-      if (segment.size() >= kMinimumSpeechSamples) {
-        const std::wstring filename = SegmentPath(output_directory, ++sequence);
-        if (WriteWave(filename, std::move(segment))) on_segment(Utf8Path(filename));
-      }
-      segment.clear();
-      silence_samples = 0;
-      speaking = false;
+    if (holding) held_samples_.store(segmenter.Gathered(), std::memory_order_relaxed);
+    if (auto phrase = segmenter.Finish(holding, capture::Clock::now())) {
+      const std::wstring filename = SegmentPath(output_directory, ++sequence);
+      if (WriteWave(filename, std::move(*phrase))) on_segment(Utf8Path(filename));
     }
   }
   client->Stop();
-  CloseHandle(completed);
-  CloseHandle(sample_ready);
-  if (uninitialize) RoUninitialize();
 #endif
 }

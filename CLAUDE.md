@@ -232,7 +232,9 @@ than one of them.
    A `SessionStateChanged` carrying no session is `ld_stop` coming to rest and ends
    what every screen was showing -- which is what `concerns` answers, in one
    place rather than in each cubit. Native capture runs on its own threads (`ProcessLoopbackCapture`
-   WASAPI process loopback + energy VAD writing 16 kHz WAV chunks;
+   WASAPI process loopback + energy VAD writing 16 kHz WAV chunks, the
+   phrase cut by `PhraseSegmenter` (`native/phrase_segmenter.h`, pure and
+   tested on its own);
    `OcrCapture` GDI + Windows OCR over `AppSettings.ocrRegion`, a frame the
    player draws in Settings and stored as fractions of the foreground game
    window's client area).
