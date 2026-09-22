@@ -151,8 +151,12 @@ than one of them.
    equal through every download tick) for whatever cares only what is on
    disk -- or a download tick will redraw the screen.
    `test/src/ui/dashboard/rebuild_scope_test.dart` counts that and fails if
-   it does. There is no DI framework: `LoreDubBootstrap` (`lib/src/app.dart`)
-   constructs services -> repositories, and the providers the Blocs. The
+   it does. There is no DI framework: `AppComposition` (`lib/src/composition.dart`)
+   constructs services -> repositories, handing each repository what it
+   stands on and one service per file to everything that reads or writes
+   it -- a file's writes are put in order by its service, so two services
+   over one file would keep two orders -- and `LoreDubBootstrap`
+   (`lib/src/app.dart`) provides them; the providers build the Blocs. The
    widget tests build them by hand instead (`test/support/staged_dashboard.dart`,
    `StagedDashboard`), to seed each one without anything being read, and
    put them on the screen with `provide`.
