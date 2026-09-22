@@ -60,3 +60,16 @@ dart_code_linter:
     - prefer-single-widget-per-file
     - avoid-returning-widgets
     - avoid-nested-conditional-expressions
+
+# Read by `bloc lint` (`dart pub global activate bloc_tools`) alone, as a CI
+# step of its own. The recommended rules, and prefer_bloc -- a Bloc by
+# default (TODO.md, section 2), the three cubits that are a setter and
+# nothing more marked with an ignore where they stand.
+bloc:
+  rules:
+    - avoid_flutter_imports
+    - avoid_public_bloc_methods
+    - avoid_public_fields
+    - prefer_file_naming_conventions
+    - prefer_void_public_cubit_methods
+    - prefer_bloc

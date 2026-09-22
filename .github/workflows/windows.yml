@@ -60,4 +60,10 @@ jobs:
           dart pub global run dart_code_linter:metrics analyze lib --reporter=json --json-path=build/metrics.json --no-fatal-warnings
           dart run tool/ratchet.dart --metrics build/metrics.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: The bloc library's own lints
+        shell: pwsh
+        run: |
+          dart pub global activate bloc_tools 0.1.0-dev.24
+          dart pub global run bloc_tools:bloc lint lib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - run: flutter build windows --release

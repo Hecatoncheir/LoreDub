@@ -1851,7 +1851,7 @@ abstract final class AppTheme {
 
 ### Линты
 
-- [ ] `bloc_lint` 0.4.2 — официальный линтер библиотеки bloc. Девять правил:
+- [x] `bloc_lint` 0.4.2 — официальный линтер библиотеки bloc. Девять правил:
       из рекомендованных — `avoid_flutter_imports`, `avoid_public_fields`,
       `avoid_public_bloc_methods`, `prefer_void_public_cubit_methods`,
       `prefer_file_naming_conventions`; сверх них включить `prefer_bloc` —
@@ -1861,6 +1861,14 @@ abstract final class AppTheme {
       Работает не через `flutter analyze`, а своей командой: `dart pub global
       activate bloc_tools`, затем `bloc lint .` отдельным шагом CI (и через
       расширение в IDE).
+      *Сделано:* `bloc_lint` 0.4.2 в dev-зависимостях, правила — в разделе
+      `bloc:` `analysis_options.yaml`, шаг CI с `bloc_tools` 0.1.0-dev.24
+      (при любой находке код выхода 1 — проверено). Нашлось шесть: три
+      блока тянули `flutter/foundation.dart` — два ради `debugPrint`
+      (теперь `log` из `dart:developer`), один ради `InstalledPackages`,
+      который переехал в свой файл рядом; и три `prefer_bloc` на
+      `FailureCubit`, `NavigationCubit`, `StartupCubit` — помечены
+      `// ignore: prefer_bloc` там, где объявлены.
 - [x] Встроенные, которых нет в `flutter_lints`: `unawaited_futures`,
       `discarded_futures`, `cancel_subscriptions`, `close_sinks`,
       `avoid_dynamic_calls`, `prefer_final_locals`, `only_throw_errors`,

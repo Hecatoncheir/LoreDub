@@ -11,6 +11,8 @@ import 'failure_cubit.dart';
 
 /// Whether the first load is still running: true until it has come back,
 /// whatever it came back with. Every start button waits for it.
+// A setter and nothing more: a Cubit on purpose (CLAUDE.md).
+// ignore: prefer_bloc
 class StartupCubit extends Cubit<bool> {
   StartupCubit(this._settings, this._installed, this._system, this._failures) : super(true);
 

@@ -22,6 +22,7 @@ dart format --output=none --set-exit-if-changed lib test tool hook
 flutter analyze --fatal-infos      # CI is --fatal-infos; infos must be zero
 flutter test --coverage
 dart run tool/coverage.dart        # the data layer's and the domain's coverage does not fall
+dart pub global run bloc_tools:bloc lint lib   # the bloc rules under `bloc:` in analysis_options.yaml
 python -m unittest discover -s test/runtime   # the worker's text half, any Python
 powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1   # native/tests/*_test.cpp
 ```
@@ -1395,6 +1396,11 @@ The tests run with `--coverage`, and `tool/coverage.dart` holds the line
 coverage of `lib/src/data/repositories/`, `lib/src/data/services/` and
 `lib/src/domain/` to `tool/coverage_baseline.json` the same way: a share
 that rises is written back with `--update`, one that falls fails the run.
+`bloc lint` (`bloc_tools`) is a step of its own and reads the `bloc:` rules
+in `analysis_options.yaml`, `prefer_bloc` among them: the three cubits that
+are a setter and nothing more carry `// ignore: prefer_bloc` where they are
+declared, and a bloc imports nothing of Flutter -- it logs through
+`dart:developer`.
 `.gitlab-ci.yml` runs format, analysis and tests on Linux.
 
 A `v<major>.<minor>.<patch>` tag (and no other tag starting with a `v`) starts `.github/workflows/release.yml`: `tool/prepare_release.dart`

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import 'dart:async';
+import 'dart:developer' show log;
 
-import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -216,7 +216,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     try {
       emit(state.copyWith(voiceBankSize: await _voiceBank.size()));
     } catch (exception) {
-      debugPrint('voice bank not counted: $exception');
+      log('voice bank not counted: $exception', name: 'SettingsBloc');
     }
   }
 

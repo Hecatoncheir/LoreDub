@@ -16,6 +16,8 @@ abstract class FailureSink {
 ///
 /// A Cubit rather than a Bloc: reporting is one synchronous setter, and a
 /// class of event for it would say nothing a call does not.
+// A setter and nothing more: a Cubit on purpose (CLAUDE.md).
+// ignore: prefer_bloc
 class FailureCubit extends Cubit<Object?> implements FailureSink {
   FailureCubit() : super(null);
 

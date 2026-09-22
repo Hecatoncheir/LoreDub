@@ -3,7 +3,6 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -18,26 +17,9 @@ import '../../../domain/package_download.dart';
 import '../../../domain/progress_ticker.dart';
 import '../../../domain/runtime_package.dart';
 import 'failure_cubit.dart';
+import 'installed_packages.dart';
 
-/// Which model packages and GPU runtimes are on disk, compared by what they
-/// hold rather than by which set instance holds it.
-@immutable
-class InstalledPackages {
-  const InstalledPackages({required this.models, required this.runtimes});
-
-  final Set<String> models;
-  final Set<String> runtimes;
-
-  @override
-  bool operator ==(Object other) =>
-      other is InstalledPackages &&
-      setEquals(other.models, models) &&
-      setEquals(other.runtimes, runtimes);
-
-  @override
-  int get hashCode =>
-      Object.hash(Object.hashAllUnordered(models), Object.hashAllUnordered(runtimes));
-}
+export 'installed_packages.dart';
 
 /// What is on disk and what is on its way there: the model packages, the
 /// optional GPU runtimes, and what the machine can run them on.

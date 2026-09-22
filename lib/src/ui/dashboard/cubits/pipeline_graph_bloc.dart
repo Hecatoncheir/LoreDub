@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import 'dart:async';
+import 'dart:developer' show log;
 
-import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -456,7 +456,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     try {
       await Future.wait([_settings.load(), _characters.load()]);
     } catch (exception) {
-      debugPrint('scheme drawn without what it is drawn from: $exception');
+      log('scheme drawn without what it is drawn from: $exception', name: 'PipelineGraphBloc');
     }
     // What the canvas stood on when the disk was asked. A bloc serves each
     // kind of event on a stream of its own, so a card placed while this was
@@ -468,12 +468,12 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     try {
       layout = await _schemes.loadLayout();
     } catch (exception) {
-      debugPrint('pipeline layout not read: $exception');
+      log('pipeline layout not read: $exception', name: 'PipelineGraphBloc');
     }
     try {
       schemes = (await _schemes.loadSchemes()).pipelines;
     } catch (exception) {
-      debugPrint('saved schemes not read: $exception');
+      log('saved schemes not read: $exception', name: 'PipelineGraphBloc');
     }
     if (isClosed) return;
     emit(

@@ -36,6 +36,8 @@ class NavigationState extends Equatable {
 ///
 /// A Cubit rather than a Bloc: both calls are setters, and a class of event
 /// for each would say nothing a call does not.
+// A setter and nothing more: a Cubit on purpose (CLAUDE.md).
+// ignore: prefer_bloc
 class NavigationCubit extends Cubit<NavigationState> {
   NavigationCubit() : super(const NavigationState());
 
