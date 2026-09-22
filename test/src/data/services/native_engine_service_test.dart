@@ -185,10 +185,11 @@ void main() {
         wavePath: wave.path,
       ),
     );
-    await settle();
+    // Let go of in the background: waited for until it is gone, which the
+    // test's own timeout ends if it never is.
+    await _until(() => !wave.existsSync());
 
     expect(events.whereType<LineDubbed>(), isEmpty, reason: 'nobody is listening for it');
-    expect(wave.existsSync(), isFalse, reason: 'and nothing is left of it');
   });
 
   group('a start that is stopped or replaced', () {
