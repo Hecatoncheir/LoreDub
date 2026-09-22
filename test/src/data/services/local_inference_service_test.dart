@@ -583,15 +583,18 @@ void main() {
     test('a model that is not there, or whisper failing, is said so', () async {
       Matcher failsWith(FailureCode code) =>
           throwsA(isA<LoreDubFailure>().having((failure) => failure.code, 'code', code));
+      // Whisper writes beside the wave, so a relative one would leave its
+      // transcript in the directory the tests run from.
+      final wave = path.join(work.path, 'a.wav');
 
       await expectLater(
-        service.processSegment(wavePath: 'a.wav', whisperModel: 'missing.bin', threads: 2),
+        service.processSegment(wavePath: wave, whisperModel: 'missing.bin', threads: 2),
         failsWith(FailureCode.whisperModelMissing),
       );
       final model = File(path.join(work.path, 'ggml.bin'))..writeAsStringSync('model');
       whisperExit = 1;
       await expectLater(
-        service.processSegment(wavePath: 'a.wav', whisperModel: model.path, threads: 2),
+        service.processSegment(wavePath: wave, whisperModel: model.path, threads: 2),
         failsWith(FailureCode.whisperFailed),
       );
     });
