@@ -15,12 +15,6 @@ import numpy as np
 # there by hand, before the first of them is imported.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from protocol import (
-    claim_protocol,
-    reply,
-    report_progress,
-    use_utf8_streams,
-)
 from audio import (
     Heard,
     as_vector,
@@ -30,6 +24,20 @@ from audio import (
     request_speed,
     speaker_cuts,
     write_wave,
+)
+from dubbing_text import (
+    LATIN_RUN,
+    LATIN_TEXT,
+    Glossary,
+    TranslationMemory,
+    readable,
+    sentences,
+)
+from protocol import (
+    claim_protocol,
+    reply,
+    report_progress,
+    use_utf8_streams,
 )
 from voices import (
     BANK_LIMIT,
@@ -41,37 +49,11 @@ from voices import (
     load_voice,
     voice_for_character,
 )
-from dubbing_text import (
-    Glossary,
-    LATIN_RUN,
-    LATIN_TEXT,
-    TranslationMemory,
-    readable,
-    sentences,
-)
 
 # torch and transformers are imported inside main(): together they account for
 # most of the startup, and importing them here would leave the application
 # without a sign of life for the first ten seconds.
 
-
-# The worker's own modules sit beside it. The embedded interpreter's ._pth
-# file turns off putting the script's directory on the path, so it is put
-# there by hand, before the first of them is imported.
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-
-from dubbing_text import (
-    Glossary,
-    LATIN_RUN,
-    LATIN_TEXT,
-    TranslationMemory,
-    readable,
-    sentences,
-)
-
-# torch and transformers are imported inside main(): together they account for
-# most of the startup, and importing them here would leave the application
-# without a sign of life for the first ten seconds.
 
 
 def parse_arguments(argv=None):
@@ -304,7 +286,7 @@ class Translation:
         for piece in pieces:
             written = self._glossary.said(piece)
             said.append(written if written is not None else self._memory.get(piece))
-        asking = [piece for piece, kept in zip(pieces, said) if kept is None]
+        asking = [piece for piece, kept in zip(pieces, said, strict=True) if kept is None]
         if asking:
             answers = iter(self._sentences(asking))
             for index, kept in enumerate(said):

@@ -96,7 +96,7 @@ def median_f0(samples, rate, low=70.0, high=350.0, clarity=0.35):
     # Quiet frames are mostly room tone and music; weight the answer towards
     # the frames that actually carry speech.
     floor = np.median(energies) * 0.5
-    strong = [f for f, e in zip(picks, energies) if e >= floor]
+    strong = [f for f, e in zip(picks, energies, strict=True) if e >= floor]
     return float(np.median(strong or picks))
 
 

@@ -14,7 +14,13 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "assets" / "runtime"))
 
-from dubbing_text import Glossary, TranslationMemory, readable, sentences, transliterated  # noqa: E402
+from dubbing_text import (  # noqa: E402
+    Glossary,
+    TranslationMemory,
+    readable,
+    sentences,
+    transliterated,
+)
 
 
 class SentencesTest(unittest.TestCase):

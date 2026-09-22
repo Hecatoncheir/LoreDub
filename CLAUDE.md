@@ -24,6 +24,7 @@ flutter test --coverage
 dart run tool/coverage.dart        # the data layer's and the domain's coverage does not fall
 dart pub global run bloc_tools:bloc lint lib   # the bloc rules under `bloc:` in analysis_options.yaml
 python -m unittest discover -s test/runtime   # the worker's text half, any Python
+ruff check assets/runtime test/runtime scripts   # ruff.toml; CI pins the version
 powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1   # native/tests/*_test.cpp
 ```
 

@@ -121,7 +121,7 @@ class _ResBlock(nn.Module):
         )
 
     def forward(self, x):
-        for first, second in zip(self.convs1, self.convs2):
+        for first, second in zip(self.convs1, self.convs2, strict=True):
             step = first(F.leaky_relu(x, LRELU_SLOPE))
             step = second(F.leaky_relu(step, LRELU_SLOPE))
             x = step + x
@@ -143,7 +143,7 @@ class _Generator(nn.Module):
         self.num_kernels = len(resblock_kernel_sizes)
         self.conv_pre = nn.Conv1d(initial_channel, upsample_initial_channel, 7, 1, padding=3)
         self.ups = nn.ModuleList()
-        for index, (rate, kernel) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
+        for index, (rate, kernel) in enumerate(zip(upsample_rates, upsample_kernel_sizes, strict=True)):
             self.ups.append(
                 weight_norm(
                     nn.ConvTranspose1d(
@@ -159,7 +159,7 @@ class _Generator(nn.Module):
         channels = upsample_initial_channel
         for index in range(len(self.ups)):
             channels = upsample_initial_channel // (2 ** (index + 1))
-            for kernel, dilation in zip(resblock_kernel_sizes, resblock_dilation_sizes):
+            for kernel, dilation in zip(resblock_kernel_sizes, resblock_dilation_sizes, strict=True):
                 self.resblocks.append(_ResBlock(channels, kernel, dilation))
         self.conv_post = nn.Conv1d(channels, 1, 7, 1, padding=3, bias=False)
         self.cond = nn.Conv1d(gin_channels, upsample_initial_channel, 1)

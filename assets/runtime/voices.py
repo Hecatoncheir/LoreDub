@@ -281,7 +281,7 @@ class VoiceBank:
                     "gender": detail["gender"],
                     "voice": detail["voice"],
                 }
-                for voice, detail in zip(self.voices, self.details)
+                for voice, detail in zip(self.voices, self.details, strict=True)
             ]
             temporary.write_text(json.dumps({"version": 2, "voices": voices}), encoding="utf-8")
             # Replaced in one step, so a crash mid-write leaves the old bank.

@@ -12,7 +12,6 @@ import collections
 import json
 import re
 
-
 # Two or more Latin letters in a translated line means a name came through
 # untranslated, and the voice does not read Latin: vosk_voice.py drops what
 # its phoneme map lacks, so "Добро пожаловать в Rapture." would be said
@@ -301,7 +300,7 @@ class Glossary:
         kept: a word at the head of a sentence is still at the head of it.
         """
         for pattern, reading in self.words:
-            text = pattern.sub(lambda found: _like(reading, found.group(0)), text)
+            text = pattern.sub(lambda found, reading=reading: _like(reading, found.group(0)), text)
         return text
 
     def __len__(self):
