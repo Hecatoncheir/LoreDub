@@ -75,43 +75,44 @@ class PythonDiscovery {
   Future<List<String>> _candidates() async {
     final found = <String>[];
     final seen = <String>{};
-
-    Future<void> consider(String candidate) async {
-      if (candidate.trim().isEmpty) return;
-      if (isWindowsStoreAliasStub(candidate)) return;
-      final file = File(candidate);
-      if (!await file.exists()) return;
-      final normalized = path.normalize(file.absolute.path).toLowerCase();
-      if (!seen.add(normalized)) return;
-      found.add(file.absolute.path);
+    for (final candidate in [
+      _bundledExecutable,
+      // A previously installed LoreDub carries a runtime that is known to be
+      // provisioned correctly, which beats an arbitrary interpreter from PATH.
+      ..._installedRuntimes(),
+      ..._onSearchPath(),
+      if (_environment['PYTHONHOME'] case final home?) path.join(home, 'python.exe'),
+      ...await _underInstallationRoots(),
+    ]) {
+      final existing = await _existing(candidate);
+      if (existing == null) continue;
+      if (seen.add(path.normalize(existing).toLowerCase())) found.add(existing);
     }
+    return found;
+  }
 
-    await consider(_bundledExecutable);
-    // A previously installed LoreDub carries a runtime that is known to be
-    // provisioned correctly, which beats an arbitrary interpreter from PATH.
-    for (final runtime in _installedRuntimes()) {
-      await consider(runtime);
-    }
+  /// The absolute path of [candidate] when it is an interpreter that is
+  /// there, and not the Store's alias that only offers to install one.
+  static Future<String?> _existing(String candidate) async {
+    if (candidate.trim().isEmpty || isWindowsStoreAliasStub(candidate)) return null;
+    final file = File(candidate);
+    return await file.exists() ? file.absolute.path : null;
+  }
 
+  Iterable<String> _onSearchPath() sync* {
     final searchPath = _environment['PATH'] ?? _environment['Path'] ?? '';
     for (final directory in searchPath.split(Platform.isWindows ? ';' : ':')) {
       if (directory.trim().isEmpty) continue;
       for (final name in const ['python.exe', 'python3.exe', 'python', 'python3']) {
-        await consider(path.join(directory.trim(), name));
+        yield path.join(directory.trim(), name);
       }
     }
-
-    final home = _environment['PYTHONHOME'];
-    if (home != null) await consider(path.join(home, 'python.exe'));
-
-    for (final root in _installationRoots()) {
-      for (final directory in await _pythonDirectories(root)) {
-        await consider(path.join(directory, 'python.exe'));
-      }
-    }
-
-    return found;
   }
+
+  Future<List<String>> _underInstallationRoots() async => [
+    for (final root in _installationRoots())
+      for (final directory in await _pythonDirectories(root)) path.join(directory, 'python.exe'),
+  ];
 
   Iterable<String> _installedRuntimes() sync* {
     final localAppData = _environment['LOCALAPPDATA'];

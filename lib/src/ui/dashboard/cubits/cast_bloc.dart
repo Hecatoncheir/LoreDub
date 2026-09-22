@@ -272,68 +272,60 @@ class CastBloc extends Bloc<CastEvent, CastState> {
     }
   }
 
-  Future<void> _onEdit(CastEdit event, Emitter<CastState> emit) async {
-    // The repository's cast, not this screen's: the canvas writes there too.
-    final cards = _cast.cast;
-    final packs = _cast.library.packs;
-    switch (event) {
-      case CardAdded(:final name):
-        await _write(
-          characters: [
-            ...cards,
-            Character(id: _ids.next(), name: name, vector: const []),
-          ],
-        );
-      case CardRenamed(:final id, :final name):
-        await _write(
-          characters: [
-            for (final card in cards)
-              if (card.id == id) card.copyWith(name: name) else card,
-          ],
-        );
-      case CardVoicedAs(:final id, :final target):
-        await _report(() => _cast.voiceAs(id, target));
-      case CardRemoved(:final id):
-        await _removeCard(id);
-      case PackAdded(:final name):
-        await _write(
-          packs: [
-            ...packs,
-            CharacterPack(id: _ids.next(), name: name),
-          ],
-        );
-      case PackRenamed(:final id, :final name):
-        await _write(
-          packs: [
-            for (final pack in packs)
-              if (pack.id == id) pack.copyWith(name: name) else pack,
-          ],
-        );
-      case PackRemoved(:final id):
-        await _write(
-          packs: [
-            for (final pack in packs)
-              if (pack.id != id) pack,
-          ],
-        );
-      case CardPacked(:final packId, :final characterId):
-        if (!cards.any((card) => card.id == characterId)) return;
-        await _write(
-          packs: [
-            for (final pack in packs)
-              if (pack.id == packId) pack.withCharacter(characterId) else pack,
-          ],
-        );
-      case CardUnpacked(:final packId, :final characterId):
-        await _write(
-          packs: [
-            for (final pack in packs)
-              if (pack.id == packId) pack.withoutCharacter(characterId) else pack,
-          ],
-        );
-      case CastImported(:final files):
-        await _import(files, emit);
-    }
+  /// Hands each edit to its own method. Every one of them reads the
+  /// repository's cast, not this screen's: the canvas writes there too.
+  Future<void> _onEdit(CastEdit event, Emitter<CastState> emit) => switch (event) {
+    CardAdded(:final name) => _write(
+      characters: [
+        ..._cast.cast,
+        Character(id: _ids.next(), name: name, vector: const []),
+      ],
+    ),
+    CardRenamed(:final id, :final name) => _editCard(id, (card) => card.copyWith(name: name)),
+    CardVoicedAs(:final id, :final target) => _report(() => _cast.voiceAs(id, target)),
+    CardRemoved(:final id) => _removeCard(id),
+    PackAdded(:final name) => _write(
+      packs: [
+        ..._cast.library.packs,
+        CharacterPack(id: _ids.next(), name: name),
+      ],
+    ),
+    PackRenamed(:final id, :final name) => _editPack(id, (pack) => pack.copyWith(name: name)),
+    PackRemoved(:final id) => _removePack(id),
+    CardPacked(:final packId, :final characterId) => _packCard(packId, characterId),
+    CardUnpacked(:final packId, :final characterId) => _editPack(
+      packId,
+      (pack) => pack.withoutCharacter(characterId),
+    ),
+    CastImported(:final files) => _import(files, emit),
+  };
+
+  Future<void> _editCard(String id, Character Function(Character card) edit) => _write(
+    characters: [
+      for (final card in _cast.cast)
+        if (card.id == id) edit(card) else card,
+    ],
+  );
+
+  Future<void> _editPack(String id, CharacterPack Function(CharacterPack pack) edit) => _write(
+    packs: [
+      for (final pack in _cast.library.packs)
+        if (pack.id == id) edit(pack) else pack,
+    ],
+  );
+
+  /// Deleting a pack leaves its cards: only the grouping was the pack's.
+  Future<void> _removePack(String id) => _write(
+    packs: [
+      for (final pack in _cast.library.packs)
+        if (pack.id != id) pack,
+    ],
+  );
+
+  /// A card that is gone by the time it lands is not put anywhere.
+  Future<void> _packCard(String packId, String characterId) async {
+    if (!_cast.cast.any((card) => card.id == characterId)) return;
+    await _editPack(packId, (pack) => pack.withCharacter(characterId));
   }
 
   /// The card goes, with its clip -- a clip left behind costs a few

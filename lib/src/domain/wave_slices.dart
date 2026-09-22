@@ -1,10 +1,15 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 /// The header a piece is written with: the canonical 44 bytes of a PCM WAV.
 const _headerBytes = 44;
+
+/// A chunk of a RIFF file: its name, where its body starts and how much of
+/// it the file holds.
+typedef _Chunk = ({String name, int body, int length});
 
 /// Cuts a 16-bit PCM WAV into the pieces [seconds] marks off.
 ///
@@ -42,36 +47,49 @@ class _WaveClip {
   /// The format and the samples of a PCM WAV, or null for anything else.
   static _WaveClip? read(Uint8List wave) {
     if (wave.lengthInBytes < 12) return null;
-    final bytes = ByteData.sublistView(wave);
     if (_tag(wave, 0) != 'RIFF' || _tag(wave, 8) != 'WAVE') return null;
-    var channels = 0;
-    var rate = 0;
-    var bitsPerSample = 0;
-    Uint8List? samples;
+    final bytes = ByteData.sublistView(wave);
+    _Chunk? format;
+    _Chunk? data;
+    for (final chunk in _chunks(wave, bytes)) {
+      if (chunk.name == 'fmt ' && chunk.length >= 16) format = chunk;
+      if (chunk.name == 'data') data = chunk;
+    }
+    if (format == null || data == null) return null;
+    return _of(
+      bytes,
+      format,
+      Uint8List.sublistView(wave, data.body, data.body + data.length),
+    );
+  }
+
+  /// The clip [format] describes, when it is 16-bit PCM this can cut.
+  static _WaveClip? _of(ByteData bytes, _Chunk format, Uint8List samples) {
+    final at = format.body;
+    if (bytes.getUint16(at, Endian.little) != 1) return null;
+    final clip = _WaveClip(
+      channels: bytes.getUint16(at + 2, Endian.little),
+      rate: bytes.getUint32(at + 4, Endian.little),
+      bitsPerSample: bytes.getUint16(at + 14, Endian.little),
+      samples: samples,
+    );
+    return clip.channels > 0 && clip.rate > 0 && clip.bitsPerSample == 16 ? clip : null;
+  }
+
+  /// The chunks after the RIFF header, each cut to what the file holds.
+  static Iterable<_Chunk> _chunks(Uint8List wave, ByteData bytes) sync* {
     var offset = 12;
     while (offset + 8 <= wave.lengthInBytes) {
-      final name = _tag(wave, offset);
       final length = bytes.getUint32(offset + 4, Endian.little);
       final body = offset + 8;
-      final available = length > wave.lengthInBytes - body ? wave.lengthInBytes - body : length;
-      if (name == 'fmt ' && available >= 16) {
-        if (bytes.getUint16(body, Endian.little) != 1) return null;
-        channels = bytes.getUint16(body + 2, Endian.little);
-        rate = bytes.getUint32(body + 4, Endian.little);
-        bitsPerSample = bytes.getUint16(body + 14, Endian.little);
-      } else if (name == 'data') {
-        samples = Uint8List.sublistView(wave, body, body + available);
-      }
+      yield (
+        name: _tag(wave, offset),
+        body: body,
+        length: math.min(length, wave.lengthInBytes - body),
+      );
       // Chunks are padded to an even length.
       offset = body + length + (length.isOdd ? 1 : 0);
     }
-    if (samples == null || channels <= 0 || rate <= 0 || bitsPerSample != 16) return null;
-    return _WaveClip(
-      channels: channels,
-      rate: rate,
-      bitsPerSample: bitsPerSample,
-      samples: samples,
-    );
   }
 
   final int channels;

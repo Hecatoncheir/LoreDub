@@ -164,16 +164,24 @@ class LocalInferenceService {
     for (final directory in directories) {
       if (!await directory.exists()) continue;
       await for (final entry in directory.list(followLinks: false)) {
-        if (entry is! File) continue;
-        final name = path.basename(entry.path);
-        if (!name.endsWith('.wav')) continue;
-        if (!name.startsWith('speech-') && !name.startsWith('segment-')) continue;
-        try {
-          await entry.delete();
-        } on FileSystemException {
-          // Best effort: a file still held by playback is removed next time.
-        }
+        if (entry is File && _isSessionAudio(entry)) await _deleteIfFree(entry);
       }
+    }
+  }
+
+  /// A phrase the worker spoke or a segment the capture wrote; nothing else
+  /// in the directory is the pipeline's to throw away.
+  static bool _isSessionAudio(File file) {
+    final name = path.basename(file.path);
+    if (!name.endsWith('.wav')) return false;
+    return name.startsWith('speech-') || name.startsWith('segment-');
+  }
+
+  static Future<void> _deleteIfFree(File file) async {
+    try {
+      await file.delete();
+    } on FileSystemException {
+      // Best effort: a file still held by playback is removed next time.
     }
   }
 

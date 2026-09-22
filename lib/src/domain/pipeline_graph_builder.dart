@@ -54,42 +54,58 @@ PipelineGraph buildPipelineGraph({
           characterId: placement.characterId,
           position: castAt[placement.nodeId]!,
           unrouted: layout.silent.contains(placement.characterId),
-          // A card whose line ends at the mix is heard as itself; one that
-          // hands its part to another card is not, and the canvas draws the
-          // two apart.
-          sendsToMix:
-              carrying.contains(placement.nodeId) &&
-              sends[placement.nodeId]?.nodeId == PipelineNodeIds.mix,
+          sendsToMix: _sendsToMix(placement, carrying, sends),
         ),
     ],
     links: [
       ..._stageLinks(routed: routed, translates: translates),
-      // A note rather than a route: the dashed line says the game's own
-      // dialogue may hold this character. A card drawn only to lend its
-      // voice carries none, and the pipeline runs the same either way.
-      for (final placement in voiced)
-        if (placement.heard)
-          PipelineLink(
-            const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
-            PipelinePort(placement.nodeId, PipelineSocket.characterIn),
-          ),
-      // A card's lines leave it one way only: into the card that speaks for
-      // it, which carries them on to the mix, or into the mix itself when it
-      // speaks for itself.
-      for (final placement in voiced)
-        if (carrying.contains(placement.nodeId))
-          PipelineLink(
-            PipelinePort(placement.nodeId, PipelineSocket.characterVoice),
-            sends[placement.nodeId]!,
-          ),
+      ..._castLinks(voiced, carrying, sends),
     ],
     routed: routed,
-    chained: {
-      for (final placement in placed)
-        if (byId[byId[placement.characterId]?.voicedBy]?.voicedBy != null) placement.characterId,
-    },
+    chained: _chained(placed, byId),
   );
 }
+
+/// A card whose line ends at the mix is heard as itself; one that hands its
+/// part to another card is not, and the canvas draws the two apart.
+bool _sendsToMix(
+  CastPlacement placement,
+  Set<String> carrying,
+  Map<String, PipelinePort> sends,
+) => carrying.contains(placement.nodeId) && sends[placement.nodeId]?.nodeId == PipelineNodeIds.mix;
+
+/// The lines the cards drawn in the mix carry, into them and out of them.
+List<PipelineLink> _castLinks(
+  List<CastPlacement> voiced,
+  Set<String> carrying,
+  Map<String, PipelinePort> sends,
+) => [
+  // A note rather than a route: the dashed line says the game's own
+  // dialogue may hold this character. A card drawn only to lend its
+  // voice carries none, and the pipeline runs the same either way.
+  for (final placement in voiced)
+    if (placement.heard)
+      PipelineLink(
+        const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
+        PipelinePort(placement.nodeId, PipelineSocket.characterIn),
+      ),
+  // A card's lines leave it one way only: into the card that speaks for
+  // it, which carries them on to the mix, or into the mix itself when it
+  // speaks for itself.
+  for (final placement in voiced)
+    if (carrying.contains(placement.nodeId))
+      PipelineLink(
+        PipelinePort(placement.nodeId, PipelineSocket.characterVoice),
+        sends[placement.nodeId]!,
+      ),
+];
+
+/// The characters drawn whose reader is read by a third in turn: the
+/// substitution is followed one hop only, and the canvas says so.
+Set<String> _chained(List<CastPlacement> placed, Map<String, Character> byId) => {
+  for (final placement in placed)
+    if (byId[byId[placement.characterId]?.voicedBy]?.voicedBy != null) placement.characterId,
+};
 
 /// The six stages of the pipeline, where [layout] put them.
 List<PipelineNode> _stageNodes(
@@ -197,16 +213,21 @@ Set<String> _carrying(
   };
   // What a card takes over it also passes on, and so may the card after it.
   for (var pass = 0; pass < placed.length; pass++) {
-    var grew = false;
-    for (final placement in placed) {
-      if (!carrying.contains(placement.nodeId)) continue;
-      final to = sends[placement.nodeId];
-      if (to == null || to.socket != PipelineSocket.readBy) continue;
-      if (carrying.add(to.nodeId)) grew = true;
-    }
-    if (!grew) break;
+    if (!_passOn(carrying, placed, sends)) break;
   }
   return carrying;
+}
+
+/// Adds to [carrying] every card a carrying card hands its part to, and
+/// answers whether that added any.
+bool _passOn(Set<String> carrying, List<CastPlacement> placed, Map<String, PipelinePort> sends) {
+  var grew = false;
+  for (final placement in placed) {
+    final to = sends[placement.nodeId];
+    if (to == null || to.socket != PipelineSocket.readBy) continue;
+    if (carrying.contains(placement.nodeId) && carrying.add(to.nodeId)) grew = true;
+  }
+  return grew;
 }
 
 /// The drawings the canvas keeps: the ones the player put there whose card

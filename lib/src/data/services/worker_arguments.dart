@@ -34,62 +34,93 @@ List<String> workerArguments(
   required String script,
   required String work,
   WorkerLoad load = WorkerLoad.full,
-}) {
-  final models = plan.models;
-  final backends = plan.backends;
-  String device(ComputeBackend backend) => backend == ComputeBackend.cuda ? 'cuda' : 'cpu';
-  final translation = models.translation ?? '';
-  final speech = models.speech ?? '';
-  final converter = models.converter;
-  // The translator, the voice and the converter each ask for the CUDA build
-  // on their own, and whichever does brings it in for all three.
-  final cudaTorch =
-      backends.translation == ComputeBackend.cuda ||
-      (speech.isNotEmpty && backends.speech == ComputeBackend.cuda) ||
-      (converter != null && backends.voiceConversion == ComputeBackend.cuda);
+}) => [
+  '-u',
+  script,
+  ..._loadArguments(load),
+  ..._modelArguments(plan),
+  '--speaker',
+  plan.speaker,
+  '--work-directory',
+  work,
+  '--threads',
+  '${plan.threads}',
+  '--speed',
+  plan.speed.toStringAsFixed(3),
+  '--device',
+  _device(plan.backends.translation),
+  if (plan.translationPrefix.isNotEmpty) ...['--translation-prefix', plan.translationPrefix],
+  ..._followArguments(plan),
+  ..._extraPackages(plan),
+  // Outside the converter's own arguments: what the player wrote down is
+  // read whether or not the original voice is carried over.
+  if (plan.glossary case final glossary?) ...['--glossary', glossary],
+  ..._converterArguments(plan),
+];
+
+String _device(ComputeBackend backend) => backend == ComputeBackend.cuda ? 'cuda' : 'cpu';
+
+List<String> _loadArguments(WorkerLoad load) => switch (load) {
+  WorkerLoad.full => const [],
+  WorkerLoad.embedOnly => const ['--embed-only'],
+  WorkerLoad.speechOnly => const ['--speech-only'],
+};
+
+/// The translator and the voice, each where the plan names one.
+List<String> _modelArguments(WorkerPlan plan) {
+  final translation = plan.models.translation ?? '';
+  final speech = plan.models.speech ?? '';
   return [
-    '-u',
-    script,
-    if (load == WorkerLoad.embedOnly) '--embed-only',
-    if (load == WorkerLoad.speechOnly) '--speech-only',
     if (translation.isNotEmpty) ...['--translation-model', translation],
-    if (speech.isNotEmpty) ...['--tts-model', speech, '--speech-device', device(backends.speech)],
-    '--speaker',
-    plan.speaker,
-    '--work-directory',
-    work,
-    '--threads',
-    '${plan.threads}',
-    '--speed',
-    plan.speed.toStringAsFixed(3),
-    '--device',
-    device(backends.translation),
-    if (plan.translationPrefix.isNotEmpty) ...['--translation-prefix', plan.translationPrefix],
-    if (plan.followSpeaker) ...[
-      '--follow-speaker',
-      '--male-voices',
-      plan.maleVoices.join(','),
-      '--female-voices',
-      plan.femaleVoices.join(','),
+    if (speech.isNotEmpty) ...[
+      '--tts-model',
+      speech,
+      '--speech-device',
+      _device(plan.backends.speech),
     ],
-    // CUDA torch is installed beside the models rather than over the
-    // bundled CPU build, so the worker is told where to find it.
-    if (cudaTorch && plan.runtimeDirectory.isNotEmpty) ...[
-      '--extra-packages',
-      path.join(plan.runtimeDirectory, torchCudaRuntimeId),
-    ],
-    // Outside the converter's own arguments: what the player wrote down is
-    // read whether or not the original voice is carried over.
-    if (plan.glossary case final glossary?) ...['--glossary', glossary],
-    if (converter != null) ...[
-      '--voice-converter',
-      converter,
-      '--converter-device',
-      device(backends.voiceConversion),
-      if (plan.revoice) '--revoice',
-      if (plan.voiceBank case final bank?) ...['--voice-bank', bank],
-      if (plan.characters case final characters?) ...['--characters', characters],
-      if (plan.asHeard.isNotEmpty) ...['--as-heard', plan.asHeard.join(',')],
-    ],
+  ];
+}
+
+List<String> _followArguments(WorkerPlan plan) => [
+  if (plan.followSpeaker) ...[
+    '--follow-speaker',
+    '--male-voices',
+    plan.maleVoices.join(','),
+    '--female-voices',
+    plan.femaleVoices.join(','),
+  ],
+];
+
+/// CUDA torch is installed beside the models rather than over the bundled
+/// CPU build, so the worker is told where to find it.
+List<String> _extraPackages(WorkerPlan plan) => [
+  if (_wantsCudaTorch(plan) && plan.runtimeDirectory.isNotEmpty) ...[
+    '--extra-packages',
+    path.join(plan.runtimeDirectory, torchCudaRuntimeId),
+  ],
+];
+
+/// The translator, the voice and the converter each ask for the CUDA build
+/// on their own, and whichever does brings it in for all three.
+bool _wantsCudaTorch(WorkerPlan plan) {
+  final backends = plan.backends;
+  if (backends.translation == ComputeBackend.cuda) return true;
+  final speech = plan.models.speech ?? '';
+  if (speech.isNotEmpty && backends.speech == ComputeBackend.cuda) return true;
+  return plan.models.converter != null && backends.voiceConversion == ComputeBackend.cuda;
+}
+
+List<String> _converterArguments(WorkerPlan plan) {
+  final converter = plan.models.converter;
+  if (converter == null) return const [];
+  return [
+    '--voice-converter',
+    converter,
+    '--converter-device',
+    _device(plan.backends.voiceConversion),
+    if (plan.revoice) '--revoice',
+    if (plan.voiceBank case final bank?) ...['--voice-bank', bank],
+    if (plan.characters case final characters?) ...['--characters', characters],
+    if (plan.asHeard.isNotEmpty) ...['--as-heard', plan.asHeard.join(',')],
   ];
 }

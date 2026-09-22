@@ -68,21 +68,106 @@ AppSettings appSettingsFromJson(
   required int defaultThreads,
 }) {
   const fresh = AppSettings();
-  bool flag(String key, bool fallback) => json[key] is bool ? json[key]! as bool : fallback;
+  final stored = _Stored(json);
+  return AppSettings(
+    captureRouted: stored.flag('captureRouted', fresh.captureRouted),
+    targetLanguage: stored.oneOf('targetLanguage', dubbingLanguages, dubbingLanguages.first),
+    originalVolume: stored.number('originalVolume', fresh.originalVolume),
+    duckWhileSpeaking: stored.flag('duckWhileSpeaking', fresh.duckWhileSpeaking),
+    hurryWhenQueued: stored.flag('hurryWhenQueued', fresh.hurryWhenQueued),
+    roughRecognition: stored.flag('roughRecognition', fresh.roughRecognition),
+    ttsSpeed: stored.number('ttsSpeed', fresh.ttsSpeed),
+    cpuThreads: stored.whole('cpuThreads', defaultThreads),
+    ocrRegion: stored.ocrRegion,
+    modelProxyUrl: stored.text('modelProxyUrl', fresh.modelProxyUrl),
+    audioCaptureSource: stored.named(
+      AudioCaptureSource.values,
+      'audioCaptureSource',
+      fresh.audioCaptureSource,
+    ),
+    screenSource: stored.named(ScreenSource.values, 'screenSource', fresh.screenSource),
+    pythonExecutable: stored.text('pythonExecutable', bundledPython),
+    detectSourceLanguage: stored.flag('detectSourceLanguage', fresh.detectSourceLanguage),
+    // A code stored by an older build, or one whose entry has since been
+    // removed, must not reach whisper.cpp as an unknown argument.
+    sourceLanguage: stored.spoken('sourceLanguage'),
+    // Builds before the screen had a language of its own read it off the
+    // game's; without the key the screen reads English, as it does unless
+    // told otherwise.
+    screenLanguage: stored.spoken('screenLanguage'),
+    interfaceLanguage: stored.oneOf(
+      'interfaceLanguage',
+      interfaceLanguages,
+      defaultInterfaceLanguage,
+    ),
+    interfaceScale: stored.number('interfaceScale', fresh.interfaceScale),
+    interfaceTheme: stored.named(InterfaceTheme.values, 'interfaceTheme', fresh.interfaceTheme),
+    whisperModel: stored.text('whisperModel', fresh.whisperModel),
+    automaticVoice: stored.flag('automaticVoice', fresh.automaticVoice),
+    voice: stored.text('voice', fresh.voice),
+    originalVoice: stored.flag('originalVoice', fresh.originalVoice),
+    voiceBank: stored.flag('voiceBank', fresh.voiceBank),
+    overlapVoices: stored.flag('overlapVoices', fresh.overlapVoices),
+    hotkeys: stored.hotkeys,
+    showFrameOverlay: stored.flag('showFrameOverlay', fresh.showFrameOverlay),
+    screenVoices: stored.flag('screenVoices', fresh.screenVoices),
+    computeDevice: stored.named(ComputeDevice.values, 'computeDevice', fresh.computeDevice),
+    pinned: stored.pinned,
+  );
+}
+
+/// The stored object read a key at a time, each answering its fallback for a
+/// key that is missing or holds what this build cannot read.
+extension type const _Stored(Map<String, Object?> json) {
+  bool flag(String key, bool fallback) => switch (json[key]) {
+    final bool value => value,
+    _ => fallback,
+  };
+
   double number(String key, double fallback) => switch (json[key]) {
     final num value => value.toDouble(),
     _ => fallback,
   };
-  String text(String key, String fallback) => json[key] is String ? json[key]! as String : fallback;
+
+  int whole(String key, int fallback) => switch (json[key]) {
+    final int value => value,
+    _ => fallback,
+  };
+
+  String text(String key, String fallback) => switch (json[key]) {
+    final String value => value,
+    _ => fallback,
+  };
+
+  /// A code among [allowed], or [fallback] for one this build no longer has.
+  String oneOf(String key, List<String> allowed, String fallback) => switch (json[key]) {
+    final String value when allowed.contains(value) => value,
+    _ => fallback,
+  };
+
   T named<T extends Enum>(List<T> values, String key, T fallback) =>
       values.asNameMap()[json[key]] ?? fallback;
-  String spoken(String key) {
-    final stored = json[key];
-    return stored is String && isSupportedSpokenLanguage(stored) ? stored : fallbackSpokenLanguage;
-  }
 
-  // Never set means the default; set to nothing means none.
-  Hotkey? hotkey(HotkeyAction action) {
+  String spoken(String key) => switch (json[key]) {
+    final String value when isSupportedSpokenLanguage(value) => value,
+    _ => fallbackSpokenLanguage,
+  };
+
+  /// Builds before the frame could be drawn stored only its top, the top of
+  /// a full-width band; the other edges then default to that band.
+  OcrRegion get ocrRegion => OcrRegion(
+    left: number('ocrRegionLeft', OcrRegion.standard.left),
+    top: number('ocrRegionTop', OcrRegion.standard.top),
+    right: number('ocrRegionRight', OcrRegion.standard.right),
+    bottom: number('ocrRegionBottom', OcrRegion.standard.bottom),
+  ).normalized();
+
+  Map<HotkeyAction, Hotkey> get hotkeys => {
+    for (final action in HotkeyAction.values) action: ?_hotkey(action),
+  };
+
+  /// Never set means the default; set to nothing means none.
+  Hotkey? _hotkey(HotkeyAction action) {
     final fallback = AppSettings.defaultHotkeys[action];
     return switch (json['${action.name}Hotkey']) {
       '' => null,
@@ -91,66 +176,10 @@ AppSettings appSettingsFromJson(
     };
   }
 
-  final target = json['targetLanguage'];
-  final interface = json['interfaceLanguage'];
-  final threads = json['cpuThreads'];
-  return AppSettings(
-    captureRouted: flag('captureRouted', fresh.captureRouted),
-    targetLanguage: target is String && dubbingLanguages.contains(target)
-        ? target
-        : dubbingLanguages.first,
-    originalVolume: number('originalVolume', fresh.originalVolume),
-    duckWhileSpeaking: flag('duckWhileSpeaking', fresh.duckWhileSpeaking),
-    hurryWhenQueued: flag('hurryWhenQueued', fresh.hurryWhenQueued),
-    roughRecognition: flag('roughRecognition', fresh.roughRecognition),
-    ttsSpeed: number('ttsSpeed', fresh.ttsSpeed),
-    cpuThreads: threads is int ? threads : defaultThreads,
-    // Builds before the frame could be drawn stored only its top, the top
-    // of a full-width band; the other edges then default to that band.
-    ocrRegion: OcrRegion(
-      left: number('ocrRegionLeft', OcrRegion.standard.left),
-      top: number('ocrRegionTop', OcrRegion.standard.top),
-      right: number('ocrRegionRight', OcrRegion.standard.right),
-      bottom: number('ocrRegionBottom', OcrRegion.standard.bottom),
-    ).normalized(),
-    modelProxyUrl: text('modelProxyUrl', fresh.modelProxyUrl),
-    audioCaptureSource: named(
-      AudioCaptureSource.values,
-      'audioCaptureSource',
-      fresh.audioCaptureSource,
-    ),
-    screenSource: named(ScreenSource.values, 'screenSource', fresh.screenSource),
-    pythonExecutable: text('pythonExecutable', bundledPython),
-    detectSourceLanguage: flag('detectSourceLanguage', fresh.detectSourceLanguage),
-    // A code stored by an older build, or one whose entry has since been
-    // removed, must not reach whisper.cpp as an unknown argument.
-    sourceLanguage: spoken('sourceLanguage'),
-    // Builds before the screen had a language of its own read it off the
-    // game's; without the key the screen reads English, as it does unless
-    // told otherwise.
-    screenLanguage: spoken('screenLanguage'),
-    interfaceLanguage: interface is String && interfaceLanguages.contains(interface)
-        ? interface
-        : defaultInterfaceLanguage,
-    interfaceScale: number('interfaceScale', fresh.interfaceScale),
-    interfaceTheme: named(InterfaceTheme.values, 'interfaceTheme', fresh.interfaceTheme),
-    whisperModel: text('whisperModel', fresh.whisperModel),
-    automaticVoice: flag('automaticVoice', fresh.automaticVoice),
-    voice: text('voice', fresh.voice),
-    originalVoice: flag('originalVoice', fresh.originalVoice),
-    voiceBank: flag('voiceBank', fresh.voiceBank),
-    overlapVoices: flag('overlapVoices', fresh.overlapVoices),
-    hotkeys: {
-      for (final action in HotkeyAction.values) action: ?hotkey(action),
-    },
-    showFrameOverlay: flag('showFrameOverlay', fresh.showFrameOverlay),
-    screenVoices: flag('screenVoices', fresh.screenVoices),
-    computeDevice: named(ComputeDevice.values, 'computeDevice', fresh.computeDevice),
-    // A pin written by a build that offered more backends than this one
-    // must not survive as a value no stage can resolve.
-    pinned: {
-      for (final stage in ComputeStage.values)
-        stage: ?ComputeBackend.values.asNameMap()[json['${stage.name}Backend']],
-    },
-  );
+  /// A pin written by a build that offered more backends than this one must
+  /// not survive as a value no stage can resolve.
+  Map<ComputeStage, ComputeBackend> get pinned => {
+    for (final stage in ComputeStage.values)
+      stage: ?ComputeBackend.values.asNameMap()[json['${stage.name}Backend']],
+  };
 }
