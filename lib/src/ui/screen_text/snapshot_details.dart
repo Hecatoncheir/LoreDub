@@ -9,7 +9,7 @@ import '../common/bloc/session_bloc.dart';
 import '../language_names.dart';
 import 'screen_source_picker.dart';
 import 'snapshot_status_line.dart';
-import 'text_language_picker.dart';
+import 'screen_language_and_voice.dart';
 
 /// The column of the screen's controls, with [game] -- the picker, and the
 /// start button beside it where there is room -- standing in it.
@@ -36,7 +36,7 @@ class SnapshotDetails extends StatelessWidget {
         const SizedBox(height: 14),
         game,
         const SizedBox(height: 14),
-        TextLanguagePicker(),
+        const ScreenLanguageAndVoice(),
         const SizedBox(height: 10),
         Text(
           settings.readsWholeScreen ? l10n.screenWholeNote(voice) : l10n.snapshotNote(voice),

@@ -8,6 +8,7 @@ import '../../domain/app_settings.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
+import '../../domain/glossary.dart';
 import '../../domain/session_config.dart';
 import '../services/character_service.dart';
 import '../services/glossary_service.dart';
@@ -108,7 +109,9 @@ class SessionRepository {
   }) => _started((session) async {
     final config = LiveSessionConfig(
       worker: worker.copyWith(
-        glossary: await _glossary.sessionFile(),
+        // The packs the canvas draws, each narrowed to the part of it the
+        // text it reads there can meet.
+        glossary: await _glossary.sessionFile(reach: await _glossaryReach(settings)),
         // The player's own characters, who speak in every game.
         characters: await _characters.file(),
         // The cards cut out of the mix on the graph: each of them keeps who
@@ -165,6 +168,8 @@ class SessionRepository {
   }) => _started((session) async {
     final config = ScreenSessionConfig(
       worker: worker.copyWith(
+        // Every pack switched on, whole: the canvas draws the dubbing of
+        // the game's sound, and what it says of a pack is said of that.
         glossary: await _glossary.sessionFile(),
         characters: await _characters.file(),
       ),
@@ -350,6 +355,18 @@ class SessionRepository {
     } on Object {
       // A scheme that cannot be read is no reason not to start: the cast
       // then plays the way it does with nothing cut.
+      return const {};
+    }
+  }
+
+  /// What the canvas lets each pack it draws apply, off the arrangement as
+  /// the cut is: which text a pack is drawn on is the scheme's to say.
+  Future<GlossaryReach> _glossaryReach(AppSettings settings) async {
+    try {
+      return (await _layout.load()).glossaryReach(translates: settings.translates);
+    } on Object {
+      // Nor is a scheme that cannot be read a reason to leave the glossary
+      // out: every pack switched on then applies whole.
       return const {};
     }
   }

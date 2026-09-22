@@ -13,7 +13,9 @@ String socketName(AppLocalizations l10n, PipelineSocket socket) => switch (socke
   PipelineSocket.speechText ||
   PipelineSocket.translationIn ||
   PipelineSocket.translatedText ||
-  PipelineSocket.voiceIn => l10n.pipelineSocketText,
+  PipelineSocket.voiceIn ||
+  PipelineSocket.glossaryIn ||
+  PipelineSocket.glossaryOut => l10n.pipelineSocketText,
   PipelineSocket.voiceAudio ||
   PipelineSocket.mixIn ||
   PipelineSocket.mixOut ||

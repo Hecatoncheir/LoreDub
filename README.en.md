@@ -180,8 +180,10 @@ reads the text inside it, and it is translated and voiced. Esc or the right
 mouse button cancels the selection. The key works during **Live** too, on the
 models already loaded; starting **Live** while the screen is being read stops
 that session first. The combination is changed in **Settings** → **Hotkeys**.
-**Text language** is English (translated) or the dubbing language (voiced
-untranslated). The selection frame is drawn over other windows, so the game
+**Text and dubbing language** says what the text is in and in which voice it
+is heard: a language whose voice is downloaded is read as it is, and
+"English → Russian" translates English text. The
+selection frame is drawn over other windows, so the game
 has to run windowed or borderless: a game in exclusive fullscreen would
 minimize.
 
@@ -266,7 +268,9 @@ the packs next to it, so a card is carried across the screen rather than down
 a scroll, and both ends of the journey stay in sight the whole way. Each side
 scrolls on its own, so reaching for a pack does not move the cards under the
 pointer. In a window too narrow to hold the two side by side, the packs go
-back underneath.
+back underneath. The field over the packs keeps only those whose name holds
+what is typed, whatever the case; a pack made or loaded empties it, so as not
+to be hidden by it.
 
 **New pack** opens an area whose name is
 typed in place, and cards go into it by being dragged: pick a card up with the
@@ -330,13 +334,15 @@ pack is a way of reading the glossary
 rather than a place entries are moved to: an entry stays in its list whether
 or not a pack names it, and one entry may lie in several packs. Entries are
 dragged into a pack by the handle at the left of the row, and out of it by
-the chip itself or the cross on it.
+the chip itself or the cross on it. The field over the packs filters them by
+name, as on the Characters screen.
 
 The **Active** switch decides what the dubbing reads. With no pack switched
 on it is checked against everything written down. With one or more on, it is
 checked against those alone — which is the whole point of packs: one game's
 glossary does not drag another game's names along. Several may be on at once
-and what they hold adds together.
+and what they hold adds together. Once packs stand on the Live graph, the
+graph decides there — see Graph below.
 
 LoreDub brings two packs of its own. **LoreDub · English → Русский** is 74 lines
 the translator is measurably wrong about -- "Weapons free." came back as
@@ -367,7 +373,7 @@ at once.
 ### Graph
 
 <p align="center">
-  <img src="docs/screenshots/pipeline-en.png" width="900" alt="The Graph screen: the pipeline as nodes, the links between them and two character cards">
+  <img src="docs/screenshots/pipeline-en.png" width="900" alt="The Graph screen: the pipeline as nodes, the links between them, two glossary packs over the line and the character cards under it">
 </p>
 
 The same pipeline drawn as nodes on a dotted canvas: **Original stream**,
@@ -465,6 +471,45 @@ The scheme that is up decides everything: a card it does not draw is read in
 its own voice. An empty scheme therefore takes every substitution away rather
 than leaving the previous one running.
 
+The button beside the person, a stack with a plus, puts a **Glossary** node
+on the canvas — one of the packs made on the **Glossary** screen, which can
+be changed in the node's panel too. The node takes **Text** in and hands
+**Text** on, and it stands right in the line of text. Draw Text from Whisper,
+Translation or another glossary into it — or from it into Translation, Lines
+or another glossary — and the node joins the line beside what it was joined
+to, the text running through it. Glossaries chain one after another: Whisper
+→ Glossary → Glossary → Translation, and Translation → Glossary → Glossary →
+Lines. There may be as many of them as you like, several of one pack among
+them.
+
+Where a node stands decides what it applies, since the entries take effect
+in different places. Before Translation, it answers with the pack's phrases —
+a whole line is matched against the English that was heard, before anything
+is translated. After Translation, it puts the finished translation right: the
+names the translator left in Latin, and whole words. A whole pack takes two
+nodes. The node says what it applies right now and how many entries that is.
+With nothing to translate, when the dubbing is in English, a node before the
+translator puts the words right and the nodes after it go dark with it.
+
+The node carries an **Active** switch — the same one the pack has on the
+Glossary screen. Switched off, the glossary keeps its place in the line and
+the text passes through it as it came; switched on again, it puts the text
+right again. A pack put in the line is switched on by itself and one taken
+out of it switched off, while a switch thrown on the Glossary screen moves no
+node. The button on a line takes the glossary out of the line and the text
+runs past it; a line between two stages that skips glossaries takes them out.
+The cross on the node, or **Take off the graph** in its panel, takes it off
+the canvas.
+
+While the scheme draws no glossary, nothing changes: with no pack on, the
+dubbing is checked against the whole glossary, and with some on, against
+those alone. Once a glossary stands on the scheme, the scheme decides: a pack
+that is on and not drawn applies whole, and with none on at all, Live is not
+checked against the glossary. Switching the last glossary on the scheme off
+switches the glossary off rather than opening it whole. All of this works
+mid-session too: a running worker is told what changed. The **Screen**
+session is not drawn on the scheme and reads the packs that are on whole.
+
 A scheme can be put on a shelf and taken back down. **Save the scheme**
 keeps the one on the canvas under a name, and it joins the row of cards under
 the toolbar with a picture of itself on it: the same nodes and the same
@@ -472,7 +517,8 @@ links, at the size of a thumbnail. The picture is drawn from the scheme every
 time rather than kept as an image, so it cannot show something the scheme no
 longer holds. A click lays that scheme out on the canvas, and from then on it
 is the one that runs: the route, where the nodes sit, which cards are on the
-canvas and whose voice reads whom. One step back brings the old one up.
+canvas, whose voice reads whom and which packs of the glossary are on. One
+step back brings the old one up.
 
 A scheme holds only what this screen draws. The models, the languages and the
 volumes are not in it — those belong to the machine the dubbing runs on
@@ -931,9 +977,16 @@ game window, and each line goes straight to the translator and the speech
 synthesizer — this mode needs neither Whisper nor a recognition model.
 
 All of it lives on the **Screen** page, apart from **Live**, which dubs the
-sound. **Text language** is there: English is translated, while text in the
-dubbing language — Russian subtitles dubbed into Russian, say — is voiced as
-it is, untranslated.
+sound. **Text and dubbing language** is picked there from one list: every
+language whose voice is downloaded — "Russian" for Russian subtitles, say — is
+read as it is, untranslated, and "English → Russian" translates English text
+into Russian. The choice moves the dubbing language too: the **Models** screen
+picks the language right of the arrow, as choosing the **Translation
+language** on **Live** does. The catalogue has no translator from other
+languages into English, so there are no other pairs. Beside it, on the same row
+of **Screen capture**, the **Voice** is picked — one for both areas, **Subtitle
+frame** and **Selected text only**, out of the dubbing language's voices — while
+each area keeps its own start button.
 
 ### Setting it up
 

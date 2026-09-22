@@ -149,6 +149,46 @@ const glossaryRu = Glossary(
   ],
 );
 
+/// The same glossary sorted into the two packs the scheme of the pictures
+/// draws, both switched on: the shouts, answered whole on what whisper
+/// heard, and the game's own name and word, put right on the translation.
+Glossary packedGlossary(String language) {
+  final phrases = [
+    for (final entry in glossaryRu.of(GlossaryKind.phrase)) entry.packKey,
+  ];
+  return Glossary(
+    entries: glossaryRu.entries,
+    packs: [
+      GlossaryPack(
+        id: 'shouts',
+        name: language == 'ru' ? 'Боевые крики' : 'Battle cries',
+        entryKeys: phrases,
+        active: true,
+      ),
+      GlossaryPack(
+        id: 'vale',
+        name: 'Hollowvale',
+        entryKeys: [
+          for (final entry in glossaryRu.entries)
+            if (!phrases.contains(entry.packKey)) entry.packKey,
+        ],
+        active: true,
+      ),
+    ],
+  );
+}
+
+/// The two packs on the scheme of the pictures, over the line: the shouts
+/// between whisper and the voice, the game's words over the translator.
+const drawnPacks = [
+  GlossaryPlacement(nodeId: 'glossary:1', packId: 'shouts', feed: GlossaryFeed.recognition),
+  GlossaryPlacement(nodeId: 'glossary:2', packId: 'vale', feed: GlossaryFeed.translation),
+];
+const drawnPacksAt = {
+  'glossary:1': GraphPoint(600, 20),
+  'glossary:2': GraphPoint(940, 20),
+};
+
 /// Where the game of the pictures writes its subtitles: a band across the
 /// lower middle of the window, clear of the quest in the corner.
 const subtitles = AppSettings(
@@ -337,6 +377,7 @@ void main() {
     List<SceneSpeaker> speakers = const [],
     List<TranscriptEntry> snapshots = const [],
     List<CastPlacement> placed = const [],
+    List<GlossaryPlacement> packsPlaced = const [],
     Glossary glossary = Glossary.empty,
     Map<String, GraphPoint> where = const {},
     String? chosen,
@@ -372,8 +413,12 @@ void main() {
     // The cards are the repository's, which the cast screen and the canvas
     // both read; which of them has a clip to play is the capture's.
     cubits.cast.seed(CharacterLibrary(characters: cast[language]!, packs: packs[language]!));
+    // The glossary the canvas draws its packs from; the glossary screen's
+    // own is the mock's above.
+    cubits.stageGlossary(packedGlossary(language));
     final layout = PipelineLayout(
       cast: placed,
+      glossaries: packsPlaced,
       // Placed by hand, so the wire runs the way the signal does: the card
       // whose part is handed on to the left of the card that reads it, and
       // the copy that takes the part next to the part itself.
@@ -420,10 +465,12 @@ void main() {
             const CastPlacement(nodeId: copy, characterId: 'guard', heard: false),
             CastPlacement.of('guard'),
           ],
+          packsPlaced: drawnPacks,
           where: {
             PipelineNodeIds.character('smith'): PipelineLayout.castPlace(0),
             copy: PipelineLayout.castPlace(1),
             PipelineNodeIds.character('guard'): PipelineLayout.castPlace(2),
+            ...drawnPacksAt,
           },
         ),
         'pipeline',
@@ -447,10 +494,12 @@ void main() {
             const CastPlacement(nodeId: copy, characterId: 'guard', heard: false),
             CastPlacement.of('guard'),
           ],
+          packsPlaced: drawnPacks,
           where: {
             PipelineNodeIds.character('smith'): PipelineLayout.castPlace(0),
             copy: PipelineLayout.castPlace(1),
             PipelineNodeIds.character('guard'): PipelineLayout.castPlace(2),
+            ...drawnPacksAt,
           },
           chosen: PipelineNodeIds.character('guard'),
         ),
@@ -597,9 +646,11 @@ void main() {
         section: DashboardSection.live,
         liveView: LiveView.scheme,
         placed: [CastPlacement.of('smith'), CastPlacement.of('guard')],
+        packsPlaced: drawnPacks,
         where: {
           PipelineNodeIds.character('smith'): PipelineLayout.castPlace(0),
           PipelineNodeIds.character('guard'): PipelineLayout.castPlace(1),
+          ...drawnPacksAt,
         },
       ),
       'graph-dark',

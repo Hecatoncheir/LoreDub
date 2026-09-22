@@ -317,8 +317,11 @@ class AppSettings {
   AppSettings withComputeDevice(ComputeDevice device) =>
       copyWith(computeDevice: device, pinned: const {});
 
-  /// What the screen session reads: English, or the dubbing language
-  /// itself, which is then voiced as it is rather than translated.
+  /// What the text on the screen is written in: English, which the
+  /// translators read and turn into the dubbing language, or the dubbing
+  /// language itself, which is then voiced as it is. Windows OCR detects
+  /// nothing, so it is named rather than found, and nothing translates out
+  /// of any other language, so there is no third.
   ///
   /// Its own setting rather than [sourceLanguage] read a second way. The
   /// two were one field, so naming the screen's text as Russian named the
@@ -327,9 +330,25 @@ class AppSettings {
   /// on another page.
   final String screenLanguage;
 
-  /// The same, held to what the pair of models can actually do: Windows OCR
-  /// detects nothing and the translators read only English, so anything but
-  /// the dubbing language itself is English.
+  /// What the Screen page reads and what it says it in, chosen together:
+  /// the user asked for the language picked there to be the one the models
+  /// screen shows, so [dubbing] is the dubbing language itself. [text] is
+  /// [dubbing], voiced as it is, or English, which the translator turns
+  /// into it.
+  AppSettings withScreenLanguages({required String text, required String dubbing}) =>
+      copyWith(screenLanguage: text, targetLanguage: dubbing);
+
+  /// [language] as the dubbing language, wherever it is chosen. Text on the
+  /// screen in the old one is read as English from now on: nothing
+  /// translates out of it, and its voice is no longer the one loaded.
+  AppSettings withTargetLanguage(String language) => copyWith(
+    targetLanguage: language,
+    screenLanguage: screenLanguage == language ? language : fallbackSpokenLanguage,
+  );
+
+  /// [screenLanguage] held to what the models can do -- the dubbing language
+  /// or English -- for settings built by hand rather than through the two
+  /// calls above.
   String get textLanguage =>
       screenLanguage == targetLanguage ? targetLanguage : fallbackSpokenLanguage;
 

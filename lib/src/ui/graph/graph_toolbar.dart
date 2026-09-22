@@ -8,18 +8,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../common/ease.dart';
 import '../common/file_dialogs.dart';
+import '../common/keyed_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../common/bloc/session_bloc.dart';
 import 'bloc/pipeline_graph_bloc.dart';
 import 'add_character_button.dart';
+import 'add_glossary_button.dart';
 import 'shelf/pipeline_shelf.dart';
 import 'canvas/connection_messages.dart';
 import 'canvas/pipeline_facts.dart';
 import 'shelf/name_dialog.dart';
 
-/// The presets, the steps back, and the cards waiting to be put on the
-/// canvas. Under them, whatever the last attempt at a link came to.
+/// The presets, the steps back, and the cards and packs waiting to be put
+/// on the canvas. Under them, whatever the last attempt at a link came to.
 class GraphToolbar extends StatelessWidget {
   const GraphToolbar({super.key, required this.state, required this.facts});
 
@@ -53,7 +55,7 @@ class GraphToolbar extends StatelessWidget {
                         style: Theme.of(context).textTheme.labelSmall
                             ?.copyWith(color: context.colors.danger),
                       ),
-                      _ => Text(
+                      _ => KeyedText(
                         l10n.pipelineGraphHint,
                         key: const ValueKey('hint'),
                         style: Theme.of(context).textTheme.labelSmall,
@@ -63,6 +65,7 @@ class GraphToolbar extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 AddCharacterButton(characters: facts.characters, graph: state.graph),
+                AddGlossaryButton(packs: facts.glossary.packs, graph: state.graph),
                 // The session is rested from here as well as from Live: the
                 // cast is rewired on this screen, and walking to another one
                 // to stop the dubbing first is a walk for nothing.
@@ -127,6 +130,7 @@ class GraphToolbar extends StatelessWidget {
             PipelineShelf(
               schemes: state.schemes,
               cast: facts.characters,
+              packs: facts.glossary.packs,
               onChoose: (id) => context.read<PipelineGraphBloc>().add(PipelineSchemeChosen(id)),
               onReplace: (id) => context.read<PipelineGraphBloc>().add(PipelineSchemeReplaced(id)),
               onRename: (id, name) =>

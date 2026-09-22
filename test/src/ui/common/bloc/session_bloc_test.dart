@@ -464,6 +464,27 @@ void main() {
       expect(repository.starts, 0, reason: 'nothing is captured');
     });
 
+    test('reads text in the dubbing language in its voice, untranslated', () async {
+      // Russian text dubbed into Russian: nothing translates it, and the
+      // Russian voice reads it as it is.
+      cubits.settingsRepository.seed(
+        const AppSettings(
+          audioCaptureSource: AudioCaptureSource.system,
+          targetLanguage: 'ru',
+          screenLanguage: 'ru',
+        ),
+      );
+      cubits.sourcesRepository.select(
+        const GameProcess(pid: 4242, name: 'game.exe', path: 'game.exe'),
+      );
+      pipeline.add(const ScreenToggled(initializing: false));
+      await pumpEventQueue();
+
+      expect(repository.snapshotStarts, 1);
+      expect(repository.snapshotModels.translation, isNull, reason: 'nothing is translated');
+      expect(repository.snapshotSpeaker, speechModelFor('ru')!.speaker);
+    });
+
     test('keeps the last ten subtitles, the newest on top', () async {
       pipeline.add(const EngineFollowed());
       await settle();
@@ -821,6 +842,9 @@ class _SlowStartRepository extends Fake implements SessionRepository {
   );
   ModelPaths snapshotModels = const ModelPaths();
 
+  /// The voice the screen session was started in.
+  String? snapshotSpeaker;
+
   void push(EngineEvent event) => _events.add(event);
 
   /// Ends the start in progress with [failure], as the engine would.
@@ -854,6 +878,7 @@ class _SlowStartRepository extends Fake implements SessionRepository {
     snapshotStarts++;
     screenHeardVoices = hearsVoices;
     snapshotModels = worker.models;
+    snapshotSpeaker = worker.speaker;
     screenReadings.add(reading);
   }
 

@@ -1,11 +1,13 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-/// Where the canvas puts the pipeline: the cards drawn on it, the place of
-/// every node, and where it is looked at from -- all that is the canvas's
-/// own, and kept in `pipeline_graph.json`.
+/// Where the canvas puts the pipeline: the cards and the packs drawn on it,
+/// the place of every node, and where it is looked at from -- all that is
+/// the canvas's own, and kept in `pipeline_graph.json`.
 library;
 
+import 'glossary.dart';
+import 'pipeline_glossary.dart';
 import 'pipeline_graph_model.dart';
 
 /// One drawing of a card on the canvas.
@@ -70,15 +72,16 @@ class CastPlacement {
   String toString() => 'CastPlacement($nodeId${heard ? '' : ', unheard'})';
 }
 
-/// Where the nodes sit, which cards were put on the canvas, and where the
-/// canvas itself is. This is all that is kept on disk: everything else is
-/// derived from the settings and the cast.
+/// Where the nodes sit, which cards and packs were put on the canvas, and
+/// where the canvas itself is. This is all that is kept on disk: everything
+/// else is derived from the settings, the cast and the glossary.
 class PipelineLayout {
   const PipelineLayout({
     this.positions = const {},
     this.cast = const [],
     this.view = const GraphView(),
     this.silent = const {},
+    this.glossaries = const [],
   });
 
   /// The arrangement a list of cards describes, each drawn once.
@@ -126,6 +129,15 @@ class PipelineLayout {
     (index ~/ castRow) * castRowStep,
   );
 
+  /// Where the first pack of the glossary is put, and the rest after it in
+  /// a row: over the line of text it will stand in, from above the
+  /// translator on. The cast goes under the line; what is said about the
+  /// words goes over it.
+  static const glossaryOrigin = GraphPoint(600, 20);
+
+  /// Where the [index]th drawing of a pack goes when nobody has moved it.
+  static GraphPoint glossaryPlace(int index) => glossaryOrigin.translate(index * castStep, 0);
+
   final Map<String, GraphPoint> positions;
 
   /// The cards the player drew on the canvas, in the order they drew them.
@@ -145,6 +157,15 @@ class PipelineLayout {
   /// cast the player left off the scheme reads the way it always did.
   final Set<String> silent;
 
+  /// The packs of the glossary the player drew on the canvas, each with the
+  /// side of the translator it stands on in the line of text, or none. The
+  /// order is the line's: of the drawings on one side of the translator, the
+  /// one listed first reads the text first. Where a pack stands is the
+  /// scheme's to say and is kept here with the arrangement, as the cards cut
+  /// out of the mix are; that a pack standing in the line is switched on is
+  /// the glossary's own, and the canvas keeps the two agreeing.
+  final List<GlossaryPlacement> glossaries;
+
   /// The cards on the canvas, one entry per drawing of one.
   List<String> get characters => [for (final placement in cast) placement.characterId];
 
@@ -153,12 +174,132 @@ class PipelineLayout {
     List<CastPlacement>? cast,
     GraphView? view,
     Set<String>? silent,
+    List<GlossaryPlacement>? glossaries,
   }) => PipelineLayout(
     positions: positions ?? this.positions,
     cast: cast ?? this.cast,
     view: view ?? this.view,
     silent: silent ?? this.silent,
+    glossaries: glossaries ?? this.glossaries,
   );
+
+  /// The drawing of a pack at [nodeId], if it is one.
+  GlossaryPlacement? glossaryAt(String nodeId) {
+    for (final placement in glossaries) {
+      if (placement.nodeId == nodeId) return placement;
+    }
+    return null;
+  }
+
+  /// What the packs drawn here are let apply, by pack.
+  GlossaryReach glossaryReach({required bool translates}) =>
+      glossaryReachOf(glossaries, translates: translates);
+
+  /// Another drawing of [packId] -- out of the line, or on [feed]'s side of
+  /// the translator after the drawings already there -- under a node name no
+  /// other drawing answers to.
+  PipelineLayout withGlossary(String packId, {GlossaryFeed? feed}) {
+    final taken = {for (final placement in glossaries) placement.nodeId};
+    var number = 1;
+    while (taken.contains(PipelineNodeIds.glossary(number))) {
+      number++;
+    }
+    return copyWith(
+      glossaries: [
+        ...glossaries,
+        GlossaryPlacement(nodeId: PipelineNodeIds.glossary(number), packId: packId, feed: feed),
+      ],
+    );
+  }
+
+  /// The drawing at [nodeId] reading [packId] instead. It keeps its place,
+  /// in the line and on the canvas: the node is the same node with another
+  /// pack in it.
+  PipelineLayout withGlossaryPack(String nodeId, String packId) => copyWith(
+    glossaries: [
+      for (final placement in glossaries)
+        if (placement.nodeId == nodeId) placement.copyWith(packId: packId) else placement,
+    ],
+  );
+
+  /// The line of text changed by [edits], one after another. [translates]
+  /// says whether the translator stands in the line, which is what the side
+  /// right before the voice is.
+  PipelineLayout withLine(List<LineEdit> edits, {required bool translates}) {
+    var placed = glossaries;
+    for (final edit in edits) {
+      placed = switch (edit) {
+        LineRemove(:final nodeIds) => [
+          for (final placement in placed)
+            nodeIds.contains(placement.nodeId) ? placement.copyWith(unfed: true) : placement,
+        ],
+        final LineMove move => _moved(placed, move, translates: translates),
+      };
+    }
+    return identical(placed, glossaries) ? this : copyWith(glossaries: placed);
+  }
+
+  /// [placed] with [move] made: the drawing lifted out of the list and put
+  /// back where its anchor says, on the anchor's side of the translator.
+  static List<GlossaryPlacement> _moved(
+    List<GlossaryPlacement> placed,
+    LineMove move, {
+    required bool translates,
+  }) {
+    final index = placed.indexWhere((placement) => placement.nodeId == move.nodeId);
+    if (index < 0) return placed;
+    final rest = [...placed]..removeAt(index);
+    final (feed, at) = _slotFor(rest, move, translates: translates);
+    // An anchor that stands out of the line has no place to give.
+    if (feed == null) return placed;
+    return rest..insert(at, placed[index].copyWith(feed: feed));
+  }
+
+  /// The side of the translator [move] puts its drawing on, and where among
+  /// [rest] it goes: the drawings of one side read the text in their order.
+  static (GlossaryFeed?, int) _slotFor(
+    List<GlossaryPlacement> rest,
+    LineMove move, {
+    required bool translates,
+  }) {
+    int first(GlossaryFeed feed) {
+      final found = rest.indexWhere((placement) => placement.feed == feed);
+      return found < 0 ? rest.length : found;
+    }
+
+    int afterLast(GlossaryFeed feed) =>
+        rest.lastIndexWhere((placement) => placement.feed == feed) + 1;
+    int end(GlossaryFeed feed) => afterLast(feed) == 0 ? rest.length : afterLast(feed);
+    final lastSide = translates ? GlossaryFeed.translation : GlossaryFeed.recognition;
+    return switch ((move.anchor, move.after)) {
+      (PipelineNodeIds.recognition, true) => (
+        GlossaryFeed.recognition,
+        first(GlossaryFeed.recognition),
+      ),
+      (PipelineNodeIds.translation, true) => (
+        GlossaryFeed.translation,
+        first(GlossaryFeed.translation),
+      ),
+      (PipelineNodeIds.translation, false) => (
+        GlossaryFeed.recognition,
+        end(GlossaryFeed.recognition),
+      ),
+      (PipelineNodeIds.voice, false) => (lastSide, end(lastSide)),
+      (final anchor, final after) => _besideDrawing(rest, anchor, after: after),
+    };
+  }
+
+  /// Right after or right before the drawing at [anchor], on its side of the
+  /// translator; nowhere when it stands out of the line.
+  static (GlossaryFeed?, int) _besideDrawing(
+    List<GlossaryPlacement> rest,
+    String anchor, {
+    required bool after,
+  }) {
+    final at = rest.indexWhere((placement) => placement.nodeId == anchor);
+    if (at < 0) return (null, 0);
+    return (rest[at].feed, after ? at + 1 : at);
+  }
 
   PipelineLayout withPosition(String nodeId, GraphPoint at) =>
       copyWith(positions: {...positions, nodeId: at});
@@ -187,12 +328,14 @@ class PipelineLayout {
     );
   }
 
-  /// One drawing taken off the canvas. The card itself, and whoever reads
-  /// it, are untouched: only this copy of it goes.
+  /// One drawing taken off the canvas: a card or a pack. The card itself,
+  /// and whoever reads it, are untouched, and so is the pack: only this
+  /// drawing of it goes.
   ///
   /// A card that was cut out of the mix and is now off the canvas altogether
   /// is not cut any more: the cut is a line on the scheme, and a card the
-  /// scheme does not draw reads the way it always did.
+  /// scheme does not draw reads the way it always did. A pack drawn nowhere
+  /// any more applies whole again for the same reason.
   PipelineLayout withoutNode(String nodeId) {
     final left = [
       for (final placement in cast)
@@ -201,6 +344,10 @@ class PipelineLayout {
     final drawn = {for (final placement in left) placement.characterId};
     return copyWith(
       cast: left,
+      glossaries: [
+        for (final placement in glossaries)
+          if (placement.nodeId != nodeId) placement,
+      ],
       positions: {
         for (final entry in positions.entries)
           if (entry.key != nodeId) entry.key: entry.value,
@@ -231,12 +378,13 @@ class PipelineLayout {
   );
 
   Map<String, Object?> toJson() => {
-    'version': 3,
+    'version': 4,
     'nodes': {for (final entry in positions.entries) entry.key: entry.value.toJson()},
     'cast': [for (final placement in cast) placement.toJson()],
     'view': view.toJson(),
     // Sorted so the file is the same file when nothing was changed.
     'silent': [...silent]..sort(),
+    'glossaries': [for (final placement in glossaries) placement.toJson()],
   };
 
   /// The layout in [json], or the standard arrangement when the file is
@@ -264,6 +412,11 @@ class PipelineLayout {
         for (final value in json['silent'] as List<Object?>? ?? const [])
           if (value is String) value,
       },
+      // Version 3 and before drew no glossary: a file from then draws none.
+      glossaries: [
+        for (final value in json['glossaries'] as List<Object?>? ?? const [])
+          ?GlossaryPlacement.fromJson(value),
+      ],
     );
   }
 }

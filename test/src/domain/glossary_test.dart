@@ -142,6 +142,108 @@ void main() {
       expect(glossary.inUse.packs, isEmpty);
     });
 
+    test('reads nothing from a pack switched on with nothing in it', () {
+      // Not everything: the screen says the dubbing reads only the packs
+      // switched on, and opening the whole glossary would bring every other
+      // game's names back with it.
+      final glossary = written()
+          .keepingPack(const GlossaryPack(id: 'p1', name: 'Пустой'))
+          .activating('p1', active: true);
+
+      expect(glossary.inUse.entries, isEmpty);
+    });
+
+    test('narrows a pack to the kinds the scheme lets it apply, and no other pack', () {
+      final glossary = written()
+          .keepingPack(
+            GlossaryPack(id: 'p1', name: 'Fallout', entryKeys: [megaton.packKey, vault.packKey]),
+          )
+          .keepingPack(GlossaryPack(id: 'p2', name: 'Общее', entryKeys: [fire.packKey]))
+          .activating('p1', active: true)
+          .activating('p2', active: true);
+
+      expect(
+        glossary.inUseWithin({
+          'p1': {GlossaryKind.word},
+        }).entries,
+        [fire, vault],
+        reason: 'the pack the scheme does not draw applies whole',
+      );
+      expect(
+        glossary.inUseWithin({
+          'p1': <GlossaryKind>{},
+          'p2': {GlossaryKind.name},
+        }).entries,
+        isEmpty,
+        reason: 'drawn where none of its kinds can be met, a pack applies nothing',
+      );
+      expect(
+        written().inUseWithin({
+          'p1': <GlossaryKind>{},
+        }).entries,
+        [fire, megaton, vault],
+        reason: 'a pack the glossary no longer has draws nothing, and none is switched on',
+      );
+    });
+
+    test('reads nothing while the scheme draws packs and none of them is switched on', () {
+      final glossary = written().keepingPack(
+        GlossaryPack(id: 'p1', name: 'Fallout', entryKeys: [megaton.packKey]),
+      );
+
+      expect(
+        glossary.inUseWithin({
+          'p1': {GlossaryKind.name, GlossaryKind.word},
+        }).entries,
+        isEmpty,
+        reason: 'the last pack switched off on the scheme must not open the whole glossary',
+      );
+      expect(
+        glossary.inUse.entries,
+        [fire, megaton, vault],
+        reason: 'what the scheme does not draw for -- the screen -- still reads it whole',
+      );
+    });
+
+    test('counts what a pack holds of some kinds', () {
+      final pack = GlossaryPack(
+        id: 'p1',
+        name: 'Fallout',
+        entryKeys: [megaton.packKey, vault.packKey, fire.packKey],
+      );
+
+      expect(pack.countOf({GlossaryKind.name, GlossaryKind.word}), 2);
+      expect(pack.countOf({GlossaryKind.phrase}), 1);
+      expect(GlossaryKind.ofPackKey(fire.packKey), GlossaryKind.phrase);
+      expect(GlossaryKind.ofPackKey('rumour:who knows'), isNull);
+    });
+
+    test('tells one reach from another by what it lets through', () {
+      expect(
+        sameGlossaryReach(
+          {
+            'p1': {GlossaryKind.name, GlossaryKind.word},
+          },
+          {
+            'p1': {GlossaryKind.word, GlossaryKind.name},
+          },
+        ),
+        isTrue,
+      );
+      expect(
+        sameGlossaryReach(
+          {
+            'p1': {GlossaryKind.word},
+          },
+          {
+            'p1': {GlossaryKind.phrase},
+          },
+        ),
+        isFalse,
+      );
+      expect(sameGlossaryReach(const {}, {'p1': <GlossaryKind>{}}), isFalse);
+    });
+
     test('moves an entry when it is dragged from one pack to another', () {
       final glossary = written()
           .keepingPack(GlossaryPack(id: 'p1', name: 'One', entryKeys: [megaton.packKey]))

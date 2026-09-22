@@ -37,10 +37,8 @@ class TranscriptLines extends StatelessWidget {
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
       return BlocBuilder<SettingsBloc, SettingsState>(
-        builder: (context, settings) => EmptyTranscript(
-          targetLanguage: settings.settings.targetLanguage,
-          fromScreen: fromScreen,
-        ),
+        builder: (context, settings) =>
+            EmptyTranscript(settings: settings.settings, fromScreen: fromScreen),
       );
     }
     return ListView.separated(

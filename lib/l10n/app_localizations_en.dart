@@ -203,7 +203,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get glossaryPacksNote =>
-      'A pack is a way of reading the glossary rather than a place entries are moved to: an entry stays in its list whether or not a pack names it. With no pack switched on, the dubbing is checked against everything written down. With one or more on, it is checked against those alone -- so a pack made for one game does not drag another game\'s names along. Several may be on at once and what they hold adds together.';
+      'A pack is a way of reading the glossary rather than a place entries are moved to: an entry stays in its list whether or not a pack names it. With no pack switched on, the dubbing is checked against everything written down. With one or more on, it is checked against those alone -- so a pack made for one game does not drag another game\'s names along. Several may be on at once and what they hold adds together. Once packs stand on the Live graph, the graph decides there: a pack applies what can be met where it stands in the line, and with every one switched off, Live is not checked against the glossary at all.';
 
   @override
   String get glossaryPacksEmpty =>
@@ -462,6 +462,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get packsNameLabel => 'Pack name';
 
   @override
+  String get packsFilter => 'Filter packs by name';
+
+  @override
+  String get packsFilterClear => 'Clear the filter';
+
+  @override
+  String get packsFilterNothing => 'No pack has that in its name.';
+
+  @override
   String get packsEmpty =>
       'No packs yet. Make one and drag cards into it — a cast collected that way is handed on as a single file.';
 
@@ -652,7 +661,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String snapshotHowTo(String hotkey) {
-    return 'Hold $hotkey, draw a frame around the text over the game and let go — LoreDub reads it, translates it and voices it.';
+    return 'Hold <kbd>$hotkey</kbd>, draw a frame around the text over the game and let go — LoreDub reads it, translates it and voices it.';
   }
 
   @override
@@ -739,7 +748,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String frameHowTo(String hotkey) {
-    return 'The frame can be redrawn during the game: hold $hotkey, draw around the place the subtitles are written and let go — the selection disappears and the reading goes on inside the new frame.';
+    return 'The frame can be redrawn during the game: hold <kbd>$hotkey</kbd>, draw around the place the subtitles are written and let go — the selection disappears and the reading goes on inside the new frame.';
   }
 
   @override
@@ -749,14 +758,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hotkeyUnset => 'Not set';
 
   @override
-  String get hotkeyListening => 'Press a combination… (Esc cancels)';
+  String get hotkeyListening => 'Press a combination… (<kbd>Esc</kbd> cancels)';
 
   @override
   String get hotkeyClear => 'Remove the combination';
 
   @override
   String get hotkeyNeedsModifier =>
-      'Add Ctrl, Alt or Win: a key on its own would stop reaching the game';
+      'Add <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Win</kbd>: a key on its own would stop reaching the game';
 
   @override
   String get hotkeyUnsupported => 'This key cannot be bound';
@@ -860,10 +869,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get textLanguageLabel => 'Text language';
+  String get textLanguageLabel => 'Text and dubbing language';
 
   @override
-  String get textLanguageNote => 'Text in the dubbing language is voiced untranslated';
+  String get textLanguageNote => 'Changes the dubbing language on Models as well';
 
   @override
   String startingProgress(int percent) {
@@ -895,6 +904,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pipelineSummaryOcrDirect => 'Windows OCR → English → Vosk';
+
+  @override
+  String pipelineSummaryOcrAsIs(String language) {
+    return 'Windows OCR → $language → Vosk';
+  }
 
   @override
   String pipelineSummary(String language) {
@@ -1395,21 +1409,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get language_zh => 'Chinese';
 
   @override
-  String get translationTarget_ru => 'Russian';
-
-  @override
-  String get translationTarget_de => 'German';
-
-  @override
-  String get translationTarget_es => 'Spanish';
-
-  @override
-  String get translationTarget_fr => 'French';
-
-  @override
-  String get translationTarget_uk => 'Ukrainian';
-
-  @override
   String get voiceName_en => 'English voice';
 
   @override
@@ -1835,7 +1834,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pipelineGraphHint =>
-      'Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas. Shift-click chooses several nodes, Ctrl-drag draws a band around them, and what is chosen moves together.';
+      'Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas. <kbd>Shift</kbd>-click chooses several nodes, <kbd>Ctrl</kbd>-drag draws a band around them, and what is chosen moves together.';
 
   @override
   String failurePipelinesSaveFailed(String detail) {
@@ -2096,4 +2095,89 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pipelineOutputNote => 'The dubbing goes to the default Windows output device.';
+
+  @override
+  String get pipelineNodeGlossary => 'Glossary';
+
+  @override
+  String pipelineGlossaryNamed(String name) {
+    return 'Glossary “$name”';
+  }
+
+  @override
+  String get pipelineAddGlossary => 'Put a glossary on the graph';
+
+  @override
+  String get pipelineNoGlossaryPacks => 'No glossary packs yet — make them on the Glossary screen';
+
+  @override
+  String get pipelineGlossaryNoPack => 'No pack chosen';
+
+  @override
+  String pipelineGlossaryNotePhrases(int count) {
+    return 'phrases · $count';
+  }
+
+  @override
+  String pipelineGlossaryNoteWords(int count) {
+    return 'words · $count';
+  }
+
+  @override
+  String pipelineGlossaryNoteNamesWords(int count) {
+    return 'names and words · $count';
+  }
+
+  @override
+  String get pipelineGlossaryNoteNothing => 'matches nothing';
+
+  @override
+  String get pipelineGlossaryPackLabel => 'Pack';
+
+  @override
+  String get pipelineGlossaryPhrasesNote =>
+      'Before Translation: a whole line is matched against the English that was heard, and the pack\'s phrases are said in your translation instead of the model\'s. The pack\'s names and words are matched against the finished translation — for them, put a node of this pack after Translation.';
+
+  @override
+  String get pipelineGlossaryNamesWordsNote =>
+      'After Translation: puts the finished translation right — the names the translator left in Latin, and whole words. The pack\'s phrases are matched against the English before it is translated — for them, put a node of this pack before Translation.';
+
+  @override
+  String get pipelineGlossaryWordsNote =>
+      'There is nothing to translate: Whisper hands English over and the dubbing reads it as it is. The node puts the pack\'s words right in it; phrases and names only work when there is a translation.';
+
+  @override
+  String get pipelineGlossaryAsideNote =>
+      'After Translation, which stands aside for now — the dubbing is in English. Until it is back in the line, the node matches nothing.';
+
+  @override
+  String get pipelineGlossaryOutNote =>
+      'The node is not in the line of text and matches nothing. Draw a line into its Text from Whisper, Translation or another glossary — or from its Text into Translation, Lines or another glossary. Put in the line, the glossary is switched on.';
+
+  @override
+  String get pipelineGlossaryActive => 'Active';
+
+  @override
+  String get pipelineGlossaryInactive => 'inactive';
+
+  @override
+  String get pipelineGlossaryNotePassing => 'text passes by';
+
+  @override
+  String get pipelineGlossaryInactiveNote =>
+      'The glossary is inactive: the text passes through it as it came, and the node keeps its place in the line. It is the same Active switch the pack carries on the Glossary screen.';
+
+  @override
+  String get pipelineVoiceNoGlossary =>
+      'No glossary on the graph is active, so the lines are not checked against the glossary.';
+
+  @override
+  String get pipelineCutGlossary => 'Take the glossary out of the line';
+
+  @override
+  String get pipelineRefusalOutOfLine => 'Put one of the two glossaries in the line of text first.';
+
+  @override
+  String get pipelineVoiceWholeGlossary =>
+      'No glossary pack is switched on, so the lines are checked against everything written down on the Glossary screen.';
 }

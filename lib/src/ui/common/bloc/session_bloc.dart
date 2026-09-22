@@ -293,9 +293,10 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     );
     try {
       final settings = _settings.settings;
-      // Read into English, there is nothing to translate: the same session
-      // without Marian in it.
-      final translation = selection.translates
+      // Text in the language it is voiced in -- English into English, or the
+      // dubbing language itself -- has nothing to translate: the same
+      // session without Marian in it.
+      final translation = selection.screenTranslates
           ? selection.forTargetLanguage(ModelKind.translation)!.model
           : null;
       final speech = selection.forTargetLanguage(ModelKind.speech)!.model;

@@ -134,6 +134,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
     onDrag: _gestures.carry,
     onDrop: _gestures.drop,
     onRemove: _gestures.remove,
+    onSwitch: _gestures.switchPack,
     onLinkStart: (port, global) => _gestures.pullLink(port, _toCanvas(global)),
     onLinkToggle: _gestures.toggleLink,
     onLinkDrag: (global) => _gestures.carryLink(_toCanvas(global)),

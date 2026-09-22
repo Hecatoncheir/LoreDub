@@ -69,9 +69,10 @@ AppSettings appSettingsFromJson(
 }) {
   const fresh = AppSettings();
   final stored = _Stored(json);
+  final targetLanguage = stored.oneOf('targetLanguage', dubbingLanguages, dubbingLanguages.first);
   return AppSettings(
     captureRouted: stored.flag('captureRouted', fresh.captureRouted),
-    targetLanguage: stored.oneOf('targetLanguage', dubbingLanguages, dubbingLanguages.first),
+    targetLanguage: targetLanguage,
     originalVolume: stored.number('originalVolume', fresh.originalVolume),
     duckWhileSpeaking: stored.flag('duckWhileSpeaking', fresh.duckWhileSpeaking),
     hurryWhenQueued: stored.flag('hurryWhenQueued', fresh.hurryWhenQueued),
@@ -93,8 +94,13 @@ AppSettings appSettingsFromJson(
     sourceLanguage: stored.spoken('sourceLanguage'),
     // Builds before the screen had a language of its own read it off the
     // game's; without the key the screen reads English, as it does unless
-    // told otherwise.
-    screenLanguage: stored.spoken('screenLanguage'),
+    // told otherwise -- and so does it in anything but the dubbing
+    // language, which is all its voice could read.
+    screenLanguage: stored.oneOf(
+      'screenLanguage',
+      [fallbackSpokenLanguage, targetLanguage],
+      fallbackSpokenLanguage,
+    ),
     interfaceLanguage: stored.oneOf(
       'interfaceLanguage',
       interfaceLanguages,

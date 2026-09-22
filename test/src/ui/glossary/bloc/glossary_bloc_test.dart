@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/glossary_repository.dart';
@@ -36,8 +38,12 @@ void main() {
   Matcher holding(List<GlossaryEntry> entries) =>
       isA<GlossaryState>().having((state) => state.glossary.entries, 'entries', entries);
 
-  /// What is on disk as the screen opens on it.
-  GlossaryState opened(Glossary glossary) => GlossaryState(glossary: glossary, loaded: true);
+  /// What is on disk as the screen opens on it: put in the repository, which
+  /// every edit is made from, and shown.
+  GlossaryState opened(Glossary glossary) {
+    disk.stored = glossary;
+    return GlossaryState(glossary: glossary, loaded: true);
+  }
 
   blocTest<GlossaryBloc, GlossaryState>(
     'reads what is written down, and says a file that cannot be read',
@@ -184,6 +190,23 @@ void main() {
   );
 
   blocTest<GlossaryBloc, GlossaryState>(
+    'follows a pack switched on elsewhere, and edits from what it follows',
+    build: build,
+    seed: () => opened(Glossary(entries: const [fire, megaton], packs: [fallout])),
+    act: (bloc) async {
+      // The canvas switches a pack by the line it draws into the voice,
+      // through the same repository.
+      disk.publish(disk.stored.activating('p1', active: true));
+      await pumpEventQueue();
+      bloc.add(const GlossaryEntryWritten(reloading));
+    },
+    verify: (bloc) {
+      expect(bloc.state.glossary.packs.single.active, isTrue);
+      expect(disk.saved.single.packs.single.active, isTrue, reason: 'not switched off again');
+    },
+  );
+
+  blocTest<GlossaryBloc, GlossaryState>(
     'writes one pack out with the entries it names',
     build: build,
     seed: () => opened(Glossary(entries: const [fire, megaton], packs: [fallout])),
@@ -196,12 +219,17 @@ void main() {
   );
 }
 
-/// The glossary's file with no disk behind it.
+/// The glossary's repository with no disk behind it, publishing as the real
+/// one does: at once, and back again when a write fails.
 class _Disk extends Fake implements GlossaryRepository {
+  final _changes = StreamController<Glossary>.broadcast(sync: true);
   final saved = <Glossary>[];
   final exported = <(String, Glossary)>[];
   List<String> read = const [];
   Glossary incoming = Glossary.empty;
+
+  /// What is written down.
+  Glossary stored = Glossary.empty;
 
   /// What loading and saving fail with, if they are to.
   Error? failure;
@@ -210,15 +238,31 @@ class _Disk extends Fake implements GlossaryRepository {
   Error? readFailure;
 
   @override
+  Glossary get glossary => stored;
+
+  @override
+  Stream<Glossary> get changes => _changes.stream;
+
+  @override
   Future<Glossary> load() async {
     if (failure case final failure?) throw failure;
-    return Glossary.empty;
+    return stored;
   }
 
   @override
   Future<void> save(Glossary glossary) async {
-    if (failure case final failure?) throw failure;
+    final previous = stored;
+    publish(glossary);
+    if (failure case final failure?) {
+      publish(previous);
+      throw failure;
+    }
     saved.add(glossary);
+  }
+
+  void publish(Glossary value) {
+    stored = value;
+    _changes.add(value);
   }
 
   @override

@@ -24,4 +24,8 @@ abstract final class ScreenLayout {
   static const frameBesideControlsWidth = 860.0;
 
   static const frameCardWidth = 380.0;
+
+  /// Narrower than this the voice goes under the language rather than
+  /// beside it: the language row takes 512, and a voice's name wants 240.
+  static const voiceBesideLanguageWidth = 780.0;
 }

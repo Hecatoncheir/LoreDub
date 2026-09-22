@@ -203,7 +203,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get glossaryPacksNote =>
-      'Пакет — это способ прочитать словарь, а не место, куда записи переносятся: запись остаётся в своём списке, даже когда пакет её называет. Пока не включён ни один пакет, озвучка сверяется со всем, что записано. Как только включён хотя бы один, она сверяется только с включёнными — так пакет одной игры не тащит за собой имена другой. Включённых может быть несколько, их записи складываются.';
+      'Пакет — это способ прочитать словарь, а не место, куда записи переносятся: запись остаётся в своём списке, даже когда пакет её называет. Пока не включён ни один пакет, озвучка сверяется со всем, что записано. Как только включён хотя бы один, она сверяется только с включёнными — так пакет одной игры не тащит за собой имена другой. Включённых может быть несколько, их записи складываются. Когда пакеты стоят на схеме «Эфира», там решает схема: пакет применяет то, что можно встретить на его месте в линии, а если выключены все, «Эфир» не сверяется со словарём вовсе.';
 
   @override
   String get glossaryPacksEmpty =>
@@ -465,6 +465,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get packsNameLabel => 'Название пакета';
 
   @override
+  String get packsFilter => 'Фильтр по названию пакета';
+
+  @override
+  String get packsFilterClear => 'Очистить фильтр';
+
+  @override
+  String get packsFilterNothing => 'Пакетов с таким названием нет.';
+
+  @override
   String get packsEmpty =>
       'Пакетов пока нет. Создайте пакет и перетащите в него карточки — так набор персонажей можно передать одним файлом.';
 
@@ -658,7 +667,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String snapshotHowTo(String hotkey) {
-    return 'Удерживайте $hotkey, обведите мышью текст поверх игры и отпустите клавишу — LoreDub прочитает его, переведёт и озвучит.';
+    return 'Удерживайте <kbd>$hotkey</kbd>, обведите мышью текст поверх игры и отпустите клавишу — LoreDub прочитает его, переведёт и озвучит.';
   }
 
   @override
@@ -745,7 +754,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String frameHowTo(String hotkey) {
-    return 'Во время игры рамку можно обвести заново: удерживайте $hotkey, выделите место с субтитрами и отпустите — выделение исчезнет, а чтение продолжится в новой рамке.';
+    return 'Во время игры рамку можно обвести заново: удерживайте <kbd>$hotkey</kbd>, выделите место с субтитрами и отпустите — выделение исчезнет, а чтение продолжится в новой рамке.';
   }
 
   @override
@@ -755,14 +764,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hotkeyUnset => 'Не назначено';
 
   @override
-  String get hotkeyListening => 'Нажмите сочетание… (Esc — отмена)';
+  String get hotkeyListening => 'Нажмите сочетание… (<kbd>Esc</kbd> — отмена)';
 
   @override
   String get hotkeyClear => 'Убрать сочетание';
 
   @override
   String get hotkeyNeedsModifier =>
-      'Добавьте Ctrl, Alt или Win: одиночная клавиша перестала бы доходить до игры';
+      'Добавьте <kbd>Ctrl</kbd>, <kbd>Alt</kbd> или <kbd>Win</kbd>: одиночная клавиша перестала бы доходить до игры';
 
   @override
   String get hotkeyUnsupported => 'Эту клавишу назначить нельзя';
@@ -867,10 +876,10 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get textLanguageLabel => 'Язык текста';
+  String get textLanguageLabel => 'Язык текста и озвучки';
 
   @override
-  String get textLanguageNote => 'Текст на языке озвучки озвучивается без перевода';
+  String get textLanguageNote => 'Язык озвучки меняется вместе с ним и в «Моделях»';
 
   @override
   String startingProgress(int percent) {
@@ -902,6 +911,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pipelineSummaryOcrDirect => 'Windows OCR → English → Vosk';
+
+  @override
+  String pipelineSummaryOcrAsIs(String language) {
+    return 'Windows OCR → $language → Vosk';
+  }
 
   @override
   String pipelineSummary(String language) {
@@ -1404,21 +1418,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get language_zh => 'Китайский';
 
   @override
-  String get translationTarget_ru => 'русский';
-
-  @override
-  String get translationTarget_de => 'немецкий';
-
-  @override
-  String get translationTarget_es => 'испанский';
-
-  @override
-  String get translationTarget_fr => 'французский';
-
-  @override
-  String get translationTarget_uk => 'украинский';
-
-  @override
   String get voiceName_en => 'Английский голос';
 
   @override
@@ -1845,7 +1844,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pipelineGraphHint =>
-      'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст. Shift с нажатием выбирает несколько нод, Ctrl с протяжкой — область; выбранные ноды двигаются вместе.';
+      'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст. <kbd>Shift</kbd> с нажатием выбирает несколько нод, <kbd>Ctrl</kbd> с протяжкой — область; выбранные ноды двигаются вместе.';
 
   @override
   String failurePipelinesSaveFailed(String detail) {
@@ -2106,4 +2105,90 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pipelineOutputNote => 'Озвучка уходит на устройство вывода Windows по умолчанию.';
+
+  @override
+  String get pipelineNodeGlossary => 'Словарь';
+
+  @override
+  String pipelineGlossaryNamed(String name) {
+    return 'Словарь «$name»';
+  }
+
+  @override
+  String get pipelineAddGlossary => 'Добавить словарь на схему';
+
+  @override
+  String get pipelineNoGlossaryPacks =>
+      'Пакетов словаря пока нет — соберите их на экране «Словарь»';
+
+  @override
+  String get pipelineGlossaryNoPack => 'Пакет не выбран';
+
+  @override
+  String pipelineGlossaryNotePhrases(int count) {
+    return 'фразы · $count';
+  }
+
+  @override
+  String pipelineGlossaryNoteWords(int count) {
+    return 'слова · $count';
+  }
+
+  @override
+  String pipelineGlossaryNoteNamesWords(int count) {
+    return 'имена и слова · $count';
+  }
+
+  @override
+  String get pipelineGlossaryNoteNothing => 'ничего не сверяет';
+
+  @override
+  String get pipelineGlossaryPackLabel => 'Пакет';
+
+  @override
+  String get pipelineGlossaryPhrasesNote =>
+      'Стоит до «Перевода»: реплика целиком сверяется с распознанным английским, и фразы пакета звучат вашим переводом вместо ответа модели. Имена и слова пакета сверяются с готовым переводом — для них поставьте ноду этого пакета после «Перевода».';
+
+  @override
+  String get pipelineGlossaryNamesWordsNote =>
+      'Стоит после «Перевода»: поправляет в готовом переводе имена, которые переводчик оставил латиницей, и слова целиком. Фразы пакета сверяются с английским до перевода — для них поставьте ноду этого пакета перед «Переводом».';
+
+  @override
+  String get pipelineGlossaryWordsNote =>
+      'Переводить нечего: Whisper отдаёт английский, и озвучка читает его как есть. Нода поправляет в нём слова пакета; фразы и имена работают только при переводе.';
+
+  @override
+  String get pipelineGlossaryAsideNote =>
+      'Стоит после «Перевода», а перевод сейчас в стороне — озвучка идёт на английском. Пока он не вернётся в линию, нода ничего не сверяет.';
+
+  @override
+  String get pipelineGlossaryOutNote =>
+      'Нода не стоит в линии текста и ничего не сверяет. Протяните в её «Текст» линию от Whisper, «Перевода» или другого словаря — или из её «Текста» в «Перевод», «Реплики» или другой словарь. Поставленный в линию, словарь включается.';
+
+  @override
+  String get pipelineGlossaryActive => 'Активен';
+
+  @override
+  String get pipelineGlossaryInactive => 'не активен';
+
+  @override
+  String get pipelineGlossaryNotePassing => 'текст идёт мимо';
+
+  @override
+  String get pipelineGlossaryInactiveNote =>
+      'Словарь не активен: текст проходит через него как пришёл, а нода остаётся на своём месте в линии. Это тот же переключатель «Активен», что у пакета на экране «Словарь».';
+
+  @override
+  String get pipelineVoiceNoGlossary =>
+      'Ни один словарь на схеме не активен, поэтому реплики не сверяются со словарём.';
+
+  @override
+  String get pipelineCutGlossary => 'Убрать словарь из линии';
+
+  @override
+  String get pipelineRefusalOutOfLine => 'Сначала поставьте в линию текста один из двух словарей.';
+
+  @override
+  String get pipelineVoiceWholeGlossary =>
+      'Ни один пакет словаря не включён, поэтому реплики сверяются со всем, что записано на экране «Словарь».';
 }

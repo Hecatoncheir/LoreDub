@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/cast_repository.dart';
+import '../../../data/repositories/glossary_repository.dart';
 import '../../../data/repositories/install_repository.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/session_coordinator.dart';
@@ -15,6 +16,7 @@ import '../../../data/repositories/settings_repository.dart';
 import '../../../data/services/model_catalog.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/character.dart';
+import '../../../domain/glossary.dart';
 import '../../../domain/id_source.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
@@ -26,16 +28,18 @@ part 'pipeline_graph_event.dart';
 part 'pipeline_graph_state.dart';
 
 /// What one step back restores: where the nodes were, whether the way in
-/// was drawn, and whose voice read whom.
+/// was drawn, whose voice read whom, and which packs of the glossary were
+/// switched on.
 ///
-/// The canvas owns none of those — they are the settings and the cast — so
-/// undo puts them back through the same calls an edit makes, and the screen
-/// that shows them is right without being told.
+/// The canvas owns none of those but the first — they are the settings, the
+/// cast and the glossary — so undo puts them back through the same calls an
+/// edit makes, and the screen that shows them is right without being told.
 class _GraphMemento {
   const _GraphMemento({
     required this.layout,
     required this.routed,
     required this.readers,
+    required this.activePacks,
   });
 
   final PipelineLayout layout;
@@ -45,6 +49,9 @@ class _GraphMemento {
   final bool routed;
 
   final Map<String, String?> readers;
+
+  /// The packs whose lines ran into the voice.
+  final Set<String> activePacks;
 }
 
 class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
@@ -52,6 +59,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     this._schemes,
     this._settings,
     this._characters,
+    this._glossary,
     this._installed,
     this._sessions,
     this._errors, {
@@ -87,7 +95,10 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     on<PipelineLinkReleased>(_onReleased);
     on<PipelineLinkCut>(_onCut);
     on<PipelineCharacterPlaced>(_onCharacterPlaced);
-    on<PipelineCharacterRemoved>(_onCharacterRemoved);
+    on<PipelineNodeRemoved>(_onNodeRemoved);
+    on<PipelineGlossaryPlaced>(_onGlossaryPlaced);
+    on<PipelineGlossaryPackChosen>(_onGlossaryPackChosen);
+    on<PipelineGlossarySwitched>(_onGlossarySwitched);
     on<PipelineViewPanned>(
       (event, emit) => emit(_withView(state.layout.view.panned(event.dx, event.dy))),
     );
@@ -106,16 +117,19 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     on<PipelineGraphUndone>(_onUndone);
     on<PipelineGraphRedone>(_onRedone);
 
-    // The canvas is a second window onto the settings and the cast: a
-    // language picked here or on another screen is the same change, so it
-    // is redrawn from them rather than kept twice.
+    // The canvas is a second window onto the settings, the cast and the
+    // glossary: a language picked here or on another screen is the same
+    // change, and so is a pack switched on, so it is redrawn from them
+    // rather than kept twice.
     _settingsChanges = _settings.changes.listen((_) => add(const PipelineGraphRefreshed()));
     _characterChanges = _characters.changes.listen((_) => add(const PipelineGraphRefreshed()));
+    _glossaryChanges = _glossary.changes.listen((_) => add(const PipelineGraphRefreshed()));
   }
 
   final SchemeRepository _schemes;
   final SettingsRepository _settings;
   final CastRepository _characters;
+  final GlossaryRepository _glossary;
   final InstallRepository _installed;
 
   /// Where the engine stands, which the route may not be changed under.
@@ -125,6 +139,11 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   late final StreamSubscription<AppSettings> _settingsChanges;
   late final StreamSubscription<CharacterLibrary> _characterChanges;
+  late final StreamSubscription<Glossary> _glossaryChanges;
+
+  /// What the glossary was last told the packs on the canvas may apply, so
+  /// it is told again only when that changes.
+  GlossaryReach? _toldReach;
 
   /// How far back the canvas remembers. Long enough to undo an evening's
   /// rewiring, short enough that the list is never a concern.
@@ -153,6 +172,77 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     }
   }
 
+  Future<void> _saveGlossary(Glossary glossary) async {
+    try {
+      await _glossary.save(glossary);
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
+  Future<void> _narrow(GlossaryReach reach) async {
+    try {
+      await _glossary.narrow(reach);
+    } catch (exception) {
+      _errors.report(exception);
+    }
+  }
+
+  /// The packs switched on now.
+  Set<String> get _activePacks => {for (final pack in _glossary.glossary.activePacks) pack.id};
+
+  bool get _translates => _settings.settings.translates;
+
+  /// Keeps [glossary] when it is not what is kept already, and answers with
+  /// the write, or null when there is none to wait for.
+  ///
+  /// The repository publishes it before the disk is asked, so a layout
+  /// emitted right after the call is drawn with its packs switched as they
+  /// now are, in the same frame rather than a redraw later.
+  Future<void>? _keepPacks(Glossary glossary) =>
+      identical(glossary, _glossary.glossary) ? null : _saveGlossary(glossary);
+
+  /// Draws [layout], an edit of the canvas, and the switches of the glossary
+  /// made to follow it: a pack the edit put in the line of text is switched
+  /// on, and one it took out switched off.
+  Future<void> _settle(
+    PipelineLayout layout,
+    Emitter<PipelineGraphState> emit, {
+    String? select,
+    bool clearSelected = false,
+  }) async {
+    final saving = _keepPacks(packsFollowingLine(_glossary.glossary, state.layout, layout));
+    final was = state.layout.silent;
+    emit(
+      _redrawn(
+        state.copyWith(
+          layout: layout,
+          selected: select,
+          clearSelected: clearSelected,
+          clearRefusal: true,
+        ),
+      ),
+    );
+    _persist();
+    if (!_sameCards(was, layout.silent)) await _readAsHeard(layout.silent);
+    await saving;
+  }
+
+  /// The pack drawn at [event]'s node switched on or off. Nothing of the
+  /// drawing moves: switched off, it stays in the line and the text passes
+  /// through it as it came. The switch is the pack's -- the glossary screen
+  /// shows the same one -- so every drawing of the pack answers together.
+  Future<void> _onGlossarySwitched(
+    PipelineGlossarySwitched event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    final pack = _glossary.glossary.packWithId(state.layout.glossaryAt(event.nodeId)?.packId ?? '');
+    if (pack == null || pack.active == event.active) return;
+    _remember();
+    emit(state.copyWith(clearRefusal: true));
+    await _saveGlossary(_glossary.glossary.activating(pack.id, active: event.active));
+  }
+
   /// Whether the route may be changed at all. A running session holds the
   /// models it started with, so the way in is settled until it stops; whose
   /// voice reads whom is not, and the worker is told of it as it runs.
@@ -160,12 +250,12 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   Future<void> _onOpened(PipelineGraphOpened event, Emitter<PipelineGraphState> emit) async {
     if (!state.loading) return;
-    // Drawn from the settings and the cast, so after both are read; each
-    // is read once whoever asks first, so it does not matter who started.
-    // A read that failed is reported by the screen that owns it; the
-    // canvas draws what there is.
+    // Drawn from the settings, the cast and the glossary, so after all
+    // three are read; each is read once whoever asks first, so it does not
+    // matter who started. A read that failed is reported by the screen that
+    // owns it; the canvas draws what there is.
     try {
-      await Future.wait([_settings.load(), _characters.load()]);
+      await Future.wait([_settings.load(), _characters.load(), _glossary.load()]);
     } catch (exception) {
       log('scheme drawn without what it is drawn from: $exception', name: 'PipelineGraphBloc');
     }
@@ -198,9 +288,10 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     );
   }
 
-  /// The scheme as it stands: the route, the arrangement, and whose voice
-  /// reads whom among the cards drawn on it. The models and the languages
-  /// are left out — they belong to the machine, not to the drawing.
+  /// The scheme as it stands: the route, the arrangement, whose voice
+  /// reads whom among the cards drawn on it, and which packs of the
+  /// glossary are switched on. The models and the languages are left out —
+  /// they belong to the machine, not to the drawing.
   SavedPipeline _asScheme(String id, String name) {
     final drawn = {for (final placement in state.layout.cast) placement.characterId};
     return SavedPipeline(
@@ -212,6 +303,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         for (final character in _cast)
           if (drawn.contains(character.id)) character.id: character.voicedBy,
       },
+      activePacks: _activePacks,
     );
   }
 
@@ -242,6 +334,14 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     }
     final wasSilent = state.layout.silent;
     _remember();
+    // Which packs are read is the whole picture as well, over the whole
+    // glossary; a scheme kept before the glossary was drawn says nothing of
+    // them and leaves them as they are. Switched before the arrangement is
+    // drawn, so its nodes are drawn switched as the scheme has them.
+    final switching = _keepPacks(switch (scheme.activePacks) {
+      final packs? => _glossary.glossary.switchedTo(packs),
+      null => _glossary.glossary,
+    });
     emit(
       _redrawn(
         state.copyWith(
@@ -270,6 +370,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       if (character.voicedBy == reader) continue;
       await _voiceCharacterAs(character.id, reader);
     }
+    await switching;
   }
 
   /// The scheme keeps its name and its place on the shelf; everything the
@@ -485,33 +586,8 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         _remember();
         emit(state.copyWith(clearRefusal: true));
         await _settings.save(_settings.settings.copyWith(captureRouted: routed));
-      // The translator out of the line, or back into it. There is no setting
-      // of its own behind this: dubbing into English is what has nothing to
-      // translate, so taking the stage out chooses English and putting it
-      // back chooses a language that has a translator. Locked with the
-      // route, the models being loaded for the session that runs. A
-      // catalogue carrying no English voice would have no line without the
-      // translator at all, and the cut is refused rather than left to end in
-      // a session with nothing to read it.
-      case TranslationConnection(:final routed):
-        if (_routeLocked) {
-          emit(state.copyWith(refusal: ConnectionRefusal.locked));
-          return;
-        }
-        if (!routed && !dubbingLanguages.contains(untranslatedDubbingLanguage)) {
-          emit(state.copyWith(refusal: ConnectionRefusal.unsupported));
-          return;
-        }
-        final language = routed ? _languageToTranslateInto : untranslatedDubbingLanguage;
-        if (language == null) {
-          emit(state.copyWith(refusal: ConnectionRefusal.translatorMissing));
-          return;
-        }
-        _remember();
-        emit(state.copyWith(clearRefusal: true));
-        // Both the translator and the voice: text in one language read
-        // by a voice for another would be gibberish.
-        await _settings.save(_settings.settings.copyWith(targetLanguage: language));
+      case TranslationConnection(:final routed, :final edits):
+        await _moveTranslator(routed, edits, emit);
       // A card into the mix, or out of it. Not locked with the route: a
       // session keeps its cast loaded either way, and the worker is told.
       //
@@ -535,7 +611,50 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       case HeardConnection(:final nodeId, :final heard):
         _remember();
         await _relayout(_joined(state.layout, joining).withHeard(nodeId, heard), emit);
+      // Packs of the glossary into the line of text, out of it, or along it:
+      // the arrangement's, with the switches following. Not locked with the
+      // route -- a running worker is told what its glossary puts right now,
+      // as it is when an entry is written down.
+      case GlossaryLineConnection(:final edits):
+        _remember();
+        await _settle(state.layout.withLine(edits, translates: _translates), emit);
     }
+  }
+
+  /// The translator out of the line, or back into it, and the packs of the
+  /// glossary the same line moved.
+  ///
+  /// There is no setting of its own behind this: dubbing into English is
+  /// what has nothing to translate, so taking the stage out chooses English
+  /// and putting it back chooses a language that has a translator. Locked
+  /// with the route, the models being loaded for the session that runs. A
+  /// catalogue carrying no English voice would have no line without the
+  /// translator at all, and the cut is refused rather than left to end in a
+  /// session with nothing to read it.
+  Future<void> _moveTranslator(
+    bool routed,
+    List<LineEdit> edits,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    if (_routeLocked) {
+      emit(state.copyWith(refusal: ConnectionRefusal.locked));
+      return;
+    }
+    if (!routed && !dubbingLanguages.contains(untranslatedDubbingLanguage)) {
+      emit(state.copyWith(refusal: ConnectionRefusal.unsupported));
+      return;
+    }
+    final language = routed ? _languageToTranslateInto : untranslatedDubbingLanguage;
+    if (language == null) {
+      emit(state.copyWith(refusal: ConnectionRefusal.translatorMissing));
+      return;
+    }
+    _remember();
+    emit(state.copyWith(clearRefusal: true));
+    if (edits.isNotEmpty) await _settle(state.layout.withLine(edits, translates: routed), emit);
+    // Both the translator and the voice: text in one language read by a
+    // voice for another would be gibberish.
+    await _settings.save(_settings.settings.withTargetLanguage(language));
   }
 
   Future<void> _onCharacterPlaced(
@@ -548,28 +667,55 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     _persist();
   }
 
-  Future<void> _onCharacterRemoved(
-    PipelineCharacterRemoved event,
+  /// A pack drawn on the canvas, out of the line until a line puts it
+  /// there -- or in it at once, where more of it applies, when the pack is
+  /// switched on and stands in the line nowhere else. Its panel opens with
+  /// it.
+  Future<void> _onGlossaryPlaced(
+    PipelineGlossaryPlaced event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    if (_glossary.glossary.packWithId(event.packId) == null) return;
+    _remember();
+    final layout = state.layout.withGlossary(event.packId);
+    await _settle(layout, emit, select: layout.glossaries.last.nodeId);
+  }
+
+  /// The drawing at [event]'s node reading another pack, where it stands:
+  /// the pack it read leaves the line with it, and the one it reads now
+  /// joins it there.
+  Future<void> _onGlossaryPackChosen(
+    PipelineGlossaryPackChosen event,
+    Emitter<PipelineGraphState> emit,
+  ) async {
+    final placement = state.layout.glossaryAt(event.nodeId);
+    if (placement == null || placement.packId == event.packId) return;
+    if (_glossary.glossary.packWithId(event.packId) == null) return;
+    _remember();
+    await _settle(state.layout.withGlossaryPack(event.nodeId, event.packId), emit);
+  }
+
+  Future<void> _onNodeRemoved(
+    PipelineNodeRemoved event,
     Emitter<PipelineGraphState> emit,
   ) async {
     _remember();
-    emit(
-      _redrawn(
-        state.copyWith(
-          layout: state.layout.withoutNode(event.nodeId),
-          clearSelected: state.selected == event.nodeId,
-        ),
-      ),
+    await _settle(
+      state.layout.withoutNode(event.nodeId),
+      emit,
+      clearSelected: state.selected == event.nodeId,
     );
-    _persist();
   }
 
+  /// Every node back where a scheme nobody arranged puts it. What is drawn
+  /// stays drawn -- the cards, and the packs with the text each reads --
+  /// only where it stands is forgotten.
   Future<void> _onReset(PipelineLayoutReset event, Emitter<PipelineGraphState> emit) async {
     _remember();
     emit(
       _redrawn(
         state.copyWith(
-          layout: PipelineLayout(cast: state.layout.cast),
+          layout: PipelineLayout(cast: state.layout.cast, glossaries: state.layout.glossaries),
           clearRefusal: true,
         ),
       ),
@@ -591,10 +737,13 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     await _restore(memento, emit);
   }
 
-  /// Puts a remembered state back the way an edit makes one: the settings
-  /// and the cast are written through, and the canvas follows them.
+  /// Puts a remembered state back the way an edit makes one: the settings,
+  /// the cast and the glossary are written through, and the canvas follows
+  /// them.
   Future<void> _restore(_GraphMemento memento, Emitter<PipelineGraphState> emit) async {
     final wasSilent = state.layout.silent;
+    // The packs first, so the nodes are drawn switched as they were.
+    final switching = _keepPacks(_glossary.glossary.switchedTo(memento.activePacks));
     emit(_redrawn(state.copyWith(layout: memento.layout, clearRefusal: true)));
     _persist();
     if (!_sameCards(wasSilent, memento.layout.silent)) {
@@ -611,6 +760,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       if (now.id.isEmpty || now.voicedBy == entry.value) continue;
       await _voiceCharacterAs(entry.key, entry.value);
     }
+    await switching;
     if (isClosed) return;
     emit(_redrawn(state.copyWith(canUndo: _past.isNotEmpty, canRedo: _future.isNotEmpty)));
   }
@@ -649,6 +799,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     layout: state.layout,
     routed: _settings.settings.captureRouted,
     readers: {for (final character in _cast) character.id: character.voicedBy},
+    activePacks: _activePacks,
   );
 
   /// Keeps where things stood before an edit. Called by the edit rather than
@@ -659,14 +810,16 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     _future.clear();
   }
 
-  /// The state with the graph rebuilt from the settings, the cast and the
-  /// arrangement it now carries.
+  /// The state with the graph rebuilt from the settings, the cast, the
+  /// glossary and the arrangement it now carries.
   PipelineGraphState _redrawn(PipelineGraphState value) {
     final graph = buildPipelineGraph(
       settings: _settings.settings,
       characters: _cast,
+      packs: _glossary.glossary.packs,
       layout: value.layout,
     );
+    _followReach(value.layout);
     // A card taken off the canvas leaves the choice with it, so a drag does
     // not carry a node that is no longer drawn.
     final chosen = {
@@ -679,6 +832,22 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       canUndo: _past.isNotEmpty,
       canRedo: _future.isNotEmpty,
     );
+  }
+
+  /// Tells the glossary what the packs drawn on [layout] may apply, when
+  /// that is not what it was last told, so a session already running reads
+  /// with the drawing as it changes rather than from the next start.
+  ///
+  /// Asked on every redraw rather than by the edits that move a pack: the
+  /// language decides it as much as the drawing does -- with nothing to
+  /// translate, what whisper heard is where a word is met -- and a redraw
+  /// is what follows either.
+  void _followReach(PipelineLayout layout) {
+    final reach = layout.glossaryReach(translates: _settings.settings.translates);
+    final told = _toldReach;
+    if (told != null && sameGlossaryReach(told, reach)) return;
+    _toldReach = reach;
+    unawaited(_narrow(reach));
   }
 
   PipelineGraphState _withView(GraphView view) =>
@@ -704,6 +873,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   Future<void> close() async {
     await _settingsChanges.cancel();
     await _characterChanges.cancel();
+    await _glossaryChanges.cancel();
     return super.close();
   }
 }

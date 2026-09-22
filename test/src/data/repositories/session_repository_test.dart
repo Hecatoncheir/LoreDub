@@ -14,6 +14,7 @@ import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/built_voice.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
+import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/voice_files.dart';
 import 'package:lore_dub/src/domain/session_config.dart';
@@ -54,11 +55,12 @@ void main() {
   Future<void> readScreen({
     ScreenReading reading = ScreenReading.both,
     bool hearsVoices = false,
+    AppSettings settings = const AppSettings(),
   }) => repository.startScreenText(
     reading: reading,
     hearsVoices: hearsVoices,
     process: game,
-    settings: const AppSettings(),
+    settings: settings,
     worker: hearsVoices
         ? const WorkerPlan(
             threads: 2,
@@ -117,6 +119,26 @@ void main() {
       expect(engine.screen!.worker.voiceBank, isNotNull, reason: 'the game keeps its voices');
     });
 
+    test('reads text in the dubbing language in that language, untranslated', () async {
+      await began(
+        readScreen(
+          settings: const AppSettings(targetLanguage: 'ru', screenLanguage: 'ru'),
+        ),
+      );
+
+      expect(engine.screen!.capture.ocrLanguage, 'ru', reason: 'Windows OCR reads Russian');
+      expect(engine.screen!.lines.targetLanguage, 'ru');
+      expect(engine.screen!.lines.translatesText, isFalse);
+    });
+
+    test('translates English text into the dubbing language', () async {
+      await began(readScreen(settings: const AppSettings(targetLanguage: 'ru')));
+
+      expect(engine.screen!.capture.ocrLanguage, 'en');
+      expect(engine.screen!.lines.targetLanguage, 'ru');
+      expect(engine.screen!.lines.translatesText, isTrue);
+    });
+
     test('subtitles: the frame is scanned and the key is left alone', () async {
       await began(readScreen(reading: ScreenReading.subtitles));
 
@@ -137,10 +159,40 @@ void main() {
 
     final live = engine.live!;
     expect(live.worker.glossary, 'glossary.session.json');
+    expect(
+      glossary.reaches.single,
+      {
+        'p1': {GlossaryKind.phrase},
+      },
+      reason: 'the pack drawn on what whisper heard answers with its phrases',
+    );
     expect(live.worker.characters, 'characters.json');
     expect(live.worker.asHeard, {'guard'}, reason: 'the cut drawn on the canvas');
     expect(live.worker.speaker, 'aidar', reason: 'the rest is what it was handed');
     expect(live.capture.processId, game.pid);
+  });
+
+  test('narrows the glossary of the sound it dubs, and reads the screen with it whole', () async {
+    // The canvas draws the dubbing of the game's sound: what it says of a
+    // pack is said of that, and the screen's reading is not on it.
+    final started = dub(settings: const AppSettings(targetLanguage: 'en'));
+    glossary.written.complete('glossary.session.json');
+    for (var turn = 0; engine.starts.isEmpty && turn < 1000; turn++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    engine.starts.last.complete();
+    await started;
+    expect(glossary.reaches.single, {
+      'p1': {GlossaryKind.word},
+    }, reason: 'with nothing translated, what whisper heard is where a word is met');
+
+    final screen = readScreen();
+    for (var turn = 0; engine.starts.length < 2 && turn < 1000; turn++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    engine.starts.last.complete();
+    await screen;
+    expect(glossary.reaches.last, isEmpty);
   });
 
   test('clears away what a failed start left behind', () async {
@@ -408,8 +460,14 @@ class _SlowEngine extends Fake implements NativeEngineService {
 class _SlowGlossary extends Fake implements GlossaryService {
   final written = Completer<String>();
 
+  /// What each session file was narrowed to.
+  final reaches = <GlossaryReach>[];
+
   @override
-  Future<String> sessionFile() => written.future;
+  Future<String> sessionFile({GlossaryReach reach = const {}}) {
+    reaches.add(reach);
+    return written.future;
+  }
 }
 
 class _Characters extends Fake implements CharacterService {
@@ -419,5 +477,10 @@ class _Characters extends Fake implements CharacterService {
 
 class _Graph extends Fake implements PipelineGraphService {
   @override
-  Future<PipelineLayout> load() async => const PipelineLayout(silent: {'guard'});
+  Future<PipelineLayout> load() async => const PipelineLayout(
+    silent: {'guard'},
+    glossaries: [
+      GlossaryPlacement(nodeId: 'glossary:1', packId: 'p1', feed: GlossaryFeed.recognition),
+    ],
+  );
 }

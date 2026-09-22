@@ -4,6 +4,8 @@
 import 'package:lore_dub/src/data/services/character_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/domain/character.dart';
+import 'package:lore_dub/src/domain/glossary.dart';
+import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:mocktail/mocktail.dart';
 
 /// The cast's files with no disk behind them: the cards, the clips kept
@@ -46,7 +48,8 @@ class MemoryCharacters extends Fake implements CharacterService {
 }
 
 /// An engine that only listens to what a running worker would be told about
-/// the cast: who reads whom, and which cards are out of the mix.
+/// the cast and the glossary: who reads whom, which cards are out of the
+/// mix, and what the glossary puts right.
 class TellingEngine extends Fake implements NativeEngineService {
   /// What a running worker was told to read anew, without a restart.
   final told = <(String, String?)>[];
@@ -54,10 +57,23 @@ class TellingEngine extends Fake implements NativeEngineService {
   /// Every time a running worker was told which cards had left the mix.
   final heard = <Set<String>>[];
 
+  /// Every glossary a running worker was handed, the part of it in use.
+  final glossaries = <Glossary>[];
+
+  /// Which session the worker it tells is running for; live dubbing unless
+  /// a test says otherwise.
+  PipelineSession? running = PipelineSession.live;
+
+  @override
+  PipelineSession? get session => running;
+
   @override
   Future<void> voiceCharacterAs(String character, String? target) async =>
       told.add((character, target));
 
   @override
   Future<void> readAsHeard(Set<String> value) async => heard.add(value);
+
+  @override
+  Future<void> writeGlossary(Glossary glossary) async => glossaries.add(glossary);
 }

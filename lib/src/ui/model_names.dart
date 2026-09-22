@@ -12,7 +12,7 @@ import 'language_names.dart';
 String modelTitle(AppLocalizations l10n, ModelPackage model) => switch (model.kind) {
   ModelKind.recognition => l10n.modelWhisperTitle(model.version ?? ''),
   ModelKind.translation => l10n.modelTranslationTitle(
-    translationTargetName(l10n, model.language!),
+    spokenLanguageName(l10n, model.language!),
   ),
   ModelKind.speech => l10n.modelVoiceTitle(
     voiceName(l10n, model.language!),

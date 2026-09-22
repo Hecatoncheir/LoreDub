@@ -94,7 +94,11 @@ class CanvasGestures extends ChangeNotifier {
     add(const PipelineArrangementSettled());
   }
 
-  void remove(String nodeId) => add(PipelineCharacterRemoved(nodeId));
+  void remove(String nodeId) => add(PipelineNodeRemoved(nodeId));
+
+  /// The switch on a glossary node thrown.
+  void switchPack(String nodeId, bool active) =>
+      add(PipelineGlossarySwitched(nodeId, active: active));
 
   void cut(PipelineLink link) => add(PipelineLinkCut(link));
 

@@ -69,18 +69,20 @@ class GlossaryService {
     return merged;
   }
 
-  /// The file a session is handed.
+  /// The file a session is handed, with every pack [reach] names narrowed
+  /// to what the canvas lets it apply.
   ///
   /// Not [file]: that one holds the packs and everything in them, which is
   /// the question rather than the answer. Which entries are in use is
-  /// [Glossary.inUse] and lives in one place, so the worker is given what it
-  /// should apply and needs to know nothing about packs. Written afresh at
-  /// every start; an edit made while a session runs reaches the worker
-  /// through the request that saves it, not through this.
-  Future<String> sessionFile() async {
+  /// [Glossary.inUseWithin] and lives in one place, so the worker is given
+  /// what it should apply and needs to know nothing about packs or schemes.
+  /// Written afresh at every start; an edit made while a session runs
+  /// reaches the worker through the request that saves it, not through
+  /// this.
+  Future<String> sessionFile({GlossaryReach reach = const {}}) async {
     final destination = path.join((await _store.directory()).path, 'glossary.session.json');
     await File(destination).writeAsString(
-      jsonEncode((await load()).inUse.toJson()),
+      jsonEncode((await load()).inUseWithin(reach).toJson()),
       flush: true,
     );
     return destination;

@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/hotkey.dart';
+import '../common/key_combination.dart';
+import '../common/keyed_text.dart';
 import '../hotkey_keys.dart';
 import '../theme.dart';
 
@@ -105,7 +107,13 @@ class _HotkeyFieldState extends State<HotkeyField> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final value = widget.value;
-    final text = _listening ? l10n.hotkeyListening : value?.display ?? l10n.hotkeyUnset;
+    // Larger than the note it stood in before: the keys are drawn a size
+    // under it, and the field is a row tall.
+    final style = context.textStyles.monoCaption.copyWith(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      color: _ink(context.colors),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -128,15 +136,13 @@ class _HotkeyFieldState extends State<HotkeyField> {
                       width: _listening ? 2 : 1,
                     ),
                   ),
-                  child: Text(
-                    text,
-                    style: TextStyle(
-                      fontFamily: LoreDubFonts.mono,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _ink(context.colors),
-                    ),
-                  ),
+                  // What is bound is drawn as the keys it is, as every note
+                  // that names a key draws it.
+                  child: switch (value) {
+                    _ when _listening => KeyedText(l10n.hotkeyListening, style: style),
+                    final bound? => KeyCombination(keys: bound.keys, style: style),
+                    null => Text(l10n.hotkeyUnset, style: style),
+                  },
                 ),
               ),
             ),
@@ -156,7 +162,7 @@ class _HotkeyFieldState extends State<HotkeyField> {
         if (_problem case final problem?)
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text(
+            child: KeyedText(
               problem,
               style: Theme.of(context).textTheme.labelSmall
                   ?.copyWith(color: Theme.of(context).colorScheme.error),

@@ -5,6 +5,8 @@
 /// between them and the graph they make.
 library;
 
+import 'pipeline_glossary.dart';
+
 /// How far the scheme may spread from the corner it starts in.
 ///
 /// The canvas lays a box this size under the nodes, because a widget drawn
@@ -56,9 +58,9 @@ class GraphPoint {
 /// same thing.
 enum PipelineSignal { audio, text, voice }
 
-/// The kinds of node the canvas holds: the six stages of the pipeline, and
-/// a card from the player's cast.
-enum PipelineNodeKind { source, recognition, translation, voice, mix, output, character }
+/// The kinds of node the canvas holds: the six stages of the pipeline, a
+/// card from the player's cast, and a pack of their glossary.
+enum PipelineNodeKind { source, recognition, translation, voice, mix, output, character, glossary }
 
 /// Where a link may be attached.
 ///
@@ -102,7 +104,17 @@ enum PipelineSocket {
 
   /// Where this character's lines leave for: into the mix, spoken by this
   /// card itself, or into another card, which speaks them in its place.
-  characterVoice(PipelineNodeKind.character, PipelineSignal.voice, false);
+  characterVoice(PipelineNodeKind.character, PipelineSignal.voice, false),
+
+  /// The text a pack of the glossary puts right, from whatever stands
+  /// before it in the line: whisper, the translator or another pack. Before
+  /// the translator its phrases answer a whole line; after it, its names and
+  /// words are put right.
+  glossaryIn(PipelineNodeKind.glossary, PipelineSignal.text, true),
+
+  /// The same text, put right, on to whatever stands after it: another
+  /// pack, the translator or the voice.
+  glossaryOut(PipelineNodeKind.glossary, PipelineSignal.text, false);
 
   const PipelineSocket(this.owner, this.signal, this.isInput);
 
@@ -152,6 +164,15 @@ abstract final class PipelineNodeIds {
 
   /// The stages, in the order they are laid out.
   static const stages = [source, recognition, translation, voice, mix, output];
+
+  static const glossaryPrefix = 'glossary:';
+
+  /// The [number]th drawing of a pack of the glossary. Numbered rather than
+  /// named after the pack, which the node's panel may change: the node keeps
+  /// its place and its lines while the pack it reads is swapped.
+  static String glossary(int number) => '$glossaryPrefix$number';
+
+  static bool isGlossary(String nodeId) => nodeId.startsWith(glossaryPrefix);
 }
 
 /// One socket of one node — the end of a link, and what the pointer grabs.
@@ -201,6 +222,9 @@ class PipelineNode {
     required this.kind,
     required this.position,
     this.characterId,
+    this.packId,
+    this.feed,
+    this.active = true,
     this.unrouted = false,
     this.sendsToMix = false,
   });
@@ -211,6 +235,18 @@ class PipelineNode {
 
   /// The card this node draws, for [PipelineNodeKind.character].
   final String? characterId;
+
+  /// The pack of the glossary this node draws, for
+  /// [PipelineNodeKind.glossary].
+  final String? packId;
+
+  /// Which side of the translator that pack stands in the line of text, or
+  /// null while it stands out of the line.
+  final GlossaryFeed? feed;
+
+  /// Whether that pack is switched on. Switched off, the node stays where it
+  /// stands in the line and the text passes through it as it came.
+  final bool active;
 
   /// Whether nothing reaches this node at all, the way into the pipeline
   /// having been taken apart. It is still drawn where it stood, and a link
@@ -232,11 +268,15 @@ class PipelineNode {
       other.kind == kind &&
       other.position == position &&
       other.characterId == characterId &&
+      other.packId == packId &&
+      other.feed == feed &&
+      other.active == active &&
       other.unrouted == unrouted &&
       other.sendsToMix == sendsToMix;
 
   @override
-  int get hashCode => Object.hash(id, kind, position, characterId, unrouted, sendsToMix);
+  int get hashCode =>
+      Object.hash(id, kind, position, characterId, packId, feed, active, unrouted, sendsToMix);
 }
 
 /// The whole scheme: the nodes and the links between them.
@@ -245,6 +285,7 @@ class PipelineGraph {
     this.nodes = const [],
     this.links = const [],
     this.routed = true,
+    this.translates = true,
     this.chained = const {},
   });
 
@@ -254,6 +295,11 @@ class PipelineGraph {
   /// Whether the way into the pipeline is drawn at all. Taken apart, every
   /// stage is unrouted and the session cannot start.
   final bool routed;
+
+  /// Whether the translator stands in the line of text. Stepped over, it
+  /// stands aside with the packs drawn after it, and the text runs from
+  /// whisper to the voice.
+  final bool translates;
 
   /// Cards read by a card that is itself read by a third. The substitution
   /// is followed one hop only, so these keep their reader's own voice and

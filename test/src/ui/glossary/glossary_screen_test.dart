@@ -76,6 +76,41 @@ void main() {
     verify(() => glossary.add(const GlossaryPackAdded('Новый пакет'))).called(1);
   });
 
+  testWidgets('narrows the packs to those whose name holds what is typed', (tester) async {
+    final glossary = glossaryShowing(
+      const GlossaryState(
+        loaded: true,
+        glossary: Glossary(
+          packs: [
+            GlossaryPack(id: 'p1', name: 'Fallout 4'),
+            GlossaryPack(id: 'p2', name: 'Боевые крики'),
+          ],
+        ),
+      ),
+    );
+    final cubits = stage(buildCubits(glossary: glossary), section: DashboardSection.glossary);
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+    final filter = find.byKey(const ValueKey('glossary-pack-filter'));
+    await tester.scrollUntilVisible(filter, 300, scrollable: glossaryScroller());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(filter, '  FALL ');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('glossary-pack-p1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('glossary-pack-p2')), findsNothing, reason: 'any case');
+
+    await tester.enterText(filter, 'нет такого');
+    await tester.pumpAndSettle();
+    expect(find.text('Пакетов с таким названием нет.'), findsOneWidget);
+
+    // A pack made now is one the player means to see, so the field is
+    // emptied for it rather than left hiding it.
+    await tester.tap(find.byKey(const ValueKey('glossary-pack-add')));
+    await tester.pumpAndSettle();
+    verify(() => glossary.add(const GlossaryPackAdded('Новый пакет'))).called(1);
+    expect(find.byKey(const ValueKey('glossary-pack-p2')), findsOneWidget);
+  });
+
   // The whole point of the switch: with a pack on, the dubbing is checked
   // against that pack and nothing else.
   testWidgets('narrows the glossary to the pack that is switched on', (tester) async {

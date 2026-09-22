@@ -88,7 +88,7 @@ void main() {
         ..remove('character:guard')
         ..cut(link);
 
-      expect((told.first as PipelineCharacterRemoved).nodeId, 'character:guard');
+      expect((told.first as PipelineNodeRemoved).nodeId, 'character:guard');
       expect((told.last as PipelineLinkCut).link, link);
     });
   });

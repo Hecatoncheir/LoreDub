@@ -7,11 +7,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
 import '../../domain/glossary_view.dart';
+import '../../domain/pack_filter.dart';
+import '../common/pack_filter_field.dart';
 import '../theme.dart';
 import 'bloc/glossary_bloc.dart';
-import '../common/confirm_dialog.dart';
 import 'glossary_heading.dart';
-import 'glossary_pack_area.dart';
+import 'glossary_pack_list.dart';
 
 /// The shelf of packs, under the three lists it groups.
 ///
@@ -19,7 +20,7 @@ import 'glossary_pack_area.dart';
 /// moved to: every entry stays in its list whether or not a pack names it.
 /// Switching one on narrows what the dubbing reads to the packs that are on
 /// -- see [Glossary.inUse].
-class GlossaryPacksSection extends StatelessWidget {
+class GlossaryPacksSection extends StatefulWidget {
   const GlossaryPacksSection({
     super.key,
     required this.view,
@@ -27,27 +28,35 @@ class GlossaryPacksSection extends StatelessWidget {
     required this.onExport,
   });
 
-  /// The glossary under the filter the lists are under: a search narrows
-  /// what a pack shows as well, so a line can be found and dragged in one
-  /// motion.
+  /// The glossary under the filter the lists are under.
   final GlossaryView view;
   final VoidCallback onImport;
   final ValueChanged<GlossaryPack> onExport;
 
-  /// A pack is only a way of reading the glossary, so throwing one away
-  /// leaves every entry in its list -- but the grouping took the player
-  /// dragging to make, and is asked about like a pack of cards is.
-  Future<void> _confirmDelete(BuildContext context, GlossaryPack pack) async {
-    final glossary = context.read<GlossaryBloc>();
-    final l10n = AppLocalizations.of(context);
-    final confirmed = await confirmRemoval(
-      context,
-      title: l10n.packsDeleteTitle,
-      message: l10n.glossaryPackDeleteMessage(pack.name),
-      cancelLabel: l10n.charactersDeleteCancel,
-      confirmLabel: l10n.charactersDeleteConfirm,
-    );
-    if (confirmed) glossary.add(GlossaryPackRemoved(pack.id));
+  @override
+  State<GlossaryPacksSection> createState() => _GlossaryPacksSectionState();
+}
+
+class _GlossaryPacksSectionState extends State<GlossaryPacksSection> {
+  /// What the shelf is narrowed to by name, kept here rather than in the
+  /// field: a pack made or loaded is one the player means to see, and the
+  /// field is emptied for it.
+  final _named = TextEditingController();
+
+  @override
+  void dispose() {
+    _named.dispose();
+    super.dispose();
+  }
+
+  void _import() {
+    _named.clear();
+    widget.onImport();
+  }
+
+  void _add(String name) {
+    _named.clear();
+    context.read<GlossaryBloc>().add(GlossaryPackAdded(name));
   }
 
   @override
@@ -73,15 +82,14 @@ class GlossaryPacksSection extends StatelessWidget {
               children: [
                 TextButton.icon(
                   key: const ValueKey('glossary-pack-import'),
-                  onPressed: onImport,
+                  onPressed: _import,
                   icon: const Icon(Icons.file_download_outlined, size: 18),
                   label: Text(l10n.glossaryPackImport),
                   style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
                 ),
                 TextButton.icon(
                   key: const ValueKey('glossary-pack-add'),
-                  onPressed: () =>
-                      context.read<GlossaryBloc>().add(GlossaryPackAdded(l10n.packsNewName)),
+                  onPressed: () => _add(l10n.packsNewName),
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(l10n.packsAdd),
                   style: TextButton.styleFrom(foregroundColor: context.colors.mutedInk),
@@ -94,38 +102,18 @@ class GlossaryPacksSection extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 14),
-            if (view.glossary.packs.isEmpty)
-              Text(
-                l10n.glossaryPacksEmpty,
-                style: Theme.of(context).textTheme.bodySmall,
-              )
-            else
-              for (final pack in view.glossary.packs)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: GlossaryPackArea(
-                    key: ValueKey('glossary-pack-${pack.id}'),
-                    pack: pack,
-                    members: view.membersOf(pack),
-                    // The count is the pack's own, not what the search left:
-                    // the pack did not change, only what is shown of it.
-                    held: pack.entryKeys.length,
-                    searching: view.filter.searching,
-                    onRename: (name) =>
-                        context.read<GlossaryBloc>().add(GlossaryPackRenamed(pack.id, name)),
-                    onActive: (active) => context.read<GlossaryBloc>().add(
-                      GlossaryPackSwitched(pack.id, active: active),
-                    ),
-                    onExport: pack.entryKeys.isEmpty ? null : () => onExport(pack),
-                    onDelete: () => _confirmDelete(context, pack),
-                    onDrop: (drag) => context.read<GlossaryBloc>().add(
-                      GlossaryEntryFiled(drag.entry, into: pack.id, from: drag.fromPackId),
-                    ),
-                    onRemoveMember: (entry) => context.read<GlossaryBloc>().add(
-                      GlossaryEntryUnfiled(entry, from: pack.id),
-                    ),
-                  ),
-                ),
+            if (widget.view.glossary.packs.isNotEmpty) ...[
+              PackFilterField(key: const ValueKey('glossary-pack-filter'), controller: _named),
+              const SizedBox(height: 12),
+            ],
+            ListenableBuilder(
+              listenable: _named,
+              builder: (context, _) => GlossaryPackList(
+                view: widget.view,
+                filter: PackFilter(_named.text),
+                onExport: widget.onExport,
+              ),
+            ),
           ],
         ),
       ),

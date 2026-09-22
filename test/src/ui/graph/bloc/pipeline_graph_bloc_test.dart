@@ -14,7 +14,9 @@ import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/data/services/update_service.dart';
+import 'package:lore_dub/src/data/repositories/glossary_repository.dart';
 import 'package:lore_dub/src/domain/character.dart';
+import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
@@ -69,9 +71,10 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     repository = _GraphRepository();
+    final settings = SettingsRepository(SettingsService());
     cubits = StagedDashboard(
       repository,
-      SettingsRepository(SettingsService()),
+      settings,
       ModelRepository(ModelStorageService()),
       RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(
@@ -91,6 +94,7 @@ void main() {
       ),
       cast: CastRepository(repository.engine, repository.cards),
       schemes: repository.schemes,
+      glossaryRepository: GlossaryRepository(settings, repository.engine, repository.words),
     );
     graph = cubits.graph;
     repository.stored = const CharacterLibrary(characters: [guard, smith]);
@@ -310,7 +314,7 @@ void main() {
     graph.add(const PipelineCharacterPlaced('guard'));
     await pumpEvents();
 
-    graph.add(PipelineCharacterRemoved(PipelineNodeIds.characterCopy('guard', 2)));
+    graph.add(PipelineNodeRemoved(PipelineNodeIds.characterCopy('guard', 2)));
     await pumpEvents();
 
     expect(graph.state.layout.characters, ['guard', 'smith']);
@@ -384,7 +388,7 @@ void main() {
       await pumpEvents();
       final cut = await keep('Путь разобран');
       await drawLink(gameAudio, speechIn);
-      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('smith')));
+      graph.add(PipelineNodeRemoved(PipelineNodeIds.character('smith')));
       await pumpEvents();
       expect(cubits.settings.settings.captureRouted, isTrue);
 
@@ -417,8 +421,8 @@ void main() {
       // What the user hit: one scheme with the cast rearranged, another with
       // a bare canvas. Choosing the bare one left the arrangement sounding,
       // because it named no cards to put back.
-      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('guard')));
-      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('smith')));
+      graph.add(PipelineNodeRemoved(PipelineNodeIds.character('guard')));
+      graph.add(PipelineNodeRemoved(PipelineNodeIds.character('smith')));
       await pumpEvents();
       final bare = await keep('Пусто');
       await drawLink(voiceOf('guard'), readBy('smith'));
@@ -638,7 +642,7 @@ void main() {
       graph.add(PipelineSelectionSet({PipelineNodeIds.character('guard'), voice}));
       await pumpEvents();
 
-      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('guard')));
+      graph.add(PipelineNodeRemoved(PipelineNodeIds.character('guard')));
       await pumpEvents();
 
       expect(graph.state.chosen, {voice});
@@ -648,7 +652,7 @@ void main() {
   test('a card taken off the canvas keeps the voice that reads it', () async {
     await drawLink(voiceOf('guard'), readBy('smith'));
 
-    graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('guard')));
+    graph.add(PipelineNodeRemoved(PipelineNodeIds.character('guard')));
     await pumpEvents();
 
     expect(graph.state.layout.characters, ['smith']);
@@ -658,7 +662,7 @@ void main() {
   test('takes a card off the canvas even while it speaks for another', () async {
     await drawLink(voiceOf('guard'), readBy('smith'));
 
-    graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('smith')));
+    graph.add(PipelineNodeRemoved(PipelineNodeIds.character('smith')));
     await pumpEvents();
 
     expect(graph.state.layout.characters, ['guard']);
@@ -713,7 +717,7 @@ void main() {
     });
 
     test('a card is brought onto the canvas', () async {
-      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('smith')));
+      graph.add(PipelineNodeRemoved(PipelineNodeIds.character('smith')));
       await pumpEvents();
       expect(graph.state.layout.characters, ['guard']);
 
@@ -725,7 +729,7 @@ void main() {
     });
 
     test('a card is taken off it', () async {
-      graph.add(PipelineCharacterRemoved(PipelineNodeIds.character('guard')));
+      graph.add(PipelineNodeRemoved(PipelineNodeIds.character('guard')));
       await pumpEvents();
 
       expect(graph.state.layout.characters, ['smith']);
@@ -898,6 +902,313 @@ void main() {
       expect(repository.stored.characters.first.voicedBy, isNull);
     });
   });
+
+  group('the glossary in the line of text', () {
+    const fire = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Fire in the hole!',
+      reading: 'Ложись!',
+    );
+    const vault = GlossaryEntry(kind: GlossaryKind.word, source: 'Хранилище', reading: 'Убежище');
+    final lines = GlossaryPack(id: 'lines', name: 'Реплики наизусть', entryKeys: [fire.packKey]);
+    final fallout = GlossaryPack(id: 'fallout', name: 'Fallout', entryKeys: [vault.packKey]);
+
+    const heard = PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechText);
+    const intoTranslator = PipelinePort(PipelineNodeIds.translation, PipelineSocket.translationIn);
+    const translated = PipelinePort(PipelineNodeIds.translation, PipelineSocket.translatedText);
+    const intoVoice = PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceIn);
+    PipelinePort into(String nodeId) => PipelinePort(nodeId, PipelineSocket.glossaryIn);
+    PipelinePort outOf(String nodeId) => PipelinePort(nodeId, PipelineSocket.glossaryOut);
+
+    GlossaryPack packOf(String id) => cubits.glossaryRepository.glossary.packWithId(id)!;
+
+    /// Puts [packId] on the canvas and answers with its node.
+    Future<PipelineNode> place(String packId) async {
+      graph.add(PipelineGlossaryPlaced(packId));
+      await pumpEventQueue();
+      return graph.state.graph.ofKind(PipelineNodeKind.glossary).last;
+    }
+
+    /// Draws a line and lets every write it makes land.
+    Future<void> draw(PipelinePort from, PipelinePort to) async {
+      await drawLink(from, to);
+      await pumpEventQueue();
+    }
+
+    /// Where the text runs, stop by stop.
+    List<String> line() {
+      final next = {
+        for (final link in graph.state.graph.links)
+          if (link.signal == PipelineSignal.text) link.from.nodeId: link.to.nodeId,
+      };
+      final stops = [PipelineNodeIds.recognition];
+      for (var after = next[stops.last]; after != null; after = next[after]) {
+        stops.add(after);
+      }
+      return stops;
+    }
+
+    setUp(() async {
+      cubits.stageGlossary(Glossary(entries: const [fire, vault], packs: [lines, fallout]));
+      await pumpEventQueue();
+    });
+
+    test('puts a pack on the canvas out of the line, and opens its panel', () async {
+      final node = await place('fallout');
+
+      expect(node.feed, isNull);
+      expect(node.unrouted, isTrue);
+      expect(graph.state.selected, node.id);
+      expect(line(), [
+        PipelineNodeIds.recognition,
+        PipelineNodeIds.translation,
+        PipelineNodeIds.voice,
+      ]);
+      expect(packOf('fallout').active, isFalse, reason: 'putting it down switches nothing');
+      expect(repository.layout.glossaries, hasLength(1), reason: 'kept with the arrangement');
+    });
+
+    test('chains packs Text into Text, after whisper and after the translator', () async {
+      final a = await place('lines');
+      final b = await place('lines');
+      final c = await place('fallout');
+      final d = await place('fallout');
+
+      await draw(heard, into(a.id));
+      await draw(outOf(a.id), into(b.id));
+      await draw(translated, into(c.id));
+      await draw(outOf(c.id), into(d.id));
+
+      expect(line(), [
+        PipelineNodeIds.recognition,
+        a.id,
+        b.id,
+        PipelineNodeIds.translation,
+        c.id,
+        d.id,
+        PipelineNodeIds.voice,
+      ]);
+      expect(packOf('lines').active, isTrue, reason: 'a pack in the line is switched on');
+      expect(packOf('fallout').active, isTrue);
+    });
+
+    test('puts a pack in the line before the voice by a line out of it', () async {
+      final node = await place('fallout');
+
+      await draw(outOf(node.id), intoVoice);
+
+      expect(line(), [
+        PipelineNodeIds.recognition,
+        PipelineNodeIds.translation,
+        node.id,
+        PipelineNodeIds.voice,
+      ]);
+      expect(repository.glossaries.last.entries, [vault], reason: 'a running session reads it');
+    });
+
+    test('tells a running session what a pack reads once it is moved along the line', () async {
+      final node = await place('fallout');
+      await draw(outOf(node.id), intoVoice);
+      expect(repository.glossaries.last.entries, [vault]);
+
+      await draw(heard, into(node.id));
+
+      expect(graph.state.graph.node(node.id)?.feed, GlossaryFeed.recognition);
+      expect(
+        repository.glossaries.last.entries,
+        isEmpty,
+        reason: 'before the translator a pack answers with phrases, and this one has none',
+      );
+    });
+
+    test(
+      'takes a pack out of the line and switches it off, and a step back puts both back',
+      () async {
+        final node = await place('fallout');
+        await draw(outOf(node.id), intoVoice);
+
+        graph.add(PipelineLinkCut(graph.state.graph.linkInto(into(node.id))!));
+        await pumpEventQueue();
+
+        expect(line(), [
+          PipelineNodeIds.recognition,
+          PipelineNodeIds.translation,
+          PipelineNodeIds.voice,
+        ]);
+        expect(graph.state.graph.node(node.id)?.feed, isNull);
+        expect(packOf('fallout').active, isFalse);
+
+        graph.add(const PipelineGraphUndone());
+        await pumpEventQueue();
+
+        expect(graph.state.graph.node(node.id)?.feed, GlossaryFeed.translation);
+        expect(packOf('fallout').active, isTrue);
+      },
+    );
+
+    test('takes out the packs a line from whisper to the translator passes over', () async {
+      final node = await place('lines');
+      await draw(heard, into(node.id));
+
+      await draw(heard, intoTranslator);
+
+      expect(graph.state.graph.node(node.id)?.feed, isNull);
+      expect(packOf('lines').active, isFalse);
+    });
+
+    test(
+      'switches a pack off on its node and leaves it in the line, the text passing through',
+      () async {
+        final node = await place('fallout');
+        await draw(outOf(node.id), intoVoice);
+        expect(repository.glossaries.last.entries, [vault]);
+
+        graph.add(PipelineGlossarySwitched(node.id, active: false));
+        await pumpEventQueue();
+
+        final now = graph.state.graph.node(node.id)!;
+        expect(now.active, isFalse);
+        expect(now.feed, GlossaryFeed.translation, reason: 'a switch moves no drawing');
+        expect(line(), [
+          PipelineNodeIds.recognition,
+          PipelineNodeIds.translation,
+          node.id,
+          PipelineNodeIds.voice,
+        ]);
+        expect(packOf('fallout').active, isFalse, reason: 'the glossary screen shows it off too');
+        expect(
+          repository.glossaries.last.entries,
+          isEmpty,
+          reason: 'the scheme draws the packs, and with none on nothing is read',
+        );
+      },
+    );
+
+    test('switches a pack back on, and a step back switches it off again', () async {
+      final node = await place('fallout');
+      await draw(outOf(node.id), intoVoice);
+      graph.add(PipelineGlossarySwitched(node.id, active: false));
+      await pumpEventQueue();
+
+      graph.add(PipelineGlossarySwitched(node.id, active: true));
+      await pumpEventQueue();
+      expect(packOf('fallout').active, isTrue);
+      expect(graph.state.graph.node(node.id)?.active, isTrue);
+      expect(repository.glossaries.last.entries, [vault]);
+
+      graph.add(const PipelineGraphUndone());
+      await pumpEventQueue();
+      expect(packOf('fallout').active, isFalse);
+      expect(graph.state.graph.node(node.id)?.feed, GlossaryFeed.translation);
+    });
+
+    test('switches every drawing of the pack together, and no other pack', () async {
+      final before = await place('fallout');
+      final after = await place('fallout');
+      final other = await place('lines');
+
+      graph.add(PipelineGlossarySwitched(after.id, active: true));
+      await pumpEventQueue();
+
+      expect(graph.state.graph.node(before.id)?.active, isTrue);
+      expect(graph.state.graph.node(other.id)?.active, isFalse);
+      expect(
+        [before, after].map((node) => graph.state.graph.node(node.id)?.feed),
+        [isNull, isNull],
+        reason: 'switched on out of the line, it still stands out of it',
+      );
+    });
+
+    test('leaves a pack where it stands when it is switched on the glossary screen', () async {
+      final node = await place('lines');
+
+      cubits.stageGlossary(cubits.glossaryRepository.glossary.activating('lines', active: true));
+      await pumpEventQueue();
+
+      expect(graph.state.graph.node(node.id)?.active, isTrue);
+      expect(graph.state.graph.node(node.id)?.feed, isNull, reason: 'a switch moves no drawing');
+    });
+
+    test('switches nothing for a node that draws no pack, or to what it is already', () async {
+      final node = await place('fallout');
+
+      graph.add(PipelineGlossarySwitched(node.id, active: false));
+      graph.add(PipelineGlossarySwitched(PipelineNodeIds.voice, active: true));
+      await pumpEventQueue();
+      expect(cubits.glossaryRepository.glossary.activePacks, isEmpty);
+
+      graph.add(const PipelineGraphUndone());
+      await pumpEventQueue();
+      expect(
+        graph.state.graph.ofKind(PipelineNodeKind.glossary),
+        isEmpty,
+        reason: 'the step back takes the placing back, there being nothing else to take',
+      );
+      expect(
+        PipelineGlossarySwitched(node.id, active: true),
+        isNot(PipelineGlossarySwitched(node.id, active: false)),
+      );
+    });
+
+    test('reads another pack in the same node, where it stands', () async {
+      final node = await place('fallout');
+      await draw(outOf(node.id), intoVoice);
+
+      graph.add(PipelineGlossaryPackChosen(node.id, 'lines'));
+      await pumpEventQueue();
+
+      final now = graph.state.graph.node(node.id)!;
+      expect(now.packId, 'lines');
+      expect(now.position, node.position);
+      expect(now.feed, GlossaryFeed.translation);
+      expect(packOf('lines').active, isTrue);
+      expect(packOf('fallout').active, isFalse, reason: 'it stands in the line nowhere now');
+    });
+
+    test('takes a pack off the canvas and out of the line with it', () async {
+      final node = await place('fallout');
+      await draw(outOf(node.id), intoVoice);
+
+      graph.add(PipelineNodeRemoved(node.id));
+      await pumpEventQueue();
+
+      expect(graph.state.graph.ofKind(PipelineNodeKind.glossary), isEmpty);
+      expect(line(), [
+        PipelineNodeIds.recognition,
+        PipelineNodeIds.translation,
+        PipelineNodeIds.voice,
+      ]);
+      expect(packOf('fallout').active, isFalse, reason: 'a node deleted takes its work with it');
+    });
+
+    test('refuses a line between two packs that both stand out of the line', () async {
+      final a = await place('lines');
+      final b = await place('fallout');
+
+      await draw(outOf(a.id), into(b.id));
+
+      expect(graph.state.refusal, ConnectionRefusal.outOfLine);
+    });
+
+    test('keeps which packs were on with a scheme, and puts those on again', () async {
+      final node = await place('fallout');
+      await draw(outOf(node.id), intoVoice);
+      graph.add(const PipelineSchemeSaved('Fallout'));
+      await pumpEventQueue();
+      expect(graph.state.schemes.single.activePacks, {'fallout'});
+
+      graph.add(PipelineLinkCut(graph.state.graph.linkInto(into(node.id))!));
+      await pumpEventQueue();
+      cubits.stageGlossary(cubits.glossaryRepository.glossary.activating('lines', active: true));
+      await pumpEventQueue();
+      graph.add(PipelineSchemeChosen(graph.state.schemes.single.id));
+      await pumpEventQueue();
+
+      expect(packOf('fallout').active, isTrue);
+      expect(packOf('lines').active, isFalse, reason: 'the scheme is the whole picture');
+      expect(graph.state.graph.node(node.id)?.feed, GlossaryFeed.translation);
+    });
+  });
 }
 
 /// Lets the bloc work through what the gestures added. Events are handled
@@ -911,6 +1222,10 @@ class _GraphRepository extends FakeSessionRepository {
   final cards = MemoryCharacters();
   final engine = TellingEngine();
   final schemes = MemorySchemes();
+  final words = MemoryGlossary();
+
+  /// Every glossary a running worker was handed, the part of it in use.
+  List<Glossary> get glossaries => engine.glossaries;
 
   CharacterLibrary get stored => cards.stored;
   set stored(CharacterLibrary value) => cards.stored = value;

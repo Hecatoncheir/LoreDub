@@ -8,6 +8,7 @@ import '../../../domain/compute_device.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../canvas/pipeline_facts.dart';
 import 'character_node_fields.dart';
+import 'glossary_node_fields.dart';
 import 'inspector_note.dart';
 import 'mix_node_fields.dart';
 import 'output_node_fields.dart';
@@ -48,5 +49,6 @@ class NodeInspectorFields extends StatelessWidget {
       ),
       null => InspectorNote(text: AppLocalizations.of(context).charactersEmpty),
     },
+    PipelineNodeKind.glossary => GlossaryNodeFields(node: node, facts: facts),
   };
 }

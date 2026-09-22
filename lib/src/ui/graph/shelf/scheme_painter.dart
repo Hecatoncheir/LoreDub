@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/app_settings.dart';
 import '../../../domain/character.dart';
+import '../../../domain/glossary.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
 import '../../theme.dart';
@@ -20,7 +21,12 @@ import '../canvas/node_metrics.dart';
 /// and a graph is told apart from another by identity, so the thumbnail was
 /// painted again on every rebuild of the shelf.
 class SchemePainter extends CustomPainter {
-  SchemePainter({required this.scheme, required this.cast, required this.colors});
+  SchemePainter({
+    required this.scheme,
+    required this.cast,
+    required this.colors,
+    this.packs = const [],
+  });
 
   final SavedPipeline scheme;
 
@@ -32,9 +38,20 @@ class SchemePainter extends CustomPainter {
   /// scheme names rather than boxes with nothing in them.
   final List<Character> cast;
 
+  /// The packs the glossary has, likewise -- each switched as the scheme
+  /// switches it, so the picture shows the lines the scheme puts up rather
+  /// than the ones the canvas has now.
+  final List<GlossaryPack> packs;
+
   late final PipelineGraph graph = buildPipelineGraph(
     settings: AppSettings(captureRouted: scheme.captureRouted),
     characters: cast,
+    packs: switch (scheme.activePacks) {
+      final active? => [
+        for (final pack in packs) pack.copyWith(active: active.contains(pack.id)),
+      ],
+      null => packs,
+    },
     layout: scheme.layout,
   );
 
@@ -110,5 +127,5 @@ class SchemePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(SchemePainter old) =>
-      old.scheme != scheme || old.cast != cast || old.colors != colors;
+      old.scheme != scheme || old.cast != cast || old.packs != packs || old.colors != colors;
 }

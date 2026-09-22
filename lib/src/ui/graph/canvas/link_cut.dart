@@ -6,10 +6,10 @@ import '../../../domain/pipeline_graph.dart';
 
 /// What cutting a line parts with. Every line that means something carries
 /// a badge to cut it by: what feeds the pipeline, the translator, the cast
-/// in the mix, who reads whom, and the note that the game speaks a card. The
-/// lines between stages that say nothing on their own -- the voice into the
-/// mix, the mix into the output -- carry none, there being nothing to answer
-/// with.
+/// in the mix, who reads whom, the note that the game speaks a card, and a
+/// pack of the glossary in the line of text. The lines between stages that
+/// say nothing on their own -- the voice into the mix, the mix into the
+/// output -- carry none, there being nothing to answer with.
 enum LinkCut {
   /// The way into the pipeline, which comes apart the way a substitution
   /// does, by the button on the line itself.
@@ -29,12 +29,19 @@ enum LinkCut {
   translationBack,
 
   /// One card reading another, which gives the card its own part back.
-  reader;
+  reader,
+
+  /// Either line of a pack of the glossary, which takes the pack out of the
+  /// line of text and switches it off.
+  glossary;
 
   /// What cutting [link] would part with, or null for a line with no badge.
   static LinkCut? of(PipelineLink link) {
     final from = link.from.socket;
     final to = link.to.socket;
+    // Before the translator's own: a pack standing next to the translator
+    // shares a socket with the translator's line.
+    if (to == PipelineSocket.glossaryIn || from == PipelineSocket.glossaryOut) return glossary;
     if (from == PipelineSocket.gameAudio) return route;
     if (to == PipelineSocket.mixCast) return cast;
     if (to == PipelineSocket.characterIn) return heard;
@@ -54,5 +61,6 @@ enum LinkCut {
     translation => l10n.pipelineCutTranslation,
     translationBack => l10n.pipelineCutTranslationBack,
     reader => l10n.pipelineCutLink,
+    glossary => l10n.pipelineCutGlossary,
   };
 }

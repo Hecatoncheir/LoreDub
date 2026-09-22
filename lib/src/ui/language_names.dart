@@ -29,16 +29,6 @@ String spokenLanguageName(AppLocalizations l10n, String code) => switch (code) {
   _ => code.toUpperCase(),
 };
 
-/// The dubbing language as it reads inside a title such as "English → German".
-String translationTargetName(AppLocalizations l10n, String code) => switch (code) {
-  'de' => l10n.translationTarget_de,
-  'es' => l10n.translationTarget_es,
-  'fr' => l10n.translationTarget_fr,
-  'ru' => l10n.translationTarget_ru,
-  'uk' => l10n.translationTarget_uk,
-  _ => spokenLanguageName(l10n, code),
-};
-
 String voiceName(AppLocalizations l10n, String code) => switch (code) {
   'de' => l10n.voiceName_de,
   'en' => l10n.voiceName_en,

@@ -6,6 +6,7 @@
 library;
 
 import 'character.dart';
+import 'pipeline_glossary.dart';
 import 'pipeline_graph_model.dart';
 
 /// Why a link was not made.
@@ -33,6 +34,10 @@ enum ConnectionRefusal {
   /// The translator was drawn back into the line with no language to put it
   /// on: every pair the catalogue offers is still to be downloaded.
   translatorMissing,
+
+  /// A line between two packs of the glossary, neither of which stands in
+  /// the line of text: there is nowhere to put either of them.
+  outOfLine,
 }
 
 /// What making a link would change. The canvas asks before it draws, and
@@ -56,9 +61,13 @@ final class RouteConnection extends GraphConnection {
 /// hands over is English -- so cutting this link is choosing to dub into
 /// English, and drawing it back is choosing a language to translate into.
 final class TranslationConnection extends GraphConnection {
-  const TranslationConnection(this.routed);
+  const TranslationConnection(this.routed, {this.edits = const []});
 
   final bool routed;
+
+  /// What the same line does to the packs of the glossary: one drawn into
+  /// a translator standing aside is put in the line before it.
+  final List<LineEdit> edits;
 }
 
 /// Whether one card's voice is wired into the mix. Taken out, the card
@@ -96,6 +105,19 @@ final class ReaderConnection extends GraphConnection {
   final String? readerId;
 }
 
+/// Packs of the glossary moved in the line of text, put into it or taken
+/// out of it.
+///
+/// For a pack, standing in the line is being switched on: the dubbing reads
+/// it, and the glossary screen says so. Not locked while a session runs --
+/// the worker is told what its glossary puts right now, as it is when an
+/// entry is written down.
+final class GlossaryLineConnection extends GraphConnection {
+  const GlossaryLineConnection(this.edits);
+
+  final List<LineEdit> edits;
+}
+
 /// The link is already there; nothing to do.
 final class UnchangedConnection extends GraphConnection {
   const UnchangedConnection();
@@ -127,14 +149,13 @@ GraphConnection proposeConnection(
     return const RefusedConnection(ConnectionRefusal.signal);
   }
   if (graph.links.contains(PipelineLink(from, to))) return const UnchangedConnection();
+  // The text runs along one line, whisper to the voice, and every line of
+  // it is worked out there.
+  if (from.socket.signal == PipelineSignal.text) {
+    return _textConnection(graph, from.nodeId, to.nodeId);
+  }
   return switch ((from.socket, to.socket)) {
     (PipelineSocket.gameAudio, PipelineSocket.speechIn) => const RouteConnection(true),
-    // The translator back into the line, drawn at either end of it.
-    (PipelineSocket.speechText, PipelineSocket.translationIn) ||
-    (PipelineSocket.translatedText, PipelineSocket.voiceIn) => const TranslationConnection(true),
-    // Recognition straight into the voice: the stage is stepped over, which
-    // is what dubbing into English does.
-    (PipelineSocket.speechText, PipelineSocket.voiceIn) => const TranslationConnection(false),
     // A card back into the mix: this one speaks again, and the rest stand
     // where they were left.
     (PipelineSocket.characterVoice, PipelineSocket.mixCast) => switch (PipelineNodeIds.characterOf(
@@ -154,6 +175,77 @@ GraphConnection proposeConnection(
     ),
     _ => const RefusedConnection(ConnectionRefusal.unsupported),
   };
+}
+
+/// What a line of text from [from] into [to] would change.
+///
+/// A line into or out of a pack of the glossary puts that pack in the line
+/// of text right beside the other end -- after it, or before it -- out of
+/// wherever it stood, the text running through a drawing once. Of two packs,
+/// the one that does not stand in the line joins the one that does, and the
+/// one after moves where both do. A line between two stages is the
+/// translator's, as it always was.
+GraphConnection _textConnection(PipelineGraph graph, String from, String to) {
+  if (PipelineNodeIds.isGlossary(to) && _standsInLine(graph, from)) {
+    return GlossaryLineConnection([LineMove(to, anchor: from, after: true)]);
+  }
+  if (PipelineNodeIds.isGlossary(from) && _standsInLine(graph, to)) {
+    return _packBefore(graph, from, to);
+  }
+  if (PipelineNodeIds.isGlossary(from) || PipelineNodeIds.isGlossary(to)) {
+    return const RefusedConnection(ConnectionRefusal.outOfLine);
+  }
+  return _stageConnection(graph, from, to);
+}
+
+/// Whether the node at [nodeId] has a place in the line of text a pack can
+/// be put beside: a stage always has, a pack only while it stands there.
+bool _standsInLine(PipelineGraph graph, String nodeId) =>
+    !PipelineNodeIds.isGlossary(nodeId) || graph.node(nodeId)?.feed != null;
+
+/// [pack] put in the line right before [to]. Drawn into a translator that
+/// stands aside, the line brings the translator back with it.
+GraphConnection _packBefore(PipelineGraph graph, String pack, String to) {
+  final move = LineMove(pack, anchor: to, after: false);
+  if (to == PipelineNodeIds.translation && !graph.translates) {
+    return TranslationConnection(true, edits: [move]);
+  }
+  return GlossaryLineConnection([move]);
+}
+
+/// A line of text between two stages. Where it puts the translator back or
+/// steps over it, it does that, as it always has; where the translator
+/// already stands as the line would have it, the line can only mean the
+/// packs it passes over, and they leave the line.
+GraphConnection _stageConnection(PipelineGraph graph, String from, String to) =>
+    switch ((from, to)) {
+      // The translator back into the line, drawn at either end of it.
+      (PipelineNodeIds.recognition, PipelineNodeIds.translation) ||
+      (
+        PipelineNodeIds.translation,
+        PipelineNodeIds.voice,
+      ) => graph.translates ? _passingOver(graph, from) : const TranslationConnection(true),
+      // Recognition straight into the voice: the stage is stepped over, which
+      // is what dubbing into English does.
+      (PipelineNodeIds.recognition, PipelineNodeIds.voice) =>
+        graph.translates ? const TranslationConnection(false) : _passingOver(graph, from),
+      _ => const RefusedConnection(ConnectionRefusal.unsupported),
+    };
+
+/// The packs a line out of [from] passes over taken out of the line: those
+/// before the translator for a line out of whisper, those after it for one
+/// out of the translator.
+GraphConnection _passingOver(PipelineGraph graph, String from) {
+  final side = from == PipelineNodeIds.recognition
+      ? GlossaryFeed.recognition
+      : GlossaryFeed.translation;
+  final passed = {
+    for (final node in graph.ofKind(PipelineNodeKind.glossary))
+      if (node.feed == side) node.id,
+  };
+  return passed.isEmpty
+      ? const UnchangedConnection()
+      : GlossaryLineConnection([LineRemove(passed)]);
 }
 
 GraphConnection _readerConnection({
@@ -177,6 +269,17 @@ GraphConnection _readerConnection({
 /// What cutting [link] would mean.
 GraphConnection proposeDisconnect(PipelineLink link) =>
     switch ((link.from.socket, link.to.socket)) {
+      // A pack of the glossary taken out of the line of text: the one the
+      // line ran into, or else the one it came out of. The text runs past it
+      // from what stood before it to what stood after, and the pack is
+      // switched off with it. Asked before the translator's lines, which a
+      // pack's shares a socket with.
+      (_, PipelineSocket.glossaryIn) => GlossaryLineConnection([
+        LineRemove({link.to.nodeId}),
+      ]),
+      (PipelineSocket.glossaryOut, _) => GlossaryLineConnection([
+        LineRemove({link.from.nodeId}),
+      ]),
       // The way into the pipeline comes apart: the stages stay where they
       // are with nothing reaching them, and the route is put back by drawing
       // it.

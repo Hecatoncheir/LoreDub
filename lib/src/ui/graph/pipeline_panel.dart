@@ -40,23 +40,35 @@ class PipelinePanel extends StatelessWidget {
   );
 
   /// Whether the toolbar would draw itself differently. It reads what can
-  /// be undone, what a link came to, the schemes kept and which cards are on
-  /// the canvas: panning the scheme or dragging a node is none of those, and
-  /// both of those are a new state on every frame.
-  static bool _toolbarChanged(PipelineGraphState was, PipelineGraphState now) {
-    if (was.canUndo != now.canUndo ||
-        was.canRedo != now.canRedo ||
-        was.refusal != now.refusal ||
-        !identical(was.schemes, now.schemes)) {
-      return true;
-    }
-    final before = was.graph.ofKind(PipelineNodeKind.character);
-    final after = now.graph.ofKind(PipelineNodeKind.character);
-    if (before.length != after.length) return true;
+  /// be undone, what a link came to, the schemes kept and which cards and
+  /// packs are on the canvas: panning the scheme or dragging a node is none
+  /// of those, and both of those are a new state on every frame.
+  static bool _toolbarChanged(PipelineGraphState was, PipelineGraphState now) =>
+      was.canUndo != now.canUndo ||
+      was.canRedo != now.canRedo ||
+      was.refusal != now.refusal ||
+      !identical(was.schemes, now.schemes) ||
+      !_sameDrawn(was.graph, now.graph);
+
+  /// Whether the two graphs draw the same cards and the same packs, in the
+  /// same order: what the toolbar counts beside each name.
+  static bool _sameDrawn(PipelineGraph was, PipelineGraph now) {
+    String drawn(PipelineNode node) => node.characterId ?? node.packId ?? '';
+    final before = [
+      for (final node in was.nodes)
+        if (node.kind == PipelineNodeKind.character || node.kind == PipelineNodeKind.glossary)
+          drawn(node),
+    ];
+    final after = [
+      for (final node in now.nodes)
+        if (node.kind == PipelineNodeKind.character || node.kind == PipelineNodeKind.glossary)
+          drawn(node),
+    ];
+    if (before.length != after.length) return false;
     for (var index = 0; index < after.length; index++) {
-      if (before[index].characterId != after[index].characterId) return true;
+      if (before[index] != after[index]) return false;
     }
-    return false;
+    return true;
   }
 
   Widget _build(

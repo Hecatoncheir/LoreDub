@@ -96,7 +96,7 @@ class CharacterNodeFields extends StatelessWidget {
         OutlinedButton.icon(
           icon: const Icon(Icons.close_rounded, size: 18),
           label: Text(l10n.pipelineRemoveNode),
-          onPressed: () => context.read<PipelineGraphBloc>().add(PipelineCharacterRemoved(node.id)),
+          onPressed: () => context.read<PipelineGraphBloc>().add(PipelineNodeRemoved(node.id)),
         ),
       ],
     );

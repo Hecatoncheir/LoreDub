@@ -60,14 +60,22 @@ class Hotkey {
   /// RegisterHotKey's MOD_ALT, MOD_CONTROL, MOD_SHIFT and MOD_WIN.
   int get modifiers => (alt ? 0x1 : 0) | (control ? 0x2 : 0) | (shift ? 0x4 : 0) | (win ? 0x8 : 0);
 
-  /// "Ctrl + Alt + P", in the order Windows itself writes combinations.
-  String get display => [
+  /// The keys held together, in the order Windows itself writes
+  /// combinations: the modifiers, then the key.
+  List<String> get keys => [
     if (control) 'Ctrl',
     if (alt) 'Alt',
     if (shift) 'Shift',
     if (win) 'Win',
     label,
-  ].join(' + ');
+  ];
+
+  /// What stands between two keys of a combination written out. Wider than
+  /// the plus alone, so a key that is itself a plus is still told apart.
+  static const joiner = ' + ';
+
+  /// "Ctrl + Alt + P".
+  String get display => keys.join(joiner);
 
   /// Whether binding it leaves the game its keys. Windows hands a registered
   /// combination to LoreDub alone, so a bare letter — or Shift with one —

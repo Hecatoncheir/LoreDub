@@ -8,8 +8,6 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/screen_reading.dart';
 import '../common/module_label.dart';
 import '../settings/bloc/settings_bloc.dart';
-import '../common/dashboard_context.dart';
-import '../settings/voice_choice_field.dart';
 import 'snapshot_hotkey_line.dart';
 import 'snapshot_start_button.dart';
 
@@ -32,12 +30,6 @@ class SnippetOnlyCard extends StatelessWidget {
             ModuleLabel(number: '02', label: AppLocalizations.of(context).areaSnippetOnly),
             const SizedBox(height: 14),
             SnapshotHotkeyLine(settings: state.settings),
-            const SizedBox(height: 14),
-            // A snippet is read in one voice -- there is no sound to
-            // follow a speaker by -- so which voice that is belongs
-            // beside the button that starts it, as well as in the
-            // settings.
-            VoiceChoiceField(selection: context.selection),
             const SizedBox(height: 14),
             SnapshotStartButton(reading: ScreenReading.snippets),
           ],

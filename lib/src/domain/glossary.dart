@@ -32,8 +32,34 @@ enum GlossaryKind {
   /// words that mean the same thing need not decline the same way. Missing a
   /// declined form is a line said the way the model said it; inventing one
   /// is a word that does not exist, spoken aloud.
-  word,
+  word;
+
+  /// The kind [packKey] is filed under, or null for a kind this build does
+  /// not know.
+  static GlossaryKind? ofPackKey(String packKey) {
+    for (final kind in values) {
+      if (packKey.startsWith('${kind.name}:')) return kind;
+    }
+    return null;
+  }
 }
+
+/// How much of each pack reaches the line, by pack id: the kinds of entry
+/// the scheme lets it apply. A pack not named applies whole.
+///
+/// The scheme draws a pack on the text it is matched against, and each kind
+/// is met at one moment only -- a phrase on what whisper heard, a name and a
+/// word on what the translator wrote -- so where a pack is drawn is which
+/// part of it can apply at all.
+typedef GlossaryReach = Map<String, Set<GlossaryKind>>;
+
+/// Whether two reaches name the same packs with the same kinds.
+bool sameGlossaryReach(GlossaryReach first, GlossaryReach second) =>
+    first.length == second.length &&
+    first.entries.every((entry) {
+      final other = second[entry.key];
+      return other != null && other.length == entry.value.length && other.containsAll(entry.value);
+    });
 
 /// One thing the player has said about their games.
 class GlossaryEntry {
@@ -188,6 +214,15 @@ class GlossaryPack {
 
   bool holds(String entryKey) => entryKeys.contains(entryKey);
 
+  /// What it holds of [kinds], by [GlossaryEntry.packKey] -- everything,
+  /// with no kinds named.
+  Iterable<String> keysOf(Set<GlossaryKind>? kinds) => kinds == null
+      ? entryKeys
+      : entryKeys.where((key) => kinds.contains(GlossaryKind.ofPackKey(key)));
+
+  /// How many of its entries are of one of [kinds].
+  int countOf(Set<GlossaryKind> kinds) => keysOf(kinds).length;
+
   /// Whether the pack can be kept at all: an id and a name.
   bool get isReady => id.isNotEmpty && name.trim().isNotEmpty;
 
@@ -267,9 +302,29 @@ class Glossary {
   ///
   /// The packs themselves are left out of the answer: this is what the
   /// worker is handed, and it has no use for a grouping it cannot act on.
-  Glossary get inUse {
-    final wanted = {for (final pack in activePacks) ...pack.entryKeys};
-    if (wanted.isEmpty) return Glossary(entries: entries);
+  Glossary get inUse => inUseWithin(const {});
+
+  /// [inUse], with every pack [reach] names narrowed to the kinds it lets
+  /// that pack apply.
+  ///
+  /// Whether anything is switched on is asked of the packs rather than of
+  /// what they hold: a pack switched on with nothing in it -- or with nothing
+  /// of the kinds its drawing reaches -- leaves nothing in use, as the
+  /// screen says it does. Answered by what was left over, it opened the
+  /// whole glossary instead, every other game's names with it.
+  ///
+  /// Nor is the whole glossary read for want of a pack switched on once the
+  /// scheme draws one of these packs, which is what naming it in [reach] is:
+  /// the scheme then says what is read, and a pack switched off there -- the
+  /// last of them -- would otherwise have let every entry in at once. A pack
+  /// named that is no longer here draws nothing.
+  Glossary inUseWithin(GlossaryReach reach) {
+    final active = [...activePacks];
+    if (active.isEmpty) {
+      final drawn = packs.any((pack) => reach.containsKey(pack.id));
+      return drawn ? const Glossary() : Glossary(entries: entries);
+    }
+    final wanted = {for (final pack in active) ...pack.keysOf(reach[pack.id])};
     return Glossary(
       entries: [
         for (final entry in entries)
@@ -346,6 +401,19 @@ class Glossary {
     final pack = packWithId(packId);
     if (pack == null) return this;
     return keepingPack(pack.copyWith(active: active));
+  }
+
+  /// Every pack [active] names switched on, and every other switched off: a
+  /// scheme's whole picture of what is read. A pack it names that this
+  /// glossary does not have is passed over, and the same glossary comes back
+  /// when nothing had to be switched.
+  Glossary switchedTo(Set<String> active) {
+    var switched = this;
+    for (final pack in packs) {
+      final on = active.contains(pack.id);
+      if (pack.active != on) switched = switched.activating(pack.id, active: on);
+    }
+    return switched;
   }
 
   Iterable<GlossaryEntry> of(GlossaryKind kind) => entries.where((entry) => entry.kind == kind);

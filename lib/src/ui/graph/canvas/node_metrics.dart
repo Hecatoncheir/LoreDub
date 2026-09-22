@@ -12,6 +12,9 @@ import '../../../domain/pipeline_graph.dart';
 /// and the label all follow.
 abstract final class NodeMetrics {
   static const double width = 240;
+
+  /// A node standing beside the line rather than in it -- a card of the
+  /// cast, a pack of the glossary -- is drawn narrower than a stage.
   static const double characterWidth = 210;
   static const double headerHeight = 42;
   static const double rowHeight = 34;
@@ -26,10 +29,13 @@ abstract final class NodeMetrics {
     _ => 1,
   };
 
-  static Size sizeOf(PipelineNodeKind kind) => Size(
-    kind == PipelineNodeKind.character ? characterWidth : width,
-    headerHeight + rowsOf(kind) * rowHeight + summaryHeight,
-  );
+  static double widthOf(PipelineNodeKind kind) => switch (kind) {
+    PipelineNodeKind.character || PipelineNodeKind.glossary => characterWidth,
+    _ => width,
+  };
+
+  static Size sizeOf(PipelineNodeKind kind) =>
+      Size(widthOf(kind), headerHeight + rowsOf(kind) * rowHeight + summaryHeight);
 
   /// Where a socket sits, measured from the top-left of its own node.
   static Offset anchorOf(PipelineSocket socket) => switch (socket) {
@@ -48,6 +54,8 @@ abstract final class NodeMetrics {
     PipelineSocket.characterIn => Offset(0, rowCentre(0)),
     PipelineSocket.readBy => Offset(0, rowCentre(1)),
     PipelineSocket.characterVoice => Offset(characterWidth, rowCentre(0)),
+    PipelineSocket.glossaryIn => Offset(0, rowCentre(0)),
+    PipelineSocket.glossaryOut => Offset(characterWidth, rowCentre(0)),
   };
 
   /// Where a socket sits on the canvas, node and all.

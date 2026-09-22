@@ -96,6 +96,10 @@ class NativeEngineService {
   /// characters screen, only placed among the voices of a scene.
   PipelineSession? get _session => _run?.kind;
 
+  /// The same, for whoever tells a running session what changed: what it
+  /// is told can depend on which session it is.
+  PipelineSession? get session => _session;
+
   /// What the running session was started with, once it is up.
   SessionConfig? get _active => (_run?.running ?? false) ? _run!.config : null;
 
@@ -454,9 +458,10 @@ class NativeEngineService {
   Future<void> voiceCharacterAs(String character, String? target) =>
       _inference.voiceCharacterAs(character, target);
 
-  /// Tells a running worker what the player has just written down. The
-  /// file is read when a session starts, so without this an entry added
-  /// while one runs would wait for the next start.
+  /// Tells a running worker what the glossary puts right now -- the part of
+  /// it in use, which is what a session is started with. The file is read
+  /// when a session starts, so without this an entry added, or a pack
+  /// switched, while one runs would wait for the next start.
   Future<void> writeGlossary(Glossary glossary) => _inference.updateGlossary(glossary);
 
   /// Tells a running session which cards are out of the mix. The config the

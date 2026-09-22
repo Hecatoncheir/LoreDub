@@ -37,6 +37,7 @@ void main() {
     onDrag: (_, _) {},
     onDrop: () {},
     onRemove: (_) {},
+    onSwitch: (_, _) {},
     onLinkStart: (_, _) {},
     onLinkToggle: (_) {},
     onLinkDrag: (_) {},

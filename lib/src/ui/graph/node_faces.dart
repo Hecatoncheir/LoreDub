@@ -58,10 +58,15 @@ class NodeFaces extends ThemeExtension<NodeFaces> {
       port: colors.onAccentLight,
       rule: colors.accent,
       // The accent on the accent would be no mark at all, so what is picked
-      // out here is picked out in the ink.
+      // out here is picked out in the ink -- the edge of the card against
+      // the canvas as much as a chip in its panel -- and lettered in what
+      // the ink is written on. Lettered in the light of the accent, a chip
+      // stood cream on cream in the dark theme, where the ink turns cream.
       chosen: colors.ink,
-      onChosen: colors.onAccentLight,
-      sunk: colors.accentStrong,
+      onChosen: colors.raised,
+      // Deeper than the accent in either theme, as the light written on it
+      // stays light in either.
+      sunk: colors.accentDeep,
       dark: true,
     ),
     // A card whose lines leave for the mix, which is the one the player

@@ -3,6 +3,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
+import 'package:lore_dub/src/data/repositories/glossary_repository.dart';
 import 'package:lore_dub/src/data/repositories/install_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
@@ -17,12 +18,14 @@ import 'package:lore_dub/src/domain/capture_sources.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
+import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/graph/bloc/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/data/repositories/system_repository.dart';
 
+import '../../../../support/fakes/memory_glossary.dart';
 import '../../../../support/fakes/memory_native.dart';
 
 void main() {
@@ -31,6 +34,7 @@ void main() {
   late SettingsRepository settings;
   late InstallRepository installed;
   late CastRepository cast;
+  late GlossaryRepository glossary;
   late SourcesRepository sources;
   late SessionCoordinator sessions;
   late PipelineFactsBloc facts;
@@ -43,9 +47,10 @@ void main() {
     );
     final engine = memoryEngine();
     cast = CastRepository(engine);
+    glossary = GlossaryRepository(settings, engine, MemoryGlossary());
     sources = SourcesRepository(SystemRepository(engine));
     sessions = SessionCoordinator();
-    facts = PipelineFactsBloc(settings, installed, cast, sources, sessions);
+    facts = PipelineFactsBloc(settings, installed, cast, glossary, sources, sessions);
   });
 
   tearDown(() async {
@@ -53,7 +58,7 @@ void main() {
     await sessions.dispose();
   });
 
-  test('starts from what the five sources say now', () {
+  test('starts from what the six sources say now', () {
     expect(facts.state.running, isFalse);
     expect(facts.state.process, isNull);
     expect(facts.state.characters, isEmpty);
@@ -69,6 +74,11 @@ void main() {
         ],
       ),
     );
+    glossary.seed(
+      const Glossary(
+        packs: [GlossaryPack(id: 'p1', name: 'Fallout')],
+      ),
+    );
     sessions
       ..reportPipeline(
         status: PipelineStatus.paused,
@@ -82,6 +92,7 @@ void main() {
     expect(now.settings.voice, 'kseniya');
     expect(now.process, same(game));
     expect(now.characters.single.id, 'a1');
+    expect(now.pack('p1')?.name, 'Fallout');
     expect(now.running, isTrue);
     expect(now.paused, isTrue);
     expect(now.recordingVoice, isTrue);

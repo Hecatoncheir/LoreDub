@@ -17,12 +17,15 @@ import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
 import 'package:lore_dub/src/ui/models/bloc/downloads_bloc.dart';
 import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/common/keyed_text.dart';
+import 'package:lore_dub/src/ui/settings/voice_choice_field.dart';
 import 'package:lore_dub/src/ui/settings/bloc/settings_bloc.dart';
 import 'package:lore_dub/src/ui/settings/voice_card.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../support/dashboard_harness.dart';
+import '../../../support/key_finders.dart';
 import '../../../support/mock_blocs.dart';
 import '../../../support/staged_dashboard.dart';
 import '../../../support/fakes/fake_runtime_repository.dart';
@@ -489,13 +492,20 @@ void main() {
       return cubits;
     }
 
+    /// The voice picked by hand, which is keyed by the language and the voice
+    /// it shows and so is found by what it is.
+    final voicePicker = find.descendant(
+      of: find.byType(VoiceChoiceField),
+      matching: find.byType(DropdownButtonFormField<String>),
+    );
+
     testWidgets('offers automatic and a hand-picked voice', (tester) async {
       await pumpSettings(tester);
 
       expect(find.text('Голос озвучки'), findsOneWidget);
       expect(find.text('Выбрать'), findsOneWidget);
       expect(
-        find.byKey(const ValueKey('voice')),
+        voicePicker,
         findsNothing,
         reason: 'automatic is the default, so there is nothing to pick from',
       );
@@ -507,7 +517,7 @@ void main() {
       await tester.tap(find.text('Выбрать'));
       await tester.pumpAndSettle();
 
-      final picker = find.byKey(const ValueKey('voice'));
+      final picker = voicePicker;
       expect(picker, findsOneWidget);
       final field = tester.widget<DropdownButtonFormField<String>>(picker);
       expect(field.initialValue, 'female_1', reason: 'the catalogue default for Russian');
@@ -523,7 +533,7 @@ void main() {
     testWidgets('names the gender beside every voice', (tester) async {
       await pumpSettings(tester, settings: const AppSettings(automaticVoice: false));
 
-      await tester.tap(find.byKey(const ValueKey('voice')));
+      await tester.tap(voicePicker);
       await tester.pumpAndSettle();
 
       expect(find.text('Male 0 (мужской)'), findsWidgets);
@@ -766,9 +776,9 @@ void main() {
       await pumpHotkeys(tester);
 
       expect(find.text('Горячие клавиши'), findsOneWidget);
-      expect(find.text('Ctrl + Alt + P'), findsOneWidget);
-      expect(find.text('Ctrl + Alt + R'), findsOneWidget);
-      expect(find.text('Ctrl + Alt + S'), findsOneWidget);
+      expect(keysHeld('Ctrl + Alt + P'), findsOneWidget);
+      expect(keysHeld('Ctrl + Alt + R'), findsOneWidget);
+      expect(keysHeld('Ctrl + Alt + S'), findsOneWidget);
     });
 
     testWidgets('refuses for selection the combination pausing has', (tester) async {
@@ -795,7 +805,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(field('pauseHotkey'));
       await tester.pump();
-      expect(find.text('Нажмите сочетание… (Esc — отмена)'), findsOneWidget);
+      expect(find.textContaining('Нажмите сочетание…'), findsOneWidget);
+      expect(keyCap('Esc'), findsOneWidget, reason: 'the key that gives up, drawn as a key');
 
       await press(tester, [
         LogicalKeyboardKey.controlLeft,
@@ -803,7 +814,7 @@ void main() {
         LogicalKeyboardKey.f9,
       ]);
 
-      expect(find.text('Ctrl + Shift + F9'), findsOneWidget);
+      expect(keysHeld('Ctrl + Shift + F9'), findsOneWidget);
       expect((await SettingsService().load()).pauseHotkey?.display, 'Ctrl + Shift + F9');
     });
 
@@ -816,7 +827,16 @@ void main() {
       await tester.pump();
       await press(tester, [LogicalKeyboardKey.keyK]);
 
-      expect(find.textContaining('Добавьте Ctrl, Alt или Win'), findsOneWidget);
+      // Every bound combination holds a Ctrl too, so the keys are looked
+      // for inside the note alone.
+      final problem = find.byWidgetPredicate(
+        (widget) => widget is KeyedText && widget.text.startsWith('Добавьте'),
+      );
+      expect(problem, findsOneWidget);
+      expect([
+        for (final key in ['Ctrl', 'Alt', 'Win'])
+          find.descendant(of: problem, matching: keyCap(key)),
+      ], everyElement(findsOneWidget));
       expect((await SettingsService().load()).pauseHotkey, Hotkey.defaultPause);
     });
 

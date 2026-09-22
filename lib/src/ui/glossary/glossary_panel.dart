@@ -32,6 +32,10 @@ class GlossaryPanel extends StatefulWidget {
 class _GlossaryPanelState extends State<GlossaryPanel> {
   var _filter = const GlossaryFilter();
 
+  /// The packs' own, so what their filter holds survives the shelf moving
+  /// from beside the lists to under them as the window narrows.
+  final _packs = GlobalKey();
+
   Future<void> _export() async {
     final glossary = context.read<GlossaryBloc>();
     final location = await context.read<FileDialogs>().saveJson('loredub-glossary.json');
@@ -78,6 +82,7 @@ class _GlossaryPanelState extends State<GlossaryPanel> {
       final view = GlossaryView(state.glossary, _filter);
       final lists = GlossaryLists(view: view, loaded: state.loaded);
       final packs = GlossaryPacksSection(
+        key: _packs,
         view: view,
         onImport: _import,
         onExport: _exportPack,

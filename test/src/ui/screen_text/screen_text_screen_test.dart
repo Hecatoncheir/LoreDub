@@ -19,9 +19,15 @@ import 'package:lore_dub/src/domain/screen_reading.dart';
 import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
 import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
 import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
+import 'package:lore_dub/src/ui/screen_text/screen_language_and_voice.dart';
+import 'package:lore_dub/src/ui/screen_text/snippet_only_card.dart';
+import 'package:lore_dub/src/ui/screen_text/subtitle_frame_card.dart';
+import 'package:lore_dub/src/ui/screen_text/text_language_picker.dart';
+import 'package:lore_dub/src/ui/settings/voice_choice_field.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../support/dashboard_harness.dart';
+import '../../../support/key_finders.dart';
 import '../../../support/mock_blocs.dart';
 import '../../../support/staged_dashboard.dart';
 
@@ -50,9 +56,104 @@ void main() {
     );
     await pumpDashboard(tester, cubits, const Size(1280, 900));
 
-    expect(find.text('Язык текста'), findsOneWidget);
+    expect(find.text('Язык текста и озвучки'), findsOneWidget);
     expect(find.text('Определять язык'), findsNothing);
-    expect(find.text('Текст на языке озвучки озвучивается без перевода'), findsOneWidget);
+    expect(find.text('Язык озвучки меняется вместе с ним и в «Моделях»'), findsOneWidget);
+  });
+
+  testWidgets('moves the dubbing language, and the voices, with the language picked', (
+    tester,
+  ) async {
+    final cubits = stage(
+      buildCubits(),
+      section: DashboardSection.snapshot,
+      settings: const AppSettings(targetLanguage: 'en'),
+      models: catalogue(),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 900));
+    (String, String) languages() => (
+      cubits.settingsRepository.settings.textLanguage,
+      cubits.settingsRepository.settings.targetLanguage,
+    );
+    Future<void> pick(String from, String option) async {
+      await tester.tap(find.byKey(ValueKey('textLanguage-$from')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(option).last);
+      await tester.pumpAndSettle();
+    }
+
+    await pick('en-en', 'Русский');
+    expect(languages(), ('ru', 'ru'), reason: 'the models screen picks Russian with it');
+    expect(find.textContaining('голос (Русский)'), findsOneWidget);
+    // Both readings are read in a voice picked out of the Russian ones.
+    expect(
+      find.byKey(ValueKey('voice-ru-${speechModelFor('ru')!.speaker}')),
+      findsOneWidget,
+    );
+
+    // Back to English, the voices and the models screen go back with it.
+    await pick('ru-ru', 'Английский');
+    expect(languages(), ('en', 'en'));
+    expect(
+      find.byKey(ValueKey('voice-en-${speechModelFor('en')!.speaker}')),
+      findsOneWidget,
+    );
+
+    await pick('en-en', 'Английский → Русский');
+    expect(languages(), ('en', 'ru'), reason: 'English subtitles heard in Russian');
+  });
+
+  testWidgets('picks the voice once, beside the language, for both readings', (tester) async {
+    final cubits = stage(
+      buildCubits(),
+      section: DashboardSection.snapshot,
+      settings: const AppSettings(targetLanguage: 'ru'),
+      models: catalogue(),
+    );
+    await pumpDashboard(tester, cubits, const Size(1400, 1000));
+    final voice = find.descendant(
+      of: find.byType(ScreenLanguageAndVoice),
+      matching: find.byType(VoiceChoiceField),
+    );
+
+    expect(voice, findsOneWidget);
+    for (final card in [SnippetOnlyCard, SubtitleFrameCard]) {
+      expect(
+        find.descendant(of: find.byType(card), matching: find.byType(VoiceChoiceField)),
+        findsNothing,
+        reason: 'each reading keeps only its start button',
+      );
+    }
+    expect(
+      tester.getTopLeft(voice).dy,
+      moreOrLessEquals(tester.getTopLeft(find.byType(TextLanguagePicker)).dy),
+      reason: 'on the row of the language, in the room it leaves',
+    );
+
+    tester
+        .widget<DropdownButtonFormField<String>>(
+          find.descendant(of: voice, matching: find.byType(DropdownButtonFormField<String>)),
+        )
+        .onChanged!('male_0');
+    await tester.pumpAndSettle();
+
+    expect(cubits.settingsRepository.settings.voice, 'male_0');
+  });
+
+  testWidgets('offers only English with no other voice on disk', (tester) async {
+    final cubits = stage(
+      buildCubits(),
+      section: DashboardSection.snapshot,
+      settings: const AppSettings(targetLanguage: 'en'),
+      models: catalogue(missingLanguage: 'ru'),
+    );
+    await pumpDashboard(tester, cubits, const Size(1280, 900));
+
+    await tester.tap(find.byKey(const ValueKey('textLanguage-en-en')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Русский'), findsNothing);
+    expect(find.text('Английский → Русский'), findsNothing);
   });
 
   group('the snapshot screen', () {
@@ -149,16 +250,18 @@ void main() {
       expect(find.text('02  /  ТЕКСТ С ЭКРАНА'), findsOneWidget);
       expect(find.text('Экран'), findsOneWidget);
       expect(find.text('Перевод с экрана'), findsOneWidget);
-      expect(find.textContaining('Удерживайте Ctrl + Alt + S'), findsOneWidget);
+      expect(find.textContaining('Удерживайте'), findsOneWidget);
+      expect(keysHeld('Ctrl + Alt + S'), findsOneWidget, reason: 'the key is drawn as keys');
       expect(find.textContaining('субтитры в рамке читаются'), findsOneWidget);
-      expect(find.text('Язык текста'), findsOneWidget);
+      expect(find.text('Язык текста и озвучки'), findsOneWidget);
       expect(find.text('СУБТИТРЫ'), findsOneWidget);
       expect(find.text('Выделенные фрагменты появятся здесь'), findsOneWidget);
       expect(startButton(tester).onPressed, isNotNull);
       // The frame is drawn here before the game starts, and over the game
       // itself once it has.
       expect(find.byKey(const ValueKey('ocrRegion')), findsOneWidget);
-      expect(find.textContaining('удерживайте Ctrl + Alt + F'), findsOneWidget);
+      expect(find.textContaining('удерживайте'), findsOneWidget);
+      expect(keysHeld('Ctrl + Alt + F'), findsOneWidget);
     });
 
     testWidgets('says when a frame drawn over the game missed its window', (tester) async {
@@ -226,8 +329,10 @@ void main() {
       // line: fixed at both halves, the row used to overflow.
       await pumpDashboard(tester, stageSnapshot(), const Size(480, 1000));
 
-      final field = find.byKey(const ValueKey('textLanguage-en'));
-      final note = find.text('Текст на языке озвучки озвучивается без перевода');
+      final field = find.byKey(const ValueKey('textLanguage-en-ru'));
+      final note = find.text(
+        'Язык озвучки меняется вместе с ним и в «Моделях»',
+      );
       expect(field, findsOneWidget);
       expect(
         tester.getTopLeft(note).dy,

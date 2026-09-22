@@ -456,7 +456,7 @@ abstract class AppLocalizations {
   /// No description provided for @glossaryPacksNote.
   ///
   /// In ru, this message translates to:
-  /// **'Пакет — это способ прочитать словарь, а не место, куда записи переносятся: запись остаётся в своём списке, даже когда пакет её называет. Пока не включён ни один пакет, озвучка сверяется со всем, что записано. Как только включён хотя бы один, она сверяется только с включёнными — так пакет одной игры не тащит за собой имена другой. Включённых может быть несколько, их записи складываются.'**
+  /// **'Пакет — это способ прочитать словарь, а не место, куда записи переносятся: запись остаётся в своём списке, даже когда пакет её называет. Пока не включён ни один пакет, озвучка сверяется со всем, что записано. Как только включён хотя бы один, она сверяется только с включёнными — так пакет одной игры не тащит за собой имена другой. Включённых может быть несколько, их записи складываются. Когда пакеты стоят на схеме «Эфира», там решает схема: пакет применяет то, что можно встретить на его месте в линии, а если выключены все, «Эфир» не сверяется со словарём вовсе.'**
   String get glossaryPacksNote;
 
   /// No description provided for @glossaryPacksEmpty.
@@ -843,6 +843,24 @@ abstract class AppLocalizations {
   /// **'Название пакета'**
   String get packsNameLabel;
 
+  /// No description provided for @packsFilter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фильтр по названию пакета'**
+  String get packsFilter;
+
+  /// No description provided for @packsFilterClear.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить фильтр'**
+  String get packsFilterClear;
+
+  /// No description provided for @packsFilterNothing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакетов с таким названием нет.'**
+  String get packsFilterNothing;
+
   /// No description provided for @packsEmpty.
   ///
   /// In ru, this message translates to:
@@ -1158,7 +1176,7 @@ abstract class AppLocalizations {
   /// No description provided for @snapshotHowTo.
   ///
   /// In ru, this message translates to:
-  /// **'Удерживайте {hotkey}, обведите мышью текст поверх игры и отпустите клавишу — LoreDub прочитает его, переведёт и озвучит.'**
+  /// **'Удерживайте <kbd>{hotkey}</kbd>, обведите мышью текст поверх игры и отпустите клавишу — LoreDub прочитает его, переведёт и озвучит.'**
   String snapshotHowTo(String hotkey);
 
   /// No description provided for @screenVoices.
@@ -1314,7 +1332,7 @@ abstract class AppLocalizations {
   /// No description provided for @frameHowTo.
   ///
   /// In ru, this message translates to:
-  /// **'Во время игры рамку можно обвести заново: удерживайте {hotkey}, выделите место с субтитрами и отпустите — выделение исчезнет, а чтение продолжится в новой рамке.'**
+  /// **'Во время игры рамку можно обвести заново: удерживайте <kbd>{hotkey}</kbd>, выделите место с субтитрами и отпустите — выделение исчезнет, а чтение продолжится в новой рамке.'**
   String frameHowTo(String hotkey);
 
   /// No description provided for @frameMissed.
@@ -1332,7 +1350,7 @@ abstract class AppLocalizations {
   /// No description provided for @hotkeyListening.
   ///
   /// In ru, this message translates to:
-  /// **'Нажмите сочетание… (Esc — отмена)'**
+  /// **'Нажмите сочетание… (<kbd>Esc</kbd> — отмена)'**
   String get hotkeyListening;
 
   /// No description provided for @hotkeyClear.
@@ -1344,7 +1362,7 @@ abstract class AppLocalizations {
   /// No description provided for @hotkeyNeedsModifier.
   ///
   /// In ru, this message translates to:
-  /// **'Добавьте Ctrl, Alt или Win: одиночная клавиша перестала бы доходить до игры'**
+  /// **'Добавьте <kbd>Ctrl</kbd>, <kbd>Alt</kbd> или <kbd>Win</kbd>: одиночная клавиша перестала бы доходить до игры'**
   String get hotkeyNeedsModifier;
 
   /// No description provided for @hotkeyUnsupported.
@@ -1488,13 +1506,13 @@ abstract class AppLocalizations {
   /// No description provided for @textLanguageLabel.
   ///
   /// In ru, this message translates to:
-  /// **'Язык текста'**
+  /// **'Язык текста и озвучки'**
   String get textLanguageLabel;
 
   /// No description provided for @textLanguageNote.
   ///
   /// In ru, this message translates to:
-  /// **'Текст на языке озвучки озвучивается без перевода'**
+  /// **'Язык озвучки меняется вместе с ним и в «Моделях»'**
   String get textLanguageNote;
 
   /// No description provided for @startingProgress.
@@ -1550,6 +1568,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Windows OCR → English → Vosk'**
   String get pipelineSummaryOcrDirect;
+
+  /// No description provided for @pipelineSummaryOcrAsIs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Windows OCR → {language} → Vosk'**
+  String pipelineSummaryOcrAsIs(String language);
 
   /// No description provided for @pipelineSummary.
   ///
@@ -2403,36 +2427,6 @@ abstract class AppLocalizations {
   /// **'Китайский'**
   String get language_zh;
 
-  /// No description provided for @translationTarget_ru.
-  ///
-  /// In ru, this message translates to:
-  /// **'русский'**
-  String get translationTarget_ru;
-
-  /// No description provided for @translationTarget_de.
-  ///
-  /// In ru, this message translates to:
-  /// **'немецкий'**
-  String get translationTarget_de;
-
-  /// No description provided for @translationTarget_es.
-  ///
-  /// In ru, this message translates to:
-  /// **'испанский'**
-  String get translationTarget_es;
-
-  /// No description provided for @translationTarget_fr.
-  ///
-  /// In ru, this message translates to:
-  /// **'французский'**
-  String get translationTarget_fr;
-
-  /// No description provided for @translationTarget_uk.
-  ///
-  /// In ru, this message translates to:
-  /// **'украинский'**
-  String get translationTarget_uk;
-
   /// No description provided for @voiceName_en.
   ///
   /// In ru, this message translates to:
@@ -3132,7 +3126,7 @@ abstract class AppLocalizations {
   /// No description provided for @pipelineGraphHint.
   ///
   /// In ru, this message translates to:
-  /// **'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст. Shift с нажатием выбирает несколько нод, Ctrl с протяжкой — область; выбранные ноды двигаются вместе.'**
+  /// **'Тяните от кружка к кружку, чтобы проложить путь. Колесо мыши — масштаб, пустое место — перетащить холст. <kbd>Shift</kbd> с нажатием выбирает несколько нод, <kbd>Ctrl</kbd> с протяжкой — область; выбранные ноды двигаются вместе.'**
   String get pipelineGraphHint;
 
   /// No description provided for @failurePipelinesSaveFailed.
@@ -3596,6 +3590,144 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Озвучка уходит на устройство вывода Windows по умолчанию.'**
   String get pipelineOutputNote;
+
+  /// No description provided for @pipelineNodeGlossary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Словарь'**
+  String get pipelineNodeGlossary;
+
+  /// No description provided for @pipelineGlossaryNamed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Словарь «{name}»'**
+  String pipelineGlossaryNamed(String name);
+
+  /// No description provided for @pipelineAddGlossary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить словарь на схему'**
+  String get pipelineAddGlossary;
+
+  /// No description provided for @pipelineNoGlossaryPacks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакетов словаря пока нет — соберите их на экране «Словарь»'**
+  String get pipelineNoGlossaryPacks;
+
+  /// No description provided for @pipelineGlossaryNoPack.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакет не выбран'**
+  String get pipelineGlossaryNoPack;
+
+  /// No description provided for @pipelineGlossaryNotePhrases.
+  ///
+  /// In ru, this message translates to:
+  /// **'фразы · {count}'**
+  String pipelineGlossaryNotePhrases(int count);
+
+  /// No description provided for @pipelineGlossaryNoteWords.
+  ///
+  /// In ru, this message translates to:
+  /// **'слова · {count}'**
+  String pipelineGlossaryNoteWords(int count);
+
+  /// No description provided for @pipelineGlossaryNoteNamesWords.
+  ///
+  /// In ru, this message translates to:
+  /// **'имена и слова · {count}'**
+  String pipelineGlossaryNoteNamesWords(int count);
+
+  /// No description provided for @pipelineGlossaryNoteNothing.
+  ///
+  /// In ru, this message translates to:
+  /// **'ничего не сверяет'**
+  String get pipelineGlossaryNoteNothing;
+
+  /// No description provided for @pipelineGlossaryPackLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пакет'**
+  String get pipelineGlossaryPackLabel;
+
+  /// No description provided for @pipelineGlossaryPhrasesNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стоит до «Перевода»: реплика целиком сверяется с распознанным английским, и фразы пакета звучат вашим переводом вместо ответа модели. Имена и слова пакета сверяются с готовым переводом — для них поставьте ноду этого пакета после «Перевода».'**
+  String get pipelineGlossaryPhrasesNote;
+
+  /// No description provided for @pipelineGlossaryNamesWordsNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стоит после «Перевода»: поправляет в готовом переводе имена, которые переводчик оставил латиницей, и слова целиком. Фразы пакета сверяются с английским до перевода — для них поставьте ноду этого пакета перед «Переводом».'**
+  String get pipelineGlossaryNamesWordsNote;
+
+  /// No description provided for @pipelineGlossaryWordsNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переводить нечего: Whisper отдаёт английский, и озвучка читает его как есть. Нода поправляет в нём слова пакета; фразы и имена работают только при переводе.'**
+  String get pipelineGlossaryWordsNote;
+
+  /// No description provided for @pipelineGlossaryAsideNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стоит после «Перевода», а перевод сейчас в стороне — озвучка идёт на английском. Пока он не вернётся в линию, нода ничего не сверяет.'**
+  String get pipelineGlossaryAsideNote;
+
+  /// No description provided for @pipelineGlossaryOutNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нода не стоит в линии текста и ничего не сверяет. Протяните в её «Текст» линию от Whisper, «Перевода» или другого словаря — или из её «Текста» в «Перевод», «Реплики» или другой словарь. Поставленный в линию, словарь включается.'**
+  String get pipelineGlossaryOutNote;
+
+  /// No description provided for @pipelineGlossaryActive.
+  ///
+  /// In ru, this message translates to:
+  /// **'Активен'**
+  String get pipelineGlossaryActive;
+
+  /// No description provided for @pipelineGlossaryInactive.
+  ///
+  /// In ru, this message translates to:
+  /// **'не активен'**
+  String get pipelineGlossaryInactive;
+
+  /// No description provided for @pipelineGlossaryNotePassing.
+  ///
+  /// In ru, this message translates to:
+  /// **'текст идёт мимо'**
+  String get pipelineGlossaryNotePassing;
+
+  /// No description provided for @pipelineGlossaryInactiveNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Словарь не активен: текст проходит через него как пришёл, а нода остаётся на своём месте в линии. Это тот же переключатель «Активен», что у пакета на экране «Словарь».'**
+  String get pipelineGlossaryInactiveNote;
+
+  /// No description provided for @pipelineVoiceNoGlossary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ни один словарь на схеме не активен, поэтому реплики не сверяются со словарём.'**
+  String get pipelineVoiceNoGlossary;
+
+  /// No description provided for @pipelineCutGlossary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать словарь из линии'**
+  String get pipelineCutGlossary;
+
+  /// No description provided for @pipelineRefusalOutOfLine.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сначала поставьте в линию текста один из двух словарей.'**
+  String get pipelineRefusalOutOfLine;
+
+  /// No description provided for @pipelineVoiceWholeGlossary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ни один пакет словаря не включён, поэтому реплики сверяются со всем, что записано на экране «Словарь».'**
+  String get pipelineVoiceWholeGlossary;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -1,15 +1,18 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-/// The graph the settings, the cast and the layout describe.
+/// The graph the settings, the cast, the glossary and the layout describe.
 library;
 
 import 'app_settings.dart';
 import 'character.dart';
+import 'glossary.dart';
+import 'pipeline_glossary.dart';
 import 'pipeline_graph_model.dart';
 import 'pipeline_layout.dart';
 
-/// The graph [settings] and [characters] describe, arranged as [layout].
+/// The graph [settings], [characters] and the glossary's [packs] describe,
+/// arranged as [layout].
 ///
 /// Worked out in the order each part needs the one before: where the cards
 /// stand, where each card's part goes from there, which cards carry a line
@@ -17,6 +20,7 @@ import 'pipeline_layout.dart';
 PipelineGraph buildPipelineGraph({
   required AppSettings settings,
   required List<Character> characters,
+  List<GlossaryPack> packs = const [],
   PipelineLayout layout = PipelineLayout.standard,
 }) {
   final byId = {for (final character in characters) character.id: character};
@@ -44,6 +48,11 @@ PipelineGraph buildPipelineGraph({
     for (final placement in voiced) placement.nodeId: _partOf(placement, byId, voiced, castAt),
   };
   final carrying = _carrying(voiced, byId, sends);
+  final shelf = {for (final pack in packs) pack.id: pack.active};
+  final glossaries = [
+    for (final placement in layout.glossaries)
+      if (shelf.containsKey(placement.packId)) placement,
+  ];
   return PipelineGraph(
     nodes: [
       ..._stageNodes(layout, routed: routed, translates: translates),
@@ -56,14 +65,87 @@ PipelineGraph buildPipelineGraph({
           unrouted: layout.silent.contains(placement.characterId),
           sendsToMix: _sendsToMix(placement, carrying, sends),
         ),
+      ..._glossaryNodes(glossaries, layout, shelf, routed: routed, translates: translates),
     ],
     links: [
-      ..._stageLinks(routed: routed, translates: translates),
+      ..._soundLinks(routed: routed),
+      ..._lineLinks(glossaries, routed: routed, translates: translates),
       ..._castLinks(voiced, carrying, sends),
     ],
     routed: routed,
+    translates: translates,
     chained: _chained(placed, byId),
   );
+}
+
+/// The packs of the glossary drawn on the canvas, where the player left
+/// them or in a row over the line.
+///
+/// A drawing the text does not run through -- one out of the line, any
+/// while the way in is taken apart, one after a translator standing aside --
+/// applies nothing, and is drawn faded as a stage with nothing reaching it
+/// is. One whose pack is switched off, by [active] (by pack), stays where it
+/// stands, the text passing through it.
+List<PipelineNode> _glossaryNodes(
+  List<GlossaryPlacement> placed,
+  PipelineLayout layout,
+  Map<String, bool> active, {
+  required bool routed,
+  required bool translates,
+}) => [
+  for (final (index, placement) in placed.indexed)
+    PipelineNode(
+      id: placement.nodeId,
+      kind: PipelineNodeKind.glossary,
+      packId: placement.packId,
+      feed: placement.feed,
+      active: active[placement.packId] ?? false,
+      position: layout.positions[placement.nodeId] ?? PipelineLayout.glossaryPlace(index),
+      unrouted: !routed || (placement.feed?.kinds(translates: translates).isEmpty ?? true),
+    ),
+];
+
+/// One stop on the line of text: the socket the text arrives by, and the
+/// one it leaves by. Whisper has no text arriving, the voice none leaving.
+typedef _Stop = ({PipelinePort? into, PipelinePort? out});
+
+_Stop _packStop(String nodeId) => (
+  into: PipelinePort(nodeId, PipelineSocket.glossaryIn),
+  out: PipelinePort(nodeId, PipelineSocket.glossaryOut),
+);
+
+/// The line of text, whisper to the voice: the packs standing before the
+/// translator, the translator where it translates, the packs after it --
+/// each handing the text on to the next.
+///
+/// Nothing reaches whisper while the way in is taken apart, and the line out
+/// of it goes with that; what runs past it is the pipeline itself and stays
+/// drawn, faded with the stages. A translator stepped over stands aside with
+/// the packs drawn after it, joined to nothing, and whisper's text runs
+/// through the packs before it straight into the voice.
+List<PipelineLink> _lineLinks(
+  List<GlossaryPlacement> placed, {
+  required bool routed,
+  required bool translates,
+}) {
+  final List<_Stop> line = [
+    (into: null, out: const PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechText)),
+    for (final placement in placed)
+      if (placement.feed == GlossaryFeed.recognition) _packStop(placement.nodeId),
+    if (translates) ...[
+      (
+        into: const PipelinePort(PipelineNodeIds.translation, PipelineSocket.translationIn),
+        out: const PipelinePort(PipelineNodeIds.translation, PipelineSocket.translatedText),
+      ),
+      for (final placement in placed)
+        if (placement.feed == GlossaryFeed.translation) _packStop(placement.nodeId),
+    ],
+    (into: const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceIn), out: null),
+  ];
+  return [
+    for (var at = routed ? 1 : 2; at < line.length; at++)
+      PipelineLink(line[at - 1].out!, line[at].into!),
+  ];
 }
 
 /// A card whose line ends at the mix is heard as itself; one that hands its
@@ -129,41 +211,23 @@ List<PipelineNode> _stageNodes(
     ),
 ];
 
-/// The lines between the stages: the pipeline itself.
-List<PipelineLink> _stageLinks({required bool routed, required bool translates}) {
-  const translation = PipelinePort(PipelineNodeIds.translation, PipelineSocket.translationIn);
-  const speechText = PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechText);
-  const voiceIn = PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceIn);
-  return [
-    // Nothing feeds the stages while the way in is taken apart. What runs
-    // between them is the pipeline itself and stays drawn, faded with them.
-    if (routed) ...[
-      const PipelineLink(
-        PipelinePort(PipelineNodeIds.source, PipelineSocket.gameAudio),
-        PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn),
-      ),
-      // What whisper heard goes to the translator, or straight to the voice
-      // when there is nothing to translate.
-      if (translates)
-        const PipelineLink(speechText, translation)
-      else
-        const PipelineLink(speechText, voiceIn),
-    ],
-    if (translates)
-      const PipelineLink(
-        PipelinePort(PipelineNodeIds.translation, PipelineSocket.translatedText),
-        voiceIn,
-      ),
+/// The lines of sound: the game's into whisper, the voice's into the mix,
+/// the mix's out. Nothing feeds the stages while the way in is taken apart.
+List<PipelineLink> _soundLinks({required bool routed}) => [
+  if (routed)
     const PipelineLink(
-      PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceAudio),
-      PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixIn),
+      PipelinePort(PipelineNodeIds.source, PipelineSocket.gameAudio),
+      PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn),
     ),
-    const PipelineLink(
-      PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixOut),
-      PipelinePort(PipelineNodeIds.output, PipelineSocket.streamIn),
-    ),
-  ];
-}
+  const PipelineLink(
+    PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceAudio),
+    PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixIn),
+  ),
+  const PipelineLink(
+    PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixOut),
+    PipelinePort(PipelineNodeIds.output, PipelineSocket.streamIn),
+  ),
+];
 
 /// Where the part drawn at [from] goes: into the nearest drawing of the card
 /// that speaks for it, or into the mix when it speaks for itself.

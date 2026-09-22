@@ -34,7 +34,7 @@ class TranslationNodeFields extends StatelessWidget {
   }
 
   String _languageLabel(AppLocalizations l10n, String language) {
-    final name = translationTargetName(l10n, language);
+    final name = spokenLanguageName(l10n, language);
     return facts.selection.isLanguageReady(language) ? name : l10n.languageWithoutModels(name);
   }
 

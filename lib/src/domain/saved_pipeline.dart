@@ -5,7 +5,8 @@
 ///
 /// What is kept is what the graph screen draws and edits: the route the
 /// pipeline takes, the arrangement of the nodes, which cards were put on the
-/// canvas and whose voice reads whom among them. The models, the languages
+/// canvas and whose voice reads whom among them, and which packs of the
+/// glossary are drawn and switched on. The models, the languages
 /// and the volumes are not in it — those belong to the machine the dubbing
 /// runs on, and a scheme from somebody else's computer would drag their
 /// downloads in with it.
@@ -20,6 +21,7 @@ class SavedPipeline {
     this.captureRouted = true,
     this.layout = PipelineLayout.standard,
     this.readers = const {},
+    this.activePacks,
   });
 
   final String id;
@@ -37,12 +39,20 @@ class SavedPipeline {
   /// loading the scheme takes a substitution away as readily as it sets one.
   final Map<String, String?> readers;
 
+  /// The packs of the glossary that were switched on -- the ones whose lines
+  /// ran into the voice. Like [readers], the whole picture rather than the
+  /// part the canvas draws: putting the scheme up switches on these and no
+  /// others. Null for a scheme kept before the glossary was drawn, which
+  /// leaves the packs as they are.
+  final Set<String>? activePacks;
+
   SavedPipeline copyWith({String? name, PipelineLayout? layout}) => SavedPipeline(
     id: id,
     name: name ?? this.name,
     captureRouted: captureRouted,
     layout: layout ?? this.layout,
     readers: readers,
+    activePacks: activePacks,
   );
 
   Map<String, Object?> toJson() => {
@@ -51,6 +61,8 @@ class SavedPipeline {
     'captureRouted': captureRouted,
     'layout': layout.toJson(),
     'readers': readers,
+    // Sorted so the file is the same file when nothing was changed.
+    if (activePacks case final packs?) 'activePacks': [...packs]..sort(),
   };
 
   static SavedPipeline? fromJson(Object? json) {
@@ -77,8 +89,15 @@ class SavedPipeline {
           if (entry.key case final String character)
             character: entry.value is String ? entry.value! as String : null,
       },
+      activePacks: _packsFrom(json['activePacks']),
     );
   }
+
+  /// The packs a scheme switched on, or null for one kept before it said.
+  static Set<String>? _packsFrom(Object? json) => switch (json) {
+    final List<Object?> packs => {...packs.whereType<String>()},
+    _ => null,
+  };
 }
 
 /// Every scheme kept on this machine, in the order they were saved.

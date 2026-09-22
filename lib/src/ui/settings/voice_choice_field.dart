@@ -14,9 +14,12 @@ import 'bloc/settings_bloc.dart';
 /// It can be picked at any moment, a session running or not: the worker is
 /// told, and the next line is read in it.
 class VoiceChoiceField extends StatelessWidget {
-  const VoiceChoiceField({super.key, required this.selection});
+  const VoiceChoiceField({super.key, required this.selection, this.dense = false});
 
   final ModelSelection selection;
+
+  /// As low as the language field it stands in a row with.
+  final bool dense;
 
   void _choose(BuildContext context, String? voice) {
     if (voice == null) return;
@@ -27,9 +30,14 @@ class VoiceChoiceField extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return DropdownButtonFormField<String>(
-      key: const ValueKey('voice'),
+      // Keyed by the language, which is picked a field away on the pages
+      // this stands on: the voices change under the field, and the value it
+      // held would name one no longer on the list. And by the voice, which
+      // is changed elsewhere too -- on Live, in the node panel.
+      key: ValueKey('voice-${selection.settings.targetLanguage}-${selection.voice}'),
       initialValue: selection.voice,
-      decoration: InputDecoration(labelText: l10n.voiceFieldLabel),
+      isDense: dense,
+      decoration: InputDecoration(labelText: l10n.voiceFieldLabel, isDense: dense),
       items: [
         for (final voice in selection.availableVoices)
           DropdownMenuItem(value: voice.id, child: Text(voiceLabel(l10n, voice))),

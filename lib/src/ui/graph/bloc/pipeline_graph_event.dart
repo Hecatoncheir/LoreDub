@@ -22,8 +22,8 @@ final class PipelineGraphOpened extends PipelineGraphEvent {
   const PipelineGraphOpened();
 }
 
-/// The settings or the cast changed under the canvas, from here or from
-/// another screen.
+/// The settings, the cast or the glossary changed under the canvas, from
+/// here or from another screen.
 final class PipelineGraphRefreshed extends PipelineGraphEvent {
   const PipelineGraphRefreshed();
 }
@@ -136,15 +136,55 @@ final class PipelineCharacterPlaced extends PipelineGraphEvent {
   List<Object?> get props => [characterId];
 }
 
-/// One drawing of a card was taken off the canvas. The card keeps whatever
-/// voice reads it, and its other drawings stay: only this node goes.
-final class PipelineCharacterRemoved extends PipelineGraphEvent {
-  const PipelineCharacterRemoved(this.nodeId);
+/// One drawing of a card or of a pack was taken off the canvas. The card
+/// keeps whatever voice reads it and its other drawings stay: only this
+/// node goes. A pack goes out of the line of text with the node, and is
+/// switched off when no other drawing of it stands there.
+final class PipelineNodeRemoved extends PipelineGraphEvent {
+  const PipelineNodeRemoved(this.nodeId);
 
   final String nodeId;
 
   @override
   List<Object?> get props => [nodeId];
+}
+
+/// A pack of the glossary was drawn on the canvas, out of the line of text
+/// until a line is drawn into it or out of it. A pack already there is drawn
+/// again rather than refused: once before the translator and once after it
+/// is how the whole of a pack is put in the line.
+final class PipelineGlossaryPlaced extends PipelineGraphEvent {
+  const PipelineGlossaryPlaced(this.packId);
+
+  final String packId;
+
+  @override
+  List<Object?> get props => [packId];
+}
+
+/// The pack a glossary node reads, chosen in its panel. The node keeps its
+/// place and its lines: it is the same node with another pack in it.
+final class PipelineGlossaryPackChosen extends PipelineGraphEvent {
+  const PipelineGlossaryPackChosen(this.nodeId, this.packId);
+
+  final String nodeId;
+  final String packId;
+
+  @override
+  List<Object?> get props => [nodeId, packId];
+}
+
+/// The switch on a glossary node, or in its panel: the pack it draws on or
+/// off, the node staying where it stands. Switched off, the text passes
+/// through it as it came.
+final class PipelineGlossarySwitched extends PipelineGraphEvent {
+  const PipelineGlossarySwitched(this.nodeId, {required this.active});
+
+  final String nodeId;
+  final bool active;
+
+  @override
+  List<Object?> get props => [nodeId, active];
 }
 
 final class PipelineViewPanned extends PipelineGraphEvent {

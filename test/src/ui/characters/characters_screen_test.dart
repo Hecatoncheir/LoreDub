@@ -189,6 +189,32 @@ void main() {
       verify(() => cubits.cards.add(const PackAdded('Новый пакет'))).called(1);
     });
 
+    testWidgets('narrows the packs to those whose name holds what is typed', (tester) async {
+      final cubits = stageCast(
+        cast: const CastState(
+          loading: false,
+          characters: [guard],
+          packs: [
+            CharacterPack(id: 'k1', name: 'Стража'),
+            CharacterPack(id: 'k2', name: 'Кузнецы'),
+          ],
+        ),
+      );
+      await pumpDashboard(tester, cubits, const Size(1280, 900));
+      final filter = find.byKey(const ValueKey('packsFilter'));
+      await tester.ensureVisible(filter);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(filter, 'СТРАЖ');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('k1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('k2')), findsNothing);
+
+      await tester.tap(find.byTooltip('Очистить фильтр'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('k2')), findsOneWidget, reason: 'every pack again');
+    });
+
     testWidgets('says who reads a card, and leaves the setting to the graph', (tester) async {
       final cubits = stageCast(
         cast: const CastState(

@@ -38,6 +38,12 @@ class NodeLayer extends StatelessWidget {
     return Size(wide, math.min(wide, NodeMetrics.rowHeight / 2));
   }
 
+  /// Whether a node of [kind] was put on the canvas by hand, and so is
+  /// taken off the same way: a card of the cast, or a pack of the glossary.
+  /// The stages of the pipeline are always drawn.
+  static bool _drawnByHand(PipelineNodeKind kind) =>
+      kind == PipelineNodeKind.character || kind == PipelineNodeKind.glossary;
+
   @override
   Widget build(BuildContext context) {
     final node = inputs.node;
@@ -73,9 +79,10 @@ class NodeLayer extends StatelessWidget {
                   onGrab: (at) => actions.onGrab(node.id, at),
                   onDrag: (at) => actions.onDrag(node.id, at),
                   onDrop: actions.onDrop,
-                  onRemove: node.kind != PipelineNodeKind.character
-                      ? null
-                      : () => actions.onRemove(node.id),
+                  onRemove: _drawnByHand(node.kind) ? () => actions.onRemove(node.id) : null,
+                  onSwitch: node.kind == PipelineNodeKind.glossary
+                      ? (active) => actions.onSwitch(node.id, active)
+                      : null,
                 ),
               ),
             ),

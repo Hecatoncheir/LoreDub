@@ -16,6 +16,7 @@ class NodeLayerActions {
     required this.onDrag,
     required this.onDrop,
     required this.onRemove,
+    required this.onSwitch,
     required this.onLinkStart,
     required this.onLinkToggle,
     required this.onLinkDrag,
@@ -27,6 +28,9 @@ class NodeLayerActions {
   final void Function(String nodeId, Offset global) onDrag;
   final VoidCallback onDrop;
   final void Function(String nodeId) onRemove;
+
+  /// The switch on a glossary node: the pack it draws on or off.
+  final void Function(String nodeId, bool active) onSwitch;
   final void Function(PipelinePort port, Offset global) onLinkStart;
 
   /// The same line drawn without a pointer: the first socket takes it up,

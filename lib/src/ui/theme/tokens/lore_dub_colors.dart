@@ -31,6 +31,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     required this.onDeepMuted,
     required this.onAccentLight,
     required this.onAccentMuted,
+    required this.accentDeep,
     required this.success,
     required this.warning,
     required this.danger,
@@ -55,6 +56,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     onDeepMuted: _onDeepMuted,
     onAccentLight: LoreDubPalette.raised,
     onAccentMuted: _onAccentMuted,
+    accentDeep: LoreDubPalette.orangeDark,
     success: LoreDubPalette.success,
     warning: LoreDubPalette.warning,
     danger: LoreDubPalette.error,
@@ -102,6 +104,12 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
   final Color onAccentLight;
   final Color onAccentMuted;
 
+  /// The accent a shade deeper, which does not turn over either: what a
+  /// field is sunk into on a surface of the accent, where [onAccentLight]
+  /// is written. [accentStrong] turns lighter against the ink, and a field
+  /// filled with it held those light letters at no contrast at all.
+  final Color accentDeep;
+
   /// What a state is said in, beside the words that say it.
   final Color success;
   final Color warning;
@@ -138,6 +146,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     onDeepMuted: _onPaleMuted,
     onAccentLight: LoreDubPalette.raised,
     onAccentMuted: _onAccentMuted,
+    accentDeep: LoreDubPalette.orangeDark,
     success: LoreDubPalette.successLight,
     warning: LoreDubPalette.warningLight,
     danger: LoreDubPalette.errorLight,
@@ -169,6 +178,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     Color? onDeepMuted,
     Color? onAccentLight,
     Color? onAccentMuted,
+    Color? accentDeep,
     Color? success,
     Color? warning,
     Color? danger,
@@ -189,6 +199,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
     onDeepMuted: onDeepMuted ?? this.onDeepMuted,
     onAccentLight: onAccentLight ?? this.onAccentLight,
     onAccentMuted: onAccentMuted ?? this.onAccentMuted,
+    accentDeep: accentDeep ?? this.accentDeep,
     success: success ?? this.success,
     warning: warning ?? this.warning,
     danger: danger ?? this.danger,
@@ -214,6 +225,7 @@ class LoreDubColors extends ThemeExtension<LoreDubColors> {
       onDeepMuted: Color.lerp(onDeepMuted, other.onDeepMuted, t)!,
       onAccentLight: Color.lerp(onAccentLight, other.onAccentLight, t)!,
       onAccentMuted: Color.lerp(onAccentMuted, other.onAccentMuted, t)!,
+      accentDeep: Color.lerp(accentDeep, other.accentDeep, t)!,
       success: Color.lerp(success, other.success, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
       danger: Color.lerp(danger, other.danger, t)!,

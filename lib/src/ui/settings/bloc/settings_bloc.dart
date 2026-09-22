@@ -95,6 +95,18 @@ final class TargetLanguageChosen extends SettingsEvent {
   List<Object?> get props => [language];
 }
 
+/// What the Screen page reads and what it says it in, which is the dubbing
+/// language itself -- see [AppSettings.withScreenLanguages].
+final class ScreenLanguageChosen extends SettingsEvent {
+  const ScreenLanguageChosen({required this.text, required this.dubbing});
+
+  final String text;
+  final String dubbing;
+
+  @override
+  List<Object?> get props => [text, dubbing];
+}
+
 final class RecognitionModelChosen extends SettingsEvent {
   const RecognitionModelChosen(this.id);
 
@@ -164,7 +176,12 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<_SettingsMoved>((event, emit) => emit(state.copyWith(settings: event.settings)));
     on<SettingsChanged>((event, emit) => _settings.save(event.settings));
     on<TargetLanguageChosen>(
-      (event, emit) => _settings.save(settings.copyWith(targetLanguage: event.language)),
+      (event, emit) => _settings.save(settings.withTargetLanguage(event.language)),
+    );
+    on<ScreenLanguageChosen>(
+      (event, emit) => _settings.save(
+        settings.withScreenLanguages(text: event.text, dubbing: event.dubbing),
+      ),
     );
     on<RecognitionModelChosen>(
       (event, emit) => _settings.save(settings.copyWith(whisperModel: event.id)),

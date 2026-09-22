@@ -89,7 +89,11 @@ class PipelineInspector extends StatelessWidget {
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
                       children: [
-                        if (facts.running && node.kind != PipelineNodeKind.character)
+                        // A card and a pack are rewired under a running
+                        // session, which is told of it; the stages are not.
+                        if (facts.running &&
+                            node.kind != PipelineNodeKind.character &&
+                            node.kind != PipelineNodeKind.glossary)
                           InspectorNote(text: l10n.pipelineLockedNote),
                         NodeInspectorFields(
                           node: node,

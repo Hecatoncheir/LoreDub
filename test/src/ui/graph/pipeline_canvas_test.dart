@@ -21,6 +21,7 @@ import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
+import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 
@@ -206,6 +207,55 @@ void main() {
     await activate(speech);
     await tester.pumpAndSettle();
     expect(cubits.settings.state.settings.captureRouted, isTrue, reason: 'the route is back');
+    handle.dispose();
+  });
+
+  testWidgets('puts a pack in the line of text without a pointer, by the sockets a reader hears', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    final cubits = await pumpGraph(tester, const Size(1500, 950));
+    final l10n = await AppLocalizations.delegate.load(const Locale('ru'));
+    cubits.stageGlossary(
+      const Glossary(
+        packs: [GlossaryPack(id: 'fallout', name: 'Fallout')],
+      ),
+    );
+    cubits.graph.add(const PipelineGlossaryPlaced('fallout'));
+    await tester.pumpAndSettle();
+    // Named by the pack it reads: every glossary node is titled alike. Text
+    // comes in on the left and leaves on the right, in that order.
+    final pack = find.semantics.byLabel(
+      l10n.pipelineSocketLabel(l10n.pipelineGlossaryNamed('Fallout'), l10n.pipelineSocketText),
+    );
+    final voice = find.semantics.byLabel(
+      l10n.pipelineSocketLabel(l10n.pipelineNodeVoice, l10n.pipelineSocketText),
+    );
+    expect(pack.first.evaluate().single.value, l10n.pipelineSocketFree);
+
+    tester.semantics.performAction(pack.last, SemanticsAction.tap);
+    await tester.pump();
+    await tester.pump();
+    tester.semantics.performAction(voice, SemanticsAction.tap);
+    await tester.pumpAndSettle();
+
+    expect(cubits.glossaryRepository.glossary.packWithId('fallout')!.active, isTrue);
+    expect(
+      pack.first.evaluate().single.value,
+      l10n.pipelineSocketLinked,
+      reason: 'the translator hands its text on to the pack now',
+    );
+
+    // The switch on the card is a named control too, and switches the pack
+    // off where it stands.
+    tester.semantics.performAction(
+      find.semantics.byLabel(l10n.pipelineGlossaryActive),
+      SemanticsAction.tap,
+    );
+    await tester.pumpAndSettle();
+
+    expect(cubits.glossaryRepository.glossary.packWithId('fallout')!.active, isFalse);
+    expect(pack.first.evaluate().single.value, l10n.pipelineSocketLinked, reason: 'still in line');
     handle.dispose();
   });
 

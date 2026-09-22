@@ -12,7 +12,7 @@ import 'node_metrics.dart';
 
 /// The head of a node card: its icon and name, the cross that takes a card
 /// of the cast off the canvas, and the word for a stage the route no longer
-/// reaches.
+/// reaches or a pack switched off.
 class NodeCardHeader extends StatelessWidget {
   const NodeCardHeader({
     super.key,
@@ -26,6 +26,14 @@ class NodeCardHeader extends StatelessWidget {
   final NodePaint paint;
   final String title;
   final VoidCallback? onRemove;
+
+  /// Why the node does nothing, when it does not: nothing reaches it, or the
+  /// pack it draws is switched off.
+  String? _idle(AppLocalizations l10n) => switch (node) {
+    PipelineNode(unrouted: true) => l10n.pipelineUnrouted,
+    PipelineNode(active: false) => l10n.pipelineGlossaryInactive,
+    _ => null,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +74,9 @@ class NodeCardHeader extends StatelessWidget {
                 onPressed: remove,
               ),
             ),
-          if (node.unrouted)
+          if (_idle(l10n) case final idle?)
             Text(
-              l10n.pipelineUnrouted.toUpperCase(),
+              idle.toUpperCase(),
               style: TextStyle(
                 fontFamily: LoreDubFonts.mono,
                 fontSize: 8,

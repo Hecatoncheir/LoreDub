@@ -37,6 +37,7 @@ class NodePortRows extends StatelessWidget {
           (l10n.pipelineSocketCharacter, l10n.pipelineSocketVoice),
           (l10n.pipelineSocketVoice, null),
         ],
+        PipelineNodeKind.glossary => [(l10n.pipelineSocketText, l10n.pipelineSocketText)],
       };
 
   @override

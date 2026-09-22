@@ -11,6 +11,7 @@ import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/capture_sources.dart';
 import 'package:lore_dub/src/domain/character.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
+import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus;
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
@@ -71,6 +72,7 @@ void main() {
       List<Character> characters = const [guard, smith],
       List<String> placed = const ['guard'],
       List<SavedPipeline> shelf = const [],
+      Glossary glossary = Glossary.empty,
     }) async {
       final cubits = stage(
         buildCubits(),
@@ -80,6 +82,7 @@ void main() {
         models: catalogue(),
       );
       cubits.cast.seed(CharacterLibrary(characters: characters));
+      cubits.stageGlossary(glossary);
       cubits.stageScheme(layout: PipelineLayout.drawing(placed), shelf: shelf);
       await pumpDashboard(tester, cubits, const Size(1500, 950));
       await tester.pump();
@@ -516,6 +519,175 @@ void main() {
 
       expect(cubits.graph.state.layout.characters, ['guard']);
       expect(find.text('Стражник'), findsWidgets);
+    });
+
+    group('the glossary', () {
+      const vault = GlossaryEntry(
+        kind: GlossaryKind.word,
+        source: 'Хранилище',
+        reading: 'Убежище',
+      );
+      final written = Glossary(
+        entries: const [vault],
+        packs: [
+          GlossaryPack(id: 'fallout', name: 'Fallout', entryKeys: [vault.packKey]),
+        ],
+      );
+
+      Future<void> placeFallout(WidgetTester tester) async {
+        await tester.tap(find.byIcon(Icons.library_add_outlined));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Fallout'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+
+      Finder inPanel(Finder finder) =>
+          find.descendant(of: find.byType(PipelineInspector), matching: finder);
+
+      testWidgets('offers no pack to put on the canvas while there is none', (tester) async {
+        await pumpGraph(tester);
+
+        final button = tester.widget<PopupMenuButton<String>>(
+          find.ancestor(
+            of: find.byIcon(Icons.library_add_outlined),
+            matching: find.byType(PopupMenuButton<String>),
+          ),
+        );
+        expect(button.enabled, isFalse);
+        expect(button.tooltip, contains('Пакетов словаря пока нет'));
+      });
+
+      testWidgets(
+        'puts a pack on the canvas from the toolbar, out of the line, and opens its panel',
+        (
+          tester,
+        ) async {
+          final cubits = await pumpGraph(tester, placed: const [], glossary: written);
+
+          await placeFallout(tester);
+
+          final node = cubits.graph.state.graph.ofKind(PipelineNodeKind.glossary).single;
+          expect(node.packId, 'fallout');
+          expect(node.feed, isNull, reason: 'it joins the line by the lines drawn to it');
+          expect(find.text('НИЧЕГО НЕ СВЕРЯЕТ'), findsOneWidget);
+          // Where it stands is the lines, so there is nothing to choose it by.
+          expect(inPanel(find.byType(ChoiceChip)), findsNothing);
+          expect(
+            inPanel(find.byType(Switch)),
+            findsOneWidget,
+            reason: 'the one switch is whether its pack is on',
+          );
+          expect(inPanel(find.textContaining('не стоит в линии текста')), findsOneWidget);
+        },
+      );
+
+      /// Draws the line out of the pack on the canvas into the voice, which
+      /// puts it in the line after the translator, and answers with its node.
+      Future<PipelineNode> drawIntoVoice(WidgetTester tester, StagedDashboard cubits) async {
+        final node = cubits.graph.state.graph.ofKind(PipelineNodeKind.glossary).single;
+        cubits.graph
+          ..add(
+            PipelineLinkStarted(
+              PipelinePort(node.id, PipelineSocket.glossaryOut),
+              GraphPoint.zero,
+            ),
+          )
+          ..add(
+            const PipelineLinkReleased(
+              PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceIn),
+            ),
+          );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        return node;
+      }
+
+      testWidgets('switches the pack off on its card and leaves it in the line', (tester) async {
+        final cubits = await pumpGraph(tester, placed: const [], glossary: written);
+        await placeFallout(tester);
+        final node = await drawIntoVoice(tester, cubits);
+        // Closes the panel, which stands over the right edge of the canvas.
+        cubits.graph.add(PipelineSelectionSet(const {}));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        final onCard = find.descendant(
+          of: find.byType(PipelineCanvas),
+          matching: find.byType(Switch),
+        );
+        expect(tester.widget<Switch>(onCard).value, isTrue);
+        await tester.tap(onCard);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        expect(cubits.glossaryRepository.glossary.packWithId('fallout')!.active, isFalse);
+        expect(cubits.graph.state.graph.node(node.id)?.feed, GlossaryFeed.translation);
+        expect(find.text('НЕ АКТИВЕН'), findsOneWidget);
+        expect(find.text('ТЕКСТ ИДЁТ МИМО'), findsOneWidget);
+        expect(tester.widget<Switch>(onCard).value, isFalse);
+      });
+
+      testWidgets('switches the pack back on from its panel, and says what it does', (
+        tester,
+      ) async {
+        final cubits = await pumpGraph(tester, placed: const [], glossary: written);
+        await placeFallout(tester);
+        await drawIntoVoice(tester, cubits);
+        final toggle = inPanel(find.byType(Switch));
+
+        await tester.tap(toggle);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(cubits.glossaryRepository.glossary.packWithId('fallout')!.active, isFalse);
+        expect(inPanel(find.textContaining('Словарь не активен')), findsOneWidget);
+
+        await tester.tap(toggle);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(cubits.glossaryRepository.glossary.packWithId('fallout')!.active, isTrue);
+        expect(find.text('ИМЕНА И СЛОВА · 1'), findsOneWidget);
+        expect(inPanel(find.textContaining('Стоит после «Перевода»')), findsOneWidget);
+      });
+
+      testWidgets('takes a pack off the canvas from its panel, as a card is', (tester) async {
+        final cubits = await pumpGraph(tester, placed: const [], glossary: written);
+        await placeFallout(tester);
+
+        await tester.ensureVisible(inPanel(find.text('Убрать со схемы')));
+        await tester.tap(inPanel(find.text('Убрать со схемы')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        expect(cubits.graph.state.graph.ofKind(PipelineNodeKind.glossary), isEmpty);
+      });
+
+      testWidgets('takes a pack off the canvas by the cross on it, as a card is', (tester) async {
+        final cubits = await pumpGraph(tester, placed: const [], glossary: written);
+        await placeFallout(tester);
+
+        final cross = find.descendant(
+          of: find.byType(PipelineCanvas),
+          matching: find.widgetWithIcon(IconButton, Icons.close_rounded),
+        );
+        expect(cross, findsOneWidget, reason: 'the pack is the one card drawn');
+        await tester.tap(cross);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        expect(cubits.graph.state.graph.ofKind(PipelineNodeKind.glossary), isEmpty);
+      });
+
+      testWidgets('says on the card what the pack puts right where it stands', (tester) async {
+        final cubits = await pumpGraph(tester, placed: const [], glossary: written);
+        await placeFallout(tester);
+        await drawIntoVoice(tester, cubits);
+
+        expect(cubits.glossaryRepository.glossary.packWithId('fallout')!.active, isTrue);
+        expect(find.text('ИМЕНА И СЛОВА · 1'), findsOneWidget);
+        expect(inPanel(find.textContaining('Стоит после «Перевода»')), findsOneWidget);
+      });
     });
 
     testWidgets('draws a card again from the toolbar, and says how many are out', (tester) async {

@@ -88,7 +88,7 @@
   "glossaryOnlySilent": "Passed over",
   "glossarySearchClear": "Clear the search",
   "glossaryPacks": "PACKS",
-  "glossaryPacksNote": "A pack is a way of reading the glossary rather than a place entries are moved to: an entry stays in its list whether or not a pack names it. With no pack switched on, the dubbing is checked against everything written down. With one or more on, it is checked against those alone -- so a pack made for one game does not drag another game's names along. Several may be on at once and what they hold adds together.",
+  "glossaryPacksNote": "A pack is a way of reading the glossary rather than a place entries are moved to: an entry stays in its list whether or not a pack names it. With no pack switched on, the dubbing is checked against everything written down. With one or more on, it is checked against those alone -- so a pack made for one game does not drag another game's names along. Several may be on at once and what they hold adds together. Once packs stand on the Live graph, the graph decides there: a pack applies what can be met where it stands in the line, and with every one switched off, Live is not checked against the glossary at all.",
   "glossaryPacksEmpty": "No packs yet. Make one and drag entries into it by the handle on the left -- a set collected for one game is then handed on as a single file.",
   "glossaryPackDropHint": "Drag entries from the lists above here.",
   "glossaryPackNothingFound": "Nothing in this pack matches.",
@@ -228,6 +228,9 @@
   "packsAdd": "New pack",
   "packsNewName": "New pack",
   "packsNameLabel": "Pack name",
+  "packsFilter": "Filter packs by name",
+  "packsFilterClear": "Clear the filter",
+  "packsFilterNothing": "No pack has that in its name.",
   "packsEmpty": "No packs yet. Make one and drag cards into it — a cast collected that way is handed on as a single file.",
   "packsDropHint": "Drag character cards here.",
   "packsExportHint": "Save the pack to a file",
@@ -328,7 +331,7 @@
   "pauseDubbing": "Pause",
   "pauseHint": "Pause: the models stay loaded and the game plays at full volume",
   "resumeDubbing": "Resume",
-  "snapshotHowTo": "Hold {hotkey}, draw a frame around the text over the game and let go — LoreDub reads it, translates it and voices it.",
+  "snapshotHowTo": "Hold <kbd>{hotkey}</kbd>, draw a frame around the text over the game and let go — LoreDub reads it, translates it and voices it.",
   "screenVoices": "Follow the characters' voices",
   "screenVoicesNote": "While the subtitles are read, LoreDub listens to the game and speaks a line in the voice of whoever was talking as it appeared. Nothing of that sound is recognized -- only who is speaking.",
   "screenHowTo": "While the session runs the subtitles in the frame are read and voiced by themselves -- only what a line gained is spoken.",
@@ -375,7 +378,7 @@
   "showFrameOverlay": "Show the frame over the game",
   "hotkeyFrameOverlay": "Show the frame",
   "hotkeyFrame": "Subtitle frame",
-  "frameHowTo": "The frame can be redrawn during the game: hold {hotkey}, draw around the place the subtitles are written and let go — the selection disappears and the reading goes on inside the new frame.",
+  "frameHowTo": "The frame can be redrawn during the game: hold <kbd>{hotkey}</kbd>, draw around the place the subtitles are written and let go — the selection disappears and the reading goes on inside the new frame.",
   "@frameHowTo": {
     "placeholders": {
       "hotkey": {
@@ -385,9 +388,9 @@
   },
   "frameMissed": "The selection missed the game window — the frame is where it was",
   "hotkeyUnset": "Not set",
-  "hotkeyListening": "Press a combination… (Esc cancels)",
+  "hotkeyListening": "Press a combination… (<kbd>Esc</kbd> cancels)",
   "hotkeyClear": "Remove the combination",
-  "hotkeyNeedsModifier": "Add Ctrl, Alt or Win: a key on its own would stop reaching the game",
+  "hotkeyNeedsModifier": "Add <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Win</kbd>: a key on its own would stop reaching the game",
   "hotkeyUnsupported": "This key cannot be bound",
   "hotkeyDuplicate": "This combination is already bound to {action}",
   "@hotkeyDuplicate": {
@@ -488,8 +491,8 @@
       }
     }
   },
-  "textLanguageLabel": "Text language",
-  "textLanguageNote": "Text in the dubbing language is voiced untranslated",
+  "textLanguageLabel": "Text and dubbing language",
+  "textLanguageNote": "Changes the dubbing language on Models as well",
   "startingProgress": "Starting {percent}%",
   "@startingProgress": {
     "placeholders": {
@@ -513,6 +516,14 @@
   "transcriptClearTooltip": "Remove every line from the list",
   "pipelineSummaryDirect": "Whisper → English → Vosk",
   "pipelineSummaryOcrDirect": "Windows OCR → English → Vosk",
+  "pipelineSummaryOcrAsIs": "Windows OCR → {language} → Vosk",
+  "@pipelineSummaryOcrAsIs": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
   "pipelineSummary": "Whisper → English → Marian → {language} → Vosk",
   "@pipelineSummary": {
     "placeholders": {
@@ -838,11 +849,6 @@
   "language_tr": "Turkish",
   "language_uk": "Ukrainian",
   "language_zh": "Chinese",
-  "translationTarget_ru": "Russian",
-  "translationTarget_de": "German",
-  "translationTarget_es": "Spanish",
-  "translationTarget_fr": "French",
-  "translationTarget_uk": "Ukrainian",
   "voiceName_en": "English voice",
   "voiceName_ru": "Russian voice",
   "voiceName_de": "German voice",
@@ -1209,7 +1215,7 @@
   "stageCapture": "Starting capture",
   "navPipeline": "Graph",
   "titlePipeline": "Pipeline graph",
-  "pipelineGraphHint": "Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas. Shift-click chooses several nodes, Ctrl-drag draws a band around them, and what is chosen moves together.",
+  "pipelineGraphHint": "Drag from one socket to another to lay the path. The wheel zooms; empty space drags the canvas. <kbd>Shift</kbd>-click chooses several nodes, <kbd>Ctrl</kbd>-drag draws a band around them, and what is chosen moves together.",
   "failurePipelinesSaveFailed": "The schemes could not be saved: {detail}",
   "@failurePipelinesSaveFailed": {
     "placeholders": {
@@ -1360,5 +1366,56 @@
       }
     }
   },
-  "pipelineOutputNote": "The dubbing goes to the default Windows output device."
+  "pipelineOutputNote": "The dubbing goes to the default Windows output device.",
+  "pipelineNodeGlossary": "Glossary",
+  "pipelineGlossaryNamed": "Glossary “{name}”",
+  "@pipelineGlossaryNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pipelineAddGlossary": "Put a glossary on the graph",
+  "pipelineNoGlossaryPacks": "No glossary packs yet — make them on the Glossary screen",
+  "pipelineGlossaryNoPack": "No pack chosen",
+  "pipelineGlossaryNotePhrases": "phrases · {count}",
+  "@pipelineGlossaryNotePhrases": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pipelineGlossaryNoteWords": "words · {count}",
+  "@pipelineGlossaryNoteWords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pipelineGlossaryNoteNamesWords": "names and words · {count}",
+  "@pipelineGlossaryNoteNamesWords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pipelineGlossaryNoteNothing": "matches nothing",
+  "pipelineGlossaryPackLabel": "Pack",
+  "pipelineGlossaryPhrasesNote": "Before Translation: a whole line is matched against the English that was heard, and the pack's phrases are said in your translation instead of the model's. The pack's names and words are matched against the finished translation — for them, put a node of this pack after Translation.",
+  "pipelineGlossaryNamesWordsNote": "After Translation: puts the finished translation right — the names the translator left in Latin, and whole words. The pack's phrases are matched against the English before it is translated — for them, put a node of this pack before Translation.",
+  "pipelineGlossaryWordsNote": "There is nothing to translate: Whisper hands English over and the dubbing reads it as it is. The node puts the pack's words right in it; phrases and names only work when there is a translation.",
+  "pipelineGlossaryAsideNote": "After Translation, which stands aside for now — the dubbing is in English. Until it is back in the line, the node matches nothing.",
+  "pipelineGlossaryOutNote": "The node is not in the line of text and matches nothing. Draw a line into its Text from Whisper, Translation or another glossary — or from its Text into Translation, Lines or another glossary. Put in the line, the glossary is switched on.",
+  "pipelineGlossaryActive": "Active",
+  "pipelineGlossaryInactive": "inactive",
+  "pipelineGlossaryNotePassing": "text passes by",
+  "pipelineGlossaryInactiveNote": "The glossary is inactive: the text passes through it as it came, and the node keeps its place in the line. It is the same Active switch the pack carries on the Glossary screen.",
+  "pipelineVoiceNoGlossary": "No glossary on the graph is active, so the lines are not checked against the glossary.",
+  "pipelineCutGlossary": "Take the glossary out of the line",
+  "pipelineRefusalOutOfLine": "Put one of the two glossaries in the line of text first.",
+  "pipelineVoiceWholeGlossary": "No glossary pack is switched on, so the lines are checked against everything written down on the Glossary screen."
 }

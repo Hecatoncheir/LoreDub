@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/character.dart';
+import '../../../domain/glossary.dart';
 import '../../../domain/saved_pipeline.dart';
 import '../../theme.dart';
 import 'shelf_label.dart';
@@ -25,6 +26,7 @@ class PipelineShelf extends StatefulWidget {
     super.key,
     required this.schemes,
     required this.cast,
+    this.packs = const [],
     required this.onChoose,
     required this.onReplace,
     required this.onRename,
@@ -39,6 +41,10 @@ class PipelineShelf extends StatefulWidget {
   /// The cards the machine has, so a scheme's picture draws the characters
   /// it names rather than boxes with nothing in them.
   final List<Character> cast;
+
+  /// The packs of the glossary, so a scheme's picture draws the ones it
+  /// names -- and the lines of those it switched on -- as well.
+  final List<GlossaryPack> packs;
 
   final ValueChanged<String> onChoose;
 
@@ -135,6 +141,7 @@ class _PipelineShelfState extends State<PipelineShelf> {
                     itemBuilder: (context, index) => SchemeCard(
                       scheme: widget.schemes[index],
                       cast: widget.cast,
+                      packs: widget.packs,
                       onChoose: () => widget.onChoose(widget.schemes[index].id),
                       onReplace: () => widget.onReplace(widget.schemes[index].id),
                       onRename: (name) => widget.onRename(widget.schemes[index].id, name),

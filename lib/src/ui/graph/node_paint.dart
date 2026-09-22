@@ -74,4 +74,6 @@ IconData nodeIcon(PipelineNodeKind kind) => switch (kind) {
   PipelineNodeKind.mix => Icons.multitrack_audio_rounded,
   PipelineNodeKind.output => Icons.volume_up_rounded,
   PipelineNodeKind.character => Icons.person_rounded,
+  // The icon the glossary's own screen carries in the navigation.
+  PipelineNodeKind.glossary => Icons.menu_book_rounded,
 };

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/character.dart';
+import '../../../domain/glossary.dart';
 import '../../../domain/saved_pipeline.dart';
 import '../../theme.dart';
 import 'scheme_menu.dart';
@@ -17,6 +18,7 @@ class SchemeCard extends StatelessWidget {
     super.key,
     required this.scheme,
     required this.cast,
+    this.packs = const [],
     required this.onChoose,
     required this.onReplace,
     required this.onRename,
@@ -28,6 +30,7 @@ class SchemeCard extends StatelessWidget {
 
   final SavedPipeline scheme;
   final List<Character> cast;
+  final List<GlossaryPack> packs;
   final VoidCallback onChoose;
   final VoidCallback onReplace;
   final ValueChanged<String> onRename;
@@ -57,7 +60,12 @@ class SchemeCard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
                     child: CustomPaint(
-                      painter: SchemePainter(scheme: scheme, cast: cast, colors: context.colors),
+                      painter: SchemePainter(
+                        scheme: scheme,
+                        cast: cast,
+                        packs: packs,
+                        colors: context.colors,
+                      ),
                     ),
                   ),
                 ),

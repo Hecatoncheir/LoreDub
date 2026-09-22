@@ -54,7 +54,9 @@ than one of them.
    a card measured from files, a sample and a clip played back. Neither
    reads the other; both read `CastRepository`, which is where a take's
    fingerprint is written and where the cards come back from.
-   `GlossaryBloc` is the glossary. `SessionBloc` is the dubbing screens' session: the player's
+   `GlossaryBloc` is the glossary screen, following `GlossaryRepository`
+   and writing through it as `CastBloc` does the cast: the canvas switches
+   the packs too. `SessionBloc` is the dubbing screens' session: the player's
    requests (`LiveToggled`, `ScreenToggled`, `SceneToggled`,
    `SessionStopped`, `SessionPaused`, `SessionResumed`) and the engine's
    answers are events of one kind, where `PipelineCubit` before it kept
@@ -69,7 +71,9 @@ than one of them.
    repository that owns it and publishes it: `SettingsRepository`
    (`AppSettings`), `InstallRepository` (what is on disk, what the machine
    can run it on, where the runtimes are), `CastRepository` (the cards
-   and the packs) and `SourcesRepository` (the processes running, the game
+   and the packs), `GlossaryRepository` (the entries and the packs, with
+   what the canvas lets each pack it draws apply) and `SourcesRepository`
+   (the processes running, the game
    named out of them and where the monitors stand -- `CaptureSources`). Each has the value as it stands and a `changes` stream
    beside it, and each publishes **synchronously** -- a screen that writes
    to a repository also listens to it, and delivered a microtask later its
@@ -463,13 +467,18 @@ draggable whole, since it holds a field and a selectable source that both
 want the pointer. A pack is a way of reading the glossary rather than a place
 entries are moved to, so it holds `GlossaryEntry.packKey` (`<kind>:<key>` --
 a name and a phrase may be spelled the same and are still two entries) and
-every entry stays in its list whatever names it. `Glossary.inUse` is the
-whole rule: with no pack switched on it is everything written down, and with
-one or more on it is only what they hold, several adding together. That is
-the one place the rule lives -- the worker is handed the answer and knows
-nothing of packs, through `{"glossary": ...}` while a session runs and
-through `GlossaryService.sessionFile` when one starts, which writes `inUse`
-to `<app support>/glossary.session.json` beside the shelf itself. Exporting a
+every entry stays in its list whatever names it. `Glossary.inUseWithin` is
+the whole rule: with no pack switched on it is everything written down, and
+with one or more on it is only what they hold, several adding together --
+nothing at all for a pack switched on with nothing in it, which used to open
+the whole glossary instead. A pack the scheme draws is narrowed to the kinds
+the text it is drawn on can meet (a `GlossaryReach`, below), and while the
+scheme draws any pack at all, none switched on is nothing rather than
+everything; `inUse` is the same with nothing narrowed and nothing drawn. That is the one place the rule lives -- the
+worker is handed the answer and knows nothing of packs or schemes, through
+`{"glossary": ...}` while a session runs and through
+`GlossaryService.sessionFile` when one starts, which writes the answer to
+`<app support>/glossary.session.json` beside the shelf itself. Exporting a
 pack writes it with the entries it names and switched off, an imported pack
 keeping whatever it was switched to here: a file must not quietly change
 which glossary the next line is read against. Deleting a pack leaves the
@@ -487,8 +496,9 @@ carries the dubbing's own settings for the same reason: how far the game is
 turned down, how fast a line is read, and in which voice
 (`live/dubbing_cards.dart`, moved off the settings screen).
 `buildPipelineGraph` (`domain/pipeline_graph.dart`) is a pure function of
-`AppSettings`, the cast and a `PipelineLayout`, so the canvas is rebuilt
-whenever either changes and can never drift from them; every edit goes the
+`AppSettings`, the cast, the glossary's packs and a `PipelineLayout`, so the
+canvas is rebuilt whenever one of them changes and can never drift from
+them; every edit goes the
 other way through `proposeConnection`/`proposeDisconnect`, which answer with
 what the link would change (`RouteConnection` -> `AppSettings.captureRouted`,
 `ReaderConnection` -> `Character.voicedBy`) or why it is refused. Cutting the
@@ -584,7 +594,9 @@ substitutions go back over the **whole** cast, not over the cards the scheme
 names: a scheme is the whole picture of who reads whom, so a card it does not
 draw is read by nobody. Applied only to what it lists, a scheme with an empty
 canvas changed nothing and the arrangement it replaced went on sounding under
-a canvas that said nothing about it. Models and
+a canvas that said nothing about it. The packs of the glossary switched on go
+back the same way, over the whole glossary (`SavedPipeline.activePacks`); a
+scheme kept before packs were drawn has none and leaves them as they are. Models and
 languages are deliberately not in it: they belong to the machine, and a
 scheme from elsewhere must not name downloads this one does not have. The
 card's picture is painted from `buildPipelineGraph` over the saved layout
@@ -592,7 +604,65 @@ card's picture is painted from `buildPipelineGraph` over the saved layout
 Only the arrangement is its own: node positions,
 which cards were placed and where the canvas is looked at from, written to
 `<app support>/pipeline_graph.json` by `PipelineGraphService` without holding
-the event queue. Several nodes can be chosen at once: `PipelineGraphState.chosen` is the set,
+the event queue.
+
+The glossary is drawn too, in the line of text itself. A
+`PipelineNodeKind.glossary` node is one drawing of a `GlossaryPack`
+(`GlossaryPlacement` in `PipelineLayout.glossaries`,
+`domain/pipeline_glossary.dart`; ids `glossary:<n>`, numbered rather than
+named after the pack, which the node's panel changes), put there from the
+toolbar (`AddGlossaryButton`) as many times as the player likes, and drawn
+only while the glossary has its pack. It takes Text in (`glossaryIn`) and
+hands Text on (`glossaryOut`), and the text runs whisper → the packs before
+the translator → the translator → the packs after it → the voice
+(`_lineLinks`): the user asked for glossaries chained Text into Text, several
+on either side, with Lines taking its text from the last of them through its
+own Text socket. A drawing's `feed` is the side of the translator it stands
+on, null out of the line; the order within a side is the order of the list.
+Every line of text goes through `_textConnection`: into a pack or out of one
+it is a `LineMove` beside the other end (`GlossaryLineConnection`), between
+two packs of which neither stands in the line it is refused `outOfLine`, and
+between two stages it is the translator's as before -- or, where the
+translator already stands as drawn, a `LineRemove` of the packs it passes
+over. Cutting either line of a pack takes it out (the one the line ran into,
+between two packs), the text closing up past it; `proposeDisconnect` and
+`LinkCut.of` ask about the glossary's sockets before the translator's, whose
+lines share them. The side decides what a pack applies, since the worker
+applies each kind at one moment only and the user chose that split:
+`GlossaryFeed.kinds` lets a pack before the translator apply its phrases and
+one after it its names and words; with nothing translated whisper's text is
+the dubbed text, where the pack's words apply, and the packs after the
+translator stand aside with it, faded and joined to nothing. A pack wanted
+whole is drawn twice, what its drawings reach adds together
+(`glossaryReachOf`, a `GlossaryReach` by pack id), and a pack the canvas does
+not draw applies whole. Whether a pack applies at all is `GlossaryPack.active`,
+the glossary screen's own switch, which every drawing of it carries too
+(`PipelineNode.active`; `NodeActiveSwitch` at the foot of the card and an
+`InspectorToggle` in the panel, both sending `PipelineGlossarySwitched`).
+Switched off, a drawing keeps its place in the line and the text passes
+through it as it came, the card faded and saying so. The user asked for that
+switch, so the line and the switch are two facts, and only one follows the
+other: an edit on the canvas switches on a pack it put in the line and off
+one whose last drawing there it took out (`packsFollowingLine`,
+`domain/glossary_line.dart`, through `PipelineGraphBloc._settle`), while a
+switch thrown anywhere moves no drawing. The canvas used to move a pack
+switched on elsewhere into the line and one switched off out of it, which
+left no way to mute a pack where it stands. With the scheme drawing any pack
+and none switched on, `inUseWithin` answers nothing rather than the whole
+glossary: switching the last node off would otherwise have let every entry in
+at once, other games' names with them. The glossary is published before the
+layout that agrees with it is emitted, or a node would be drawn switched as
+it was for a frame. None of it is locked while a session runs: `PipelineGraphBloc._followReach` tells
+`GlossaryRepository.narrow` whenever what the drawings reach changes -- on
+every redraw, the language deciding it as much as the drawing -- and the
+repository hands a running worker `inUseWithin(reach)`. Live dubbing reads
+the reach off the arrangement on disk as it starts, as it reads the cut
+(`SessionRepository._glossaryReach`); the screen session is not on the canvas
+and reads its packs whole, at its start and while it runs
+(`NativeEngineService.session`). A reader hears a glossary node by its pack
+(`NodeLabels.name`), its title being the same on every one.
+
+Several nodes can be chosen at once: `PipelineGraphState.chosen` is the set,
 `selected` stays the one node the inspector shows and is null over any other
 number. Shift-click passes `add: true` to `PipelineNodeSelected`; a
 control-drag over empty space draws a band in the canvas's own state and ends
@@ -643,8 +713,8 @@ down, and all three can be undone by accident. The graph is listened to
 *innermost* in `PipelinePanel`, under the one listener to
 `PipelineFactsBloc`, so `PipelineFacts` and `ModelSelection` are not built
 afresh for a frame that only moved the canvas -- that bloc makes new facts
-only when one of the five things the scheme is drawn from moves (the
-settings, what is installed, the cast, the game named, and
+only when one of the six things the scheme is drawn from moves (the
+settings, what is installed, the cast, the glossary, the game named, and
 `SessionCoordinator.activity`), and a download on its way is filtered out
 before it reaches it; the toolbar has a listener of its own with a
 `buildWhen`, so it is not built again for a drag. And the canvas keeps what
@@ -765,7 +835,24 @@ stops it first, since its worker has no whisper.
 Text read off the screen — the subtitle frame and the snippets — is in
 `AppSettings.screenLanguage`, read through `textLanguage`: English, or the
 dubbing language itself, which is then voiced untranslated (Marian only reads
-English, and Windows OCR detects nothing). It is the screen's own setting
+English, and Windows OCR detects nothing). The page picks the two together
+(`ModelSelection.screenLanguages`, a `ScreenLanguages` record: every language
+whose voice is on disk read as it is, then English into every one whose
+translator is too), and its picker writes both through `ScreenLanguageChosen`
+and `AppSettings.withScreenLanguages` -- the user asked for the language picked
+there to be the one the models screen shows, both ways, and a text language
+that left the dubbing where it was left the voices behind it too. Picked
+anywhere else, the dubbing language goes through `withTargetLanguage`, which
+reads text left in the old one as English, so the pair never names a voice
+that is not loaded; `appSettingsFromJson` holds a stored pair to the same.
+`screenTranslates` is English text into another language, the one case the
+screen session loads Marian for. The page's one voice field stands on the
+language's row in the capture card (`ScreenLanguageAndVoice`, under it where
+the card is narrow), as the user asked: both readings are read in that voice,
+while each keeps its start button in its own card. It is keyed by the language
+and the voice (`VoiceChoiceField`), since the language beside it changes the
+list under it and the voice is changed on Live as well.
+It is the screen's own setting
 rather than `sourceLanguage` read a second way — the two were one field, so
 naming the screen's text as Russian named the game's speech as Russian too,
 and the graph, which draws the dubbing of sound and nothing else, redrew its
@@ -776,8 +863,8 @@ whisper is told to listen for — says nothing about that stage. It reaches the 
 `snapshotLanguage` (ld_set_hotkeys); `FindOcrLanguage` picks the installed
 recognizer by primary subtag, and a missing one comes back as an
 `ocrLanguageMissing` event (`FailureCode.ocrLanguageMissing`). When it equals
-`targetLanguage`, `processText` sends `"translate": false` and the worker
-voices the text as it is.
+`targetLanguage` (`LineRules.translatesText`), `processText` sends
+`"translate": false` and the worker voices the text as it is.
 
 Subtitle reading voices only what a line gained: `NativeEngineService` keeps the
 last `ocrText` and passes each new one through `freshOcrText`
@@ -1034,6 +1121,16 @@ has no `packs` key and reads as a cast in none), and the worker takes only
 writes the pack together with its members, which is why an import merges
 cards and packs by id in one step.
 
+Both shelves of packs, this one and the glossary's, are narrowed by name, as
+the user asked: `PackFilter` (`domain/pack_filter.dart`, any part of the name,
+whatever the case) under a `PackFilterField` (`ui/common/`). What is typed is
+kept by the shelf in a `TextEditingController` rather than by the field,
+because a pack made or loaded is one the player means to see and the shelf
+empties the field for it -- a filter it could not reach hid the new pack. The
+glossary's shelf carries a `GlobalKey` from `GlossaryPanel` for the same
+reason: it moves from beside the lists to under them as the window narrows,
+and would lose what was typed on the way.
+
 Telling the characters apart is not the same switch as re-voicing them.
 `ModelSelection.tracksSpeakers` loads the converter whenever the package is
 installed and the bank is on, and `--revoice` (`clonesVoice`) decides whether
@@ -1136,7 +1233,10 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   unreadable on the ground at the values paper needs. The accent itself
   never turns over, so neither does what is written on it -- `onAccent` for
   a control's label and `onAccentLight` for a node's title, which is why the
-  latter is a role of its own rather than riding on `onDeep`. Naming a
+  latter is a role of its own rather than riding on `onDeep` -- nor
+  `accentDeep`, what a field is sunk into on a surface of the accent (the
+  panel of the two ends of the scheme): `accentStrong` turns lighter against
+  the ink, and the light letters on it could not be read. Naming a
   colour in a widget breaks the dark theme, `Colors.white` as much as
   `LoreDubPalette`. `LoreDubPalette`
   (`theme/tokens/palette.dart`) is the raw palette behind them and is now
@@ -1148,6 +1248,15 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `context.colors` falls back to `LoreDubColors.light` under a theme that
   carries no roles, so a widget of ours built alone in a test still draws.
   A note is `bodySmall`, a smaller one `labelSmall`.
+- A key the player presses is marked in an interface string as HTML marks
+  one, `<kbd>Esc</kbd>`, and a combination the settings hold as
+  `<kbd>{hotkey}</kbd>` around `Hotkey.display`, which `keyedRuns`
+  (`ui/common/key_marks.dart`) splits on `Hotkey.joiner`. Such a string is
+  drawn through `KeyedText`, which puts every mark on the line as a `KeyCap`
+  (`KeyCombination` for keys held together); the bound combination in the
+  settings is a `KeyCombination` of `Hotkey.keys`. The user asked for every
+  key in the interface's text to stand out that way, so a string that names
+  one is marked, and one drawn through a plain `Text` would show the tags.
 - Interface strings live in `lib/l10n/app_ru.arb` (the template) and
   `app_en.arb`; reach them with `AppLocalizations.of(context)`. Names for
   languages and model packages are resolved in `lib/src/ui/language_names.dart`
@@ -1207,15 +1316,16 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `droppable()`: cancelling its subscription as the bloc closes never
   completes in a widget test's zone either, and the settings screen hung
   every test that pumped it until it went. `StagedDashboard` keeps the
-  cast (`MemoryCharacters`) and the canvas's arrangement and shelf
-  (`MemorySchemes`) in memory for the same reason, since the canvas's and
-  the inspector's tests drive the real `CastBloc` and `PipelineGraphBloc`,
-  and the canvas writes its arrangement as it is drawn on. No bloc carries a test hook of its own: a
+  cast (`MemoryCharacters`), the glossary (`MemoryGlossary`) and the
+  canvas's arrangement and shelf (`MemorySchemes`) in memory for the same
+  reason, since the canvas's and the inspector's tests drive the real
+  `CastBloc` and `PipelineGraphBloc`, the canvas reads the glossary before
+  it draws, and it writes its arrangement as it is drawn on. No bloc carries a test hook of its own: a
   state a test wants in place is put there by `StagedDashboard` --
   `stageSession` and `stageLists` emit on the real bloc, which is what
   `blocTest`'s `seed` does, and the rest is staged through the
   repositories the blocs follow (`stageInstalled`, `settingsRepository`,
-  `sourcesRepository`, `cast`, and `stageScheme`, which fills
+  `sourcesRepository`, `cast`, `stageGlossary`, and `stageScheme`, which fills
   `MemorySchemes` and opens the canvas the way the application does;
   `stageSection` through `NavigationCubit`'s own calls; `stageUpdates`
   emitting as `stageSession` does). `StagedDashboard` puts `StartupCubit`

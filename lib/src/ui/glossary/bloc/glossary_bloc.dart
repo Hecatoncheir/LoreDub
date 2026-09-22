@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -60,6 +62,17 @@ sealed class GlossaryEvent extends Equatable {
 /// laid over it the first time.
 final class GlossaryOpened extends GlossaryEvent {
   const GlossaryOpened();
+}
+
+/// The glossary as the repository published it, from this screen or from
+/// the canvas, which switches the packs by the lines it draws.
+final class _GlossaryChanged extends GlossaryEvent {
+  const _GlossaryChanged(this.glossary);
+
+  final Glossary glossary;
+
+  @override
+  List<Object?> get props => [glossary];
 }
 
 /// Writes the whole glossary where the player asked.
@@ -198,23 +211,32 @@ final class GlossaryFilesImported extends GlossaryEdit {
 /// Every edit is written through to the file and to a session already
 /// running: the player writes an entry down because they just heard the line
 /// go wrong, and mean the next one to be said their way.
+///
+/// The glossary is `GlossaryRepository`'s, which the canvas works on as
+/// well; this follows it and writes through it, and what it shows comes
+/// back from there rather than from what it asked for -- a screen that
+/// emitted what it wrote was a second writer, and a pack the canvas switched
+/// on would be switched off again by the next entry written here.
 class GlossaryBloc extends Bloc<GlossaryEvent, GlossaryState> {
   GlossaryBloc(this._glossary, this._errors, {DateTime Function()? clock})
     : _ids = IdSource(clock: clock),
       super(const GlossaryState()) {
     on<GlossaryOpened>(_onOpened);
+    on<_GlossaryChanged>((event, emit) => emit(state.copyWith(glossary: event.glossary)));
     on<GlossaryExported>(
-      (event, emit) => _export(event.destination, state.glossary),
+      (event, emit) => _export(event.destination, _glossary.glossary),
     );
     on<GlossaryPackExported>(
-      (event, emit) => _export(event.destination, state.glossary.onlyPack(event.packId)),
+      (event, emit) => _export(event.destination, _glossary.glossary.onlyPack(event.packId)),
     );
     on<GlossaryEdit>(_onEdit, transformer: sequential());
+    _changes = _glossary.changes.listen((glossary) => add(_GlossaryChanged(glossary)));
   }
 
   final GlossaryRepository _glossary;
   final FailureSink _errors;
   final IdSource _ids;
+  late final StreamSubscription<Glossary> _changes;
 
   /// How many imports have been said, so the next is told from the last.
   var _imports = 0;
@@ -236,8 +258,10 @@ class GlossaryBloc extends Bloc<GlossaryEvent, GlossaryState> {
     }
   }
 
+  /// Each edit is made from the repository's glossary, not this screen's:
+  /// the canvas writes there too.
   Future<void> _onEdit(GlossaryEdit event, Emitter<GlossaryState> emit) async {
-    final glossary = state.glossary;
+    final glossary = _glossary.glossary;
     final edited = switch (event) {
       GlossaryEntryWritten(:final entry) => _written(glossary, entry),
       GlossaryEntryRemoved(:final kind, :final source) => glossary.without(kind, source),
@@ -258,7 +282,7 @@ class GlossaryBloc extends Bloc<GlossaryEvent, GlossaryState> {
       GlossaryEntryUnfiled(:final entry, :final from) => glossary.unfiling(entry, from: from),
       GlossaryFilesImported(:final sources) => await _imported(sources, emit),
     };
-    if (edited != null) await _keep(edited, emit);
+    if (edited != null) await _keep(edited);
   }
 
   /// [entry] kept, trimmed, in place of whatever stood for the same source;
@@ -288,7 +312,7 @@ class GlossaryBloc extends Bloc<GlossaryEvent, GlossaryState> {
       _errors.report(error);
       return null;
     }
-    var merged = state.glossary;
+    var merged = _glossary.glossary;
     for (final entry in incoming.entries) {
       merged = merged.keeping(entry);
     }
@@ -311,17 +335,20 @@ class GlossaryBloc extends Bloc<GlossaryEvent, GlossaryState> {
     return merged;
   }
 
-  /// Shows [glossary] at once and writes it behind that, putting back what
-  /// is on disk if the write fails rather than leave the screen showing an
-  /// entry the file does not hold.
-  Future<void> _keep(Glossary glossary, Emitter<GlossaryState> emit) async {
-    final previous = state.glossary;
-    emit(state.copyWith(glossary: glossary));
+  /// Writes [glossary] through the repository. Nothing is emitted here: the
+  /// repository publishes it at once -- and puts back what is on disk if the
+  /// write fails -- and this is listening.
+  Future<void> _keep(Glossary glossary) async {
     try {
       await _glossary.save(glossary);
     } catch (error) {
-      emit(state.copyWith(glossary: previous));
       _errors.report(error);
     }
+  }
+
+  @override
+  Future<void> close() async {
+    await _changes.cancel();
+    return super.close();
   }
 }

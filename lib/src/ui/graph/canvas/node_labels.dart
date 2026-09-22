@@ -5,6 +5,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../domain/speech_pace.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/compute_device.dart';
+import '../../../domain/glossary.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../../domain/spoken_language.dart';
 import '../../compute_names.dart';
@@ -15,7 +16,12 @@ import 'pipeline_facts.dart';
 /// What a node writes on itself: its name, one line of what it is set to,
 /// and a mark of where it runs -- worked out once from the configuration.
 class NodeLabels {
-  const NodeLabels({required this.title, required this.headline, required this.note});
+  const NodeLabels({
+    required this.title,
+    required this.headline,
+    required this.note,
+    String? name,
+  }) : name = name ?? title;
 
   factory NodeLabels.of(
     AppLocalizations l10n,
@@ -24,18 +30,28 @@ class NodeLabels {
     ComputeAvailability availability,
   ) {
     final reading = _Reading(l10n, node, facts, availability);
-    return NodeLabels(title: reading.title(), headline: reading.headline(), note: reading.note());
+    return NodeLabels(
+      title: reading.title(),
+      headline: reading.headline(),
+      note: reading.note(),
+      name: reading.name(),
+    );
   }
 
-  /// The card's own name, which is all a socket's label needs. Cheaper
-  /// than reading the whole card: the other two lines ask the settings,
-  /// the packages and the machine what the stage is set to.
+  /// The card's name as a reader hears it, which is all a socket's label
+  /// needs. Cheaper than reading the whole card: the other two lines ask
+  /// the settings, the packages and the machine what the stage is set to.
   static String titleOf(AppLocalizations l10n, PipelineNode node, PipelineFacts facts) =>
-      _Reading(l10n, node, facts, const ComputeAvailability()).title();
+      _Reading(l10n, node, facts, const ComputeAvailability()).name();
 
   final String title;
   final String headline;
   final String note;
+
+  /// What a reader hears the card called. Its [title], but for a pack of the
+  /// glossary the pack's name as well: several of them are titled alike, and
+  /// a reader cannot see the line under the title that tells them apart.
+  final String name;
 }
 
 /// One node read against the configuration.
@@ -57,6 +73,15 @@ class _Reading {
     PipelineNodeKind.mix => l10n.pipelineNodeMix,
     PipelineNodeKind.output => l10n.pipelineNodeOutput,
     PipelineNodeKind.character => facts.character(node.characterId)?.name ?? l10n.charactersNewName,
+    PipelineNodeKind.glossary => l10n.pipelineNodeGlossary,
+  };
+
+  /// The [title], and for a pack the pack it reads.
+  String name() => switch (facts.pack(node.packId)) {
+    final pack? when node.kind == PipelineNodeKind.glossary => l10n.pipelineGlossaryNamed(
+      pack.name,
+    ),
+    _ => title(),
   };
 
   /// What the node is set to, in one line.
@@ -78,6 +103,8 @@ class _Reading {
           : l10n.pipelineMixOneVoice,
     PipelineNodeKind.output => l10n.pipelineOutputDefault,
     PipelineNodeKind.character => _characterHeadline(),
+    // The pack is the node's one setting, as the model is whisper's.
+    PipelineNodeKind.glossary => facts.pack(node.packId)?.name ?? l10n.pipelineGlossaryNoPack,
   };
 
   /// Capturing the whole output needs no game, so none is asked for here:
@@ -93,7 +120,7 @@ class _Reading {
   String _translation() {
     if (!_settings.translates) return l10n.pipelineNoTranslation;
     return '${spokenLanguageName(l10n, fallbackSpokenLanguage)}'
-        ' → ${translationTargetName(l10n, _settings.targetLanguage)}';
+        ' → ${spokenLanguageName(l10n, _settings.targetLanguage)}';
   }
 
   /// The voice a fixed choice reads every line in, named as the picker names
@@ -133,7 +160,21 @@ class _Reading {
     PipelineNodeKind.output =>
       l10n.pipelineOutputOriginal((_settings.originalVolume * 100).round()).toUpperCase(),
     PipelineNodeKind.character => _characterNote(),
+    PipelineNodeKind.glossary => _glossaryNote().toUpperCase(),
   };
+
+  /// What of the pack the text it reads can meet, and how many entries
+  /// that is: where a stage says where it runs, a pack says what it puts
+  /// right -- or, switched off, that the text passes it by.
+  String _glossaryNote() {
+    final kinds = node.feed?.kinds(translates: _settings.translates) ?? const <GlossaryKind>{};
+    if (kinds.isEmpty) return l10n.pipelineGlossaryNoteNothing;
+    if (!node.active) return l10n.pipelineGlossaryNotePassing;
+    final count = facts.pack(node.packId)?.countOf(kinds) ?? 0;
+    if (kinds.contains(GlossaryKind.phrase)) return l10n.pipelineGlossaryNotePhrases(count);
+    if (kinds.contains(GlossaryKind.name)) return l10n.pipelineGlossaryNoteNamesWords(count);
+    return l10n.pipelineGlossaryNoteWords(count);
+  }
 
   String _characterNote() {
     final character = facts.character(node.characterId);

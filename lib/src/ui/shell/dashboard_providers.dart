@@ -143,12 +143,14 @@ class DashboardProviders extends StatelessWidget {
           context.read(),
           context.read(),
           context.read(),
+          context.read(),
           context.read<FailureCubit>(),
         )..add(const PipelineGraphOpened()),
       ),
       BlocProvider(
         lazy: false,
         create: (context) => PipelineFactsBloc(
+          context.read(),
           context.read(),
           context.read(),
           context.read(),

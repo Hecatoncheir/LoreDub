@@ -75,6 +75,9 @@ class AppComposition {
   late final system = SystemRepository(engine, PythonDiscovery());
   final voiceBank = VoiceBankRepository(VoiceBankService());
   late final schemes = SchemeRepository(layout: _layout, shelf: _shelf);
+
+  /// What the player wrote down, which the glossary screen and the canvas
+  /// both work on.
   late final glossary = GlossaryRepository(settings, engine, _glossary);
   final models = ModelRepository(ModelStorageService());
   final runtimes = RuntimeRepository(RuntimeStorageService());
@@ -100,6 +103,7 @@ class AppComposition {
         coordinator.dispose(),
         sources.dispose(),
         cast.dispose(),
+        glossary.dispose(),
         installed.dispose(),
         settings.dispose(),
       ]).whenComplete(sessions.dispose),

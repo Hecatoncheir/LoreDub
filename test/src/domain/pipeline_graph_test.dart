@@ -4,7 +4,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/character.dart';
+import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
+import 'package:lore_dub/src/domain/saved_pipeline.dart';
+import 'package:lore_dub/src/domain/spoken_language.dart';
 
 void main() {
   const guard = Character(id: 'guard', name: 'Стражник', vector: [0.2, 0.4]);
@@ -993,5 +996,363 @@ void main() {
       proposeDisconnect(route),
       isA<RouteConnection>().having((connection) => connection.routed, 'routed', isFalse),
     );
+  });
+
+  group('the glossary in the line of text', () {
+    const fire = GlossaryEntry(
+      kind: GlossaryKind.phrase,
+      source: 'Fire in the hole!',
+      reading: 'Ложись!',
+    );
+    const megaton = GlossaryEntry(kind: GlossaryKind.name, source: 'Megaton', reading: 'Мегатон');
+    const vault = GlossaryEntry(kind: GlossaryKind.word, source: 'Хранилище', reading: 'Убежище');
+    final lines = GlossaryPack(id: 'lines', name: 'Реплики', entryKeys: [fire.packKey]);
+    final fallout = GlossaryPack(
+      id: 'fallout',
+      name: 'Fallout',
+      entryKeys: [megaton.packKey, vault.packKey],
+    );
+
+    const heard = PipelinePort(recognition, PipelineSocket.speechText);
+    const intoTranslator = PipelinePort(translation, PipelineSocket.translationIn);
+    const translated = PipelinePort(translation, PipelineSocket.translatedText);
+    const intoVoice = PipelinePort(voice, PipelineSocket.voiceIn);
+    final first = PipelineNodeIds.glossary(1);
+    final second = PipelineNodeIds.glossary(2);
+    final third = PipelineNodeIds.glossary(3);
+    PipelinePort into(String node) => PipelinePort(node, PipelineSocket.glossaryIn);
+    PipelinePort outOf(String node) => PipelinePort(node, PipelineSocket.glossaryOut);
+
+    /// The line [layout] draws, stop by stop, as the links run.
+    List<String> lineOf(PipelineGraph graph) {
+      final next = {
+        for (final link in graph.links)
+          if (link.signal == PipelineSignal.text) link.from.nodeId: link.to.nodeId,
+      };
+      final line = [recognition];
+      for (var after = next[recognition]; after != null; after = next[after]) {
+        line.add(after);
+      }
+      return line;
+    }
+
+    PipelineGraph drawn(
+      PipelineLayout layout, {
+      AppSettings settings = const AppSettings(),
+      List<GlossaryPack>? packs,
+    }) => buildPipelineGraph(
+      settings: settings,
+      characters: const [],
+      packs: packs ?? [lines, fallout],
+      layout: layout,
+    );
+
+    /// Two packs before the translator and one after it, as the user drew
+    /// them: whisper into a pack into a pack into the translator, and the
+    /// translator into a pack into the voice.
+    final chain = PipelineLayout.standard
+        .withGlossary('lines', feed: GlossaryFeed.recognition)
+        .withGlossary('fallout', feed: GlossaryFeed.recognition)
+        .withGlossary('fallout', feed: GlossaryFeed.translation);
+
+    test('runs the text through the packs one after another, Text into Text', () {
+      final graph = drawn(chain);
+
+      expect(lineOf(graph), [recognition, first, second, translation, third, voice]);
+      expect(graph.nodes.where((node) => node.unrouted), isEmpty);
+    });
+
+    test('leaves a pack out of the line faded, and the line running past it', () {
+      final graph = drawn(PipelineLayout.standard.withGlossary('lines'));
+
+      expect(lineOf(graph), [recognition, translation, voice]);
+      expect(graph.node(first)?.unrouted, isTrue);
+    });
+
+    test('draws no pack the glossary no longer has, and runs the line past it', () {
+      final graph = drawn(chain, packs: [lines]);
+
+      expect(graph.ofKind(PipelineNodeKind.glossary).map((node) => node.id), [first]);
+      expect(lineOf(graph), [recognition, first, translation, voice]);
+    });
+
+    test('stands the packs after the translator aside with it', () {
+      final graph = drawn(
+        chain,
+        settings: const AppSettings(targetLanguage: untranslatedDubbingLanguage),
+      );
+
+      expect(lineOf(graph), [recognition, first, second, voice]);
+      expect(graph.node(third)?.unrouted, isTrue, reason: 'nothing is translated after it');
+      expect(graph.node(first)?.unrouted, isFalse, reason: 'its words are met there');
+    });
+
+    test('draws nothing out of whisper while the way in is taken apart', () {
+      final graph = drawn(chain, settings: const AppSettings(captureRouted: false));
+
+      expect(graph.linkInto(into(first)), isNull);
+      expect(graph.linkInto(into(second))?.from, outOf(first), reason: 'the rest stays drawn');
+    });
+
+    test('puts a pack out of the line right after what a line is drawn from', () {
+      final graph = drawn(chain.withGlossary('lines'));
+      final fourth = PipelineNodeIds.glossary(4);
+
+      expect(
+        proposeConnection(graph, heard, into(fourth)),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineMove(fourth, anchor: recognition, after: true),
+        ]),
+      );
+      expect(
+        proposeConnection(graph, into(fourth), outOf(second)),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineMove(fourth, anchor: second, after: true),
+        ]),
+        reason: 'drawn backwards, from the pack to the one before it',
+      );
+    });
+
+    test('puts a pack out of the line right before what a line is drawn into', () {
+      final graph = drawn(chain.withGlossary('lines'));
+      final fourth = PipelineNodeIds.glossary(4);
+
+      expect(
+        proposeConnection(graph, outOf(fourth), intoVoice),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineMove(fourth, anchor: voice, after: false),
+        ]),
+      );
+      expect(
+        proposeConnection(graph, outOf(fourth), into(third)),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineMove(fourth, anchor: third, after: false),
+        ]),
+      );
+    });
+
+    test('moves a pack standing in the line to where a line puts it', () {
+      final graph = drawn(chain);
+
+      expect(
+        proposeConnection(graph, translated, into(first)),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineMove(first, anchor: translation, after: true),
+        ]),
+      );
+    });
+
+    test('refuses a line between two packs of which neither stands in the line', () {
+      final graph = drawn(PipelineLayout.standard.withGlossary('lines').withGlossary('fallout'));
+
+      expect(
+        proposeConnection(graph, outOf(first), into(second)),
+        isA<RefusedConnection>().having(
+          (refused) => refused.reason,
+          'reason',
+          ConnectionRefusal.outOfLine,
+        ),
+      );
+    });
+
+    test('takes out the packs a line between two stages passes over', () {
+      final graph = drawn(chain);
+
+      expect(
+        proposeConnection(graph, heard, intoTranslator),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineRemove({first, second}),
+        ]),
+      );
+      expect(
+        proposeConnection(graph, translated, intoVoice),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineRemove({third}),
+        ]),
+      );
+      expect(
+        proposeConnection(graph, heard, intoVoice),
+        isA<TranslationConnection>().having((connection) => connection.routed, 'routed', isFalse),
+        reason: 'stepping over the translator is still the translator',
+      );
+    });
+
+    test('brings the translator back with a pack drawn into it', () {
+      final graph = drawn(
+        PipelineLayout.standard.withGlossary('lines'),
+        settings: const AppSettings(targetLanguage: untranslatedDubbingLanguage),
+      );
+
+      expect(
+        proposeConnection(graph, outOf(first), intoTranslator),
+        isA<TranslationConnection>()
+            .having((connection) => connection.routed, 'routed', isTrue)
+            .having((connection) => connection.edits, 'edits', [
+              LineMove(first, anchor: translation, after: false),
+            ]),
+      );
+    });
+
+    test('takes a pack out of the line by either of its lines', () {
+      final graph = drawn(chain);
+      PipelineLink lineInto(String node) => graph.linkInto(into(node))!;
+
+      expect(
+        proposeDisconnect(lineInto(first)),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineRemove({first}),
+        ]),
+      );
+      expect(
+        proposeDisconnect(lineInto(second)),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineRemove({second}),
+        ]),
+        reason: 'between two packs, the one the line runs into',
+      );
+      expect(
+        proposeDisconnect(graph.linkInto(intoTranslator)!),
+        isA<GlossaryLineConnection>().having((connection) => connection.edits, 'edits', [
+          LineRemove({second}),
+        ]),
+        reason: 'the pack, not the translator',
+      );
+    });
+
+    test('lets a pack apply what can be met where it stands', () {
+      expect(GlossaryFeed.recognition.kinds(translates: true), {GlossaryKind.phrase});
+      expect(GlossaryFeed.translation.kinds(translates: true), {
+        GlossaryKind.name,
+        GlossaryKind.word,
+      });
+      // With nothing translated, what whisper heard is the dubbed text.
+      expect(GlossaryFeed.recognition.kinds(translates: false), {GlossaryKind.word});
+      expect(GlossaryFeed.translation.kinds(translates: false), isEmpty);
+    });
+
+    test('draws a pack switched off as such, and the line still running through it', () {
+      final graph = drawn(chain, packs: [lines.copyWith(active: true), fallout]);
+
+      expect(graph.node(first)?.active, isTrue);
+      expect(
+        [second, third].map((node) => graph.node(node)?.active),
+        [isFalse, isFalse],
+        reason: 'every drawing of a pack answers to its one switch',
+      );
+      expect(lineOf(graph), [recognition, first, second, translation, third, voice]);
+      expect(graph.node(second)?.unrouted, isFalse, reason: 'it stands in the line');
+    });
+
+    test('tells a node switched off from the same node switched on', () {
+      final switchedOn = [lines.copyWith(active: true), fallout];
+      final node = drawn(chain, packs: switchedOn).node(first)!;
+
+      expect({node, drawn(chain, packs: switchedOn).node(first)!}, hasLength(1));
+      expect(
+        node,
+        isNot(drawn(chain).node(first)),
+        reason: 'the card that caches it must be drawn again',
+      );
+    });
+
+    test('puts a drawing last before the translator by a line drawn into it', () {
+      final fourth = PipelineNodeIds.glossary(4);
+
+      final moved = chain.withGlossary('lines').withLine([
+        LineMove(fourth, anchor: translation, after: false),
+      ], translates: true);
+
+      expect(lineOf(drawn(moved)), [recognition, first, second, fourth, translation, third, voice]);
+    });
+
+    test('adds together what every drawing of a pack reaches', () {
+      expect(chain.withGlossary('lines').glossaryReach(translates: true), {
+        'lines': {GlossaryKind.phrase},
+        'fallout': {GlossaryKind.phrase, GlossaryKind.name, GlossaryKind.word},
+      });
+    });
+
+    test('moves a drawing along the line, beside what a line was drawn to', () {
+      final moved = chain.withLine([
+        LineMove(third, anchor: recognition, after: true),
+      ], translates: true);
+
+      expect(lineOf(drawn(moved)), [recognition, third, first, second, translation, voice]);
+      expect(
+        lineOf(
+          drawn(moved.withLine([LineMove(first, anchor: voice, after: false)], translates: true)),
+        ),
+        [recognition, third, second, translation, first, voice],
+      );
+      expect(
+        lineOf(
+          drawn(moved.withLine([LineMove(second, anchor: third, after: false)], translates: true)),
+        ),
+        [recognition, second, third, first, translation, voice],
+      );
+    });
+
+    test('takes drawings out of the line, and leaves the rest where they stood', () {
+      final taken = chain.withLine([
+        LineRemove({first, third}),
+      ], translates: true);
+
+      expect(lineOf(drawn(taken)), [recognition, second, translation, voice]);
+      expect(taken.glossaryAt(first)?.feed, isNull);
+    });
+
+    test('puts nothing beside a drawing that stands out of the line', () {
+      final layout = PipelineLayout.standard.withGlossary('lines').withGlossary('fallout');
+
+      expect(
+        layout.withLine([
+          LineMove(second, anchor: first, after: true),
+        ], translates: true).glossaries,
+        layout.glossaries,
+      );
+    });
+
+    test('numbers a pack drawn again, and gives the number back once it is taken off', () {
+      final layout = PipelineLayout.standard.withGlossary('lines').withGlossary('lines');
+      expect(layout.glossaries.map((placement) => placement.nodeId), [first, second]);
+
+      final without = layout.withoutNode(first).withGlossary('fallout');
+      expect(without.glossaries.map((placement) => placement.nodeId), [second, first]);
+    });
+
+    test('changes the pack of one drawing and nothing else of it', () {
+      final layout = chain
+          .withPosition(first, const GraphPoint(5, 6))
+          .withGlossaryPack(first, 'fallout');
+
+      expect(
+        layout.glossaryAt(first),
+        GlossaryPlacement(nodeId: first, packId: 'fallout', feed: GlossaryFeed.recognition),
+      );
+      expect(layout.positions[first], const GraphPoint(5, 6));
+      expect(lineOf(drawn(layout)), lineOf(drawn(chain)));
+    });
+
+    test('comes back as it was written, and reads a file from before it drew any', () {
+      expect(PipelineLayout.fromJson(chain.toJson()).glossaries, chain.glossaries);
+      expect(
+        PipelineLayout.fromJson(const {
+          'version': 3,
+          'cast': <Object?>[],
+        }).glossaries,
+        isEmpty,
+      );
+    });
+
+    test('keeps with a scheme which packs were on, and nothing for one kept before', () {
+      const scheme = SavedPipeline(id: 's1', name: 'Fallout', activePacks: {'fallout'});
+
+      expect(SavedPipeline.fromJson(scheme.toJson())?.activePacks, {'fallout'});
+      expect(
+        SavedPipeline.fromJson(const {'id': 's0', 'name': 'Старая'})?.activePacks,
+        isNull,
+        reason: 'a scheme from before leaves the packs as they are',
+      );
+    });
   });
 }

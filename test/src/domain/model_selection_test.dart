@@ -141,6 +141,96 @@ void main() {
     );
   });
 
+  group('the screen', () {
+    /// What the page would offer, written as it reads: the text's language,
+    /// and where the dubbing is another, an arrow to it.
+    List<String> offered(ModelSelection selection) => [
+      for (final languages in selection.screenLanguages)
+        languages.text == languages.dubbing
+            ? languages.text
+            : '${languages.text}->${languages.dubbing}',
+    ];
+
+    /// Every package on disk but [missing].
+    List<ModelInstallState> without(ModelPackage? missing) => [
+      for (final state in installed())
+        ModelInstallState(model: state.model, installed: state.model != missing),
+    ];
+
+    test('offers every voice on disk as it is, then English translated into one', () {
+      expect(offered(selectionWith(const AppSettings())), ['ru', 'en', 'en->ru']);
+    });
+
+    test('offers no translation without its translator, nor a language without its voice', () {
+      expect(
+        offered(
+          ModelSelection(
+            models: without(translationModelFor('ru')),
+            settings: const AppSettings(targetLanguage: 'en'),
+          ),
+        ),
+        ['ru', 'en'],
+      );
+      expect(
+        offered(
+          ModelSelection(
+            models: without(speechModelFor('ru')),
+            settings: const AppSettings(targetLanguage: 'en'),
+          ),
+        ),
+        ['en'],
+      );
+      expect(
+        offered(
+          ModelSelection(models: without(speechModelFor('ru')), settings: const AppSettings()),
+        ),
+        ['en', 'en->ru'],
+        reason: 'the choice stands on the list once its voice is gone',
+      );
+    });
+
+    test(
+      'translates English text into a dubbing language that is not English, and nothing else',
+      () {
+        expect(selectionWith(const AppSettings(targetLanguage: 'ru')).screenTranslates, isTrue);
+        expect(
+          selectionWith(const AppSettings(targetLanguage: 'ru', screenLanguage: 'ru'))
+              .screenTranslates,
+          isFalse,
+          reason: 'Russian text is voiced as it is',
+        );
+        expect(selectionWith(const AppSettings(targetLanguage: 'en')).screenTranslates, isFalse);
+      },
+    );
+
+    test('needs the voice it reads in, and the translator only where it translates', () {
+      const russian = AppSettings(targetLanguage: 'ru', screenLanguage: 'ru');
+
+      expect(
+        ModelSelection(
+          models: without(translationModelFor('ru')),
+          settings: russian,
+        ).screenModelsInstalled,
+        isTrue,
+      );
+      expect(
+        ModelSelection(
+          models: without(translationModelFor('ru')),
+          settings: const AppSettings(targetLanguage: 'ru'),
+        ).screenModelsInstalled,
+        isFalse,
+        reason: 'English text needs the translator',
+      );
+      expect(
+        ModelSelection(
+          models: without(speechModelFor('ru')),
+          settings: russian,
+        ).screenModelsInstalled,
+        isFalse,
+      );
+    });
+  });
+
   group('voice mode', () {
     test('runs the automatic choice where the package can follow the speaker', () {
       final selection = selectionWith(const AppSettings(automaticVoice: true));

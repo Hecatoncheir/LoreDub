@@ -8,6 +8,10 @@ import 'spoken_language.dart';
 
 export 'language_pair.dart';
 
+/// What the Screen page reads and what it says it in: the language of the
+/// text on the screen and the dubbing language, picked as one choice.
+typedef ScreenLanguages = ({String text, String dubbing});
+
 /// What the settings and the installed packages together say the pipeline
 /// will use.
 ///
@@ -179,13 +183,36 @@ class ModelSelection {
     return pairInstalled && (!clonesVoice || (voiceConverter?.installed ?? false));
   }
 
-  /// What the screen session needs: the translator and the voice of the
-  /// chosen language. It reads the screen, so whisper plays no part, and
-  /// text on a screen has no audio for the original voice to follow.
+  /// Whether the Screen page translates what it reads: English text, into
+  /// a dubbing language that is not English. Text in the dubbing language is
+  /// voiced as it is, and no translator is loaded for it.
+  bool get screenTranslates => settings.textLanguage != settings.targetLanguage;
+
+  /// What the screen session needs: the voice of the dubbing language, and
+  /// the translator where it translates. It reads the screen, so whisper
+  /// plays no part, and text on a screen has no audio for the original
+  /// voice to follow.
   bool get screenModelsInstalled =>
       models.isNotEmpty &&
-      (!translates || (forTargetLanguage(ModelKind.translation)?.installed ?? false)) &&
+      (!screenTranslates || (forTargetLanguage(ModelKind.translation)?.installed ?? false)) &&
       (forTargetLanguage(ModelKind.speech)?.installed ?? false);
+
+  /// What the Screen page offers to read and say, chosen together: every
+  /// language whose voice is on disk, read as it is, then English translated
+  /// into every one whose translator is on disk as well -- with what is
+  /// chosen now kept, so the choice stands on the list once its models are
+  /// gone.
+  List<ScreenLanguages> get screenLanguages {
+    final offered = <ScreenLanguages>[
+      for (final pair in languagePairs)
+        if (pair.speech?.installed ?? false) (text: pair.language, dubbing: pair.language),
+      for (final pair in languagePairs)
+        if (pair.language != fallbackSpokenLanguage && pair.installed)
+          (text: fallbackSpokenLanguage, dubbing: pair.language),
+    ];
+    final chosen = (text: settings.textLanguage, dubbing: settings.targetLanguage);
+    return [...offered, if (!offered.contains(chosen)) chosen];
+  }
 
   /// Whether a language is ready to dub into: its voice on disk, and its
   /// translator too where it has one. English has none to wait for.

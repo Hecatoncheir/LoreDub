@@ -7,19 +7,26 @@ import 'package:flutter/material.dart';
 /// identically — same field width, same gap, same trailing width — to line up
 /// exactly one under the other.
 class LanguageRow extends StatelessWidget {
-  const LanguageRow({super.key, required this.field, required this.action});
+  const LanguageRow({
+    super.key,
+    required this.field,
+    required this.action,
+    this.fieldWidth = standardFieldWidth,
+  });
 
-  static const double fieldWidth = 210;
+  /// What the two rows of Live line up on.
+  static const double standardFieldWidth = 210;
 
   /// Wide enough for the detected language to replace the toggle's label
   /// without being cut short.
   static const double actionWidth = 240;
 
-  /// What the two of them need side by side.
-  static const double _sideBySide = fieldWidth + 12 + actionWidth;
-
   final Widget field;
   final Widget action;
+
+  /// Wider where a row stands alone and what it offers is longer than a
+  /// language's name -- the Screen page's "English → Russian".
+  final double fieldWidth;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -29,7 +36,7 @@ class LanguageRow extends StatelessWidget {
     // less than they need, they go one under the other and take the width
     // there is.
     builder: (context, constraints) =>
-        !constraints.hasBoundedWidth || constraints.maxWidth >= _sideBySide
+        !constraints.hasBoundedWidth || constraints.maxWidth >= fieldWidth + 12 + actionWidth
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [

@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
+import '../common/keyed_text.dart';
 import '../shell/bloc/navigation_cubit.dart';
 import '../theme.dart';
 
@@ -21,7 +22,10 @@ class SnapshotHotkeyLine extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final hotkey = settings.snapshotHotkey;
     if (hotkey != null) {
-      return Text(l10n.snapshotHowTo(hotkey.display), style: Theme.of(context).textTheme.bodyLarge);
+      return KeyedText(
+        l10n.snapshotHowTo(hotkey.display),
+        style: Theme.of(context).textTheme.bodyLarge,
+      );
     }
     return Wrap(
       spacing: 8,

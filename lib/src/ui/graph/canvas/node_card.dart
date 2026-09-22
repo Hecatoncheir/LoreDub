@@ -12,6 +12,7 @@ import '../../theme.dart';
 import '../node_faces.dart';
 import '../node_paint.dart';
 import 'hover_region.dart';
+import 'node_active_switch.dart';
 import 'node_card_header.dart';
 import 'node_card_summary.dart';
 import 'node_labels.dart';
@@ -32,6 +33,7 @@ class NodeCard extends StatelessWidget {
     required this.onDrag,
     required this.onDrop,
     this.onRemove,
+    this.onSwitch,
   });
 
   final PipelineNode node;
@@ -49,9 +51,14 @@ class NodeCard extends StatelessWidget {
   final void Function(Offset at) onDrag;
   final VoidCallback onDrop;
 
-  /// Takes the node off the canvas. Only a card has one: the stages of the
-  /// pipeline are always drawn, bypassed or unrouted as they may be.
+  /// Takes the node off the canvas. Only a card or a pack has one: the
+  /// stages of the pipeline are always drawn, bypassed or unrouted as they
+  /// may be.
   final VoidCallback? onRemove;
+
+  /// Switches the pack a glossary node draws on or off, which only such a
+  /// node has.
+  final ValueChanged<bool>? onSwitch;
 
   /// The card's face: the orange edge of a chosen card or of the one the
   /// keyboard has reached, and a shadow that lifts it when chosen or under
@@ -96,7 +103,7 @@ class NodeCard extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: labels.title,
+      label: labels.name,
       hint: l10n.pipelineNodeOpen,
       child: GestureDetector(
         onTap: onTap,
@@ -107,13 +114,14 @@ class NodeCard extends StatelessWidget {
           onActivate: onTap,
           builder: (context, focused) => HoverRegion(
             cursor: SystemMouseCursors.grab,
-            // A card cut out of the mix, or standing under a route that has
-            // been taken apart, goes dark rather than blinking dark: what
-            // the player just did is worth following with the eye.
+            // A card cut out of the mix, standing under a route that has
+            // been taken apart, or a pack switched off, goes dark rather than
+            // blinking dark: what the player just did is worth following with
+            // the eye.
             builder: (context, hovered) => AnimatedOpacity(
               duration: ease(context),
               curve: Curves.easeOut,
-              opacity: node.unrouted ? 0.55 : 1,
+              opacity: node.unrouted || !node.active ? 0.55 : 1,
               child: AnimatedContainer(
                 duration: ease(context),
                 curve: Curves.easeOut,
@@ -133,6 +141,13 @@ class NodeCard extends StatelessWidget {
                         paint: paint,
                         headline: labels.headline,
                         note: labels.note,
+                        trailing: switch (onSwitch) {
+                          final onChanged? => NodeActiveSwitch(
+                            active: node.active,
+                            onChanged: onChanged,
+                          ),
+                          null => null,
+                        },
                       ),
                     ),
                   ],

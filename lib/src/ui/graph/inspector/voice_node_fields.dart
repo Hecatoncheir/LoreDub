@@ -7,8 +7,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/compute_device.dart';
+import '../../../domain/pipeline_graph.dart';
 import '../../compute_names.dart';
 import '../../settings/bloc/settings_bloc.dart';
+import '../bloc/pipeline_graph_bloc.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_choices.dart';
 import 'inspector_field.dart';
@@ -17,7 +19,8 @@ import 'inspector_toggle.dart';
 import 'stage_device_picker.dart';
 
 /// The voice node's panel: the voice mode, the voice picked by hand, the
-/// pace, the converter's device and whether the characters are remembered.
+/// pace, the converter's device, whether the characters are remembered, and
+/// what the lines are read with while no pack of the glossary is on.
 class VoiceNodeFields extends StatelessWidget {
   const VoiceNodeFields({super.key, required this.facts, required this.availability});
 
@@ -108,7 +111,23 @@ class VoiceNodeFields extends StatelessWidget {
           enabled: !locked,
           onChanged: (value) => _update(context, settings.copyWith(voiceBank: value)),
         ),
+        if (_glossaryNote(
+              l10n,
+              drawn: context.select<PipelineGraphBloc, bool>(
+                (graph) => graph.state.graph.ofKind(PipelineNodeKind.glossary).isNotEmpty,
+              ),
+            )
+            case final note?)
+          InspectorNote(text: note),
       ],
     );
+  }
+
+  /// What the lines are read with while no pack is switched on, when
+  /// something is written down: nothing at all once the scheme [drawn]
+  /// glossaries -- it says what is read then -- and otherwise everything.
+  String? _glossaryNote(AppLocalizations l10n, {required bool drawn}) {
+    if (facts.glossary.activePacks.isNotEmpty || facts.glossary.isEmpty) return null;
+    return drawn ? l10n.pipelineVoiceNoGlossary : l10n.pipelineVoiceWholeGlossary;
   }
 }

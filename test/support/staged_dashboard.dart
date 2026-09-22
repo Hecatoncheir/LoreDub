@@ -41,11 +41,15 @@ import 'memory_cast.dart';
 
 import 'package:lore_dub/src/domain/app_release.dart';
 
+export 'fakes/memory_glossary.dart';
 export 'fakes/memory_schemes.dart';
 export 'fakes/memory_voice_bank.dart';
+import 'fakes/memory_glossary.dart';
 import 'fakes/memory_schemes.dart';
 import 'fakes/memory_voice_bank.dart';
 import 'fakes/memory_native.dart';
+
+import 'package:lore_dub/src/domain/glossary.dart';
 
 /// Every screen's state, built by hand for a test to stage and then put on
 /// the screen through [provide].
@@ -97,7 +101,10 @@ class StagedDashboard {
     // arrangement as it is drawn on, and the cards are read before it
     // opens -- a real file answers neither inside a widget test.
     this.schemes = schemes ?? MemorySchemes();
-    this.glossaryRepository = glossaryRepository ?? GlossaryRepository(settingsRepository, native);
+    // In memory for the same reason: the canvas reads the glossary before
+    // it draws the packs on it.
+    this.glossaryRepository =
+        glossaryRepository ?? GlossaryRepository(settingsRepository, native, MemoryGlossary());
     this.cast = cast ?? CastRepository(native, MemoryCharacters());
     installed = InstallRepository(modelRepository, runtimeRepository);
     sourcesRepository = SourcesRepository(this.system);
@@ -157,6 +164,7 @@ class StagedDashboard {
       this.schemes,
       settingsRepository,
       this.cast,
+      this.glossaryRepository,
       installed,
       sessions,
       failures,
@@ -165,6 +173,7 @@ class StagedDashboard {
       settingsRepository,
       installed,
       this.cast,
+      this.glossaryRepository,
       sourcesRepository,
       sessions,
     );
@@ -241,6 +250,10 @@ class StagedDashboard {
     }
     graph.add(const PipelineGraphOpened());
   }
+
+  /// Stages what is written down in the glossary, where every screen reads
+  /// it: the repository, which the glossary screen and the canvas follow.
+  void stageGlossary(Glossary value) => glossaryRepository.seed(value);
 
   /// Stages what is known about newer versions -- what `blocTest`'s
   /// `seed` does. What the version row sends is a mock's

@@ -78,6 +78,35 @@ void main() {
   );
 
   blocTest<SettingsBloc, SettingsState>(
+    'picks the screen language and the dubbing language together',
+    build: build,
+    act: (bloc) async {
+      await settings.save(const AppSettings(targetLanguage: 'en', ttsSpeed: 1.3));
+      bloc.add(const ScreenLanguageChosen(text: 'ru', dubbing: 'ru'));
+      await pumpEventQueue();
+      expect(disk.stored?.screenLanguage, 'ru');
+      expect(disk.stored?.targetLanguage, 'ru', reason: 'as the models screen picks it');
+      expect(disk.stored?.ttsSpeed, 1.3, reason: 'built from the settings as they stand');
+
+      bloc.add(const ScreenLanguageChosen(text: 'en', dubbing: 'en'));
+    },
+    verify: (_) {
+      expect(disk.stored?.screenLanguage, 'en');
+      expect(disk.stored?.targetLanguage, 'en', reason: 'the models screen follows back');
+    },
+  );
+
+  blocTest<SettingsBloc, SettingsState>(
+    'reads the screen as English once the dubbing leaves the language it was in',
+    build: build,
+    act: (bloc) async {
+      await settings.save(const AppSettings(targetLanguage: 'ru', screenLanguage: 'ru'));
+      bloc.add(const TargetLanguageChosen('en'));
+    },
+    verify: (_) => expect(disk.stored?.screenLanguage, 'en'),
+  );
+
+  blocTest<SettingsBloc, SettingsState>(
     'a device preset drops the pins, and a pin leaves the preset alone',
     build: build,
     act: (bloc) async {

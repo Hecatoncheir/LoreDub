@@ -9,6 +9,7 @@ void main() {
     const hotkey = Hotkey(keyCode: 0x50, label: 'P', control: true, alt: true, shift: true);
 
     expect(hotkey.display, 'Ctrl + Alt + Shift + P');
+    expect(hotkey.keys, ['Ctrl', 'Alt', 'Shift', 'P'], reason: 'one key each, as drawn');
     // MOD_ALT | MOD_CONTROL | MOD_SHIFT.
     expect(hotkey.modifiers, 0x7);
   });

@@ -107,6 +107,20 @@ void main() {
     expect((await SettingsService().load()).sourceLanguage, 'en');
   });
 
+  test('reads the screen in English, or in the dubbing language itself', () async {
+    // German text is neither translated nor voiced by anything this build
+    // carries, so the screen reads English, as it would with nothing stored;
+    // and so does Russian text under an English voice, which cannot read it.
+    Future<String> screenOf(Map<String, Object> stored) async {
+      SharedPreferences.setMockInitialValues(stored);
+      return (await SettingsService().load()).screenLanguage;
+    }
+
+    expect(await screenOf({'screenLanguage': 'de'}), 'en');
+    expect(await screenOf({'screenLanguage': 'ru', 'targetLanguage': 'ru'}), 'ru');
+    expect(await screenOf({'screenLanguage': 'ru', 'targetLanguage': 'en'}), 'en');
+  });
+
   test('starts on automatic device selection with nothing pinned', () async {
     SharedPreferences.setMockInitialValues({});
 

@@ -12,6 +12,7 @@ import '../theme.dart';
 import '../common/bloc/session_bloc.dart';
 import '../settings/bloc/settings_bloc.dart';
 import '../common/dashboard_context.dart';
+import '../common/keyed_text.dart';
 import '../../domain/screen_reading.dart';
 import '../common/module_label.dart';
 import 'ocr_region_picker.dart';
@@ -118,7 +119,10 @@ class SubtitleFrameCard extends StatelessWidget {
             // Drawn here before the game starts, or over the game itself
             // once it has: the same frame either way.
             if (settings.frameHotkey case final key?) ...[
-              Text(l10n.frameHowTo(key.display), style: Theme.of(context).textTheme.bodySmall),
+              KeyedText(
+                l10n.frameHowTo(key.display),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               const SizedBox(height: 8),
             ],
             Text(l10n.screenHowTo, style: Theme.of(context).textTheme.bodyLarge),
