@@ -18,11 +18,17 @@ Future<void> main(List<String> arguments) async {
       sources: windows
           ? const [
               'native/audio_decoder.cpp',
+              'native/event_queue.cpp',
               'native/frame_overlay.cpp',
+              'native/graphics_probe.cpp',
+              'native/hotkeys.cpp',
               'native/lore_dub_native.cpp',
-              'native/process_loopback_capture.cpp',
               'native/ocr_capture.cpp',
+              'native/process_list.cpp',
+              'native/process_loopback_capture.cpp',
+              'native/session_volume.cpp',
               'native/snapshot_overlay.cpp',
+              'native/wave_player.cpp',
             ]
           : const ['native/stub.cpp'],
       includes: const ['native'],

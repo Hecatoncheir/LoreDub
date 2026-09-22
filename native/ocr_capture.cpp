@@ -4,6 +4,7 @@
 #include "ocr_capture.h"
 
 #include "stable_text.h"
+#include "text_encoding.h"
 
 #include <windows.h>
 #include <winrt/Windows.Foundation.h>
@@ -148,17 +149,6 @@ bool CaptureRegion(HWND window, const OcrRegion& region, std::vector<uint8_t>* p
                        pixels, output_width, output_height);
 }
 
-std::string Utf8(const winrt::hstring& input) {
-  if (input.empty()) return {};
-  const int size = WideCharToMultiByte(CP_UTF8, 0, input.c_str(),
-                                       static_cast<int>(input.size()), nullptr,
-                                       0, nullptr, nullptr);
-  std::string output(static_cast<size_t>(size), '\0');
-  WideCharToMultiByte(CP_UTF8, 0, input.c_str(), static_cast<int>(input.size()),
-                      output.data(), size, nullptr, nullptr);
-  return output;
-}
-
 std::string NormalizeText(std::string text) {
   std::string output;
   output.reserve(text.size());
@@ -187,7 +177,7 @@ std::string Recognize(const winrt::Windows::Media::Ocr::OcrEngine& engine,
   // grew from a new one by comparing first lines.
   std::string text;
   for (const auto& line : engine.RecognizeAsync(bitmap).get().Lines()) {
-    const std::string part = NormalizeText(Utf8(line.Text()));
+    const std::string part = NormalizeText(encoding::Utf8(line.Text()));
     if (part.empty()) continue;
     if (!text.empty()) text.push_back('\n');
     text += part;
@@ -199,7 +189,7 @@ std::string Recognize(const winrt::Windows::Media::Ocr::OcrEngine& engine,
 // "en-US", "ru" finds "ru-RU" — or null when Windows has none for it.
 winrt::Windows::Globalization::Language FindOcrLanguage(const std::string& code) {
   for (const auto& language : winrt::Windows::Media::Ocr::OcrEngine::AvailableRecognizerLanguages()) {
-    std::string primary = Utf8(language.LanguageTag());
+    std::string primary = encoding::Utf8(language.LanguageTag());
     primary = primary.substr(0, primary.find('-'));
     std::transform(primary.begin(), primary.end(), primary.begin(),
                    [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
@@ -244,7 +234,7 @@ bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::stri
     *text = Recognize(engine, pixels, output_width, output_height);
     return true;
   } catch (const winrt::hresult_error& failure) {
-    *error = Utf8(failure.message());
+    *error = encoding::Utf8(failure.message());
   } catch (const std::exception& failure) {
     *error = failure.what();
   }
@@ -369,7 +359,7 @@ void OcrCapture::CaptureThread(uint32_t process_id, std::string language,
       }
     }
   } catch (const winrt::hresult_error& error) {
-    on_error(Utf8(error.message()));
+    on_error(encoding::Utf8(error.message()));
   } catch (const std::exception& error) {
     on_error(error.what());
   }

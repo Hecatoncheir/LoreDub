@@ -8,20 +8,11 @@
 
 #include "lore_dub_native.h"
 
-#include <cstring>
-#include <string>
+#include "abi_buffer.h"
 
 namespace {
 
 constexpr int32_t kUnsupported = -2;
-
-int32_t WriteString(const std::string& value, char* output, int32_t capacity) {
-  const auto required = static_cast<int32_t>(value.size());
-  if (output == nullptr || capacity <= required) return required;
-  std::memcpy(output, value.data(), value.size());
-  output[value.size()] = '\0';
-  return required;
-}
 
 }  // namespace
 

@@ -194,12 +194,18 @@ than one of them.
    per-process volume, WAV playback, `ld_set_paused` (capture drops what it
    finishes while set) and `ld_set_hotkeys` (RegisterHotKey on a thread with
    its own message loop, presses queued as `hotkey` events; `ld_stop` drops
-   them, and joins that thread before it lets go of the capture, which the
-   frame key reaches into). Everything crosses the boundary as UTF-8
-   JSON. The native side hand-rolls its JSON parsing/escaping (`JsonString`,
-   `EscapeJson`, both over `native/flat_json.h`, which reads a flat object in
-   one pass with keys compared whole and numbers read whatever the C locale
-   says) — keep config keys flat and string/number valued. What a
+   them, and the frame key moves the reading through a reference of its own
+   in `HotkeyConfig` rather than through the session's). Everything crosses the boundary as UTF-8
+   JSON. The native side hand-rolls its JSON: `native/flat_json.h` reads a
+   flat object in one pass, keys compared whole and numbers read whatever the
+   C locale says, and every event is written through `EventJson`
+   (`native/event_queue.h`), a field at a time, so no text reaches the queue
+   unescaped — keep config keys flat and string/number valued.
+   `lore_dub_native.cpp` is the ABI and the session and nothing else; what a
+   call reaches is a file of its own (`event_queue`, `process_list`,
+   `graphics_probe`, `session_volume`, `hotkeys` with `HotkeyThread`,
+   `wave_player`, `text_encoding.h` for the one pair of UTF-8 converters),
+   and a new `.cpp` is a line in `hook/build.dart` as well. What a
    session is started with is `SessionConfig` (`domain/session_config.dart`),
    sealed by kind (`LiveSessionConfig`, `ScreenSessionConfig`,
    `SceneSessionConfig`, `CharactersSessionConfig`,

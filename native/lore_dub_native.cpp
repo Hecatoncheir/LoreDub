@@ -1,42 +1,36 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+// The C ABI, and the session it starts and stops. What each call reaches
+// lives in a file of its own: the event queue, the process list, the probe
+// of the graphics hardware, the sessions' volume, the keys and the player.
+
 #include "lore_dub_native.h"
+
+#include "abi_buffer.h"
 #include "audio_decoder.h"
+#include "event_queue.h"
 #include "flat_json.h"
 #include "frame_overlay.h"
+#include "graphics_probe.h"
+#include "hotkeys.h"
 #include "ocr_capture.h"
+#include "process_list.h"
 #include "process_loopback_capture.h"
-#include "snapshot_overlay.h"
+#include "session_volume.h"
+#include "text_encoding.h"
+#include "wave_player.h"
+
+#include <windows.h>
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
-#include <cstring>
-#include <deque>
-#include <future>
-#include <thread>
-#include <mutex>
-#include <sstream>
-#include <string>
-#include <unordered_map>
 #include <memory>
-#include <vector>
-
-#include <audioclient.h>
-#include <audiopolicy.h>
-#include <mmdeviceapi.h>
-#include <windows.h>
-#include <psapi.h>
-#include <tlhelp32.h>
-#include <wrl/client.h>
-#include <mmsystem.h>
-#include <dxgi.h>
+#include <optional>
+#include <string>
 
 namespace {
 
-std::mutex event_mutex;
-std::deque<std::string> events;
 bool running = false;
 
 // Read on the capture threads: while set, what they finish is thrown away
@@ -50,302 +44,114 @@ std::unique_ptr<ProcessLoopbackCapture> loopback_capture;
 // Zero while the whole default output is captured: nothing is turned down
 // there.
 uint32_t captured_process_id = 0;
-// Shared with the hotkey thread, which moves the frame it reads: the thread
-// holds its own reference rather than reaching for this one, so a capture
-// let go of here is not let go of under a selection still on screen.
+
+// Shared with the key thread, which moves the frame it reads.
 std::shared_ptr<OcrCapture> ocr_capture;
 
-void PushEvent(std::string event) {
-  std::lock_guard<std::mutex> lock(event_mutex);
-  if (events.size() >= 128) {
-    events.pop_front();
+HotkeyThread hotkeys;
+
+// The frame drawn over the game, which outlives a session: the player asks
+// for it on the Screen page and it stays until they say otherwise.
+FrameOverlay frame_overlay;
+
+OcrRegion RegionOf(const flat_json::Object& config) {
+  return OcrRegion{config.Number("ocrRegionLeft", 0.0), config.Number("ocrRegionTop", 0.55),
+                   config.Number("ocrRegionRight", 1.0), config.Number("ocrRegionBottom", 1.0)};
+}
+
+// What ld_start was asked for, read once.
+struct StartConfig {
+  uint32_t process_id = 0;
+  std::string capture_directory;
+  // Reading the whole screen needs no window, and so no process to find it
+  // by -- one may still be named, to be turned down while the reading runs.
+  bool whole_screen = false;
+  bool reads_screen = false;
+  // The screen read while the game is listened to as well: the words come
+  // off the frame, and the voice heard as they appeared is what colours
+  // them. Neither capture knows about the other.
+  bool hears_voices = false;
+  // A session that captures nothing at all: the worker is up and the keys
+  // are registered, so a snippet the player picks out is read and voiced,
+  // and nothing is scanned until they ask. It needs no window and no
+  // directory to write segments into.
+  bool captures_nothing = false;
+  // Everything the default output plays rather than one process.
+  bool captures_system = false;
+  OcrRegion region;
+  std::string ocr_language = "en";
+
+  bool HearsAudio() const { return !captures_nothing && (!reads_screen || hears_voices); }
+
+  // Hearing the voices needs the game itself, whatever the frame is read
+  // out of: the sound is taken from that process.
+  bool NeedsProcess() const {
+    return reads_screen ? (!whole_screen || hears_voices) : (!captures_nothing && !captures_system);
   }
-  events.push_back(std::move(event));
-}
 
-int32_t WriteString(const std::string& value, char* output, int32_t capacity) {
-  const auto required = static_cast<int32_t>(value.size());
-  if (output == nullptr || capacity <= required) {
-    return required;
-  }
-  std::memcpy(output, value.data(), value.size());
-  output[value.size()] = '\0';
-  return required;
-}
-
-using Microsoft::WRL::ComPtr;
-
-std::mutex volumes_mutex;
-std::unordered_map<std::wstring, float> original_volumes;
-
-std::string EscapeJson(const std::string& input) { return flat_json::Escape(input); }
-
-std::string Utf8(const std::wstring& input) {
-  if (input.empty()) return {};
-  const int size = WideCharToMultiByte(CP_UTF8, 0, input.data(),
-                                       static_cast<int>(input.size()), nullptr,
-                                       0, nullptr, nullptr);
-  std::string output(size, '\0');
-  WideCharToMultiByte(CP_UTF8, 0, input.data(), static_cast<int>(input.size()),
-                      output.data(), size, nullptr, nullptr);
-  return output;
-}
-
-std::wstring Wide(const std::string& input) {
-  if (input.empty()) return {};
-  const int size = MultiByteToWideChar(CP_UTF8, 0, input.data(),
-                                       static_cast<int>(input.size()), nullptr, 0);
-  std::wstring output(size, L'\0');
-  MultiByteToWideChar(CP_UTF8, 0, input.data(), static_cast<int>(input.size()),
-                      output.data(), size);
-  return output;
-}
-
-// The config as the application wrote it, read one key at a time. Each is a
-// fresh read of a document a few hundred bytes long, a handful of times a
-// session: simpler than carrying the parsed object about, and nothing here
-// is on a path that runs per frame.
-uint32_t JsonUnsigned(const std::string& json, const std::string& key) {
-  return flat_json::Object::Parse(json).Unsigned(key);
-}
-
-std::string JsonString(const std::string& json, const std::string& key) {
-  return flat_json::Object::Parse(json).String(key);
-}
-
-double JsonDouble(const std::string& json, const std::string& key, double fallback) {
-  return flat_json::Object::Parse(json).Number(key, fallback);
-}
-
-std::wstring ProcessPath(DWORD process_id) {
-  HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE,
-                               process_id);
-  if (process == nullptr) return {};
-  std::wstring path(32768, L'\0');
-  DWORD length = static_cast<DWORD>(path.size());
-  if (!QueryFullProcessImageNameW(process, 0, path.data(), &length)) {
-    CloseHandle(process);
-    return {};
-  }
-  CloseHandle(process);
-  path.resize(length);
-  return path;
-}
-
-// When Windows started the process, in milliseconds since the Unix epoch, or
-// 0 when it will not say: a process of another user, or one that ended
-// between the snapshot and this question.
-uint64_t ProcessStartedAt(DWORD process_id) {
-  HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, process_id);
-  if (process == nullptr) return 0;
-  FILETIME created{};
-  FILETIME exited{};
-  FILETIME kernel{};
-  FILETIME user{};
-  const BOOL read = GetProcessTimes(process, &created, &exited, &kernel, &user);
-  CloseHandle(process);
-  if (!read) return 0;
-  ULARGE_INTEGER ticks{};
-  ticks.LowPart = created.dwLowDateTime;
-  ticks.HighPart = created.dwHighDateTime;
-  // FILETIME counts 100-nanosecond intervals from 1601; the Unix epoch is
-  // 11644473600 seconds later.
-  constexpr uint64_t epoch_difference = 116444736000000000ULL;
-  if (ticks.QuadPart < epoch_difference) return 0;
-  return (ticks.QuadPart - epoch_difference) / 10000;
-}
-
-std::wstring BaseName(const std::wstring& path) {
-  const auto separator = path.find_last_of(L"\\/");
-  return separator == std::wstring::npos ? path : path.substr(separator + 1);
-}
-
-std::string ListProcesses() {
-  HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  if (snapshot == INVALID_HANDLE_VALUE) return "[]";
-  PROCESSENTRY32W entry{};
-  entry.dwSize = sizeof(entry);
-  std::ostringstream out;
-  out << '[';
-  bool first = true;
-  if (Process32FirstW(snapshot, &entry)) {
-    do {
-      const std::wstring path = ProcessPath(entry.th32ProcessID);
-      if (path.empty()) continue;
-      if (!first) out << ',';
-      first = false;
-      out << "{\"pid\":" << entry.th32ProcessID << ",\"name\":\""
-          << EscapeJson(Utf8(BaseName(path))) << "\",\"path\":\""
-          << EscapeJson(Utf8(path)) << "\",\"startedAt\":"
-          << ProcessStartedAt(entry.th32ProcessID) << '}';
-    } while (Process32NextW(snapshot, &entry));
-  }
-  CloseHandle(snapshot);
-  out << ']';
-  return out.str();
-}
-
-// Whether a driver library is installed, without running its entry point.
-// Loading nvcuda.dll for real spins up the display driver, which is a lot to
-// ask for a question the interface only wants an answer to once.
-bool HasSystemLibrary(const wchar_t* name) {
-  HMODULE library = LoadLibraryExW(name, nullptr, LOAD_LIBRARY_AS_DATAFILE);
-  if (library == nullptr) return false;
-  FreeLibrary(library);
-  return true;
-}
-
-// Enumerates the real graphics adapters. Microsoft's Basic Render Driver is
-// reported like any other adapter and would make every machine look capable
-// of Vulkan, so software adapters are dropped.
-std::string ProbeGraphics() {
-  std::ostringstream out;
-  out << "{\"adapters\":[";
-  ComPtr<IDXGIFactory1> factory;
-  bool first = true;
-  if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
-    ComPtr<IDXGIAdapter1> adapter;
-    for (UINT index = 0;
-         factory->EnumAdapters1(index, adapter.ReleaseAndGetAddressOf()) != DXGI_ERROR_NOT_FOUND;
-         ++index) {
-      DXGI_ADAPTER_DESC1 description{};
-      if (FAILED(adapter->GetDesc1(&description))) continue;
-      if ((description.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0) continue;
-      if (!first) out << ',';
-      first = false;
-      out << "{\"name\":\"" << EscapeJson(Utf8(description.Description))
-          << "\",\"vendorId\":" << description.VendorId << ",\"dedicatedMemory\":"
-          << static_cast<uint64_t>(description.DedicatedVideoMemory) << '}';
-    }
-  }
-  out << "],\"cudaDriver\":" << (HasSystemLibrary(L"nvcuda.dll") ? "true" : "false")
-      << ",\"vulkanLoader\":" << (HasSystemLibrary(L"vulkan-1.dll") ? "true" : "false") << '}';
-  return out.str();
-}
-
-BOOL CALLBACK AddMonitor(HMONITOR monitor, HDC, LPRECT, LPARAM data) {
-  MONITORINFO info{};
-  info.cbSize = sizeof(info);
-  if (!GetMonitorInfoW(monitor, &info)) return TRUE;
-  auto& out = *reinterpret_cast<std::ostringstream*>(data);
-  if (out.tellp() > 1) out << ',';
-  const RECT& area = info.rcMonitor;
-  out << "{\"left\":" << area.left << ",\"top\":" << area.top << ",\"right\":" << area.right
-      << ",\"bottom\":" << area.bottom
-      << ",\"primary\":" << ((info.dwFlags & MONITORINFOF_PRIMARY) != 0 ? "true" : "false")
-      << '}';
-  return TRUE;
-}
-
-// Every monitor where the virtual screen puts it -- the same pixels
-// VirtualScreen() measures, the process being aware of each monitor's DPI.
-std::string ListMonitors() {
-  std::ostringstream out;
-  out << '[';
-  EnumDisplayMonitors(nullptr, nullptr, AddMonitor, reinterpret_cast<LPARAM>(&out));
-  out << ']';
-  return out.str();
-}
-
-// COM for as long as this object lives, on this thread, when it was not on
-// already. Declared before any COM object, it is let go of after all of them:
-// the objects used to be released once the apartment had closed.
-class ComApartment {
- public:
-  ComApartment() : initialized_(SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED))) {}
-  ~ComApartment() {
-    if (initialized_) CoUninitialize();
-  }
-  ComApartment(const ComApartment&) = delete;
-  ComApartment& operator=(const ComApartment&) = delete;
-
- private:
-  const bool initialized_;
+  bool NeedsDirectory() const { return hears_voices || (!reads_screen && !captures_nothing); }
 };
 
-// Calls [visit] with every audio session of the default render endpoint --
-// the process that owns it, its identifier and its volume -- and answers 0,
-// or the code of the step that could not be taken.
-template <typename Visit>
-int32_t ForEachRenderSession(Visit visit) {
-  ComApartment apartment;
-  ComPtr<IMMDeviceEnumerator> enumerator;
-  if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-                              IID_PPV_ARGS(&enumerator)))) {
-    return -10;
+StartConfig ParseStartConfig(const char* json) {
+  const auto config = flat_json::Object::Parse(json);
+  const std::string capture_mode = config.String("captureMode");
+  StartConfig start;
+  start.process_id = config.Unsigned("processId");
+  start.capture_directory = config.String("captureDirectory");
+  start.whole_screen = config.String("ocrSource") == "screen";
+  start.reads_screen = capture_mode == "ocr" || capture_mode == "ocrAndAudio";
+  start.hears_voices = capture_mode == "ocrAndAudio";
+  start.captures_nothing = capture_mode == "none";
+  start.captures_system = config.String("audioSource") == "system";
+  start.region = RegionOf(config);
+  if (auto language = config.String("ocrLanguage"); !language.empty()) {
+    start.ocr_language = std::move(language);
   }
-  ComPtr<IMMDevice> device;
-  if (FAILED(enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device))) return -11;
-  ComPtr<IAudioSessionManager2> manager;
-  if (FAILED(device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, &manager))) {
-    return -12;
-  }
-  ComPtr<IAudioSessionEnumerator> sessions;
-  if (FAILED(manager->GetSessionEnumerator(&sessions))) return -13;
-  int count = 0;
-  sessions->GetCount(&count);
-  for (int index = 0; index < count; ++index) {
-    ComPtr<IAudioSessionControl> control;
-    if (FAILED(sessions->GetSession(index, &control))) continue;
-    ComPtr<IAudioSessionControl2> control2;
-    if (FAILED(control.As(&control2))) continue;
-    DWORD owner = 0;
-    if (FAILED(control2->GetProcessId(&owner))) continue;
-    LPWSTR raw_identifier = nullptr;
-    if (FAILED(control2->GetSessionInstanceIdentifier(&raw_identifier))) continue;
-    const std::wstring identifier(raw_identifier);
-    CoTaskMemFree(raw_identifier);
-    ComPtr<ISimpleAudioVolume> volume;
-    if (FAILED(control.As(&volume))) continue;
-    visit(owner, identifier, volume.Get());
-  }
-  return 0;
+  return start;
 }
 
-// Turns every session of [process_id] down to [volume], remembering what it
-// was the first time, so the restore puts back the player's own volume rather
-// than whatever the dubbing set last.
-int32_t DuckProcess(uint32_t process_id, float volume) {
-  std::lock_guard<std::mutex> lock(volumes_mutex);
-  return ForEachRenderSession([&](DWORD owner, const std::wstring& identifier,
-                                  ISimpleAudioVolume* session) {
-    if (owner != process_id) return;
-    float current = 1.0f;
-    if (SUCCEEDED(session->GetMasterVolume(&current))) {
-      original_volumes.try_emplace(identifier, current);
-    }
-    if (FAILED(session->SetMasterVolume(volume, nullptr))) return;
-    // What the capture will hear from now on is this process's own sound
-    // times the volume just set.
-    if (loopback_capture && owner == captured_process_id) {
-      const auto was = original_volumes.find(identifier);
-      const float before = was == original_volumes.end() ? 1.0f : was->second;
-      loopback_capture->SetSpeechAttenuation(before > 0.0f ? volume / before : 1.0f);
-    }
-  });
+bool StartOcrSession(const StartConfig& start) {
+  ocr_capture = std::make_shared<OcrCapture>();
+  const std::string language = start.ocr_language;
+  const bool started = ocr_capture->Start(
+      start.whole_screen ? 0 : start.process_id, start.region, language,
+      [](const std::string& recognized_text) {
+        if (paused) return;
+        EventJson("ocrText").Text("text", recognized_text).Push();
+      },
+      [language](const std::string& message) { PushOcrError(message, language); });
+  if (!started) ocr_capture.reset();
+  return started;
 }
 
-// Gives every session the dubbing turned down its own volume back.
-int32_t RestoreDuckedSessions() {
-  std::lock_guard<std::mutex> lock(volumes_mutex);
-  const int32_t result = ForEachRenderSession(
-      [&](DWORD, const std::wstring& identifier, ISimpleAudioVolume* session) {
-        const auto original = original_volumes.find(identifier);
-        if (original != original_volumes.end()) session->SetMasterVolume(original->second, nullptr);
-      });
-  // The game is back at its own volume, and so is what the capture hears.
-  if (loopback_capture) loopback_capture->SetSpeechAttenuation(1.0);
-  original_volumes.clear();
-  return result;
+bool StartAudioSession(const StartConfig& start) {
+  loopback_capture = std::make_unique<ProcessLoopbackCapture>();
+  const uint32_t capture_process_id =
+      start.captures_system ? GetCurrentProcessId() : start.process_id;
+  // Only a named process is ever turned down; the whole default output is
+  // captured as it plays.
+  captured_process_id = start.captures_system ? 0 : start.process_id;
+  const bool started = loopback_capture->Start(
+      capture_process_id, start.captures_system, encoding::Wide(start.capture_directory),
+      [](const std::string& filename) {
+        // Queued even while paused: the Dart side drops a segment that
+        // arrives during the pause and deletes its file, so the native
+        // library never deletes files itself.
+        EventJson("audioSegment").Text("path", filename).Push();
+      },
+      [](const std::string& message) { PushError(message); });
+  if (!started) {
+    loopback_capture.reset();
+    captured_process_id = 0;
+  }
+  return started;
 }
 
 }  // namespace
 
 int32_t ld_abi_version(void) { return 1; }
 
-int32_t ld_is_process_loopback_supported(void) {
-  return 1;
-}
+int32_t ld_is_process_loopback_supported(void) { return 1; }
 
 int32_t ld_list_processes_json(char* output, int32_t capacity) {
   return WriteString(ListProcesses(), output, capacity);
@@ -360,189 +166,22 @@ int32_t ld_probe_graphics_json(char* output, int32_t capacity) {
 }
 
 int32_t ld_set_process_volume(uint32_t process_id, float volume) {
-  return DuckProcess(process_id, std::clamp(volume, 0.0f, 1.0f));
+  std::optional<double> heard;
+  const int32_t result = DuckProcess(process_id, std::clamp(volume, 0.0f, 1.0f), &heard);
+  // What the capture will hear from now on is this process's own sound
+  // times the volume just set.
+  if (heard && loopback_capture && process_id == captured_process_id) {
+    loopback_capture->SetSpeechAttenuation(*heard);
+  }
+  return result;
 }
 
 int32_t ld_restore_process_volumes(void) {
-  return RestoreDuckedSessions();
+  const int32_t result = RestoreDuckedSessions();
+  // The game is back at its own volume, and so is what the capture hears.
+  if (loopback_capture) loopback_capture->SetSpeechAttenuation(1.0);
+  return result;
 }
-
-namespace {
-
-// RegisterHotKey delivers WM_HOTKEY to the thread that registered, so the
-// hotkeys live on a thread of their own with nothing but a message loop.
-std::mutex hotkey_mutex;
-std::thread hotkey_thread;
-std::atomic<DWORD> hotkey_thread_id{0};
-
-// Reads the area the player selected. Only the hotkey thread starts it, and
-// StopHotkeys joins it once that thread is gone.
-std::thread snapshot_reader;
-
-constexpr int kPauseHotkey = 1;
-constexpr int kResumeHotkey = 2;
-constexpr int kSnapshotHotkey = 3;
-constexpr int kFrameHotkey = 4;
-constexpr int kFrameOverlayHotkey = 5;
-
-struct HotkeyConfig {
-  uint32_t frame_overlay_key = 0;
-  uint32_t frame_overlay_modifiers = 0;
-  uint32_t pause_key = 0;
-  uint32_t pause_modifiers = 0;
-  uint32_t resume_key = 0;
-  uint32_t resume_modifiers = 0;
-  uint32_t snapshot_key = 0;
-  uint32_t snapshot_modifiers = 0;
-  uint32_t frame_key = 0;
-  uint32_t frame_modifiers = 0;
-
-  // Whose window the subtitle frame is measured against. The frame is kept
-  // in fractions of that window's client area, so there is nothing to
-  // measure without it.
-  uint32_t frame_process_id = 0;
-
-  // The primary subtag a selected area is read in.
-  std::string snapshot_language = "en";
-
-  // The reading a frame drawn with the frame key moves, when the session
-  // reads the screen at all.
-  std::shared_ptr<OcrCapture> subtitle_reader;
-};
-
-// What a reader's error becomes on the event queue: the one Dart can word
-// for itself, or the message as it came.
-void PushOcrError(const std::string& message, const std::string& language) {
-  if (message == kOcrLanguageMissing) {
-    PushEvent("{\"type\":\"ocrLanguageMissing\",\"language\":\"" + EscapeJson(language) + "\"}");
-  } else {
-    PushEvent("{\"type\":\"error\",\"message\":\"" + EscapeJson(message) + "\"}");
-  }
-}
-
-// Registers one combination, or says which action another program holds it
-// for. A zero key leaves the action unbound.
-bool RegisterAction(int id, uint32_t key, uint32_t modifiers, const char* action) {
-  if (key == 0) return false;
-  if (RegisterHotKey(nullptr, id, modifiers | MOD_NOREPEAT, key)) return true;
-  PushEvent(std::string("{\"type\":\"hotkeyTaken\",\"action\":\"") + action + "\"}");
-  return false;
-}
-
-void PushHotkeyPress(uintptr_t id) {
-  if (id == kPauseHotkey) PushEvent("{\"type\":\"hotkey\",\"action\":\"pause\"}");
-  if (id == kResumeHotkey) PushEvent("{\"type\":\"hotkey\",\"action\":\"resume\"}");
-  // The frame is drawn on the application's say-so, not the key's: it knows
-  // whether the player asked for one and over which game.
-  if (id == kFrameOverlayHotkey) {
-    PushEvent("{\"type\":\"hotkey\",\"action\":\"frameOverlay\"}");
-  }
-}
-
-// Lets the player select an area while the snapshot key is held, then reads
-// it on a thread of its own, so the hotkeys keep answering meanwhile.
-// Returns false when a WM_QUIT arrived during the selection.
-bool TakeSnapshot(uint32_t key, const std::string& language) {
-  ScreenArea area;
-  const auto result = SelectScreenArea(key, &area, PushHotkeyPress);
-  if (result == SelectionResult::quit) return false;
-  if (result == SelectionResult::cancelled) return true;
-  if (snapshot_reader.joinable()) snapshot_reader.join();
-  PushEvent("{\"type\":\"snapshotReading\"}");
-  snapshot_reader = std::thread([area, language] {
-    // The shade has to leave the screen, and a game that lost the
-    // foreground to it has to draw itself again, before the area is copied.
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
-    std::string text;
-    std::string error;
-    if (RecognizeScreenArea(area, language, &text, &error)) {
-      PushEvent("{\"type\":\"snapshot\",\"text\":\"" + EscapeJson(text) + "\"}");
-    } else {
-      PushEvent("{\"type\":\"snapshot\",\"text\":\"\",\"failed\":true}");
-      PushOcrError(error, language);
-    }
-  });
-  return true;
-}
-
-// Lets the player draw the subtitle frame over the running game while the
-// frame key is held, and moves the capture into it once the key comes up.
-// The frame goes on being read where it was drawn -- nothing here reads the
-// area once -- and the new one reaches the settings as an event.
-// Returns false when a WM_QUIT arrived during the selection.
-bool DrawSubtitleFrame(uint32_t key, uint32_t process_id, OcrCapture* reader) {
-  ScreenArea area;
-  const auto result = SelectScreenArea(key, &area, PushHotkeyPress);
-  if (result == SelectionResult::quit) return false;
-  if (result == SelectionResult::cancelled) return true;
-  OcrRegion region;
-  // Zero is the screen itself: the frame is then measured against every
-  // monitor together rather than against a window.
-  const bool found = process_id == 0 ? RegionOfScreen(area, &region)
-                                     : RegionOfWindow(process_id, area, &region);
-  if (!found) {
-    PushEvent("{\"type\":\"subtitleFrame\",\"failed\":true}");
-    return true;
-  }
-  // The capture thread reads the frame on every scan, so it is enough to
-  // hand it the new one: the session is not torn down and started again.
-  if (reader != nullptr) reader->SetRegion(region);
-  PushEvent("{\"type\":\"subtitleFrame\",\"left\":" + flat_json::Number(region.left) +
-            ",\"top\":" + flat_json::Number(region.top) +
-            ",\"right\":" + flat_json::Number(region.right) +
-            ",\"bottom\":" + flat_json::Number(region.bottom) + "}");
-  return true;
-}
-
-void HotkeyLoop(HotkeyConfig config, std::promise<void>* ready) {
-  MSG message;
-  // Creates this thread's message queue, so a WM_QUIT posted from the
-  // outside cannot arrive before there is a queue to receive it.
-  PeekMessageW(&message, nullptr, WM_USER, WM_USER, PM_NOREMOVE);
-  hotkey_thread_id = GetCurrentThreadId();
-  const bool pause_ok =
-      RegisterAction(kPauseHotkey, config.pause_key, config.pause_modifiers, "pause");
-  const bool resume_ok =
-      RegisterAction(kResumeHotkey, config.resume_key, config.resume_modifiers, "resume");
-  const bool snapshot_ok =
-      RegisterAction(kSnapshotHotkey, config.snapshot_key, config.snapshot_modifiers, "snapshot");
-  const bool frame_ok =
-      RegisterAction(kFrameHotkey, config.frame_key, config.frame_modifiers, "frame");
-  const bool overlay_ok = RegisterAction(kFrameOverlayHotkey, config.frame_overlay_key,
-                                         config.frame_overlay_modifiers, "frameOverlay");
-  ready->set_value();
-  while (GetMessageW(&message, nullptr, 0, 0) > 0) {
-    if (message.message != WM_HOTKEY) continue;
-    if (message.wParam == kSnapshotHotkey) {
-      if (!TakeSnapshot(config.snapshot_key, config.snapshot_language)) break;
-      continue;
-    }
-    if (message.wParam == kFrameHotkey) {
-      if (!DrawSubtitleFrame(config.frame_key, config.frame_process_id,
-                             config.subtitle_reader.get())) {
-        break;
-      }
-      continue;
-    }
-    PushHotkeyPress(static_cast<uintptr_t>(message.wParam));
-  }
-  if (pause_ok) UnregisterHotKey(nullptr, kPauseHotkey);
-  if (resume_ok) UnregisterHotKey(nullptr, kResumeHotkey);
-  if (snapshot_ok) UnregisterHotKey(nullptr, kSnapshotHotkey);
-  if (frame_ok) UnregisterHotKey(nullptr, kFrameHotkey);
-  if (overlay_ok) UnregisterHotKey(nullptr, kFrameOverlayHotkey);
-}
-
-void StopHotkeys() {
-  std::lock_guard<std::mutex> lock(hotkey_mutex);
-  if (!hotkey_thread.joinable()) return;
-  PostThreadMessageW(hotkey_thread_id.load(), WM_QUIT, 0, 0);
-  hotkey_thread.join();
-  hotkey_thread_id = 0;
-  if (snapshot_reader.joinable()) snapshot_reader.join();
-}
-
-}  // namespace
 
 int32_t ld_hold_take(int32_t holding) {
   if (!loopback_capture) return -5;
@@ -559,22 +198,10 @@ int32_t ld_set_paused(int32_t value) {
   return 0;
 }
 
-namespace {
-
-// The frame drawn over the game, which outlives a session: the player asks
-// for it on the Screen page and it stays until they say otherwise.
-FrameOverlay frame_overlay;
-
-}  // namespace
-
 int32_t ld_show_frame(const char* config_json) {
   if (config_json == nullptr || config_json[0] == '\0') return -4;
-  const std::string config(config_json);
-  const OcrRegion region{JsonDouble(config, "ocrRegionLeft", 0.0),
-                         JsonDouble(config, "ocrRegionTop", 0.55),
-                         JsonDouble(config, "ocrRegionRight", 1.0),
-                         JsonDouble(config, "ocrRegionBottom", 1.0)};
-  return frame_overlay.Show(JsonUnsigned(config, "processId"), region) ? 0 : -8;
+  const auto config = flat_json::Object::Parse(config_json);
+  return frame_overlay.Show(config.Unsigned("processId"), RegionOf(config)) ? 0 : -8;
 }
 
 int32_t ld_hide_frame(void) {
@@ -583,250 +210,62 @@ int32_t ld_hide_frame(void) {
 }
 
 int32_t ld_set_hotkeys(const char* config_json) {
-  StopHotkeys();
-  if (config_json == nullptr || config_json[0] == '\0') return 0;
-  const std::string config(config_json);
-  HotkeyConfig hotkeys{JsonUnsigned(config, "frameOverlayKey"),
-                       JsonUnsigned(config, "frameOverlayModifiers"),
-                       JsonUnsigned(config, "pauseKey"),
-                       JsonUnsigned(config, "pauseModifiers"),
-                       JsonUnsigned(config, "resumeKey"),
-                       JsonUnsigned(config, "resumeModifiers"),
-                       JsonUnsigned(config, "snapshotKey"),
-                       JsonUnsigned(config, "snapshotModifiers"),
-                       JsonUnsigned(config, "frameKey"),
-                       JsonUnsigned(config, "frameModifiers"),
-                       JsonUnsigned(config, "frameProcessId")};
-  if (const auto language = JsonString(config, "snapshotLanguage"); !language.empty()) {
-    hotkeys.snapshot_language = language;
-  }
-  hotkeys.subtitle_reader = ocr_capture;
-  if (hotkeys.pause_key == 0 && hotkeys.resume_key == 0 && hotkeys.snapshot_key == 0 &&
-      hotkeys.frame_key == 0 && hotkeys.frame_overlay_key == 0) {
+  if (config_json == nullptr || config_json[0] == '\0') {
+    hotkeys.Stop();
     return 0;
   }
-  std::lock_guard<std::mutex> lock(hotkey_mutex);
-  std::promise<void> ready;
-  auto registered = ready.get_future();
-  hotkey_thread = std::thread(HotkeyLoop, hotkeys, &ready);
-  // The thread holds [ready] only until it has registered.
-  registered.wait();
+  const auto config = flat_json::Object::Parse(config_json);
+  HotkeyConfig keys{config.Unsigned("frameOverlayKey"),
+                    config.Unsigned("frameOverlayModifiers"),
+                    config.Unsigned("pauseKey"),
+                    config.Unsigned("pauseModifiers"),
+                    config.Unsigned("resumeKey"),
+                    config.Unsigned("resumeModifiers"),
+                    config.Unsigned("snapshotKey"),
+                    config.Unsigned("snapshotModifiers"),
+                    config.Unsigned("frameKey"),
+                    config.Unsigned("frameModifiers"),
+                    config.Unsigned("frameProcessId")};
+  if (auto language = config.String("snapshotLanguage"); !language.empty()) {
+    keys.snapshot_language = std::move(language);
+  }
+  keys.subtitle_reader = ocr_capture;
+  hotkeys.Start(std::move(keys));
   return 0;
 }
 
-namespace {
-
-// A PCM WAV file's format and samples, as far as playback needs them.
-// How much longer than its own length a clip may take to be reported done.
-constexpr ULONGLONG kPlaybackGraceMilliseconds = 5000;
-
-struct WaveClip {
-  WAVEFORMATEX format{};
-  std::vector<char> samples;
-};
-
-bool ReadWaveClip(const std::wstring& path, WaveClip& clip) {
-  HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
-                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-  if (file == INVALID_HANDLE_VALUE) return false;
-  LARGE_INTEGER size{};
-  std::vector<char> bytes;
-  bool ok = GetFileSizeEx(file, &size) && size.QuadPart > 12 && size.QuadPart < (1LL << 30);
-  if (ok) {
-    bytes.resize(static_cast<size_t>(size.QuadPart));
-    DWORD read = 0;
-    ok = ReadFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &read, nullptr) &&
-         read == bytes.size();
-  }
-  CloseHandle(file);
-  if (!ok || std::memcmp(bytes.data(), "RIFF", 4) != 0 ||
-      std::memcmp(bytes.data() + 8, "WAVE", 4) != 0) {
-    return false;
-  }
-  bool has_format = false;
-  size_t offset = 12;
-  while (offset + 8 <= bytes.size()) {
-    uint32_t length = 0;
-    std::memcpy(&length, bytes.data() + offset + 4, sizeof(length));
-    const size_t body = offset + 8;
-    const size_t available = std::min<size_t>(length, bytes.size() - body);
-    if (std::memcmp(bytes.data() + offset, "fmt ", 4) == 0 && available >= 16) {
-      // The first 16 bytes of the chunk are WAVEFORMATEX without cbSize.
-      std::memcpy(&clip.format, bytes.data() + body, 16);
-      clip.format.cbSize = 0;
-      has_format = true;
-    } else if (std::memcmp(bytes.data() + offset, "data", 4) == 0) {
-      clip.samples.assign(bytes.data() + body, bytes.data() + body + available);
-    }
-    offset = body + static_cast<size_t>(length) + (length & 1);
-  }
-  return has_format && clip.format.wFormatTag == WAVE_FORMAT_PCM && !clip.samples.empty();
-}
-
-// Every clip sounding right now. A card's recording may run for three
-// minutes, so what was started has to be stoppable; the list is what
-// ld_stop_wave reaches for.
-std::mutex sounding_mutex;
-std::vector<HWAVEOUT> sounding_devices;
-
-}  // namespace
-
-// Blocks until the clip has played, as PlaySound with SND_SYNC did. PlaySound
-// holds one sound per process and cuts off whatever is playing, so two
-// characters could never be heard at once; every call here opens a waveOut
-// stream of its own instead, and Windows mixes the ones that overlap.
 int32_t ld_play_wave(const char* utf8_path) {
   if (utf8_path == nullptr || utf8_path[0] == '\0') return -20;
-  WaveClip clip;
-  if (!ReadWaveClip(Wide(utf8_path), clip)) return -21;
-  HANDLE done = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-  if (done == nullptr) return -21;
-  HWAVEOUT device = nullptr;
-  if (waveOutOpen(&device, WAVE_MAPPER, &clip.format, reinterpret_cast<DWORD_PTR>(done), 0,
-                  CALLBACK_EVENT) != MMSYSERR_NOERROR) {
-    CloseHandle(done);
-    return -21;
-  }
-  {
-    std::lock_guard<std::mutex> lock(sounding_mutex);
-    sounding_devices.push_back(device);
-  }
-  WAVEHDR header{};
-  header.lpData = clip.samples.data();
-  header.dwBufferLength = static_cast<DWORD>(clip.samples.size());
-  int32_t result = -21;
-  if (waveOutPrepareHeader(device, &header, sizeof(header)) == MMSYSERR_NOERROR) {
-    if (waveOutWrite(device, &header, sizeof(header)) == MMSYSERR_NOERROR) {
-      // The event also fires when the device opens and closes, so the flag the
-      // driver sets is what says the clip is over. Waited for no longer than
-      // the clip lasts and a little more: a device pulled out mid-line may
-      // never set it, and the thread that plays the line -- and the place it
-      // holds among the voices that may sound at once -- was held for good.
-      const volatile DWORD& flags = header.dwFlags;
-      const ULONGLONG bytes_per_second = clip.format.nAvgBytesPerSec ? clip.format.nAvgBytesPerSec : 1;
-      const ULONGLONG deadline =
-          GetTickCount64() + clip.samples.size() * 1000 / bytes_per_second + kPlaybackGraceMilliseconds;
-      while ((flags & WHDR_DONE) == 0 && GetTickCount64() < deadline) WaitForSingleObject(done, 1000);
-      if ((flags & WHDR_DONE) != 0) {
-        result = 0;
-      } else {
-        // Handed back by the device, so the header can be let go of.
-        waveOutReset(device);
-        result = -22;
-      }
-    }
-    waveOutUnprepareHeader(device, &header, sizeof(header));
-  }
-  {
-    // Taken off the list before the handle is closed: whoever stops a clip
-    // must not be left holding a device that no longer exists.
-    std::lock_guard<std::mutex> lock(sounding_mutex);
-    sounding_devices.erase(
-        std::remove(sounding_devices.begin(), sounding_devices.end(), device),
-        sounding_devices.end());
-  }
-  waveOutClose(device);
-  CloseHandle(done);
-  return result;
+  return PlayWave(encoding::Wide(utf8_path));
 }
 
-// Ends whatever is sounding. Resetting the device marks its buffer done, so
-// the call playing it returns as if the clip had finished.
-int32_t ld_stop_wave(void) {
-  std::lock_guard<std::mutex> lock(sounding_mutex);
-  for (const HWAVEOUT device : sounding_devices) waveOutReset(device);
-  return static_cast<int32_t>(sounding_devices.size());
-}
+int32_t ld_stop_wave(void) { return StopWaves(); }
 
 int32_t ld_start(const char* config_json) {
   if (running) return -3;
   if (config_json == nullptr || config_json[0] == '\0') return -4;
   running = true;
   paused = false;
-  PushEvent("{\"type\":\"state\",\"state\":\"starting\"}");
-  const std::string config(config_json);
-  const uint32_t process_id = JsonUnsigned(config, "processId");
-  const std::string capture_directory = JsonString(config, "captureDirectory");
-  const std::string capture_mode = JsonString(config, "captureMode");
-  const std::string audio_source = JsonString(config, "audioSource");
-  // Reading the whole screen needs no window, and so no process to find it
-  // by -- one may still be named, to be turned down while the reading runs.
-  const bool whole_screen = JsonString(config, "ocrSource") == "screen";
-  // The screen read while the game is listened to as well: the words come
-  // off the frame, and the voice heard as they appeared is what colours
-  // them. Neither capture knows about the other.
-  const bool reads_screen = capture_mode == "ocr" || capture_mode == "ocrAndAudio";
-  const bool hears_voices = capture_mode == "ocrAndAudio";
-  // A session that captures nothing at all: the worker is up and the keys
-  // are registered, so a snippet the player picks out is read and voiced,
-  // and nothing is scanned until they ask. It needs no window and no
-  // directory to write segments into.
-  const bool captures_nothing = capture_mode == "none";
-  // Hearing the voices needs the game itself, whatever the frame is read
-  // out of: the sound is taken from that process.
-  const bool needs_process = reads_screen
-      ? (!whole_screen || hears_voices)
-      : (!captures_nothing && audio_source != "system");
-  const bool needs_directory = hears_voices || (!reads_screen && !captures_nothing);
-  if ((needs_process && process_id == 0) || (needs_directory && capture_directory.empty())) {
+  EventJson("state").Text("state", "starting").Push();
+  const StartConfig start = ParseStartConfig(config_json);
+  if ((start.NeedsProcess() && start.process_id == 0) ||
+      (start.NeedsDirectory() && start.capture_directory.empty())) {
     running = false;
     return -5;
   }
-  if (captures_nothing) {
-    // Nothing to start; the state below says the engine is up.
-  } else if (reads_screen) {
-    ocr_capture = std::make_shared<OcrCapture>();
-    const OcrRegion region{JsonDouble(config, "ocrRegionLeft", 0.0),
-                           JsonDouble(config, "ocrRegionTop", 0.55),
-                           JsonDouble(config, "ocrRegionRight", 1.0),
-                           JsonDouble(config, "ocrRegionBottom", 1.0)};
-    std::string ocr_language = JsonString(config, "ocrLanguage");
-    if (ocr_language.empty()) ocr_language = "en";
-    if (!ocr_capture->Start(
-            whole_screen ? 0 : process_id, region, ocr_language,
-            [](const std::string& recognized_text) {
-              if (paused) return;
-              PushEvent("{\"type\":\"ocrText\",\"text\":\"" +
-                        EscapeJson(recognized_text) + "\"}");
-            },
-            [ocr_language](const std::string& message) { PushOcrError(message, ocr_language); })) {
+  if (start.reads_screen && !StartOcrSession(start)) {
+    running = false;
+    return -7;
+  }
+  if (start.HearsAudio() && !StartAudioSession(start)) {
+    if (ocr_capture) {
+      ocr_capture->Stop();
       ocr_capture.reset();
-      running = false;
-      return -7;
     }
+    running = false;
+    return -6;
   }
-  if (!captures_nothing && (!reads_screen || hears_voices)) {
-    loopback_capture = std::make_unique<ProcessLoopbackCapture>();
-    const bool capture_system = audio_source == "system";
-    const uint32_t capture_process_id =
-        capture_system ? GetCurrentProcessId() : process_id;
-    // Only a named process is ever turned down; the whole default output is
-    // captured as it plays.
-    captured_process_id = capture_system ? 0 : process_id;
-    if (!loopback_capture->Start(
-            capture_process_id, capture_system, Wide(capture_directory),
-            [](const std::string& filename) {
-              // Queued even while paused: the Dart side drops a segment that
-              // arrives during the pause and deletes its file, so the native
-              // library never deletes files itself.
-              PushEvent("{\"type\":\"audioSegment\",\"path\":\"" +
-                        EscapeJson(filename) + "\"}");
-            },
-            [](const std::string& message) {
-              PushEvent("{\"type\":\"error\",\"message\":\"" +
-                        EscapeJson(message) + "\"}");
-            })) {
-      loopback_capture.reset();
-      captured_process_id = 0;
-      if (ocr_capture) {
-        ocr_capture->Stop();
-        ocr_capture.reset();
-      }
-      running = false;
-      return -6;
-    }
-  }
-  PushEvent("{\"type\":\"state\",\"state\":\"listening\"}");
+  EventJson("state").Text("state", "listening").Push();
   return 0;
 }
 
@@ -834,7 +273,7 @@ int32_t ld_stop(void) {
   // The keys belong to the session and go with it. The thread holds its own
   // reference to the reading it moves, so the order below is not what keeps
   // a selection still on screen out of freed memory.
-  StopHotkeys();
+  hotkeys.Stop();
   if (loopback_capture) {
     loopback_capture->Stop();
     loopback_capture.reset();
@@ -846,18 +285,12 @@ int32_t ld_stop(void) {
   }
   running = false;
   paused = false;
-  PushEvent("{\"type\":\"state\",\"state\":\"idle\"}");
+  EventJson("state").Text("state", "idle").Push();
   ld_restore_process_volumes();
   return 0;
 }
 
-int32_t ld_poll_event_json(char* output, int32_t capacity) {
-  std::lock_guard<std::mutex> lock(event_mutex);
-  if (events.empty()) return 0;
-  const int32_t result = WriteString(events.front(), output, capacity);
-  if (output != nullptr && capacity > result) events.pop_front();
-  return result;
-}
+int32_t ld_poll_event_json(char* output, int32_t capacity) { return PopEvent(output, capacity); }
 
 // A file the player dropped onto a card, brought into the shape every
 // other recording the converter is shown comes in. The work is Windows's
@@ -867,7 +300,8 @@ int32_t ld_decode_audio(const char* utf8_path, const char* utf8_output_path) {
   if (utf8_path == nullptr || utf8_path[0] == '\0') return -30;
   if (utf8_output_path == nullptr || utf8_output_path[0] == '\0') return -30;
   double seconds = 0;
-  const int32_t result = DecodeAudioFile(Wide(utf8_path), Wide(utf8_output_path), &seconds);
+  const int32_t result =
+      DecodeAudioFile(encoding::Wide(utf8_path), encoding::Wide(utf8_output_path), &seconds);
   if (result != 0) {
     // The decoder's own codes sit apart from the pipeline's.
     return result == kDecodeUnsupported ? -31 : (result == kDecodeNoAudio ? -32 : -33);
@@ -884,6 +318,7 @@ const char* ld_error_message(int32_t error_code) {
     case -5: return "Pipeline process or capture directory is invalid";
     case -6: return "Cannot start the Windows process loopback worker";
     case -7: return "Cannot start the Windows OCR worker";
+    case -8: return "Cannot show the subtitle frame";
     case -10: return "Cannot create Windows audio device enumerator";
     case -11: return "Cannot open the default render endpoint";
     case -12: return "Cannot activate the audio session manager";

@@ -1634,7 +1634,7 @@ abstract final class AppTheme {
 
 ### `native/`
 
-- [ ] **`lore_dub_native.cpp` — файл-бог:** 881 строка, 15 глобалов, 43
+- [x] **`lore_dub_native.cpp` — файл-бог:** 881 строка, 15 глобалов, 43
       условных директивы; ABI, очередь событий, JSON, UTF-8, список
       процессов, проба DXGI, громкость сессий, горячие клавиши и waveOut в
       одном месте. → `event_queue.{h,cpp}` со строителем `EventJson` (вместо
@@ -1645,6 +1645,18 @@ abstract final class AppTheme {
       `wave_player.cpp`; в исходном файле остаётся только ABI. `ld_start`
       (`:728–804`) → `ParseStartConfig` + `StartOcrSession` +
       `StartAudioSession`. Каждый файл — строка в `hook/build.dart:15–21`.
+      *Сделано:* 901 строка стала 336 — ABI, глобалы сессии и `ld_start`,
+      разобранный на `ParseStartConfig` (конфиг читается один раз, а не по
+      разу на ключ), `StartOcrSession` и `StartAudioSession`. Рядом —
+      `event_queue` с `EventJson` (все склейки событий, и в клавишах тоже),
+      `process_list`, `graphics_probe` (с мониторами), `session_volume`
+      (`DuckProcess` отвечает, во сколько раз стал тише звук, а не лезет в
+      захват сам), `hotkeys` (`class HotkeyThread`), `wave_player`,
+      `text_encoding.h` (один `Utf8`/`Wide` вместо трёх), `abi_buffer.h`
+      (его берёт и заглушка). Под `/W4 /WX` чисто. На собранной DLL список
+      процессов совпал со старой байт в байт, мониторы, проба графики,
+      декодирование, проигрывание, захват, клавиши и OCR — как прежде.
+      Попутно у `-8` (рамка не показана) появился текст ошибки.
 - [x] **Конфиг через границу не плоский, вопреки `CLAUDE.md`.** Натив ищет
       ключ первой подстрокой по всему документу (`:121–170`), а Dart шлёт
       весь конфиг с вложенными объектами (`app_repository.dart:191`,

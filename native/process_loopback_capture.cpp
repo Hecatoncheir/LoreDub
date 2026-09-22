@@ -4,6 +4,7 @@
 #include "process_loopback_capture.h"
 
 #include "phrase_segmenter.h"
+#include "text_encoding.h"
 #include "wave_file.h"
 
 #include <audioclient.h>
@@ -73,17 +74,6 @@ class RoApartment {
 std::wstring SegmentPath(const std::wstring& directory, uint64_t sequence) {
   return directory + L"\\segment-" + std::to_wstring(GetCurrentProcessId()) + L"-" +
          std::to_wstring(sequence) + L".wav";
-}
-
-/// A wide Windows path as the UTF-8 the Dart side reads.
-std::string Utf8Path(const std::wstring& path) {
-  const int size =
-      WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, nullptr, 0, nullptr, nullptr);
-  if (size <= 0) return {};
-  std::string utf8(static_cast<size_t>(size), '\0');
-  WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, utf8.data(), size, nullptr, nullptr);
-  utf8.pop_back();  // The terminator WideCharToMultiByte counted in.
-  return utf8;
 }
 
 std::string WindowsError(HRESULT result) {
@@ -298,7 +288,7 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
     if (holding) held_samples_.store(segmenter.Gathered(), std::memory_order_relaxed);
     if (auto phrase = segmenter.Finish(holding, capture::Clock::now())) {
       const std::wstring filename = SegmentPath(output_directory, ++sequence);
-      if (WriteWave(filename, std::move(*phrase))) on_segment(Utf8Path(filename));
+      if (WriteWave(filename, std::move(*phrase))) on_segment(encoding::Utf8(filename));
     }
   }
   client->Stop();
