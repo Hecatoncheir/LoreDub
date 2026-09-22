@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -16,11 +15,13 @@ import '../../domain/spoken_language.dart';
 import '../../domain/built_voice.dart';
 import '../../domain/failure.dart';
 import '../../domain/glossary.dart';
-import 'worker_channel.dart';
 import 'worker_arguments.dart';
 import '../../domain/session_config.dart';
 import 'whisper_runner.dart';
 import 'process_launcher.dart';
+import 'worker_process.dart';
+
+export 'worker_process.dart' show WorkerDiagnostics, decodeWorkerLines;
 
 class InferenceResult {
   const InferenceResult({
@@ -72,40 +73,6 @@ String? parseDetectedLanguage(String output, {double minimumProbability = 0.5}) 
   return match.group(1);
 }
 
-/// Reads a worker stream as UTF-8 lines. Malformed bytes are replaced instead
-/// of tearing the stream down: the worker is forced into UTF-8, but a stray
-/// byte from an unexpected interpreter must not silently swallow every reply.
-Stream<String> decodeWorkerLines(Stream<List<int>> source) =>
-    source.transform(const Utf8Decoder(allowMalformed: true)).transform(const LineSplitter());
-
-/// Keeps the last stderr lines of the worker so that a crash can be reported
-/// with the reason the interpreter printed instead of a bare exit code. The
-/// application has no console, so this is the only place the user can see it.
-class WorkerDiagnostics {
-  WorkerDiagnostics({this.limit = 4});
-
-  final int limit;
-  final _lines = <String>[];
-
-  bool get isEmpty => _lines.isEmpty;
-
-  String get recentOutput => _lines.join(' | ');
-
-  void clear() => _lines.clear();
-
-  void add(String line) {
-    final value = line.trim();
-    if (value.isEmpty) return;
-    _lines.add(value);
-    if (_lines.length > limit) _lines.removeAt(0);
-  }
-
-  /// The reason the worker gave for dying, if it gave one.
-  LoreDubFailure describeExit(int code) => _lines.isEmpty
-      ? LoreDubFailure(FailureCode.workerExitedSilently, detail: '$code')
-      : LoreDubFailure(FailureCode.workerExited, detail: '$code$exitDetailSeparator$recentOutput');
-}
-
 /// What a start asks of the machine before the interpreter runs: both
 /// binaries found, and the worker's script written out where it can be run.
 typedef WorkerFiles = ({String python, String script, String work, String? whisper});
@@ -134,14 +101,8 @@ class LocalInferenceService {
   /// worker is not coming up at all.
   final Duration startupLimit;
 
-  Process? _worker;
-  StreamSubscription<String>? _stdoutSubscription;
-  StreamSubscription<String>? _stderrSubscription;
-  final _diagnostics = WorkerDiagnostics();
-  late final _channel = WorkerChannel(
-    lastWords: () => _diagnostics.isEmpty ? null : _diagnostics.recentOutput,
-  );
-  Completer<void>? _workerReady;
+  /// The worker up or coming up, or null when there is none.
+  WorkerProcess? _worker;
   String? _whisperExecutable;
 
   /// Goes up with every start and every stop, so that a start coming back
@@ -236,7 +197,6 @@ class LocalInferenceService {
     _throwIfSuperseded(generation);
     _speechDevice = null;
     _converterDevice = null;
-    _diagnostics.clear();
     // A language the user named is used as is; anything else is detected once
     // on the first phrase and then reused.
     _spokenLanguage = plan.sourceLanguage == autoSpokenLanguage ? null : plan.sourceLanguage;
@@ -251,46 +211,47 @@ class LocalInferenceService {
     _throwIfSuperseded(generation);
     _whisperExecutable = files.whisper;
     onStartupProgress?.call(0.05, 'python');
-    final worker = await _startWorker(
+    final process = await _startWorker(
       files.python,
       workerArguments(plan, script: files.script, work: files.work, load: load),
     );
     if (generation != _generation) {
       // Stopped while the interpreter was coming up. The stop found no
       // worker to end, so this one is ended here, where it is still held.
-      _discard(worker);
+      WorkerProcess.discard(process);
       throw const LoreDubFailure(FailureCode.pipelineStopped);
     }
-    // Made only now, with nothing waited for before it is listened to: a
-    // stop fails it, and a failure nobody hears is an error of its own.
-    final ready = Completer<void>();
+    // Held from the moment it is listened to: a stop from here on ends it,
+    // and fails the handshake it is waiting for.
+    final worker = WorkerProcess(
+      process,
+      onProgress: (value, stage) => onStartupProgress?.call(value, stage),
+      onDied: _onWorkerDied,
+    );
     _worker = worker;
-    _workerReady = ready;
-    _listenTo(worker, ready);
-    try {
-      await ready.future.timeout(startupLimit);
-    } on TimeoutException {
-      final said = _diagnostics.isEmpty ? null : _diagnostics.recentOutput;
-      // Given up on, it would go on loading — and holding what it loaded —
-      // with nobody left to end it.
-      await _endWorker();
-      throw LoreDubFailure(FailureCode.workerStartTimeout, detail: said);
-    }
+    final said = await worker.handshake(startupLimit);
     _throwIfSuperseded(generation);
+    _translationDevice = said['device'] as String?;
+    _speechDevice = said['speechDevice'] as String?;
+    _converterDevice = said['converterDevice'] as String?;
+  }
+
+  /// The worker died on its own. Let go of, so the next phrase is told there
+  /// is no worker: left in place it was written into a pipe nobody reads,
+  /// and every phrase after it waited out its two minutes while the queue
+  /// behind them grew. A start still waiting has been told already, and
+  /// fails with the reason; a session already running has nobody waiting on
+  /// the worker as a whole, so whoever holds it is told.
+  void _onWorkerDied(WorkerProcess worker, LoreDubFailure error, {required bool starting}) {
+    if (!identical(_worker, worker)) return;
+    _worker = null;
+    if (!starting) onWorkerLost?.call(error);
   }
 
   /// A start that was stopped, or replaced by a later one, ends here: what
   /// it was waiting for came back to nobody.
   void _throwIfSuperseded(int generation) {
     if (generation != _generation) throw const LoreDubFailure(FailureCode.pipelineStopped);
-  }
-
-  /// Ends a worker nobody is going to talk to. What it printed is read to
-  /// the end and dropped: unread, it keeps the pipes of a dead process open.
-  static void _discard(Process worker) {
-    worker.kill();
-    worker.stdout.drain<void>().ignore();
-    worker.stderr.drain<void>().ignore();
   }
 
   /// The real [WorkerPreparation]. The work directory is the application's
@@ -333,83 +294,6 @@ class LocalInferenceService {
     final bytes = await rootBundle.load(asset);
     await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
     return file;
-  }
-
-  /// Reads what [worker] says and answers [ready] when it has started — or
-  /// fails it, and every request in flight, if the worker dies first.
-  ///
-  /// The worker and the start are named rather than read from the fields. A
-  /// stop kills the process and returns before Windows has finished with it,
-  /// so for a moment two workers exist: the one being taken down and the one
-  /// the next screen is starting. Unnamed, the dead one's exit code failed
-  /// the live one's start — and that start is the minutes-long one, so a
-  /// session begun after listening to a card gave "the worker exited with -1
-  /// and said nothing" every time.
-  void _listenTo(Process worker, Completer<void> ready) {
-    // IOSink defaults to the system encoding, which would corrupt any
-    // non-ASCII phrase on the way into the worker.
-    worker.stdin.encoding = utf8;
-    _stdoutSubscription = decodeWorkerLines(worker.stdout).listen((line) {
-      // A worker on its way out can still get a line in, and it answers for
-      // nobody: its handshake would end the start of the one replacing it.
-      if (identical(_worker, worker)) _handleWorkerLine(line);
-    });
-    _stderrSubscription = decodeWorkerLines(worker.stderr).listen((line) {
-      _diagnostics.add(line);
-      stderr.writeln('[inference] $line');
-    });
-    unawaited(worker.exitCode.then((code) => _onWorkerExit(worker, ready, code)));
-  }
-
-  /// The worker is gone. Whoever was waiting on it is told why, unless it is
-  /// a worker this service has already replaced.
-  void _onWorkerExit(Process worker, Completer<void> ready, int code) {
-    if (!identical(_worker, worker)) return;
-    final error = _diagnostics.describeExit(code);
-    // Let go of, so the next phrase is told there is no worker. Left in
-    // place it was written into a pipe nobody reads, and every phrase after
-    // it waited out its two minutes while the queue behind them grew.
-    _worker = null;
-    _workerReady = null;
-    final starting = !ready.isCompleted;
-    if (starting) ready.completeError(error);
-    _channel.failAll(error);
-    // A start still waiting has just been told, and fails with the reason.
-    // A session already running has nobody waiting on the worker as a whole.
-    if (!starting) onWorkerLost?.call(error);
-  }
-
-  /// One line the worker wrote: its handshake, a step of its startup, or
-  /// the answer to a request somebody is waiting for.
-  void _handleWorkerLine(String line) {
-    try {
-      final message = jsonDecode(line) as Map<String, Object?>;
-      switch (message['type']) {
-        case 'ready':
-          _onWorkerReady(message);
-        case 'progress':
-          onStartupProgress?.call(
-            (message['value']! as num).toDouble(),
-            message['stage'] as String? ?? '',
-          );
-        default:
-          _channel.answer(message);
-      }
-    } catch (error) {
-      // Keep the offending line: a reply nobody can parse would otherwise only
-      // show up as a request timeout two minutes later.
-      _diagnostics.add('unreadable worker reply: $line');
-      stderr.writeln('[inference] invalid worker response: $error');
-    }
-  }
-
-  /// The worker has loaded its models and says where it put them.
-  void _onWorkerReady(Map<String, Object?> message) {
-    _translationDevice = message['device'] as String?;
-    _speechDevice = message['speechDevice'] as String?;
-    _converterDevice = message['converterDevice'] as String?;
-    final ready = _workerReady;
-    if (ready != null && !ready.isCompleted) ready.complete();
   }
 
   /// The audio context `-ac` is given when recognition is asked to hurry.
@@ -599,7 +483,7 @@ class LocalInferenceService {
   Future<Map<String, Object?>> _ask(Map<String, Object?> body, {required Duration timeout}) async {
     final worker = _worker;
     if (worker == null) throw const LoreDubFailure(FailureCode.workerNotRunning);
-    return _channel.request(worker.stdin, body, timeout: timeout);
+    return worker.request(body, timeout: timeout);
   }
 
   /// Tells a running worker something that changes how it reads from now
@@ -608,7 +492,7 @@ class LocalInferenceService {
   Future<void> _tell(Map<String, Object?> body) async {
     final worker = _worker;
     if (worker == null) return;
-    await _channel.request(worker.stdin, body, timeout: const Duration(seconds: 10));
+    await worker.request(body, timeout: const Duration(seconds: 10));
   }
 
   /// [originalWavePath] is the captured phrase, when there is one. The
@@ -657,35 +541,11 @@ class LocalInferenceService {
   /// Fails whoever is waiting on the worker and takes it down. A start does
   /// this to the worker it replaces, which is not a stop of the start itself.
   Future<void> _endWorker() async {
-    const stopped = LoreDubFailure(FailureCode.pipelineStopped);
-    _channel.failAll(stopped);
-    // A start waiting for the handshake is told now. Left unanswered it sat
-    // out the whole startup limit: the exit of a worker already let go of is
-    // nobody's, so nothing else was ever going to end that wait.
-    final ready = _workerReady;
-    if (ready != null && !ready.isCompleted) ready.completeError(stopped);
+    // Let go of before it is waited on: whatever else asks for the worker
+    // while it dies must be told there is none, not handed the one on its
+    // way out.
     final worker = _worker;
-    final listening = [_stdoutSubscription, _stderrSubscription];
-    // Cleared before the process is waited on: whatever else asks for the
-    // worker while it dies must be told there is none, not handed the one
-    // on its way out. The subscriptions with it — the next start may be
-    // listening to its own worker by the time this one has died, and those
-    // are not this call's to cancel.
     _worker = null;
-    _workerReady = null;
-    _stdoutSubscription = null;
-    _stderrSubscription = null;
-    await worker?.stdin.close();
-    worker?.kill();
-    // Waited for, so the next worker starts on a machine this one has
-    // finished with: the extracted script, the work directory and the
-    // models it holds are all things two of them would share.
-    await worker?.exitCode.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => -1,
-    );
-    for (final subscription in listening) {
-      await subscription?.cancel();
-    }
+    await worker?.end();
   }
 }
