@@ -2,19 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/artifact_downloader.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
-import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
-import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/app_release.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
@@ -162,23 +156,7 @@ Matcher _sameAs(UpdateState expected) => isA<UpdateState>()
 
 /// The releases, answered in memory: nothing reaches GitHub, nothing is
 /// downloaded, and nothing closes the test runner.
-class _Releases extends UpdateRepository {
-  _Releases()
-    : super(
-        UpdateService(
-          client: MockClient((_) async => http.Response('offline', 503)),
-          packageInfo: Future.value(
-            PackageInfo(
-              appName: 'LoreDub',
-              packageName: 'lore_dub',
-              version: '0.2.1',
-              buildNumber: '',
-            ),
-          ),
-        ),
-        NotificationService(plugin: FlutterLocalNotificationsPlugin()),
-      );
-
+class _Releases extends Fake implements UpdateRepository {
   AppRelease? latest;
   bool fails = false;
   final proxies = <String>[];

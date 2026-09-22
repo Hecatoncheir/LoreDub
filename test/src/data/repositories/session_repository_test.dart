@@ -325,7 +325,7 @@ void main() {
 
 /// An engine whose starts end when the test says so, the way a real one ends
 /// minutes after it was asked.
-class _SlowEngine extends NativeEngineService {
+class _SlowEngine extends Fake implements NativeEngineService {
   final starts = <Completer<void>>[];
   int stops = 0;
   int hotkeys = 0;
@@ -405,19 +405,19 @@ class _SlowEngine extends NativeEngineService {
 
 /// A glossary whose session file is written when the test says so: the one
 /// wait a start makes before it calls the engine that a test can hold.
-class _SlowGlossary extends GlossaryService {
+class _SlowGlossary extends Fake implements GlossaryService {
   final written = Completer<String>();
 
   @override
   Future<String> sessionFile() => written.future;
 }
 
-class _Characters extends CharacterService {
+class _Characters extends Fake implements CharacterService {
   @override
   Future<String> file() async => 'characters.json';
 }
 
-class _Graph extends PipelineGraphService {
+class _Graph extends Fake implements PipelineGraphService {
   @override
   Future<PipelineLayout> load() async => const PipelineLayout(silent: {'guard'});
 }

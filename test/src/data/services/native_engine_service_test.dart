@@ -614,8 +614,24 @@ class _FakeNative extends NativeBridge {
 }
 
 /// A worker that comes up at once and answers a line when the test says.
-class _HeldInference extends LocalInferenceService {
+class _HeldInference extends Fake implements LocalInferenceService {
   final asked = <Completer<InferenceResult>>[];
+
+  @override
+  void Function(double value, String stage)? onStartupProgress;
+
+  @override
+  void Function(LoreDubFailure failure)? onWorkerLost;
+
+  // Where the worker's stages run, which a session's first state reports.
+  @override
+  ComputeBackend? get translationBackend => null;
+
+  @override
+  ComputeBackend? get speechBackend => null;
+
+  @override
+  ComputeBackend? get voiceConversionBackend => null;
 
   @override
   Future<void> start(

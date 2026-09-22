@@ -4,9 +4,6 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/glossary_repository.dart';
-import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
-import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
@@ -200,9 +197,7 @@ void main() {
 }
 
 /// The glossary's file with no disk behind it.
-class _Disk extends GlossaryRepository {
-  _Disk() : super(SettingsRepository(SettingsService()), NativeEngineService());
-
+class _Disk extends Fake implements GlossaryRepository {
   final saved = <Glossary>[];
   final exported = <(String, Glossary)>[];
   List<String> read = const [];

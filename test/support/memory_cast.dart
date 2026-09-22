@@ -4,10 +4,11 @@
 import 'package:lore_dub/src/data/services/character_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/domain/character.dart';
+import 'package:mocktail/mocktail.dart';
 
 /// The cast's files with no disk behind them: the cards, the clips kept
 /// beside them, and what an import would read.
-class MemoryCharacters extends CharacterService {
+class MemoryCharacters extends Fake implements CharacterService {
   CharacterLibrary stored = CharacterLibrary.empty;
   CharacterLibrary incoming = CharacterLibrary.empty;
 
@@ -46,7 +47,7 @@ class MemoryCharacters extends CharacterService {
 
 /// An engine that only listens to what a running worker would be told about
 /// the cast: who reads whom, and which cards are out of the mix.
-class TellingEngine extends NativeEngineService {
+class TellingEngine extends Fake implements NativeEngineService {
   /// What a running worker was told to read anew, without a restart.
   final told = <(String, String?)>[];
 

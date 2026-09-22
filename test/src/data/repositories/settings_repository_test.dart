@@ -127,7 +127,7 @@ void main() {
 }
 
 /// A disk that holds every write until the test lets it go.
-class _HeldDisk extends SettingsService {
+class _HeldDisk extends Fake implements SettingsService {
   final writes = <AppSettings>[];
   final _held = <Completer<void>>[];
 

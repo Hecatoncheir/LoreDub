@@ -156,7 +156,7 @@ void main() {
 }
 
 /// The settings file with no disk behind it.
-class _Disk extends SettingsService {
+class _Disk extends Fake implements SettingsService {
   AppSettings? stored;
 
   @override

@@ -1782,7 +1782,7 @@ abstract final class AppTheme {
       страниц — в `test/support/dashboard_harness.dart`. Ни один тест не
       переписан; 931 зелёный, как и до разбиения, а прогон стал короче:
       файлы идут параллельно.
-- [ ] Фейки наследуют **конкретные** репозитории
+- [x] Фейки наследуют **конкретные** репозитории
       (`_CastRepository extends AppRepository`,
       `_GraphRepository extends AppRepository`,
       `_SlowStartRepository extends AppRepository`; `_FixedModelRepository`
@@ -1790,6 +1790,19 @@ abstract final class AppTheme {
       После разреза `AppRepository` (этап 4) у репозиториев появляются
       интерфейсы, фейки переезжают в `test/support/fakes/`, по одному на
       интерфейс.
+      *Сделано без интерфейсов в `lib/`:* Dart даёт `implements` у любого
+      класса, а `Fake` из `flutter_test` бросает на всём непереопределённом
+      — этого и добивался пункт, без двенадцати абстракций ради тестов.
+      Ни один фейк больше не наследует боевой репозиторий или сервис.
+      Общие — в `test/support/fakes/` (`FakeSystemRepository` вместо трёх
+      `_Machine`, `FakeModelRepository` вместо двух `_FixedModelRepository`
+      и ещё двух, `FakeRuntimeRepository` вместо четырёх,
+      `FakeSessionRepository` вместо двух `_Engine`, `MemorySchemes` вместо
+      его копии `_Schemes`, `MemoryVoiceBank` вместо `_Banks`); одноразовые
+      остались в своих файлах, но тоже на `Fake`. Нашлось одно место, где
+      тест опирался на боевой код: пауза по клавише доходила до настоящего
+      `pause()`, и что захвату сказали, никто не проверял — теперь
+      проверяет.
 - [x] `bloc_test` 10 + `mocktail`: переходы — `blocTest(build:, seed:, act:,
       expect:)`, виджет-тесты — `MockBloc` + `whenListen`. В тестах 98 мест
       с `seed()` / `PipelineGraphSeeded` / `DashboardView(cubits:)`, поэтому
