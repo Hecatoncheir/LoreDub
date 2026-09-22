@@ -1229,16 +1229,25 @@ GitHub Actions сверяет три версии, собирает устано
 ## Структура проекта
 
 ```text
-assets/runtime/              постоянный воркер: Marian, Vosk, OpenVoice
+assets/runtime/              воркер: протокол, звук, голоса, текст дубляжа, Marian, Vosk, Kokoro, OpenVoice
 assets/branding/             иконка и фирменные материалы
 assets/fonts/                Nunito, Nunito Sans и JetBrains Mono (OFL)
 docs/screenshots/            снимки экранов для README и сайта
 lib/l10n/                    словари интерфейса, русский — исходный
-lib/src/data/services/       оркестрация, нативный мост, хранилище моделей
-lib/src/ui/                  панель управления и менеджер моделей
-native/                      захват процесса, VAD, громкость, воспроизведение
-hook/                        хук сборки Dart Native Assets
-tool/ffigen.dart             генерация FFI-биндингов
+lib/src/composition.dart     сборка сервисов и репозиториев, один раз на запуск
+lib/src/domain/              чистые значения и решения: настройки, сессии, граф, словарь, устройства
+lib/src/data/services/       файлы, загрузки, воркер, whisper, нативный мост
+lib/src/data/repositories/   то, что экраны читают и пишут: настройки, установленное, состав, сессии
+lib/src/ui/<экран>/          по папке на экран: live, screen_text, characters, glossary, models,
+                             settings, graph; shell — рамка вокруг них, common — общее, theme — роли
+lib/src/ui/dashboard/cubits/ блоки экранов и три кубита-сеттера
+native/                      C ABI, захват процесса и нарезка фраз, OCR, клавиши, громкость, звук
+native/tests/                тесты натива, собираются cl
+hook/                        хук сборки Dart Native Assets (под Windows — натив, иначе заглушка)
+tool/                        ffigen, храповики сложности и покрытия, релизные заметки, натив
+test/src/ui/<экран>/         тест экрана целиком, по файлу на экран; блоки — в dashboard/
+test/support/                постановка дашборда и общие фейки (fakes/)
+test/runtime/                тесты воркера на unittest
 test/screenshots.dart        перерисовка снимков экранов
 installer/                   описание Inno Setup
 scripts/                     скрипты runtime и упаковки под Windows

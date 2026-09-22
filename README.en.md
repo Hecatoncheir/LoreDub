@@ -1263,16 +1263,25 @@ section at the [LoreDub releases page](https://github.com/Hecatoncheir/LoreDub/r
 ## Source layout
 
 ```text
-assets/runtime/              persistent worker: Marian, Vosk, OpenVoice
+assets/runtime/              the worker: protocol, sound, voices, dubbing text, Marian, Vosk, Kokoro, OpenVoice
 assets/branding/             LoreDub icon and brand assets
 assets/fonts/                bundled Nunito, Nunito Sans and JetBrains Mono (OFL)
 docs/screenshots/            screen captures used by the READMEs and the page
 lib/l10n/                    interface translations, Russian is the source
-lib/src/data/services/       orchestration, native bridge, model storage
-lib/src/ui/                  Windows dashboard and model manager
-native/                      process-loopback capture, VAD, volume, playback
-hook/                        Dart Native Assets compiler hook
-tool/ffigen.dart             generated FFI bindings
+lib/src/composition.dart     the services and repositories, built once a run
+lib/src/domain/              plain values and decisions: settings, sessions, graph, glossary, devices
+lib/src/data/services/       files, downloads, the worker, whisper, the native bridge
+lib/src/data/repositories/   what the screens read and write: settings, installs, cast, sessions
+lib/src/ui/<screen>/         a folder per screen: live, screen_text, characters, glossary, models,
+                             settings, graph; shell is the frame, common is shared, theme the roles
+lib/src/ui/dashboard/cubits/ the screens' blocs and three setter cubits
+native/                      the C ABI, process capture and phrase cutting, OCR, keys, volume, sound
+native/tests/                the native library's own tests, built with cl
+hook/                        Dart Native Assets hook (the native library on Windows, a stub elsewhere)
+tool/                        ffigen, the complexity and coverage ratchets, release notes, native checks
+test/src/ui/<screen>/        a whole screen, a file per screen; the blocs are in dashboard/
+test/support/                the dashboard's staging and the shared fakes (fakes/)
+test/runtime/                the worker's tests, on unittest
 test/screenshots.dart        redraws the screen captures
 installer/                   Inno Setup definition
 scripts/                     Windows runtime and packaging scripts
