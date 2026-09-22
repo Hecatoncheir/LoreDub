@@ -45,6 +45,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: The native library's own tests
         run: powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1
+      - name: The native library under MSVC's code analysis
+        run: powershell -ExecutionPolicy Bypass -File tool/native_analyze.ps1
       - name: Screenshots still match the interface
         run: flutter test test/screenshots.dart
       - name: Cognitive complexity does not grow

@@ -26,6 +26,7 @@ dart pub global run bloc_tools:bloc lint lib   # the bloc rules under `bloc:` in
 python -m unittest discover -s test/runtime   # the worker's text half, any Python
 ruff check assets/runtime test/runtime scripts   # ruff.toml; CI pins the version
 powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1   # native/tests/*_test.cpp
+powershell -ExecutionPolicy Bypass -File tool/native_analyze.ps1 # native/*.cpp under /analyze /WX
 ```
 
 Single test:
