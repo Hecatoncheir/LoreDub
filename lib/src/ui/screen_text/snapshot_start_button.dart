@@ -17,6 +17,7 @@ import '../dashboard/dashboard_context.dart';
 import '../../domain/capture_sources.dart';
 import '../../domain/game_process.dart';
 import '../dashboard/cubits/sources_bloc.dart';
+import '../live/starting_spinner.dart';
 
 /// Starts and ends a session of this page, reading what [reading] says.
 ///
@@ -85,27 +86,27 @@ class SnapshotStartButton extends StatelessWidget {
                 ScreenToggled(initializing: initializing, reading: reading),
               )
             : null,
-        icon: starting
-            ? SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 2.4,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-              )
-            : Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
-        label: Text(
-          starting
-              ? (progress == null
-                    ? l10n.startingPlain
-                    : l10n.startingProgress((progress * 100).round()))
-              : running
-              ? l10n.snapshotStop
-              : l10n.snapshotStart,
-        ),
+        icon: starting ? StartingSpinner(progress: progress) : Icon(_icon(running: running)),
+        label: Text(_label(l10n, progress, starting: starting, running: running)),
       ),
     );
+  }
+
+  static IconData _icon({required bool running}) =>
+      running ? Icons.stop_rounded : Icons.play_arrow_rounded;
+
+  static String _label(
+    AppLocalizations l10n,
+    double? progress, {
+    required bool starting,
+    required bool running,
+  }) {
+    if (starting) {
+      return switch (progress) {
+        final progress? => l10n.startingProgress((progress * 100).round()),
+        null => l10n.startingPlain,
+      };
+    }
+    return running ? l10n.snapshotStop : l10n.snapshotStart;
   }
 }

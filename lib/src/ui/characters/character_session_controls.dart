@@ -13,6 +13,7 @@ import '../dashboard/cubits/startup_cubit.dart';
 import '../dashboard/dashboard_context.dart';
 import '../common/language_row.dart';
 import '../common/game_picker.dart';
+import '../live/starting_spinner.dart';
 import '../dashboard/cubits/sources_bloc.dart';
 import '../dashboard/cubits/voice_capture_bloc.dart';
 
@@ -39,6 +40,16 @@ class CharacterSessionControls extends StatelessWidget {
       ),
     ),
   );
+
+  static IconData _sessionIcon(VoiceCaptureState characters) =>
+      characters.running ? Icons.stop_rounded : Icons.fiber_manual_record_rounded;
+
+  /// What the line under the button says: why nothing can be recorded, or
+  /// how to record.
+  static String _hint(AppLocalizations l10n, SessionState pipeline, {required bool canRecord}) {
+    if (!canRecord) return l10n.charactersNeedsConverter;
+    return pipeline.running ? l10n.snapshotInLive : l10n.charactersHowTo;
+  }
 
   Widget _build(
     BuildContext context,
@@ -75,17 +86,8 @@ class CharacterSessionControls extends StatelessWidget {
                         ),
                       ),
                 icon: characters.status == PipelineStatus.starting
-                    ? SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      )
-                    : Icon(
-                        characters.running ? Icons.stop_rounded : Icons.fiber_manual_record_rounded,
-                      ),
+                    ? const StartingSpinner()
+                    : Icon(_sessionIcon(characters)),
                 label: Text(
                   characters.running ? l10n.charactersSessionStop : l10n.charactersSessionStart,
                 ),
@@ -95,11 +97,7 @@ class CharacterSessionControls extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          !canRecord
-              ? l10n.charactersNeedsConverter
-              : pipeline.running
-              ? l10n.snapshotInLive
-              : l10n.charactersHowTo,
+          _hint(l10n, pipeline, canRecord: canRecord),
           style: Theme.of(context).textTheme.labelSmall
               ?.copyWith(color: canRecord ? context.colors.mutedInk : context.colors.warning),
         ),

@@ -26,6 +26,9 @@ class VersionButton extends StatelessWidget {
     _ => l10n.updateCheckAgain,
   };
 
+  IconData _icon(UpdateState updates) =>
+      updates.status == UpdateStatus.failed ? Icons.cloud_off_rounded : Icons.verified_outlined;
+
   @override
   Widget build(BuildContext context) => BlocBuilder<UpdateBloc, UpdateState>(
     builder: _build,
@@ -72,9 +75,7 @@ class VersionButton extends StatelessWidget {
                       child: updates.checking
                           ? const CircularProgressIndicator(strokeWidth: 2)
                           : Icon(
-                              updates.status == UpdateStatus.failed
-                                  ? Icons.cloud_off_rounded
-                                  : Icons.verified_outlined,
+                              _icon(updates),
                               size: FooterInsets.iconSize,
                               color: context.colors.mutedInk,
                             ),

@@ -25,6 +25,18 @@ class DownloadControls extends StatelessWidget {
   final VoidCallback onResume;
   final VoidCallback onCancel;
 
+  String _holdTooltip(AppLocalizations l10n) {
+    if (stopping) return l10n.downloadStopping;
+    return paused ? l10n.downloadResume : l10n.downloadPause;
+  }
+
+  /// Resumes a paused download and pauses a running one; nothing while it
+  /// is being stopped.
+  VoidCallback? get _onHold {
+    if (stopping) return null;
+    return paused ? onResume : onPause;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -32,10 +44,8 @@ class DownloadControls extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          tooltip: stopping
-              ? l10n.downloadStopping
-              : (paused ? l10n.downloadResume : l10n.downloadPause),
-          onPressed: stopping ? null : (paused ? onResume : onPause),
+          tooltip: _holdTooltip(l10n),
+          onPressed: _onHold,
           icon: Icon(paused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 20),
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints.tightFor(width: 34, height: 34),

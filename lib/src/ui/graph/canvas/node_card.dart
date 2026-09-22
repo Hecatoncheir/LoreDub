@@ -71,16 +71,20 @@ class NodeCard extends StatelessWidget {
       color: selected || focused ? paint.chosen : colors.outline,
       width: selected || focused ? 2 : 1,
     ),
-    boxShadow: selected || hovered
-        ? [
-            BoxShadow(
-              color: colors.shadow,
-              blurRadius: selected ? 18 : 12,
-              offset: Offset(0, selected ? 6 : 4),
-            ),
-          ]
-        : null,
+    boxShadow: _shadow(colors, hovered: hovered),
   );
+
+  /// Lifted higher when chosen than under the pointer, and not at all
+  /// otherwise.
+  List<BoxShadow>? _shadow(LoreDubColors colors, {required bool hovered}) {
+    if (selected) {
+      return [BoxShadow(color: colors.shadow, blurRadius: 18, offset: const Offset(0, 6))];
+    }
+    if (hovered) {
+      return [BoxShadow(color: colors.shadow, blurRadius: 12, offset: const Offset(0, 4))];
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {

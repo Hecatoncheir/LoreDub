@@ -100,7 +100,7 @@ class RuntimeTile extends StatelessWidget {
       ModelAction(
         icon: state.paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
         tooltip: _holdTooltip(l10n),
-        onPressed: stopping ? null : (state.paused ? onInstall : onPause),
+        onPressed: _onHold,
       ),
     ModelAction(
       icon: Icons.close_rounded,
@@ -108,6 +108,12 @@ class RuntimeTile extends StatelessWidget {
       onPressed: stopping ? null : onCancel,
     ),
   ];
+
+  /// A paused download goes on through the install it was started by.
+  VoidCallback? get _onHold {
+    if (stopping) return null;
+    return state.paused ? onInstall : onPause;
+  }
 
   String _holdTooltip(AppLocalizations l10n) {
     if (stopping) return l10n.downloadStopping;

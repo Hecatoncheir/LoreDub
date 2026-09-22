@@ -95,6 +95,12 @@ class _HotkeyFieldState extends State<HotkeyField> {
     return KeyEventResult.handled;
   }
 
+  /// The accent while a key is awaited, and the muted ink with none bound.
+  Color _ink(LoreDubColors colors) {
+    if (_listening) return colors.accentStrong;
+    return widget.value == null ? colors.mutedInk : colors.ink;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -128,11 +134,7 @@ class _HotkeyFieldState extends State<HotkeyField> {
                       fontFamily: LoreDubFonts.mono,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: _listening
-                          ? context.colors.accentStrong
-                          : value == null
-                          ? context.colors.mutedInk
-                          : context.colors.ink,
+                      color: _ink(context.colors),
                     ),
                   ),
                 ),

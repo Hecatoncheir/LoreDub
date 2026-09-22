@@ -54,6 +54,12 @@ class CharacterPacks extends StatelessWidget {
     cast.add(CastExported(location, members, pack: pack));
   }
 
+  /// The export of [pack], or none for a pack with nobody in it.
+  VoidCallback? _exporter(BuildContext context, CharacterPack pack, List<Character> members) {
+    if (pack.characterIds.isEmpty) return null;
+    return () => _export(context, pack, members);
+  }
+
   Future<void> _confirmDelete(BuildContext context, CharacterPack pack) async {
     final cast = context.read<CastBloc>();
     final l10n = AppLocalizations.of(context);
@@ -126,9 +132,7 @@ class CharacterPacks extends StatelessWidget {
                             members: state.membersOf(pack),
                             onRename: (name) =>
                                 context.read<CastBloc>().add(PackRenamed(pack.id, name)),
-                            onExport: pack.characterIds.isEmpty
-                                ? null
-                                : () => _export(context, pack, state.membersOf(pack)),
+                            onExport: _exporter(context, pack, state.membersOf(pack)),
                             onDelete: () => _confirmDelete(context, pack),
                             onDrop: (drag) => context.read<CastBloc>().add(
                               CardPacked(pack.id, drag.character.id),

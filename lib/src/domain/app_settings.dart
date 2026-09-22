@@ -263,14 +263,13 @@ class AppSettings {
   /// leaving the game to find the switch.
   Hotkey? get frameOverlayHotkey => hotkeys[HotkeyAction.frameOverlay];
 
-  VoiceMode get voiceMode => originalVoice
-      ? VoiceMode.original
-      : automaticVoice
-      ? VoiceMode.automatic
-      : VoiceMode.chosen;
+  /// Which of the three modes the voice is in; the original voice wins over
+  /// the automatic one, which it keeps underneath.
+  VoiceMode get voiceMode {
+    if (originalVoice) return VoiceMode.original;
+    return automaticVoice ? VoiceMode.automatic : VoiceMode.chosen;
+  }
 
-  /// Switches the voice mode. The original voice keeps [automaticVoice] as
-  /// it was: it only decides the base voice under the original's timbre.
   /// The combination bound to [action], or null when it has none.
   Hotkey? hotkeyFor(HotkeyAction action) => hotkeys[action];
 
@@ -283,6 +282,8 @@ class AppSettings {
     },
   );
 
+  /// Switches the voice mode. The original voice keeps [automaticVoice] as
+  /// it was: it only decides the base voice under the original's timbre.
   AppSettings withVoiceMode(VoiceMode mode) => switch (mode) {
     VoiceMode.automatic => copyWith(automaticVoice: true, originalVoice: false),
     VoiceMode.chosen => copyWith(automaticVoice: false, originalVoice: false),

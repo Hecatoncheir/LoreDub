@@ -24,6 +24,12 @@ class PortDot extends StatelessWidget {
   final bool offered;
   final bool caught;
 
+  /// Grown under the line about to land on it, and a little while it could.
+  double get _diameter {
+    if (caught) return 22;
+    return offered ? 18 : NodeMetrics.dotRadius * 2;
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = signal == PipelineSignal.voice ? context.colors.deep : context.colors.accent;
@@ -31,8 +37,8 @@ class PortDot extends StatelessWidget {
       child: AnimatedContainer(
         duration: ease(context, 120),
         curve: Curves.easeOut,
-        width: caught ? 22 : (offered ? 18 : NodeMetrics.dotRadius * 2),
-        height: caught ? 22 : (offered ? 18 : NodeMetrics.dotRadius * 2),
+        width: _diameter,
+        height: _diameter,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: filled ? color : context.colors.raised,

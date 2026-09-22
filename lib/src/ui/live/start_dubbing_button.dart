@@ -35,6 +35,8 @@ class StartDubbingButton extends StatelessWidget {
     return pipeline.liveRunning ? l10n.stopDubbing : l10n.startDubbing;
   }
 
+  IconData get _icon => pipeline.liveRunning ? Icons.stop_rounded : Icons.play_arrow_rounded;
+
   String _tooltip(AppLocalizations l10n) =>
       pipeline.liveStarting && pipeline.startupStage.isNotEmpty
       ? describeStartupStage(l10n, pipeline.startupStage)
@@ -51,7 +53,7 @@ class StartDubbingButton extends StatelessWidget {
             : null,
         icon: pipeline.liveStarting
             ? StartingSpinner(progress: pipeline.startupProgress)
-            : Icon(pipeline.liveRunning ? Icons.stop_rounded : Icons.play_arrow_rounded),
+            : Icon(_icon),
         label: Text(_label(l10n)),
       ),
     );
