@@ -3,6 +3,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
+import 'package:lore_dub/src/domain/compute_device.dart';
 
 void main() {
   test('holds the game above what the capture can still hear', () {
@@ -56,5 +57,22 @@ void main() {
       const f9 = Hotkey(keyCode: 0x78, label: 'F9');
       expect(unbound.withHotkey(action, f9).hotkeyFor(action), f9, reason: action.name);
     }
+  });
+
+  test('two settings are equal when they would be written the same', () {
+    const a = AppSettings(ttsSpeed: 1.2);
+    expect(a, const AppSettings(ttsSpeed: 1.2));
+    expect(a.hashCode, const AppSettings(ttsSpeed: 1.2).hashCode);
+    expect(a, isNot(const AppSettings(ttsSpeed: 1.3)));
+    expect(
+      a.withHotkey(HotkeyAction.pause, null),
+      isNot(a),
+      reason: 'a removed combination is a change',
+    );
+    expect(
+      a.withBackend(ComputeStage.speech, ComputeBackend.cuda).withComputeDevice(ComputeDevice.auto),
+      a,
+      reason: 'a preset drops every pin',
+    );
   });
 }

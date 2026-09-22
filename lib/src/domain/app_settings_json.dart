@@ -45,18 +45,13 @@ extension AppSettingsJson on AppSettings {
     'overlapVoices': overlapVoices,
     // An empty string is a combination the player removed on purpose,
     // which must not come back as the default next time.
-    'pauseHotkey': pauseHotkey?.encode() ?? '',
-    'resumeHotkey': resumeHotkey?.encode() ?? '',
-    'snapshotHotkey': snapshotHotkey?.encode() ?? '',
-    'frameHotkey': frameHotkey?.encode() ?? '',
-    'frameOverlayHotkey': frameOverlayHotkey?.encode() ?? '',
+    for (final action in HotkeyAction.values)
+      '${action.name}Hotkey': hotkeys[action]?.encode() ?? '',
     'showFrameOverlay': showFrameOverlay,
     'screenVoices': screenVoices,
     'computeDevice': computeDevice.name,
-    'recognitionBackend': ?recognitionBackend?.name,
-    'translationBackend': ?translationBackend?.name,
-    'speechBackend': ?speechBackend?.name,
-    'voiceConversionBackend': ?voiceConversionBackend?.name,
+    for (final MapEntry(key: stage, value: backend) in pinned.entries)
+      '${stage.name}Backend': backend.name,
   };
 }
 
@@ -81,20 +76,21 @@ AppSettings appSettingsFromJson(
   String text(String key, String fallback) => json[key] is String ? json[key]! as String : fallback;
   T named<T extends Enum>(List<T> values, String key, T fallback) =>
       values.asNameMap()[json[key]] ?? fallback;
-  // A pin written by a build that offered more backends than this one must
-  // not survive as a value no stage can resolve.
-  ComputeBackend? pinned(String key) => ComputeBackend.values.asNameMap()[json[key]];
   String spoken(String key) {
     final stored = json[key];
     return stored is String && isSupportedSpokenLanguage(stored) ? stored : fallbackSpokenLanguage;
   }
 
   // Never set means the default; set to nothing means none.
-  Hotkey? hotkey(String key, Hotkey fallback) => switch (json[key]) {
-    '' => null,
-    final String value => Hotkey.decode(value) ?? fallback,
-    _ => fallback,
-  };
+  Hotkey? hotkey(HotkeyAction action) {
+    final fallback = AppSettings.defaultHotkeys[action];
+    return switch (json['${action.name}Hotkey']) {
+      '' => null,
+      final String value => Hotkey.decode(value) ?? fallback,
+      _ => fallback,
+    };
+  }
+
   final target = json['targetLanguage'];
   final interface = json['interfaceLanguage'];
   final threads = json['cpuThreads'];
@@ -144,17 +140,17 @@ AppSettings appSettingsFromJson(
     originalVoice: flag('originalVoice', fresh.originalVoice),
     voiceBank: flag('voiceBank', fresh.voiceBank),
     overlapVoices: flag('overlapVoices', fresh.overlapVoices),
-    pauseHotkey: hotkey('pauseHotkey', Hotkey.defaultPause),
-    resumeHotkey: hotkey('resumeHotkey', Hotkey.defaultResume),
-    snapshotHotkey: hotkey('snapshotHotkey', Hotkey.defaultSnapshot),
-    frameHotkey: hotkey('frameHotkey', Hotkey.defaultFrame),
-    frameOverlayHotkey: hotkey('frameOverlayHotkey', Hotkey.defaultFrameOverlay),
+    hotkeys: {
+      for (final action in HotkeyAction.values) action: ?hotkey(action),
+    },
     showFrameOverlay: flag('showFrameOverlay', fresh.showFrameOverlay),
     screenVoices: flag('screenVoices', fresh.screenVoices),
     computeDevice: named(ComputeDevice.values, 'computeDevice', fresh.computeDevice),
-    recognitionBackend: pinned('recognitionBackend'),
-    translationBackend: pinned('translationBackend'),
-    speechBackend: pinned('speechBackend'),
-    voiceConversionBackend: pinned('voiceConversionBackend'),
+    // A pin written by a build that offered more backends than this one
+    // must not survive as a value no stage can resolve.
+    pinned: {
+      for (final stage in ComputeStage.values)
+        stage: ?ComputeBackend.values.asNameMap()[json['${stage.name}Backend']],
+    },
   );
 }

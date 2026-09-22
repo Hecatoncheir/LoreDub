@@ -1,6 +1,9 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:convert';
+
+import 'app_settings_json.dart';
 import 'compute_device.dart';
 import 'hotkey.dart';
 
@@ -60,17 +63,19 @@ class AppSettings {
     this.originalVoice = false,
     this.voiceBank = true,
     this.overlapVoices = false,
-    this.pauseHotkey = Hotkey.defaultPause,
-    this.resumeHotkey = Hotkey.defaultResume,
-    this.snapshotHotkey = Hotkey.defaultSnapshot,
-    this.frameHotkey = Hotkey.defaultFrame,
-    this.frameOverlayHotkey = Hotkey.defaultFrameOverlay,
+    this.hotkeys = defaultHotkeys,
     this.computeDevice = ComputeDevice.auto,
-    this.recognitionBackend,
-    this.translationBackend,
-    this.speechBackend,
-    this.voiceConversionBackend,
+    this.pinned = const {},
   });
+
+  /// The combinations a fresh install binds.
+  static const defaultHotkeys = {
+    HotkeyAction.pause: Hotkey.defaultPause,
+    HotkeyAction.resume: Hotkey.defaultResume,
+    HotkeyAction.snapshot: Hotkey.defaultSnapshot,
+    HotkeyAction.frame: Hotkey.defaultFrame,
+    HotkeyAction.frameOverlay: Hotkey.defaultFrameOverlay,
+  };
 
   /// Whether the capture is wired into the pipeline at all. Taken apart on
   /// the graph nothing is fed to the stages: the session cannot start until
@@ -239,22 +244,24 @@ class AppSettings {
   /// on.
   final bool overlapVoices;
 
-  /// The system-wide combinations that pause and resume a running session;
-  /// null leaves the action to its button.
-  final Hotkey? pauseHotkey;
-  final Hotkey? resumeHotkey;
+  /// The system-wide combination bound to each action. An action missing
+  /// from it has none: the player removed it, and it is left to its button.
+  final Map<HotkeyAction, Hotkey> hotkeys;
 
-  /// The combination held down to select an area of the screen to translate
-  /// once; null leaves the snapshot screen without a way to select.
-  final Hotkey? snapshotHotkey;
+  /// Pauses and resumes a running session.
+  Hotkey? get pauseHotkey => hotkeys[HotkeyAction.pause];
+  Hotkey? get resumeHotkey => hotkeys[HotkeyAction.resume];
+
+  /// Held down to select an area of the screen to translate once.
+  Hotkey? get snapshotHotkey => hotkeys[HotkeyAction.snapshot];
 
   /// Held over the running game to draw the subtitle frame where the game
   /// actually writes, instead of guessing at it on a picture of the screen.
-  final Hotkey? frameHotkey;
+  Hotkey? get frameHotkey => hotkeys[HotkeyAction.frame];
 
   /// Pressed to show the frame over the game or take it off again, without
   /// leaving the game to find the switch.
-  final Hotkey? frameOverlayHotkey;
+  Hotkey? get frameOverlayHotkey => hotkeys[HotkeyAction.frameOverlay];
 
   VoiceMode get voiceMode => originalVoice
       ? VoiceMode.original
@@ -265,28 +272,16 @@ class AppSettings {
   /// Switches the voice mode. The original voice keeps [automaticVoice] as
   /// it was: it only decides the base voice under the original's timbre.
   /// The combination bound to [action], or null when it has none.
-  Hotkey? hotkeyFor(HotkeyAction action) => switch (action) {
-    HotkeyAction.pause => pauseHotkey,
-    HotkeyAction.resume => resumeHotkey,
-    HotkeyAction.snapshot => snapshotHotkey,
-    HotkeyAction.frame => frameHotkey,
-    HotkeyAction.frameOverlay => frameOverlayHotkey,
-  };
+  Hotkey? hotkeyFor(HotkeyAction action) => hotkeys[action];
 
   /// These settings with [action] bound to [hotkey], or unbound for null.
-  AppSettings withHotkey(HotkeyAction action, Hotkey? hotkey) => switch (action) {
-    HotkeyAction.pause => copyWith(pauseHotkey: hotkey, clearPauseHotkey: hotkey == null),
-    HotkeyAction.resume => copyWith(resumeHotkey: hotkey, clearResumeHotkey: hotkey == null),
-    HotkeyAction.snapshot => copyWith(
-      snapshotHotkey: hotkey,
-      clearSnapshotHotkey: hotkey == null,
-    ),
-    HotkeyAction.frame => copyWith(frameHotkey: hotkey, clearFrameHotkey: hotkey == null),
-    HotkeyAction.frameOverlay => copyWith(
-      frameOverlayHotkey: hotkey,
-      clearFrameOverlayHotkey: hotkey == null,
-    ),
-  };
+  AppSettings withHotkey(HotkeyAction action, Hotkey? hotkey) => copyWith(
+    hotkeys: {
+      for (final MapEntry(:key, :value) in hotkeys.entries)
+        if (key != action) key: value,
+      action: ?hotkey,
+    },
+  );
 
   AppSettings withVoiceMode(VoiceMode mode) => switch (mode) {
     VoiceMode.automatic => copyWith(automaticVoice: true, originalVoice: false),
@@ -297,20 +292,11 @@ class AppSettings {
   /// What the user asked the pipeline to run on, as a whole.
   final ComputeDevice computeDevice;
 
-  /// What a single stage was pinned to, overriding [computeDevice].
-  ///
-  /// Null means the stage follows the preset.
-  final ComputeBackend? recognitionBackend;
-  final ComputeBackend? translationBackend;
-  final ComputeBackend? speechBackend;
-  final ComputeBackend? voiceConversionBackend;
+  /// What a single stage was pinned to, overriding [computeDevice]. A
+  /// stage missing from it follows the preset.
+  final Map<ComputeStage, ComputeBackend> pinned;
 
-  ComputeBackend? backendOverride(ComputeStage stage) => switch (stage) {
-    ComputeStage.recognition => recognitionBackend,
-    ComputeStage.translation => translationBackend,
-    ComputeStage.speech => speechBackend,
-    ComputeStage.voiceConversion => voiceConversionBackend,
-  };
+  ComputeBackend? backendOverride(ComputeStage stage) => pinned[stage];
 
   /// What a stage will actually run on, given what the machine offers.
   ComputeBackend backendFor(ComputeStage stage, ComputeAvailability availability) =>
@@ -322,19 +308,13 @@ class AppSettings {
       );
 
   /// Pins one stage, leaving the others as they were.
-  AppSettings withBackend(ComputeStage stage, ComputeBackend backend) => switch (stage) {
-    ComputeStage.recognition => copyWith(recognitionBackend: backend),
-    ComputeStage.translation => copyWith(translationBackend: backend),
-    ComputeStage.speech => copyWith(speechBackend: backend),
-    ComputeStage.voiceConversion => copyWith(voiceConversionBackend: backend),
-  };
+  AppSettings withBackend(ComputeStage stage, ComputeBackend backend) =>
+      copyWith(pinned: {...pinned, stage: backend});
 
   /// Applies a preset, dropping every per-stage pin so the preset is what the
   /// interface then shows.
-  AppSettings withComputeDevice(ComputeDevice device) => copyWith(
-    computeDevice: device,
-    clearBackendOverrides: true,
-  );
+  AppSettings withComputeDevice(ComputeDevice device) =>
+      copyWith(computeDevice: device, pinned: const {});
 
   /// What the screen session reads: English, or the dubbing language
   /// itself, which is then voiced as it is rather than translated.
@@ -360,6 +340,17 @@ class AppSettings {
   bool get translates => targetLanguage != untranslatedDubbingLanguage;
 
   String get effectiveSourceLanguage => detectSourceLanguage ? autoSpokenLanguage : sourceLanguage;
+
+  /// Equal when they would be written the same: [AppSettingsJson.toJson] is
+  /// the one list of every setting there is, so a field added there is
+  /// compared without a third list to forget it in.
+  @override
+  bool operator ==(Object other) => other is AppSettings && _written == other._written;
+
+  @override
+  int get hashCode => _written.hashCode;
+
+  String get _written => jsonEncode(toJson());
 
   AppSettings copyWith({
     bool? captureRouted,
@@ -389,22 +380,9 @@ class AppSettings {
     bool? originalVoice,
     bool? voiceBank,
     bool? overlapVoices,
-    Hotkey? pauseHotkey,
-    bool clearPauseHotkey = false,
-    Hotkey? resumeHotkey,
-    bool clearResumeHotkey = false,
-    Hotkey? snapshotHotkey,
-    bool clearSnapshotHotkey = false,
-    Hotkey? frameHotkey,
-    bool clearFrameHotkey = false,
-    Hotkey? frameOverlayHotkey,
-    bool clearFrameOverlayHotkey = false,
+    Map<HotkeyAction, Hotkey>? hotkeys,
     ComputeDevice? computeDevice,
-    ComputeBackend? recognitionBackend,
-    ComputeBackend? translationBackend,
-    ComputeBackend? speechBackend,
-    ComputeBackend? voiceConversionBackend,
-    bool clearBackendOverrides = false,
+    Map<ComputeStage, ComputeBackend>? pinned,
   }) => AppSettings(
     captureRouted: captureRouted ?? this.captureRouted,
     targetLanguage: targetLanguage ?? this.targetLanguage,
@@ -433,23 +411,8 @@ class AppSettings {
     originalVoice: originalVoice ?? this.originalVoice,
     voiceBank: voiceBank ?? this.voiceBank,
     overlapVoices: overlapVoices ?? this.overlapVoices,
-    pauseHotkey: clearPauseHotkey ? null : pauseHotkey ?? this.pauseHotkey,
-    resumeHotkey: clearResumeHotkey ? null : resumeHotkey ?? this.resumeHotkey,
-    snapshotHotkey: clearSnapshotHotkey ? null : snapshotHotkey ?? this.snapshotHotkey,
-    frameHotkey: clearFrameHotkey ? null : frameHotkey ?? this.frameHotkey,
-    frameOverlayHotkey: clearFrameOverlayHotkey
-        ? null
-        : frameOverlayHotkey ?? this.frameOverlayHotkey,
+    hotkeys: hotkeys ?? this.hotkeys,
     computeDevice: computeDevice ?? this.computeDevice,
-    recognitionBackend: clearBackendOverrides
-        ? null
-        : recognitionBackend ?? this.recognitionBackend,
-    translationBackend: clearBackendOverrides
-        ? null
-        : translationBackend ?? this.translationBackend,
-    speechBackend: clearBackendOverrides ? null : speechBackend ?? this.speechBackend,
-    voiceConversionBackend: clearBackendOverrides
-        ? null
-        : voiceConversionBackend ?? this.voiceConversionBackend,
+    pinned: pinned ?? this.pinned,
   );
 }

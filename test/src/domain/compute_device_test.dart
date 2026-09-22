@@ -168,7 +168,7 @@ void main() {
     expect(settings.backendFor(ComputeStage.translation, ready), ComputeBackend.cpu);
     expect(settings.backendFor(ComputeStage.voiceConversion, ready), ComputeBackend.cuda);
     expect(
-      settings.withComputeDevice(ComputeDevice.cpu).voiceConversionBackend,
+      settings.withComputeDevice(ComputeDevice.cpu).backendOverride(ComputeStage.voiceConversion),
       isNull,
       reason: 'a preset drops this pin like the others',
     );
@@ -242,8 +242,8 @@ void main() {
 
       final reset = pinned.withComputeDevice(ComputeDevice.auto);
 
-      expect(reset.recognitionBackend, isNull);
-      expect(reset.translationBackend, isNull);
+      expect(reset.backendOverride(ComputeStage.recognition), isNull);
+      expect(reset.backendOverride(ComputeStage.translation), isNull);
       expect(reset.backendFor(ComputeStage.recognition, ready), ComputeBackend.cuda);
     });
 
@@ -252,9 +252,9 @@ void main() {
           .withBackend(ComputeStage.recognition, ComputeBackend.cuda)
           .withBackend(ComputeStage.translation, ComputeBackend.cpu);
 
-      expect(settings.recognitionBackend, ComputeBackend.cuda);
-      expect(settings.translationBackend, ComputeBackend.cpu);
-      expect(settings.speechBackend, isNull);
+      expect(settings.backendOverride(ComputeStage.recognition), ComputeBackend.cuda);
+      expect(settings.backendOverride(ComputeStage.translation), ComputeBackend.cpu);
+      expect(settings.backendOverride(ComputeStage.speech), isNull);
     });
   });
 }

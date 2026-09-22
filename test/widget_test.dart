@@ -1734,7 +1734,10 @@ void main() {
       await tester.tap(cell('recognition', 'vulkan'));
       await tester.pumpAndSettle();
 
-      expect(cubits.settings.settings.recognitionBackend, ComputeBackend.vulkan);
+      expect(
+        cubits.settings.settings.backendOverride(ComputeStage.recognition),
+        ComputeBackend.vulkan,
+      );
     });
 
     testWidgets('fetches a missing package from its cell', (tester) async {
@@ -1773,7 +1776,7 @@ void main() {
       await tester.tap(cell('recognition', 'vulkan'));
       await tester.pumpAndSettle();
       expect(
-        cubits.settings.settings.recognitionBackend,
+        cubits.settings.settings.backendOverride(ComputeStage.recognition),
         isNull,
         reason: 'a cell that cannot be chosen must not store a pin either',
       );
@@ -3117,7 +3120,7 @@ void main() {
 
     testWidgets('cannot start without a key to select with', (tester) async {
       final cubits = stageSnapshot(
-        settings: const AppSettings().copyWith(clearSnapshotHotkey: true),
+        settings: const AppSettings().withHotkey(HotkeyAction.snapshot, null),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 

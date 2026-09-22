@@ -113,9 +113,9 @@ void main() {
     final loaded = await SettingsService().load();
 
     expect(loaded.computeDevice, ComputeDevice.auto);
-    expect(loaded.recognitionBackend, isNull);
-    expect(loaded.translationBackend, isNull);
-    expect(loaded.speechBackend, isNull);
+    expect(loaded.backendOverride(ComputeStage.recognition), isNull);
+    expect(loaded.backendOverride(ComputeStage.translation), isNull);
+    expect(loaded.backendOverride(ComputeStage.speech), isNull);
   });
 
   test('remembers the device preset and the stages pinned against it', () async {
@@ -130,8 +130,8 @@ void main() {
     final saved = await service.load();
 
     expect(saved.computeDevice, ComputeDevice.gpu);
-    expect(saved.recognitionBackend, ComputeBackend.vulkan);
-    expect(saved.translationBackend, isNull);
+    expect(saved.backendOverride(ComputeStage.recognition), ComputeBackend.vulkan);
+    expect(saved.backendOverride(ComputeStage.translation), isNull);
   });
 
   test('clears a pin from storage when the preset is pressed again', () async {
@@ -140,13 +140,13 @@ void main() {
 
     await service.save(const AppSettings().withComputeDevice(ComputeDevice.cpu));
 
-    expect((await service.load()).recognitionBackend, isNull);
+    expect((await service.load()).backendOverride(ComputeStage.recognition), isNull);
   });
 
   test('refuses a backend this build no longer offers', () async {
     SharedPreferences.setMockInitialValues({'recognitionBackend': 'metal'});
 
-    expect((await SettingsService().load()).recognitionBackend, isNull);
+    expect((await SettingsService().load()).backendOverride(ComputeStage.recognition), isNull);
   });
 
   test('follows Windows for the theme until the player says otherwise', () async {
@@ -221,7 +221,7 @@ void main() {
 
     final fresh = await service.load();
     expect(fresh.voiceBank, isTrue, reason: 'each character gets a voice without being asked');
-    expect(fresh.voiceConversionBackend, isNull);
+    expect(fresh.backendOverride(ComputeStage.voiceConversion), isNull);
 
     await service.save(
       const AppSettings(voiceBank: false)
@@ -230,7 +230,7 @@ void main() {
     final saved = await service.load();
 
     expect(saved.voiceBank, isFalse, reason: 'a switch turned off stays off');
-    expect(saved.voiceConversionBackend, ComputeBackend.cuda);
+    expect(saved.backendOverride(ComputeStage.voiceConversion), ComputeBackend.cuda);
   });
 
   test('starts with the default hotkeys and remembers a removed one', () async {
@@ -242,10 +242,9 @@ void main() {
     expect(fresh.resumeHotkey, Hotkey.defaultResume);
 
     await service.save(
-      fresh.copyWith(
-        pauseHotkey: const Hotkey(keyCode: 0x78, label: 'F9', shift: true),
-        clearResumeHotkey: true,
-      ),
+      fresh
+          .withHotkey(HotkeyAction.pause, const Hotkey(keyCode: 0x78, label: 'F9', shift: true))
+          .withHotkey(HotkeyAction.resume, null),
     );
     final saved = await service.load();
 
@@ -259,10 +258,12 @@ void main() {
     final fresh = await service.load();
     expect(fresh.snapshotHotkey, Hotkey.defaultSnapshot);
 
-    await service.save(fresh.copyWith(snapshotHotkey: const Hotkey(keyCode: 0x7A, label: 'F11')));
+    await service.save(
+      fresh.withHotkey(HotkeyAction.snapshot, const Hotkey(keyCode: 0x7A, label: 'F11')),
+    );
     expect((await service.load()).snapshotHotkey?.display, 'F11');
 
-    await service.save(fresh.copyWith(clearSnapshotHotkey: true));
+    await service.save(fresh.withHotkey(HotkeyAction.snapshot, null));
     expect((await service.load()).snapshotHotkey, isNull);
   });
 
@@ -384,11 +385,12 @@ void main() {
       originalVoice: true,
       voiceBank: false,
       overlapVoices: true,
-      frameHotkey: null,
       showFrameOverlay: true,
       screenVoices: true,
       computeDevice: ComputeDevice.gpu,
-      recognitionBackend: ComputeBackend.vulkan,
+      pinned: {ComputeStage.recognition: ComputeBackend.vulkan},
+      // Every combination but one removed, which must stay removed.
+      hotkeys: {HotkeyAction.pause: Hotkey.defaultPause},
     );
 
     await service.save(written);

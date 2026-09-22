@@ -85,12 +85,12 @@ void main() {
     act: (bloc) async {
       bloc.add(const StageBackendPinned(ComputeStage.recognition, ComputeBackend.vulkan));
       await pumpEventQueue();
-      expect(settings.settings.recognitionBackend, ComputeBackend.vulkan);
+      expect(settings.settings.backendOverride(ComputeStage.recognition), ComputeBackend.vulkan);
       bloc.add(const ComputeDeviceChosen(ComputeDevice.cpu));
     },
     verify: (_) {
       expect(settings.settings.computeDevice, ComputeDevice.cpu);
-      expect(settings.settings.recognitionBackend, isNull);
+      expect(settings.settings.backendOverride(ComputeStage.recognition), isNull);
     },
   );
 
