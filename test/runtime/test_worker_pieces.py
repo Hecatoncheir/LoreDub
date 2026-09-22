@@ -1,10 +1,11 @@
 # Copyright (c) 2026 LoreDub contributors.
 # SPDX-License-Identifier: MIT
 
-"""The worker's own small pieces. They import numpy with the worker, so they
-run where the bundled interpreter does and are passed over elsewhere:
+"""The worker's own small pieces. They import numpy with the worker, which
+CI installs beside the runner's Python; without it they are passed over:
 
-build/windows/x64/runner/Debug/runtime/python/python.exe -m unittest discover -s test/runtime
+python -m pip install numpy==2.2.6
+python -m unittest discover -s test/runtime
 """
 
 import importlib.util
