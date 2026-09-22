@@ -1730,10 +1730,20 @@ abstract final class AppTheme {
       ожидание `WHDR_DONE` ограничено длиной клипа плюс пять секунд, после
       чего устройство сбрасывается и ответ — `-22` («устройство перестало
       отвечать»).
-- [ ] Нативных тестов нет. ~~`flat_json`~~, ~~`PhraseSegmenter`~~, `StableText`
+- [x] Нативных тестов нет. `flat_json`, `PhraseSegmenter`, `StableText`
       (дебаунс OCR с безымянными 2, 6 и 13×50 на `ocr_capture.cpp:393–430`),
       `RegionWithin` — простым исполняемым файлом на `assert`; clang в
       GitLab-задаче уже стоит.
+      *Сделано:* `native/stable_text.h` (`StableText::Scan`, числа названы:
+      `kScansToTrust` = 2, `kEmptyScansToForget` = 6, `kOcrScanInterval` =
+      650 мс) и `native/screen_region.h` (`OcrRegion`, `ScreenArea`,
+      `SanitizeRegion`, `RegionWithin`, `kSmallestRegionShare` = 0,02)
+      вынесены из `ocr_capture.cpp`; четыре теста в `native/tests/` идут
+      через `tool/native_tests.ps1` шагом CI Windows. В GitLab-задачу
+      (clang там стоит, заголовкам Windows SDK не нужен) пока не добавлены:
+      проверить сборку clang с libstdc++ на этой машине нечем.
+      `scripts/check_ocr_region.ps1` на
+      собранной DLL: все три рамки прочитали только своё.
 
 ---
 

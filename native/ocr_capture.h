@@ -10,23 +10,7 @@
 #include <string>
 #include <thread>
 
-// The part of the game window's client area -- or of the whole screen, when
-// that is what is read -- to take the text out of, each edge a fraction of
-// its width or height from the top-left corner.
-struct OcrRegion {
-  double left = 0.0;
-  double top = 0.55;
-  double right = 1.0;
-  double bottom = 1.0;
-};
-
-// A rectangle of the screen in physical pixels, right and bottom exclusive.
-struct ScreenArea {
-  int left = 0;
-  int top = 0;
-  int right = 0;
-  int bottom = 0;
-};
+#include "screen_region.h"
 
 // The error either reader reports, as the whole message, when Windows has no
 // text recognition for the language asked for.

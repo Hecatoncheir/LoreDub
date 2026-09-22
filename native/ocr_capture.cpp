@@ -3,6 +3,8 @@
 
 #include "ocr_capture.h"
 
+#include "stable_text.h"
+
 #include <algorithm>
 #include <utility>
 
@@ -220,22 +222,6 @@ struct Apartment {
 
 #endif
 
-namespace {
-
-// The interface already keeps the frame valid; this guards the ABI against a
-// config written by hand, falling back to the default band rather than
-// scanning a sliver or nothing.
-OcrRegion SanitizeRegion(OcrRegion region) {
-  const double left = std::clamp(std::min(region.left, region.right), 0.0, 1.0);
-  const double right = std::clamp(std::max(region.left, region.right), 0.0, 1.0);
-  const double top = std::clamp(std::min(region.top, region.bottom), 0.0, 1.0);
-  const double bottom = std::clamp(std::max(region.top, region.bottom), 0.0, 1.0);
-  if (right - left < 0.02 || bottom - top < 0.02) return OcrRegion{};
-  return OcrRegion{left, top, right, bottom};
-}
-
-}  // namespace
-
 bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::string* text,
                          std::string* error) {
 #if !defined(_WIN32)
@@ -279,8 +265,6 @@ bool RecognizeScreenArea(ScreenArea area, const std::string& language, std::stri
 #endif
 }
 
-// The part of [bounds] that [area] covers, as fractions, or false when the
-// rectangle fell outside it or came to nothing.
 #if defined(_WIN32)
 namespace {
 
@@ -295,25 +279,6 @@ bool CaptureWindowInFront(uint32_t process_id, const OcrRegion& region,
 
 }  // namespace
 #endif
-
-namespace {
-
-bool RegionWithin(ScreenArea bounds, ScreenArea area, OcrRegion* region) {
-  const double width = bounds.right - bounds.left;
-  const double height = bounds.bottom - bounds.top;
-  if (width <= 0 || height <= 0) return false;
-  // A player who drew past the edge gets the edge, and one who drew beside
-  // it entirely gets nothing.
-  const double left = std::clamp((area.left - bounds.left) / width, 0.0, 1.0);
-  const double right = std::clamp((area.right - bounds.left) / width, 0.0, 1.0);
-  const double top = std::clamp((area.top - bounds.top) / height, 0.0, 1.0);
-  const double bottom = std::clamp((area.bottom - bounds.top) / height, 0.0, 1.0);
-  if (right - left < 0.02 || bottom - top < 0.02) return false;
-  *region = OcrRegion{left, top, right, bottom};
-  return true;
-}
-
-}  // namespace
 
 bool RegionOfScreen(ScreenArea area, OcrRegion* region) {
 #if !defined(_WIN32)
@@ -428,10 +393,7 @@ void OcrCapture::CaptureThread(uint32_t process_id, std::string language,
     }
     const auto engine =
         winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromLanguage(recognizer);
-    std::string candidate;
-    std::string emitted;
-    int stable_scans = 0;
-    int empty_scans = 0;
+    StableText reading;
     while (!stopping_) {
       std::vector<uint8_t> pixels;
       int32_t width = 0;
@@ -446,25 +408,11 @@ void OcrCapture::CaptureThread(uint32_t process_id, std::string language,
       if (copied) {
         text = Recognize(engine, pixels, width, height);
       }
-      if (text.empty()) {
-        candidate.clear();
-        stable_scans = 0;
-        if (++empty_scans >= 6) emitted.clear();
-      } else {
-        empty_scans = 0;
-        if (text == candidate) {
-          ++stable_scans;
-        } else {
-          candidate = text;
-          stable_scans = 1;
-        }
-        if (stable_scans >= 2 && candidate != emitted) {
-          emitted = candidate;
-          on_text(emitted);
-        }
-      }
-      for (int tick = 0; tick < 13 && !stopping_; ++tick) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      if (const auto settled = reading.Scan(text)) on_text(*settled);
+      // Slept in short steps, so a stop is not kept waiting for the scan.
+      constexpr auto kStep = std::chrono::milliseconds(50);
+      for (auto slept = kStep; slept <= kOcrScanInterval && !stopping_; slept += kStep) {
+        std::this_thread::sleep_for(kStep);
       }
     }
   } catch (const winrt::hresult_error& error) {

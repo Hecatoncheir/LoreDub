@@ -4,7 +4,8 @@
 # Builds and runs the native library's own tests: plain executables that fail
 # on the first check that does not hold. They cover what can be tried without
 # a game, a sound device or a window -- the JSON crossing the boundary, where
-# a phrase of the game's speech begins and ends.
+# a phrase of the game's speech begins and ends, which reading of the screen
+# is trusted, and the frame it is read through.
 #
 #   powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1
 

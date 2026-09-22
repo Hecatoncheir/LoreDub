@@ -235,7 +235,10 @@ than one of them.
    WASAPI process loopback + energy VAD writing 16 kHz WAV chunks, the
    phrase cut by `PhraseSegmenter` (`native/phrase_segmenter.h`, pure and
    tested on its own);
-   `OcrCapture` GDI + Windows OCR over `AppSettings.ocrRegion`, a frame the
+   `OcrCapture` GDI + Windows OCR over `AppSettings.ocrRegion` -- a reading
+   handed on once two scans agree, `StableText` in `native/stable_text.h`,
+   and the frame's arithmetic in `native/screen_region.h`, both tested on
+   their own --, a frame the
    player draws in Settings and stored as fractions of the foreground game
    window's client area).
 3. **whisper.cpp** — invoked per audio segment as a one-shot subprocess with
