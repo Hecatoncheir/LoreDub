@@ -1065,7 +1065,7 @@ button and the arrow behave as usual.
 ## How the pipeline is built
 
 The audio mode is wired end to end. The setup contains pinned `whisper.cpp`
-v1.8.2 binaries and an embedded Python CPU runtime for Marian and Vosk.
+v1.8.2 binaries and an embedded Python CPU runtime for Marian, Vosk and Kokoro.
 
 Recognition, translation and synthesis are serialized so a small CPU is never
 asked to run two inferences at once, while playback happens beside them:
