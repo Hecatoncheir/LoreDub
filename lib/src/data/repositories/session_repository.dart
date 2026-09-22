@@ -68,6 +68,18 @@ class SessionRepository {
     await _nativeEngine.stop();
   }
 
+  /// Runs one start numbered as a session of its own, and clears away what
+  /// it left behind if it fails -- while that is still its to clear.
+  Future<T> _started<T>(Future<T> Function(int session) steps) async {
+    final session = ++_sessions;
+    try {
+      return await steps(session);
+    } catch (_) {
+      await _endFailedStart(session);
+      rethrow;
+    }
+  }
+
   /// Ends the start numbered [session] as stopped once a stop or a newer
   /// start has come after it.
   ///
@@ -93,52 +105,46 @@ class SessionRepository {
     required AppSettings settings,
     required WorkerPlan worker,
     required bool translateSpeech,
-  }) async {
-    final session = ++_sessions;
-    try {
-      final config = LiveSessionConfig(
-        worker: worker.copyWith(
-          glossary: await _glossary.sessionFile(),
-          // The player's own characters, who speak in every game.
-          characters: await _characters.file(),
-          // The cards cut out of the mix on the graph: each of them keeps who
-          // stands in for whom, and none of it is applied.
-          asHeard: await _cutFromMix(),
-        ),
-        capture: CapturePlan(
-          mode: CaptureMode.audio,
-          processId: process?.pid ?? 0,
-          audioSource: settings.audioCaptureSource,
-        ),
-        lines: LineRules(
-          targetLanguage: settings.targetLanguage,
-          textLanguage: settings.textLanguage,
-          translateSpeech: translateSpeech,
-          roughRecognition: settings.roughRecognition,
-          speed: settings.chosenSpeed,
-          hurryWhenQueued: settings.hurryWhenQueued,
-          // What the game is turned down to, and whether that happens for
-          // the length of a line rather than for the whole session.
-          duckWhileSpeaking: settings.duckWhileSpeaking,
-          duckVolume: settings.duckedVolume,
-          overlapVoices: settings.overlapVoices,
-        ),
-      );
-      _throwIfSuperseded(session);
-      await _nativeEngine.start(config);
-      _throwIfSuperseded(session);
-      _nativeEngine.setHotkeys(
-        pause: settings.pauseHotkey,
-        resume: settings.resumeHotkey,
-        snapshot: settings.snapshotHotkey,
-        frameOverlay: settings.frameOverlayHotkey,
+  }) => _started((session) async {
+    final config = LiveSessionConfig(
+      worker: worker.copyWith(
+        glossary: await _glossary.sessionFile(),
+        // The player's own characters, who speak in every game.
+        characters: await _characters.file(),
+        // The cards cut out of the mix on the graph: each of them keeps who
+        // stands in for whom, and none of it is applied.
+        asHeard: await _cutFromMix(),
+      ),
+      capture: CapturePlan(
+        mode: CaptureMode.audio,
+        processId: process?.pid ?? 0,
+        audioSource: settings.audioCaptureSource,
+      ),
+      lines: LineRules(
+        targetLanguage: settings.targetLanguage,
         textLanguage: settings.textLanguage,
-      );
-    } catch (_) {
-      await _endFailedStart(session);
-      rethrow;
-    }
-  }
+        translateSpeech: translateSpeech,
+        roughRecognition: settings.roughRecognition,
+        speed: settings.chosenSpeed,
+        hurryWhenQueued: settings.hurryWhenQueued,
+        // What the game is turned down to, and whether that happens for
+        // the length of a line rather than for the whole session.
+        duckWhileSpeaking: settings.duckWhileSpeaking,
+        duckVolume: settings.duckedVolume,
+        overlapVoices: settings.overlapVoices,
+      ),
+    );
+    _throwIfSuperseded(session);
+    await _nativeEngine.start(config);
+    _throwIfSuperseded(session);
+    _nativeEngine.setHotkeys(
+      pause: settings.pauseHotkey,
+      resume: settings.resumeHotkey,
+      snapshot: settings.snapshotHotkey,
+      frameOverlay: settings.frameOverlayHotkey,
+      textLanguage: settings.textLanguage,
+    );
+  });
 
   /// Starts the screen session: the translator, the voice, the frame the
   /// subtitles are read out of, and the snapshot key.
@@ -156,53 +162,47 @@ class SessionRepository {
     /// heard by the converter and carried over the reading, and a character
     /// met here is the one the dubbing session knows.
     required WorkerPlan worker,
-  }) async {
-    final session = ++_sessions;
-    try {
-      final config = ScreenSessionConfig(
-        worker: worker.copyWith(
-          glossary: await _glossary.sessionFile(),
-          characters: await _characters.file(),
-        ),
-        capture: CapturePlan(
-          mode: _captureModeOf(reading, hearsVoices: hearsVoices),
-          // The window the frame is read out of, and the game whose sound is
-          // followed. Named even when the screen is what is read: nothing is
-          // taken out of that window then, but it is still the game to turn
-          // down for the length of a line.
-          processId: process?.pid ?? 0,
-          wholeScreen: settings.readsWholeScreen,
-          region: settings.ocrRegion,
-          ocrLanguage: settings.textLanguage,
-        ),
-        lines: LineRules(
-          targetLanguage: settings.targetLanguage,
-          textLanguage: settings.textLanguage,
-          speed: settings.chosenSpeed,
-          hurryWhenQueued: settings.hurryWhenQueued,
-          duckWhileSpeaking: settings.duckWhileSpeaking,
-          duckVolume: settings.duckedVolume,
-        ),
-      );
-      _throwIfSuperseded(session);
-      await _nativeEngine.startScreenText(config);
-      _throwIfSuperseded(session);
-      _nativeEngine.setHotkeys(
-        snapshot: reading.readsSnippets ? settings.snapshotHotkey : null,
-        // Drawn over the game rather than over a picture of it, and
-        // measured against whatever this session reads: the window it was
-        // given, or -- with no process to name -- the screen itself. A
-        // session reading no frame has none to redraw.
-        frame: reading.readsSubtitles ? settings.frameHotkey : null,
-        frameOverlay: settings.frameOverlayHotkey,
-        frameOf: settings.readsWholeScreen ? 0 : process?.pid ?? 0,
+  }) => _started((session) async {
+    final config = ScreenSessionConfig(
+      worker: worker.copyWith(
+        glossary: await _glossary.sessionFile(),
+        characters: await _characters.file(),
+      ),
+      capture: CapturePlan(
+        mode: _captureModeOf(reading, hearsVoices: hearsVoices),
+        // The window the frame is read out of, and the game whose sound is
+        // followed. Named even when the screen is what is read: nothing is
+        // taken out of that window then, but it is still the game to turn
+        // down for the length of a line.
+        processId: process?.pid ?? 0,
+        wholeScreen: settings.readsWholeScreen,
+        region: settings.ocrRegion,
+        ocrLanguage: settings.textLanguage,
+      ),
+      lines: LineRules(
+        targetLanguage: settings.targetLanguage,
         textLanguage: settings.textLanguage,
-      );
-    } catch (_) {
-      await _endFailedStart(session);
-      rethrow;
-    }
-  }
+        speed: settings.chosenSpeed,
+        hurryWhenQueued: settings.hurryWhenQueued,
+        duckWhileSpeaking: settings.duckWhileSpeaking,
+        duckVolume: settings.duckedVolume,
+      ),
+    );
+    _throwIfSuperseded(session);
+    await _nativeEngine.startScreenText(config);
+    _throwIfSuperseded(session);
+    _nativeEngine.setHotkeys(
+      snapshot: reading.readsSnippets ? settings.snapshotHotkey : null,
+      // Drawn over the game rather than over a picture of it, and
+      // measured against whatever this session reads: the window it was
+      // given, or -- with no process to name -- the screen itself. A
+      // session reading no frame has none to redraw.
+      frame: reading.readsSubtitles ? settings.frameHotkey : null,
+      frameOverlay: settings.frameOverlayHotkey,
+      frameOf: settings.readsWholeScreen ? 0 : process?.pid ?? 0,
+      textLanguage: settings.textLanguage,
+    );
+  });
 
   /// Draws the subtitle frame over the game, or moves one already drawn.
   /// [processId] of zero measures it against the whole screen.
@@ -242,16 +242,10 @@ class SessionRepository {
   /// heard before anything is dubbed. Nothing is captured: the line is the
   /// application's own, and the converter only lays the card's timbre over
   /// the voice the way the dubbing will.
-  Future<void> startVoicePreview(WorkerPlan worker) async {
-    final session = ++_sessions;
-    try {
-      await _nativeEngine.startPreview(PreviewSessionConfig(worker: worker));
-      _throwIfSuperseded(session);
-    } catch (_) {
-      await _endFailedStart(session);
-      rethrow;
-    }
-  }
+  Future<void> startVoicePreview(WorkerPlan worker) => _started((session) async {
+    await _nativeEngine.startPreview(PreviewSessionConfig(worker: worker));
+    _throwIfSuperseded(session);
+  });
 
   /// Speaks one line in a card's voice and plays it.
   Future<void> previewVoice({
@@ -267,25 +261,19 @@ class SessionRepository {
     required GameProcess? process,
     required AppSettings settings,
     required WorkerPlan worker,
-  }) async {
-    final session = ++_sessions;
-    try {
-      await _nativeEngine.startCharacters(
-        CharactersSessionConfig(
-          worker: worker,
-          capture: CapturePlan(
-            mode: CaptureMode.audio,
-            processId: process?.pid ?? 0,
-            audioSource: settings.audioCaptureSource,
-          ),
+  }) => _started((session) async {
+    await _nativeEngine.startCharacters(
+      CharactersSessionConfig(
+        worker: worker,
+        capture: CapturePlan(
+          mode: CaptureMode.audio,
+          processId: process?.pid ?? 0,
+          audioSource: settings.audioCaptureSource,
         ),
-      );
-      _throwIfSuperseded(session);
-    } catch (_) {
-      await _endFailedStart(session);
-      rethrow;
-    }
-  }
+      ),
+    );
+    _throwIfSuperseded(session);
+  });
 
   /// Starts the session a card is built through when the recordings are
   /// already on disk: the converter that measures a voice and nothing else,
@@ -293,17 +281,11 @@ class SessionRepository {
   ///
   /// It is borrowed rather than held — up for as long as the files take —
   /// so it answers with its number, which [stopSession] is handed back.
-  Future<int> startVoiceFiles(WorkerPlan worker) async {
-    final session = ++_sessions;
-    try {
-      await _nativeEngine.startVoiceFiles(VoiceFilesSessionConfig(worker: worker));
-      _throwIfSuperseded(session);
-      return session;
-    } catch (_) {
-      await _endFailedStart(session);
-      rethrow;
-    }
-  }
+  Future<int> startVoiceFiles(WorkerPlan worker) => _started((session) async {
+    await _nativeEngine.startVoiceFiles(VoiceFilesSessionConfig(worker: worker));
+    _throwIfSuperseded(session);
+    return session;
+  });
 
   /// One voice from the files at [paths], however they are encoded, measured
   /// through the session that was up when they were handed over or not at
@@ -339,28 +321,22 @@ class SessionRepository {
     /// The converter, with the game's bank: a voice met now is the same
     /// voice once the dubbing runs.
     required WorkerPlan worker,
-  }) async {
-    final session = ++_sessions;
-    try {
-      final config = SceneSessionConfig(
-        worker: worker.copyWith(
-          characters: await _characters.file(),
-          asHeard: await _cutFromMix(),
-        ),
-        capture: CapturePlan(
-          mode: CaptureMode.audio,
-          processId: process?.pid ?? 0,
-          audioSource: settings.audioCaptureSource,
-        ),
-      );
-      _throwIfSuperseded(session);
-      await _nativeEngine.startScene(config);
-      _throwIfSuperseded(session);
-    } catch (_) {
-      await _endFailedStart(session);
-      rethrow;
-    }
-  }
+  }) => _started((session) async {
+    final config = SceneSessionConfig(
+      worker: worker.copyWith(
+        characters: await _characters.file(),
+        asHeard: await _cutFromMix(),
+      ),
+      capture: CapturePlan(
+        mode: CaptureMode.audio,
+        processId: process?.pid ?? 0,
+        audioSource: settings.audioCaptureSource,
+      ),
+    );
+    _throwIfSuperseded(session);
+    await _nativeEngine.startScene(config);
+    _throwIfSuperseded(session);
+  });
 
   /// The cards the canvas has cut out of the mix.
   ///
