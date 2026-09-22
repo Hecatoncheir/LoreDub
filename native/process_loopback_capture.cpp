@@ -275,12 +275,17 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
   auto last_voice = std::chrono::steady_clock::now();
   while (!stopping_) {
     WaitForSingleObject(sample_ready, 100);
+    // A client that has gone -- the device unplugged, the game's audio
+    // session torn down -- answers every call with an error from then on.
+    // Passed over, the capture went on "listening" to nothing, and the
+    // player heard the dubbing go quiet with nothing to say why.
+    HRESULT failure = S_OK;
     UINT32 packet_frames = 0;
-    while (SUCCEEDED(capture->GetNextPacketSize(&packet_frames)) && packet_frames > 0) {
+    while (SUCCEEDED(failure = capture->GetNextPacketSize(&packet_frames)) && packet_frames > 0) {
       BYTE* bytes = nullptr;
       DWORD flags = 0;
       UINT32 frames = 0;
-      if (FAILED(capture->GetBuffer(&bytes, &frames, &flags, nullptr, nullptr))) break;
+      if (FAILED(failure = capture->GetBuffer(&bytes, &frames, &flags, nullptr, nullptr))) break;
       const auto* input = reinterpret_cast<const int16_t*>(bytes);
       // The threshold follows the game down: what reaches the tap is the
       // game's own sound times whatever it has been turned down to.
@@ -300,6 +305,10 @@ void ProcessLoopbackCapture::CaptureThread(uint32_t process_id, bool exclude_pro
         }
       }
       capture->ReleaseBuffer(frames);
+    }
+    if (FAILED(failure)) {
+      on_error(WindowsError(failure));
+      break;
     }
 
     // Endpointing is checked once per wake-up rather than per packet, and on

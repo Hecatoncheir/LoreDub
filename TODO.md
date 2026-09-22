@@ -1671,9 +1671,10 @@ abstract final class AppTheme {
       запись файла вместе; одна и та же очистка дескрипторов трижды. →
       `ActivateLoopbackClient()`, чистый `PhraseSegmenter` (`Feed`, `Finish`),
       RAII `UniqueHandle` / `RoApartment`.
-- [ ] Проглоченные HRESULT у `GetNextPacketSize` / `GetBuffer` (`:275`,
+- [x] Проглоченные HRESULT у `GetNextPacketSize` / `GetBuffer` (`:275`,
       `:279`): захват с отвалившимся клиентом остаётся «слушающим» и не
       слышит ничего → `on_error(WindowsError(hr))` и выход из цикла.
+      *Сделано.*
 - [ ] `VisitSessions` (`lore_dub_native.cpp:278–343`) пропускает
       `CoUninitialize` на четырёх ранних выходах, флаг `restore` меняет
       поведение в четырёх местах, `changed` никем не читается → RAII
