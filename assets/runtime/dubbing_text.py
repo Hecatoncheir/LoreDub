@@ -185,10 +185,16 @@ def transliterated(word):
     return written.capitalize() if word[:1].isupper() else written
 
 
+# How many Latin words a translated line may keep and still have been
+# translated: a name or two stays behind as it is, more is a line the model
+# passed through untouched.
+NAMES_LEFT_IN_LATIN = 2
+
+
 def readable(translated, source, translate, glossary=None):
     """[translated] with whatever the translator left in Latin script written
     so that the voice can say it."""
-    if len(LATIN_RUN.findall(translated)) > 2:
+    if len(LATIN_RUN.findall(translated)) > NAMES_LEFT_IN_LATIN:
         # More than a name or two stayed behind: the line was passed through
         # rather than translated, and asking again without the capitals is
         # what recovers it. Measured, that is the one case where the second
