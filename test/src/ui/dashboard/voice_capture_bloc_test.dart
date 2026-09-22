@@ -199,9 +199,9 @@ void main() {
       // The clip the fingerprint stands closest to is what the card plays.
       expect(repository.kept['a1'], 'C:/work/dropped_1.wav');
       expect(voices.state.clips, contains('a1'));
-      expect(voices.state.built?.used, 3);
-      expect(voices.state.built?.skipped, ['C:/music.mp3']);
-      expect(voices.state.builtId, 'a1');
+      expect(voices.state.built?.voice.used, 3);
+      expect(voices.state.built?.voice.skipped, ['C:/music.mp3']);
+      expect(voices.state.built?.id, 'a1');
       expect(voices.state.building, isFalse);
     });
 
@@ -256,9 +256,15 @@ void main() {
     });
 
     test('leaves the card alone while another is being recorded', () async {
-      stage([
-        guard,
-      ], capture: VoiceCaptureState(status: PipelineStatus.listening, recordingId: 'a1'));
+      stage(
+        [
+          guard,
+        ],
+        capture: VoiceCaptureState(
+          status: PipelineStatus.listening,
+          busy: {CardActivity.recording: 'a1'},
+        ),
+      );
 
       await answered(VoiceFilesDropped('a1', const ['C:/one.ogg']));
 
@@ -328,7 +334,11 @@ void main() {
     await answered(const ClipPlayed('a1'));
 
     expect(repository.played, [r'C:\work\capture\segment-2.wav']);
-    expect(voices.state.playingId, isNull, reason: 'it has finished sounding');
+    expect(
+      voices.state.cardDoing(CardActivity.playing),
+      isNull,
+      reason: 'it has finished sounding',
+    );
   });
 
   test('offers nothing to play for a card that came from a file', () async {
@@ -349,7 +359,7 @@ void main() {
     expect(repository.previewStarts, 1, reason: 'the speech model is loaded once');
     expect(repository.spoken.single, contains('Стражник'));
     expect(voices.state.previewReady, isTrue);
-    expect(voices.state.previewingId, isNull);
+    expect(voices.state.cardDoing(CardActivity.previewing), isNull);
 
     await answered(const SampleAsked('a1'));
 
@@ -366,7 +376,7 @@ void main() {
   });
 
   test('leaves the sample alone while files are being measured', () async {
-    stage([guard], capture: VoiceCaptureState(buildingId: 'a1'));
+    stage([guard], capture: VoiceCaptureState(busy: {CardActivity.building: 'a1'}));
 
     await answered(const SampleAsked('a1'));
 
@@ -431,7 +441,7 @@ void main() {
 
       expect(repository.previewStarts, 0);
       expect(repository.spoken, isEmpty);
-      expect(voices.state.previewingId, isNull);
+      expect(voices.state.cardDoing(CardActivity.previewing), isNull);
     });
 
     test('measures no files', () async {

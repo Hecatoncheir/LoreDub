@@ -28,20 +28,23 @@ import '../../../domain/session_config.dart';
 /// What a card's record button does when pressed.
 enum RecordAction { start, stop }
 
+/// What the characters screen can be doing to a card.
+///
+/// Several of them go on side by side -- a clip plays while another card
+/// records, files are measured while a sample is spoken -- which is why they
+/// are not one state of the screen; but each holds one card at a time.
+enum CardActivity { recording, playing, previewing, building }
+
 /// What the characters screen is doing with the engine: the session a voice
 /// is recorded through, the take, a card measured from files, and what is
 /// sounding.
 class VoiceCaptureState extends Equatable {
   const VoiceCaptureState({
     this.status = PipelineStatus.idle,
-    this.recordingId,
+    this.busy = const {},
     this.heardSeconds = 0,
     this.clips = const {},
-    this.playingId,
-    this.previewingId,
     this.previewReady = false,
-    this.buildingId,
-    this.builtId,
     this.built,
   });
 
@@ -49,8 +52,12 @@ class VoiceCaptureState extends Equatable {
   /// the converter is loaded and the game's audio is being captured.
   final PipelineStatus status;
 
-  /// The character whose voice is being recorded, if any.
-  final String? recordingId;
+  /// The card each activity is under way on: the one whose voice is being
+  /// recorded, whose clip is sounding, whose sample is being spoken -- from
+  /// the moment it is asked for, which on the first one means waiting for
+  /// the speech model -- and whose voice is being measured from files
+  /// dropped on it.
+  final Map<CardActivity, String> busy;
 
   /// How much speech the recording has heard, so the card can say whether
   /// there is enough of it yet.
@@ -61,35 +68,39 @@ class VoiceCaptureState extends Equatable {
   /// fingerprint without the audio and is not in here.
   final Set<String> clips;
 
-  /// The card whose clip is sounding right now.
-  final String? playingId;
-
-  /// The card whose voice is being measured from files dropped on it, and
-  /// what came of the last such measurement. Both are the screen's own: the
-  /// card keeps only the fingerprint.
-  final String? buildingId;
-  final String? builtId;
-  final BuiltVoice? built;
-
-  /// The card whose sample is being spoken — from the moment it is asked
-  /// for, which on the first one means waiting for the speech model.
-  final String? previewingId;
+  /// What came of the last measurement from files, and the card it was
+  /// for. The screen's own: the card keeps only the fingerprint.
+  final ({String id, BuiltVoice voice})? built;
 
   /// Whether the speech model is loaded and a sample costs no waiting.
   final bool previewReady;
 
+  /// The card [activity] is under way on, if it is.
+  String? cardDoing(CardActivity activity) => busy[activity];
+
+  /// Whether [activity] is under way on [id].
+  bool isDoing(CardActivity activity, String id) => busy[activity] == id;
+
+  /// [activity] begun on [id].
+  VoiceCaptureState doing(CardActivity activity, String id) =>
+      copyWith(busy: {...busy, activity: id});
+
+  /// [activity] over, whichever card it was on.
+  VoiceCaptureState done(CardActivity activity) => copyWith(busy: {...busy}..remove(activity));
+
   bool get running => status == PipelineStatus.starting || status == PipelineStatus.listening;
 
-  bool get recording => recordingId != null;
+  bool get recording => busy.containsKey(CardActivity.recording);
 
   /// Whether a card is being measured from files right now.
-  bool get building => buildingId != null;
+  bool get building => busy.containsKey(CardActivity.building);
 
   /// Whether [id] has a clip of its own to play.
   bool canPlay(String id) => clips.contains(id);
 
   /// Nothing is played over anything else: one clip or one sample at a time.
-  bool get sounding => playingId != null || previewingId != null;
+  bool get sounding =>
+      busy.containsKey(CardActivity.playing) || busy.containsKey(CardActivity.previewing);
 
   /// Whether [id]'s own clip can be played now: it has one, and nothing
   /// else is sounding.
@@ -106,7 +117,7 @@ class VoiceCaptureState extends Equatable {
   /// only a running session records, and only one card at a time.
   RecordAction? recordActionFor(String id) {
     if (!running) return null;
-    if (recordingId == id) return RecordAction.stop;
+    if (isDoing(CardActivity.recording, id)) return RecordAction.stop;
     return recording ? null : RecordAction.start;
   }
 
@@ -118,46 +129,23 @@ class VoiceCaptureState extends Equatable {
 
   VoiceCaptureState copyWith({
     PipelineStatus? status,
-    String? recordingId,
-    bool clearRecordingId = false,
+    Map<CardActivity, String>? busy,
     double? heardSeconds,
     Set<String>? clips,
-    String? playingId,
-    bool clearPlayingId = false,
-    String? previewingId,
-    bool clearPreviewingId = false,
-    String? buildingId,
-    bool clearBuildingId = false,
-    String? builtId,
-    BuiltVoice? built,
+    ({String id, BuiltVoice voice})? built,
     bool clearBuilt = false,
     bool? previewReady,
   }) => VoiceCaptureState(
     status: status ?? this.status,
-    recordingId: clearRecordingId ? null : recordingId ?? this.recordingId,
+    busy: busy ?? this.busy,
     heardSeconds: heardSeconds ?? this.heardSeconds,
     clips: clips ?? this.clips,
-    playingId: clearPlayingId ? null : playingId ?? this.playingId,
-    previewingId: clearPreviewingId ? null : previewingId ?? this.previewingId,
-    buildingId: clearBuildingId ? null : buildingId ?? this.buildingId,
-    builtId: clearBuilt ? null : builtId ?? this.builtId,
     built: clearBuilt ? null : built ?? this.built,
     previewReady: previewReady ?? this.previewReady,
   );
 
   @override
-  List<Object?> get props => [
-    status,
-    recordingId,
-    heardSeconds,
-    clips,
-    playingId,
-    buildingId,
-    builtId,
-    built,
-    previewingId,
-    previewReady,
-  ];
+  List<Object?> get props => [status, busy, heardSeconds, clips, built, previewReady];
 }
 
 sealed class VoiceCaptureEvent extends Equatable {
@@ -432,7 +420,7 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
       const Duration(milliseconds: 200),
       (_) => add(const _TakeTicked()),
     );
-    emit(state.copyWith(recordingId: event.id, heardSeconds: 0));
+    emit(state.doing(CardActivity.recording, event.id).copyWith(heardSeconds: 0));
   }
 
   void _onTicked(_TakeTicked event, Emitter<VoiceCaptureState> emit) {
@@ -448,7 +436,7 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
   }
 
   Future<void> _stopRecording(Emitter<VoiceCaptureState> emit) async {
-    final id = state.recordingId;
+    final id = state.cardDoing(CardActivity.recording);
     if (id == null) return;
     _endTicks();
     // The take is one recording, and it is this call that closes it: what
@@ -467,7 +455,7 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
         _errors.report(exception);
       }
     }
-    emit(state.copyWith(clearRecordingId: true, clips: kept, heardSeconds: 0));
+    emit(state.done(CardActivity.recording).copyWith(clips: kept, heardSeconds: 0));
     if (heard == null) return;
     await _writeVoice(
       id,
@@ -522,7 +510,9 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
   /// closed rather than written to a card that is gone.
   Future<void> _onCastChanged(_CastChanged event, Emitter<VoiceCaptureState> emit) async {
     final ids = {for (final card in event.library.characters) card.id};
-    final recordingGone = state.recordingId != null && !ids.contains(state.recordingId);
+    final recordingGone =
+        state.cardDoing(CardActivity.recording) != null &&
+        !ids.contains(state.cardDoing(CardActivity.recording));
     if (recordingGone) await _stopRecording(emit);
     final clips = state.clips.where(ids.contains).toSet();
     if (clips.length != state.clips.length) emit(state.copyWith(clips: clips));
@@ -539,7 +529,7 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
     if (paths.isEmpty || state.building || state.recording || _workerTaken || !canRecord) return;
     if (!_cast.cast.any((character) => character.id == id)) return;
     _errors.report(null);
-    emit(state.copyWith(buildingId: id, clearBuilt: true));
+    emit(state.doing(CardActivity.building, id).copyWith(clearBuilt: true));
     // A session the player started is theirs to end; one borrowed here to
     // measure files with is put down again when the measuring is over.
     int? borrowed;
@@ -547,7 +537,7 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
       if (!state.running) borrowed = await _startForFiles();
       final built = await _session.buildVoice(paths);
       final clips = await _keptClips(id, built.anchor);
-      emit(state.copyWith(built: built, builtId: id, clips: clips));
+      emit(state.copyWith(built: (id: id, voice: built), clips: clips));
       await _writeVoice(id, vector: built.vector, gender: built.gender, seconds: built.seconds);
     } catch (exception) {
       // Another screen taking the worker over is no failure of this one.
@@ -555,12 +545,13 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
     } finally {
       if (borrowed != null) await _stopBorrowed(borrowed);
       emit(
-        state.copyWith(
-          clearBuildingId: true,
-          // A start that never came up borrowed nothing, and whatever the
-          // screen shows by now was put there by somebody else.
-          status: borrowed == null ? state.status : PipelineStatus.idle,
-        ),
+        state
+            .done(CardActivity.building)
+            .copyWith(
+              // A start that never came up borrowed nothing, and whatever the
+              // screen shows by now was put there by somebody else.
+              status: borrowed == null ? state.status : PipelineStatus.idle,
+            ),
       );
     }
   }
@@ -615,7 +606,7 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
     final cast = _cast.cast;
     final character = cast.where((value) => value.id == event.id).firstOrNull;
     if (character == null) return;
-    emit(state.copyWith(previewingId: event.id));
+    emit(state.doing(CardActivity.previewing, event.id));
     try {
       final selection = _selection;
       // A card read in another's voice is heard as that other: the sample
@@ -637,7 +628,7 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
       // Another screen taking the worker over is no failure of this one.
       if (!isPipelineStopped(exception)) _errors.report(exception);
     } finally {
-      emit(state.copyWith(clearPreviewingId: true));
+      emit(state.done(CardActivity.previewing));
     }
   }
 
@@ -671,12 +662,12 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
         emit(state.copyWith(clips: {...state.clips}..remove(event.id)));
         return;
       }
-      emit(state.copyWith(playingId: event.id));
+      emit(state.doing(CardActivity.playing, event.id));
       await _session.playWave(clip);
     } catch (exception) {
       _errors.report(exception);
     } finally {
-      emit(state.copyWith(clearPlayingId: true));
+      emit(state.done(CardActivity.playing));
     }
   }
 

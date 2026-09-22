@@ -9,13 +9,13 @@ void main() {
   const idle = VoiceCaptureState(clips: {'ann'});
   const recording = VoiceCaptureState(
     status: PipelineStatus.listening,
-    recordingId: 'ann',
+    busy: {CardActivity.recording: 'ann'},
   );
 
   test('plays a clip a card has, and only while nothing else sounds', () {
     expect(idle.canPlayClip('ann'), isTrue);
     expect(idle.canPlayClip('bob'), isFalse, reason: 'no clip of its own');
-    expect(idle.copyWith(playingId: 'bob').canPlayClip('ann'), isFalse);
+    expect(idle.doing(CardActivity.playing, 'bob').canPlayClip('ann'), isFalse);
   });
 
   test('reads a sample only with the voice installed and the worker free', () {
@@ -24,7 +24,7 @@ void main() {
     expect(idle.canPreview(dubbing: true, speechInstalled: true), isFalse);
     expect(recording.canPreview(dubbing: false, speechInstalled: true), isFalse);
     expect(
-      idle.copyWith(buildingId: 'bob').canPreview(dubbing: false, speechInstalled: true),
+      idle.doing(CardActivity.building, 'bob').canPreview(dubbing: false, speechInstalled: true),
       isFalse,
     );
   });
@@ -42,5 +42,17 @@ void main() {
     expect(idle.takesFiles(dubbing: false, converterInstalled: false), isFalse);
     expect(idle.takesFiles(dubbing: true, converterInstalled: true), isFalse);
     expect(recording.takesFiles(dubbing: false, converterInstalled: true), isFalse);
+  });
+
+  test('does things to different cards side by side, one card each', () {
+    final both = recording.doing(CardActivity.playing, 'bob');
+
+    expect(both.isDoing(CardActivity.recording, 'ann'), isTrue, reason: 'a clip plays meanwhile');
+    expect(both.isDoing(CardActivity.playing, 'bob'), isTrue);
+    expect(both.doing(CardActivity.playing, 'cat').cardDoing(CardActivity.playing), 'cat');
+
+    final played = both.done(CardActivity.playing);
+    expect(played.cardDoing(CardActivity.playing), isNull);
+    expect(played.recording, isTrue, reason: 'ending one leaves the other');
   });
 }

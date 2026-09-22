@@ -157,7 +157,7 @@ void main() {
         cast: const CastState(loading: false, characters: [guard]),
         capture: const VoiceCaptureState(
           status: PipelineStatus.listening,
-          recordingId: 'a1',
+          busy: {CardActivity.recording: 'a1'},
           heardSeconds: 3,
         ),
       );
@@ -211,7 +211,7 @@ void main() {
     testWidgets('turns the play button into a stop while a clip sounds', (tester) async {
       final cubits = stageCast(
         cast: const CastState(loading: false, characters: [guard]),
-        capture: const VoiceCaptureState(clips: {'a1'}, playingId: 'a1'),
+        capture: const VoiceCaptureState(clips: {'a1'}, busy: {CardActivity.playing: 'a1'}),
       );
       await pumpDashboard(tester, cubits, const Size(1280, 900));
 

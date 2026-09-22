@@ -72,7 +72,7 @@ class CastCard extends StatelessWidget {
     final id = character.id;
     return CharacterTileModel(
       character: character,
-      recording: capture.recordingId == id,
+      recording: capture.isDoing(CardActivity.recording, id),
       heardSeconds: capture.heardSeconds,
       packNames: [
         for (final pack in cast.packs)
@@ -80,12 +80,12 @@ class CastCard extends StatelessWidget {
       ],
       packs: cast.packs,
       readerName: _readerName(),
-      playing: capture.playingId == id,
-      previewing: capture.previewingId == id,
+      playing: capture.isDoing(CardActivity.playing, id),
+      previewing: capture.isDoing(CardActivity.previewing, id),
       carriesTimbre: voices.carriesTimbre,
       dubbing: dubbing,
-      building: capture.buildingId == id,
-      built: capture.builtId == id ? capture.built : null,
+      building: capture.isDoing(CardActivity.building, id),
+      built: capture.built?.id == id ? capture.built?.voice : null,
     );
   }
 

@@ -30,7 +30,9 @@ class CharacterSessionControls extends StatelessWidget {
           (pipeline) => pipeline.running,
         ),
         builder: (context, pipeline) => BlocBuilder<VoiceCaptureBloc, VoiceCaptureState>(
-          buildWhen: whenChanged((characters) => (characters.status, characters.recordingId)),
+          buildWhen: whenChanged(
+            (characters) => (characters.status, characters.cardDoing(CardActivity.recording)),
+          ),
           builder: (context, characters) =>
               _build(context, pipeline, characters, initializing: initializing),
         ),
