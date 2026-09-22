@@ -7,7 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/repositories/session_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/update_repository.dart';
-import '../../../data/services/update_service.dart';
 import '../../../domain/app_release.dart';
 import '../../../domain/progress_ticker.dart';
 import '../../../domain/session_coordinator.dart';

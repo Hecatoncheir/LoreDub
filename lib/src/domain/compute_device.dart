@@ -1,4 +1,6 @@
 // Copyright (c) 2026 LoreDub contributors.
+import 'runtime_package.dart';
+
 // SPDX-License-Identifier: MIT
 
 /// What the user asked the pipeline to run on.
@@ -49,14 +51,14 @@ List<ComputeBackend> stageBackends(ComputeStage stage) => switch (stage) {
 /// These are the ids in the runtime catalogue. Nothing is returned for the
 /// CPU: that runtime ships with the application.
 String? requiredRuntimeId(ComputeStage stage, ComputeBackend backend) => switch ((stage, backend)) {
-  (ComputeStage.recognition, ComputeBackend.cuda) => 'whisper-cuda',
+  (ComputeStage.recognition, ComputeBackend.cuda) => whisperCudaRuntimeId,
   (ComputeStage.recognition, ComputeBackend.vulkan) => 'whisper-vulkan',
   // The translator and the converter run in the worker's own torch, and the
   // voice in the onnxruntime-gpu installed beside it on that torch's CUDA
   // libraries, so one runtime serves the three.
   (ComputeStage.translation, ComputeBackend.cuda) ||
   (ComputeStage.speech, ComputeBackend.cuda) ||
-  (ComputeStage.voiceConversion, ComputeBackend.cuda) => 'torch-cuda',
+  (ComputeStage.voiceConversion, ComputeBackend.cuda) => torchCudaRuntimeId,
   _ => null,
 };
 

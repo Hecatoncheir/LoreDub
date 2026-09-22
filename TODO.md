@@ -1401,12 +1401,26 @@ abstract final class AppTheme {
       интерпретатор просто считается негодным.
       Формулировки нового кода проверяет `failure_messages_test.dart` — он
       идёт по всем `FailureCode.values` и требует текста на обоих языках.
-- [ ] **Слои.** Девять импортов `ui → data/services` тянут константы и
+- [x] **Слои.** Девять импортов `ui → data/services` тянут константы и
       значения, живущие в файлах сервисов (`exitDetailSeparator`,
       `overlappingVoices`, `isNewerRelease`, `RejectedPython`, id рантаймов) →
       в домен. `domain/runtime_paths.dart:4` импортирует `dart:io` и щупает
       диск — ему место в `data/`. `modelCatalog` и `runtimeCatalog` —
       глобальные изменяемые списки → неизменяемые.
+      *Сделано.* В домен переехали идентификаторы рантаймов
+      (`runtime_package.dart`, и `requiredRuntimeId` больше не пишет их
+      строками), разбор версии релиза (`app_release.dart`), ответ поиска
+      Python (`python_search.dart`), разделитель выхода воркера
+      (`failure.dart`), число голосов, звучащих разом (`speech_pace.dart`),
+      и тип прогресса загрузки (`download_control.dart`). `runtime_paths.dart`
+      разделён: подсчёт потоков — `domain/cpu_threads.dart`, без `dart:io`
+      (число процессоров передаёт вызывающий), пути и поиск исполняемых
+      файлов — `data/services/runtime_paths.dart`; путь к встроенному Python
+      экран настроек берёт у `SystemRepository`. Каталоги — неизменяемые
+      списки. Импортов `ui → data/services` осталось три, все к каталогу
+      моделей (`dubbingLanguages`, `speechModelFor`): каталог — это данные
+      продукта, а не константа сервиса, и переносить его в домен — отдельное
+      решение.
 - [ ] **Композиция:** сборка зависимостей размазана по `app.dart:79–84`,
       `app_repository.dart:32–37`, `update_repository.dart:15`,
       `native_engine_service.dart:50`; `_inference` не внедряется, статические

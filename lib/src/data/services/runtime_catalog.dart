@@ -4,17 +4,13 @@
 import '../../domain/model_package.dart';
 import '../../domain/runtime_package.dart';
 
-/// Where the GPU runtimes come from.
-///
-/// Only the two heavy ones are here. The Vulkan build of whisper.cpp is small
-/// enough to ship with the installer, so it has no entry: nothing has to be
-/// fetched before an AMD card can be used.
-const whisperCudaRuntimeId = 'whisper-cuda';
-const torchCudaRuntimeId = 'torch-cuda';
+export '../../domain/runtime_package.dart' show torchCudaRuntimeId, whisperCudaRuntimeId;
 
 const whisperCudaVersion = 'v1.8.2';
 
-final runtimeCatalog = <RuntimePackage>[
+/// Read only: a list handed out to every screen must not be changed by one
+/// of them under the others.
+final runtimeCatalog = List<RuntimePackage>.unmodifiable(<RuntimePackage>[
   RuntimePackage(
     id: whisperCudaRuntimeId,
     kind: RuntimeInstallKind.archive,
@@ -65,7 +61,7 @@ final runtimeCatalog = <RuntimePackage>[
       'torch==2.7.1+cu126',
     ],
   ),
-];
+]);
 
 RuntimePackage? runtimePackageById(String id) {
   for (final package in runtimeCatalog) {

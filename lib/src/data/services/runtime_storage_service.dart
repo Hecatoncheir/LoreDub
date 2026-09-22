@@ -17,7 +17,7 @@ import '../../domain/download_control.dart';
 import '../../domain/failure.dart';
 import '../../domain/model_proxy.dart';
 import '../../domain/runtime_package.dart';
-import '../../domain/runtime_paths.dart';
+import 'runtime_paths.dart';
 import 'artifact_downloader.dart';
 import 'runtime_catalog.dart';
 

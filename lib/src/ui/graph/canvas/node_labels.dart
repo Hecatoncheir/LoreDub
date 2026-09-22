@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../../../../l10n/app_localizations.dart';
-import '../../../data/services/playback_scheduler.dart';
+import '../../../domain/speech_pace.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/pipeline_graph.dart';

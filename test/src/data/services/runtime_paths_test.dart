@@ -6,10 +6,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
-import 'package:lore_dub/src/domain/runtime_paths.dart';
+import 'package:lore_dub/src/data/services/runtime_paths.dart';
 import 'package:path/path.dart' as path;
 
-import '../../support/temporary_directory.dart';
+import '../../../support/temporary_directory.dart';
 
 void main() {
   Future<Directory> createRuntime() async {
@@ -24,15 +24,6 @@ void main() {
     await file.writeAsString('binary');
     return file;
   }
-
-  test('scales the default thread count with the CPU', () {
-    expect(defaultCpuThreads(2), 2);
-    expect(defaultCpuThreads(4), 2);
-    expect(defaultCpuThreads(8), 4);
-    expect(defaultCpuThreads(12), 6);
-    expect(defaultCpuThreads(24), 12);
-    expect(defaultCpuThreads(64), 12, reason: 'more threads stop paying off');
-  });
 
   test('composes the bundled runtime paths', () async {
     final runtime = await createRuntime();
@@ -179,11 +170,5 @@ void main() {
             .having((error) => error.detail, 'detail', missing),
       ),
     );
-  });
-
-  test('offers the thread counts a machine has, with the chosen and the default', () {
-    expect(cpuThreadOptions(4, 8), [2, 3, 4, 6, 8]);
-    // Carried over from a larger processor, the choice still shows.
-    expect(cpuThreadOptions(16, 4), [2, 3, 4, 16]);
   });
 }

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../../l10n/app_localizations.dart';
-import '../data/services/runtime_catalog.dart';
+import '../domain/runtime_package.dart';
 import '../domain/compute_device.dart';
 import '../domain/model_package.dart';
 

@@ -9,6 +9,7 @@ import 'package:http/testing.dart';
 import 'package:lore_dub/src/data/services/update_service.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:lore_dub/src/domain/app_release.dart';
 
 void main() {
   UpdateService serviceReturning(http.Response response, {String version = '0.2.1'}) =>

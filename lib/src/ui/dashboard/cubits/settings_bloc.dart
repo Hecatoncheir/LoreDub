@@ -9,7 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/repositories/session_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
-import '../../../data/services/python_discovery.dart';
+import '../../../domain/python_search.dart';
 import '../../../domain/app_settings.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/engine_event.dart';

@@ -130,3 +130,11 @@ class RuntimeInstallState with PackageDownload<RuntimeInstallState> {
     error: clearError ? null : error ?? this.error,
   );
 }
+
+/// Where the GPU runtimes come from.
+///
+/// Only the two heavy ones are here. The Vulkan build of whisper.cpp is small
+/// enough to ship with the installer, so it has no entry: nothing has to be
+/// fetched before an AMD card can be used.
+const whisperCudaRuntimeId = 'whisper-cuda';
+const torchCudaRuntimeId = 'torch-cuda';

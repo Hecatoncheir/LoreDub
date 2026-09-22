@@ -3,7 +3,6 @@
 
 import '../../domain/download_control.dart';
 import '../../domain/runtime_package.dart';
-import '../services/artifact_downloader.dart';
 import '../services/runtime_catalog.dart';
 import '../services/runtime_storage_service.dart';
 

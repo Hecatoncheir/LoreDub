@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../../domain/runtime_paths.dart';
+import '../../data/repositories/system_repository.dart';
 import '../common/setting_card.dart';
 import '../dashboard/cubits/settings_bloc.dart';
 import 'python_actions.dart';
@@ -33,7 +33,9 @@ class _PythonCardState extends State<PythonCard> with AutomaticKeepAliveClientMi
   void initState() {
     super.initState();
     final chosen = context.read<SettingsBloc>().settings.pythonExecutable;
-    _path = TextEditingController(text: chosen.isEmpty ? bundledPythonExecutablePath() : chosen);
+    _path = TextEditingController(
+      text: chosen.isEmpty ? context.read<SystemRepository>().bundledPython : chosen,
+    );
   }
 
   @override
@@ -54,7 +56,7 @@ class _PythonCardState extends State<PythonCard> with AutomaticKeepAliveClientMi
   }
 
   void _useBundled() {
-    _path.text = bundledPythonExecutablePath();
+    _path.text = context.read<SystemRepository>().bundledPython;
     _save();
   }
 

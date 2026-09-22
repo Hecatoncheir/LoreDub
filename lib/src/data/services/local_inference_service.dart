@@ -10,7 +10,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/compute_device.dart';
-import '../../domain/runtime_paths.dart';
+import 'runtime_paths.dart';
 import '../../domain/sound_captions.dart';
 import '../../domain/spoken_language.dart';
 import '../../domain/built_voice.dart';
@@ -76,9 +76,6 @@ String? parseDetectedLanguage(String output, {double minimumProbability = 0.5}) 
 /// byte from an unexpected interpreter must not silently swallow every reply.
 Stream<String> decodeWorkerLines(Stream<List<int>> source) =>
     source.transform(const Utf8Decoder(allowMalformed: true)).transform(const LineSplitter());
-
-/// Separates the exit code from the worker output inside a failure detail.
-const exitDetailSeparator = '\u0000';
 
 /// Keeps the last stderr lines of the worker so that a crash can be reported
 /// with the reason the interpreter printed instead of a bare exit code. The

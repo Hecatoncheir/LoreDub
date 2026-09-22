@@ -1,6 +1,8 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'package:pub_semver/pub_semver.dart';
+
 /// The Windows setup a release ships: what an update downloads and runs.
 class ReleaseInstaller {
   const ReleaseInstaller({
@@ -118,4 +120,30 @@ class UpdateState {
     installerPath: installerPath ?? this.installerPath,
     announce: announce ?? this.announce,
   );
+}
+
+/// Reads a release tag as a version, tolerating the `v` the tags carry.
+///
+/// Returns null rather than throwing: a tag someone typed by hand is a reason
+/// to say nothing about updates, not to fail the application.
+Version? parseReleaseVersion(String tag) {
+  final trimmed = tag.trim();
+  final withoutPrefix = trimmed.startsWith('v') ? trimmed.substring(1) : trimmed;
+  try {
+    return Version.parse(withoutPrefix);
+  } on FormatException {
+    return null;
+  }
+}
+
+/// Whether [candidate] is worth telling the user about.
+///
+/// The build number after `+` is ignored: `0.2.1+3` and `0.2.1+4` are the
+/// same release as far as anyone reading a changelog is concerned.
+bool isNewerRelease(String candidate, String current) {
+  final released = parseReleaseVersion(candidate);
+  final running = parseReleaseVersion(current);
+  if (released == null || running == null) return false;
+  return Version(released.major, released.minor, released.patch) >
+      Version(running.major, running.minor, running.patch);
 }

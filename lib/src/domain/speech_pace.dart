@@ -31,3 +31,8 @@ double hurriedSpeed(double chosen, int waiting) {
   final hurry = 1 + hurryStep * (waiting - patientLines);
   return (chosen * (hurry < hurryLimit ? hurry : hurryLimit)).clamp(0.5, 2.0);
 }
+
+/// How many characters may be heard at once when lines are allowed to
+/// overlap. Two keeps a quick exchange from falling behind the game; a third
+/// voice on top turns the dubbing into a crowd nobody can follow.
+const overlappingVoices = 2;

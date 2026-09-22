@@ -9,7 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
-import '../../domain/runtime_paths.dart';
+import '../../domain/cpu_threads.dart';
 import '../dashboard/cubits/settings_bloc.dart';
 
 /// What the preset leaves to say: the card a GPU run would use, or --
@@ -50,7 +50,10 @@ class ComputePresetDetail extends StatelessWidget {
         children: [
           const SizedBox(height: 14),
           Text(
-            l10n.performanceNote(Platform.numberOfProcessors, defaultCpuThreads()),
+            l10n.performanceNote(
+              Platform.numberOfProcessors,
+              defaultCpuThreads(Platform.numberOfProcessors),
+            ),
             style: note,
           ),
           const SizedBox(height: 12),
@@ -59,7 +62,10 @@ class ComputePresetDetail extends StatelessWidget {
             initialValue: settings.cpuThreads,
             decoration: InputDecoration(labelText: l10n.cpuThreads),
             items: [
-              for (final threads in cpuThreadOptions(settings.cpuThreads))
+              for (final threads in cpuThreadOptions(
+                settings.cpuThreads,
+                Platform.numberOfProcessors,
+              ))
                 DropdownMenuItem(value: threads, child: Text('$threads')),
             ],
             onChanged: running ? null : (threads) => _chooseThreads(context, threads),

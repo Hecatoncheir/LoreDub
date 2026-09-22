@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/playback_scheduler.dart';
+import 'package:lore_dub/src/domain/speech_pace.dart';
 
 void main() {
   late Map<String, Completer<void>> sounding;

@@ -11,11 +11,11 @@ import 'package:path/path.dart' as path;
 import 'package:socks5_proxy/socks_client.dart';
 
 import '../../domain/download_control.dart';
+
+export '../../domain/download_control.dart' show DownloadProgress;
 import '../../domain/failure.dart';
 import '../../domain/model_package.dart';
 import '../../domain/model_proxy.dart';
-
-typedef DownloadProgress = void Function(double value);
 
 /// Fetching files that must arrive intact, shared by the model and the GPU
 /// runtime stores. Both stream to a `.part` file and rename only once size

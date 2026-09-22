@@ -1,14 +1,17 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:io';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/ocr_region.dart';
-import '../../domain/runtime_paths.dart';
+import 'runtime_paths.dart';
 import '../../domain/spoken_language.dart';
 import 'model_catalog.dart';
+import '../../domain/cpu_threads.dart';
 
 class SettingsService {
   /// A dubbing language this build no longer carries -- every one but
@@ -94,7 +97,8 @@ class SettingsService {
       roughRecognition:
           preferences.getBool('roughRecognition') ?? const AppSettings().roughRecognition,
       ttsSpeed: preferences.getDouble('ttsSpeed') ?? 1.12,
-      cpuThreads: preferences.getInt('cpuThreads') ?? defaultCpuThreads(),
+      cpuThreads:
+          preferences.getInt('cpuThreads') ?? defaultCpuThreads(Platform.numberOfProcessors),
       showOverlay: preferences.getBool('showOverlay') ?? true,
       ocrRegion: _readOcrRegion(preferences),
       modelProxyUrl: preferences.getString('modelProxyUrl') ?? '',

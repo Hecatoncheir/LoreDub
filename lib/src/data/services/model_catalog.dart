@@ -143,7 +143,9 @@ ModelPackage _voice({
   ],
 );
 
-final modelCatalog = <ModelPackage>[
+/// Read only: a list handed out to every screen must not be changed by one
+/// of them under the others.
+final modelCatalog = List<ModelPackage>.unmodifiable(<ModelPackage>[
   _whisper(
     id: whisperModelId,
     version: 'base',
@@ -325,7 +327,7 @@ final modelCatalog = <ModelPackage>[
       ),
     ],
   ),
-];
+]);
 
 /// Languages the pipeline can dub into, in catalogue order: those with a
 /// voice and either a translator or nothing to translate.

@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../../l10n/app_localizations.dart';
-import '../data/services/local_inference_service.dart';
-import '../data/services/python_discovery.dart';
+import '../domain/python_search.dart';
 import '../domain/failure.dart';
 import '../domain/hotkey.dart';
 import 'hotkey_names.dart';

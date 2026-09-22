@@ -3,11 +3,6 @@
 
 import 'dart:async';
 
-/// How many characters may be heard at once when lines are allowed to
-/// overlap. Two keeps a quick exchange from falling behind the game; a third
-/// voice on top turns the dubbing into a crowd nobody can follow.
-const overlappingVoices = 2;
-
 /// Decides when each voiced line is played.
 ///
 /// Lines of one speaker are played in order and never over each other: a

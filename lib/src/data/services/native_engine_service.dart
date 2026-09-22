@@ -29,6 +29,7 @@ import 'game_ducker.dart';
 import 'native_bridge.dart';
 import 'engine_session.dart';
 import 'phrase_processor.dart';
+import '../../domain/speech_pace.dart';
 
 /// Where the work directory is: what a start sweeps of stale audio, and what
 /// the capture cuts the game's sound into.

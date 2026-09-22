@@ -169,3 +169,6 @@ class LoreDubFailure implements Exception {
 /// was waiting is told, and the player is shown nothing.
 bool isPipelineStopped(Object error) =>
     error is LoreDubFailure && error.code == FailureCode.pipelineStopped;
+
+/// Separates the exit code from the worker output inside a failure detail.
+const exitDetailSeparator = '\u0000';

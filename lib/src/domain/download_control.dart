@@ -36,3 +36,5 @@ class DownloadControl {
   /// request is the one the user last meant.
   void cancel() => _stop = DownloadOutcome.cancelled;
 }
+
+typedef DownloadProgress = void Function(double value);
