@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/domain/glossary.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/glossary/bloc/glossary_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../support/dashboard_harness.dart';

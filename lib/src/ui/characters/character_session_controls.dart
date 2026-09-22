@@ -7,15 +7,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/startup_cubit.dart';
-import '../dashboard/dashboard_context.dart';
+import '../models/bloc/downloads_bloc.dart';
+import '../common/bloc/session_bloc.dart';
+import '../shell/bloc/startup_cubit.dart';
+import '../common/dashboard_context.dart';
 import '../common/language_row.dart';
 import '../common/game_picker.dart';
 import '../live/starting_spinner.dart';
-import '../dashboard/cubits/sources_bloc.dart';
-import '../dashboard/cubits/voice_capture_bloc.dart';
+import '../common/bloc/sources_bloc.dart';
+import 'bloc/voice_capture_bloc.dart';
 
 /// Which game to listen to, and whether the session that measures voices is
 /// running. Live dubbing holds the same worker, so the two never run at once.

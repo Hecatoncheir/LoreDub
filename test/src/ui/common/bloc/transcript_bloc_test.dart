@@ -5,10 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
+import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
 
-import '../../../support/fakes/fake_session_repository.dart';
+import '../../../../support/fakes/fake_session_repository.dart';
 
 void main() {
   late FakeSessionRepository engine;

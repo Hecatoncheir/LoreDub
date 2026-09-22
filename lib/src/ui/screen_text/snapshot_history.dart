@@ -11,7 +11,7 @@ import '../common/module_label.dart';
 import '../common/clear_list_button.dart';
 import '../live/transcript_bubble.dart';
 import 'empty_snapshots.dart';
-import '../dashboard/cubits/transcript_bloc.dart';
+import '../common/bloc/transcript_bloc.dart';
 import '../../domain/pipeline_state.dart';
 
 /// Every selection translated so far, newest first.

@@ -14,10 +14,10 @@ import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus;
 import 'package:lore_dub/src/domain/saved_pipeline.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/graph/bloc/pipeline_graph_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
+import 'package:lore_dub/src/ui/characters/bloc/voice_capture_bloc.dart';
 import 'package:lore_dub/src/ui/graph/canvas/pipeline_canvas.dart';
 import 'package:lore_dub/src/ui/graph/inspector/pipeline_inspector.dart';
 

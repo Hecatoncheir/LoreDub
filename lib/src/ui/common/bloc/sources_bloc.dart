@@ -9,7 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/repositories/sources_repository.dart';
 import '../../../domain/capture_sources.dart';
 import '../../../domain/game_process.dart';
-import 'failure_cubit.dart';
+import '../../shell/bloc/failure_cubit.dart';
 
 sealed class SourcesEvent extends Equatable {
   const SourcesEvent();

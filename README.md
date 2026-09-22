@@ -1240,12 +1240,12 @@ lib/src/data/services/       файлы, загрузки, воркер, whisper
 lib/src/data/repositories/   то, что экраны читают и пишут: настройки, установленное, состав, сессии
 lib/src/ui/<экран>/          по папке на экран: live, screen_text, characters, glossary, models,
                              settings, graph; shell — рамка вокруг них, common — общее, theme — роли
-lib/src/ui/dashboard/cubits/ блоки экранов и три кубита-сеттера
+lib/src/ui/<экран>/bloc/    блоки экрана; общие двум экранам и больше — в common/bloc/
 native/                      C ABI, захват процесса и нарезка фраз, OCR, клавиши, громкость, звук
 native/tests/                тесты натива, собираются cl
 hook/                        хук сборки Dart Native Assets (под Windows — натив, иначе заглушка)
 tool/                        ffigen, храповики сложности и покрытия, релизные заметки, натив
-test/src/ui/<экран>/         тест экрана целиком, по файлу на экран; блоки — в dashboard/
+test/src/ui/<экран>/         тест экрана целиком, по файлу на экран; блоки — в bloc/ рядом
 test/support/                постановка дашборда и общие фейки (fakes/)
 test/runtime/                тесты воркера на unittest
 test/screenshots.dart        перерисовка снимков экранов

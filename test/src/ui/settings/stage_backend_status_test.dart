@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/runtime_catalog.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
+import 'package:lore_dub/src/ui/models/bloc/downloads_bloc.dart';
 import 'package:lore_dub/src/ui/settings/stage_backend_status.dart';
 
 void main() {

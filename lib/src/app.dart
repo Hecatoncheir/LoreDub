@@ -9,7 +9,7 @@ import '../l10n/app_localizations.dart';
 import 'composition.dart';
 import 'domain/app_settings.dart';
 import 'ui/common/file_dialogs.dart';
-import 'ui/dashboard/cubits/settings_bloc.dart';
+import 'ui/settings/bloc/settings_bloc.dart';
 import 'ui/shell/dashboard_providers.dart';
 import 'ui/shell/dashboard_scaffold.dart';
 import 'ui/graph/node_faces.dart';

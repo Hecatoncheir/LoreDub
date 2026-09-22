@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../common/labeled_switch.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/settings_bloc.dart';
 
 /// How far the game is turned down under the dubbing, and whether only while
 /// a line is spoken.

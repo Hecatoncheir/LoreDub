@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/character.dart';
 import '../../domain/pipeline_graph.dart';
-import '../dashboard/cubits/pipeline_graph_bloc.dart';
+import 'bloc/pipeline_graph_bloc.dart';
 import '../theme.dart';
 
 /// Every card of the cast, drawn or not: a card already on the canvas can

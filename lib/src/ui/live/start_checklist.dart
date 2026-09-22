@@ -7,13 +7,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/start_requirements.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/cubits/navigation_cubit.dart';
-import '../dashboard/dashboard_context.dart';
+import '../models/bloc/downloads_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../shell/bloc/navigation_cubit.dart';
+import '../common/dashboard_context.dart';
 import 'start_step_row.dart';
 import '../../domain/capture_sources.dart';
-import '../dashboard/cubits/sources_bloc.dart';
+import '../common/bloc/sources_bloc.dart';
 
 /// What still stands between the player and the first press of Start.
 ///

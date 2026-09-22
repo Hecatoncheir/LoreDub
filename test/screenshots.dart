@@ -50,20 +50,20 @@ import 'package:lore_dub/src/domain/saved_pipeline.dart';
 
 import 'support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/glossary/bloc/glossary_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
+import 'package:lore_dub/src/ui/graph/bloc/pipeline_graph_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/graph/node_faces.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/domain/capture_sources.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
 
 import 'support/mock_blocs.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/ui/characters/bloc/voice_capture_bloc.dart';
 
 /// The size the pictures have always been kept at, and the one the page and
 /// the readme lay out for.

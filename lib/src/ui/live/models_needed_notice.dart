@@ -7,10 +7,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/model_selection.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/cubits/navigation_cubit.dart';
-import '../dashboard/dashboard_context.dart';
+import '../models/bloc/downloads_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../shell/bloc/navigation_cubit.dart';
+import '../common/dashboard_context.dart';
 
 /// Says the packages a screen needs are missing, and leads to them. What
 /// counts as missing is the screen's own question: the snapshot session

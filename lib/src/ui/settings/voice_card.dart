@@ -6,10 +6,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/dashboard_context.dart';
+import '../models/bloc/downloads_bloc.dart';
+import '../common/bloc/session_bloc.dart';
+import 'bloc/settings_bloc.dart';
+import '../common/dashboard_context.dart';
 import 'voice_card_body.dart';
 
 /// Which voice reads the dubbing, and whether it follows the original.

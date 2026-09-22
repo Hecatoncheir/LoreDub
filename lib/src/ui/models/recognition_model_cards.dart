@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/model_selection.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/downloads_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
 import 'model_card.dart';
 
 /// The Whisper builds one card under another, for a window too narrow for

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/dashboard_context.dart';
+import 'package:lore_dub/src/ui/models/bloc/downloads_bloc.dart';
+import 'package:lore_dub/src/ui/common/dashboard_context.dart';
 
 void main() {
   test('compares what is installed by what the sets hold', () {

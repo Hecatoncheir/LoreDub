@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/settings_bloc.dart';
 
 /// How large the interface itself is drawn, beside the language it speaks:
 /// the two things a player sets once, for their own eyes rather than for the

@@ -3,14 +3,14 @@
 
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/cast_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/ui/characters/bloc/cast_bloc.dart';
+import 'package:lore_dub/src/ui/models/bloc/downloads_bloc.dart';
+import 'package:lore_dub/src/ui/glossary/bloc/glossary_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
+import 'package:lore_dub/src/ui/characters/bloc/voice_capture_bloc.dart';
 import 'package:lore_dub/src/domain/app_release.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/update_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/update_bloc.dart';
 
 /// The glossary screen's state as a test says it is, and every event the
 /// screen sends kept for the test to look at.

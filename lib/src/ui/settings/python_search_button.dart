@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/settings_bloc.dart';
 
 /// Looks for an interpreter that has what the worker needs, and says so
 /// while it looks.

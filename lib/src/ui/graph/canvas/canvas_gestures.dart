@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import '../../../domain/pipeline_graph.dart';
-import '../../dashboard/cubits/pipeline_graph_bloc.dart';
+import '../bloc/pipeline_graph_bloc.dart';
 import 'graph_hit_tester.dart';
 import 'node_metrics.dart';
 

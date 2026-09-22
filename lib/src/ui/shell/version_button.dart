@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/app_release.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/update_bloc.dart';
+import 'bloc/update_bloc.dart';
 import 'footer_insets.dart';
 import 'update_row.dart';
 

@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../data/repositories/system_repository.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/settings_bloc.dart';
 import 'python_actions.dart';
 import 'python_search_button.dart';
 

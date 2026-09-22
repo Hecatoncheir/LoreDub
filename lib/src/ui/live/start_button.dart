@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/pipeline_state.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/startup_cubit.dart';
-import '../dashboard/dashboard_context.dart';
+import '../models/bloc/downloads_bloc.dart';
+import '../common/bloc/session_bloc.dart';
+import '../shell/bloc/startup_cubit.dart';
+import '../common/dashboard_context.dart';
 import 'session_buttons.dart';
 import 'start_dubbing_button.dart';
 import '../../domain/capture_sources.dart';
 import '../../domain/game_process.dart';
-import '../dashboard/cubits/sources_bloc.dart';
+import '../common/bloc/sources_bloc.dart';
 
 /// Loading Marian and Vosk takes long enough that a plain label would look
 /// like a freeze, so the button carries the progress of the startup itself.

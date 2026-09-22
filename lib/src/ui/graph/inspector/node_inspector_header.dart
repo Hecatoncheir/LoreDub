@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/pipeline_graph.dart';
-import '../../dashboard/cubits/pipeline_graph_bloc.dart';
+import '../bloc/pipeline_graph_bloc.dart';
 import '../../theme.dart';
 import '../node_paint.dart';
 

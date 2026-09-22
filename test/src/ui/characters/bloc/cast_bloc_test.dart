@@ -5,10 +5,10 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 import 'package:lore_dub/src/domain/character.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/cast_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
+import 'package:lore_dub/src/ui/characters/bloc/cast_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
 
-import '../../../support/memory_cast.dart';
+import '../../../../support/memory_cast.dart';
 
 void main() {
   const guard = Character(id: 'a1', name: 'Стражник', vector: [0.2, 0.4]);

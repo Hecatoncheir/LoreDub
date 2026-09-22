@@ -8,12 +8,12 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../domain/character.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../common/committed_text_field.dart';
-import '../../dashboard/cubits/pipeline_graph_bloc.dart';
-import '../../dashboard/cubits/navigation_cubit.dart';
+import '../bloc/pipeline_graph_bloc.dart';
+import '../../shell/bloc/navigation_cubit.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_field.dart';
 import 'inspector_note.dart';
-import '../../dashboard/cubits/cast_bloc.dart';
+import '../../characters/bloc/cast_bloc.dart';
 
 /// A card's panel: its name, who reads it, what its voice was measured from,
 /// and the ways to its screen and off the canvas.

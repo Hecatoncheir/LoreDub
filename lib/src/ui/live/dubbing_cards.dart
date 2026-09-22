@@ -4,8 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import '../common/bloc/session_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
 import '../settings/original_volume_card.dart';
 import '../settings/paired_cards.dart';
 import '../settings/settings_layout.dart';

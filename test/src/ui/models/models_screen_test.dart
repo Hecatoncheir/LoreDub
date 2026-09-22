@@ -11,9 +11,9 @@ import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart' show PipelineStatus;
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/settings_bloc.dart';
+import 'package:lore_dub/src/ui/models/bloc/downloads_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/settings/bloc/settings_bloc.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:mocktail/mocktail.dart';
 

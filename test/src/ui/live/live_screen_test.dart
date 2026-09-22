@@ -14,11 +14,11 @@ import 'package:lore_dub/src/domain/glossary.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart'
     show PipelineSession, PipelineStatus, SceneSpeaker, TranscriptEntry;
-import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/ui/glossary/bloc/glossary_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
+import 'package:lore_dub/src/ui/characters/bloc/voice_capture_bloc.dart';
 import 'package:lore_dub/src/ui/live/source_controls.dart';
 import 'package:mocktail/mocktail.dart';
 

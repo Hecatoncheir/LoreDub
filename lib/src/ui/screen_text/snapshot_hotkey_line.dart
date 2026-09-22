@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/navigation_cubit.dart';
+import '../shell/bloc/navigation_cubit.dart';
 import '../theme.dart';
 
 /// How a snippet is taken -- the key held -- or, with no key set, the way to

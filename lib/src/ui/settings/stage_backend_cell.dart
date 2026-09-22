@@ -8,8 +8,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/compute_device.dart';
 import '../compute_names.dart';
 import 'backend_cell.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import '../models/bloc/downloads_bloc.dart';
+import 'bloc/settings_bloc.dart';
 import 'stage_backend_status.dart';
 import 'backend_cell_look.dart';
 

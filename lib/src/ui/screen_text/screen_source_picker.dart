@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
 
 /// Whether the game's window is read or the whole screen.
 ///

@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/dashboard_context.dart';
+import '../common/dashboard_context.dart';
 import '../theme.dart';
 
 /// What the scene voices area says before anyone has been heard: that it

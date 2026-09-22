@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/l10n/app_localizations.dart';
 import 'package:lore_dub/src/ui/common/file_dialogs.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
+import 'package:lore_dub/src/ui/glossary/bloc/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/glossary/glossary_panel.dart';
 import 'package:mocktail/mocktail.dart';
 

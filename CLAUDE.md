@@ -28,9 +28,10 @@ than one of them.
    for the frame around them (`DashboardScaffold`, `DashboardProviders`,
    navigation, header) and
    `common/` for what every screen uses; one public widget per file and no
-   private ones. `dashboard/` holds the Blocs and `dashboard_context.dart`
-   and nothing else. State lives in `dashboard/cubits/`:
-   three cubits for what is a setter and nothing more -- `FailureCubit`
+   private ones. State lives in a `bloc/` folder beside the screen that
+   owns it (`shell/bloc/`, `graph/bloc/`, `characters/bloc/`, ...), and what
+   two screens or more read -- `SessionBloc`, `TranscriptBloc`,
+   `SourcesBloc` -- in `common/bloc/`: three cubits for what is a setter and nothing more -- `FailureCubit`
    (the banner, and the `FailureSink` every bloc reports to),
    `NavigationCubit` (the section and the half of Эфир) and `StartupCubit`
    (whether the first load is back) -- and the Blocs for the rest, the
@@ -116,7 +117,7 @@ than one of them.
    whole state -- `(downloads) => downloads.installed` (`InstalledPackages`,
    equal through every download tick) for whatever cares only what is on
    disk -- or a download tick will redraw the screen.
-   `test/src/ui/dashboard/rebuild_scope_test.dart` counts that and fails if
+   `test/src/ui/shell/rebuild_scope_test.dart` counts that and fails if
    it does. There is no DI framework: `AppComposition` (`lib/src/composition.dart`)
    constructs services -> repositories, handing each repository what it
    stands on and one service per file to everything that reads or writes
@@ -1180,7 +1181,7 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `pumpDashboard`), with a test file per screen under `test/src/ui/`.
 - A screen is tested in two halves, as the Glossary is. What its bloc does
   with an event is `blocTest` against a fake repository
-  (`test/src/ui/dashboard/glossary_bloc_test.dart`); what the screen draws
+  (`test/src/ui/glossary/bloc/glossary_bloc_test.dart`); what the screen draws
   and sends is a widget test over a `MockBloc` (`test/support/mock_blocs.dart`,
   `glossaryShowing`), staged with `whenListen` and checked with `verify` on
   `add` -- which is why the events compare by value. Staged through

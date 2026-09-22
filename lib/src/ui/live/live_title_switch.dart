@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/navigation_cubit.dart';
+import '../shell/bloc/navigation_cubit.dart';
 import '../theme.dart';
 import 'live_title_word.dart';
 

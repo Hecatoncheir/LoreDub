@@ -12,7 +12,7 @@ import '../../../domain/engine_activity.dart';
 import '../../../domain/engine_event.dart';
 import '../../../domain/pipeline_state.dart';
 import '../../../domain/session_coordinator.dart';
-import 'failure_cubit.dart';
+import '../../shell/bloc/failure_cubit.dart';
 
 /// What the dubbing screens' sessions have said: the lines dubbed, the
 /// voices of the scene, and the snippets the player picked out.

@@ -12,8 +12,8 @@ import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_release.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/update_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
+import 'package:lore_dub/src/ui/shell/bloc/update_bloc.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -10,12 +10,12 @@ import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/startup_cubit.dart';
+import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
+import 'package:lore_dub/src/ui/shell/bloc/startup_cubit.dart';
 
-import '../../../support/fakes/fake_model_repository.dart';
-import '../../../support/fakes/fake_runtime_repository.dart';
-import '../../../support/fakes/fake_system_repository.dart';
+import '../../../../support/fakes/fake_model_repository.dart';
+import '../../../../support/fakes/fake_runtime_repository.dart';
+import '../../../../support/fakes/fake_system_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

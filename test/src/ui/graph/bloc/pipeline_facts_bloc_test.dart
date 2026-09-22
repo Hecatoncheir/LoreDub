@@ -21,7 +21,7 @@ import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_facts_bloc.dart';
+import 'package:lore_dub/src/ui/graph/bloc/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/data/repositories/system_repository.dart';
 
 void main() {

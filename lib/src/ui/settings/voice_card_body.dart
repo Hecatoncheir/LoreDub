@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/model_selection.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/settings_bloc.dart';
 import '../theme.dart';
 import 'overlap_voices_controls.dart';
 import 'voice_bank_controls.dart';

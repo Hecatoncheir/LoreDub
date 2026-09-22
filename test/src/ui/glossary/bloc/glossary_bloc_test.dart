@@ -5,8 +5,8 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/glossary_repository.dart';
 import 'package:lore_dub/src/domain/glossary.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/glossary_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
+import 'package:lore_dub/src/ui/glossary/bloc/glossary_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
 
 void main() {
   const fire = GlossaryEntry(

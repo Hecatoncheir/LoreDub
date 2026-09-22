@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/spoken_language.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/settings_bloc.dart';
 import '../language_names.dart';
 
 /// The language LoreDub speaks to the player in. Where the original comes

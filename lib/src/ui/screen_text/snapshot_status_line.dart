@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/session_bloc.dart';
+import '../common/bloc/session_bloc.dart';
 import '../theme.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/capture_sources.dart';
-import '../dashboard/cubits/sources_bloc.dart';
-import '../dashboard/cubits/transcript_bloc.dart';
-import '../dashboard/dashboard_context.dart';
+import '../common/bloc/sources_bloc.dart';
+import '../common/bloc/transcript_bloc.dart';
+import '../common/dashboard_context.dart';
 
 /// What became of the last selection, or that live dubbing holds the key --
 /// nothing at all when there is nothing to say.

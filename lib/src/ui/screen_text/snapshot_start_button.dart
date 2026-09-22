@@ -9,14 +9,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../failure_messages.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/cubits/startup_cubit.dart';
-import '../dashboard/dashboard_context.dart';
+import '../models/bloc/downloads_bloc.dart';
+import '../common/bloc/session_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../shell/bloc/startup_cubit.dart';
+import '../common/dashboard_context.dart';
 import '../../domain/capture_sources.dart';
 import '../../domain/game_process.dart';
-import '../dashboard/cubits/sources_bloc.dart';
+import '../common/bloc/sources_bloc.dart';
 import '../live/starting_spinner.dart';
 
 /// Starts and ends a session of this page, reading what [reading] says.

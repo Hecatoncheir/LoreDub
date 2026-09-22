@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
-import '../dashboard/cubits/glossary_bloc.dart';
+import 'bloc/glossary_bloc.dart';
 import 'glossary_kind_texts.dart';
 import 'glossary_add_row.dart';
 import 'glossary_entry_row.dart';

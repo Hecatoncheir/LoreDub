@@ -5,7 +5,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/pipeline_graph.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
+import 'package:lore_dub/src/ui/graph/bloc/pipeline_graph_bloc.dart';
 import 'package:lore_dub/src/ui/graph/canvas/canvas_gestures.dart';
 import 'package:lore_dub/src/ui/graph/canvas/graph_hit_tester.dart';
 import 'package:lore_dub/src/ui/graph/canvas/node_metrics.dart';

@@ -20,16 +20,16 @@ import 'package:lore_dub/src/domain/saved_pipeline.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 
-import '../../../support/staged_dashboard.dart';
+import '../../../../support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
+import 'package:lore_dub/src/ui/graph/bloc/pipeline_graph_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 
-import '../../../support/memory_cast.dart';
-import '../../../support/fakes/fake_session_repository.dart';
+import '../../../../support/memory_cast.dart';
+import '../../../../support/fakes/fake_session_repository.dart';
 
 /// The canvas as a script of gestures: what a link drawn between two sockets
 /// does to the settings and to the cast, and what one step back undoes.

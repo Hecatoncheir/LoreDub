@@ -3,7 +3,7 @@
 
 import '../../domain/compute_device.dart';
 import '../../domain/runtime_package.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
+import '../models/bloc/downloads_bloc.dart';
 
 /// Where one stage stands on one backend: what a cell of the stage-by-device
 /// table says, decided once here rather than in the cell.

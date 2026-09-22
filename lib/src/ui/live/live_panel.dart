@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../common/ease.dart';
-import '../dashboard/cubits/navigation_cubit.dart';
+import '../shell/bloc/navigation_cubit.dart';
 import '../graph/pipeline_panel.dart';
 import 'live_dubbing.dart';
 

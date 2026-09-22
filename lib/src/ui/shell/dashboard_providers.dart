@@ -6,20 +6,20 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../dashboard/cubits/cast_bloc.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/glossary_bloc.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/pipeline_facts_bloc.dart';
-import '../dashboard/cubits/pipeline_graph_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/cubits/failure_cubit.dart';
-import '../dashboard/cubits/navigation_cubit.dart';
-import '../dashboard/cubits/startup_cubit.dart';
-import '../dashboard/cubits/update_bloc.dart';
-import '../dashboard/cubits/sources_bloc.dart';
-import '../dashboard/cubits/transcript_bloc.dart';
-import '../dashboard/cubits/voice_capture_bloc.dart';
+import '../characters/bloc/cast_bloc.dart';
+import '../models/bloc/downloads_bloc.dart';
+import '../glossary/bloc/glossary_bloc.dart';
+import '../common/bloc/session_bloc.dart';
+import '../graph/bloc/pipeline_facts_bloc.dart';
+import '../graph/bloc/pipeline_graph_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
+import 'bloc/failure_cubit.dart';
+import 'bloc/navigation_cubit.dart';
+import 'bloc/startup_cubit.dart';
+import 'bloc/update_bloc.dart';
+import '../common/bloc/sources_bloc.dart';
+import '../common/bloc/transcript_bloc.dart';
+import '../characters/bloc/voice_capture_bloc.dart';
 
 /// Every screen's state, made out of the repositories above it and put
 /// under [child].

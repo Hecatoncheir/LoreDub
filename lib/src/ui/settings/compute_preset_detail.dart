@@ -10,7 +10,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/compute_device.dart';
 import '../../domain/cpu_threads.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/settings_bloc.dart';
 
 /// What the preset leaves to say: the card a GPU run would use, or --
 /// everything being on the processor -- how much of it to use. Automatic

@@ -11,8 +11,8 @@ import '../common/confirm_dialog.dart';
 import 'character_tile.dart';
 import 'character_tile_actions.dart';
 import 'character_tile_model.dart';
-import '../dashboard/cubits/cast_bloc.dart';
-import '../dashboard/cubits/voice_capture_bloc.dart';
+import 'bloc/cast_bloc.dart';
+import 'bloc/voice_capture_bloc.dart';
 
 /// One card of the cast, wired to what can be done to it right now.
 ///

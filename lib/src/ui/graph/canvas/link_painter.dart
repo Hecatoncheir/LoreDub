@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../domain/pipeline_graph.dart';
-import '../../dashboard/cubits/pipeline_graph_bloc.dart';
+import '../bloc/pipeline_graph_bloc.dart';
 import '../../theme.dart';
 import 'link_geometry.dart';
 import 'node_metrics.dart';

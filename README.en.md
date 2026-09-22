@@ -1274,12 +1274,12 @@ lib/src/data/services/       files, downloads, the worker, whisper, the native b
 lib/src/data/repositories/   what the screens read and write: settings, installs, cast, sessions
 lib/src/ui/<screen>/         a folder per screen: live, screen_text, characters, glossary, models,
                              settings, graph; shell is the frame, common is shared, theme the roles
-lib/src/ui/dashboard/cubits/ the screens' blocs and three setter cubits
+lib/src/ui/<screen>/bloc/   a screen's blocs; what two screens or more read is in common/bloc/
 native/                      the C ABI, process capture and phrase cutting, OCR, keys, volume, sound
 native/tests/                the native library's own tests, built with cl
 hook/                        Dart Native Assets hook (the native library on Windows, a stub elsewhere)
 tool/                        ffigen, the complexity and coverage ratchets, release notes, native checks
-test/src/ui/<screen>/        a whole screen, a file per screen; the blocs are in dashboard/
+test/src/ui/<screen>/        a whole screen, a file per screen; the blocs in bloc/ beside it
 test/support/                the dashboard's staging and the shared fakes (fakes/)
 test/runtime/                the worker's tests, on unittest
 test/screenshots.dart        redraws the screen captures

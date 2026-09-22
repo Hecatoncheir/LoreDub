@@ -4,15 +4,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/cubits/startup_cubit.dart';
-import '../dashboard/dashboard_context.dart';
+import '../models/bloc/downloads_bloc.dart';
+import '../common/bloc/session_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../shell/bloc/startup_cubit.dart';
+import '../common/dashboard_context.dart';
 import 'scene_listen_toggle.dart';
 import '../../domain/capture_sources.dart';
 import '../../domain/game_process.dart';
-import '../dashboard/cubits/sources_bloc.dart';
+import '../common/bloc/sources_bloc.dart';
 
 /// Starts the session that only listens for who speaks, or ends it.
 ///

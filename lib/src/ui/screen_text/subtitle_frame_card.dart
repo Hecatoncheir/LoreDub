@@ -9,16 +9,16 @@ import '../../domain/ocr_region.dart';
 import '../../domain/monitor_layout.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/dashboard_context.dart';
+import '../common/bloc/session_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../common/dashboard_context.dart';
 import '../../domain/screen_reading.dart';
 import '../common/module_label.dart';
 import 'ocr_region_picker.dart';
 import 'screen_voices_switch.dart';
 import 'snapshot_start_button.dart';
 import '../../domain/capture_sources.dart';
-import '../dashboard/cubits/sources_bloc.dart';
+import '../common/bloc/sources_bloc.dart';
 
 /// The frame the subtitles are read out of, drawn on a picture of the game's
 /// window, and whether the game is silenced while they are dubbed.

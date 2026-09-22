@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/session_bloc.dart';
+import '../common/bloc/session_bloc.dart';
 import '../theme.dart';
 
 /// The press that starts or ends listening for the voices of a scene, drawn

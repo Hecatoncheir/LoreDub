@@ -8,7 +8,7 @@ import '../../domain/app_release.dart';
 import '../../../l10n/app_localizations.dart';
 import '../app_icons.dart';
 import '../theme.dart';
-import '../dashboard/cubits/update_bloc.dart';
+import 'bloc/update_bloc.dart';
 import 'footer_insets.dart';
 
 /// A newer version, in three steps on the spot the version held: where the

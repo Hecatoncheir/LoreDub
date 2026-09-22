@@ -27,13 +27,13 @@ import 'package:lore_dub/src/domain/spoken_language.dart';
 
 import '../../../support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/models/bloc/downloads_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
 
 import '../../../support/mock_blocs.dart';
 

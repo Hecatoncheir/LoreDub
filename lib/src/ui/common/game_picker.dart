@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/capture_sources.dart';
-import '../dashboard/cubits/sources_bloc.dart';
+import 'bloc/sources_bloc.dart';
 import 'process_picker.dart';
 
 /// The one game every screen listens to, as a field.

@@ -10,7 +10,7 @@ import '../../domain/app_settings.dart';
 import '../../../l10n/app_localizations.dart';
 import '../common/labeled_switch.dart';
 import '../theme.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/settings_bloc.dart';
 import '../common/confirm_dialog.dart';
 
 /// Whether the original voice remembers the characters, how many it has,

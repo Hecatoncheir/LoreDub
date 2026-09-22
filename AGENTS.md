@@ -46,9 +46,10 @@ The two ratchets CI runs, after `dart pub global activate cognitive_complexity 0
 - `dart pub global run dart_code_linter:metrics analyze lib --reporter=json
   --json-path=build/metrics.json --no-fatal-warnings`, then `dart run tool/ratchet.dart --metrics
   build/metrics.json`, counts private widgets, methods returning widgets, nested conditionals,
-  functions over 60 source lines and palette/`TextStyle(` uses outside the theme against `tool/ratchet_baseline.json`. A count may
-  only fall; when it does, rerun with `--update` and commit the baseline. `tool/coverage.dart`
-  works the same way over `tool/coverage_baseline.json`, the other way up.
+  functions over 60 source lines and palette/`TextStyle(` uses outside the theme against
+  `tool/ratchet_baseline.json`. A count may only fall; when it does, rerun with `--update` and
+  commit the baseline. `tool/coverage.dart` works the same way over `tool/coverage_baseline.json`,
+  the other way up.
 
 Run the app locally -- the Python/whisper runtime must sit beside the executable, otherwise the
 pipeline fails at start:
@@ -91,7 +92,7 @@ Use `flutter_test`; name files `*_test.dart` and describe behavior in readable `
 sentences. Place tests beside the matching source hierarchy. Cover new domain decisions,
 service edge cases, repository publishing order, and Bloc transitions (`blocTest` against a
 fake repository; a screen's widgets over a `MockBloc`, checking the events it sends). UI changes that affect subscription scope must
-keep `test/src/ui/dashboard/rebuild_scope_test.dart` passing. A fake implements what it
+keep `test/src/ui/shell/rebuild_scope_test.dart` passing. A fake implements what it
 stands for on `Fake` and never extends it; shared fakes live in `test/support/fakes/`.
 
 ## Commit & Pull Request Guidelines

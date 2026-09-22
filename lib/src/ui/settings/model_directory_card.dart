@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
+import '../models/bloc/downloads_bloc.dart';
 import 'settings_layout.dart';
 
 /// Where the downloaded models are kept, and a way to open that folder.

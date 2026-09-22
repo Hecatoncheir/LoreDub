@@ -9,8 +9,8 @@ import '../../domain/model_package.dart';
 import '../../domain/model_selection.dart';
 import '../common/module_label.dart';
 import '../common/section_note.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/downloads_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
 import 'whisper_model_chart.dart';
 import 'recognition_model_cards.dart';
 

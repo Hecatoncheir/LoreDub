@@ -4,8 +4,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/sources_repository.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/sources_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
+import 'package:lore_dub/src/ui/common/bloc/sources_bloc.dart';
 
 import '../../../support/fakes/fake_system_repository.dart';
 

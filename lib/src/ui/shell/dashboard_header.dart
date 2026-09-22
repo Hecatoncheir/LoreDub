@@ -11,8 +11,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/pipeline_state.dart';
 import '../../../l10n/app_localizations.dart';
 import '../theme.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/navigation_cubit.dart';
+import '../common/bloc/session_bloc.dart';
+import 'bloc/navigation_cubit.dart';
 import '../common/status_chip.dart';
 
 /// The top of every screen: where the section stands, its title, and how

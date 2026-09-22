@@ -6,13 +6,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/app_settings.dart';
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/dashboard_context.dart';
+import '../common/bloc/session_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../common/dashboard_context.dart';
 import 'language_controls.dart';
 import 'target_language_picker.dart';
 import '../common/game_picker.dart';
-import '../dashboard/cubits/voice_capture_bloc.dart';
+import '../characters/bloc/voice_capture_bloc.dart';
 
 /// The card that picks the game and the source of its sound, with the
 /// dubbing language and the start button beside them.

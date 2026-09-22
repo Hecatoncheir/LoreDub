@@ -3,7 +3,7 @@
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/state_journal.dart';
+import 'package:lore_dub/src/ui/app/state_journal.dart';
 
 /// A bloc small enough that the journal is the only thing under test.
 class _Counter extends Bloc<String, int> {

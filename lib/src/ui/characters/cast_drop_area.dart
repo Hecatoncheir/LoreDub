@@ -9,8 +9,8 @@ import 'cast_card.dart';
 import 'empty_cast.dart';
 import 'character_drag.dart';
 import '../common/tile_grid.dart';
-import '../dashboard/cubits/cast_bloc.dart';
-import '../dashboard/cubits/voice_capture_bloc.dart';
+import 'bloc/cast_bloc.dart';
+import 'bloc/voice_capture_bloc.dart';
 
 /// The cards of the cast, laid out in a grid that a card dragged out of a
 /// pack can be dropped back on -- which takes it out of that pack.

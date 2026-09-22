@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../theme.dart';
-import '../../dashboard/cubits/pipeline_graph_bloc.dart';
+import '../bloc/pipeline_graph_bloc.dart';
 import 'canvas_gestures.dart';
 import 'pipeline_facts.dart';
 import 'graph_hit_tester.dart';

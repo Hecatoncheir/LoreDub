@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'src/app.dart';
-import 'src/ui/dashboard/cubits/state_journal.dart';
+import 'src/ui/app/state_journal.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

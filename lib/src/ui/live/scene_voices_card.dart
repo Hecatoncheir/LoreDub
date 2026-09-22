@@ -7,12 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../dashboard/cubits/session_bloc.dart';
+import '../common/bloc/session_bloc.dart';
 import '../common/module_label.dart';
 import 'scene_listen_button.dart';
 import 'scene_voices_empty.dart';
 import 'scene_voices_list.dart';
-import '../dashboard/cubits/transcript_bloc.dart';
+import '../common/bloc/transcript_bloc.dart';
 import '../../domain/pipeline_state.dart';
 
 /// Who the session has heard, and whose voice reads them.

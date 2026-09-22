@@ -2154,7 +2154,7 @@ Flutter в блоках не импортируется (правило 7, `bloc
    раскладка этапа 2 обещала `+ bloc/` в папке экрана, а `CLAUDE.md:31–32`
    до сих пор говорит, что `dashboard/` держит «файлы, ещё не
    разобранные», — там остались только блоки и `dashboard_context.dart`.
-   - [ ] По экранам: `shell/bloc/` (`failure_cubit`, `navigation_cubit`,
+   - [x] По экранам: `shell/bloc/` (`failure_cubit`, `navigation_cubit`,
          `startup_cubit`, `update_bloc`), `graph/bloc/`
          (`pipeline_graph_bloc`, `pipeline_facts_bloc`), `models/bloc/`
          (`downloads_bloc`, `installed_packages`), `settings/bloc/`,

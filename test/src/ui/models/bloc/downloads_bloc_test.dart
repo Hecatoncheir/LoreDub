@@ -8,12 +8,12 @@ import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/download_control.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
+import 'package:lore_dub/src/ui/models/bloc/downloads_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../support/fakes/fake_model_repository.dart';
-import '../../../support/fakes/fake_runtime_repository.dart';
+import '../../../../support/fakes/fake_model_repository.dart';
+import '../../../../support/fakes/fake_runtime_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

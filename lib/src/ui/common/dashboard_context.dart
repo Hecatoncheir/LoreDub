@@ -5,8 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/model_selection.dart';
-import 'cubits/downloads_bloc.dart';
-import 'cubits/settings_bloc.dart';
+import '../models/bloc/downloads_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
 import '../shell/dashboard_providers.dart';
 
 /// What the dashboard's widgets read off the cubits [DashboardProviders] provides

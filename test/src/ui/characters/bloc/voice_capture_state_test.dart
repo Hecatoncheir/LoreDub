@@ -3,7 +3,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/ui/characters/bloc/voice_capture_bloc.dart';
 
 void main() {
   const idle = VoiceCaptureState(clips: {'ann'});

@@ -28,17 +28,17 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/game_process.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/ui/characters/bloc/voice_capture_bloc.dart';
 
-import '../../../support/staged_dashboard.dart';
+import '../../../../support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 import 'package:lore_dub/src/domain/session_config.dart';
 
-import '../../../support/memory_cast.dart';
-import '../../../support/fakes/fake_model_repository.dart';
+import '../../../../support/memory_cast.dart';
+import '../../../../support/fakes/fake_model_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

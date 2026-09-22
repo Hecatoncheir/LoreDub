@@ -9,7 +9,7 @@ import '../../domain/character.dart';
 import '../../domain/pipeline_state.dart';
 import '../speaker_names.dart';
 import 'scene_voice_row.dart';
-import '../dashboard/cubits/cast_bloc.dart';
+import '../characters/bloc/cast_bloc.dart';
 
 /// Every voice the session has heard, each named as the cast knows it and
 /// with who reads it now.

@@ -27,8 +27,8 @@ import 'package:lore_dub/src/domain/pipeline_graph.dart';
 
 import '../../../support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/pipeline_graph_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/graph/bloc/pipeline_graph_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
 import 'package:lore_dub/src/ui/shell/dashboard_scaffold.dart';
 import 'package:lore_dub/src/ui/graph/canvas/dot_field_painter.dart';
 import 'package:lore_dub/src/ui/graph/canvas/node_metrics.dart';

@@ -16,7 +16,7 @@ import '../../../domain/model_package.dart';
 import '../../../domain/package_download.dart';
 import '../../../domain/progress_ticker.dart';
 import '../../../domain/runtime_package.dart';
-import 'failure_cubit.dart';
+import '../../shell/bloc/failure_cubit.dart';
 import 'installed_packages.dart';
 
 export 'installed_packages.dart';

@@ -16,9 +16,9 @@ import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart'
     show PipelineSession, PipelineStatus, TranscriptEntry;
 import 'package:lore_dub/src/domain/screen_reading.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/navigation_cubit.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
+import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../support/dashboard_harness.dart';

@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/glossary.dart';
 import '../../domain/glossary_view.dart';
 import '../theme.dart';
-import '../dashboard/cubits/glossary_bloc.dart';
+import 'bloc/glossary_bloc.dart';
 import '../common/confirm_dialog.dart';
 import 'glossary_heading.dart';
 import 'glossary_pack_area.dart';

@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/session_bloc.dart';
+import '../common/bloc/session_bloc.dart';
 import '../common/language_row.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/dashboard_context.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../common/dashboard_context.dart';
 import 'screen_layout.dart';
 import 'snapshot_details.dart';
 import 'snapshot_start_button.dart';

@@ -22,7 +22,7 @@ import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
 import '../../../domain/session_coordinator.dart';
 import '../../../domain/voice_sample.dart';
-import 'failure_cubit.dart';
+import '../../shell/bloc/failure_cubit.dart';
 import '../../../domain/session_config.dart';
 
 /// What a card's record button does when pressed.

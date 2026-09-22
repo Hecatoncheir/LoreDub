@@ -9,11 +9,11 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/character.dart';
 import '../common/area_heading.dart';
 import '../common/module_label.dart';
-import '../dashboard/cubits/session_bloc.dart';
+import '../common/bloc/session_bloc.dart';
 import '../theme.dart';
 import 'cast_drop_area.dart';
-import '../dashboard/cubits/cast_bloc.dart';
-import '../dashboard/cubits/voice_capture_bloc.dart';
+import 'bloc/cast_bloc.dart';
+import 'bloc/voice_capture_bloc.dart';
 
 /// The cards themselves, with what it takes to add them and hand them on.
 ///

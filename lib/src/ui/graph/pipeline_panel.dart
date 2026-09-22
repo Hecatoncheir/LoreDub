@@ -6,8 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/compute_device.dart';
 import '../../domain/pipeline_graph.dart';
-import '../dashboard/cubits/pipeline_facts_bloc.dart';
-import '../dashboard/cubits/pipeline_graph_bloc.dart';
+import 'bloc/pipeline_facts_bloc.dart';
+import 'bloc/pipeline_graph_bloc.dart';
 import 'canvas/pipeline_canvas.dart';
 import 'inspector/pipeline_inspector.dart';
 import 'graph_toolbar.dart';

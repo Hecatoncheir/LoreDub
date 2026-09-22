@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../domain/model_proxy.dart';
 import '../common/setting_card.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import 'bloc/settings_bloc.dart';
 import 'settings_layout.dart';
 
 /// The proxy the downloads go through. It is written down only once it

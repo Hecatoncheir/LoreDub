@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/spoken_language.dart';
-import '../../dashboard/cubits/settings_bloc.dart';
+import '../../settings/bloc/settings_bloc.dart';
 import '../../language_names.dart';
 import '../canvas/pipeline_facts.dart';
 import 'inspector_choices.dart';

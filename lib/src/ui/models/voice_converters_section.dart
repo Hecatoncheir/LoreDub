@@ -8,7 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../domain/model_selection.dart';
 import '../common/module_label.dart';
 import '../common/section_note.dart';
-import '../dashboard/cubits/downloads_bloc.dart';
+import 'bloc/downloads_bloc.dart';
 import 'converter_tile.dart';
 import 'model_failure_row.dart';
 import '../common/tile_grid.dart';

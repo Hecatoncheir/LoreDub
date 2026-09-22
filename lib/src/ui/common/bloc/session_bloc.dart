@@ -24,7 +24,7 @@ import '../../../domain/model_selection.dart';
 import '../../../domain/pipeline_state.dart';
 import '../../../domain/session_coordinator.dart';
 import '../../../data/repositories/settings_repository.dart';
-import 'failure_cubit.dart';
+import '../../shell/bloc/failure_cubit.dart';
 import '../../../data/repositories/voice_bank_repository.dart';
 import '../../../domain/session_config.dart';
 

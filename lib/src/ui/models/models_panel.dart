@@ -4,10 +4,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../dashboard/cubits/downloads_bloc.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/dashboard_context.dart';
+import 'bloc/downloads_bloc.dart';
+import '../common/bloc/session_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../common/dashboard_context.dart';
 import 'language_pairs_section.dart';
 import 'recognition_models_section.dart';
 import 'voice_converters_section.dart';

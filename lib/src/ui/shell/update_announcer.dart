@@ -6,8 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_release.dart';
-import '../dashboard/cubits/startup_cubit.dart';
-import '../dashboard/cubits/update_bloc.dart';
+import 'bloc/startup_cubit.dart';
+import 'bloc/update_bloc.dart';
 
 /// Asks for the newest release once the first load has come back, and
 /// words the Windows toast about it, once, in the language the interface is

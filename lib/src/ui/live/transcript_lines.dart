@@ -7,11 +7,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/character.dart';
 import '../../domain/glossary.dart';
 import '../../domain/pipeline_state.dart';
-import '../dashboard/cubits/glossary_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import '../glossary/bloc/glossary_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
 import 'empty_transcript.dart';
 import 'transcript_bubble.dart';
-import '../dashboard/cubits/transcript_bloc.dart';
+import '../common/bloc/transcript_bloc.dart';
 
 /// What a transcript card holds: the lines, newest first, or the line
 /// saying where they will come from while there are none.

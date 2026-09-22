@@ -11,8 +11,8 @@ import '../common/module_label.dart';
 import '../common/clear_list_button.dart';
 import 'transcript_body.dart';
 import 'transcript_lines.dart';
-import '../dashboard/cubits/transcript_bloc.dart';
-import '../dashboard/cubits/cast_bloc.dart';
+import '../common/bloc/transcript_bloc.dart';
+import '../characters/bloc/cast_bloc.dart';
 
 /// What the running session heard, newest first.
 class TranscriptCard extends StatelessWidget {

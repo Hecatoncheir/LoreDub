@@ -27,16 +27,16 @@ import 'package:lore_dub/src/domain/ocr_region.dart';
 import 'package:lore_dub/src/domain/model_selection.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 
-import '../../../support/staged_dashboard.dart';
+import '../../../../support/staged_dashboard.dart';
 
-import 'package:lore_dub/src/ui/dashboard/cubits/session_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
+import 'package:lore_dub/src/ui/common/bloc/transcript_bloc.dart';
+import 'package:lore_dub/src/ui/characters/bloc/voice_capture_bloc.dart';
 import 'package:lore_dub/src/domain/session_config.dart';
 
-import '../../../support/fakes/fake_model_repository.dart';
+import '../../../../support/fakes/fake_model_repository.dart';
 
 /// A dubbed line as the engine reports it, with only the parts a test
 /// cares about spelled out.

@@ -6,8 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../common/module_label.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
+import '../common/bloc/session_bloc.dart';
+import 'bloc/settings_bloc.dart';
 import 'compute_device_card.dart';
 import 'hotkeys_card.dart';
 import 'interface_language_card.dart';

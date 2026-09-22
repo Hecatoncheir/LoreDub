@@ -6,8 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../domain/app_settings.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/dashboard_context.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../common/dashboard_context.dart';
 
 /// Whether the game is listened to while its subtitles are read, so a line
 /// is read in the voice of whoever was speaking as it appeared.

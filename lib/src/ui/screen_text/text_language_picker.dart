@@ -8,9 +8,9 @@ import '../../domain/app_settings.dart';
 import '../../domain/spoken_language.dart';
 import '../../../l10n/app_localizations.dart';
 import '../language_names.dart';
-import '../dashboard/cubits/session_bloc.dart';
-import '../dashboard/cubits/settings_bloc.dart';
-import '../dashboard/dashboard_context.dart';
+import '../common/bloc/session_bloc.dart';
+import '../settings/bloc/settings_bloc.dart';
+import '../common/dashboard_context.dart';
 import '../common/language_row.dart';
 
 /// The language of text read off the screen. Windows OCR detects nothing and

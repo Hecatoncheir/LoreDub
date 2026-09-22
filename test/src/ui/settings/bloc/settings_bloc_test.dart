@@ -11,12 +11,12 @@ import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/settings_bloc.dart';
-import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
+import 'package:lore_dub/src/ui/settings/bloc/settings_bloc.dart';
+import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
 
-import '../../../support/staged_dashboard.dart';
-import '../../../support/fakes/fake_system_repository.dart';
-import '../../../support/fakes/fake_session_repository.dart';
+import '../../../../support/staged_dashboard.dart';
+import '../../../../support/fakes/fake_system_repository.dart';
+import '../../../../support/fakes/fake_session_repository.dart';
 
 void main() {
   late _Disk disk;

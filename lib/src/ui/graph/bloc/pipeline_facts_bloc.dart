@@ -13,7 +13,7 @@ import '../../../data/repositories/sources_repository.dart';
 import '../../../domain/compute_device.dart';
 import '../../../domain/model_selection.dart';
 import '../../../domain/session_coordinator.dart';
-import '../../graph/canvas/pipeline_facts.dart';
+import '../canvas/pipeline_facts.dart';
 
 sealed class PipelineFactsEvent extends Equatable {
   const PipelineFactsEvent();
