@@ -182,6 +182,16 @@ def voice_for_character(kept, gender, index, by_gender):
     return candidates[index % len(candidates)] if candidates else None
 
 
+# How far a line's pace may be taken either way: past these the WSOLA
+# retiming is heard as the voice stuttering or smearing.
+SLOWEST_SPEED = 0.5
+FASTEST_SPEED = 2.0
+
+
+def clamped_speed(value):
+    return min(FASTEST_SPEED, max(SLOWEST_SPEED, value))
+
+
 def request_speed(request, fallback):
     """The pace this one line asks to be read at.
 
@@ -190,9 +200,19 @@ def request_speed(request, fallback):
     when the worker starts. Anything unreadable leaves the session's own.
     """
     try:
-        return min(2.0, max(0.5, float(request["speed"])))
+        return clamped_speed(float(request["speed"]))
     except (KeyError, TypeError, ValueError):
         return fallback
+
+
+def write_wave(path, samples, rate):
+    """[samples] in [-1, 1] written as 16-bit mono PCM at [rate]."""
+    pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16).tobytes()
+    with wave.open(str(path), "wb") as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(rate)
+        stream.writeframes(pcm)
 
 
 def read_wave_mono(path):
@@ -207,6 +227,21 @@ def read_wave_mono(path):
     if channels > 1:
         samples = samples.reshape(-1, channels).mean(axis=1)
     return samples, rate
+
+
+def most_heard(genders, tie=None):
+    """The gender most of [genders] were heard as, or [tie] where two are
+    heard as often -- rather than whichever a set happened to hand back
+    first, which changed from one run of the worker to the next."""
+    heard = [gender for gender in genders if gender]
+    if not heard:
+        return None
+    counts = {gender: heard.count(gender) for gender in heard}
+    top = max(counts.values())
+    leaders = [gender for gender, count in counts.items() if count == top]
+    if len(leaders) == 1:
+        return leaders[0]
+    return tie if tie in leaders else leaders[0]
 
 
 def build_voice(converter, paths):
@@ -277,11 +312,10 @@ def build_voice(converter, paths):
     # to play back: what the player hears is the recording the fingerprint
     # is nearest to, not a clip chosen for being first.
     anchor = kept[int(np.argmax(against))]
-    genders = [speaker_gender(measured[index][0]) for index in kept]
-    heard = [gender for gender in genders if gender]
+    genders = {index: speaker_gender(measured[index][0]) for index in kept}
     return {
         "vector": [round(float(value), 6) for value in average],
-        "gender": max(set(heard), key=heard.count) if heard else None,
+        "gender": most_heard(list(genders.values()), tie=genders[anchor]),
         "seconds": round(sum(measured[index][2] for index in kept), 2),
         "used": len(kept),
         "skipped": skipped,
@@ -622,9 +656,7 @@ def load_voice(path, threads, device):
     return VoskVoice(path, threads=threads, device=device)
 
 
-def main():
-    use_utf8_streams()
-    claim_protocol()
+def parse_arguments(argv=None):
     parser = argparse.ArgumentParser()
     # Not needed by --embed-only, which loads the converter and nothing else.
     parser.add_argument("--translation-model", default="")
@@ -677,206 +709,265 @@ def main():
     # nobody stands in for it. Who stands in for whom is still in the cards;
     # none of it is applied to these while they are cut.
     parser.add_argument("--as-heard", default="")
-    args = parser.parse_args()
+    return parser.parse_args(argv)
 
-    # Not a constant: a card may be cut from the mix and joined back to it
-    # while the session runs, and the worker is told rather than restarted.
-    as_heard = {name for name in args.as_heard.split(",") if name}
 
-    speed = min(2.0, max(0.5, args.speed))
+class Models:
+    """What a session loaded, and where each part of it runs."""
 
-    # CUDA torch is installed next to the models instead of over the bundled
-    # CPU build, so it has to win the import before torch is first touched.
-    if args.extra_packages and pathlib.Path(args.extra_packages).is_dir():
-        sys.path.insert(0, args.extra_packages)
+    def __init__(self, args):
+        # CUDA torch is installed next to the models instead of over the
+        # bundled CPU build, so it has to win the import before torch is first
+        # touched.
+        if args.extra_packages and pathlib.Path(args.extra_packages).is_dir():
+            sys.path.insert(0, args.extra_packages)
 
-    report_progress(0.10, "torch")
-    import torch
+        report_progress(0.10, "torch")
+        import torch
 
-    torch.set_num_threads(max(1, args.threads))
-    # A CUDA build that cannot see the card is a working CPU build. Falling
-    # back beats refusing to start over a driver the user cannot fix here.
-    device = torch.device("cuda" if args.device == "cuda" and torch.cuda.is_available() else "cpu")
-    # Translation has its own library now, so it has its own answer to where
-    # it runs: it starts where torch did and drops to the processor on its
-    # own if the card is not there for it.
-    translation_device = device.type
-    tokenizer = None
-    translator = None
-    tts = None
-    speech_device = None
-    voices = []
-    speaker = args.speaker
+        self.torch = torch
+        torch.set_num_threads(max(1, args.threads))
+        # A CUDA build that cannot see the card is a working CPU build.
+        # Falling back beats refusing to start over a driver the user cannot
+        # fix here.
+        device = torch.device("cuda" if args.device == "cuda" and torch.cuda.is_available() else "cpu")
+        # Translation has its own library now, so it has its own answer to
+        # where it runs: it starts where torch did and drops to the processor
+        # on its own if the card is not there for it.
+        self.translation_device = device.type
+        self.tokenizer = None
+        self.translator = None
+        self.tts = None
+        self.speech_device = None
+        self.voices = []
+        self.speaker = args.speaker
+        # Recording a character's voice needs the converter alone; loading
+        # the translator and the speech model for it would cost the minute
+        # this screen is meant to avoid.
+        if not args.embed_only:
+            # A voice preview has nothing to translate: it speaks a line the
+            # application already wrote, so the translator is left out and the
+            # screen waits seconds instead of a minute. Dubbing into English
+            # leaves it out for the other reason -- whisper was asked for
+            # English and handed it over, so no model is named and none is
+            # loaded.
+            if not args.speech_only and args.translation_model:
+                self._load_translator(args)
+            report_progress(0.90, "speech")
+            # torch is imported already, so onnxruntime-gpu finds the CUDA and
+            # cuDNN libraries it brought. Without the card -- or with the
+            # processor's build of onnxruntime, which is all a machine without
+            # the CUDA runtime has -- the voice falls back to the processor,
+            # and the ready line says where it really is.
+            self.tts = load_voice(args.tts_model, threads=args.threads, device=args.speech_device)
+            self.speech_device = torch.device(self.tts.device)
+            # An unknown name falls back to the package's first voice rather
+            # than turning the whole session into a runtime error.
+            self.voices = list(self.tts.speakers)
+            if args.speaker not in self.voices and self.voices:
+                self.speaker = self.voices[0]
+        # The voice picked below stays the base: the converter only moves the
+        # original speaker's timbre onto it.
+        self.converter = None
+        self.bank = None
+        if args.voice_converter:
+            report_progress(0.95, "converter")
+            from tone_converter import ToneConverter
 
-    # Recording a character's voice needs the converter alone; loading the
-    # translator and the speech model for it would cost the minute this
-    # screen is meant to avoid.
-    if not args.embed_only:
-        # A voice preview has nothing to translate: it speaks a line the
-        # application already wrote, so the translator is left out and the
-        # screen waits seconds instead of a minute. Dubbing into English
-        # leaves it out for the other reason -- whisper was asked for English
-        # and handed it over, so no model is named and none is loaded.
-        if not args.speech_only and args.translation_model:
-            report_progress(0.35, "transformers")
-            import ctranslate2
-            from transformers import MarianTokenizer
-
-            report_progress(0.80, "translator")
-            # The tokenizer is still Marian's: the text has to be cut into the
-            # pieces these weights were trained on. The weights themselves are
-            # int8 CTranslate2 rather than a PyTorch checkpoint -- the same
-            # model, read in about half the time and half the disk.
-            tokenizer = MarianTokenizer.from_pretrained(
-                args.translation_model, local_files_only=True
+            # The same fallback as the translator's: a card torch cannot see
+            # leaves the converter on the CPU rather than the pipeline stopped.
+            converter_device = torch.device(
+                "cuda" if args.converter_device == "cuda" and torch.cuda.is_available() else "cpu"
             )
-            # A card the library cannot start on is a working CPU, the way a
-            # CUDA torch that cannot see the card is.
-            try:
-                translator = ctranslate2.Translator(
-                    args.translation_model,
-                    device=translation_device,
-                    compute_type="auto",
-                    inter_threads=1,
-                    intra_threads=max(1, args.threads),
-                )
-            except (RuntimeError, ValueError):
-                translation_device = "cpu"
-                translator = ctranslate2.Translator(
-                    args.translation_model,
-                    device="cpu",
-                    compute_type="auto",
-                    inter_threads=1,
-                    intra_threads=max(1, args.threads),
-                )
+            self.converter = ToneConverter(args.voice_converter, converter_device)
+            if args.voice_bank:
+                self.bank = VoiceBank(args.voice_bank)
 
-        report_progress(0.90, "speech")
+    def _load_translator(self, args):
+        report_progress(0.35, "transformers")
+        import ctranslate2
+        from transformers import MarianTokenizer
 
-        # torch is imported already, so onnxruntime-gpu finds the CUDA and
-        # cuDNN libraries it brought. Without the card -- or with the
-        # processor's build of onnxruntime, which is all a machine without the
-        # CUDA runtime has -- the voice falls back to the processor, and the
-        # ready line says where it really is.
-        tts = load_voice(args.tts_model, threads=args.threads, device=args.speech_device)
-        speech_device = torch.device(tts.device)
-        # An unknown name falls back to the package's first voice rather than
-        # turning the whole session into a runtime error.
-        voices = list(tts.speakers)
-        speaker = args.speaker if args.speaker in voices else (voices[0] if voices else args.speaker)
+        report_progress(0.80, "translator")
+        # The tokenizer is still Marian's: the text has to be cut into the
+        # pieces these weights were trained on. The weights themselves are
+        # int8 CTranslate2 rather than a PyTorch checkpoint -- the same model,
+        # read in about half the time and half the disk.
+        self.tokenizer = MarianTokenizer.from_pretrained(args.translation_model, local_files_only=True)
 
-    # The voice picked below stays the base: the converter only moves
-    # the original speaker's timbre onto it.
-    converter = None
-    bank = None
-    if args.voice_converter:
-        report_progress(0.95, "converter")
-        from tone_converter import ToneConverter
+        def translator_on(device):
+            return ctranslate2.Translator(
+                args.translation_model,
+                device=device,
+                compute_type="auto",
+                inter_threads=1,
+                intra_threads=max(1, args.threads),
+            )
 
-        # The same fallback as the translator's: a card torch cannot see
-        # leaves the converter on the CPU rather than the pipeline stopped.
-        converter_device = torch.device(
-            "cuda" if args.converter_device == "cuda" and torch.cuda.is_available() else "cpu"
+        # A card the library cannot start on is a working CPU, the way a CUDA
+        # torch that cannot see the card is.
+        try:
+            self.translator = translator_on(self.translation_device)
+        except (RuntimeError, ValueError):
+            self.translation_device = "cpu"
+            self.translator = translator_on("cpu")
+
+    def ready_line(self):
+        """The handshake. The device is reported back rather than assumed: a
+        CUDA build that fell back to the CPU must not leave the interface
+        claiming the GPU is in use."""
+        ready = {"type": "ready", "device": self.translation_device}
+        if self.speech_device is not None:
+            ready["speechDevice"] = self.speech_device.type
+        if self.converter is not None:
+            ready["converterDevice"] = self.converter.device.type
+        return ready
+
+
+# The longest reply the translator writes for one sentence, in tokens: past
+# it a sentence is being repeated back rather than translated.
+MAX_DECODING_TOKENS = 160
+
+
+class Translation:
+    """A line in the dubbing language, a sentence at a time: the player's own
+    answer first, then what was said last time, then the model."""
+
+    def __init__(self, models, prefix, glossary):
+        self._tokenizer = models.tokenizer
+        self._translator = models.translator
+        self._prefix = prefix
+        self._glossary = glossary
+        self._memory = TranslationMemory()
+        # Whether the dubbing language is written in Latin itself, asked of
+        # the translator once. A Latin run means nothing in a German line,
+        # where every word is one, and everything in a Russian line, where the
+        # voice cannot read it -- and the rule that catches it ran over both,
+        # putting every German line through the model a second time to throw
+        # the answer away. The model is asked directly rather than through
+        # [translate]: the player's glossary answers first there, and a probe
+        # line the player wrote down -- or silenced -- would decide the script
+        # of every line after.
+        self.dubbed_in_latin = self._translator is None or bool(
+            LATIN_RUN.search(self._sentences(["Open the door."])[0])
         )
-        converter = ToneConverter(args.voice_converter, converter_device)
-        if args.voice_bank:
-            bank = VoiceBank(args.voice_bank)
 
-    # The catalogue names the voices, but only the package knows which of them
-    # it really ships, so the two are intersected before anything is chosen.
-    def available(names):
-        return [name for name in names.split(",") if name and (not voices or name in voices)]
+    @property
+    def available(self):
+        return self._translator is not None
 
-    by_gender = {
-        "male": available(args.male_voices),
-        "female": available(args.female_voices),
-    }
-    memory = TranslationMemory()
-    glossary = Glossary(args.glossary)
-
-    def translated_sentences(pieces):
+    def _sentences(self, pieces):
         """Every one of [pieces] translated, in a single pass of the model."""
         asked = []
         for piece in pieces:
-            prefix = args.translation_prefix
-            prompt = f"{prefix} {piece}".strip() if prefix else piece
+            prompt = f"{self._prefix} {piece}".strip() if self._prefix else piece
             # CTranslate2 works in tokens rather than in ids, so the tokenizer
             # is asked for both directions around it.
-            asked.append(tokenizer.convert_ids_to_tokens(tokenizer.encode(prompt)))
-        answered = translator.translate_batch(asked, beam_size=1, max_decoding_length=160)
+            asked.append(self._tokenizer.convert_ids_to_tokens(self._tokenizer.encode(prompt)))
+        answered = self._translator.translate_batch(
+            asked, beam_size=1, max_decoding_length=MAX_DECODING_TOKENS
+        )
         return [
-            tokenizer.decode(
-                tokenizer.convert_tokens_to_ids(one.hypotheses[0]), skip_special_tokens=True
+            self._tokenizer.decode(
+                self._tokenizer.convert_tokens_to_ids(one.hypotheses[0]), skip_special_tokens=True
             ).strip()
             for one in answered
         ]
 
-    def translate(source):
+    def translate(self, source):
         """[source] in the dubbing language, a sentence at a time."""
         pieces = sentences(source)
         # The player's own answer stands above both the model and what it
         # said last time, and is never written into the memory: it is already
-        # an answer, and keeping it there would only age it.
-        # Asked rather than taken with `or`: a silenced phrase answers with an
-        # empty string on purpose, and `or` would fall through to the model.
+        # an answer, and keeping it there would only age it. Asked rather
+        # than taken with `or`: a silenced phrase answers with an empty
+        # string on purpose, and `or` would fall through to the model.
         said = []
         for piece in pieces:
-            written = glossary.said(piece)
-            said.append(written if written is not None else memory.get(piece))
+            written = self._glossary.said(piece)
+            said.append(written if written is not None else self._memory.get(piece))
         asking = [piece for piece, kept in zip(pieces, said) if kept is None]
         if asking:
-            answers = iter(translated_sentences(asking))
+            answers = iter(self._sentences(asking))
             for index, kept in enumerate(said):
                 if kept is None:
                     said[index] = next(answers)
-                    memory.put(pieces[index], said[index])
+                    self._memory.put(pieces[index], said[index])
         return " ".join(piece for piece in said if piece)
 
-    # Whether the dubbing language is written in Latin itself, asked of the
-    # translator once. A Latin run means nothing in a German line, where every
-    # word is one, and everything in a Russian line, where the voice cannot
-    # read it -- and the rule that catches it ran over both, putting every
-    # German line through the model a second time to throw the answer away.
-    # The model is asked directly rather than through [translate]: the
-    # player's glossary answers first there, and a probe line the player
-    # wrote down -- or silenced -- would decide the script of every line after.
-    dubbed_in_latin = translator is None or bool(
-        LATIN_RUN.search(translated_sentences(["Open the door."])[0])
-    )
+    def line(self, text):
+        """[text] as it is to be said: translated, what was left in Latin
+        written out, and the words the player renamed said their way."""
+        translated = self.translate(text)
+        # A capitalised name is occasionally carried over untranslated, and a
+        # voice that reads no Latin cannot say it.
+        if not self.dubbed_in_latin and LATIN_TEXT.search(translated):
+            translated = readable(translated, text, self.translate, self._glossary)
+        return translated
 
-    following = args.follow_speaker and by_gender["male"] and by_gender["female"]
-    # Sticky: an unclear phrase keeps the voice the last clear one settled on,
-    # so a noisy line does not flip the character mid-conversation.
-    current_voice = speaker
 
-    # The timbre of the last phrase that had a voice in it. A line of music or
-    # a short grunt keeps it, the same way the automatic choice keeps its voice.
-    current_timbre = None
+class Casting:
+    """Who is speaking a line, whose voice reads it and in which timbre.
 
-    # The characters this game's lines have been matched to — kept in its bank,
-    # or in one that lasts only this session.
-    speakers = bank if bank is not None else VoiceBank(None)
+    The converter is what hears who is speaking; without it nobody is placed
+    and the voice follows the pitch of each line alone. What it settles is
+    sticky: an unclear phrase keeps the voice and the timbre the last clear
+    one had, so a noisy line does not flip a character mid-conversation.
+    """
 
-    # The player's own characters, recognized in whichever game they speak.
-    cast = CharacterCast(args.characters)
+    def __init__(self, args, models):
+        self._torch = models.torch
+        self._converter = models.converter
+        self._bank = models.bank
+        self.voices = models.voices
+        # The voice a line is read in where nothing chooses another.
+        self.speaker = models.speaker
 
-    # Whose voice reads whom, as the player assigned it for this game.
+        # The catalogue names the voices, but only the package knows which of
+        # them it really ships, so the two are intersected before anything is
+        # chosen.
+        def available(names):
+            return [name for name in names.split(",") if name and (not self.voices or name in self.voices)]
 
-    def speaker_key(kind, index):
+        self.by_gender = {"male": available(args.male_voices), "female": available(args.female_voices)}
+        self._following = args.follow_speaker and self.by_gender["male"] and self.by_gender["female"]
+        self._current_voice = self.speaker
+        # The timbre of the last phrase that had a voice in it. A line of
+        # music or a short grunt keeps it, the same way the automatic choice
+        # keeps its voice.
+        self._current_timbre = None
+        # The characters this game's lines have been matched to -- kept in its
+        # bank, or in one that lasts only this session.
+        self.speakers = self._bank if self._bank is not None else VoiceBank(None)
+        # The player's own characters, recognized in whichever game they speak.
+        self.cast = CharacterCast(args.characters)
+        # Not a constant: a card may be cut from the mix and joined back to it
+        # while the session runs, and the worker is told rather than restarted.
+        self.as_heard = {name for name in args.as_heard.split(",") if name}
+
+    def use_voice(self, name):
+        """Reads the lines that follow in [name], where the package has it."""
+        if name in self.voices:
+            self.speaker = name
+            self._current_voice = name
+        return self.speaker
+
+    def speaker_key(self, kind, index):
         """What a line of this speaker is reported as, which is also what a
         replacement is made against."""
         if index is None:
             return None
         if kind == "character":
-            return f"character:{cast.identifier(index)}"
+            return f"character:{self.cast.identifier(index)}"
         if kind == "voice":
             return f"timbre:{index}"
         return None
 
-    def cut_from_mix(identifier):
+    def _cut_from_mix(self, identifier):
         """Whether the card named is out of the mix on the graph."""
-        return identifier is not None and identifier in as_heard
+        return identifier is not None and identifier in self.as_heard
 
-    def read_as(kind, index):
+    def read_as(self, kind, index):
         """The character who reads this speaker: the card the graph gave them
         away to, or the speaker themselves.
 
@@ -884,65 +975,58 @@ def main():
         was heard, so the scene list keeps one row per voice of the game
         rather than gaining the character it is read in.
         """
-        own = cast.identifier(index) if kind == "character" and index is not None else None
+        is_card = kind == "character" and index is not None
+        own = self.cast.identifier(index) if is_card else None
         # A card cut out of the mix speaks for itself and for nobody else.
-        if cut_from_mix(own):
+        if self._cut_from_mix(own):
             return kind, index
-        target = cast.voiced_by(index) if kind == "character" and index is not None else None
+        target = self.cast.voiced_by(index) if is_card else None
         # Nor does a card that was cut stand in for anybody.
-        if cut_from_mix(target):
+        if target is None or self._cut_from_mix(target):
             return kind, index
-        if target is None:
-            return kind, index
-        at = cast.index_of(target)
+        at = self.cast.index_of(target)
         # A card deleted since the assignment leaves the voice as itself.
         return ("character", at) if at is not None else (kind, index)
 
-    def identify(request):
-        """The character this line belongs to and the fingerprint read from
-        it, as (index, fingerprint).
+    def identify(self, source):
+        """The speaker of the recording at [source] and the fingerprint read
+        from it, as (kind, index, fingerprint).
 
-        The kind is "character" for one of the player's own cards, "voice"
-        for a speaker of this game's bank. All three are None without the
+        The kind is "character" for one of the player's own cards, "voice" for
+        a speaker of this game's bank. All three are None without the
         converter, which is what hears who is speaking, and for a line too
         short or too unvoiced to place.
         """
-        source = request.get("wave")
-        if converter is None or not source:
+        if self._converter is None or not source:
             return None, None, None
         try:
             samples, rate = read_wave_mono(source)
         except (OSError, wave.Error, ValueError):
             return None, None, None
-        if (
-            samples is None
-            or rate <= 0
-            or len(samples) < rate // 2
-            or median_f0(samples, rate) is None
-        ):
+        if samples is None or rate <= 0 or len(samples) < rate // 2 or median_f0(samples, rate) is None:
             return None, None, None
-        fingerprint = converter.embed(samples, rate)
+        fingerprint = self._converter.embed(samples, rate)
         # A character the player recorded answers before the game's own bank:
         # they named this voice, so it is theirs whichever game it speaks in.
-        named, score = cast.nearest(fingerprint.flatten().float().cpu().numpy())
+        named, score = self.cast.nearest(fingerprint.flatten().float().cpu().numpy())
         if named is not None and score >= BANK_MATCH:
             return "character", named, fingerprint
         # A short line nobody matched could be anyone.
-        return "voice", speaker_of(fingerprint, len(samples) / rate), fingerprint
+        return "voice", self._speaker_of(fingerprint, len(samples) / rate), fingerprint
 
-    def speaker_of(fingerprint, seconds):
+    def _speaker_of(self, fingerprint, seconds):
         """The index of the voice this line belongs to; a new one is kept first."""
         vector = fingerprint.flatten().float().cpu().numpy()
-        index, score = speakers.nearest(vector)
+        index, score = self.speakers.nearest(vector)
         if index is not None and score >= BANK_MATCH:
             return index
-        if seconds >= BANK_MIN_SECONDS and len(speakers) < BANK_LIMIT:
-            speakers.add(vector)
-            return len(speakers) - 1
+        if seconds >= BANK_MIN_SECONDS and len(self.speakers) < BANK_LIMIT:
+            self.speakers.add(vector)
+            return len(self.speakers) - 1
         return None
 
-    def voice_for(request, kind, index):
-        """The voice this line is read in.
+    def voice_for(self, source, kind, index):
+        """The voice a line recorded at [source] is read in.
 
         One of the player's cards is read in its own voice, whoever it is
         standing in for; a character of the game's bank keeps the voice their
@@ -950,68 +1034,291 @@ def main():
         voices; and a line belonging to nobody falls back to the gender heard
         in the line itself.
         """
-        nonlocal current_voice
-        if not following:
-            return speaker
+        if not self._following:
+            return self.speaker
         if kind == "character" and index is not None:
             chosen = voice_for_character(
-                cast.voice_of(index), cast.gender_of(index), index, by_gender
+                self.cast.voice_of(index), self.cast.gender_of(index), index, self.by_gender
             )
             if chosen is not None:
-                current_voice = chosen
+                self._current_voice = chosen
                 return chosen
         if kind == "voice" and index is not None:
-            kept = speakers.voice_of(index)
+            kept = self.speakers.voice_of(index)
             # A bank filled for another language package names voices this
             # one does not ship.
-            if kept in by_gender["male"] or kept in by_gender["female"]:
-                current_voice = kept
+            if kept in self.by_gender["male"] or kept in self.by_gender["female"]:
+                self._current_voice = kept
                 return kept
-        source = request.get("wave")
         gender = speaker_gender(source) if source else None
         if gender is None:
-            return current_voice
-        candidates = by_gender[gender]
+            return self._current_voice
+        candidates = self.by_gender[gender]
         if index is None or kind != "voice":
             # Keep the configured voice when it already matches the gender.
-            current_voice = speaker if speaker in candidates else candidates[0]
-            return current_voice
+            self._current_voice = self.speaker if self.speaker in candidates else candidates[0]
+            return self._current_voice
         # A voice of their own: two men in a scene are read by different
         # voices, and the list wraps once the cast outgrows it.
-        current_voice = candidates[speakers.spoken_by(gender) % len(candidates)]
-        speakers.remember(index, gender, current_voice)
-        return current_voice
+        self._current_voice = candidates[self.speakers.spoken_by(gender) % len(candidates)]
+        self.speakers.remember(index, gender, self._current_voice)
+        return self._current_voice
 
-    def timbre_for(fingerprint, kind, index):
+    def timbre_for(self, fingerprint, kind, index):
         """The timbre to re-voice a line in: the character's kept one, or the
         fingerprint of the line itself."""
-        nonlocal current_timbre
         if fingerprint is None:
-            return current_timbre
-        current_timbre = fingerprint
+            return self._current_timbre
+        self._current_timbre = fingerprint
+        kept = None
         if kind == "character" and index is not None:
-            kept = torch.from_numpy(cast.vector_of(index)).reshape(fingerprint.shape)
-            current_timbre = kept.to(device=fingerprint.device, dtype=fingerprint.dtype)
-            return current_timbre
-        if kind == "voice" and bank is not None and index is not None:
-            kept = torch.from_numpy(bank.voices[index]).reshape(fingerprint.shape)
-            current_timbre = kept.to(device=fingerprint.device, dtype=fingerprint.dtype)
-        return current_timbre
+            kept = self.cast.vector_of(index)
+        elif kind == "voice" and self._bank is not None and index is not None:
+            kept = self._bank.voices[index]
+        if kept is not None:
+            timbre = self._torch.from_numpy(kept).reshape(fingerprint.shape)
+            self._current_timbre = timbre.to(device=fingerprint.device, dtype=fingerprint.dtype)
+        return self._current_timbre
 
-    pathlib.Path(args.work_directory).mkdir(parents=True, exist_ok=True)
-    # The device is reported back rather than assumed: a CUDA build that fell
-    # back to the CPU must not leave the interface claiming the GPU is in use.
-    ready = {"type": "ready", "device": translation_device}
-    if speech_device is not None:
-        ready["speechDevice"] = speech_device.type
-    if converter is not None:
-        ready["converterDevice"] = converter.device.type
-    reply(ready)
 
+def needs_converter(handler):
+    """A request only the voice converter can answer."""
+
+    def answer(session, request_id, value, request):
+        if session.models.converter is None:
+            raise RuntimeError("the voice converter is not loaded")
+        return handler(session, request_id, value, request)
+
+    return answer
+
+
+class Session:
+    """The requests of one session, each answered by the handler its key
+    names -- a line to dub where none does."""
+
+    def __init__(self, args):
+        self.args = args
+        self.models = Models(args)
+        self.glossary = Glossary(args.glossary)
+        self.translation = Translation(self.models, args.translation_prefix, self.glossary)
+        self.casting = Casting(args, self.models)
+        self.speed = clamped_speed(args.speed)
+        self.work = pathlib.Path(args.work_directory)
+        self.work.mkdir(parents=True, exist_ok=True)
+
+    def answer(self, request):
+        """The reply to [request], an object carrying its id."""
+        request_id = request["id"]
+        for key, handler in HANDLERS:
+            if request.get(key) is not None:
+                return handler(self, request_id, request[key], request)
+        return self.dub(request_id, request)
+
+    @needs_converter
+    def fingerprint(self, request_id, recorded, _):
+        """The voice in a recording, as the characters screen keeps it."""
+        heard, rate = read_wave_mono(recorded)
+        if heard is None or rate <= 0 or not len(heard):
+            raise RuntimeError(f"unreadable recording: {recorded}")
+        vector = self.models.converter.embed(heard, rate).flatten().float().cpu().numpy()
+        return {
+            "id": request_id,
+            "vector": [round(float(value), 6) for value in vector],
+            "gender": speaker_gender(recorded),
+            "seconds": round(len(heard) / rate, 2),
+        }
+
+    @needs_converter
+    def voice_from(self, request_id, gathered, _):
+        """A card built from the files the player dropped onto it."""
+        return {"id": request_id, **build_voice(self.models.converter, [str(path) for path in gathered])}
+
+    def voiced_by(self, request_id, substitution, _):
+        """A card read in another's voice from now on, as the characters
+        screen has just been told. The cast was read at start, so a session
+        already running is told rather than left behind."""
+        self.casting.cast.voice_instead(
+            str(substitution.get("character", "")), str(substitution.get("target", ""))
+        )
+        return {"id": request_id, "voiced": True}
+
+    def glossary_written(self, request_id, written_down, _):
+        """What the player wrote down, as they wrote it: the file is read when
+        a session starts, so this is what carries an entry added while one
+        runs. A line already dubbed is not dubbed again, but the next time the
+        game says it, it is said their way."""
+        self.glossary.replace(written_down)
+        return {"id": request_id, "glossary": len(self.glossary)}
+
+    def use_voice(self, request_id, chosen_voice, _):
+        """The voice the dubbing reads in, changed while it runs: the player
+        picks another on the screen page or in the settings, and the next line
+        is read in it rather than at the next start. A name this package does
+        not ship is left alone -- the answer says which voice is in use."""
+        return {"id": request_id, "speaker": self.casting.use_voice(str(chosen_voice))}
+
+    def as_heard(self, request_id, heard_as_itself, _):
+        """The cards taken out of the mix on the graph, as the canvas now
+        draws them. The cards keep who stands in for whom either way; this is
+        only which of it is applied."""
+        self.casting.as_heard = {str(name) for name in heard_as_itself}
+        return {"id": request_id, "asHeard": sorted(self.casting.as_heard)}
+
+    @needs_converter
+    def listen(self, request_id, heard_line, _):
+        """Who is speaking, and nothing else. Live asks this before the
+        dubbing itself runs, so the player can hand out the voices of a scene
+        while only the converter is loaded."""
+        casting = self.casting
+        kind, index, _ = casting.identify(heard_line)
+        answer = {"id": request_id, "speaker": casting.speaker_key(kind, index)}
+        # The card the graph gave this one away to, if it did and if the cast
+        # is in the mix at all.
+        read_kind, read_index = casting.read_as(kind, index)
+        if (read_kind, read_index) != (kind, index):
+            answer["readAs"] = casting.speaker_key(read_kind, read_index)
+        try:
+            samples, rate = read_wave_mono(heard_line)
+            answer["seconds"] = round(len(samples) / rate, 2) if rate else 0
+        except (OSError, wave.Error, ValueError):
+            answer["seconds"] = 0
+        return answer
+
+    def preview(self, request_id, sample, request):
+        """A sample of one voice, which the characters screen plays so the
+        player can hear a card before a word of the game is dubbed."""
+        if self.models.tts is None:
+            raise RuntimeError("the speech model is not loaded")
+        casting = self.casting
+        chosen = str(sample.get("voice") or casting.speaker)
+        if casting.voices and chosen not in casting.voices:
+            chosen = casting.speaker
+        # The card's own timbre over that voice, which is what the dubbing
+        # will do with it.
+        timbre = None
+        vector = sample.get("vector")
+        if self.models.converter is not None and vector:
+            torch = self.models.torch
+            timbre = torch.from_numpy(np.asarray(vector, dtype=np.float32)).reshape(1, -1, 1)
+            timbre = timbre.to(device=self.models.converter.device, dtype=torch.float32)
+        output = self.speak(
+            str(sample.get("text", "")).strip(), chosen, timbre, request, f"preview-{request_id}.wav"
+        )
+        return {"id": request_id, "wave": str(output), "voice": chosen}
+
+    def diarize(self, request_id, listening, _):
+        """Where does the voice change? Asked before recognition, so each
+        speaker's half is recognized and voiced on its own."""
+        cuts = []
+        if self.models.converter is not None:
+            try:
+                heard, rate = read_wave_mono(listening)
+            except (OSError, wave.Error, ValueError):
+                heard, rate = None, 0
+            if heard is not None and rate > 0 and len(heard):
+                cuts = speaker_cuts(self.models.converter, heard, rate)
+        return {"id": request_id, "cuts": [round(cut, 3) for cut in cuts]}
+
+    def dub(self, request_id, request):
+        """A line of the game, translated where it has to be and voiced in the
+        voice and timbre of whoever said it."""
+        text = request["text"].strip()
+        # Text read off the screen in the dubbing language itself has nothing
+        # to be translated and is voiced as it is, and so is everything in a
+        # session started without a translator at all.
+        if request.get("translate", True) and self.translation.available:
+            translated = self.translation.line(text)
+        else:
+            translated = text
+        # Whatever is about to be said, translated here or read off the screen
+        # already in the dubbing language: these are words of that language
+        # either way.
+        translated = self.glossary.worded(translated)
+        # A line the player silenced has nothing left to say. It is answered
+        # rather than voiced, so the interface can show what was passed over
+        # instead of leaving a silence with no reason.
+        if not translated.strip():
+            return {"id": request_id, "translated": "", "silenced": True}
+        # Who is speaking is settled first: the character decides both the
+        # voice they are read in and the timbre laid over it.
+        casting = self.casting
+        source = request.get("wave")
+        heard_kind, heard_index, fingerprint = casting.identify(source)
+        kind, index = casting.read_as(heard_kind, heard_index)
+        chosen = casting.voice_for(source, kind, index)
+        timbre = casting.timbre_for(fingerprint, kind, index) if self.args.revoice else None
+        output = self.speak(translated, chosen, timbre, request, f"speech-{request_id}.wav")
+        answer = {
+            "id": request_id,
+            "translated": translated,
+            "wave": str(output),
+            "voice": chosen,
+            "cloned": timbre is not None,
+        }
+        # Reported as it was heard, not as it was read: the scene list offers
+        # a replacement against the voice of the game.
+        heard = casting.speaker_key(heard_kind, heard_index)
+        if heard is not None:
+            answer["speaker"] = heard
+            if (kind, index) != (heard_kind, heard_index) and index is not None:
+                answer["readAs"] = f"character:{casting.cast.identifier(index)}"
+        elif self.models.converter is None:
+            # Nothing heard who is speaking, so the voice is all that tells
+            # lines apart: men from women and nothing more.
+            answer["speaker"] = f"voice:{chosen}"
+        if self.models.bank is not None:
+            answer["bankSize"] = len(self.models.bank)
+        return answer
+
+    def speak(self, text, voice, timbre, request, name):
+        """[text] read in [voice], over [timbre] where there is one, at the
+        pace [request] asks for, written to [name] in the work directory."""
+        audio = self.models.tts.apply_tts(
+            text=text,
+            speaker=voice,
+            sample_rate=self.args.sample_rate,
+            put_accent=True,
+            put_yo=True,
+        )
+        samples = audio.clamp(-1, 1).to(self.models.torch.float32).cpu().numpy()
+        rate = self.args.sample_rate
+        if timbre is not None:
+            # The converter answers at its own rate; the file is written at it.
+            samples, rate = self.models.converter.convert(samples, rate, timbre)
+        # Hurried while other lines are already waiting for the voice, so that
+        # the dubbing does not fall further behind the game.
+        samples = change_speed(samples, request_speed(request, self.speed), rate)
+        output = self.work / name
+        write_wave(output, samples, rate)
+        return output
+
+
+# Which handler answers a request, by the key it carries, in the order they
+# are asked. A key that is there is asked for, whatever it holds: an empty
+# recording is answered as one that cannot be read, where it used to fall
+# through to the line path and come back as a missing "text".
+HANDLERS = (
+    ("fingerprint", Session.fingerprint),
+    ("voiceFrom", Session.voice_from),
+    ("voicedBy", Session.voiced_by),
+    ("glossary", Session.glossary_written),
+    ("speaker", Session.use_voice),
+    ("asHeard", Session.as_heard),
+    ("listen", Session.listen),
+    ("preview", Session.preview),
+    ("diarize", Session.diarize),
+)
+
+
+def main():
+    use_utf8_streams()
+    claim_protocol()
+    session = Session(parse_arguments())
+    reply(session.models.ready_line())
     for raw_line in sys.stdin:
         # A malformed line must not take the worker down with it: the pipeline
         # would then look alive while every later phrase is lost.
-        line = raw_line.strip().lstrip("\ufeff")
+        line = raw_line.strip().lstrip("﻿")
         if not line:
             continue
         try:
@@ -1025,216 +1332,7 @@ def main():
             reply({"type": "error", "message": f"malformed request: {error}"})
             continue
         try:
-            # The voice in a recording, as the characters screen keeps it.
-            recorded = request.get("fingerprint")
-            if recorded:
-                if converter is None:
-                    raise RuntimeError("the voice converter is not loaded")
-                heard, rate = read_wave_mono(recorded)
-                if heard is None or rate <= 0 or not len(heard):
-                    raise RuntimeError(f"unreadable recording: {recorded}")
-                vector = converter.embed(heard, rate).flatten().float().cpu().numpy()
-                reply(
-                    {
-                        "id": request_id,
-                        "vector": [round(float(value), 6) for value in vector],
-                        "gender": speaker_gender(recorded),
-                        "seconds": round(len(heard) / rate, 2),
-                    }
-                )
-                continue
-            # A card built from the files the player dropped onto it.
-            gathered = request.get("voiceFrom")
-            if gathered:
-                if converter is None:
-                    raise RuntimeError("the voice converter is not loaded")
-                reply({"id": request_id, **build_voice(converter, [str(p) for p in gathered])})
-                continue
-            # A card read in another's voice from now on, as the characters
-            # screen has just been told. The cast was read at start, so a
-            # session already running is told rather than left behind.
-            substitution = request.get("voicedBy")
-            if substitution is not None:
-                cast.voice_instead(
-                    str(substitution.get("character", "")),
-                    str(substitution.get("target", "")),
-                )
-                reply({"id": request_id, "voiced": True})
-                continue
-            # The cards taken out of the mix on the graph, as the canvas
-            # now draws them. The cards keep who stands in for whom either
-            # way; this is only which of it is applied.
-            # What the player wrote down, as they wrote it: the file is read
-            # when a session starts, so this is what carries an entry added
-            # while one runs. A line already dubbed is not dubbed again, but
-            # the next time the game says it, it is said their way.
-            written_down = request.get("glossary")
-            if written_down is not None:
-                glossary.replace(written_down)
-                reply({"id": request_id, "glossary": len(glossary)})
-                continue
-            # The voice the dubbing reads in, changed while it runs: the
-            # player picks another on the screen page or in the settings,
-            # and the next line is read in it rather than at the next
-            # start. A name this package does not ship is left alone --
-            # the answer says which voice is actually in use.
-            chosen_voice = request.get("speaker")
-            if chosen_voice is not None:
-                name = str(chosen_voice)
-                if name in voices:
-                    speaker = name
-                    current_voice = name
-                reply({"id": request_id, "speaker": speaker})
-                continue
-            heard_as_itself = request.get("asHeard")
-            if heard_as_itself is not None:
-                as_heard = {str(name) for name in heard_as_itself}
-                reply({"id": request_id, "asHeard": sorted(as_heard)})
-                continue
-            # Who is speaking, and nothing else. Live asks this before the
-            # dubbing itself runs, so the player can hand out the voices of
-            # a scene while only the converter is loaded.
-            heard_line = request.get("listen")
-            if heard_line:
-                if converter is None:
-                    raise RuntimeError("the voice converter is not loaded")
-                kind, index, _ = identify({"wave": heard_line})
-                answer = {"id": request_id, "speaker": speaker_key(kind, index)}
-                # The card the graph gave this one away to, if it did and if
-                # the cast is in the mix at all.
-                read_kind, read_index = read_as(kind, index)
-                if (read_kind, read_index) != (kind, index):
-                    answer["readAs"] = speaker_key(read_kind, read_index)
-                try:
-                    samples, rate = read_wave_mono(heard_line)
-                    answer["seconds"] = round(len(samples) / rate, 2) if rate else 0
-                except (OSError, wave.Error, ValueError):
-                    answer["seconds"] = 0
-                reply(answer)
-                continue
-            # A sample of one voice, which the characters screen plays so the
-            # player can hear a card before a word of the game is dubbed.
-            sample = request.get("preview")
-            if sample is not None:
-                if tts is None:
-                    raise RuntimeError("the speech model is not loaded")
-                chosen = str(sample.get("voice") or speaker)
-                if voices and chosen not in voices:
-                    chosen = speaker
-                audio = tts.apply_tts(
-                    text=str(sample.get("text", "")).strip(),
-                    speaker=chosen,
-                    sample_rate=args.sample_rate,
-                    put_accent=True,
-                    put_yo=True,
-                )
-                samples = audio.clamp(-1, 1).to(torch.float32).cpu().numpy()
-                rate = args.sample_rate
-                # The card's own timbre over that voice, which is what the
-                # dubbing will do with it.
-                vector = sample.get("vector")
-                if converter is not None and vector:
-                    timbre = torch.from_numpy(
-                        np.asarray(vector, dtype=np.float32)
-                    ).reshape(1, -1, 1)
-                    samples, rate = converter.convert(
-                        samples, rate, timbre.to(device=converter.device, dtype=torch.float32)
-                    )
-                samples = change_speed(samples, request_speed(request, speed), rate)
-                pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16).tobytes()
-                output = pathlib.Path(args.work_directory) / f"preview-{request_id}.wav"
-                with wave.open(str(output), "wb") as stream:
-                    stream.setnchannels(1)
-                    stream.setsampwidth(2)
-                    stream.setframerate(rate)
-                    stream.writeframes(pcm)
-                reply({"id": request_id, "wave": str(output), "voice": chosen})
-                continue
-            # Where does the voice change? Asked before recognition, so each
-            # speaker's half is recognized and voiced on its own.
-            listening = request.get("diarize")
-            if listening:
-                cuts = []
-                if converter is not None:
-                    try:
-                        heard, rate = read_wave_mono(listening)
-                    except (OSError, wave.Error, ValueError):
-                        heard, rate = None, 0
-                    if heard is not None and rate > 0 and len(heard):
-                        cuts = speaker_cuts(converter, heard, rate)
-                reply({"id": request_id, "cuts": [round(cut, 3) for cut in cuts]})
-                continue
-            text = request["text"].strip()
-            # Text read off the screen in the dubbing language itself has
-            # nothing to be translated and is voiced as it is, and so is
-            # everything in a session started without a translator at all.
-            if request.get("translate", True) and translator is not None:
-                translated = translate(text)
-                # A capitalised name is occasionally carried over untranslated,
-                # and a voice that reads no Latin cannot say it.
-                if not dubbed_in_latin and LATIN_TEXT.search(translated):
-                    translated = readable(translated, text, translate, glossary)
-            else:
-                translated = text
-            # Whatever is about to be said, translated here or read off the
-            # screen already in the dubbing language: these are words of that
-            # language either way.
-            translated = glossary.worded(translated)
-            # A line the player silenced has nothing left to say. It is
-            # answered rather than voiced, so the interface can show what was
-            # passed over instead of leaving a silence with no reason.
-            if not translated.strip():
-                reply({"id": request_id, "translated": "", "silenced": True})
-                continue
-            # Who is speaking is settled first: the character decides both the
-            # voice they are read in and the timbre laid over it.
-            heard_kind, heard_index, fingerprint = identify(request)
-            kind, index = read_as(heard_kind, heard_index)
-            chosen = voice_for(request, kind, index)
-            audio = tts.apply_tts(
-                text=translated,
-                speaker=chosen,
-                sample_rate=args.sample_rate,
-                put_accent=True,
-                put_yo=True,
-            )
-            samples = audio.clamp(-1, 1).to(torch.float32).cpu().numpy()
-            rate = args.sample_rate
-            timbre = timbre_for(fingerprint, kind, index) if args.revoice else None
-            if timbre is not None:
-                # The converter answers at its own rate; the file is written at it.
-                samples, rate = converter.convert(samples, rate, timbre)
-            # Hurried while other lines are already waiting for the voice,
-            # so that the dubbing does not fall further behind the game.
-            samples = change_speed(samples, request_speed(request, speed), rate)
-            pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16).tobytes()
-            output = pathlib.Path(args.work_directory) / f"speech-{request_id}.wav"
-            with wave.open(str(output), "wb") as stream:
-                stream.setnchannels(1)
-                stream.setsampwidth(2)
-                stream.setframerate(rate)
-                stream.writeframes(pcm)
-            answer = {
-                "id": request_id,
-                "translated": translated,
-                "wave": str(output),
-                "voice": chosen,
-                "cloned": timbre is not None,
-            }
-            # Reported as it was heard, not as it was read: the scene list
-            # offers a replacement against the voice of the game.
-            heard = speaker_key(heard_kind, heard_index)
-            if heard is not None:
-                answer["speaker"] = heard
-                if (kind, index) != (heard_kind, heard_index) and index is not None:
-                    answer["readAs"] = f"character:{cast.identifier(index)}"
-            elif converter is None:
-                # Nothing heard who is speaking, so the voice is all
-                # that tells lines apart: men from women and nothing more.
-                answer["speaker"] = f"voice:{chosen}"
-            if bank is not None:
-                answer["bankSize"] = len(bank)
-            reply(answer)
+            reply(session.answer(request))
         except Exception as error:
             reply({"id": request_id, "error": str(error)})
 

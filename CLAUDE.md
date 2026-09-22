@@ -288,7 +288,8 @@ A line is translated a sentence at a time. Marian was trained on single
 sentences and answers a reply of several with one of them, dropping the rest --
 "Get to the chopper! Now! Go, go, go!" came back as "Давай, давай, давай", and five of
 nine multi-sentence lines measured lost a sentence. `sentences`
-(`inference_worker.py`) cuts the line where one ends and the next begins -- a
+(`assets/runtime/dubbing_text.py`, the worker's text half, which needs no
+numpy and is tested on any Python in `test/runtime/`) cuts the line where one ends and the next begins -- a
 full stop before a small letter being a line thinking aloud rather than an end,
 and one closing a title or an initial no end either -- and the pieces go to
 CTranslate2 as a single batch, which decodes them side by side: 100 ms against
@@ -540,7 +541,8 @@ have nothing to do with a game, so both belong in a pack made for one game
 rather than in a general one. `normalizedGlossaryKey` and the worker's
 `Glossary._key` both drop the marks at either end of a line, so an entry
 written under "Fire in the hole!" answers the same shout heard with a full
-stop; the two must be changed together.
+stop; the two must be changed together, and `test/fixtures/glossary_keys.json` is the
+list of cases both test suites read to hold them to it.
 
 Beside the three lists, or under them below `_packsBesideListsWidth` where
 a column of its own would leave neither side readable, sit the packs
