@@ -172,7 +172,11 @@ void ProcessLoopbackCapture::SetHoldingTake(bool holding) {
 }
 
 size_t ProcessLoopbackCapture::HeldSamples() const {
-  return held_samples_.load(std::memory_order_relaxed);
+  // Too short to be kept is nothing gathered: the loop below throws such a
+  // take away as a door or a footstep, and a caller told it had gathered
+  // something waited ninety seconds for a recording that never came.
+  const size_t held = held_samples_.load(std::memory_order_relaxed);
+  return held >= kMinimumSpeechSamples ? held : 0;
 }
 
 void ProcessLoopbackCapture::SetSpeechAttenuation(double factor) {

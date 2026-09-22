@@ -76,8 +76,9 @@ LD_API int32_t ld_stop(void);
 // record and pressing stop. Letting go writes what was gathered and delivers
 // it as an audioSegment event within about 100 ms. Letting go answers with
 // how much the take had gathered, in milliseconds, so a caller can tell a
-// recording on its way from a silence that will deliver nothing; opening one
-// answers zero. A take nobody let go of ends at three minutes.
+// recording on its way from a silence that will deliver nothing -- a take
+// too short to be kept answers zero too, since none will come of it; opening
+// one answers zero. A take nobody let go of ends at three minutes.
 LD_API int32_t ld_hold_take(int32_t holding);
 
 // Pauses (1) or resumes (0) the running pipeline without tearing it down.

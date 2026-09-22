@@ -637,6 +637,9 @@ int32_t ld_set_hotkeys(const char* config_json) {
 namespace {
 
 // A PCM WAV file's format and samples, as far as playback needs them.
+// How much longer than its own length a clip may take to be reported done.
+constexpr ULONGLONG kPlaybackGraceMilliseconds = 5000;
+
 struct WaveClip {
   WAVEFORMATEX format{};
   std::vector<char> samples;
@@ -717,10 +720,22 @@ int32_t ld_play_wave(const char* utf8_path) {
   if (waveOutPrepareHeader(device, &header, sizeof(header)) == MMSYSERR_NOERROR) {
     if (waveOutWrite(device, &header, sizeof(header)) == MMSYSERR_NOERROR) {
       // The event also fires when the device opens and closes, so the flag the
-      // driver sets is what says the clip is over.
+      // driver sets is what says the clip is over. Waited for no longer than
+      // the clip lasts and a little more: a device pulled out mid-line may
+      // never set it, and the thread that plays the line -- and the place it
+      // holds among the voices that may sound at once -- was held for good.
       const volatile DWORD& flags = header.dwFlags;
-      while ((flags & WHDR_DONE) == 0) WaitForSingleObject(done, 1000);
-      result = 0;
+      const ULONGLONG bytes_per_second = clip.format.nAvgBytesPerSec ? clip.format.nAvgBytesPerSec : 1;
+      const ULONGLONG deadline =
+          GetTickCount64() + clip.samples.size() * 1000 / bytes_per_second + kPlaybackGraceMilliseconds;
+      while ((flags & WHDR_DONE) == 0 && GetTickCount64() < deadline) WaitForSingleObject(done, 1000);
+      if ((flags & WHDR_DONE) != 0) {
+        result = 0;
+      } else {
+        // Handed back by the device, so the header can be let go of.
+        waveOutReset(device);
+        result = -22;
+      }
     }
     waveOutUnprepareHeader(device, &header, sizeof(header));
   }
@@ -920,6 +935,7 @@ const char* ld_error_message(int32_t error_code) {
     case -14: return "No matching active audio session was found";
     case -20: return "Playback path is empty";
     case -21: return "Windows could not play the generated wave file";
+    case -22: return "The sound device stopped answering while a line played";
     case -30: return "Audio path is empty";
     case -31: return "Windows cannot decode this sound file";
     case -32: return "The file holds no audio";

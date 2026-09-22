@@ -1691,10 +1691,14 @@ abstract final class AppTheme {
 - [ ] ~70 строк под `#ifdef _WIN32` существуют только ради Linux-задачи
       GitLab → `native/stub.cpp`, где все `ld_*` возвращают −2, выбор по
       `targetOS` в хуке; боевые исходники остаются без заборов.
-- [ ] `ld_hold_take(0)` обещает дубль короче 0,35 с, который
+- [x] `ld_hold_take(0)` обещает дубль короче 0,35 с, который
       `process_loopback_capture.cpp:331` затем выбрасывает, а Dart ждёт его
       90 секунд (`native_engine_service.dart:475–485`) → возвращать 0 ниже
       `kMinimumSpeechSamples`. Ожидание `WHDR_DONE` (`:694`) не ограничено.
+      *Сделано:* `HeldSamples` отвечает нулём ниже `kMinimumSpeechSamples`;
+      ожидание `WHDR_DONE` ограничено длиной клипа плюс пять секунд, после
+      чего устройство сбрасывается и ответ — `-22` («устройство перестало
+      отвечать»).
 - [ ] Нативных тестов нет. `flat_json`, `PhraseSegmenter`, `StableText`
       (дебаунс OCR с безымянными 2, 6 и 13×50 на `ocr_capture.cpp:393–430`),
       `RegionWithin` — простым исполняемым файлом на `assert`; clang в
