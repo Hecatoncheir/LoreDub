@@ -8,8 +8,8 @@ import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:mocktail/mocktail.dart';
 
 /// The engine and its sessions with nothing behind them: what the engine
-/// says is whatever the test adds to [said], a stop and a disposal do
-/// nothing, and any other call throws -- a test that starts a session
+/// says is whatever the test adds to [said], a stop does nothing, disposal
+/// closes [said], and any other call throws -- a test that starts a session
 /// fakes that start itself, by extending this.
 class FakeSessionRepository extends Fake implements SessionRepository {
   final said = StreamController<EngineEvent>.broadcast();
@@ -21,5 +21,5 @@ class FakeSessionRepository extends Fake implements SessionRepository {
   Future<void> stop() async {}
 
   @override
-  void dispose() {}
+  void dispose() => unawaited(said.close());
 }

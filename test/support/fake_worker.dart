@@ -45,9 +45,13 @@ class FakeWorker implements Process {
   final bool lingers;
   final _stdout = StreamController<List<int>>();
   final _stderr = StreamController<List<int>>();
+  // Closed through [_sink], which the service closes as it ends the
+  // worker (`WorkerProcess.end`), as it closes a real process's stdin.
+  // ignore: close_sinks
   final _stdin = StreamController<List<int>>();
   final _requests = <Map<String, Object?>>[];
   final _exit = Completer<int>();
+  // ignore: close_sinks
   late final IOSink _sink = IOSink(_stdin);
 
   bool killed = false;
