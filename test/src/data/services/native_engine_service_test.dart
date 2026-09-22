@@ -17,6 +17,7 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/hotkey.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_config.dart';
+import 'package:lore_dub/src/data/services/worker_arguments.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../support/fake_worker.dart';
@@ -149,6 +150,45 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('drops a line whose answer arrives once its session has ended', () async {
+    final work = await Directory.systemTemp.createTemp('lore-dub-engine');
+    addTearDown(() => deleteOnceReleased(work));
+    final native = _FakeNative();
+    final inference = _HeldInference();
+    final engine = NativeEngineService(
+      inference: inference,
+      native: native,
+      workDirectory: () async => work,
+    );
+    final events = <EngineEvent>[];
+    engine.events.listen(events.add);
+
+    await engine.startScreenText(
+      const ScreenSessionConfig(
+        worker: WorkerPlan(threads: 2, pythonExecutable: 'python.exe', runtimeDirectory: 'rt'),
+        capture: CapturePlan(mode: CaptureMode.ocr, processId: 7),
+        lines: LineRules(targetLanguage: 'ru'),
+      ),
+    );
+    native.push('{"type":"ocrText","text":"The gate is sealed."}');
+    await _until(() => inference.asked.isNotEmpty);
+
+    // The worker was answering as the stop came.
+    await engine.stop();
+    final wave = File(path.join(work.path, 'line.wav'))..writeAsBytesSync([0]);
+    inference.asked.single.complete(
+      InferenceResult(
+        english: 'The gate is sealed.',
+        translated: 'Ворота закрыты.',
+        wavePath: wave.path,
+      ),
+    );
+    await settle();
+
+    expect(events.whereType<LineDubbed>(), isEmpty, reason: 'nobody is listening for it');
+    expect(wave.existsSync(), isFalse, reason: 'and nothing is left of it');
   });
 
   group('a start that is stopped or replaced', () {
@@ -541,6 +581,9 @@ class _FakeNative extends NativeBridge {
     return 0;
   }
 
+  /// Queues what the library would report next.
+  void push(String event) => _events.add(event);
+
   @override
   int stop() {
     stops++;
@@ -567,4 +610,31 @@ class _FakeNative extends NativeBridge {
 
   @override
   String errorMessage(int code) => 'native error $code';
+}
+
+/// A worker that comes up at once and answers a line when the test says.
+class _HeldInference extends LocalInferenceService {
+  final asked = <Completer<InferenceResult>>[];
+
+  @override
+  Future<void> start(
+    WorkerPlan plan, {
+    bool requiresWhisper = false,
+    WorkerLoad load = WorkerLoad.full,
+  }) async {}
+
+  @override
+  Future<InferenceResult> processText(
+    String english, {
+    String? originalWavePath,
+    bool translate = true,
+    double? speed,
+  }) {
+    final answer = Completer<InferenceResult>();
+    asked.add(answer);
+    return answer.future;
+  }
+
+  @override
+  Future<void> stop() async {}
 }

@@ -30,6 +30,7 @@ import 'worker_arguments.dart';
 import 'voice_take.dart';
 import 'game_ducker.dart';
 import 'native_bridge.dart';
+import 'engine_session.dart';
 
 /// Where the work directory is: what a start sweeps of stale audio, and what
 /// the capture cuts the game's sound into.
@@ -66,26 +67,23 @@ class NativeEngineService {
   /// would put every later phrase further behind the game.
   late final _playback = PlaybackScheduler(play: _playQueued);
 
-  /// What the running session was started with, kept in step with what is
-  /// changed under it; null while the engine rests.
-  SessionConfig? _active;
-  String? _reportedLanguage;
-  String? _reportedVoice;
-  int? _reportedBankSize;
-
-  /// Set while the session rests: capture hands nothing on, and a line
-  /// finishing its translation meanwhile is shown but not voiced.
-  bool _paused = false;
+  /// The run of the engine under way, from its start to its stop; null
+  /// while the engine rests. See [EngineSession].
+  EngineSession? _run;
 
   /// Which session is running, or null while the engine rests.
   ///
   /// The engine serves the dubbing screens and the characters screen in
   /// turn, and what a captured segment is for depends on which of them holds
   /// it: recognized and voiced for live dubbing, measured for a card on the
-  /// characters screen, only placed among the voices of a scene. One field
-  /// rather than a flag per session, so that a start can never leave the
-  /// session before it set.
-  PipelineSession? _session;
+  /// characters screen, only placed among the voices of a scene.
+  PipelineSession? get _session => _run?.kind;
+
+  /// What the running session was started with, once it is up.
+  SessionConfig? get _active => (_run?.running ?? false) ? _run!.config : null;
+
+  /// Whether the session rests.
+  bool get _paused => _run?.paused ?? false;
 
   /// Goes up with every start and every stop, so that a start coming back
   /// from one of its waits can tell whether it is still the one wanted.
@@ -113,11 +111,6 @@ class NativeEngineService {
   /// The take a card is recorded from. Between takes what the game says is
   /// thrown away.
   late final _take = VoiceTake(hold: _native.holdTake, discard: _deleteIfPresent);
-
-  /// What subtitle mode read last, so a line that grows in place is voiced
-  /// only for what it gained, and one that comes back unchanged — even after
-  /// leaving the screen — is not voiced again.
-  String? _previousOcrText;
 
   Stream<EngineEvent> get events => _events.stream;
   bool get processLoopbackSupported => _native.processLoopbackSupported;
@@ -155,9 +148,6 @@ class NativeEngineService {
   }) => _inference.start(plan, requiresWhisper: requiresWhisper, load: load);
 
   Future<void> start(LiveSessionConfig config) => _startSession(config, (start) async {
-    _reportedLanguage = null;
-    _reportedVoice = null;
-    _reportedBankSize = null;
     _playback.maxVoices = config.lines.overlapVoices ? overlappingVoices : 1;
     await _removeStaleAudio(start);
     await _bringUpWorker(start, () => _load(config.worker, requiresWhisper: true));
@@ -178,9 +168,6 @@ class NativeEngineService {
   /// while holding the snapshot key. Whisper takes no part in either --
   /// nothing here is heard -- so it is ready in seconds.
   Future<void> startScreenText(ScreenSessionConfig config) => _startSession(config, (start) async {
-    _reportedLanguage = null;
-    _reportedVoice = null;
-    _reportedBankSize = null;
     // One line at a time is read, so there is no one to talk over.
     _playback.maxVoices = 1;
     await _removeStaleAudio(start);
@@ -335,8 +322,7 @@ class NativeEngineService {
     Future<void> Function(int start) steps,
   ) async {
     final start = ++_starts;
-    _paused = false;
-    _session = config.session;
+    _run = EngineSession(config);
     try {
       await steps(start);
     } catch (_) {
@@ -400,7 +386,7 @@ class NativeEngineService {
   /// config is the worker's and this service's.
   void _beginCapture(int start, SessionConfig config, {String? captureDirectory}) {
     _throwIfSuperseded(start);
-    _active = config;
+    _run!.running = true;
     final capture = config.capture!;
     _throwIfError(
       _native.start(jsonEncode(capture.toNativeJson(captureDirectory: captureDirectory))),
@@ -413,7 +399,7 @@ class NativeEngineService {
   /// says so itself.
   void _listenWithoutCapture(int start, SessionConfig config) {
     _throwIfSuperseded(start);
-    _active = config;
+    _run!.running = true;
     _pollRegularly();
     _events.add(SessionStateChanged(status: PipelineStatus.listening, session: _session));
   }
@@ -460,7 +446,8 @@ class NativeEngineService {
   /// session started with is kept in step, so what the canvas says now is
   /// what a restart of it would be given.
   Future<void> readAsHeard(Set<String> value) async {
-    _active = _active?.withAsHeard(value);
+    final run = _run;
+    if (run != null) run.config = run.config.withAsHeard(value);
     await _inference.readAsHeard(value);
   }
 
@@ -473,12 +460,12 @@ class NativeEngineService {
     _take.abandon();
     // Cleared first: segments captured moments ago are still travelling
     // through the queue, and failing them is expected once the user stops.
-    _active = null;
-    _paused = false;
-    // Cleared before ld_stop, so the idle it announces belongs to no session
-    // in particular and puts every screen that was showing one back to rest.
-    _session = null;
-    _previousOcrText = null;
+    // Cleared before ld_stop as well, so the idle it announces belongs to no
+    // session in particular and puts every screen that was showing one back
+    // to rest.
+    final ended = _run;
+    _run = null;
+    if (ended?.voiceHeard case final heard?) unawaited(_deleteIfPresent(heard));
     try {
       // ld_stop drops the hotkeys too; nothing is left for them to pause.
       _throwIfError(_native.stop());
@@ -514,8 +501,9 @@ class NativeEngineService {
   /// Rests or wakes the running session without tearing it down, so the
   /// worker keeps its models and resuming costs no startup.
   void setPaused(bool paused) {
-    if (_active == null) return;
-    _paused = paused;
+    final run = _run;
+    if (run == null || !run.running) return;
+    run.paused = paused;
     _throwIfError(_native.setPaused(paused: paused));
     if (!paused) return _ducker.resume();
     // Nothing heard before the pause is voiced after it.
@@ -590,9 +578,9 @@ class NativeEngineService {
   /// a line that asks what this session was started with is answered with
   /// the voice actually in use.
   Future<void> useVoice(String voice) async {
-    final config = _active;
-    if (config == null || config.worker.speaker == voice) return;
-    _active = config.withSpeaker(voice);
+    final run = _run;
+    if (run == null || !run.running || run.config.worker.speaker == voice) return;
+    run.config = run.config.withSpeaker(voice);
     await _inference.useVoice(voice);
   }
 
@@ -643,20 +631,13 @@ class NativeEngineService {
     unawaited(_deleteIfPresent(wavePath));
   }
 
-  /// The game's sound as it was last heard, while a screen session is
-  /// following the voices, and the ones a line still waiting is to be
-  /// coloured with. A file is kept until nothing points at it: the same
-  /// voice may colour several lines, and a line may be voiced long after
-  /// the sound it was placed by.
-  String? _voiceHeard;
-  final _voicesInUse = <String>{};
-
   /// Keeps [wavePath] as the voice of the moment and lets the one before it
   /// go, unless a line still waiting is to be read in it.
   void _rememberVoiceHeard(String wavePath) {
-    final before = _voiceHeard;
-    _voiceHeard = wavePath;
-    if (before != null && before != wavePath && !_voicesInUse.contains(before)) {
+    final run = _run!;
+    final before = run.voiceHeard;
+    run.voiceHeard = wavePath;
+    if (before != null && before != wavePath && !run.voicesInUse.contains(before)) {
       unawaited(_deleteIfPresent(before));
     }
   }
@@ -664,8 +645,9 @@ class NativeEngineService {
   /// Lets go of the voice a line was read in, now that it has been.
   Future<void> _releaseVoiceHeard(String? wavePath) async {
     if (wavePath == null) return;
-    _voicesInUse.remove(wavePath);
-    if (wavePath != _voiceHeard) await _deleteIfPresent(wavePath);
+    final run = _run;
+    run?.voicesInUse.remove(wavePath);
+    if (wavePath != run?.voiceHeard) await _deleteIfPresent(wavePath);
   }
 
   /// Whether captured sound is wanted at all right now.
@@ -678,13 +660,14 @@ class NativeEngineService {
   /// Subtitles read off the screen: only what the line gained is voiced.
   void _onScreenText(String text) {
     if (!_listening) return;
-    final fresh = freshOcrText(_previousOcrText, text);
-    _previousOcrText = text;
+    final run = _run!;
+    final fresh = freshOcrText(run.previousOcrText, text);
+    run.previousOcrText = text;
     if (fresh == null) return;
     // The voice heard as the line appeared, where the session is following
     // them: held until the line has been read in it.
-    final heard = _voiceHeard;
-    if (heard != null) _voicesInUse.add(heard);
+    final heard = run.voiceHeard;
+    if (heard != null) run.voicesInUse.add(heard);
     _phrases.add(PendingPhrase.text(fresh, heardWave: heard));
   }
 
@@ -709,8 +692,9 @@ class NativeEngineService {
       right: edge('right'),
       bottom: edge('bottom'),
     );
-    _previousOcrText = null;
-    _active = _active?.withRegion(region);
+    final run = _run!;
+    run.previousOcrText = null;
+    run.config = run.config.withRegion(region);
     _events.add(SubtitleFrameMoved(region));
   }
 
@@ -824,9 +808,10 @@ class NativeEngineService {
   Future<void> _recognizeSegment(String wavePath) async {
     final started = Stopwatch()..start();
     try {
+      final run = _run;
       final config = _active;
       final lines = config?.lines;
-      if (config == null || lines == null) return;
+      if (run == null || config == null || lines == null) return;
       final result = await _inference.processSegment(
         wavePath: wavePath,
         whisperModel: config.worker.models.whisper!,
@@ -838,9 +823,9 @@ class NativeEngineService {
         translate: lines.translatesHeard,
         speed: _pace(lines),
       );
-      _publishSpokenLanguage();
+      if (identical(run, _run)) _publishSpokenLanguage();
       if (result == null) return;
-      await _publishResult(result, started.elapsedMilliseconds, original: '');
+      await _publishResult(run, result, started.elapsedMilliseconds, original: '');
     } catch (error) {
       _reportFailure(error);
     } finally {
@@ -855,8 +840,9 @@ class NativeEngineService {
   }) async {
     final started = Stopwatch()..start();
     try {
+      final run = _run;
       final lines = _active?.lines;
-      if (lines == null) return;
+      if (run == null || lines == null) return;
       // Subtitles caption sounds the way whisper does: "[Music]" is not a line.
       final spoken = withoutSoundCaptions(recognizedText);
       if (spoken.isEmpty) {
@@ -874,6 +860,7 @@ class NativeEngineService {
         speed: _pace(lines),
       );
       await _publishResult(
+        run,
         result,
         started.elapsedMilliseconds,
         original: spoken,
@@ -899,8 +886,9 @@ class NativeEngineService {
   /// show what auto-detection actually decided.
   void _publishSpokenLanguage() {
     final detected = _inference.spokenLanguage;
-    if (detected == null || detected == _reportedLanguage) return;
-    _reportedLanguage = detected;
+    final run = _run;
+    if (run == null || detected == null || detected == run.reportedLanguage) return;
+    run.reportedLanguage = detected;
     _events.add(LanguageDetected(detected));
   }
 
@@ -926,11 +914,18 @@ class NativeEngineService {
   }
 
   Future<void> _publishResult(
+    EngineSession run,
     InferenceResult result,
     int latencyMs, {
     required String original,
     bool snapshot = false,
   }) async {
+    if (!identical(run, _run)) {
+      // Asked for by a run that has ended since: a line nobody is listening
+      // for any longer, or -- a new session up already -- one it never heard.
+      if (result.wavePath case final wave?) unawaited(_deleteIfPresent(wave));
+      return;
+    }
     _events.add(
       LineDubbed(
         line: TranscriptEntry(
@@ -952,13 +947,13 @@ class NativeEngineService {
     );
     // Which voice read it: the automatic choice can change it per phrase, so
     // the interface should not have to guess.
-    if (result.voice.isNotEmpty && result.voice != _reportedVoice) {
-      _reportedVoice = result.voice;
+    if (result.voice.isNotEmpty && result.voice != run.reportedVoice) {
+      run.reportedVoice = result.voice;
       _events.add(VoiceSpoken(result.voice));
     }
     // A new character joined the bank, so the count in the settings is stale.
-    if (result.bankSize case final size? when size != _reportedBankSize) {
-      _reportedBankSize = size;
+    if (result.bankSize case final size? when size != run.reportedBankSize) {
+      run.reportedBankSize = size;
       _events.add(VoiceBankGrew(size));
     }
     // A line that was already being translated when the pause came is shown
