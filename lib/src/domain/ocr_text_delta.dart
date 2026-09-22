@@ -33,50 +33,67 @@ String? freshOcrText(String? previous, String current) {
   ];
   final now = [for (final position in positions) _comparable(tokens[position])];
 
-  // The longest run of words both texts share in order, counted from the
-  // end so the walk below can read it forwards.
-  final rows = before.length;
-  final columns = now.length;
-  final common = List.generate(rows + 1, (_) => List.filled(columns + 1, 0));
-  for (var i = rows - 1; i >= 0; i--) {
-    for (var j = columns - 1; j >= 0; j--) {
+  final common = _lcsTable(before, now);
+  if (common[0][0] * 2 <= before.length) return tokens.join(' ');
+
+  // The words of [current] with no counterpart, gathered gap by gap. A gap
+  // no longer than the words it stands in for is those words misread.
+  final fresh = [
+    for (final gap in _gaps(before, now, common))
+      if (gap.words.length > gap.replaced) ...gap.words,
+  ];
+  if (fresh.isEmpty) return null;
+  return _runs(tokens, positions, fresh).join(' ');
+}
+
+/// The length of the longest run of words [before] and [now] share in
+/// order, from each pair of positions to the end: counted from the end so
+/// the walk in [_gaps] can read it forwards.
+List<List<int>> _lcsTable(List<String> before, List<String> now) {
+  final common = List.generate(before.length + 1, (_) => List.filled(now.length + 1, 0));
+  for (var i = before.length - 1; i >= 0; i--) {
+    for (var j = now.length - 1; j >= 0; j--) {
       common[i][j] = before[i] == now[j]
           ? common[i + 1][j + 1] + 1
           : max(common[i + 1][j], common[i][j + 1]);
     }
   }
-  if (common[0][0] * 2 <= rows) return tokens.join(' ');
+  return common;
+}
 
-  // The words of [current] with no counterpart, gathered gap by gap. A gap
-  // no longer than the words it stands in for is those words misread.
-  final fresh = <int>[];
-  final gap = <int>[];
+/// Walks the two texts along the longest shared run and yields each stretch
+/// between two shared words: the positions in [now] of the words that stand
+/// there, and how many words of [before] they took the place of.
+Iterable<({List<int> words, int replaced})> _gaps(
+  List<String> before,
+  List<String> now,
+  List<List<int>> common,
+) sync* {
+  var words = <int>[];
   var replaced = 0;
-  void closeGap() {
-    if (gap.length > replaced) fresh.addAll(gap);
-    gap.clear();
-    replaced = 0;
-  }
-
   var i = 0;
   var j = 0;
-  while (i < rows || j < columns) {
-    if (i < rows && j < columns && before[i] == now[j]) {
-      closeGap();
+  while (i < before.length || j < now.length) {
+    if (i < before.length && j < now.length && before[i] == now[j]) {
+      yield (words: words, replaced: replaced);
+      words = [];
+      replaced = 0;
       i++;
       j++;
-    } else if (j < columns && (i == rows || common[i][j + 1] >= common[i + 1][j])) {
-      gap.add(j);
+    } else if (j < now.length && (i == before.length || common[i][j + 1] >= common[i + 1][j])) {
+      words.add(j);
       j++;
     } else {
       replaced++;
       i++;
     }
   }
-  closeGap();
-  if (fresh.isEmpty) return null;
+  yield (words: words, replaced: replaced);
+}
 
-  // Each run of new words as it was read, with the punctuation inside it.
+/// Each run of consecutive [fresh] words as it was read, with the
+/// punctuation inside it; [positions] places each word among [tokens].
+List<String> _runs(List<String> tokens, List<int> positions, List<int> fresh) {
   final runs = <String>[];
   var start = 0;
   for (var index = 1; index <= fresh.length; index++) {
@@ -86,7 +103,7 @@ String? freshOcrText(String? previous, String current) {
     runs.add(tokens.sublist(first, last + 1).join(' '));
     start = index;
   }
-  return runs.join(' ');
+  return runs;
 }
 
 List<String> _words(String text) => text.split(_space).where((word) => word.isNotEmpty).toList();
