@@ -58,7 +58,8 @@ Use `flutter_test`; name files `*_test.dart` and describe behavior in readable `
 sentences. Place tests beside the matching source hierarchy. Cover new domain decisions,
 service edge cases, repository publishing order, and Bloc transitions (`blocTest` against a
 fake repository; a screen's widgets over a `MockBloc`, checking the events it sends). UI changes that affect subscription scope must
-keep `test/src/ui/dashboard/rebuild_scope_test.dart` passing.
+keep `test/src/ui/dashboard/rebuild_scope_test.dart` passing. A fake implements what it
+stands for on `Fake` and never extends it; shared fakes live in `test/support/fakes/`.
 
 ## Commit & Pull Request Guidelines
 

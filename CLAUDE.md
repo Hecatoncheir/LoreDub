@@ -1323,6 +1323,13 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `NativeEngineService({inference, native, workDirectory})`,
   `SharedPreferences.setMockInitialValues`, the exported
   `readNativeUtf8String` helper).
+- A fake implements the class it stands for on `Fake` (`extends Fake
+  implements ModelRepository`) and never extends it: extended, whatever it
+  did not override ran as production code, and a test leaned on the real
+  `pause()` without anyone seeing. Fakes more than one test needs live in
+  `test/support/fakes/`, and the whole dashboard is staged and pumped
+  through `test/support/dashboard_harness.dart` (`buildCubits`, `stage`,
+  `pumpDashboard`), with a test file per screen under `test/src/ui/`.
 - A screen is tested in two halves, as the Glossary is. What its bloc does
   with an event is `blocTest` against a fake repository
   (`test/src/ui/dashboard/glossary_bloc_test.dart`); what the screen draws
