@@ -35,9 +35,10 @@ linter:
   # producing the lint.
   rules:
     # Beyond flutter_lints (TODO.md, stage 7): a future nobody waits for is
-    # said so with `unawaited`, a subscription is cancelled, nothing is
-    # called on `dynamic`, a local that is not reassigned is final, and an
-    # async function returns a Future rather than void.
+    # said so with `unawaited`, a subscription is cancelled and a sink is
+    # closed, nothing is called on `dynamic`, a local that is not reassigned
+    # is final, an async function returns a Future rather than void, and
+    # what is thrown is an Error or an Exception.
     unawaited_futures: true
     cancel_subscriptions: true
     avoid_dynamic_calls: true
@@ -45,6 +46,7 @@ linter:
     avoid_void_async: true
     discarded_futures: true
     close_sinks: true
+    only_throw_errors: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

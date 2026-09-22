@@ -204,10 +204,10 @@ class _Disk extends Fake implements GlossaryRepository {
   Glossary incoming = Glossary.empty;
 
   /// What loading and saving fail with, if they are to.
-  Object? failure;
+  Error? failure;
 
   /// What reading the player's files fails with, if it is to.
-  Object? readFailure;
+  Error? readFailure;
 
   @override
   Future<Glossary> load() async {

@@ -1861,11 +1861,18 @@ abstract final class AppTheme {
       Работает не через `flutter analyze`, а своей командой: `dart pub global
       activate bloc_tools`, затем `bloc lint .` отдельным шагом CI (и через
       расширение в IDE).
-- [ ] Встроенные, которых нет в `flutter_lints`: `unawaited_futures`,
+- [x] Встроенные, которых нет в `flutter_lints`: `unawaited_futures`,
       `discarded_futures`, `cancel_subscriptions`, `close_sinks`,
       `avoid_dynamic_calls`, `prefer_final_locals`, `only_throw_errors`,
       `avoid_void_async`. Включать по одному, каждый — отдельным коммитом с
       исправлениями: CI идёт с `--fatal-infos`.
+      *Сделано, все восемь.* Пять не нашли ничего и включены одним
+      коммитом; `discarded_futures` — три брошенных `Future` (закрытие
+      потока движка, отписка `SessionBloc`, первый `StartupCubit.start`) —
+      теперь через `unawaited`; `close_sinks` — поток `FakeSessionRepository`
+      закрывается в `dispose`, `stdin` фейкового процесса закрывает сам
+      сервис (`ignore` с пояснением); `only_throw_errors` — четыре фейка
+      бросали `Object?`, теперь `Error?`/`Exception?`.
 - [ ] Когнитивная сложность, «один виджет — один файл» и «нет методов,
       возвращающих `Widget`» — `cognitive_complexity` и `dart_code_linter`,
       см. этап 0.

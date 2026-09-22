@@ -508,7 +508,7 @@ class _CastRepository extends Fake implements SessionRepository {
   Completer<BuiltVoice>? measuring;
 
   /// What the session borrowed for the files fails to start with, if it is to.
-  Object? fileSessionFailure;
+  Exception? fileSessionFailure;
 
   /// The session the engine holds, numbered as the real repository numbers
   /// them: one more with every start and with every stop.
