@@ -54,4 +54,18 @@ if (-not $Iscc) {
 }
 
 New-Item -ItemType Directory -Force -Path dist | Out-Null
-Invoke-Native { & $Iscc "/DAppVersion=$PackageVersion" "installer\lore_dub.iss" }
+
+# ISCC reads no path longer than MAX_PATH, and the bundled Python holds files
+# nested some 130 characters below the release directory: from a checkout as
+# deep as a worktree under .claude\worktrees\ the compile stopped halfway with
+# "The system cannot find the path specified". So the installer is compiled
+# through a junction to this checkout at a short path, which the relative
+# paths in lore_dub.iss then all begin from. Deleting a junction removes the
+# link and nothing it points at.
+$ShortRoot = Join-Path ([IO.Path]::GetTempPath()) ("ld-" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
+New-Item -ItemType Junction -Path $ShortRoot -Target (Get-Location).Path | Out-Null
+try {
+  Invoke-Native { & $Iscc "/DAppVersion=$PackageVersion" (Join-Path $ShortRoot "installer\lore_dub.iss") }
+} finally {
+  [IO.Directory]::Delete($ShortRoot)
+}
