@@ -32,7 +32,9 @@ jobs:
       - name: Generated code is committed as generated
         run: git diff --exit-code -- lib/src/native lib/l10n
       - run: flutter analyze --fatal-infos
-      - run: flutter test
+      - run: flutter test --coverage
+      - name: Coverage of the data layer and the domain does not fall
+        run: dart run tool/coverage.dart
       - name: The worker's text half, on the runner's own Python
         run: python -m unittest discover -s test/runtime -v
       - name: The native library's own tests

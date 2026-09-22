@@ -20,7 +20,8 @@ flutter test test/screenshots.dart --update-goldens   # redraw docs/screenshots/
 flutter test test/graph_bench.dart  # what a frame of the graph screen costs
 dart format --output=none --set-exit-if-changed lib test tool hook
 flutter analyze --fatal-infos      # CI is --fatal-infos; infos must be zero
-flutter test
+flutter test --coverage
+dart run tool/coverage.dart        # the data layer's and the domain's coverage does not fall
 python -m unittest discover -s test/runtime   # the worker's text half, any Python
 powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1   # native/tests/*_test.cpp
 ```
@@ -1390,6 +1391,10 @@ in `analysis_options.yaml`, which `flutter analyze` does not read) and the
 `LoreDubPalette.`/`Color(0x`/`TextStyle(` uses outside the theme to
 `tool/ratchet_baseline.json`. A count that falls is written back with
 `--update` and committed in the same change, so it cannot creep up again.
+The tests run with `--coverage`, and `tool/coverage.dart` holds the line
+coverage of `lib/src/data/repositories/`, `lib/src/data/services/` and
+`lib/src/domain/` to `tool/coverage_baseline.json` the same way: a share
+that rises is written back with `--update`, one that falls fails the run.
 `.gitlab-ci.yml` runs format, analysis and tests on Linux.
 
 A `v<major>.<minor>.<patch>` tag (and no other tag starting with a `v`) starts `.github/workflows/release.yml`: `tool/prepare_release.dart`

@@ -1809,9 +1809,14 @@ abstract final class AppTheme {
       делается вместе с разбиением файла, экран за экраном.
       *Сделано экран за экраном (этап 4); разбиение `widget_test.dart` —
       пункт выше, отдельно.*
-- [ ] Тесты на то, чего сейчас нет: `NativeEngineService` и
+- [x] Тесты на то, чего сейчас нет: `NativeEngineService` и
       `LocalInferenceService` (после `NativeBridge` / `WorkerChannel`),
       Python (`pytest`), натив (исполняемый файл на `assert`).
+      *Сделано по ходу этапов 5 и 6:* у `NativeEngineService`,
+      `LocalInferenceService`, `WorkerProcess`, `WorkerChannel`,
+      `WhisperRunner` и `VoiceTake` свои тесты; Python — `unittest` в
+      `test/runtime/` (его читает и `pytest`), натив — четыре исполняемых
+      файла в `native/tests/`.
 
 Состояние на момент аудита: 629 тестов, все зелёные, 111 с; goldens
 `test/screenshots.dart` совпадают с закоммиченными (18 из 18) — то есть
@@ -1831,8 +1836,18 @@ abstract final class AppTheme {
 `native_engine_service.dart` 17,5 % (428), `app_repository.dart` 18,2 % (157);
 дальше `glossary_cubit.dart` 50 % и `downloads_cubit.dart` 55,5 %.
 
-- [ ] Покрытие — шагом CI (`flutter test --coverage`) с храповиком по
+- [x] Покрытие — шагом CI (`flutter test --coverage`) с храповиком по
       `data/`: сначала не ниже текущего, после этапа 5 — цель 80 %.
+      *Сделано:* `tool/coverage.dart` читает `coverage/lcov.info` по
+      областям и падает, если область `tool/coverage_baseline.json` ниже
+      записанного (`--update` только поднимает). Держит
+      `data/repositories/` (74,0 %, было 21,1), `data/services/` (72,5 %,
+      было 53,1) и `domain/` (91,7 %); `lib/` (86,5 %) и `ui/` (89,0 %)
+      только показывает. Два прогона подряд дали одни и те же строки.
+      До 80 % по сервисам не хватает ~135 строк; больше всего непокрытого
+      в `native_engine_service.dart` (147 из 345), `phrase_processor.dart`
+      (84 из 111 — у него почти нет своих тестов) и
+      `local_inference_service.dart` (82 из 168).
 
 ### Линты
 
