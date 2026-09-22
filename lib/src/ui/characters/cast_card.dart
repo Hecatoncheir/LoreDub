@@ -13,6 +13,8 @@ import 'character_tile_actions.dart';
 import 'character_tile_model.dart';
 import 'bloc/cast_bloc.dart';
 import 'bloc/voice_capture_bloc.dart';
+import '../../domain/model_selection.dart';
+import '../common/dashboard_context.dart';
 
 /// One card of the cast, wired to what can be done to it right now.
 ///
@@ -68,7 +70,7 @@ class CastCard extends StatelessWidget {
     return null;
   }
 
-  CharacterTileModel _model(VoiceCaptureBloc voices) {
+  CharacterTileModel _model(ModelSelection selection) {
     final id = character.id;
     return CharacterTileModel(
       character: character,
@@ -82,18 +84,25 @@ class CastCard extends StatelessWidget {
       readerName: _readerName(),
       playing: capture.isDoing(CardActivity.playing, id),
       previewing: capture.isDoing(CardActivity.previewing, id),
-      carriesTimbre: voices.carriesTimbre,
+      carriesTimbre: selection.clonesVoice,
       dubbing: dubbing,
       building: capture.isDoing(CardActivity.building, id),
       built: capture.built?.id == id ? capture.built?.voice : null,
     );
   }
 
-  CharacterTileActions _actions(BuildContext context, VoiceCaptureBloc voices) {
+  CharacterTileActions _actions(BuildContext context, ModelSelection selection) {
+    final voices = context.read<VoiceCaptureBloc>();
     final id = character.id;
     final cards = context.read<CastBloc>();
-    final canPreview = capture.canPreview(dubbing: dubbing, speechInstalled: voices.canPreview);
-    final takesFiles = capture.takesFiles(dubbing: dubbing, converterInstalled: voices.canRecord);
+    final canPreview = capture.canPreview(
+      dubbing: dubbing,
+      speechInstalled: selection.speaksSamples,
+    );
+    final takesFiles = capture.takesFiles(
+      dubbing: dubbing,
+      converterInstalled: selection.measuresVoices,
+    );
     return CharacterTileActions(
       onRename: (name) => cards.add(CardRenamed(id, name)),
       onDelete: () => _confirmDelete(context),
@@ -113,7 +122,8 @@ class CastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final voices = context.read<VoiceCaptureBloc>();
-    return CharacterTile(model: _model(voices), actions: _actions(context, voices));
+    // Read without subscribing, as the capture bloc's answers were before.
+    final selection = context.selection;
+    return CharacterTile(model: _model(selection), actions: _actions(context, selection));
   }
 }

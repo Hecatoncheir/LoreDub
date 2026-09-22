@@ -61,6 +61,14 @@ class ModelSelection {
   /// The converter the original voice needs, if the catalogue has one.
   ModelInstallState? get voiceConverter => voiceConverters.firstOrNull;
 
+  /// Whether a voice can be recorded at all: the converter is what measures
+  /// one, and it is downloaded on the models screen.
+  bool get measuresVoices => voiceConverter?.installed ?? false;
+
+  /// Whether a sample can be spoken: the speech model of the dubbing
+  /// language is what says it.
+  bool get speaksSamples => forTargetLanguage(ModelKind.speech)?.installed ?? false;
+
   /// Whether each line will be re-voiced in the timbre of the phrase it
   /// answers.
   bool get clonesVoice => settings.originalVoice;

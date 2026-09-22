@@ -134,7 +134,8 @@ void main() {
   });
 
   test('leaves a session another screen holds off this screen', () async {
-    pipeline.listen();
+    pipeline.add(const EngineFollowed());
+    await settle();
 
     // One engine serves both screens, and this is what the characters screen
     // starting its recording session announces. It is not this screen's.
@@ -259,7 +260,8 @@ void main() {
   });
 
   test('pauses and resumes on the hotkeys pressed in the game', () async {
-    pipeline.listen();
+    pipeline.add(const EngineFollowed());
+    await settle();
     stage(const SessionState(status: PipelineStatus.listening));
 
     repository.push(const HotkeyPressed(HotkeyAction.pause));
@@ -311,7 +313,8 @@ void main() {
 
   group('a line already read', () {
     test('keeps what it was read as, and is read again on request', () async {
-      pipeline.listen();
+      pipeline.add(const EngineFollowed());
+      await settle();
       stage(const SessionState(status: PipelineStatus.listening));
 
       repository.push(
@@ -421,7 +424,8 @@ void main() {
     });
 
     test('its key shows it and takes it off again', () async {
-      pipeline.listen();
+      pipeline.add(const EngineFollowed());
+      await settle();
       cubits.sourcesRepository.select(
         const GameProcess(pid: 9, name: 'game.exe', path: 'game.exe'),
       );
@@ -461,7 +465,8 @@ void main() {
     });
 
     test('keeps the last ten subtitles, the newest on top', () async {
-      pipeline.listen();
+      pipeline.add(const EngineFollowed());
+      await settle();
       stage(waiting);
 
       for (var line = 1; line <= 12; line++) {
@@ -541,7 +546,8 @@ void main() {
     });
 
     test('moves the subtitle frame to what was drawn over the game', () async {
-      pipeline.listen();
+      pipeline.add(const EngineFollowed());
+      await settle();
       stage(waiting);
 
       repository.push(
@@ -558,7 +564,8 @@ void main() {
     });
 
     test('leaves the frame where it was when the selection missed the window', () async {
-      pipeline.listen();
+      pipeline.add(const EngineFollowed());
+      await settle();
       stage(waiting);
       final before = cubits.settings.settings.ocrRegion;
 
@@ -570,7 +577,8 @@ void main() {
     });
 
     test('keeps a selection apart from the live transcript', () async {
-      pipeline.listen();
+      pipeline.add(const EngineFollowed());
+      await settle();
       stage(waiting);
 
       repository
@@ -598,7 +606,8 @@ void main() {
     });
 
     test('says when a selection held no text', () async {
-      pipeline.listen();
+      pipeline.add(const EngineFollowed());
+      await settle();
       stage(waiting);
 
       repository
@@ -636,7 +645,8 @@ void main() {
   // banner had to survive one. `EngineFailed` cannot be built without a
   // failure, so there is no longer such an event to survive.
   test('raises the banner for a capture failure', () async {
-    pipeline.listen();
+    pipeline.add(const EngineFollowed());
+    await settle();
     const failure = LoreDubFailure(
       FailureCode.captureFailed,
       detail: 'English OCR language is not installed.',
@@ -649,7 +659,8 @@ void main() {
   });
 
   test('collects the voices of the scene, newest line first', () async {
-    pipeline.listen();
+    pipeline.add(const EngineFollowed());
+    await settle();
 
     repository.push(dubbed('Halt!', translated: 'Стоять!', speaker: 'timbre:0'));
     repository.push(dubbed('What do you want?', translated: 'Чего тебе?', speaker: 'character:a1'));
@@ -667,7 +678,8 @@ void main() {
   });
 
   test('leaves a line nobody was heard in out of the scene list', () async {
-    pipeline.listen();
+    pipeline.add(const EngineFollowed());
+    await settle();
 
     repository.push(dubbed('Hello', translated: 'Привет'));
     await settle();
@@ -693,7 +705,8 @@ void main() {
     });
 
     test('places a voice by what was heard, with no words to show', () async {
-      pipeline.listen();
+      pipeline.add(const EngineFollowed());
+      await settle();
       stage(
         const SessionState(
           status: PipelineStatus.listening,

@@ -58,7 +58,7 @@ class CharacterSessionControls extends StatelessWidget {
     required bool initializing,
   }) {
     final l10n = AppLocalizations.of(context);
-    final canRecord = context.read<VoiceCaptureBloc>().canRecord;
+    final canRecord = context.selection.measuresVoices;
     final locked = characters.running || pipeline.running;
     final picker = GamePicker(enabled: !locked);
     return Column(

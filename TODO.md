@@ -2141,7 +2141,16 @@ Flutter в блоках не импортируется (правило 7, `bloc
    `runtime_storage_service.dart` 451. Домен: `session_config.dart` 449
    (три части плана и шесть видов сессии в одном файле), `glossary.dart`
    418, `app_settings.dart` 418. Холст — 437.
-   - [ ] Блоки — по соглашению bloc, механически, вместе с п. 6.
+   - [x] Блоки — по соглашению bloc, механически, вместе с п. 6.
+         Пять блоков — `*_event.dart` и `*_state.dart` как `part` своего
+         `*_bloc.dart`. Разрез показал `bloc lint` шесть публичных членов,
+         которых он в общем файле не видел: `canRecord`, `canPreview`,
+         `carriesTimbre` ушли в `ModelSelection` (`measuresVoices`,
+         `speaksSamples`, `clonesVoice`) и читаются через
+         `context.selection`, `SessionBloc.listen()` стал событием
+         `EngineFollowed`, `selection` и `routeLocked` — приватными. Длиннее
+         400 строк остались сами обработчики: `pipeline_graph_bloc.dart`
+         709, `session_bloc.dart` 633, `voice_capture_bloc.dart` 505.
    - [ ] `session_config.dart` → `worker_plan.dart`, `capture_plan.dart`,
          `line_rules.dart` и сам `session_config.dart`.
    - [ ] `native_engine_service.dart`: 849 строк и после выноса

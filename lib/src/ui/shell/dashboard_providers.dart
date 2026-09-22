@@ -106,7 +106,7 @@ class DashboardProviders extends StatelessWidget {
           context.read<FailureCubit>(),
           context.read(),
           context.read(),
-        )..listen(),
+        )..add(const EngineFollowed()),
       ),
       BlocProvider(
         lazy: false,

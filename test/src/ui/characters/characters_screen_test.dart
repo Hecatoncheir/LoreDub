@@ -45,7 +45,7 @@ void main() {
     }) => stage(
       buildCubits(
         cast: castShowing(cast),
-        capture: captureShowing(capture, carriesTimbre: settings.originalVoice),
+        capture: captureShowing(capture),
       ),
       section: DashboardSection.characters,
       settings: settings,

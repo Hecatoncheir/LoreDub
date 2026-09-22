@@ -37,8 +37,8 @@ MockCastBloc castShowing(CastState state, {Stream<CastState> then = const Stream
 }
 
 /// The characters screen's side of the engine as a test says it is. What
-/// the cards can do is asked of the bloc itself, so the three answers are
-/// stubbed: everything installed unless the test says otherwise.
+/// the cards can do besides is the installed models' and the settings'
+/// answer, which the test stages as it stages them for any screen.
 class MockVoiceCaptureBloc extends MockBloc<VoiceCaptureEvent, VoiceCaptureState>
     implements VoiceCaptureBloc {}
 
@@ -46,15 +46,9 @@ class MockVoiceCaptureBloc extends MockBloc<VoiceCaptureEvent, VoiceCaptureState
 MockVoiceCaptureBloc captureShowing(
   VoiceCaptureState state, {
   Stream<VoiceCaptureState> then = const Stream.empty(),
-  bool canRecord = true,
-  bool canPreview = true,
-  bool carriesTimbre = true,
 }) {
   final bloc = MockVoiceCaptureBloc();
   whenListen(bloc, then, initialState: state);
-  when(() => bloc.canRecord).thenReturn(canRecord);
-  when(() => bloc.canPreview).thenReturn(canPreview);
-  when(() => bloc.carriesTimbre).thenReturn(carriesTimbre);
   return bloc;
 }
 

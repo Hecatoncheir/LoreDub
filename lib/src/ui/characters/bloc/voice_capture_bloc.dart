@@ -25,224 +25,8 @@ import '../../../domain/voice_sample.dart';
 import '../../shell/bloc/failure_cubit.dart';
 import '../../../domain/session_config.dart';
 
-/// What a card's record button does when pressed.
-enum RecordAction { start, stop }
-
-/// What the characters screen can be doing to a card.
-///
-/// Several of them go on side by side -- a clip plays while another card
-/// records, files are measured while a sample is spoken -- which is why they
-/// are not one state of the screen; but each holds one card at a time.
-enum CardActivity { recording, playing, previewing, building }
-
-/// What the characters screen is doing with the engine: the session a voice
-/// is recorded through, the take, a card measured from files, and what is
-/// sounding.
-class VoiceCaptureState extends Equatable {
-  const VoiceCaptureState({
-    this.status = PipelineStatus.idle,
-    this.busy = const {},
-    this.heardSeconds = 0,
-    this.clips = const {},
-    this.previewReady = false,
-    this.built,
-  });
-
-  /// The recording session: idle until the screen starts it, listening once
-  /// the converter is loaded and the game's audio is being captured.
-  final PipelineStatus status;
-
-  /// The card each activity is under way on: the one whose voice is being
-  /// recorded, whose clip is sounding, whose sample is being spoken -- from
-  /// the moment it is asked for, which on the first one means waiting for
-  /// the speech model -- and whose voice is being measured from files
-  /// dropped on it.
-  final Map<CardActivity, String> busy;
-
-  /// How much speech the recording has heard, so the card can say whether
-  /// there is enough of it yet.
-  final double heardSeconds;
-
-  /// The cards that kept the clip their voice was taken from, so it can be
-  /// played back. A card imported from someone else's file has the
-  /// fingerprint without the audio and is not in here.
-  final Set<String> clips;
-
-  /// What came of the last measurement from files, and the card it was
-  /// for. The screen's own: the card keeps only the fingerprint.
-  final ({String id, BuiltVoice voice})? built;
-
-  /// Whether the speech model is loaded and a sample costs no waiting.
-  final bool previewReady;
-
-  /// The card [activity] is under way on, if it is.
-  String? cardDoing(CardActivity activity) => busy[activity];
-
-  /// Whether [activity] is under way on [id].
-  bool isDoing(CardActivity activity, String id) => busy[activity] == id;
-
-  /// [activity] begun on [id].
-  VoiceCaptureState doing(CardActivity activity, String id) =>
-      copyWith(busy: {...busy, activity: id});
-
-  /// [activity] over, whichever card it was on.
-  VoiceCaptureState done(CardActivity activity) => copyWith(busy: {...busy}..remove(activity));
-
-  bool get running => status == PipelineStatus.starting || status == PipelineStatus.listening;
-
-  bool get recording => busy.containsKey(CardActivity.recording);
-
-  /// Whether a card is being measured from files right now.
-  bool get building => busy.containsKey(CardActivity.building);
-
-  /// Whether [id] has a clip of its own to play.
-  bool canPlay(String id) => clips.contains(id);
-
-  /// Nothing is played over anything else: one clip or one sample at a time.
-  bool get sounding =>
-      busy.containsKey(CardActivity.playing) || busy.containsKey(CardActivity.previewing);
-
-  /// Whether [id]'s own clip can be played now: it has one, and nothing
-  /// else is sounding.
-  bool canPlayClip(String id) => canPlay(id) && !sounding;
-
-  /// Whether a card can be read aloud in the voice the dubbing would give
-  /// it. A sample brings up a worker of its own, so it waits for a dubbing
-  /// session ([dubbing]) as well as for this screen's own sessions, and it
-  /// needs the voice package ([speechInstalled]).
-  bool canPreview({required bool dubbing, required bool speechInstalled}) =>
-      speechInstalled && !dubbing && !sounding && !running && !building;
-
-  /// What the record button on [id] does now, or null when it does nothing:
-  /// only a running session records, and only one card at a time.
-  RecordAction? recordActionFor(String id) {
-    if (!running) return null;
-    if (isDoing(CardActivity.recording, id)) return RecordAction.stop;
-    return recording ? null : RecordAction.start;
-  }
-
-  /// Whether files dropped on a card are measured into its voice. Like a
-  /// sample, it brings up a worker of its own; it needs the converter
-  /// ([converterInstalled]) to measure with.
-  bool takesFiles({required bool dubbing, required bool converterInstalled}) =>
-      converterInstalled && !dubbing && !building && !recording;
-
-  VoiceCaptureState copyWith({
-    PipelineStatus? status,
-    Map<CardActivity, String>? busy,
-    double? heardSeconds,
-    Set<String>? clips,
-    ({String id, BuiltVoice voice})? built,
-    bool clearBuilt = false,
-    bool? previewReady,
-  }) => VoiceCaptureState(
-    status: status ?? this.status,
-    busy: busy ?? this.busy,
-    heardSeconds: heardSeconds ?? this.heardSeconds,
-    clips: clips ?? this.clips,
-    built: clearBuilt ? null : built ?? this.built,
-    previewReady: previewReady ?? this.previewReady,
-  );
-
-  @override
-  List<Object?> get props => [status, busy, heardSeconds, clips, built, previewReady];
-}
-
-sealed class VoiceCaptureEvent extends Equatable {
-  const VoiceCaptureEvent();
-
-  @override
-  List<Object?> get props => const [];
-}
-
-/// The screen is up: which cards have a clip beside them is read.
-final class VoiceCaptureOpened extends VoiceCaptureEvent {
-  const VoiceCaptureOpened();
-}
-
-/// Starts or ends the session the recordings listen through. [process] is
-/// the game to listen to, chosen on the screen.
-final class RecordingSessionToggled extends VoiceCaptureEvent {
-  const RecordingSessionToggled({required this.initializing, required this.process});
-
-  final bool initializing;
-  final GameProcess? process;
-
-  @override
-  List<Object?> get props => [initializing, process?.pid];
-}
-
-/// Ends the session this screen holds, recording or sample.
-final class RecordingSessionEnded extends VoiceCaptureEvent {
-  const RecordingSessionEnded();
-}
-
-/// Begins measuring what the game says for [id].
-final class RecordingStarted extends VoiceCaptureEvent {
-  const RecordingStarted(this.id);
-
-  final String id;
-
-  @override
-  List<Object?> get props => [id];
-}
-
-/// Closes the take and keeps what it heard as the character's voice.
-final class RecordingStopped extends VoiceCaptureEvent {
-  const RecordingStopped();
-}
-
-/// Measures the voice of [id] from the recordings the player dropped on it.
-final class VoiceFilesDropped extends VoiceCaptureEvent {
-  const VoiceFilesDropped(this.id, this.paths);
-
-  final String id;
-  final List<String> paths;
-
-  @override
-  List<Object?> get props => [id, paths];
-}
-
-/// Speaks a line in the voice the dubbing would read [id] in.
-final class SampleAsked extends VoiceCaptureEvent {
-  const SampleAsked(this.id);
-
-  final String id;
-
-  @override
-  List<Object?> get props => [id];
-}
-
-/// Plays back what [id] was recorded from.
-final class ClipPlayed extends VoiceCaptureEvent {
-  const ClipPlayed(this.id);
-
-  final String id;
-
-  @override
-  List<Object?> get props => [id];
-}
-
-/// Ends whatever is sounding -- a clip or a sample.
-final class SoundStopped extends VoiceCaptureEvent {
-  const SoundStopped();
-}
-
-final class _EngineSaid extends VoiceCaptureEvent {
-  const _EngineSaid(this.event);
-
-  final EngineEvent event;
-}
-
-final class _CastChanged extends VoiceCaptureEvent {
-  const _CastChanged(this.library);
-
-  final CharacterLibrary library;
-}
-
-final class _TakeTicked extends VoiceCaptureEvent {
-  const _TakeTicked();
-}
+part 'voice_capture_event.dart';
+part 'voice_capture_state.dart';
 
 /// The characters screen's side of the engine: the session a card's voice
 /// is recorded through, a card measured from files, and a sample spoken in
@@ -330,20 +114,6 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
   ModelSelection get _selection =>
       ModelSelection(models: _downloads.parts.models, settings: _settings.settings);
 
-  /// Whether a voice can be recorded at all: the converter is what measures
-  /// one, and it is downloaded on the models screen.
-  bool get canRecord => _selection.voiceConverter?.installed ?? false;
-
-  /// Whether a sample can be spoken: the speech model of the dubbing
-  /// language is what says it.
-  bool get canPreview => _selection.forTargetLanguage(ModelKind.speech)?.installed ?? false;
-
-  /// Whether a sample will be spoken in the character's own timbre. Without
-  /// «Original voice» the dubbing reads every card in a plain synthesized
-  /// voice, and a card that says so spares the player wondering where the
-  /// voice they recorded went.
-  bool get carriesTimbre => _selection.clonesVoice;
-
   /// What a dubbing screen asks for to take the worker over: this screen's
   /// session ended, and the call answering once it has.
   Future<void> _endForDubbing() async {
@@ -366,7 +136,7 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
 
   Future<void> _onToggled(RecordingSessionToggled event, Emitter<VoiceCaptureState> emit) async {
     if (state.running) return _stopSession(emit);
-    if (event.initializing || _workerTaken || !canRecord) return;
+    if (event.initializing || _workerTaken || !_selection.measuresVoices) return;
     _errors.report(null);
     emit(state.copyWith(status: PipelineStatus.starting));
     try {
@@ -526,7 +296,13 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
   /// card plays back, so what the player hears is a recording they gave it.
   Future<void> _onFilesDropped(VoiceFilesDropped event, Emitter<VoiceCaptureState> emit) async {
     final (id, paths) = (event.id, event.paths);
-    if (paths.isEmpty || state.building || state.recording || _workerTaken || !canRecord) return;
+    if (paths.isEmpty ||
+        state.building ||
+        state.recording ||
+        _workerTaken ||
+        !_selection.measuresVoices) {
+      return;
+    }
     if (!_cast.cast.any((character) => character.id == id)) return;
     _errors.report(null);
     emit(state.doing(CardActivity.building, id).copyWith(clearBuilt: true));
@@ -602,7 +378,13 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
   /// not. Recording is the other way round, and so is measuring files, so
   /// neither runs together with a sample.
   Future<void> _onSampleAsked(SampleAsked event, Emitter<VoiceCaptureState> emit) async {
-    if (state.sounding || state.running || state.building || _workerTaken || !canPreview) return;
+    if (state.sounding ||
+        state.running ||
+        state.building ||
+        _workerTaken ||
+        !_selection.speaksSamples) {
+      return;
+    }
     final cast = _cast.cast;
     final character = cast.where((value) => value.id == event.id).firstOrNull;
     if (character == null) return;
