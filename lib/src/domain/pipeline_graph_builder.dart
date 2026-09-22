@@ -11,6 +11,10 @@ import 'pipeline_layout.dart';
 import 'spoken_language.dart';
 
 /// The graph [settings] and [characters] describe, arranged as [layout].
+///
+/// Worked out in the order each part needs the one before: where the cards
+/// stand, where each card's part goes from there, which cards carry a line
+/// at all -- and only then the nodes and the links, each made once.
 PipelineGraph buildPipelineGraph({
   required AppSettings settings,
   required List<Character> characters,
@@ -18,8 +22,6 @@ PipelineGraph buildPipelineGraph({
 }) {
   final byId = {for (final character in characters) character.id: character};
   final placed = _placedCast(layout.cast, byId);
-  GraphPoint at(String nodeId, GraphPoint fallback) => layout.positions[nodeId] ?? fallback;
-
   final routed = settings.captureRouted;
   // Dubbing into English has nothing to translate -- whisper has handed
   // English over already -- so the stage stands out of the line with the
@@ -27,30 +29,10 @@ PipelineGraph buildPipelineGraph({
   // off a setting of its own: there is one answer to where the dubbing is
   // going, and it is chosen on the models screen or here.
   final translates = settings.targetLanguage != untranslatedDubbingLanguage;
-  final nodes = <PipelineNode>[
-    for (final id in PipelineNodeIds.stages)
-      PipelineNode(
-        id: id,
-        kind: switch (id) {
-          PipelineNodeIds.source => PipelineNodeKind.source,
-          PipelineNodeIds.recognition => PipelineNodeKind.recognition,
-          PipelineNodeIds.translation => PipelineNodeKind.translation,
-          PipelineNodeIds.voice => PipelineNodeKind.voice,
-          PipelineNodeIds.mix => PipelineNodeKind.mix,
-          _ => PipelineNodeKind.output,
-        },
-        position: at(id, PipelineLayout.standardPositions[id] ?? GraphPoint.zero),
-        unrouted: !routed || (id == PipelineNodeIds.translation && !translates),
-      ),
+  final castAt = {
     for (final (index, placement) in placed.indexed)
-      PipelineNode(
-        id: placement.nodeId,
-        kind: PipelineNodeKind.character,
-        characterId: placement.characterId,
-        position: at(placement.nodeId, PipelineLayout.castPlace(index)),
-        unrouted: layout.silent.contains(placement.characterId),
-      ),
-  ];
+      placement.nodeId: layout.positions[placement.nodeId] ?? PipelineLayout.castPlace(index),
+  };
   // A card cut out of the mix takes no part in the arrangement: it is drawn
   // where it stands and nothing runs through it, so the lines are worked out
   // over the rest. A card it used to read then speaks for itself, which is
@@ -59,32 +41,85 @@ PipelineGraph buildPipelineGraph({
     for (final placement in placed)
       if (!layout.silent.contains(placement.characterId)) placement,
   ];
-  final where = {for (final node in nodes) node.id: node.position};
   final sends = {
-    for (final placement in voiced) placement.nodeId: _partOf(placement, byId, voiced, where),
+    for (final placement in voiced) placement.nodeId: _partOf(placement, byId, voiced, castAt),
   };
   final carrying = _carrying(voiced, byId, sends);
-  // A card whose line ends at the mix is heard as itself; one that hands
-  // its part to another card is not, and the canvas draws the two apart.
-  for (var index = 0; index < nodes.length; index++) {
-    final node = nodes[index];
-    if (node.kind != PipelineNodeKind.character) continue;
-    if (!carrying.contains(node.id)) continue;
-    if (sends[node.id]?.nodeId != PipelineNodeIds.mix) continue;
-    nodes[index] = PipelineNode(
-      id: node.id,
-      kind: node.kind,
-      position: node.position,
-      characterId: node.characterId,
-      unrouted: node.unrouted,
-      sendsToMix: true,
-    );
-  }
+  return PipelineGraph(
+    nodes: [
+      ..._stageNodes(layout, routed: routed, translates: translates),
+      for (final placement in placed)
+        PipelineNode(
+          id: placement.nodeId,
+          kind: PipelineNodeKind.character,
+          characterId: placement.characterId,
+          position: castAt[placement.nodeId]!,
+          unrouted: layout.silent.contains(placement.characterId),
+          // A card whose line ends at the mix is heard as itself; one that
+          // hands its part to another card is not, and the canvas draws the
+          // two apart.
+          sendsToMix:
+              carrying.contains(placement.nodeId) &&
+              sends[placement.nodeId]?.nodeId == PipelineNodeIds.mix,
+        ),
+    ],
+    links: [
+      ..._stageLinks(routed: routed, translates: translates),
+      // A note rather than a route: the dashed line says the game's own
+      // dialogue may hold this character. A card drawn only to lend its
+      // voice carries none, and the pipeline runs the same either way.
+      for (final placement in voiced)
+        if (placement.heard)
+          PipelineLink(
+            const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
+            PipelinePort(placement.nodeId, PipelineSocket.characterIn),
+          ),
+      // A card's lines leave it one way only: into the card that speaks for
+      // it, which carries them on to the mix, or into the mix itself when it
+      // speaks for itself.
+      for (final placement in voiced)
+        if (carrying.contains(placement.nodeId))
+          PipelineLink(
+            PipelinePort(placement.nodeId, PipelineSocket.characterVoice),
+            sends[placement.nodeId]!,
+          ),
+    ],
+    routed: routed,
+    chained: {
+      for (final placement in placed)
+        if (byId[byId[placement.characterId]?.voicedBy]?.voicedBy != null) placement.characterId,
+    },
+  );
+}
 
+/// The six stages of the pipeline, where [layout] put them.
+List<PipelineNode> _stageNodes(
+  PipelineLayout layout, {
+  required bool routed,
+  required bool translates,
+}) => [
+  for (final id in PipelineNodeIds.stages)
+    PipelineNode(
+      id: id,
+      kind: switch (id) {
+        PipelineNodeIds.source => PipelineNodeKind.source,
+        PipelineNodeIds.recognition => PipelineNodeKind.recognition,
+        PipelineNodeIds.translation => PipelineNodeKind.translation,
+        PipelineNodeIds.voice => PipelineNodeKind.voice,
+        PipelineNodeIds.mix => PipelineNodeKind.mix,
+        _ => PipelineNodeKind.output,
+      },
+      position: layout.positions[id] ?? PipelineLayout.standardPositions[id] ?? GraphPoint.zero,
+      unrouted: !routed || (id == PipelineNodeIds.translation && !translates),
+    ),
+];
+
+/// The lines between the stages: the pipeline itself.
+List<PipelineLink> _stageLinks({required bool routed, required bool translates}) {
   const translation = PipelinePort(PipelineNodeIds.translation, PipelineSocket.translationIn);
   const speechText = PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechText);
   const voiceIn = PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceIn);
-  final links = <PipelineLink>[
+  return [
     // Nothing feeds the stages while the way in is taken apart. What runs
     // between them is the pipeline itself and stays drawn, faded with them.
     if (routed) ...[
@@ -112,35 +147,7 @@ PipelineGraph buildPipelineGraph({
       PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixOut),
       PipelinePort(PipelineNodeIds.output, PipelineSocket.streamIn),
     ),
-    // A note rather than a route: the dashed line says the game's own
-    // dialogue may hold this character. A card drawn only to lend its
-    // voice carries none, and the pipeline runs the same either way.
-    for (final placement in voiced)
-      if (placement.heard)
-        PipelineLink(
-          const PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceCast),
-          PipelinePort(placement.nodeId, PipelineSocket.characterIn),
-        ),
-    // A card's lines leave it one way only: into the card that speaks for
-    // it, which carries them on to the mix, or into the mix itself when it
-    // speaks for itself.
-    for (final placement in voiced)
-      if (carrying.contains(placement.nodeId))
-        PipelineLink(
-          PipelinePort(placement.nodeId, PipelineSocket.characterVoice),
-          sends[placement.nodeId]!,
-        ),
   ];
-
-  return PipelineGraph(
-    nodes: nodes,
-    links: links,
-    routed: routed,
-    chained: {
-      for (final placement in placed)
-        if (byId[byId[placement.characterId]?.voicedBy]?.voicedBy != null) placement.characterId,
-    },
-  );
 }
 
 /// Where the part drawn at [from] goes: into the nearest drawing of the card

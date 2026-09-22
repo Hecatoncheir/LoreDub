@@ -175,40 +175,35 @@ GraphConnection _readerConnection({
 }
 
 /// What cutting [link] would mean.
-GraphConnection proposeDisconnect(PipelineLink link) {
-  // The way into the pipeline comes apart: the stages stay where they are
-  // with nothing reaching them, and the route is put back by drawing it.
-  if (link.from.socket == PipelineSocket.gameAudio) return const RouteConnection(false);
-  // One card comes out of the mix: it stays where it was put with nobody
-  // standing in for it, and the line drawn back wakes it again. The rest of
-  // the cast is not touched -- a scheme is cut a card at a time.
-  // Either half of the translator's line takes the whole stage out: the text
-  // goes past it, and the dubbing is the English whisper already hands over.
-  if (link.to.socket == PipelineSocket.translationIn ||
-      link.from.socket == PipelineSocket.translatedText) {
-    return const TranslationConnection(false);
-  }
-  // The line that steps over the translator is the only text the voice gets.
-  // Cutting it cannot leave the voice with nothing to read, so it means the
-  // other thing it can mean: the stage goes back into the line.
-  if (link.from.socket == PipelineSocket.speechText && link.to.socket == PipelineSocket.voiceIn) {
-    return const TranslationConnection(true);
-  }
-  if (link.to.socket == PipelineSocket.mixCast) {
-    return switch (PipelineNodeIds.characterOf(link.from.nodeId)) {
-      final character? => CastConnection(character, link.from.nodeId, false),
+GraphConnection proposeDisconnect(PipelineLink link) =>
+    switch ((link.from.socket, link.to.socket)) {
+      // The way into the pipeline comes apart: the stages stay where they
+      // are with nothing reaching them, and the route is put back by drawing
+      // it.
+      (PipelineSocket.gameAudio, _) => const RouteConnection(false),
+      // Either half of the translator's line takes the whole stage out: the
+      // text goes past it, and the dubbing is the English whisper already
+      // hands over.
+      (_, PipelineSocket.translationIn) ||
+      (PipelineSocket.translatedText, _) => const TranslationConnection(false),
+      // The line that steps over the translator is the only text the voice
+      // gets. Cutting it cannot leave the voice with nothing to read, so it
+      // means the other thing it can mean: the stage goes back into the line.
+      (PipelineSocket.speechText, PipelineSocket.voiceIn) => const TranslationConnection(true),
+      // One card comes out of the mix: it stays where it was put with nobody
+      // standing in for it, and the line drawn back wakes it again. The rest
+      // of the cast is not touched -- a scheme is cut a card at a time.
+      (_, PipelineSocket.mixCast) => switch (PipelineNodeIds.characterOf(link.from.nodeId)) {
+        final character? => CastConnection(character, link.from.nodeId, false),
+        _ => const RefusedConnection(ConnectionRefusal.unsupported),
+      },
+      // The card is no longer counted among the voices the game speaks.
+      // Nothing of the pipeline changes with it: it is a note on the canvas.
+      (_, PipelineSocket.characterIn) => HeardConnection(link.to.nodeId, false),
+      // The card whose part it was takes it back and speaks for itself again.
+      (PipelineSocket.characterVoice, PipelineSocket.readBy) => ReaderConnection(
+        PipelineNodeIds.characterOf(link.from.nodeId) ?? '',
+        null,
+      ),
       _ => const RefusedConnection(ConnectionRefusal.unsupported),
     };
-  }
-  // The card is no longer counted among the voices the game speaks. Nothing
-  // of the pipeline changes with it: it is a note on the canvas.
-  if (link.to.socket == PipelineSocket.characterIn) {
-    return HeardConnection(link.to.nodeId, false);
-  }
-  if (link.to.socket != PipelineSocket.readBy ||
-      link.from.socket != PipelineSocket.characterVoice) {
-    return const RefusedConnection(ConnectionRefusal.unsupported);
-  }
-  // The card whose part it was takes it back and speaks for itself again.
-  return ReaderConnection(PipelineNodeIds.characterOf(link.from.nodeId) ?? '', null);
-}
