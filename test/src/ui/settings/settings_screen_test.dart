@@ -6,15 +6,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
 import 'package:lore_dub/src/data/services/runtime_catalog.dart';
-import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
-import 'package:lore_dub/src/domain/download_control.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
@@ -28,6 +25,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../support/dashboard_harness.dart';
 import '../../../support/mock_blocs.dart';
 import '../../../support/staged_dashboard.dart';
+import '../../../support/fakes/fake_runtime_repository.dart';
 
 void main() {
   // What `captureAny` stands in with before anything is captured.
@@ -193,14 +191,14 @@ void main() {
       vulkanLoader: true,
       installedRuntimes: {whisperCudaRuntimeId, 'whisper-vulkan'},
     );
-    late _RecordingRuntimeRepository runtimes;
+    late FakeRuntimeRepository runtimes;
 
     Future<StagedDashboard> pumpTable(
       WidgetTester tester, {
       ComputeAvailability availability = nvidia,
     }) async {
       SharedPreferences.setMockInitialValues({});
-      runtimes = _RecordingRuntimeRepository();
+      runtimes = FakeRuntimeRepository(installed: {whisperCudaRuntimeId});
       final cubits = stage(
         buildCubits(runtimes: runtimes),
         section: DashboardSection.settings,
@@ -263,7 +261,7 @@ void main() {
       await tester.tap(cell('translation', 'cuda'));
       await tester.pumpAndSettle();
 
-      expect(runtimes.installed, [torchCudaRuntimeId]);
+      expect(runtimes.installs, [torchCudaRuntimeId]);
     });
 
     // A copy built without the Vulkan SDK carries no Vulkan whisper, and
@@ -380,7 +378,7 @@ void main() {
     /// Real file futures never complete inside a widget test's fake async
     /// zone, and what is under test here is the question, not the delete —
     /// the delete itself is covered in the runtime store's own tests.
-    late _RecordingRuntimeRepository runtimes;
+    late FakeRuntimeRepository runtimes;
 
     /// The delete button of the CUDA Whisper tile.
     Finder removeButton() => find.descendant(
@@ -390,7 +388,7 @@ void main() {
 
     Future<void> stageInstalledRuntime(WidgetTester tester) async {
       SharedPreferences.setMockInitialValues({});
-      runtimes = _RecordingRuntimeRepository();
+      runtimes = FakeRuntimeRepository(installed: {whisperCudaRuntimeId});
       final cubits = stage(
         buildCubits(runtimes: runtimes),
         section: DashboardSection.settings,
@@ -854,35 +852,4 @@ void main() {
       expect((await SettingsService().load()).pauseHotkey, isNull);
     });
   });
-}
-
-/// A runtime store that answers from memory, so the interface can be driven
-/// without a disk or a network.
-class _RecordingRuntimeRepository extends RuntimeRepository {
-  _RecordingRuntimeRepository() : super(RuntimeStorageService());
-
-  final removed = <String>[];
-  final installed = <String>[];
-
-  @override
-  Future<void> remove(RuntimePackage package) async => removed.add(package.id);
-
-  @override
-  Future<DownloadOutcome> install(
-    RuntimePackage package, {
-    required DownloadProgress onProgress,
-    String proxyUrl = '',
-    String pythonExecutable = '',
-    DownloadControl? control,
-  }) async {
-    installed.add(package.id);
-    return DownloadOutcome.completed;
-  }
-
-  @override
-  Future<Set<String>> installedIds() async =>
-      removed.contains(whisperCudaRuntimeId) ? const {} : const {whisperCudaRuntimeId};
-
-  @override
-  Future<String> rootDirectory() async => r'C:\runtime';
 }

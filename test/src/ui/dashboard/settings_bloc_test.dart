@@ -7,9 +7,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/system_repository.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
-import 'package:lore_dub/src/data/services/python_discovery.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
@@ -19,12 +17,13 @@ import 'package:lore_dub/src/ui/dashboard/cubits/settings_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 
 import '../../../support/staged_dashboard.dart';
+import '../../../support/fakes/fake_system_repository.dart';
 
 void main() {
   late _Disk disk;
   late SettingsRepository settings;
   late _Engine engine;
-  late _Machine machine;
+  late FakeSystemRepository machine;
   late MemoryVoiceBank bank;
   late _Banner banner;
 
@@ -32,7 +31,7 @@ void main() {
     disk = _Disk();
     settings = SettingsRepository(disk);
     engine = _Engine();
-    machine = _Machine();
+    machine = FakeSystemRepository();
     bank = MemoryVoiceBank(4);
     banner = _Banner();
   });
@@ -96,7 +95,7 @@ void main() {
 
   blocTest<SettingsBloc, SettingsState>(
     'keeps the interpreter the search found',
-    setUp: () => machine.found = r'C:\Python311\python.exe',
+    setUp: () => machine.python = r'C:\Python311\python.exe',
     build: build,
     act: (bloc) => bloc.add(const PythonSearched()),
     verify: (bloc) {
@@ -108,7 +107,7 @@ void main() {
 
   blocTest<SettingsBloc, SettingsState>(
     'searches once however often it is asked while it searches',
-    setUp: () => machine.hold = Completer<void>(),
+    setUp: () => machine.holdSearch = Completer<void>(),
     build: build,
     act: (bloc) async {
       bloc
@@ -116,7 +115,7 @@ void main() {
         ..add(const PythonSearched());
       await pumpEventQueue();
       expect(bloc.state.searchingPython, isTrue);
-      machine.hold!.complete();
+      machine.holdSearch!.complete();
     },
     verify: (_) => expect(machine.searches, 1),
   );
@@ -175,22 +174,6 @@ class _Engine extends SessionRepository {
 
   @override
   Stream<EngineEvent> get events => said.stream;
-}
-
-/// An interpreter search that finds [found], or nothing, when let go.
-class _Machine extends SystemRepository {
-  _Machine() : super(NativeEngineService());
-
-  String? found;
-  Completer<void>? hold;
-  int searches = 0;
-
-  @override
-  Future<PythonDiscoveryResult> findPythonExecutable() async {
-    searches++;
-    await hold?.future;
-    return PythonDiscoveryResult(executable: found, rejected: const []);
-  }
 }
 
 class _Banner implements FailureSink {

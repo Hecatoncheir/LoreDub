@@ -1,16 +1,10 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/install_repository.dart';
-import 'package:lore_dub/src/data/repositories/model_repository.dart';
-import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
-import 'package:lore_dub/src/data/services/model_storage_service.dart';
-import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/download_control.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
@@ -18,10 +12,13 @@ import 'package:lore_dub/src/ui/dashboard/cubits/downloads_bloc.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../support/fakes/fake_model_repository.dart';
+import '../../../support/fakes/fake_runtime_repository.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late _HeldModels models;
+  late FakeModelRepository models;
   late DownloadsBloc downloads;
   late InstallRepository installed;
   late _Banner banner;
@@ -31,9 +28,11 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    models = _HeldModels();
+    models = FakeModelRepository(
+      states: [for (final model in modelCatalog) ModelInstallState(model: model)],
+    );
     banner = _Banner();
-    final runtimes = _NoRuntimes();
+    final runtimes = FakeRuntimeRepository();
     installed = InstallRepository(models, runtimes);
     downloads = DownloadsBloc(
       models,
@@ -76,7 +75,7 @@ void main() {
     downloads.add(ModelInstallAsked(rowFor(first.id)));
     await pumpEventQueue();
 
-    models.reversed = true;
+    models.states = models.states.reversed.toList();
     await installed.load();
     await pumpEventQueue();
     models.report(0.5);
@@ -202,66 +201,6 @@ void main() {
     expect(rowFor(first.id).progress, isNull);
     expect(banner.raised, isEmpty, reason: 'the row says it; the banner is for the whole app');
   });
-}
-
-/// A model store whose download is held open, so a test can tick it along
-/// and say how it ended.
-class _HeldModels extends ModelRepository {
-  _HeldModels() : super(ModelStorageService());
-
-  /// Reverses what [loadStates] answers, for the test that rereads the
-  /// list while a download is running.
-  bool reversed = false;
-
-  int asked = 0;
-
-  /// The handle the download was given, which a pause or a cancel signals.
-  DownloadControl? _control;
-
-  /// Whether the download in flight was asked to pause.
-  bool get paused => _control?.requestedStop == DownloadOutcome.paused;
-  Completer<DownloadOutcome>? _outcome;
-  DownloadProgress? _onProgress;
-
-  void report(double progress) => _onProgress?.call(progress);
-
-  void finish(DownloadOutcome outcome) => _outcome?.complete(outcome);
-
-  void fail(Object error) => _outcome?.completeError(error);
-
-  @override
-  Future<List<ModelInstallState>> loadStates() async {
-    final rows = [for (final model in modelCatalog) ModelInstallState(model: model)];
-    return reversed ? rows.reversed.toList() : rows;
-  }
-
-  @override
-  Future<String> rootDirectory() async => r'C:\models';
-
-  @override
-  Future<DownloadOutcome> install(
-    ModelPackage model, {
-    required DownloadProgress onProgress,
-    String proxyUrl = '',
-    DownloadControl? control,
-  }) {
-    asked++;
-    _control = control;
-    _onProgress = onProgress;
-    return (_outcome = Completer<DownloadOutcome>()).future;
-  }
-}
-
-/// No GPU runtimes and no directory to look for them in: these tests are
-/// about the models.
-class _NoRuntimes extends RuntimeRepository {
-  _NoRuntimes() : super(RuntimeStorageService());
-
-  @override
-  Future<Set<String>> installedIds() async => const {};
-
-  @override
-  Future<String> rootDirectory() async => 'C:/runtime';
 }
 
 class _Banner implements FailureSink {

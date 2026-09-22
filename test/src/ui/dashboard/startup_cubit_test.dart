@@ -3,13 +3,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/install_repository.dart';
-import 'package:lore_dub/src/data/repositories/model_repository.dart';
-import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
-import 'package:lore_dub/src/data/services/model_storage_service.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
-import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
@@ -17,22 +12,27 @@ import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/startup_cubit.dart';
-import 'package:lore_dub/src/data/repositories/system_repository.dart';
+
+import '../../../support/fakes/fake_model_repository.dart';
+import '../../../support/fakes/fake_runtime_repository.dart';
+import '../../../support/fakes/fake_system_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late _Machine machine;
-  late _Disk disk;
+  late FakeSystemRepository machine;
+  late FakeModelRepository disk;
   late InstallRepository installed;
   late FailureCubit failures;
   late StartupCubit startup;
 
   setUp(() {
     final settings = SettingsRepository(SettingsService())..seed(const AppSettings());
-    machine = _Machine();
-    disk = _Disk();
-    installed = InstallRepository(disk, _Runtimes());
+    machine = FakeSystemRepository()..availability = const ComputeAvailability(cudaDriver: true);
+    disk = FakeModelRepository(
+      states: [ModelInstallState(model: modelCatalog.first, installed: true)],
+    );
+    installed = InstallRepository(disk, FakeRuntimeRepository(installed: {'torch-cuda'}));
     failures = FailureCubit();
     startup = StartupCubit(settings, installed, machine, failures);
   });
@@ -55,7 +55,7 @@ void main() {
   });
 
   test('a first load that fails is said, and does not hold the screen', () async {
-    disk.fails = true;
+    disk.loadFails = true;
 
     await startup.start();
 
@@ -69,36 +69,4 @@ void main() {
       ),
     );
   });
-}
-
-class _Machine extends SystemRepository {
-  _Machine() : super(NativeEngineService());
-
-  @override
-  Future<ComputeAvailability> probeGraphics() async => const ComputeAvailability(cudaDriver: true);
-}
-
-class _Disk extends ModelRepository {
-  _Disk() : super(ModelStorageService());
-
-  bool fails = false;
-
-  @override
-  Future<List<ModelInstallState>> loadStates() async {
-    if (fails) throw StateError('disk unreadable');
-    return [ModelInstallState(model: modelCatalog.first, installed: true)];
-  }
-
-  @override
-  Future<String> rootDirectory() async => 'C:/models';
-}
-
-class _Runtimes extends RuntimeRepository {
-  _Runtimes() : super(RuntimeStorageService());
-
-  @override
-  Future<Set<String>> installedIds() async => {'torch-cuda'};
-
-  @override
-  Future<String> rootDirectory() async => 'C:/runtime';
 }

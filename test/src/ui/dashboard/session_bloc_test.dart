@@ -11,11 +11,9 @@ import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/screen_reading.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/repositories/session_repository.dart';
-import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
-import 'package:lore_dub/src/data/services/model_storage_service.dart';
 import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
@@ -39,6 +37,8 @@ import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 import 'package:lore_dub/src/data/repositories/voice_bank_repository.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/voice_capture_bloc.dart';
 import 'package:lore_dub/src/domain/session_config.dart';
+
+import '../../../support/fakes/fake_model_repository.dart';
 
 /// A dubbed line as the engine reports it, with only the parts a test
 /// cares about spelled out.
@@ -87,7 +87,7 @@ void main() {
     cubits = StagedDashboard(
       repository,
       SettingsRepository(SettingsService()),
-      _FixedModelRepository(),
+      FakeModelRepository(),
       RuntimeRepository(RuntimeStorageService()),
       UpdateRepository(
         UpdateService(
@@ -119,7 +119,7 @@ void main() {
     now = DateTime(2026, 9, 11, 12);
     pipeline = SessionBloc(
       repository,
-      _FixedModelRepository(),
+      FakeModelRepository(),
       cubits.settingsRepository,
       cubits.installed,
       cubits.sourcesRepository,
@@ -861,14 +861,6 @@ class _SlowStartRepository extends SessionRepository {
   void dispose() {
     unawaited(_events.close());
   }
-}
-
-/// Model directories without a disk behind them.
-class _FixedModelRepository extends ModelRepository {
-  _FixedModelRepository() : super(ModelStorageService());
-
-  @override
-  Future<String> directoryFor(ModelPackage model) async => 'models';
 }
 
 /// The characters are remembered by default, so a start asks for the game's

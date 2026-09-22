@@ -38,6 +38,7 @@ import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 import 'package:lore_dub/src/domain/session_config.dart';
 
 import '../../../support/memory_cast.dart';
+import '../../../support/fakes/fake_model_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -83,7 +84,7 @@ void main() {
       repository,
       // The real one goes looking for the application directory, which a
       // unit test does not have.
-      _FixedModelRepository(),
+      FakeModelRepository(),
       cubits.settingsRepository,
       cubits.installed,
       cubits.failures,
@@ -482,14 +483,6 @@ void main() {
     expect(cubits.cast.cast.single.vector, [0.2, 0.4], reason: 'as it was');
     expect(voices.state.recording, isFalse);
   });
-}
-
-/// The characters on disk, without a disk.
-class _FixedModelRepository extends ModelRepository {
-  _FixedModelRepository() : super(ModelStorageService());
-
-  @override
-  Future<String> directoryFor(ModelPackage model) async => 'models';
 }
 
 class _CastRepository extends SessionRepository {
