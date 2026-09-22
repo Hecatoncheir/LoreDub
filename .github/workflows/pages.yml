@@ -41,7 +41,7 @@ jobs:
           cp docs/screenshots/live-ru.png docs/screenshots/pipeline-ru.png _site/assets/screenshots/
           cp docs/screenshots/characters-ru.png _site/assets/screenshots/
           touch _site/.nojekyll
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - name: Deploy to GitHub Pages
