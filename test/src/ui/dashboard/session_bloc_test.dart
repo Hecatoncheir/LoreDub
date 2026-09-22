@@ -14,7 +14,6 @@ import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/model_catalog.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
@@ -277,6 +276,7 @@ void main() {
     await settle();
     expect(pipeline.state.status, PipelineStatus.listening);
     expect(repository.stops, 0, reason: 'neither tears the session down');
+    expect(repository.pausesTold, [true, false], reason: 'the capture is told, once each way');
   });
 
   test('stops for good from a pause', () async {
@@ -756,9 +756,7 @@ void main() {
 /// A start that never finishes, as a first start does while the worker loads
 /// Marian and Silero — unless it is stopped, which fails it the way the real
 /// one fails a start still on its way.
-class _SlowStartRepository extends SessionRepository {
-  _SlowStartRepository() : super(NativeEngineService());
-
+class _SlowStartRepository extends Fake implements SessionRepository {
   final _events = StreamController<EngineEvent>.broadcast();
   Completer<void>? _starting;
   int starts = 0;
@@ -782,6 +780,15 @@ class _SlowStartRepository extends SessionRepository {
 
   /// The readings played again from the transcript.
   final playedAgain = <String>[];
+
+  /// Whether the capture was told to drop what it hears, call by call.
+  final pausesTold = <bool>[];
+
+  @override
+  Future<void> pause() async => pausesTold.add(true);
+
+  @override
+  Future<void> resume() async => pausesTold.add(false);
 
   @override
   Future<void> speakAgain(String wavePath) async => playedAgain.add(wavePath);

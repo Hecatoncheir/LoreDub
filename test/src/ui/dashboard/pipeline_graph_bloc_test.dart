@@ -6,12 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/model_repository.dart';
 import 'package:lore_dub/src/data/repositories/runtime_repository.dart';
 import 'package:lore_dub/src/data/repositories/update_repository.dart';
 import 'package:lore_dub/src/data/services/model_storage_service.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/notification_service.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
@@ -32,6 +30,7 @@ import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 import 'package:lore_dub/src/data/repositories/scheme_repository.dart';
 
 import '../../../support/memory_cast.dart';
+import '../../../support/fakes/fake_session_repository.dart';
 
 /// The canvas as a script of gestures: what a link drawn between two sockets
 /// does to the settings and to the cast, and what one step back undoes.
@@ -891,9 +890,7 @@ Future<void> pumpEvents() => Future<void>.delayed(Duration.zero);
 /// The canvas's files and the cast with no disk behind them, and a worker
 /// that only listens to what it is told. Each is what one repository reads;
 /// they are kept on one object so a test reaches them in one place.
-class _GraphRepository extends SessionRepository {
-  _GraphRepository() : super(NativeEngineService());
-
+class _GraphRepository extends FakeSessionRepository {
   final cards = MemoryCharacters();
   final engine = TellingEngine();
   final schemes = _Schemes();
@@ -913,12 +910,6 @@ class _GraphRepository extends SessionRepository {
 
   /// Every time a running worker was told which cards had left the mix.
   List<Set<String>> get heard => engine.heard;
-
-  @override
-  Future<void> stop() async {}
-
-  @override
-  void dispose() {}
 }
 
 /// The arrangement and the shelf of schemes, kept in memory.

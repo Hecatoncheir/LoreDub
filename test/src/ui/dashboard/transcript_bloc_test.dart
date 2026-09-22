@@ -1,19 +1,17 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/data/repositories/session_repository.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/domain/engine_event.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:lore_dub/src/domain/session_coordinator.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 import 'package:lore_dub/src/ui/dashboard/cubits/transcript_bloc.dart';
 
+import '../../../support/fakes/fake_session_repository.dart';
+
 void main() {
-  late _Engine engine;
+  late FakeSessionRepository engine;
   late SessionCoordinator sessions;
   late TranscriptBloc lists;
 
@@ -29,7 +27,7 @@ void main() {
       sessions.reportPipeline(status: status, session: kind, backends: const {});
 
   setUp(() {
-    engine = _Engine();
+    engine = FakeSessionRepository();
     sessions = SessionCoordinator();
     lists = TranscriptBloc(engine, sessions, _Sink());
   });
@@ -90,15 +88,6 @@ void main() {
 
     expect(lists.state.snapshotReading, isFalse);
   });
-}
-
-class _Engine extends SessionRepository {
-  _Engine() : super(NativeEngineService());
-
-  final said = StreamController<EngineEvent>.broadcast();
-
-  @override
-  Stream<EngineEvent> get events => said.stream;
 }
 
 class _Sink implements FailureSink {

@@ -485,9 +485,7 @@ void main() {
   });
 }
 
-class _CastRepository extends SessionRepository {
-  _CastRepository() : super(NativeEngineService());
-
+class _CastRepository extends Fake implements SessionRepository {
   /// The cast's own files, which the cast repository reads rather than
   /// this one; kept here so a test reaches them where it reaches the rest.
   final cards = MemoryCharacters();

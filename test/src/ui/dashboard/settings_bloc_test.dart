@@ -5,9 +5,7 @@ import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lore_dub/src/data/repositories/session_repository.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
-import 'package:lore_dub/src/data/services/native_engine_service.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
@@ -18,11 +16,12 @@ import 'package:lore_dub/src/ui/dashboard/cubits/failure_cubit.dart';
 
 import '../../../support/staged_dashboard.dart';
 import '../../../support/fakes/fake_system_repository.dart';
+import '../../../support/fakes/fake_session_repository.dart';
 
 void main() {
   late _Disk disk;
   late SettingsRepository settings;
-  late _Engine engine;
+  late FakeSessionRepository engine;
   late FakeSystemRepository machine;
   late MemoryVoiceBank bank;
   late _Banner banner;
@@ -30,7 +29,7 @@ void main() {
   setUp(() {
     disk = _Disk();
     settings = SettingsRepository(disk);
-    engine = _Engine();
+    engine = FakeSessionRepository();
     machine = FakeSystemRepository();
     bank = MemoryVoiceBank(4);
     banner = _Banner();
@@ -165,15 +164,6 @@ class _Disk extends SettingsService {
 
   @override
   Future<void> save(AppSettings settings) async => stored = settings;
-}
-
-class _Engine extends SessionRepository {
-  _Engine() : super(NativeEngineService());
-
-  final said = StreamController<EngineEvent>.broadcast();
-
-  @override
-  Stream<EngineEvent> get events => said.stream;
 }
 
 class _Banner implements FailureSink {
