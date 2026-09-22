@@ -21,6 +21,7 @@ flutter test test/graph_bench.dart  # what a frame of the graph screen costs
 dart format --output=none --set-exit-if-changed lib test tool hook
 flutter analyze --fatal-infos      # CI is --fatal-infos; infos must be zero
 flutter test
+python -m unittest discover -s test/runtime   # the worker's text half, any Python
 ```
 
 Single test:

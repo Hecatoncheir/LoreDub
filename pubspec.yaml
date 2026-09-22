@@ -90,6 +90,7 @@ flutter:
     - assets/icons/audio_capture.svg
     - assets/icons/deployed_code_update.svg
     - assets/icons/directory_sync.svg
+    - assets/runtime/dubbing_text.py
     - assets/runtime/english_g2p.py
     - assets/runtime/inference_worker.py
     - assets/runtime/kokoro_voice.py

@@ -1,10 +1,28 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/glossary.dart';
 
 void main() {
+  test('files every shared case under the key the worker files it under', () {
+    // The worker's Glossary._key reads the same file in its own tests, which
+    // is what keeps the two rules one.
+    final fixture =
+        jsonDecode(File('test/fixtures/glossary_keys.json').readAsStringSync())
+            as Map<String, Object?>;
+    for (final entry in fixture['cases']! as List<Object?>) {
+      final (:source, :key) = switch (entry) {
+        {'source': final String source, 'key': final String key} => (source: source, key: key),
+        _ => throw StateError('a case is a source and a key'),
+      };
+      expect(normalizedGlossaryKey(source), key, reason: source);
+    }
+  });
+
   const fire = GlossaryEntry(
     kind: GlossaryKind.phrase,
     source: 'Fire in the hole!',

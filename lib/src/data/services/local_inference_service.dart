@@ -275,6 +275,7 @@ class LocalInferenceService {
     // The converter and the voices are modules the worker imports from its
     // own directory. Both voices travel whichever language the session dubs
     // into: which one is loaded is decided there, off the package on disk.
+    await _extractScript('assets/runtime/dubbing_text.py', work);
     await _extractScript('assets/runtime/tone_converter.py', work);
     await _extractScript('assets/runtime/onnx_speech.py', work);
     await _extractScript('assets/runtime/vosk_voice.py', work);

@@ -33,6 +33,8 @@ jobs:
         run: git diff --exit-code -- lib/src/native lib/l10n
       - run: flutter analyze --fatal-infos
       - run: flutter test
+      - name: The worker's text half, on the runner's own Python
+        run: python -m unittest discover -s test/runtime -v
       - name: Screenshots still match the interface
         run: flutter test test/screenshots.dart
       - name: Cognitive complexity does not grow

@@ -1,0 +1,14 @@
+{
+  "about": "What a glossary entry's source is filed under. The interface (normalizedGlossaryKey) and the worker (Glossary._key) must answer the same for every case here; both test suites read this file.",
+  "cases": [
+    {"source": "Fire in the hole!", "key": "fire in the hole"},
+    {"source": "  FIRE   in the HOLE.  ", "key": "fire in the hole"},
+    {"source": "Fire in the hole! !", "key": "fire in the hole"},
+    {"source": "«Вперёд!»", "key": "вперёд"},
+    {"source": "Wait... what?!", "key": "wait... what"},
+    {"source": "— Light 'em up.", "key": "light 'em up"},
+    {"source": "You're finally awake", "key": "you're finally awake"},
+    {"source": "...", "key": "..."},
+    {"source": "!?", "key": "!?"}
+  ]
+}
