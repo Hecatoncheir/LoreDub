@@ -22,7 +22,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           # Pinned: the goldens below are drawn by one version of the engine.
-          flutter-version: 3.47.4
+          flutter-version: 3.47.5
           channel: stable
           cache: true
       - run: flutter pub get
@@ -35,8 +35,15 @@ jobs:
       - run: flutter test --coverage
       - name: Coverage of the data layer and the domain does not fall
         run: dart run tool/coverage.dart
-      - name: The worker's text half, on the runner's own Python
-        run: python -m unittest discover -s test/runtime -v
+      - name: The worker's pieces, on the runner's own Python
+        shell: pwsh
+        run: |
+          # The worker's modules import numpy and nothing heavier at the top,
+          # so this is all the sound tests need; the pin is the runtime's.
+          python -m pip install --quiet numpy==2.2.6
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s test/runtime -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: The worker's Python passes ruff (ruff.toml)
         shell: pwsh
         run: |

@@ -23,12 +23,18 @@ flutter test --coverage            # the whole suite; a path and --plain-name "s
 dart run tool/coverage.dart        # the data layer's and the domain's coverage does not fall
 flutter test test/screenshots.dart --update-goldens   # redraw docs/screenshots/ (no _test suffix)
 flutter test test/graph_bench.dart # what a frame of the graph screen costs (no _test suffix)
-python -m unittest discover -s test/runtime       # the worker's text half, any Python
+python -m pip install numpy==2.2.6                # once: without it the worker's sound tests are skipped
+python -m unittest discover -s test/runtime       # the worker's pieces; the runtime's numpy pin
 ruff check assets/runtime test/runtime scripts    # ruff.toml; CI pins the version
 powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1    # native/tests/*_test.cpp
 powershell -ExecutionPolicy Bypass -File tool/native_analyze.ps1  # native/*.cpp under /analyze /WX
 dart pub global run bloc_tools:bloc lint lib      # the `bloc:` rules in analysis_options.yaml
 ```
+
+`powershell -ExecutionPolicy Bypass -File tool/verify.ps1` runs every step of
+`.github/workflows/windows.yml` in its order, each through `Invoke-Native`, and stops on the first
+that fails; run it before pushing (`-SkipBuild` leaves out the release build). A step added to the
+workflow is a step added there.
 
 The two ratchets CI runs, after `dart pub global activate cognitive_complexity 0.2.4` and
 `dart_code_linter 4.4.0`:
