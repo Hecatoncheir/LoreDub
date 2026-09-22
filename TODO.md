@@ -2086,7 +2086,7 @@ Flutter в блоках не импортируется (правило 7, `bloc
    `start_dubbing_button.dart:54`, `download_controls.dart:37–38`,
    `snapshot_start_button.dart:98,101,104`, `hotkey_field.dart:133`,
    `runtime_tile.dart:103`, `version_button.dart:75`.
-   - [ ] Убрать по правилу 4, а не переписать базу: каждое — `a ? x : (b ?
+   - [x] Убрать по правилу 4, а не переписать базу: каждое — `a ? x : (b ?
          y : z)` в дереве виджетов, то есть решение в `build`; это геттер
          состояния или `switch` по sealed-типу, как у `ModelTileLook`.
 
@@ -2105,11 +2105,11 @@ Flutter в блоках не импортируется (правило 7, `bloc
    | 17 | `wave_slices.dart` `_WaveClip.read` (до аудита) |
    | 17 | `pipeline_graph_builder.dart` `buildPipelineGraph` (было 33) |
 
-   - [ ] Каждую под 15: `_onEdit` — по методу на правку (`_rename`,
+   - [x] Каждую под 15: `_onEdit` — по методу на правку (`_rename`,
          `_pack`, …), `switch` только раздаёт; `workerArguments` — по
          функции на стадию, список складывается из частей;
          `appSettingsFromJson` — по функции на группу ключей.
-   - [ ] Когда все под 15 — второй прогон `cognitive_complexity
+   - [x] Когда все под 15 — второй прогон `cognitive_complexity
          --fail-threshold 15 lib` **без** `--git-diff` рядом с первым:
          потолок абсолютный, а не только по дельте. Сегодня он не пройдёт
          из-за этих восьми.

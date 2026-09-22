@@ -1229,7 +1229,8 @@ ratchets, and `flutter build windows --release`. The ratchets are the
 engineering plan's (`TODO.md`, stage 0) guard against regressions while the
 interface is taken apart: `cognitive_complexity` over the diff against the
 commit before the push fails a function that is new above 15 or already
-above it and growing, and `tool/ratchet.dart` holds the `dart_code_linter`
+above it and growing, a second run over the whole of `lib/` fails any
+function above 15 at all, and `tool/ratchet.dart` holds the `dart_code_linter`
 counts (`prefer-single-widget-per-file`, `avoid-returning-widgets`,
 `avoid-nested-conditional-expressions`, configured under `dart_code_linter:`
 in `analysis_options.yaml`, which `flutter analyze` does not read) and the

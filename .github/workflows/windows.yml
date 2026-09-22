@@ -61,6 +61,10 @@ jobs:
           else { $base = 'origin/main' }
           dart pub global run cognitive_complexity --git-diff=$base --fail-on-increase --fail-threshold 15 --format github lib
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The ceiling is absolute as well: a function over 15 that the diff
+          # never touches fails here rather than waiting for someone to move it.
+          dart pub global run cognitive_complexity --fail-threshold 15 --format github lib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Widget structure and hand-written styles do not grow
         shell: pwsh
         run: |

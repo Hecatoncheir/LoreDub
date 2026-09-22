@@ -35,6 +35,8 @@ The two ratchets CI runs, after `dart pub global activate cognitive_complexity 0
 
 - `dart pub global run cognitive_complexity --git-diff=origin/main --fail-on-increase
   --fail-threshold 15 lib`: a new function above 15, or one already above it growing, fails.
+  The same command without `--git-diff` and `--fail-on-increase` runs beside it: the ceiling is
+  absolute, and no function in `lib/` stands above it.
 - `dart pub global run dart_code_linter:metrics analyze lib --reporter=json
   --json-path=build/metrics.json --no-fatal-warnings`, then `dart run tool/ratchet.dart --metrics
   build/metrics.json`, counts private widgets, methods returning widgets, nested conditionals and
