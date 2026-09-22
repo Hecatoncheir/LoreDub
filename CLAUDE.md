@@ -221,21 +221,10 @@ than one of them.
    dropped. Which build runs is the compute setting:
    bundled `runtime/whisper/` (CPU) or `runtime/whisper-vulkan/`, or the
    downloaded `<app support>/runtime/whisper-cuda/`. OCR mode skips it.
-   Recognition was the larger half of the delay before a line is heard -- 1.33 s
-   of a 1.5 s chain on twelve CPU threads, against 0.06 for translation and
-   0.07 for the Silero voice of the time; Vosk, which replaced it, takes about
-   1 s a line of its own -- and nearly all of recognition is the encoder, which works over a
-   fixed window whatever the phrase is worth. `AppSettings.roughRecognition`
-   shortens that window with `-ac`: measured over nine clips, 1000 took 897 ms
-   rather than 1329 and said the same words on all nine, two differing only by
-   a comma. It is off by default and the number is not to be lowered without
-   measuring again -- 768 turned "struggling to reconcile" into "struggling the
-   reconciled", and 512 had whisper repeating a phrase back to itself, which
-   would then be translated and voiced. Two flags that look like they belong
-   here do nothing: `-fa` measured 1536 ms against 1328 over five runs, and the
-   resident `whisper-server` that ships in the same archive answered in
-   1301-1358 ms against the one-shot `whisper-cli`'s 1319-1348, spending the
-   model load it saves on its own upload.
+   `AppSettings.roughRecognition` shortens the encoder's window with `-ac
+   1000`, off by default; the number is not lowered, and `-fa` and the
+   resident `whisper-server` are not taken up, without measuring again
+   (`docs/adr/0001-whisper-encoder-window.md`).
 4. **Python inference worker** — `assets/runtime/inference_worker.py`, bundled
    as a Flutter asset, extracted to the app-support `work/` directory and run
    by `LocalInferenceService` as a persistent subprocess speaking
@@ -262,38 +251,19 @@ than one of them.
    the first line that needed it — the first to translate, or the first to
    dub into English.
 
-A line is translated a sentence at a time. Marian was trained on single
-sentences and answers a reply of several with one of them, dropping the rest --
-"Get to the chopper! Now! Go, go, go!" came back as "Давай, давай, давай", and five of
-nine multi-sentence lines measured lost a sentence. `sentences`
+A line is translated a sentence at a time: `sentences`
 (`assets/runtime/dubbing_text.py`, the worker's text half, which needs no
-numpy and is tested on any Python in `test/runtime/`) cuts the line where one ends and the next begins -- a
-full stop before a small letter being a line thinking aloud rather than an end,
-and one closing a title or an initial no end either -- and the pieces go to
-CTranslate2 as a single batch, which decodes them side by side: 100 ms against
-116 for the same lines whole. `TranslationMemory` keeps the last 512 sentences,
-so a game repeating itself costs nothing and one shout is never rendered two
-ways in the same fight. What the translator leaves in Latin script is written
-out by `transliterated` rather than translated a second time. The voice reads
-no Latin: `vosk_voice.py` drops whatever its phoneme map lacks -- Latin and
-digits -- rather than raise on it (the Silero it replaced dropped the word
-too, measured, and raised on a line that was Latin end to end), so the name
-written out is the name spoken at all. None of this runs for a session
-dubbing into English: `dubbed_in_latin` is true the moment there is no
-translator, and the English voice reads Latin and nothing else. A letter standing on its own is
-dropped the same way and is named rather than spelt: "Press F to pay respects"
-is "Нажмите эф", since one letter of Cyrillic is worth as little to the
-voice as one of Latin (2.07 s against the 1.98 s of the line without it, and
-2.22 s named). `LATIN_RUN` stays the Latin *word*, which is what says whether
-the line was translated at all; `LATIN_TEXT` is any Latin at all, which is
-what has to be written over. The second pass all this replaces answered
-"Rapture" with "восторг" and "Megaton" with "мегатонну", names it had no
-business translating -- and only where the dubbing language is not written in
-Latin itself, which `dubbed_in_latin` asks the translator once at startup: a
-German line is Latin from end to end, so every one of them used to go through
-the model twice for an answer that was thrown away. More than two Latin words
-left behind is a line passed through rather than translated, and that is the one
-case where the second pass earns the time it costs.
+numpy and is tested on any Python in `test/runtime/`) cuts it where one ends
+and the next begins, the pieces go to CTranslate2 as one batch, and
+`TranslationMemory` keeps the last 512. What the translator leaves in Latin is
+written out by `transliterated` rather than translated a second time -- the
+voice reads no Latin, and drops it -- save a line that kept more than two
+Latin words, which was passed through and earns the second pass. None of it
+runs for a dubbing language written in Latin (`dubbed_in_latin`, asked once
+at startup, true too where there is no translator). A letter on its own is
+named rather than spelt. `LATIN_RUN` is the Latin *word*, which says whether a
+line was translated; `LATIN_TEXT` is any Latin, which is what is written over.
+Why, measured: `docs/adr/0002-translate-sentence-by-sentence.md`.
 
 Segments are processed strictly sequentially — `PhraseQueue` hands them to
 `PhraseProcessor` (`data/services/phrase_processor.dart`) one at a time — so a small CPU is never asked to run two inferences at
@@ -369,38 +339,29 @@ waveOut stream per call and blocks until the clip ends; do not go back to
 `PlaySound`, which holds one sound per process and cuts off the other.
 
 How far the game is turned down while it is dubbed is `AppSettings`' business
-rather than the slider's, because Windows takes the process-loopback tap
-*after* the session volume `ld_set_process_volume` sets: turning the game
-down turns the capture down with it. Measured against a tone of raw peak
-2614, half volume gave 1308, 18% gave 472, and zero gave nothing at all — not
-one segment in eight seconds. `duckedVolume` therefore holds `originalVolume`
-to `audibleDuck` (0.1), the game's own sound being what the pipeline listens
-to; both volume sliders — the settings screen and the output node — read
-`audibleDuck`/`loudestDuck`/`duckDivisions`, so a number set on one can be
-set again on the other. The screen session turns the game down the same
-way, though it has no ear in it: a switch that silenced it outright was
-offered there and is gone, nothing but that page could reach it. The pace sliders pair the same way over
-`slowestSpeech`/`fastestSpeech`/`speechDivisions`, with `chosenSpeed` holding
-a stored value inside them. `AppSettings.duckWhileSpeaking` replaces the
+rather than the slider's: Windows takes the process-loopback tap *after* the
+session volume `ld_set_process_volume` sets, so turning the game down turns
+the capture down with it. `duckedVolume` therefore holds `originalVolume` to
+`audibleDuck` (0.1); both volume sliders -- the settings screen and the output
+node -- read `audibleDuck`/`loudestDuck`/`duckDivisions`, so a number set on
+one can be set again on the other, and the pace sliders pair the same way
+over `slowestSpeech`/`fastestSpeech`/`speechDivisions`, with `chosenSpeed`
+holding a stored value inside them. The screen session turns the game down
+the same way. `AppSettings.duckWhileSpeaking` (on by default) replaces the
 session-long duck with one that lasts a line: `PlaybackScheduler.onSpeaking`
-reports the edges of the dubbing's own speech — consecutive lines are one
-stretch, so the game is not lifted between two lines of a scene — and
-`GameDucker` (`data/services/game_ducker.dart`) turns the game down and back.
-It is the one place either duck is decided -- the session's, again on a
-resume, and the line's -- which were spread over the repository and the
-engine until a stopped session left the game quiet for good. It is on
-by default, which the compensated speech threshold below is what makes safe.
+reports the edges of the dubbing's own speech -- consecutive lines are one
+stretch, so the game is not lifted between two lines of a scene -- and
+`GameDucker` (`data/services/game_ducker.dart`) is the one place either duck
+is decided: the session's, again on a resume, and the line's.
 
 Whatever turns the game down tells the capture, because the threshold that
 decides what counts as speech is measured on the ducked signal:
 `ld_set_process_volume` hands `ProcessLoopbackCapture::SetSpeechAttenuation`
 the factor it applied, and the loop compares against `kSpeechRms` times that
-factor. Fixed, the threshold grew stricter the quieter the game was put — a
-tone giving three segments per window at full volume gave none at 18%, and
-gives three again with the threshold following — so a player who turned the
-game down was quietly turning recognition down with it. It is also what makes
-`duckWhileSpeaking` safe: the drop lands in the middle of a captured phrase,
-and a fixed threshold would read it as the phrase ending.
+factor. It is also what makes `duckWhileSpeaking` safe: the drop lands in the
+middle of a captured phrase, and a fixed threshold would read it as the
+phrase ending. The measurements:
+`docs/adr/0003-speech-threshold-under-the-duck.md`.
 
 A line is read at the player's pace until lines start queueing for the voice.
 With `AppSettings.hurryWhenQueued` (on by default), `hurriedSpeed`
@@ -427,46 +388,19 @@ for every game, like the cast and unlike the per-game bank, and every session
 that translates is handed the path (`--glossary`). Three kinds, kept apart
 because they reach a line at different moments and none can do another's
 work. A `GlossaryKind.phrase` is a whole sentence with the player's own
-translation, answered before the model is asked: the model is not wrong about
-"Fire in the hole!" so much as ignorant of the game. A `GlossaryKind.name`
+translation, answered before the model is asked. A `GlossaryKind.name`
 replaces what the translator left in Latin script, inside `readable`, and
-nowhere else -- measured, the model transliterates and correctly declines the
-names it does render ("The people of Megaton" comes back as "Жители
-Мегатона", "Talk to the mayor of Megaton" as "с мэром Мегатона"), so a
-nominative laid over the whole line would break the grammar it had already
-found. Two ways of reaching further were measured and do not work: a
-placeholder put in the source so the name could be substituted afterwards is
-transliterated like any other Latin ("Zorvax" survived one sentence of eight,
-and a short one like "Qqq" was dropped outright, taking the name with it), and
-`target_prefix` only holds the start of the line -- forced "Мегатон", the
-decoder wrote "Мегатонн" anyway. `suppress_sequences` looked promising on the
-first two lines tried and does not survive forty-two: forbidding a rendering
-puts the model's *second* choice in its place, so where the first was right
-the answer gets worse -- "Добро пожаловать в Мегатон" became "в Мегафон",
-"Уайтран ушел" became "Уайтрун ушла", "Жители Мегатона" became "Жители
-Мегатонна". It helps only where the first choice was already broken
-("из Рапта" became "из Раптуры"), and telling a broken form from a
-declined one is the morphology this has none of. Do not reach for it again.
-What those forty-two lines did show is a larger thing nothing here fixes: the
-model translates a name it reads as a word, and differently from line to line
--- "Vault" is "Убежище" in one line and "Хранилище" in the next,
-"Rapture" runs "Восторг", "Восхищение", "в восторге", and "Whiterun"
-reaches "Жители Белгорода". No Latin is left to hook onto, so the only
-lever the player has over it is a phrase entry on the line itself. A `GlossaryKind.word` is the third and the only one matched on the dubbing
-language rather than on English: it replaces a word of what was said, after
-the translation and whether or not there was one, which is how the screen's
-own text is reached as well. It exists for the case nothing else can touch --
-the model's rendering wandering between lines -- and that case is rarer than
-one small sample suggested: over eight frames "Vault" came back as "Убежище"
-seven times, declined correctly each time, and "Хранилище" once; "Whiterun"
-ran seven to one the same way. The whole word is replaced and nothing less.
-Swapping a stem and carrying the match's ending onto it was measured and
-rejected: it turns "Восхищение сгорит" into "Восторге сгорит" and
-"Ворота Восхищения" into "Ворота Восторгя", two words that mean the
-same thing not having to decline the same way. Passing a declined form by
-leaves the line as the model said it; inventing one puts a word that does not
-exist into the player's ears. Matching ignores case and spacing on all three,
-and a word entry carries the capital it was found under.
+nowhere else: the model declines the names it renders, and a nominative laid
+over the whole line would break the grammar it had found. A
+`GlossaryKind.word` is the only one matched on the dubbing language: it
+replaces a whole word of what was said, after the translation and whether or
+not there was one -- which is how the screen's own text is reached too --
+and never a stem with the match's ending carried onto it. Matching ignores
+case and spacing on all three, and a word entry carries the capital it was
+found under. A placeholder in the source, `target_prefix` and
+`suppress_sequences` were measured as ways of reaching further and none
+works: do not reach for them again
+(`docs/adr/0004-three-kinds-of-glossary-entry.md`).
 Export and import are `file_selector` dialogs over that same
 file, so a glossary of a game is passed on whole and read back merged by what
 an entry is filed under -- the same file imported twice leaves one of each,
@@ -505,18 +439,12 @@ silenced (`GlossaryEntry.silences`); a name and a word stand inside a line
 rather than being one.
 
 `glossary_catalog.dart` is the two packs LoreDub brings with it -- the
-general one and the lines a player knows by heart, where being literally
-right is not enough and a fresh translation lands wrong however correct it
-is -- laid over the file once by `GlossaryService.withBuiltIn` and marked by a
-`glossary.builtin` file beside it, so a pack the player threw away does not
-come back. It carries phrases and nothing else, and that is measured rather
-than chosen: every line in it was put through the same Marian the pipeline
-runs and kept only where the answer was wrong, while a name entry was tried
-against sixteen proper nouns in two frames each and fired **none** -- the
-model renders every one of them and leaves no Latin for that path to catch.
-A word entry is matched on the dubbing language and would reach lines that
-have nothing to do with a game, so both belong in a pack made for one game
-rather than in a general one. `normalizedGlossaryKey` and the worker's
+general one and the lines a player knows by heart -- laid over the file once
+by `GlossaryService.withBuiltIn` and marked by a `glossary.builtin` file
+beside it, so a pack the player threw away does not come back. It carries
+phrases and nothing else, each kept only where the pipeline's own Marian
+answered it wrong; names and words belong in a pack made for one game
+(`docs/adr/0005-built-in-glossary-holds-phrases.md`). `normalizedGlossaryKey` and the worker's
 `Glossary._key` both drop the marks at either end of a line, so an entry
 written under "Fire in the hole!" answers the same shout heard with a full
 stop; the two must be changed together, and `test/fixtures/glossary_keys.json` is the
@@ -888,78 +816,49 @@ languages and their translators with it. `SettingsService` reads a stored
 `targetLanguage` the catalogue no longer carries as its first language, or
 the session would start with no translator and no voice.
 
-The voice is `vosk-ru-0.9`, Vosk-TTS under Apache 2.0, measured a tie with the
-Silero it replaced under the converter (0.743 against 0.745 from a game line).
-The pipeline names a speech package by its first file, `model.onnx`, and
-`assets/runtime/vosk_voice.py` reads the package from the directory it sits
-in, answering the calls the worker was written against for Silero
-(`speakers`, `apply_tts`). It turns onnxruntime's memory reuse off: planning
-it over the graph's 29 000 nodes is what opening it cost, 100 s against 3,
-with a line read in the same time either way. What its phoneme map lacks --
-digits, Latin -- is dropped rather than raised on. The files are this
-project's release `voices-vosk-v1` in `Hecatoncheir/LoreDub-models`, renamed flat from the authors' archive
-with a NOTICE, as the translators are.
+The Russian voice is `vosk-ru-0.9` (Vosk-TTS, Apache 2.0), read by
+`assets/runtime/vosk_voice.py` through the calls the worker was written
+against (`speakers`, `apply_tts`), from the directory its first file,
+`model.onnx`, sits in. onnxruntime's memory reuse is turned off -- planning it
+is what opening the voice cost. What its phoneme map lacks, digits and Latin,
+is dropped rather than raised on. Its files are this project's release
+`voices-vosk-v1` in `Hecatoncheir/LoreDub-models`, renamed flat from the
+authors' archive with a NOTICE, as the translators are
+(`docs/adr/0006-vosk-russian-voice.md`).
 
-English is `kokoro-en-1.0`, Kokoro-82M under Apache 2.0, read by
-`assets/runtime/kokoro_voice.py` — the same two calls (`speakers`,
-`apply_tts`) the worker was written against. Which of the two wrappers reads
-a speech package is the package's own answer rather than a flag from the
-application: `load_voice` (`inference_worker.py`) takes Kokoro where
-`voices.bin` sits beside the model and Vosk otherwise, both packages being
-named by the same first file, `model.onnx`. What must not differ between them
-is where a voice runs, so `onnx_speech.providers_for` is the one place that
-answers it. Measured against Vosk on the same machine over fifteen game
-lines: a tie per second of speech on the processor (RTF 0.29 to 0.31,
-though an English reading of a line is longer than its Russian one), 353 MB
-against 894, open in 1.0 s against 17.2, and 174 ms a line on the card with
-**no per-shape penalty at all** — the opposite of Vosk, where a line of a new
-length costs about 1.9 s. Under the converter it lands closer to the
-character than Vosk does (0.805 and 0.865 against two targets to Vosk's 0.763
-and 0.839) and its floor is far higher (0.717 against 0.548, Vosk's short
-lines being what fall apart). The fp32 export is what ships: fp16 reads
-correctly on the processor and goes silent on the card for `af_heart` in four
-lines of five, and the quantized builds that load at all are four times
-slower than fp32 (RTF 1.4, slower than real time). The catalogue lists 23 of
-its 28 English voices with **measured** genders — `af_alloy` is a man at 147
-Hz and `am_santa` a woman at 182, so a name says nothing — and leaves out the
-five that fall between the worker's thresholds.
+English is `kokoro-en-1.0` (Kokoro-82M, Apache 2.0), read by
+`assets/runtime/kokoro_voice.py` through the same two calls. Which wrapper
+reads a speech package is the package's own answer rather than a flag from
+the application: `load_voice` (`inference_worker.py`) takes Kokoro where
+`voices.bin` sits beside `model.onnx` and Vosk otherwise, and
+`onnx_speech.providers_for` is the one place that says where either runs.
+The fp32 export is what ships -- fp16 goes silent on the card and the
+quantized builds are slower than real time -- and the catalogue lists only
+the English voices whose gender was measured, a name saying nothing of it
+(`docs/adr/0007-kokoro-english-voice.md`).
 
-The phonemes are the part with a licence in it. Every other wrapper of that
-model takes them from espeak-ng, which is GPLv3 and cannot travel inside an
-MIT application, so `assets/runtime/english_g2p.py` reads the words misaki
-(Apache 2.0) holds and answers the rest with the letter-to-sound network of
-g2p_en (Apache 2.0), ported into that file because importing the package
-reaches for two NLTK corpora and downloads them. Only its `checkpoint20.npz`
-is used, found through `importlib.util.find_spec` so the module is never
-executed; the port answers what `g2p_en.G2p.predict` answers on all forty
-words it was checked against. Measured over the 119 English lines the
-glossary had collected, misaki alone leaves 1.4% of the words unread, and
-they are the ones a game is made of (Whiterun, Zorvax, Aiur, medkit) — unread
-meaning **dropped**, since its `❓` is not in the model's vocabulary. The
-fallback's guesses are not espeak's: over forty game proper nouns the two
-agree on 3, differ only in stress on 4 and differ in what is said on 24. That
-is the trade the licence buys, and the glossary is the lever the player has
-over it. `prepare_windows_runtime.ps1` therefore installs misaki **without**
-its `[en]` extra — that extra is what pulls espeakng-loader and
-phonemizer-fork, the GPL half — naming `num2words` and `spacy` itself, and
-installs `g2p-en` with `--no-deps` in a pip run of its own.
+The English phonemes come from misaki (Apache 2.0) and, for the words it
+lacks, the letter-to-sound network of g2p_en (Apache 2.0) ported into
+`assets/runtime/english_g2p.py` -- never espeak-ng, which is GPLv3 and cannot
+travel inside an MIT application. `prepare_windows_runtime.ps1` therefore
+installs misaki **without** its `[en]` extra -- that extra is what pulls
+espeakng-loader and phonemizer-fork, the GPL half -- naming `num2words` and
+`spacy` itself, and `g2p-en` with `--no-deps` in a pip run of its own; only
+its `checkpoint20.npz` is read, found through `importlib.util.find_spec`, and
+the module is never imported. Its guesses are not espeak's, and the glossary
+is the player's lever over them
+(`docs/adr/0008-english-phonemes-without-espeak.md`).
 
 
 The translators are the one thing the catalogue does not fetch from its
-authors: `_converted` points at this project's own release, in the public
-`Hecatoncheir/LoreDub-models` repository (`_modelReleases`) -- the
-application's repository is private, and a private release asset answers an
-anonymous download with 404 -- because the
-CTranslate2 conversion is made once here rather than on every machine — it
-wants a transformers newer than the runtime carries.
-`scripts/convert_translators.py` builds them and prints the entries, sizes
-and SHA-256 filled in for every file, which the upstream checkpoints could
-never be (OPUS-MT publishes no digests). CC-BY-4.0 allows the conversion and
-its distribution and asks for attribution and a statement of what changed:
-that is the NOTICE travelling in each package, and it is downloaded with the
-weights rather than written afterwards. `ModelStorageService` sweeps files a
-package no longer names once a download completes, so the PyTorch checkpoint
-of the old shape does not sit beside the new one forever.
+authors: `_converted` points at this project's release in the public
+`Hecatoncheir/LoreDub-models` (`_modelReleases`) -- the application's own
+repository is private, and a private release asset answers an anonymous
+download with 404 -- because the CTranslate2 conversion is made once, by
+`scripts/convert_translators.py`, which prints the entries with every file's
+size and SHA-256. The NOTICE CC-BY-4.0 asks for travels in each package.
+`ModelStorageService` sweeps files a package no longer names once a download
+completes (`docs/adr/0009-translators-converted-here.md`).
 
 The recognition model is a choice, not a constant: `AppSettings.whisperModel`
 names a catalogue id and the pipeline is handed that package's file path.
@@ -1101,23 +1000,12 @@ capture uses, because the rate and the loudness are part of the fingerprint
 (the same clip at 48 kHz and at 16 kHz meets itself at 0.50 to 0.86). The
 worker's `build_voice` then embeds every file and averages them **as the
 encoder gave them**: a card's vector is the conditioning the converter
-re-voices against, so it has a length (the encoder answers around 12 to 14)
-as well as a direction. Cosine ignores the length, so a normalized card is
-still recognized perfectly and sounds like nobody -- converting one
-character into another with a unit-length target lands at 0.05 to 0.13 of
-the character aimed at, further off than not converting at all, against 0.75
-to 0.90 for the plain average. Normalize only for comparing. Averaging is
-measured to beat keeping one clip: over 36 clips of five characters, leaving each
-out in turn, the held-out clip is closer to the average of the rest than to
-any single other clip 36 times out of 36, by 0.076. This is not the bank's
-"never average" rule broken -- there the pipeline founds the voices and a
-fingerprint that wandered would stand for a character nobody chose; here the
-player names the files as one person. What the numbers also say is that a
-threshold cannot tell a stranger from an odd line of the right character
-(same-character pairs run 0.57 to 0.94, different-character pairs up to
-0.80), so `STRANGE_FILE` (0.45) only drops what is not a voice at all, and
-`LOOSE_SET` (0.80) is a warning that the set holds two voices rather than a
-rejection. `VoiceFilesDropped` borrows an embed-only session
+re-voices against, so its length counts as well as its direction -- normalize
+only for comparing. It is not the bank's "never average" rule broken: here
+the player names the files as one person. `STRANGE_FILE` (0.45) drops only
+what is not a voice at all, and `LOOSE_SET` (0.80) warns that the set holds
+two voices rather than rejecting it
+(`docs/adr/0010-a-card-averages-its-files.md`). `VoiceFilesDropped` borrows an embed-only session
 (`startVoiceFiles`, no `ld_start`, no game) when the screen has none, and
 puts it down again — that one and no other. `startVoiceFiles` answers with
 the session's number out of `SessionRepository._sessions`, and
@@ -1166,11 +1054,9 @@ distance over 0.25 between neighbours, the cut moved to the quietest moment
 within 0.4 s), cuts the recording with `sliceWave`
 (`domain/wave_slices.dart`) and recognizes and voices each piece on its own.
 Segments under 3 s and pieces under 1 s are left alone, and a diarization
-that fails dubs the phrase whole. The 0.25 is measured, like the bank's 0.80:
-two Silero voices joined gave 0.34 across the boundary and at most 0.11 at
-the seam of two phrases by one voice, and the cut landed 20 ms from the real
-boundary. Measure again before moving it — a threshold too low fragments
-every phrase.
+that fails dubs the phrase whole. The 0.25 is measured, like the bank's 0.80; measure again before moving it,
+since a threshold too low fragments every phrase
+(`docs/adr/0011-speaker-cut-threshold.md`).
 
 Which device each stage runs on is decided in `domain/compute_device.dart`,
 which is pure and unit-tested: `resolveComputeBackend` takes the user's preset,
@@ -1191,13 +1077,10 @@ in the torch the worker imports first. `onnxruntime` is the runtime's probe,
 so a directory holding torch alone -- from before the voice could use the card
 -- reads as not installed; installing it again finds torch there
 (`previousProbeFileName`) and runs only the companions, and a companion that
-fails takes only itself away rather than the 2.7 GB beside it. The card is a poor bargain for
-Vosk and it is offered anyway, Automatic choosing it, because the user asked
-for every stage that can run on the card to: measured on an RTX 3080 Ti, a
-phrase repeated is read in 0.3 s, but every line of a new length costs about
-1.9 s against the processor's 0.4 to 1.3, cuDNN planning the convolution
-afresh for each shape (`Conv` was 1.8 s of a 2.5 s run), and neither the
-algorithm search nor the workspace settings change it. `--speech-device`
+fails takes only itself away rather than the 2.7 GB beside it. Vosk is offered on the card, and Automatic chooses it, though every
+line of a new length costs it more there than on the processor: the user
+asked for every stage that can run on the card to
+(`docs/adr/0012-vosk-on-the-card.md`). `--speech-device`
 carries the choice to the worker, and `VoskVoice.device` reads back from the
 session where it really runs -- a provider asked for and not taken leaves the
 session on the processor without a word -- which is what the `ready` line
