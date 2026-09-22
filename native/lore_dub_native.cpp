@@ -248,71 +248,96 @@ std::string ListMonitors() {
   return out.str();
 }
 
-int32_t VisitSessions(uint32_t process_id, float volume, bool restore) {
-  const HRESULT initialized = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-  const bool uninitialize = SUCCEEDED(initialized);
+// COM for as long as this object lives, on this thread, when it was not on
+// already. Declared before any COM object, it is let go of after all of them:
+// the objects used to be released once the apartment had closed.
+class ComApartment {
+ public:
+  ComApartment() : initialized_(SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED))) {}
+  ~ComApartment() {
+    if (initialized_) CoUninitialize();
+  }
+  ComApartment(const ComApartment&) = delete;
+  ComApartment& operator=(const ComApartment&) = delete;
+
+ private:
+  const bool initialized_;
+};
+
+// Calls [visit] with every audio session of the default render endpoint --
+// the process that owns it, its identifier and its volume -- and answers 0,
+// or the code of the step that could not be taken.
+template <typename Visit>
+int32_t ForEachRenderSession(Visit visit) {
+  ComApartment apartment;
   ComPtr<IMMDeviceEnumerator> enumerator;
-  HRESULT result = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr,
-                                    CLSCTX_ALL, IID_PPV_ARGS(&enumerator));
-  if (FAILED(result)) return -10;
+  if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                              IID_PPV_ARGS(&enumerator)))) {
+    return -10;
+  }
   ComPtr<IMMDevice> device;
-  result = enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
-  if (FAILED(result)) return -11;
+  if (FAILED(enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device))) return -11;
   ComPtr<IAudioSessionManager2> manager;
-  result = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL,
-                            nullptr, &manager);
-  if (FAILED(result)) return -12;
+  if (FAILED(device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, &manager))) {
+    return -12;
+  }
   ComPtr<IAudioSessionEnumerator> sessions;
-  result = manager->GetSessionEnumerator(&sessions);
-  if (FAILED(result)) return -13;
+  if (FAILED(manager->GetSessionEnumerator(&sessions))) return -13;
   int count = 0;
   sessions->GetCount(&count);
-  int changed = 0;
-  std::lock_guard<std::mutex> lock(volumes_mutex);
   for (int index = 0; index < count; ++index) {
     ComPtr<IAudioSessionControl> control;
     if (FAILED(sessions->GetSession(index, &control))) continue;
     ComPtr<IAudioSessionControl2> control2;
     if (FAILED(control.As(&control2))) continue;
-    DWORD session_process_id = 0;
-    if (FAILED(control2->GetProcessId(&session_process_id))) continue;
-    if (!restore && session_process_id != process_id) continue;
+    DWORD owner = 0;
+    if (FAILED(control2->GetProcessId(&owner))) continue;
     LPWSTR raw_identifier = nullptr;
-    if (FAILED(control2->GetSessionInstanceIdentifier(&raw_identifier))) {
-      continue;
-    }
+    if (FAILED(control2->GetSessionInstanceIdentifier(&raw_identifier))) continue;
     const std::wstring identifier(raw_identifier);
     CoTaskMemFree(raw_identifier);
-    ComPtr<ISimpleAudioVolume> simple_volume;
-    if (FAILED(control.As(&simple_volume))) continue;
-    if (restore) {
-      const auto original = original_volumes.find(identifier);
-      if (original == original_volumes.end()) continue;
-      if (SUCCEEDED(simple_volume->SetMasterVolume(original->second, nullptr))) {
-        ++changed;
-      }
-    } else {
-      float current = 1.0f;
-      if (SUCCEEDED(simple_volume->GetMasterVolume(&current))) {
-        original_volumes.try_emplace(identifier, current);
-      }
-      if (SUCCEEDED(simple_volume->SetMasterVolume(volume, nullptr))) {
-        ++changed;
-        // What the capture will hear from now on is this process's own sound
-        // times the volume just set.
-        if (loopback_capture && session_process_id == captured_process_id) {
-          const auto was = original_volumes.find(identifier);
-          const float before = was == original_volumes.end() ? 1.0f : was->second;
-          loopback_capture->SetSpeechAttenuation(before > 0.0f ? volume / before : 1.0f);
-        }
-      }
-    }
+    ComPtr<ISimpleAudioVolume> volume;
+    if (FAILED(control.As(&volume))) continue;
+    visit(owner, identifier, volume.Get());
   }
-  // The game is back at its own volume, and so is what the capture hears.
-  if (restore && loopback_capture) loopback_capture->SetSpeechAttenuation(1.0);
-  if (restore) original_volumes.clear();
-  if (uninitialize) CoUninitialize();
   return 0;
+}
+
+// Turns every session of [process_id] down to [volume], remembering what it
+// was the first time, so the restore puts back the player's own volume rather
+// than whatever the dubbing set last.
+int32_t DuckProcess(uint32_t process_id, float volume) {
+  std::lock_guard<std::mutex> lock(volumes_mutex);
+  return ForEachRenderSession([&](DWORD owner, const std::wstring& identifier,
+                                  ISimpleAudioVolume* session) {
+    if (owner != process_id) return;
+    float current = 1.0f;
+    if (SUCCEEDED(session->GetMasterVolume(&current))) {
+      original_volumes.try_emplace(identifier, current);
+    }
+    if (FAILED(session->SetMasterVolume(volume, nullptr))) return;
+    // What the capture will hear from now on is this process's own sound
+    // times the volume just set.
+    if (loopback_capture && owner == captured_process_id) {
+      const auto was = original_volumes.find(identifier);
+      const float before = was == original_volumes.end() ? 1.0f : was->second;
+      loopback_capture->SetSpeechAttenuation(before > 0.0f ? volume / before : 1.0f);
+    }
+  });
+}
+
+// Gives every session the dubbing turned down its own volume back.
+int32_t RestoreDuckedSessions() {
+  std::lock_guard<std::mutex> lock(volumes_mutex);
+  const int32_t result = ForEachRenderSession(
+      [&](DWORD, const std::wstring& identifier, ISimpleAudioVolume* session) {
+        const auto original = original_volumes.find(identifier);
+        if (original != original_volumes.end()) session->SetMasterVolume(original->second, nullptr);
+      });
+  // The game is back at its own volume, and so is what the capture hears.
+  if (loopback_capture) loopback_capture->SetSpeechAttenuation(1.0);
+  original_volumes.clear();
+  return result;
 }
 #endif
 
@@ -355,7 +380,7 @@ int32_t ld_probe_graphics_json(char* output, int32_t capacity) {
 
 int32_t ld_set_process_volume(uint32_t process_id, float volume) {
 #if defined(_WIN32)
-  return VisitSessions(process_id, std::clamp(volume, 0.0f, 1.0f), false);
+  return DuckProcess(process_id, std::clamp(volume, 0.0f, 1.0f));
 #else
   (void)process_id;
   (void)volume;
@@ -365,7 +390,7 @@ int32_t ld_set_process_volume(uint32_t process_id, float volume) {
 
 int32_t ld_restore_process_volumes(void) {
 #if defined(_WIN32)
-  return VisitSessions(0, 1.0f, true);
+  return RestoreDuckedSessions();
 #else
   return -2;
 #endif

@@ -1675,11 +1675,15 @@ abstract final class AppTheme {
       `:279`): захват с отвалившимся клиентом остаётся «слушающим» и не
       слышит ничего → `on_error(WindowsError(hr))` и выход из цикла.
       *Сделано.*
-- [ ] `VisitSessions` (`lore_dub_native.cpp:278–343`) пропускает
+- [x] `VisitSessions` (`lore_dub_native.cpp:278–343`) пропускает
       `CoUninitialize` на четырёх ранних выходах, флаг `restore` меняет
       поведение в четырёх местах, `changed` никем не читается → RAII
       `ComApartment`, `ForEachRenderSession(fn)`, раздельные `DuckProcess` /
       `RestoreDuckedSessions`.
+      *Сделано.* Нашлось и то, чего пункт не называл: `ComPtr`
+      перечислителя, устройства и менеджера освобождались при выходе из
+      функции — уже после `CoUninitialize`. `ComApartment` объявлен первым
+      и закрывается последним.
 - [ ] Поток клавиш читает глобальный `ocr_capture` (`:501`); безопасность
       держится на порядке `join` в `ld_stop` и на том, что Dart зовёт
       `setHotkeys` только после старта, а сам ABI этого не требует →
