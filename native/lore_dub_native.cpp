@@ -3,6 +3,7 @@
 
 #include "lore_dub_native.h"
 #include "audio_decoder.h"
+#include "flat_json.h"
 #include "frame_overlay.h"
 #include "ocr_capture.h"
 #include "process_loopback_capture.h"
@@ -78,25 +79,7 @@ using Microsoft::WRL::ComPtr;
 std::mutex volumes_mutex;
 std::unordered_map<std::wstring, float> original_volumes;
 
-std::string EscapeJson(const std::string& input) {
-  std::ostringstream out;
-  for (const unsigned char character : input) {
-    switch (character) {
-      case '\\': out << "\\\\"; break;
-      case '"': out << "\\\""; break;
-      case '\n': out << "\\n"; break;
-      case '\r': out << "\\r"; break;
-      case '\t': out << "\\t"; break;
-      default:
-        if (character < 0x20) {
-          out << "?";
-        } else {
-          out << character;
-        }
-    }
-  }
-  return out.str();
-}
+std::string EscapeJson(const std::string& input) { return flat_json::Escape(input); }
 
 std::string Utf8(const std::wstring& input) {
   if (input.empty()) return {};
@@ -119,55 +102,20 @@ std::wstring Wide(const std::string& input) {
   return output;
 }
 
+// The config as the application wrote it, read one key at a time. Each is a
+// fresh read of a document a few hundred bytes long, a handful of times a
+// session: simpler than carrying the parsed object about, and nothing here
+// is on a path that runs per frame.
 uint32_t JsonUnsigned(const std::string& json, const std::string& key) {
-  const std::string marker = "\"" + key + "\":";
-  const auto start = json.find(marker);
-  if (start == std::string::npos) return 0;
-  try {
-    return static_cast<uint32_t>(std::stoul(json.substr(start + marker.size())));
-  } catch (...) {
-    return 0;
-  }
+  return flat_json::Object::Parse(json).Unsigned(key);
 }
 
 std::string JsonString(const std::string& json, const std::string& key) {
-  const std::string marker = "\"" + key + "\":\"";
-  auto cursor = json.find(marker);
-  if (cursor == std::string::npos) return {};
-  cursor += marker.size();
-  std::string value;
-  bool escaped = false;
-  for (; cursor < json.size(); ++cursor) {
-    const char character = json[cursor];
-    if (escaped) {
-      switch (character) {
-        case 'n': value.push_back('\n'); break;
-        case 'r': value.push_back('\r'); break;
-        case 't': value.push_back('\t'); break;
-        default: value.push_back(character); break;
-      }
-      escaped = false;
-    } else if (character == '\\') {
-      escaped = true;
-    } else if (character == '"') {
-      break;
-    } else {
-      value.push_back(character);
-    }
-  }
-  return value;
+  return flat_json::Object::Parse(json).String(key);
 }
 
-double JsonDouble(const std::string& json, const std::string& key,
-                  double fallback) {
-  const std::string marker = "\"" + key + "\":";
-  const auto start = json.find(marker);
-  if (start == std::string::npos) return fallback;
-  try {
-    return std::stod(json.substr(start + marker.size()));
-  } catch (...) {
-    return fallback;
-  }
+double JsonDouble(const std::string& json, const std::string& key, double fallback) {
+  return flat_json::Object::Parse(json).Number(key, fallback);
 }
 
 std::wstring ProcessPath(DWORD process_id) {
@@ -540,10 +488,10 @@ bool DrawSubtitleFrame(uint32_t key, uint32_t process_id) {
   // The capture thread reads the frame on every scan, so it is enough to
   // hand it the new one: the session is not torn down and started again.
   if (ocr_capture) ocr_capture->SetRegion(region);
-  PushEvent("{\"type\":\"subtitleFrame\",\"left\":" + std::to_string(region.left) +
-            ",\"top\":" + std::to_string(region.top) +
-            ",\"right\":" + std::to_string(region.right) +
-            ",\"bottom\":" + std::to_string(region.bottom) + "}");
+  PushEvent("{\"type\":\"subtitleFrame\",\"left\":" + flat_json::Number(region.left) +
+            ",\"top\":" + flat_json::Number(region.top) +
+            ",\"right\":" + flat_json::Number(region.right) +
+            ",\"bottom\":" + flat_json::Number(region.bottom) + "}");
   return true;
 }
 
