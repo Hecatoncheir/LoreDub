@@ -1,6 +1,12 @@
+@AGENTS.md
+
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+`AGENTS.md`, imported above, is what every agent working here follows: the
+layout, every command, the style, the tests, the commits. This file adds what
+it does not carry -- how the pieces fit, the invariants that hold them, and
+the conventions in full -- for Claude Code. Guidance for every agent goes
+there, not here, so the two cannot drift apart.
 
 ## Project
 
@@ -9,54 +15,6 @@ fully on the local machine: capture -> ASR/translation -> TTS -> default
 output. Recognition and translation can run on the CPU or the GPU.
 See `README.md` for the user-facing pipeline description and release process,
 and `docs/UI_DESIGN.md` for the UI tokens and information architecture.
-
-## Commands
-
-```powershell
-flutter pub get
-dart run tool/ffigen.dart          # regenerate lib/src/native/*.g.dart (committed)
-flutter gen-l10n                   # after editing lib/l10n/*.arb (output is committed)
-flutter test test/screenshots.dart --update-goldens   # redraw docs/screenshots/
-flutter test test/graph_bench.dart  # what a frame of the graph screen costs
-dart format --output=none --set-exit-if-changed lib test tool hook
-flutter analyze --fatal-infos      # CI is --fatal-infos; infos must be zero
-flutter test --coverage
-dart run tool/coverage.dart        # the data layer's and the domain's coverage does not fall
-dart pub global run bloc_tools:bloc lint lib   # the bloc rules under `bloc:` in analysis_options.yaml
-python -m unittest discover -s test/runtime   # the worker's text half, any Python
-ruff check assets/runtime test/runtime scripts   # ruff.toml; CI pins the version
-powershell -ExecutionPolicy Bypass -File tool/native_tests.ps1   # native/tests/*_test.cpp
-powershell -ExecutionPolicy Bypass -File tool/native_analyze.ps1 # native/*.cpp under /analyze /WX
-```
-
-Single test:
-
-```powershell
-flutter test test/src/data/services/settings_service_test.dart --plain-name "substring of test name"
-```
-
-Run the app locally (the Python/whisper runtime must sit beside the executable,
-otherwise the pipeline fails at start):
-
-```powershell
-flutter build windows --debug
-powershell -ExecutionPolicy Bypass -File scripts/prepare_windows_runtime.ps1 -Destination build/windows/x64/runner/Debug/runtime -SkipVulkan
-flutter run -d windows
-```
-
-Full installer (`dist/LoreDub-<version>-windows-x64-setup.exe`); it re-runs
-ffigen, analyze, and tests itself:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build_setup.ps1
-```
-
-Subtitle mode can be tried without a game: `scripts/ocr_test_window.ps1` opens
-`LoreDubOcrTest.exe`, a window drawing dialogue and a quest objective the way
-a game does — its own executable, so it shows up in the process list under a
-name of its own — and `scripts/check_ocr_region.ps1` drives the native OCR
-capture against it and compares what Windows OCR read with what each frame
-covers. Build the native library first, and leave the test window in front.
 
 ## Architecture
 
@@ -1318,8 +1276,6 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   release script matches.
 - `lib/src/native/*.g.dart` is generated — edit `native/lore_dub_native.h` and
   the `functions` allowlist in `tool/ffigen.dart`, then rerun ffigen.
-- Formatter is configured for `page_width: 100` and `trailing_commas: preserve`;
-  the analyzer runs with strict casts/inference/raw-types.
 - Layers only point downward: `ui/` -> `repositories/` -> `services/` ->
   `native/`; `domain/` holds plain value types with no Flutter imports.
 - Tests use no real native library or network: services take injectable
@@ -1369,10 +1325,8 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `stageSection` through `NavigationCubit`'s own calls; `stageUpdates`
   emitting as `stageSession` does). `StagedDashboard` puts `StartupCubit`
   at rest as it is built, the first load being that cubit's own test.
-- Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`) with an
-  imperative summary, and a native change carries its regenerated bindings in
-  the same commit. `AGENTS.md` holds the same guidance in shorter, more
-  general form for other agents — keep the two from drifting apart.
+- A native change carries its regenerated bindings in the same commit (the
+  commit style is `AGENTS.md`'s).
 
 ## CI and releasing
 
