@@ -56,6 +56,9 @@ class FakeWorker implements Process {
 
   bool killed = false;
 
+  /// Every request the service wrote, in order.
+  List<Map<String, Object?>> get requests => List.unmodifiable(_requests);
+
   /// The id of the request the service wrote last, which a reply repeats.
   int get lastRequestId => _requests.last['id']! as int;
 

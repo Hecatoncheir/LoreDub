@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/local_inference_service.dart';
+import 'package:lore_dub/src/data/services/whisper_runner.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/session_config.dart';
@@ -365,4 +366,259 @@ void main() {
       await expectLater(service.processText('Anyone?'), failsWith(FailureCode.workerNotRunning));
     });
   });
+
+  group('asking a running worker', () {
+    late FakeWorker worker;
+    late LocalInferenceService service;
+    late Directory work;
+    late List<List<String>> whisperAsked;
+    late String? whisperWrites;
+    late int whisperExit;
+
+    setUp(() async {
+      work = await Directory.systemTemp.createTemp('lore-dub-ask');
+      addTearDown(() => deleteOnceReleased(work));
+      worker = FakeWorker();
+      whisperAsked = [];
+      whisperWrites = 'Hello there.';
+      whisperExit = 0;
+      service = LocalInferenceService(
+        prepare:
+            ({
+              required pythonExecutable,
+              required requiresWhisper,
+              required recognitionBackend,
+              downloadedRuntimeDirectory,
+            }) async => (
+              python: 'python.exe',
+              script: 'inference_worker.py',
+              work: work.path,
+              whisper: 'whisper-cli.exe',
+            ),
+        startWorker: (executable, arguments) async => worker,
+        whisper: _Whisper((arguments) async {
+          whisperAsked.add(arguments);
+          final prefix = arguments[arguments.indexOf('-of') + 1];
+          if (whisperWrites case final text?) await File('$prefix.txt').writeAsString(text);
+          return (
+            exitCode: whisperExit,
+            stdout: '',
+            stderr: 'auto-detected language: en (p = 0.97)',
+          );
+        }),
+      );
+      final starting = service.start(
+        const WorkerPlan(threads: 2, pythonExecutable: 'python.exe', runtimeDirectory: 'runtime'),
+        requiresWhisper: true,
+      );
+      await settle();
+      worker.say({'type': 'ready', 'device': 'cpu'});
+      await starting;
+    });
+
+    tearDown(() => service.stop());
+
+    /// Asks through [call], answers the request with [reply], and hands back
+    /// what the call came to.
+    Future<T> answered<T>(Future<T> Function() call, Map<String, Object?> reply) async {
+      final before = worker.requests.length;
+      final asking = call();
+      // The request goes out once the call is past whatever it reads first,
+      // a file on disk among them.
+      for (var turn = 0; worker.requests.length == before && turn < 500; turn++) {
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+      }
+      worker.say({'id': worker.lastRequestId, ...reply});
+      return asking;
+    }
+
+    test('measures a voice for a card', () async {
+      final heard = await answered(
+        () => service.fingerprint('take.wav'),
+        {
+          'vector': [0.5, 1, 'x'],
+          'gender': 'male',
+          'seconds': 3,
+        },
+      );
+
+      expect(worker.requests.last['fingerprint'], 'take.wav');
+      expect(heard.vector, [0.5, 1.0], reason: 'what is not a number is passed over');
+      expect(heard.gender, 'male');
+      expect(heard.seconds, 3.0);
+    });
+
+    test('builds one voice out of several files', () async {
+      final voice = await answered(
+        () => service.buildVoice(['a.wav', 'b.wav']),
+        {
+          'vector': [1, 2],
+          'used': 2,
+          'agreement': 0.9,
+        },
+      );
+
+      expect(worker.requests.last['voiceFrom'], ['a.wav', 'b.wav']);
+      expect(voice.used, 2);
+      expect(voice.vector, [1.0, 2.0]);
+    });
+
+    test('speaks a sample in a timbre, and only names the timbre when there is one', () async {
+      final wave = await answered(
+        () => service.previewVoice(text: 'Привет', voice: 'xenia', timbre: [0.1]),
+        {'wave': 'sample.wav'},
+      );
+      expect(wave, 'sample.wav');
+      expect(worker.requests.last['preview'], {
+        'text': 'Привет',
+        'voice': 'xenia',
+        'vector': [0.1],
+      });
+
+      await answered(() => service.previewVoice(text: 'Привет', voice: 'xenia'), {'wave': 's'});
+      expect((worker.requests.last['preview']! as Map)['vector'], isNull);
+    });
+
+    test('hears where the speaker changes, and who is speaking', () async {
+      final cuts = await answered(() => service.speakerCuts('two.wav'), {
+        'cuts': [1.5, 'x', 3],
+      });
+      expect(cuts, [1.5, 3.0]);
+
+      final heard = await answered(
+        () => service.listenSpeaker('scene.wav'),
+        {'speaker': 'timbre:4', 'seconds': 2.5},
+      );
+      expect(heard.speaker, 'timbre:4');
+      expect(heard.seconds, 2.5);
+      expect(worker.requests.last['listen'], 'scene.wav');
+    });
+
+    test('tells a running worker what changed under it', () async {
+      Future<void> told(Future<void> Function() call) => answered(call, const {});
+
+      await told(() => service.useVoice('baya'));
+      await told(() => service.readAsHeard({'guard'}));
+      await told(() => service.voiceCharacterAs('guard', null));
+
+      expect(worker.requests[worker.requests.length - 3]['speaker'], 'baya');
+      expect(worker.requests[worker.requests.length - 2]['asHeard'], ['guard']);
+      expect(worker.requests.last['voicedBy'], {'character': 'guard', 'target': ''});
+    });
+
+    test('reads a line off the text and hands back what the worker said', () async {
+      final result = await answered(
+        () => service.processText('  Go!  ', translate: false, speed: 1.2),
+        {'translated': 'Go!', 'wave': 'go.wav', 'voice': 'af_heart', 'bankSize': 2},
+      );
+
+      expect(worker.requests.last['text'], 'Go!');
+      expect(worker.requests.last['translate'], isFalse);
+      expect(worker.requests.last['speed'], 1.2);
+      expect(result.wavePath, 'go.wav');
+      expect(result.voice, 'af_heart');
+      expect(result.bankSize, 2);
+    });
+
+    test('recognizes a segment, remembers the language, and reads what it heard', () async {
+      final model = File(path.join(work.path, 'ggml.bin'))..writeAsStringSync('model');
+      final wave = path.join(work.path, 'segment.wav');
+
+      final first = await answered(
+        () => service.processSegment(
+          wavePath: wave,
+          whisperModel: model.path,
+          threads: 4,
+          roughRecognition: true,
+        ),
+        {'translated': 'Привет.', 'wave': 'line.wav'},
+      );
+
+      expect(first!.english, 'Hello there.');
+      expect(worker.requests.last['wave'], wave, reason: 'the worker reads the speaker off it');
+      expect(whisperAsked.single, containsAllInOrder(['-l', 'auto', '-tr', '-ac', '1000']));
+      expect(service.spokenLanguage, 'en');
+      expect(File(path.join(work.path, 'segment.txt')).existsSync(), isFalse);
+
+      await answered(
+        () => service.processSegment(
+          wavePath: wave,
+          whisperModel: model.path,
+          threads: 4,
+          translateSpeech: false,
+        ),
+        {'translated': 'x', 'wave': 'y.wav'},
+      );
+      expect(whisperAsked.last, containsAllInOrder(['-l', 'en', '-np']));
+      expect(whisperAsked.last, isNot(contains('-tr')));
+    });
+
+    test('a segment that held only a sound caption is nothing', () async {
+      final model = File(path.join(work.path, 'ggml.bin'))..writeAsStringSync('model');
+      whisperWrites = '[Music]';
+
+      final result = await service.processSegment(
+        wavePath: path.join(work.path, 'music.wav'),
+        whisperModel: model.path,
+        threads: 2,
+      );
+
+      expect(result, isNull);
+    });
+
+    test('a segment whisper wrote nothing for is nothing', () async {
+      final model = File(path.join(work.path, 'ggml.bin'))..writeAsStringSync('model');
+      whisperWrites = null;
+
+      expect(
+        await service.processSegment(
+          wavePath: path.join(work.path, 'quiet.wav'),
+          whisperModel: model.path,
+          threads: 2,
+        ),
+        isNull,
+      );
+    });
+
+    test('a model that is not there, or whisper failing, is said so', () async {
+      Matcher failsWith(FailureCode code) =>
+          throwsA(isA<LoreDubFailure>().having((failure) => failure.code, 'code', code));
+
+      await expectLater(
+        service.processSegment(wavePath: 'a.wav', whisperModel: 'missing.bin', threads: 2),
+        failsWith(FailureCode.whisperModelMissing),
+      );
+      final model = File(path.join(work.path, 'ggml.bin'))..writeAsStringSync('model');
+      whisperExit = 1;
+      await expectLater(
+        service.processSegment(wavePath: 'a.wav', whisperModel: model.path, threads: 2),
+        failsWith(FailureCode.whisperFailed),
+      );
+    });
+
+    test('with no worker, a question fails and news is kept for the next start', () async {
+      await service.stop();
+
+      await expectLater(
+        service.fingerprint('take.wav'),
+        throwsA(
+          isA<LoreDubFailure>().having((f) => f.code, 'code', FailureCode.workerNotRunning),
+        ),
+      );
+      await expectLater(service.useVoice('baya'), completes);
+    });
+  });
+}
+
+/// whisper.cpp as the test says it answers.
+class _Whisper extends Fake implements WhisperRunner {
+  _Whisper(this._answer);
+
+  final Future<WhisperRun> Function(List<String> arguments) _answer;
+
+  @override
+  Future<WhisperRun> run(String executable, List<String> arguments) => _answer(arguments);
+
+  @override
+  void cancel() {}
 }
