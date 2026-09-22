@@ -1,8 +1,6 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
-import 'dart:math' as math;
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +9,7 @@ import '../../../domain/compute_device.dart';
 import '../../../domain/pipeline_graph.dart';
 import '../../theme.dart';
 import '../../dashboard/cubits/pipeline_graph_bloc.dart';
+import 'canvas_gestures.dart';
 import 'pipeline_facts.dart';
 import 'graph_hit_tester.dart';
 import 'scheme_diff.dart';
@@ -18,7 +17,6 @@ import 'dot_field_painter.dart';
 import 'link_painter.dart';
 import 'choice_fade.dart';
 import 'node_inputs.dart';
-import 'node_metrics.dart';
 import 'node_layer_actions.dart';
 import 'node_layer_cache.dart';
 import 'leaving_node.dart';
@@ -115,42 +113,34 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
   /// line, so this is asked once a pull rather than once a frame.
   ({PipelineGraph graph, PipelinePort from, Object characters, Map<String, int> masks})? _offers;
 
+  /// What the pointer does, turned into what the bloc is told. The canvas
+  /// draws what it holds -- the socket under a pulled line, the band -- and
+  /// is told to when it changes.
+  late final _gestures = CanvasGestures(
+    add: (event) => widget.bloc.add(event),
+    state: () => widget.state,
+    hits: () => _hits,
+  )..addListener(_redraw);
+
+  void _redraw() {
+    if (mounted) setState(() {});
+  }
+
   /// What every layer tells the canvas, made once so that a kept layer is
   /// still the same widget.
   late final _actions = NodeLayerActions(
-    onTap: (id) => widget.bloc.add(PipelineNodeSelected(id, add: _adding)),
-    onGrab: (id, at) {
-      _dragging = at;
-      widget.bloc.add(PipelineNodeGrabbed(id));
-    },
-    onDrag: (id, at) {
-      final from = _dragging ?? at;
-      _dragging = at;
-      widget.bloc.add(
-        PipelineNodeMoved(id, (at.dx - from.dx) / _view.zoom, (at.dy - from.dy) / _view.zoom),
-      );
-    },
-    onDrop: () {
-      _dragging = null;
-      widget.bloc.add(const PipelineArrangementSettled());
-    },
-    onRemove: (id) => widget.bloc.add(PipelineCharacterRemoved(id)),
-    onLinkStart: _startLink,
-    onLinkToggle: _toggleLink,
-    onLinkDrag: _dragLink,
-    onLinkEnd: _endLink,
+    onTap: (id) => _gestures.select(id, adding: _adding),
+    onGrab: _gestures.grab,
+    onDrag: _gestures.carry,
+    onDrop: _gestures.drop,
+    onRemove: _gestures.remove,
+    onLinkStart: (port, global) => _gestures.pullLink(port, _toCanvas(global)),
+    onLinkToggle: _gestures.toggleLink,
+    onLinkDrag: (global) => _gestures.carryLink(_toCanvas(global)),
+    onLinkEnd: _gestures.releaseLink,
   );
 
   final _viewport = GlobalKey();
-
-  /// The port the pointer is over while a link is being pulled, so it can
-  /// be shown as the one that would catch it.
-  PipelinePort? _over;
-
-  /// Where the pointer was when a node last answered it, on the screen. What
-  /// a node moves is the distance from here, so it keeps up with the pointer
-  /// exactly instead of with its own idea of how far it has come.
-  Offset? _dragging;
 
   @override
   void initState() {
@@ -206,35 +196,18 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
 
   @override
   void dispose() {
+    _gestures.dispose();
     _picking.dispose();
     _drawing.dispose();
     super.dispose();
   }
 
-  /// The band being drawn with control held, in canvas places. Null while
-  /// no band is being drawn, which is most of the time.
-  GraphPoint? _bandFrom;
-  GraphPoint? _bandTo;
-
-  /// Whether the modifier is down right now. Read at the moment of the
+  /// Whether a modifier is down right now. Read at the moment of the
   /// gesture rather than kept: a key let go while the pointer is down must
   /// not turn a band into a pan half way through.
   static bool get _adding => HardwareKeyboard.instance.isShiftPressed;
   static bool get _banding =>
       HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed;
-
-  /// The band as it stands, with its corners put in order.
-  Rect? get _band {
-    final from = _bandFrom;
-    final to = _bandTo;
-    if (from == null || to == null) return null;
-    return Rect.fromLTRB(
-      math.min(from.x, to.x),
-      math.min(from.y, to.y),
-      math.max(from.x, to.x),
-      math.max(from.y, to.y),
-    );
-  }
 
   PipelineGraphState get _state => widget.state;
   GraphView get _view => _state.layout.view;
@@ -251,41 +224,6 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
     final box = _viewport.currentContext?.findRenderObject() as RenderBox?;
     final local = box?.globalToLocal(global) ?? global;
     return _view.toCanvas(GraphPoint(local.dx, local.dy));
-  }
-
-  void _startLink(PipelinePort port, Offset global) {
-    setState(() => _over = null);
-    widget.bloc.add(PipelineLinkStarted(port, _toCanvas(global)));
-  }
-
-  void _dragLink(Offset global) {
-    final at = _toCanvas(global);
-    final from = _state.drag?.from;
-    final over = from == null ? null : _hits.portNear(at, from: from);
-    if (over != _over) setState(() => _over = over);
-    widget.bloc.add(PipelineLinkDragged(at));
-  }
-
-  /// A line drawn without a pointer: the first socket takes it up, the
-  /// second puts it down, and the one it started from lets it go. It goes
-  /// through the same events a drag does, so what a link may join and what
-  /// it changes is answered in one place.
-  void _toggleLink(PipelinePort port) {
-    final drag = _state.drag;
-    if (drag == null) {
-      final node = _state.graph.node(port.nodeId);
-      if (node == null) return;
-      final at = NodeMetrics.portAt(node, port.socket);
-      widget.bloc.add(PipelineLinkStarted(port, GraphPoint(at.dx, at.dy)));
-      return;
-    }
-    widget.bloc.add(PipelineLinkReleased(drag.from == port ? null : port));
-    setState(() => _over = null);
-  }
-
-  void _endLink() {
-    widget.bloc.add(PipelineLinkReleased(_over));
-    setState(() => _over = null);
   }
 
   @override
@@ -314,44 +252,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
     if (signal is! PointerScrollEvent) return;
     final box = _viewport.currentContext?.findRenderObject() as RenderBox?;
     final local = box?.globalToLocal(signal.position) ?? signal.position;
-    widget.bloc.add(
-      PipelineViewZoomed(
-        _view.zoom * (signal.scrollDelta.dy > 0 ? 0.9 : 1.1),
-        GraphPoint(local.dx, local.dy),
-      ),
-    );
-  }
-
-  void _startPan(DragStartDetails details) {
-    if (!_banding) return;
-    setState(() {
-      _bandFrom = _toCanvas(details.globalPosition);
-      _bandTo = _bandFrom;
-    });
-  }
-
-  void _pan(DragUpdateDetails details) {
-    if (_bandFrom == null) {
-      widget.bloc.add(PipelineViewPanned(details.delta.dx, details.delta.dy));
-      return;
-    }
-    setState(() => _bandTo = _toCanvas(details.globalPosition));
-  }
-
-  void _endPan() {
-    final band = _band;
-    if (band == null) {
-      widget.bloc.add(const PipelineArrangementSettled());
-      return;
-    }
-    // A band drawn with shift held adds to what was chosen; on its own it
-    // is the whole choice.
-    final caught = _hits.caughtBy(band);
-    widget.bloc.add(PipelineSelectionSet(_adding ? {..._state.chosen, ...caught} : caught));
-    setState(() {
-      _bandFrom = null;
-      _bandTo = null;
-    });
+    _gestures.wheel(signal.scrollDelta.dy, GraphPoint(local.dx, local.dy));
   }
 
   Widget _canvas(BuildContext context, GraphView view) {
@@ -362,13 +263,15 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
         onPointerSignal: _zoom,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => widget.bloc.add(const PipelineNodeSelected(null)),
+          onTap: _gestures.clearChoice,
           // Empty space drags the canvas, as it always has; with control
           // held it draws a band over the nodes instead, which is the one
           // gesture that needs a modifier to tell it from panning.
-          onPanStart: _startPan,
-          onPanUpdate: _pan,
-          onPanEnd: (_) => _endPan(),
+          onPanStart: (details) =>
+              _gestures.pressSpace(_toCanvas(details.globalPosition), banding: _banding),
+          onPanUpdate: (details) =>
+              _gestures.dragSpace(details.delta, _toCanvas(details.globalPosition)),
+          onPanEnd: (_) => _gestures.releaseSpace(adding: _adding),
           child: CustomPaint(
             painter: DotFieldPainter(
               view: view,
@@ -411,7 +314,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
                           painter: LinkPainter(
                             graph: _state.graph,
                             drag: _state.drag,
-                            over: _over,
+                            over: _gestures.over,
                             appearing: _appearing,
                             fading: _fading,
                             leaving: _leaving,
@@ -433,11 +336,8 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
                           scale: _shrinking,
                         ),
                       ...layers,
-                      ..._badges.badgesFor(
-                        _state.graph,
-                        (link) => widget.bloc.add(PipelineLinkCut(link)),
-                      ),
-                      if (_band case final band?)
+                      ..._badges.badgesFor(_state.graph, _gestures.cut),
+                      if (_gestures.band case final band?)
                         Positioned.fromRect(
                           rect: band,
                           child: IgnorePointer(
@@ -498,7 +398,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
           filled: _filledOf(node, filled),
           offered: offered[node.id] ?? 0,
           pulling: _state.drag?.from,
-          over: _over,
+          over: _gestures.over,
         ),
     ];
   }

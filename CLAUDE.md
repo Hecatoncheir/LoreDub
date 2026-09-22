@@ -603,8 +603,11 @@ curves (`LinkGeometry`, `LinkPainter`), the dots (`DotField`,
 `DotFieldPainter`) and the hit-testing (`GraphHitTester`, pure, which also
 fits the scheme into the window the first time it is drawn) all read;
 `SchemeDiff` is what one edit drew and cut, `LinkCut` which lines carry a
-badge, `NodeLabels` what a card writes on itself, and `pipeline_canvas.dart`
-keeps the state -- the gestures, the animation and the caches below; `pipeline_inspector.dart` is the panel that stands over it, down the
+badge, `NodeLabels` what a card writes on itself, `CanvasGestures`
+(`canvas_gestures.dart`, a `ChangeNotifier`) what a gesture tells the bloc
+and the little it remembers between its steps -- the socket under a pulled
+line, the band, where a card was held -- and `pipeline_canvas.dart` keeps
+the rest of the state -- the animation and the caches below; `pipeline_inspector.dart` is the panel that stands over it, down the
 right edge and the whole height of the canvas, drawn in the face of the node
 it opened on — `NodePaint` (`node_paint.dart`, which the canvas draws its
 cards from as well) hands it the same body, head, ink and rule, and
