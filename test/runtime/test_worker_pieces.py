@@ -17,36 +17,38 @@ sys.path.insert(0, str(ROOT / "assets" / "runtime"))
 
 HAS_NUMPY = importlib.util.find_spec("numpy") is not None
 if HAS_NUMPY:
+    import audio
     import inference_worker as worker
+    import voices
 
 
 @unittest.skipUnless(HAS_NUMPY, "the worker imports numpy")
 class MostHeardTest(unittest.TestCase):
     def test_answers_the_gender_most_files_were_heard_as(self):
-        self.assertEqual(worker.most_heard(["male", "female", "male", None]), "male")
+        self.assertEqual(voices.most_heard(["male", "female", "male", None]), "male")
 
     def test_settles_a_tie_by_the_clip_the_card_keeps(self):
         # Settled by a set's order, it came out one way in one run and the
         # other way in the next.
         for tie in ("male", "female"):
             with self.subTest(tie=tie):
-                self.assertEqual(worker.most_heard(["male", "female"], tie=tie), tie)
+                self.assertEqual(voices.most_heard(["male", "female"], tie=tie), tie)
 
     def test_hears_nobody_in_files_that_were_heard_as_nobody(self):
-        self.assertIsNone(worker.most_heard([None, None]))
+        self.assertIsNone(voices.most_heard([None, None]))
 
 
 @unittest.skipUnless(HAS_NUMPY, "the worker imports numpy")
 class SpeedTest(unittest.TestCase):
     def test_keeps_a_lines_pace_inside_what_the_retiming_can_take(self):
-        self.assertEqual(worker.request_speed({"speed": 9}, 1.0), worker.FASTEST_SPEED)
-        self.assertEqual(worker.request_speed({"speed": 0.1}, 1.0), worker.SLOWEST_SPEED)
-        self.assertEqual(worker.request_speed({"speed": 1.3}, 1.0), 1.3)
+        self.assertEqual(audio.request_speed({"speed": 9}, 1.0), audio.FASTEST_SPEED)
+        self.assertEqual(audio.request_speed({"speed": 0.1}, 1.0), audio.SLOWEST_SPEED)
+        self.assertEqual(audio.request_speed({"speed": 1.3}, 1.0), 1.3)
 
     def test_falls_back_to_the_sessions_pace_on_anything_unreadable(self):
         for request in ({}, {"speed": "fast"}, {"speed": None}):
             with self.subTest(request=request):
-                self.assertEqual(worker.request_speed(request, 1.1), 1.1)
+                self.assertEqual(audio.request_speed(request, 1.1), 1.1)
 
 
 @unittest.skipUnless(HAS_NUMPY, "the worker imports numpy")

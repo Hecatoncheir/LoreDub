@@ -83,6 +83,12 @@ typedef WorkerPreparation = Future<WorkerFiles> Function({
   String? downloadedRuntimeDirectory,
 });
 
+/// The worker's scripts among the application's [assets]: every Python file
+/// in `assets/runtime/`, the worker and what it imports alike.
+Iterable<String> workerScripts(Iterable<String> assets) => assets.where(
+  (asset) => asset.startsWith('assets/runtime/') && asset.endsWith('.py'),
+);
+
 class LocalInferenceService {
   LocalInferenceService({
     WorkerPreparation? prepare,
@@ -271,17 +277,15 @@ class LocalInferenceService {
         : null;
     final python = await resolvePythonExecutable(pythonExecutable);
     final work = await createWorkDirectory();
-    final script = await _extractScript('assets/runtime/inference_worker.py', work);
-    // The converter and the voices are modules the worker imports from its
-    // own directory. Both voices travel whichever language the session dubs
-    // into: which one is loaded is decided there, off the package on disk.
-    await _extractScript('assets/runtime/dubbing_text.py', work);
-    await _extractScript('assets/runtime/tone_converter.py', work);
-    await _extractScript('assets/runtime/onnx_speech.py', work);
-    await _extractScript('assets/runtime/vosk_voice.py', work);
-    await _extractScript('assets/runtime/kokoro_voice.py', work);
-    await _extractScript('assets/runtime/english_g2p.py', work);
-    return (python: python, script: script.path, work: work.path, whisper: whisper);
+    // The worker and the modules it imports from its own directory, all of
+    // them: both voices travel whichever language the session dubs into,
+    // which one is loaded being decided there, off the package on disk.
+    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+    for (final asset in workerScripts(manifest.listAssets())) {
+      await _extractScript(asset, work);
+    }
+    final script = path.join(work.path, 'inference_worker.py');
+    return (python: python, script: script, work: work.path, whisper: whisper);
   }
 
   /// The real [ProcessLauncher].

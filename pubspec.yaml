@@ -90,13 +90,9 @@ flutter:
     - assets/icons/audio_capture.svg
     - assets/icons/deployed_code_update.svg
     - assets/icons/directory_sync.svg
-    - assets/runtime/dubbing_text.py
-    - assets/runtime/english_g2p.py
-    - assets/runtime/inference_worker.py
-    - assets/runtime/kokoro_voice.py
-    - assets/runtime/onnx_speech.py
-    - assets/runtime/tone_converter.py
-    - assets/runtime/vosk_voice.py
+    # The worker and every module it imports: the directory, so a module
+    # added to it travels without a line here.
+    - assets/runtime/
 
   fonts:
     # Static instances cut from the upstream variable fonts, so the weights

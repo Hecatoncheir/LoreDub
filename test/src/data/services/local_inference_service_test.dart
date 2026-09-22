@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/services/local_inference_service.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
@@ -16,6 +17,31 @@ import '../../../support/fake_worker.dart';
 import '../../../support/temporary_directory.dart';
 
 void main() {
+  test('carries the worker with every module it imports from its directory', () async {
+    // Each module used to need a line in pubspec.yaml and another here; one
+    // left out started the worker and failed on its first import.
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+    final scripts = workerScripts(manifest.listAssets()).map(path.basename).toSet();
+
+    expect(
+      scripts,
+      containsAll([
+        'inference_worker.py',
+        'dubbing_text.py',
+        'protocol.py',
+        'audio.py',
+        'voices.py',
+        'tone_converter.py',
+        'onnx_speech.py',
+        'vosk_voice.py',
+        'kokoro_voice.py',
+        'english_g2p.py',
+      ]),
+    );
+    expect(workerScripts(['assets/runtime/notes.txt', 'assets/icons/a.py']), isEmpty);
+  });
+
   test('clears audio a stopped or crashed run left behind', () async {
     final work = await Directory.systemTemp.createTemp('lore-dub-work');
     addTearDown(() => deleteOnceReleased(work));

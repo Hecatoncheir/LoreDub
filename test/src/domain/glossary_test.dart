@@ -11,9 +11,9 @@ void main() {
   test('files every shared case under the key the worker files it under', () {
     // The worker's Glossary._key reads the same file in its own tests, which
     // is what keeps the two rules one.
-    final fixture =
-        jsonDecode(File('test/fixtures/glossary_keys.json').readAsStringSync())
-            as Map<String, Object?>;
+    final fixture = jsonDecode(
+      File('test/fixtures/glossary_keys.json').readAsStringSync(),
+    ) as Map<String, Object?>;
     for (final entry in fixture['cases']! as List<Object?>) {
       final (:source, :key) = switch (entry) {
         {'source': final String source, 'key': final String key} => (source: source, key: key),
