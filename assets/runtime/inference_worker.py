@@ -244,6 +244,37 @@ def most_heard(genders, tie=None):
     return tie if tie in leaders else leaders[0]
 
 
+def read_clip(path):
+    """The recording at [path] as (samples, rate), or (None, 0) when there is
+    nothing in it to hear: missing, damaged, not 16-bit, or empty."""
+    try:
+        samples, rate = read_wave_mono(path)
+    except (OSError, wave.Error, ValueError):
+        return None, 0
+    if samples is None or rate <= 0 or not len(samples):
+        return None, 0
+    return samples, rate
+
+
+def as_vector(fingerprint):
+    """What the encoder answered, as the flat array it is kept and compared as."""
+    return fingerprint.flatten().float().cpu().numpy()
+
+
+def nearest(vectors, vector):
+    """The index of the one of [vectors] closest to [vector], and its cosine;
+    None where no vector has its shape."""
+    best, score = None, -1.0
+    norm = float(np.linalg.norm(vector)) or 1.0
+    for index, kept in enumerate(vectors):
+        if kept.shape != vector.shape:
+            continue
+        value = float(np.dot(kept, vector)) / ((float(np.linalg.norm(kept)) or 1.0) * norm)
+        if value > score:
+            best, score = index, value
+    return best, score
+
+
 def build_voice(converter, paths):
     """One fingerprint for a character, from several recordings of them.
 
@@ -270,18 +301,15 @@ def build_voice(converter, paths):
     measured = []
     skipped = []
     for path in paths:
-        try:
-            samples, rate = read_wave_mono(path)
-        except (OSError, wave.Error, ValueError):
-            samples, rate = None, 0
-        if samples is None or rate <= 0 or len(samples) < rate * SHORTEST_CLIP:
+        samples, rate = read_clip(path)
+        if samples is None or len(samples) < rate * SHORTEST_CLIP:
             skipped.append(path)
             continue
         # Kept as the encoder gave it. The card's vector is not only
         # something to recognize a speaker by -- it is the conditioning the
         # converter is re-voiced against -- and that one has a length as
         # well as a direction.
-        fingerprint = converter.embed(samples, rate).flatten().float().cpu().numpy()
+        fingerprint = as_vector(converter.embed(samples, rate))
         measured.append((path, fingerprint, len(samples) / rate))
     if not measured:
         raise RuntimeError("none of the files held enough voice to measure")
@@ -333,15 +361,8 @@ MALE_BELOW_HZ = 155.0
 FEMALE_ABOVE_HZ = 175.0
 
 
-def speaker_gender(path):
-    """"male", "female", or None when the audio does not say."""
-    try:
-        samples, rate = read_wave_mono(path)
-    except (OSError, wave.Error, ValueError):
-        return None
-    if samples is None or rate <= 0 or not len(samples):
-        return None
-    pitch = median_f0(samples, rate)
+def gender_of_pitch(pitch):
+    """"male", "female", or None for a pitch between the two, or none."""
     if pitch is None:
         return None
     if pitch < MALE_BELOW_HZ:
@@ -349,6 +370,42 @@ def speaker_gender(path):
     if pitch > FEMALE_ABOVE_HZ:
         return "female"
     return None
+
+
+def speaker_gender(path):
+    """"male", "female", or None when the audio does not say."""
+    samples, rate = read_clip(path)
+    return gender_of_pitch(median_f0(samples, rate)) if samples is not None else None
+
+
+class Heard:
+    """The recording a line came with, read and measured once, and only if
+    something asks: who is speaking and which voice reads them both want the
+    samples and the pitch, and each read the file and measured it for itself."""
+
+    def __init__(self, source):
+        self.source = source or None
+        self._clip = None
+        self._pitch = None
+        self._measured = False
+
+    @property
+    def clip(self):
+        if self._clip is None:
+            self._clip = read_clip(self.source) if self.source else (None, 0)
+        return self._clip
+
+    @property
+    def pitch(self):
+        if not self._measured:
+            samples, rate = self.clip
+            self._pitch = median_f0(samples, rate) if samples is not None else None
+            self._measured = True
+        return self._pitch
+
+    @property
+    def gender(self):
+        return gender_of_pitch(self.pitch)
 
 
 # A file dropped onto a card is kept unless it is plainly not a voice at
@@ -425,7 +482,7 @@ def speaker_cuts(converter, samples, rate):
     vectors = []
     for start in starts:
         block = samples[start : start + window]
-        fingerprint = converter.embed(block, rate).flatten().float().cpu().numpy()
+        fingerprint = as_vector(converter.embed(block, rate))
         norm = float(np.linalg.norm(fingerprint)) or 1.0
         vectors.append(fingerprint / norm)
     cuts = []
@@ -518,15 +575,7 @@ class VoiceBank:
 
     def nearest(self, vector):
         """The index of the stored voice closest to [vector] and its cosine."""
-        best, score = None, -1.0
-        norm = float(np.linalg.norm(vector)) or 1.0
-        for index, voice in enumerate(self.voices):
-            if voice.shape != vector.shape:
-                continue
-            value = float(np.dot(voice, vector)) / ((float(np.linalg.norm(voice)) or 1.0) * norm)
-            if value > score:
-                best, score = index, value
-        return best, score
+        return nearest(self.voices, vector)
 
     def add(self, vector):
         self.voices.append(np.asarray(vector, dtype=np.float32))
@@ -595,16 +644,7 @@ class CharacterCast:
 
     def nearest(self, vector):
         """The character closest to [vector] and their cosine."""
-        best, score = None, -1.0
-        norm = float(np.linalg.norm(vector)) or 1.0
-        for index, entry in enumerate(self.entries):
-            kept = entry["vector"]
-            if kept.shape != vector.shape:
-                continue
-            value = float(np.dot(kept, vector)) / ((float(np.linalg.norm(kept)) or 1.0) * norm)
-            if value > score:
-                best, score = index, value
-        return best, score
+        return nearest([entry["vector"] for entry in self.entries], vector)
 
     def identifier(self, index):
         return self.entries[index]["id"]
@@ -988,27 +1028,25 @@ class Casting:
         # A card deleted since the assignment leaves the voice as itself.
         return ("character", at) if at is not None else (kind, index)
 
-    def identify(self, source):
-        """The speaker of the recording at [source] and the fingerprint read
-        from it, as (kind, index, fingerprint).
+    def identify(self, heard):
+        """The speaker of the recording [heard] and the fingerprint read from
+        it, as (kind, index, fingerprint).
 
         The kind is "character" for one of the player's own cards, "voice" for
         a speaker of this game's bank. All three are None without the
         converter, which is what hears who is speaking, and for a line too
         short or too unvoiced to place.
         """
-        if self._converter is None or not source:
+        if self._converter is None or heard.source is None:
             return None, None, None
-        try:
-            samples, rate = read_wave_mono(source)
-        except (OSError, wave.Error, ValueError):
-            return None, None, None
-        if samples is None or rate <= 0 or len(samples) < rate // 2 or median_f0(samples, rate) is None:
+        samples, rate = heard.clip
+        # Half a second, and a voice in it: anything less could be anyone.
+        if samples is None or len(samples) < rate // 2 or heard.pitch is None:
             return None, None, None
         fingerprint = self._converter.embed(samples, rate)
         # A character the player recorded answers before the game's own bank:
         # they named this voice, so it is theirs whichever game it speaks in.
-        named, score = self.cast.nearest(fingerprint.flatten().float().cpu().numpy())
+        named, score = self.cast.nearest(as_vector(fingerprint))
         if named is not None and score >= BANK_MATCH:
             return "character", named, fingerprint
         # A short line nobody matched could be anyone.
@@ -1016,7 +1054,7 @@ class Casting:
 
     def _speaker_of(self, fingerprint, seconds):
         """The index of the voice this line belongs to; a new one is kept first."""
-        vector = fingerprint.flatten().float().cpu().numpy()
+        vector = as_vector(fingerprint)
         index, score = self.speakers.nearest(vector)
         if index is not None and score >= BANK_MATCH:
             return index
@@ -1025,8 +1063,8 @@ class Casting:
             return len(self.speakers) - 1
         return None
 
-    def voice_for(self, source, kind, index):
-        """The voice a line recorded at [source] is read in.
+    def voice_for(self, heard, kind, index):
+        """The voice a line recorded as [heard] is read in.
 
         One of the player's cards is read in its own voice, whoever it is
         standing in for; a character of the game's bank keeps the voice their
@@ -1050,7 +1088,7 @@ class Casting:
             if kept in self.by_gender["male"] or kept in self.by_gender["female"]:
                 self._current_voice = kept
                 return kept
-        gender = speaker_gender(source) if source else None
+        gender = heard.gender
         if gender is None:
             return self._current_voice
         candidates = self.by_gender[gender]
@@ -1117,15 +1155,16 @@ class Session:
     @needs_converter
     def fingerprint(self, request_id, recorded, _):
         """The voice in a recording, as the characters screen keeps it."""
-        heard, rate = read_wave_mono(recorded)
-        if heard is None or rate <= 0 or not len(heard):
+        heard = Heard(recorded)
+        samples, rate = heard.clip
+        if samples is None:
             raise RuntimeError(f"unreadable recording: {recorded}")
-        vector = self.models.converter.embed(heard, rate).flatten().float().cpu().numpy()
+        vector = as_vector(self.models.converter.embed(samples, rate))
         return {
             "id": request_id,
             "vector": [round(float(value), 6) for value in vector],
-            "gender": speaker_gender(recorded),
-            "seconds": round(len(heard) / rate, 2),
+            "gender": heard.gender,
+            "seconds": round(len(samples) / rate, 2),
         }
 
     @needs_converter
@@ -1170,18 +1209,16 @@ class Session:
         dubbing itself runs, so the player can hand out the voices of a scene
         while only the converter is loaded."""
         casting = self.casting
-        kind, index, _ = casting.identify(heard_line)
+        heard = Heard(heard_line)
+        kind, index, _ = casting.identify(heard)
         answer = {"id": request_id, "speaker": casting.speaker_key(kind, index)}
         # The card the graph gave this one away to, if it did and if the cast
         # is in the mix at all.
         read_kind, read_index = casting.read_as(kind, index)
         if (read_kind, read_index) != (kind, index):
             answer["readAs"] = casting.speaker_key(read_kind, read_index)
-        try:
-            samples, rate = read_wave_mono(heard_line)
-            answer["seconds"] = round(len(samples) / rate, 2) if rate else 0
-        except (OSError, wave.Error, ValueError):
-            answer["seconds"] = 0
+        samples, rate = heard.clip
+        answer["seconds"] = round(len(samples) / rate, 2) if samples is not None else 0
         return answer
 
     def preview(self, request_id, sample, request):
@@ -1211,12 +1248,9 @@ class Session:
         speaker's half is recognized and voiced on its own."""
         cuts = []
         if self.models.converter is not None:
-            try:
-                heard, rate = read_wave_mono(listening)
-            except (OSError, wave.Error, ValueError):
-                heard, rate = None, 0
-            if heard is not None and rate > 0 and len(heard):
-                cuts = speaker_cuts(self.models.converter, heard, rate)
+            samples, rate = read_clip(listening)
+            if samples is not None:
+                cuts = speaker_cuts(self.models.converter, samples, rate)
         return {"id": request_id, "cuts": [round(cut, 3) for cut in cuts]}
 
     def dub(self, request_id, request):
@@ -1242,10 +1276,10 @@ class Session:
         # Who is speaking is settled first: the character decides both the
         # voice they are read in and the timbre laid over it.
         casting = self.casting
-        source = request.get("wave")
-        heard_kind, heard_index, fingerprint = casting.identify(source)
+        heard = Heard(request.get("wave"))
+        heard_kind, heard_index, fingerprint = casting.identify(heard)
         kind, index = casting.read_as(heard_kind, heard_index)
-        chosen = casting.voice_for(source, kind, index)
+        chosen = casting.voice_for(heard, kind, index)
         timbre = casting.timbre_for(fingerprint, kind, index) if self.args.revoice else None
         output = self.speak(translated, chosen, timbre, request, f"speech-{request_id}.wav")
         answer = {
