@@ -16,12 +16,32 @@
 | --- | --- | --- | --- | --- |
 | Распознавание | whisper medium / large-v3-turbo | [Parakeet-TDT-0.6B-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), 25 европейских языков с русским; [Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B), 30 языков | CC-BY-4.0 / Apache 2.0 | Parakeet: WER 6,34 % на Open ASR Leaderboard при RTFx 3 332. Qwen3-ASR обгоняет whisper large-v3 на LibriSpeech other и GigaSpeech. Перевод уходит из ASR в LLM |
 | Распознавание потоком | нет | [Voxtral Realtime 4B](https://mistral.ai/news/voxtral-transcribe-2/), 13 языков с русским | Apache 2.0 | текст появляется до конца фразы, задержка настраивается до 200 мс |
-| Русский оригинал | whisper | [GigaAM-v3](https://huggingface.co/ai-sage/GigaAM-v3), 240M | MIT | WER 8,4 % против 25,1 % у whisper large-v3 на русских наборах |
+| Русский оригинал | whisper | [GigaAM-v3](https://huggingface.co/ai-sage/GigaAM-v3), 240M | MIT | WER 8,4 % против 25,1 % у whisper large-v3 на русских наборах; только русская речь, перевода нет, см. раздел про GigaAM |
 | Речь сразу в русский текст | нет | [Canary-1B-v2](https://huggingface.co/nvidia/canary-1b-v2), ASR и перевод en↔24 языка | CC-BY-4.0 | одна модель вместо двух, COMET 84,6 на Fleurs en→X; уступает LLM по контексту и глоссарию |
 | Перевод | opus-mt-tc-big, Marian, 242 МБ | [TranslateGemma-12B](https://huggingface.co/google/translategemma-12b-it); для 8 ГБ [TranslateGemma-4B](https://huggingface.co/google/translategemma-4b-it) или [Gemma 4](https://opensource.googleblog.com/2026/03/gemma-4-expanding-the-gemmaverse-with-apache-20.html) E4B; альтернатива [Seed-X-PPO-7B](https://huggingface.co/ByteDance-Seed/Seed-X-PPO-7B), 28 языков | Gemma Terms; Apache 2.0 у Gemma 4; OpenMDW у Seed-X | контекст сцены, глоссарий в промпте, род говорящего |
 | Голос и тембр | Vosk-ru 0.9 + OpenVoice V2 | [Qwen3-TTS-12Hz-1.7B-Base](https://github.com/QwenLM/Qwen3-TTS), 10 языков с русским | Apache 2.0 | клон с 3 секунд записи, первый звук через 97 мс, конвертер не нужен |
 | Голос полегче |  | [Chatterbox Multilingual V3](https://github.com/resemble-ai/chatterbox), 500M, 23 языка; [Fun-CosyVoice 3](https://github.com/QwenAudio/CosyVoice), 0.5B, 9 языков | MIT; у CosyVoice Apache 2.0 на код, лицензию весов проверить | для карт на 6–8 ГБ; CosyVoice даёт поток с задержкой 150 мс |
 | Кто говорит | энкодер OpenVoice, энергетический VAD | [WeSpeaker](https://github.com/wenet-e2e/wespeaker) или [3D-Speaker](https://github.com/modelscope/3D-Speaker) для отпечатков; [Silero VAD](https://github.com/snakers4/silero-vad); [pyannote community-1](https://huggingface.co/pyannote/speaker-diarization-community-1) или потоковый [Sortformer v2](https://huggingface.co/nvidia/diar_streaming_sortformer_4spk-v2) для разрезания диалога | Apache 2.0 / MIT / CC-BY-4.0 | банк голосов устойчивее, фраза под музыкой не рвётся |
+
+## GigaAM в бесплатной версии
+
+По лицензии GigaAM-v3 можно ставить и в бесплатную версию, но английскую речь в русский текст он не переводит: это распознавание русской речи в русский текст, и только. Модель обучена на русском, словарь кириллический, перевода нет ни в одном варианте.
+
+| Модель | Вход | Выход | Лицензия |
+| --- | --- | --- | --- |
+| [GigaAM-v3](https://huggingface.co/ai-sage/GigaAM-v3), ctc / rnnt / e2e | русская речь | русский текст, у e2e с пунктуацией | MIT |
+| [GigaAM multilingual](https://github.com/salute-developers/GigaAM), 220M / 600M | 70+ языков, английский есть | текст на языке речи, английский авторы называют «умеренным» | MIT |
+| whisper с флагом перевода, сейчас в main | любой язык | английский текст | MIT |
+| [Canary-1B-v2](https://huggingface.co/nvidia/canary-1b-v2) | английская речь | сразу русский текст | CC-BY-4.0 |
+
+Для английских игр GigaAM ничего не даёт. Мультиязычная линейка могла бы заменить whisper как распознаватель английского, но она слабее whisper large-v3 на английском и теряет перевод в английский из любого языка игры, который даёт флаг `-tr`. Английскую речь в русский текст одной моделью делает только Canary-1B-v2.
+
+Где GigaAM-v3 нужен: русские игры. Сейчас для русской игры конвейер работает плохо: whisper переводит русскую речь в английский, Marian переводит обратно в русский. С GigaAM-v3 русская речь идёт в русский текст напрямую, и дальше два сценария:
+
+- **Переозвучка без перевода.** Русская игра в голосах Vosk, с подменой персонажей и своими карточками. Переводчик не нужен.
+- **Дубляж русской игры на английский.** Русский текст, обратный переводчик, Kokoro. Обратного Marian в каталоге нет; подходит opus-mt-tc-big-zle-en из того же Tatoeba-Challenge под CC-BY-4.0, конвертируется тем же скриптом, что и нынешний en→ru.
+
+Встраивается без нового рантайма: пакет `gigaam` работает на torch, который у воркера уже есть, и умеет экспорт в ONNX. Распознаёт куски до 25 секунд, а сегмент захвата режется на 12. Стриминга нет, как и у whisper сейчас. В коде это новый пакет в каталоге, ветка в обработке фразы вместо запуска whisper.cpp, и правило выбора: язык игры русский, значит GigaAM, иначе whisper.
 
 ## Качество перевода en→ru
 
@@ -100,7 +120,7 @@ Qwen3-TTS 1.7B в fp16 занимает около 4,2 ГБ. Qwen3-TTS и пер
 - [Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B), [релиз Qwen3-ASR](https://qwen.ai/blog?id=qwen3asr)
 - [Voxtral Transcribe 2](https://mistral.ai/news/voxtral-transcribe-2/)
 - [Canary-1B-v2](https://huggingface.co/nvidia/canary-1b-v2)
-- [GigaAM-v3](https://huggingface.co/ai-sage/GigaAM-v3)
+- [GigaAM-v3](https://huggingface.co/ai-sage/GigaAM-v3), [репозиторий GigaAM](https://github.com/salute-developers/GigaAM)
 - [Статья MiLMMT с таблицей en→ru](https://arxiv.org/html/2602.11961v2), [MiLMMT-46-12B](https://huggingface.co/xiaomi-research/MiLMMT-46-12B-v1.0)
 - [TranslateGemma-12B](https://huggingface.co/google/translategemma-12b-it)
 - [Gemma 4 под Apache 2.0](https://opensource.googleblog.com/2026/03/gemma-4-expanding-the-gemmaverse-with-apache-20.html)
