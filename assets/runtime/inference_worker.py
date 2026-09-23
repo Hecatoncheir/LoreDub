@@ -36,9 +36,11 @@ from dubbing_text import (
     sentences,
 )
 from llm_translation import (
+    ALL_LAYERS,
     LlamaServer,
     LlmTranslation,
     language_model_in,
+    layers_for_card,
 )
 from protocol import (
     claim_protocol,
@@ -174,6 +176,10 @@ class Models:
         self.speech_device = None
         self.voices = []
         self.speaker = args.speaker
+        # A translator that is a language model is loaded last of all, once
+        # the voice and the converter hold what they will of the card; its
+        # weights are kept until then.
+        language_model = None
         # Recording a character's voice needs the converter alone; loading
         # the translator and the speech model for it would cost the minute
         # this screen is meant to avoid.
@@ -185,7 +191,9 @@ class Models:
             # English and handed it over, so no model is named and none is
             # loaded.
             if not args.speech_only and args.translation_model:
-                self._load_translator(args)
+                language_model = language_model_in(args.translation_model)
+                if language_model is None:
+                    self._load_marian(args)
             report_progress(0.90, "speech")
             # torch is imported already, so onnxruntime-gpu finds the CUDA and
             # cuDNN libraries it brought. Without the card -- or with the
@@ -223,11 +231,10 @@ class Models:
             self.converter = ToneConverter(args.voice_converter, converter_device)
             if args.voice_bank:
                 self.bank = VoiceBank(args.voice_bank)
+        if language_model is not None:
+            self._load_language_model(args, language_model)
 
-    def _load_translator(self, args):
-        weights = language_model_in(args.translation_model)
-        if weights is not None:
-            return self._load_language_model(args, weights)
+    def _load_marian(self, args):
         report_progress(0.35, "transformers")
         import ctranslate2
         from transformers import MarianTokenizer
@@ -258,18 +265,35 @@ class Models:
 
     def _load_language_model(self, args, weights):
         """llama.cpp's server over [weights], started beside the worker and
-        ended with it. Where it runs is the build the application named,
-        and the device reported is the backend it named it for."""
-        report_progress(0.35, "translator")
+        ended with it, after everything else: the build the application
+        named is offered the card for every layer while the weights fit
+        what the voice and the converter left free past whisper's share
+        (`layers_for_card`), and keeps them on the processor otherwise --
+        a model the card cannot hold is paged through system memory rather
+        than refused, and a line then took minutes. The device reported is
+        the one the model got."""
+        report_progress(0.97, "translator")
+        layers = ALL_LAYERS
+        if args.translation_backend == "cuda":
+            layers = layers_for_card(self._free_card_memory(), os.path.getsize(weights))
         self.llama = LlamaServer(
             args.llama_server,
             weights,
             threads=args.threads,
             log=pathlib.Path(args.work_directory) / "llama-server.log",
             chat_template=args.chat_template,
+            layers=layers,
         )
         self.llm = self.llama.start()
-        self.translation_device = args.translation_backend
+        self.translation_device = args.translation_backend if self.llama.on_card else "cpu"
+
+    def _free_card_memory(self):
+        """What the card has left, in bytes, or None where torch cannot see
+        one."""
+        if not self.torch.cuda.is_available():
+            return None
+        free, _total = self.torch.cuda.mem_get_info()
+        return free
 
     def ready_line(self):
         """The handshake. The device is reported back rather than assumed: a

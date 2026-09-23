@@ -20,12 +20,15 @@ sys.path.insert(0, str(ROOT / "assets" / "runtime"))
 
 from dubbing_text import Glossary  # noqa: E402
 from llm_translation import (  # noqa: E402
+    ALL_LAYERS,
+    GIGABYTE,
     LlamaClient,
     LlamaServer,
     LlmTranslation,
     answer_limit,
     clean_answer,
     language_name,
+    layers_for_card,
     translation_messages,
 )
 
@@ -218,3 +221,29 @@ class LlamaServerTest(unittest.TestCase):
         self.assertEqual(command[command.index("-c") + 1], "4096")
         self.assertEqual(command[command.index("--port") + 1], "8080")
         self.assertIn("--no-webui", command)
+        self.assertTrue(server.on_card)
+
+    def test_keeps_the_layers_on_the_processor_when_told(self):
+        server = LlamaServer("bin", "model.gguf", layers=0)
+        self.assertEqual(server.command(8080)[server.command(8080).index("-ngl") + 1], "0")
+        self.assertFalse(server.on_card)
+
+
+class LayersForCardTest(unittest.TestCase):
+    MODEL = int(2.5 * GIGABYTE)
+
+    def test_offers_the_card_while_the_model_fits_past_the_reserve(self):
+        # 6 GB free, 1.5 kept for whisper: 4.5 left for 2.5 with its room.
+        self.assertEqual(layers_for_card(6 * GIGABYTE, self.MODEL), ALL_LAYERS)
+
+    def test_keeps_the_model_on_the_processor_where_it_would_be_paged(self):
+        # 4 GB free less the reserve is 2.5, under the 2.9 the model takes.
+        self.assertEqual(layers_for_card(4 * GIGABYTE, self.MODEL), 0)
+        self.assertEqual(layers_for_card(0, self.MODEL), 0)
+
+    def test_the_reserve_and_the_room_are_the_caller_s(self):
+        self.assertEqual(layers_for_card(3 * GIGABYTE, self.MODEL, reserve_bytes=0, room=1.0), ALL_LAYERS)
+        self.assertEqual(layers_for_card(3 * GIGABYTE, self.MODEL, reserve_bytes=GIGABYTE, room=1.0), 0)
+
+    def test_a_card_torch_cannot_see_is_left_to_the_build(self):
+        self.assertEqual(layers_for_card(None, self.MODEL), ALL_LAYERS)

@@ -186,20 +186,57 @@ class LlamaClient:
         return str((choices[0].get("message") or {}).get("content") or "")
 
 
+GIGABYTE = 1 << 30
+
+# Every layer llama.cpp can be asked to put on the card.
+ALL_LAYERS = 99
+
+# What the card is asked to keep free past the model: whisper's build takes
+# about this much for a segment, and the desktop draws with the rest.
+CARD_RESERVE = int(1.5 * GIGABYTE)
+
+# What the model takes over its weights: its context and compute buffers.
+MODEL_ROOM = 1.15
+
+
+def layers_for_card(free_bytes, model_bytes, reserve_bytes=CARD_RESERVE, room=MODEL_ROOM):
+    """How many layers the server is offered the card for: every one while
+    the weights, with their room, fit what is free past [reserve_bytes], and
+    none otherwise. A model that does not fit is not refused by the driver
+    but paged through system memory, where a line took minutes rather than a
+    tenth of a second and the display driver went down with it; on the
+    processor the same line takes a few seconds. A card torch cannot see
+    ([free_bytes] None) is left to the build's own fallback."""
+    if free_bytes is None:
+        return ALL_LAYERS
+    return ALL_LAYERS if free_bytes - reserve_bytes >= model_bytes * room else 0
+
+
 class LlamaServer:
     """llama.cpp's server as a child of the worker, ended with it.
 
     The executable is found in [directory], the model under [model]. Which
     build stands in the directory -- CPU, Vulkan or CUDA -- is the
-    application's choice; every layer is offered to the card, and a build
-    without one keeps them on the processor.
+    application's choice; [layers] of the model are offered to the card
+    (every one unless the worker measured that they would not fit,
+    `layers_for_card`), and a build without one keeps them on the processor.
     """
 
-    def __init__(self, directory, model, threads=4, context=2048, log=None, chat_template=""):
+    def __init__(
+        self,
+        directory,
+        model,
+        threads=4,
+        context=2048,
+        log=None,
+        chat_template="",
+        layers=ALL_LAYERS,
+    ):
         self._directory = pathlib.Path(directory)
         self._model = pathlib.Path(model)
         self._threads = max(1, int(threads))
         self._context = int(context)
+        self._layers = int(layers)
         self._log = pathlib.Path(log) if log else None
         # One of llama.cpp's built-in templates, named where the one the
         # model carries cannot be rendered from a plain message: Gemma's
@@ -215,6 +252,11 @@ class LlamaServer:
         name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
         return self._directory / name
 
+    @property
+    def on_card(self):
+        """Whether the model was offered the card at all."""
+        return self._layers > 0
+
     def command(self, port):
         return [
             str(self.executable),
@@ -227,7 +269,7 @@ class LlamaServer:
             "-c",
             str(self._context),
             "-ngl",
-            "99",
+            str(self._layers),
             "-t",
             str(self._threads),
             "-np",

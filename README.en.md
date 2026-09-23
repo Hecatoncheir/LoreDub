@@ -906,7 +906,10 @@ entries the line touches and the speaker's gender from the pitch of the line --
 "я пошла" rather than "я пошёл". llama.cpp's server starts with the worker
 and ends with it; the CPU and Vulkan builds ship with the application, the
 CUDA one is the "CUDA · language model" package. A line translates in 0.1 s on
-an RTX 3080 Ti.
+an RTX 3080 Ti. The model takes about 3 GB of the card and is loaded last:
+where the voice and whisper leave it no room, llama.cpp keeps it on the
+processor, and a line translates in a few seconds rather than paging for
+minutes.
 
 **Qwen3-TTS 1.7B** (Apache 2.0) reads Russian and English in the timbre of
 three seconds of a recording: the game's line in Original voice mode, a

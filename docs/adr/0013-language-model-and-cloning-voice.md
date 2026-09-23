@@ -78,3 +78,16 @@ them without a setting to switch.
   Vevo2 is trained without Russian.
 - Tower+ as the translator: CC-BY-NC-SA. HY-MT: its licence excludes the EU,
   the UK and South Korea.
+
+## Measured later: the card is shared
+
+On 2026-09-23 the whole stack on the 12 GB card -- the worker 7.1 GB (the
+voice in bf16, its tokenizer, the converter), llama-server 2.9 GB -- met a
+desktop holding 6.5 GB of it (dwm under a live wallpaper 3.7 GB, the NVIDIA
+overlay 2.8 GB). Nothing was refused: WDDM paged the model through system
+memory, the first line took 207 s in the speech tokenizer's encode (0.07 s
+on a free card), llama answered in 0.5 s instead of 0.13, and a benchmark
+started beside it hung the display driver. So the language model is loaded
+last and offered the card only for what is then free past 1.5 GB kept for
+whisper (`layers_for_card`); otherwise llama.cpp keeps it on the processor,
+where a line takes a few seconds.

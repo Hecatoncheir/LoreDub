@@ -998,7 +998,16 @@ it transcribes, the language it heard travels with each line (`spoken` in
 the dub request, `--source-language` where the player named it), and the
 model translates from there -- into English too, so `translates` is true
 whatever the dubbing language and the worker leaves a line already in it
-alone. Marian's own stage and `-tr` stay for Marian.
+alone. Marian's own stage and `-tr` stay for Marian. The model is loaded
+last, once the voice and the converter hold what they will of the card,
+and offered the card only for what is then free past `CARD_RESERVE`,
+whisper's share of it: `layers_for_card` (`llm_translation.py`) keeps every
+layer on the processor otherwise, and the ready line reports `cpu`.
+Measured on the 12 GB card: with the desktop holding six gigabytes of it,
+the model was not refused but paged through system memory, a line took
+207 s instead of a tenth of a second, and the display driver hung the
+machine. The worker is started with
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` for the same card.
 
 The voice is `qwen3-tts-1.7b` (Qwen3-TTS 1.7B Base, Apache 2.0,
 `ModelPackage.clonesVoice`), fetched file by file from its authors'
