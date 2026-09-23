@@ -99,6 +99,52 @@ function Build-VulkanWhisper {
 
 if (-not $SkipVulkan) { Build-VulkanWhisper -Destination $Destination -Tag "v1.8.2" }
 
+# llama.cpp's server runs the translator that is a language model. Unlike
+# whisper.cpp it publishes Windows builds for every backend, so the CPU and
+# Vulkan ones are fetched ready-made and laid beside whisper's under the
+# names the application looks in; the CUDA one is downloaded on demand from
+# the same tag (`llamaVersion` in runtime_catalog.dart).
+$LlamaTag = "b11118"
+$LlamaBuilds = @(
+  @{
+    Flavour = "cpu"; Directory = "llama";
+    Sha256 = "7f8431c69471cf8991f43da4af6e80f3a66778a63055004a9211ebba00d68084"
+  },
+  @{
+    Flavour = "vulkan"; Directory = "llama-vulkan";
+    Sha256 = "5cb80f42a602965f7491cac4977329ff47c6aa4f850272406708854b5d290547"
+  }
+)
+foreach ($Build in $LlamaBuilds) {
+  $ZipName = "llama-$LlamaTag-bin-win-$($Build.Flavour)-x64.zip"
+  $Zip = Get-Download `
+    "https://github.com/ggml-org/llama.cpp/releases/download/$LlamaTag/$ZipName" `
+    $ZipName $Build.Sha256
+  $Extract = Join-Path $RuntimeCache "llama-$LlamaTag-$($Build.Flavour)"
+  if (-not (Test-Path (Join-Path $Extract "llama-server.exe"))) {
+    Remove-Tree $Extract
+    Expand-Archive -Path $Zip -DestinationPath $Extract
+    $Server = Get-ChildItem $Extract -Recurse -Filter llama-server.exe | Select-Object -First 1
+    if (-not $Server) { throw "llama-server.exe is missing from the official archive" }
+    # The archives keep their files at the top; lifted only where a build
+    # puts them in a folder of their own, the way whisper's does.
+    if ($Server.Directory.FullName -ne (Get-Item $Extract).FullName) {
+      Copy-Item (Join-Path $Server.Directory.FullName "*") $Extract -Force
+    }
+  }
+  # The server and the libraries, and none of the twenty other tools the
+  # archive carries beside them nor their own halves: the server loads its
+  # half through `llama-server-impl.dll` and the common ones, and a library
+  # left out is a server that ends before it listens (0xC0000135).
+  $LlamaDestination = Join-Path $Destination $Build.Directory
+  New-Item -ItemType Directory -Force -Path $LlamaDestination | Out-Null
+  $LlamaFiles = Get-ChildItem $Extract -File | Where-Object {
+    $_.Name -eq "llama-server.exe" -or $_.Name -like "LICENSE*" -or
+    ($_.Extension -eq ".dll" -and $_.Name -notmatch '^llama-(?!server-impl\.dll$).*-impl\.dll$')
+  }
+  Copy-Item $LlamaFiles.FullName $LlamaDestination -Force
+}
+
 $PythonZip = Get-Download `
   "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip" `
   "python-3.11.9-embed-amd64.zip"
@@ -106,12 +152,16 @@ $PythonCache = Join-Path $RuntimeCache "python-3.11.9"
 $Python = Join-Path $PythonCache "python.exe"
 
 # What the bundled interpreter is filled with. torch stands apart because it
-# comes from an index of its own, the processor-only build.
+# comes from an index of its own, the processor-only build; torchaudio has
+# to match it version for version, so it comes from the same index.
 $TorchIndex = "https://download.pytorch.org/whl/cpu"
 $TorchPackage = "torch==2.7.1"
+$TorchAudioPackage = "torchaudio==2.7.1"
 $Packages = @(
   "numpy==2.2.6",
-  "transformers==4.53.3",
+  # The version the Qwen3-TTS package pins; the Marian tokenizer reads the
+  # same under it as under 4.53.
+  "transformers==4.57.3",
   "sentencepiece==0.2.0",
   # sacremoses is what the Marian tokenizer normalizes punctuation with. It is
   # optional, and without it transformers prints a recommendation on every
@@ -140,15 +190,28 @@ $Packages = @(
   "spacy==3.8.16",
   # misaki tags the words with this pipeline, and downloads it itself when it
   # is missing -- a network call in the middle of a dubbing session.
-  "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+  "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+  # What the Qwen3-TTS voice reads with (`qwen_voice.py`): the model's own
+  # code lives in the qwen-tts package below, and these are the libraries it
+  # imports -- librosa and soundfile for the reference clip, einops in the
+  # model, accelerate for loading it onto the card, and pysox, which one of
+  # its tokenizers imports at the top and never calls for us.
+  "accelerate==1.12.0",
+  "librosa==0.11.0",
+  "soundfile==0.13.1",
+  "einops==0.8.1",
+  "sox==1.5.0"
 )
 
-# Installed without its dependencies, because only its letter-to-sound
-# weights are used: `english_g2p.py` reads `checkpoint20.npz` out of the
-# package and never imports it. Importing it would pull NLTK in and ask for
-# two corpora, downloading them from the network on a machine that is meant
-# to dub a game offline.
-$WeightsOnly = @("g2p-en==2.1.0")
+# Installed without their dependencies. g2p-en, because only its
+# letter-to-sound weights are used: `english_g2p.py` reads `checkpoint20.npz`
+# out of the package and never imports it, and importing it would pull NLTK
+# in and ask for two corpora, downloading them from the network on a machine
+# that is meant to dub a game offline. qwen-tts, because its dependencies
+# name gradio -- a web demo the worker never opens -- and pin a torchaudio
+# that would be resolved against the default index over the one above; the
+# ones it does need are named in $Packages.
+$WeightsOnly = @("g2p-en==2.1.0", "qwen-tts==0.1.1")
 
 # The cache is vouched for by a marker written after the last install, and by
 # nothing else. It used to be the torch folder, which is the first thing pip
@@ -159,7 +222,7 @@ $WeightsOnly = @("g2p-en==2.1.0")
 # rebuilt too -- which is what sacremoses and ctranslate2 used to be checked
 # folder by folder for. The price is torch downloaded again on that day.
 $PythonComplete = Join-Path $PythonCache ".complete"
-$PythonWanted = @($TorchIndex, $TorchPackage) + $Packages + $WeightsOnly
+$PythonWanted = @($TorchIndex, $TorchPackage, $TorchAudioPackage) + $Packages + $WeightsOnly
 $PythonKept = if (Test-Path $PythonComplete) { @(Get-Content $PythonComplete) } else { @() }
 if (($PythonKept -join "`n") -ne ($PythonWanted -join "`n")) {
   Remove-Tree $PythonCache
@@ -171,7 +234,7 @@ if (($PythonKept -join "`n") -ne ($PythonWanted -join "`n")) {
   Invoke-Native { & $Python $GetPip --no-warn-script-location }
   Invoke-Native {
     & $Python -m pip install --no-cache-dir --no-warn-script-location `
-      --index-url $TorchIndex $TorchPackage
+      --index-url $TorchIndex $TorchPackage $TorchAudioPackage
   }
   Invoke-Native {
     & $Python -m pip install --no-cache-dir --no-warn-script-location @Packages

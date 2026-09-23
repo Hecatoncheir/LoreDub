@@ -950,6 +950,73 @@ languages and their translators with it. `SettingsService` reads a stored
 `targetLanguage` the catalogue no longer carries as its first language, or
 the session would start with no translator and no voice.
 
+Two packages stand in front of the processor's ones in the catalogue, for a
+machine with a card: a translator that is a language model and a voice that
+clones. `ModelSelection._preferred` picks, for a kind and a language, the
+first package on disk in catalogue order, and the first listed where none
+is -- so a machine with only Marian and Vosk keeps dubbing with them, one
+with the newer packages uses them, and there is no setting to switch. A
+package may serve several languages (`ModelPackage.languages`, read through
+`serves` and `servedLanguages`, with a default voice per language in
+`speakers`); `languagePairs` counts over the voices' languages only, since
+the model translates into many more than can be spoken. Why both, measured:
+`docs/adr/0013-language-model-and-cloning-voice.md`.
+
+The translator is `translategemma-4b-q4` (Google's TranslateGemma 4B in
+llama.cpp's Q4_K_M GGUF, `ModelPackage.languageModel`, Gemma Terms). The
+worker finds a `.gguf` in `--translation-model` (`language_model_in`) and
+starts `llama-server` from `--llama-server` beside itself
+(`llm_translation.py`, `LlamaServer`), tied to its own process with a job
+object so that the kill the application stops it with takes the server down
+too, and asks it over HTTP one line at a time (`LlmTranslation`): the whole
+line, unless the player wrote one of its sentences down, with the last
+`SCENE_LINES` of the scene, the glossary entries the line touches
+(`Glossary.mentioned`) and the speaker's gender, read off the clip's pitch,
+in front of it -- which is how "я пошла" comes out of a woman's mouth. The
+wording of that instruction is measured (ADR 0013): keep it. The memory of
+translations is keyed by the gender as well. `--chat-template gemma`
+(`ModelPackage.chatTemplate`) names one of llama.cpp's built-in templates,
+because the model's own refuses a plain message. The server runs on the
+`ComputeStage.languageModel` backend, its own stage with whisper's three
+builds -- the CPU and Vulkan ones bundled as `runtime/llama` and
+`runtime/llama-vulkan` by `prepare_windows_runtime.ps1`, the CUDA one the
+`llama-cuda` runtime package -- and `resolveLlamaDirectory` finds the build
+before the worker starts, as `resolveWhisperExecutable` does whisper's. With
+a language model, whisper is not asked for English (`whisperTranslates`):
+it transcribes, the language it heard travels with each line (`spoken` in
+the dub request, `--source-language` where the player named it), and the
+model translates from there -- into English too, so `translates` is true
+whatever the dubbing language and the worker leaves a line already in it
+alone. Marian's own stage and `-tr` stay for Marian.
+
+The voice is `qwen3-tts-1.7b` (Qwen3-TTS 1.7B Base, Apache 2.0,
+`ModelPackage.clonesVoice`), fetched file by file from its authors'
+repository, its `config.json` first -- `load_voice` reads the wrapper off
+it (`is_qwen_package`) where `model.onnx` says nothing -- and read by
+`assets/runtime/qwen_voice.py` for Russian and English both. It reads in
+the timbre of a clip: `Casting.reference_for` hands it a card's own
+recording (`CharacterCast.clip_of`, the `characters/<id>.wav` beside the
+cast file), else the longest clear line of a speaker heard so far, copied
+into the work directory since the capture's files do not stay, else the
+line itself -- with whisper's transcript where the text is one
+(`transcript` in the dub request), which conditions the reading on the
+clip rather than on its embedding alone. `speak` skips the converter for a
+voice that clones (`Session._clones`); the converter still hears who is
+speaking. The fixed voices are seven clips synthesized with Vosk and
+Kokoro, shipped in `assets/runtime/references/` with their transcripts and
+copied beside the worker, so `speakers` is their names and a preview
+without a clip reads from one of them. On the card the generation runs
+through CUDA graphs over static caches (`qwen_fast.py`, `FastTalker`):
+through transformers' own loop a line took three times its length, the
+launching of the kernels being what Windows charges for; through the
+graphs 0.4 of it. The loop re-runs `generate` by hand -- the repetition
+penalty, the suppressed tokens, the first two frames that may not end the
+line -- and a line may take no more than 24 frames plus two per character,
+after one in a hundred ran the limit out. On the processor the model's own
+loop stays. `--extra-packages` takes several directories separated the
+way PATH is, the first winning, which is how the worker is tried by hand
+beside a runtime that lacks a package.
+
 The Russian voice is `vosk-ru-0.9` (Vosk-TTS, Apache 2.0), read by
 `assets/runtime/vosk_voice.py` through the calls the worker was written
 against (`speakers`, `apply_tts`), from the directory its first file,

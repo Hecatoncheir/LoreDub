@@ -296,8 +296,14 @@ class NativeEngineService {
     required String text,
     required String voice,
     List<double> timbre = const [],
+    String? clip,
   }) async {
-    final wavePath = await _inference.previewVoice(text: text, voice: voice, timbre: timbre);
+    final wavePath = await _inference.previewVoice(
+      text: text,
+      voice: voice,
+      timbre: timbre,
+      clip: clip,
+    );
     try {
       await _playInIsolate(wavePath);
     } finally {

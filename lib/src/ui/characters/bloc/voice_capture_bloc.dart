@@ -405,6 +405,11 @@ class VoiceCaptureBloc extends Bloc<VoiceCaptureEvent, VoiceCaptureState> {
         text: voiceSample(_settings.settings.targetLanguage, character.name),
         voice: read.voice ?? selection.voice,
         timbre: selection.clonesVoice ? read.vector : const [],
+        // A voice that clones reads the card from its own recording, where
+        // the player made one; without it the card's fixed voice speaks.
+        clip: selection.clonesVoice && selection.voiceClonesItself
+            ? await _cast.clipFor(read.id)
+            : null,
       );
     } catch (exception) {
       // Another screen taking the worker over is no failure of this one.

@@ -47,6 +47,9 @@ Future<DownloadOutcome> downloadArtifacts(
   );
   for (final artifact in artifacts) {
     final destination = File(path.join(directory.path, artifact.fileName));
+    // A package may keep a file in a folder of its own, the way a Qwen3-TTS
+    // package keeps its speech tokenizer's.
+    await destination.parent.create(recursive: true);
     final partial = File('${destination.path}.part');
     // Already here and whole from an earlier run: nothing to fetch.
     if (await destination.exists() && await verifyArtifact(destination, artifact)) {

@@ -32,6 +32,39 @@ String whisperExecutablePath({
   'whisper-cli.exe',
 );
 
+/// llama.cpp's builds are kept apart for the same reason as whisper's, and
+/// under the same names one letter over.
+String llamaBackendDirectory(ComputeBackend backend) => switch (backend) {
+  ComputeBackend.cpu => 'llama',
+  ComputeBackend.vulkan => 'llama-vulkan',
+  ComputeBackend.cuda => 'llama-cuda',
+};
+
+String llamaServerPath({String? runtimeDirectory, ComputeBackend backend = ComputeBackend.cpu}) =>
+    path.join(
+      runtimeDirectory ?? bundledRuntimeDirectory(),
+      llamaBackendDirectory(backend),
+      'llama-server.exe',
+    );
+
+/// The directory llama.cpp's server stands in for [backend], checked before
+/// the worker is started: the worker starts the server itself, and would
+/// otherwise report a missing file a minute into loading. The CPU and
+/// Vulkan builds ship with the application; the CUDA one is downloaded, so
+/// it is looked for under [downloadedRuntimeDirectory].
+Future<String> resolveLlamaDirectory({
+  String? runtimeDirectory,
+  String? downloadedRuntimeDirectory,
+  ComputeBackend backend = ComputeBackend.cpu,
+}) async {
+  final root = backend == ComputeBackend.cuda
+      ? downloadedRuntimeDirectory ?? runtimeDirectory
+      : runtimeDirectory;
+  final candidate = llamaServerPath(runtimeDirectory: root, backend: backend);
+  if (await File(candidate).exists()) return path.dirname(candidate);
+  throw LoreDubFailure(FailureCode.llamaMissing, detail: candidate);
+}
+
 /// Verifies the whisper.cpp binary before the pipeline ducks the game and
 /// starts capturing, so a missing runtime is reported instead of silently
 /// swallowing every captured phrase.

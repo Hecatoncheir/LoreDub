@@ -26,14 +26,19 @@ enum ComputeBackend { cuda, vulkan, cpu }
 /// there of the worker's three: measured on an RTX 3080 Ti, 280 to 330 ms a
 /// line against 850 to 920 on twelve processor threads, near constant with
 /// the line's length. It pays for it at the start -- 17 s to load against 8.
-enum ComputeStage { recognition, translation, speech, voiceConversion }
+///
+/// The language model is a translator of its own kind: llama.cpp rather
+/// than the worker's torch, with a CUDA and a Vulkan build like whisper's,
+/// so it is placed apart from Marian's translation stage. Which of the two
+/// a session uses is the translator package installed.
+enum ComputeStage { recognition, translation, speech, voiceConversion, languageModel }
 
 /// The backends a stage could use on ideal hardware, best first.
 ///
 /// Ordering is the preference [ComputeDevice.auto] follows, so CUDA is tried
 /// before Vulkan: on NVIDIA it is consistently the faster of the two.
 List<ComputeBackend> stageBackends(ComputeStage stage) => switch (stage) {
-  ComputeStage.recognition => const [
+  ComputeStage.recognition || ComputeStage.languageModel => const [
     ComputeBackend.cuda,
     ComputeBackend.vulkan,
     ComputeBackend.cpu,
@@ -59,6 +64,10 @@ String? requiredRuntimeId(ComputeStage stage, ComputeBackend backend) => switch 
   (ComputeStage.translation, ComputeBackend.cuda) ||
   (ComputeStage.speech, ComputeBackend.cuda) ||
   (ComputeStage.voiceConversion, ComputeBackend.cuda) => torchCudaRuntimeId,
+  // llama.cpp's builds ship the way whisper's do: the CPU and Vulkan ones
+  // with the application, the CUDA one downloaded.
+  (ComputeStage.languageModel, ComputeBackend.cuda) => llamaCudaRuntimeId,
+  (ComputeStage.languageModel, ComputeBackend.vulkan) => llamaVulkanRuntimeId,
   _ => null,
 };
 

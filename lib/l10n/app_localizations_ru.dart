@@ -949,7 +949,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sectionLanguagesNote =>
-      'Переводчик и голос скачиваются и удаляются вместе. Английскому переводчик не нужен: whisper и так отдаёт английский, что бы ни говорила игра. Остальные языки ушли вместе с голосами, лицензия которых запрещала коммерческое использование.';
+      'Переводчик и голос скачиваются и удаляются вместе. Языковая модель переводит с любого языка игры и нужна английскому тоже; с Marian английскому переводчик не нужен — whisper и так отдаёт английский. Остальные языки ушли вместе с голосами, лицензия которых запрещала коммерческое использование.';
 
   @override
   String get modelPartTranslation => 'перевод';
@@ -2263,4 +2263,36 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pipelineSchemeNoVoices => 'Без голосов персонажей';
+
+  @override
+  String failureLlamaMissing(String detail) {
+    return 'Не найден llama-server.exe: $detail. Установите LoreDub через setup или подготовьте runtime командой scripts/prepare_windows_runtime.ps1.';
+  }
+
+  @override
+  String get computeStageLanguageModel => 'Языковая модель';
+
+  @override
+  String get runtimeLlamaCuda => 'CUDA · языковая модель';
+
+  @override
+  String get runtimeServesLlama => 'перевод языковой моделью';
+
+  @override
+  String modelLanguageModelTitle(String engine, String version, String language) {
+    return '$engine $version → $language';
+  }
+
+  @override
+  String modelLanguageModelNote(String size) {
+    return 'Локальная языковая модель через llama.cpp, $size. Переводит с любого языка игры, знает предыдущие реплики сцены, словарь и кто говорит — мужчина или женщина. Условия Gemma: ai.google.dev/gemma/terms.';
+  }
+
+  @override
+  String modelClonedVoiceNote(String languages, String size) {
+    return '$languages; читает в тембре трёх секунд записи — реплики игры или карточки персонажа, конвертер не нужен. Apache 2.0, $size.';
+  }
+
+  @override
+  String get modelClonedVoiceLanguages => 'Русская и английская речь';
 }

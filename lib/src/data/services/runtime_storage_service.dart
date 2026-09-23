@@ -92,8 +92,8 @@ class RuntimeStorageService {
     return Directory(path.join(directory.path, probe)).exists();
   }
 
-  /// Which of the catalogued runtimes are ready, plus the Vulkan build that
-  /// ships with the installer and so is never downloaded.
+  /// Which of the catalogued runtimes are ready, plus the Vulkan builds that
+  /// ship with the installer and so are never downloaded.
   Future<Set<String>> installedRuntimeIds({String? runtimeDirectory}) async {
     final installed = <String>{};
     for (final package in runtimeCatalog) {
@@ -106,6 +106,11 @@ class RuntimeStorageService {
       ),
     ).exists()) {
       installed.add('whisper-vulkan');
+    }
+    if (await File(
+      llamaServerPath(runtimeDirectory: runtimeDirectory, backend: ComputeBackend.vulkan),
+    ).exists()) {
+      installed.add(llamaVulkanRuntimeId);
     }
     return installed;
   }

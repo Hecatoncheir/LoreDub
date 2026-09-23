@@ -942,7 +942,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionLanguagesNote =>
-      'A translator and its voice are downloaded and deleted together. English needs no translator: whisper hands English over whatever the game speaks. The other languages went with voices under a licence that forbids commercial use.';
+      'A translator and its voice are downloaded and deleted together. The language model translates from whatever the game speaks and serves English too; with Marian, English needs no translator, since whisper hands English over. The other languages went with voices under a licence that forbids commercial use.';
 
   @override
   String get modelPartTranslation => 'translation';
@@ -2253,4 +2253,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pipelineSchemeNoVoices => 'No character voices';
+
+  @override
+  String failureLlamaMissing(String detail) {
+    return 'llama-server.exe is missing: $detail. Install LoreDub from the setup, or prepare the runtime with scripts/prepare_windows_runtime.ps1.';
+  }
+
+  @override
+  String get computeStageLanguageModel => 'Language model';
+
+  @override
+  String get runtimeLlamaCuda => 'CUDA · language model';
+
+  @override
+  String get runtimeServesLlama => 'translation by the language model';
+
+  @override
+  String modelLanguageModelTitle(String engine, String version, String language) {
+    return '$engine $version → $language';
+  }
+
+  @override
+  String modelLanguageModelNote(String size) {
+    return 'Local language model through llama.cpp, $size. Translates from whatever language the game speaks, and is told the scene\'s earlier lines, the glossary and whether a man or a woman is speaking. Gemma Terms: ai.google.dev/gemma/terms.';
+  }
+
+  @override
+  String modelClonedVoiceNote(String languages, String size) {
+    return '$languages; reads in the timbre of three seconds of a recording — a line of the game or a character\'s card — with no converter. Apache 2.0, $size.';
+  }
+
+  @override
+  String get modelClonedVoiceLanguages => 'Russian and English speech';
 }

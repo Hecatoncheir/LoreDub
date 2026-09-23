@@ -13,6 +13,7 @@ String computeStageName(AppLocalizations l10n, ComputeStage stage) => switch (st
   ComputeStage.translation => l10n.computeStageTranslation,
   ComputeStage.speech => l10n.computeStageSpeech,
   ComputeStage.voiceConversion => l10n.computeStageVoiceConversion,
+  ComputeStage.languageModel => l10n.computeStageLanguageModel,
 };
 
 /// Backend names are trademarks and stay untranslated, but they still come
@@ -27,6 +28,7 @@ String computeBackendName(AppLocalizations l10n, ComputeBackend backend) => swit
 String runtimeName(AppLocalizations l10n, String id) => switch (id) {
   whisperCudaRuntimeId => l10n.runtimeWhisperCuda,
   torchCudaRuntimeId => l10n.runtimeTorchCuda,
+  llamaCudaRuntimeId => l10n.runtimeLlamaCuda,
   _ => id,
 };
 
@@ -34,6 +36,7 @@ String runtimeName(AppLocalizations l10n, String id) => switch (id) {
 String runtimeServes(AppLocalizations l10n, String id) => switch (id) {
   whisperCudaRuntimeId => l10n.runtimeServesWhisper,
   torchCudaRuntimeId => l10n.runtimeServesTorch,
+  llamaCudaRuntimeId => l10n.runtimeServesLlama,
   _ => id,
 };
 

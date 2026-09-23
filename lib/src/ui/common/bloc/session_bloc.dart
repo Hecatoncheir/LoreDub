@@ -177,7 +177,9 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       await _session.start(
         process: selection.requiresProcess ? _process : null,
         settings: settings,
-        translateSpeech: selection.recognitionTranslatesSpeech,
+        // Whisper is asked for English where Marian will read it, and for
+        // what it heard where a language model will.
+        translateSpeech: selection.whisperTranslates,
         worker: WorkerPlan.under(
           settings,
           runtimeDirectory: _downloads.parts.runtimeDirectory,
@@ -186,6 +188,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
           speaker: selection.voice,
           sourceLanguage: settings.effectiveSourceLanguage,
           translationPrefix: translation?.translationPrefix ?? '',
+          languageModel: translation?.languageModel ?? false,
+          chatTemplate: translation?.chatTemplate ?? '',
           followSpeaker: selection.followsSpeaker,
           // The converter may be loaded only to hear who is speaking.
           revoice: selection.clonesVoice,
@@ -326,6 +330,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
           // selected line has no sound of its own to follow a speaker by.
           speaker: selection.voice,
           translationPrefix: translation?.translationPrefix ?? '',
+          languageModel: translation?.languageModel ?? false,
+          chatTemplate: translation?.chatTemplate ?? '',
           // The voices are carried over the reading where they are heard.
           revoice: hearsVoices,
           // The same bank the dubbing session keeps, so a character met

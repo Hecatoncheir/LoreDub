@@ -137,6 +137,7 @@ class SessionRepository {
         targetLanguage: settings.targetLanguage,
         textLanguage: settings.textLanguage,
         translateSpeech: translateSpeech,
+        languageModel: worker.languageModel,
         roughRecognition: settings.roughRecognition,
         speed: settings.chosenSpeed,
         hurryWhenQueued: settings.hurryWhenQueued,
@@ -205,6 +206,7 @@ class SessionRepository {
       lines: LineRules(
         targetLanguage: settings.targetLanguage,
         textLanguage: settings.textLanguage,
+        languageModel: worker.languageModel,
         speed: settings.chosenSpeed,
         hurryWhenQueued: settings.hurryWhenQueued,
         duckWhileSpeaking: settings.duckWhileSpeaking,
@@ -270,12 +272,14 @@ class SessionRepository {
     _throwIfSuperseded(session);
   });
 
-  /// Speaks one line in a card's voice and plays it.
+  /// Speaks one line in a card's voice and plays it. [clip] is the card's
+  /// own recording, for a voice that reads in the timbre of a clip itself.
   Future<void> previewVoice({
     required String text,
     required String voice,
     List<double> timbre = const [],
-  }) => _nativeEngine.previewVoice(text: text, voice: voice, timbre: timbre);
+    String? clip,
+  }) => _nativeEngine.previewVoice(text: text, voice: voice, timbre: timbre, clip: clip);
 
   /// Starts the session the characters screen records with: the game's audio
   /// and the converter that measures a voice, without the translator or the

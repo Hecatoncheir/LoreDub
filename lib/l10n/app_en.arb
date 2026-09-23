@@ -546,7 +546,7 @@
   "sectionRecognition": "SPEECH RECOGNITION",
   "sectionRecognitionNote": "Whisper turns speech in any language into English text. One model covers everything — larger is more accurate and slower.",
   "sectionLanguages": "DUBBING LANGUAGES",
-  "sectionLanguagesNote": "A translator and its voice are downloaded and deleted together. English needs no translator: whisper hands English over whatever the game speaks. The other languages went with voices under a licence that forbids commercial use.",
+  "sectionLanguagesNote": "A translator and its voice are downloaded and deleted together. The language model translates from whatever the game speaks and serves English too; with Marian, English needs no translator, since whisper hands English over. The other languages went with voices under a licence that forbids commercial use.",
   "modelPartTranslation": "translation",
   "modelPartVoice": "voice",
   "modelPartConverter": "voice converter",
@@ -1431,5 +1431,50 @@
   "pipelineCutVoices": "Stop following the characters' voices",
   "pipelineCutScreenTranslation": "Read the screen's text without translating it",
   "pipelineSchemeVoices": "With character voices",
-  "pipelineSchemeNoVoices": "No character voices"
+  "pipelineSchemeNoVoices": "No character voices",
+  "failureLlamaMissing": "llama-server.exe is missing: {detail}. Install LoreDub from the setup, or prepare the runtime with scripts/prepare_windows_runtime.ps1.",
+  "@failureLlamaMissing": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "computeStageLanguageModel": "Language model",
+  "runtimeLlamaCuda": "CUDA · language model",
+  "runtimeServesLlama": "translation by the language model",
+  "modelLanguageModelTitle": "{engine} {version} → {language}",
+  "@modelLanguageModelTitle": {
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      },
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "modelLanguageModelNote": "Local language model through llama.cpp, {size}. Translates from whatever language the game speaks, and is told the scene's earlier lines, the glossary and whether a man or a woman is speaking. Gemma Terms: ai.google.dev/gemma/terms.",
+  "@modelLanguageModelNote": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelClonedVoiceNote": "{languages}; reads in the timbre of three seconds of a recording — a line of the game or a character's card — with no converter. Apache 2.0, {size}.",
+  "@modelClonedVoiceNote": {
+    "placeholders": {
+      "languages": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelClonedVoiceLanguages": "Russian and English speech"
 }

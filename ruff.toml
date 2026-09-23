@@ -13,5 +13,5 @@ select = ["E4", "E7", "E9", "F", "I", "B"]
 
 [lint.isort]
 # The worker imports its own modules by name from the directory it runs in.
-known-first-party = ["audio", "dubbing_text", "english_g2p", "kokoro_voice", "onnx_speech",
+known-first-party = ["audio", "dubbing_text", "english_g2p", "kokoro_voice", "llm_translation", "onnx_speech", "qwen_fast", "qwen_voice",
                      "protocol", "tone_converter", "voices", "vosk_voice", "inference_worker"]

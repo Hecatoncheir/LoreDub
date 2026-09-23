@@ -229,6 +229,9 @@ class Glossary:
         self.names = {}
         self.phrases = {}
         self.words = []
+        # The names and words as the player spelled them, with their
+        # readings: what a model that can be told them is told.
+        self.hints = []
         if not path:
             return
         try:
@@ -256,7 +259,7 @@ class Glossary:
     def replace(self, written):
         """Reads what the interface keeps, which is also what it sends when
         the player edits an entry while a session runs."""
-        names, phrases, words = {}, {}, []
+        names, phrases, words, hints = {}, {}, [], []
         # A file of the wrong shape is a glossary not written yet, rather than
         # a worker that will not start.
         entries = written.get("entries") if isinstance(written, dict) else None
@@ -279,11 +282,13 @@ class Glossary:
                 # Compiled once: this runs over every line, and a word is
                 # looked for whether or not it is there.
                 words.append((re.compile(rf"\b{re.escape(source)}\b", re.IGNORECASE), reading))
+                hints.append((source, reading))
             elif kind == "phrase":
                 phrases[self._key(source)] = reading
             else:
                 names[self._key(source)] = reading
-        self.names, self.phrases, self.words = names, phrases, words
+                hints.append((source, reading))
+        self.names, self.phrases, self.words, self.hints = names, phrases, words, hints
 
     def reading(self, word):
         """How the player says this Latin word, or None."""
@@ -292,6 +297,14 @@ class Glossary:
     def said(self, sentence):
         """The player's own translation of this sentence, or None."""
         return self.phrases.get(self._key(sentence))
+
+    def mentioned(self, text):
+        """The names and words the player renamed that [text] holds, each
+        with its reading: what a translator that takes instructions is told
+        before the line, so that it declines the name rather than leaving it
+        for the nominative to be laid over afterwards."""
+        lowered = text.lower()
+        return [(source, reading) for source, reading in self.hints if source.lower() in lowered]
 
     def worded(self, text):
         """[text] with the words the player renamed said their way.

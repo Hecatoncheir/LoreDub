@@ -15,10 +15,12 @@ class ModelPaths {
   /// The recognition model's file.
   final String? whisper;
 
-  /// The translator's directory; none where the dubbing is into English.
+  /// The translator's directory; none where the dubbing is into English
+  /// and whisper handed English over already.
   final String? translation;
 
-  /// The voice package's first file, `model.onnx`.
+  /// The voice package's first file: `model.onnx`, or the config of a
+  /// voice that clones.
   final String? speech;
 
   /// The OpenVoice converter's directory, which is also what hears who is
@@ -33,6 +35,7 @@ class StageBackends {
     this.translation = ComputeBackend.cpu,
     this.speech = ComputeBackend.cpu,
     this.voiceConversion = ComputeBackend.cpu,
+    this.languageModel = ComputeBackend.cpu,
   });
 
   /// Where each stage will run under [settings], given what the machine
@@ -41,12 +44,17 @@ class StageBackends {
     : recognition = settings.backendFor(ComputeStage.recognition, availability),
       translation = settings.backendFor(ComputeStage.translation, availability),
       speech = settings.backendFor(ComputeStage.speech, availability),
-      voiceConversion = settings.backendFor(ComputeStage.voiceConversion, availability);
+      voiceConversion = settings.backendFor(ComputeStage.voiceConversion, availability),
+      languageModel = settings.backendFor(ComputeStage.languageModel, availability);
 
   final ComputeBackend recognition;
   final ComputeBackend translation;
   final ComputeBackend speech;
   final ComputeBackend voiceConversion;
+
+  /// Where a translator that is a language model runs: llama.cpp's own
+  /// builds rather than the worker's torch.
+  final ComputeBackend languageModel;
 }
 
 /// What the Python worker is started with.
@@ -60,7 +68,10 @@ class WorkerPlan {
     this.speaker = '',
     this.speed = 1,
     this.sourceLanguage = autoSpokenLanguage,
+    this.targetLanguage = 'ru',
     this.translationPrefix = '',
+    this.languageModel = false,
+    this.chatTemplate = '',
     this.followSpeaker = false,
     this.revoice = false,
     this.maleVoices = const [],
@@ -72,7 +83,8 @@ class WorkerPlan {
   });
 
   /// A worker started the way [settings] say: its threads, its
-  /// interpreter and the player's pace. What it loads is the caller's.
+  /// interpreter, the player's pace and the language the dubbing is in.
+  /// What it loads is the caller's.
   WorkerPlan.under(
     AppSettings settings, {
     required String runtimeDirectory,
@@ -81,6 +93,8 @@ class WorkerPlan {
     String speaker = '',
     String sourceLanguage = autoSpokenLanguage,
     String translationPrefix = '',
+    bool languageModel = false,
+    String chatTemplate = '',
     bool followSpeaker = false,
     bool revoice = false,
     List<String> maleVoices = const [],
@@ -95,7 +109,10 @@ class WorkerPlan {
          speaker: speaker,
          speed: settings.chosenSpeed,
          sourceLanguage: sourceLanguage,
+         targetLanguage: settings.targetLanguage,
          translationPrefix: translationPrefix,
+         languageModel: languageModel,
+         chatTemplate: chatTemplate,
          followSpeaker: followSpeaker,
          revoice: revoice,
          maleVoices: maleVoices,
@@ -118,8 +135,19 @@ class WorkerPlan {
   /// What whisper is told the game speaks, or [autoSpokenLanguage].
   final String sourceLanguage;
 
+  /// The language the dubbing is in, which a voice that clones and a
+  /// translator that is a language model are both told by name.
+  final String targetLanguage;
+
   /// The target token a multi-target translator wants before the text.
   final String translationPrefix;
+
+  /// Whether the translator named in [models] is a language model, run by
+  /// llama.cpp's server on the language-model backend, rather than Marian.
+  final bool languageModel;
+
+  /// The built-in chat template that server is told to use, or none.
+  final String chatTemplate;
 
   /// Pick the voice per line from the gender heard in it.
   final bool followSpeaker;
@@ -156,7 +184,10 @@ class WorkerPlan {
     speaker: speaker ?? this.speaker,
     speed: speed,
     sourceLanguage: sourceLanguage,
+    targetLanguage: targetLanguage,
     translationPrefix: translationPrefix,
+    languageModel: languageModel,
+    chatTemplate: chatTemplate,
     followSpeaker: followSpeaker,
     revoice: revoice,
     maleVoices: maleVoices,
@@ -245,6 +276,7 @@ class LineRules {
     required this.targetLanguage,
     this.textLanguage = 'en',
     this.translateSpeech = true,
+    this.languageModel = false,
     this.roughRecognition = false,
     this.speed = 1,
     this.hurryWhenQueued = false,
@@ -261,6 +293,10 @@ class LineRules {
 
   /// Whether whisper translates what it hears into English.
   final bool translateSpeech;
+
+  /// Whether the translator is a language model, which takes what whisper
+  /// heard in the game's own language and translates from there.
+  final bool languageModel;
   final bool roughRecognition;
 
   /// The player's own pace.
@@ -276,8 +312,11 @@ class LineRules {
   /// Let two speakers' lines sound side by side.
   final bool overlapVoices;
 
-  /// Whether what whisper hands over -- English -- is translated at all.
-  bool get translatesHeard => targetLanguage != untranslatedDubbingLanguage;
+  /// Whether what whisper hands over is translated at all. English from
+  /// whisper into English is not; a language model is handed every line,
+  /// with the language it was heard in, and leaves one already in the
+  /// dubbing language as it is.
+  bool get translatesHeard => languageModel || targetLanguage != untranslatedDubbingLanguage;
 
   /// Whether text read off the screen is translated, rather than voiced in
   /// the language it was written in.

@@ -239,6 +239,7 @@ void main() {
           required pythonExecutable,
           required requiresWhisper,
           required recognitionBackend,
+          languageModelBackend,
           downloadedRuntimeDirectory,
         }) => preparing.future,
         startWorker: (executable, arguments) async {
@@ -388,12 +389,14 @@ void main() {
               required pythonExecutable,
               required requiresWhisper,
               required recognitionBackend,
+              languageModelBackend,
               downloadedRuntimeDirectory,
             }) async => (
               python: 'python.exe',
               script: 'inference_worker.py',
               work: work.path,
               whisper: 'whisper-cli.exe',
+              llama: null,
             ),
         startWorker: (executable, arguments) async => worker,
         whisper: _Whisper((arguments) async {

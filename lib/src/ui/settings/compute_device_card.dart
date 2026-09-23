@@ -26,10 +26,18 @@ import 'stage_backend_table.dart';
 class ComputeDeviceCard extends StatelessWidget {
   const ComputeDeviceCard({super.key});
 
-  /// OpenVoice runs only for the original voice, so its row waits for it.
-  static List<ComputeStage> _stages(AppSettings settings) => [
+  /// OpenVoice runs only for the original voice, so its row waits for it;
+  /// the language model's row stands only while the translator is one, and
+  /// Marian's only while it is not.
+  static List<ComputeStage> _stages(AppSettings settings, {required bool languageModel}) => [
     for (final stage in ComputeStage.values)
-      if (stage != ComputeStage.voiceConversion || settings.originalVoice) stage,
+      if (switch (stage) {
+        ComputeStage.voiceConversion => settings.originalVoice,
+        ComputeStage.languageModel => languageModel,
+        ComputeStage.translation => !languageModel,
+        _ => true,
+      })
+        stage,
   ];
 
   @override
@@ -85,13 +93,13 @@ class ComputeDeviceCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 StageBackendTable(
-                  stages: _stages(settings),
+                  stages: _stages(settings, languageModel: context.selection.usesLanguageModel),
                   downloads: downloads,
                   settings: settings,
                   pipeline: pipeline,
                 ),
                 ComputeRuntimesSection(
-                  stages: _stages(settings),
+                  stages: _stages(settings, languageModel: context.selection.usesLanguageModel),
                   downloads: downloads,
                   settings: settings,
                   pipeline: pipeline,

@@ -16,6 +16,9 @@ enum FailureCode {
   /// whisper.cpp ran and failed.
   whisperFailed,
 
+  /// llama-server.exe is not where the language model's backend keeps it.
+  llamaMissing,
+
   /// No interpreter at the configured path or in PATH.
   pythonMissing,
 

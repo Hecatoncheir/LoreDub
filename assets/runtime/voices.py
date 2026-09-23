@@ -302,6 +302,9 @@ class CharacterCast:
 
     def __init__(self, path):
         self.entries = []
+        # The recordings the cards were made from stand beside the file, one
+        # per card: `characters.json` has `characters/<id>.wav` next to it.
+        self._clips = pathlib.Path(path).with_suffix("") if path else None
         if not path:
             return
         try:
@@ -345,6 +348,14 @@ class CharacterCast:
     def vector_of(self, index):
         return self.entries[index]["vector"]
 
+    def clip_of(self, index):
+        """The card's own recording, where the player made one: what a
+        voice that clones reads the card's lines from."""
+        if self._clips is None:
+            return None
+        clip = self._clips / f"{self.entries[index]['id']}.wav"
+        return str(clip) if clip.is_file() else None
+
     def voiced_by(self, index):
         """The card standing in for this one, if the player named one."""
         return self.entries[index]["voicedBy"] if 0 <= index < len(self.entries) else None
@@ -363,17 +374,57 @@ class CharacterCast:
         return None
 
 
-def load_voice(path, threads, device):
+def is_qwen_package(directory):
+    """Whether [directory] holds a Qwen3-TTS package: its `config.json`
+    names the architecture, where the ONNX voices' say nothing of it."""
+    try:
+        with open(pathlib.Path(directory) / "config.json", encoding="utf-8") as source:
+            return '"qwen3_tts"' in source.read()
+    except OSError:
+        return False
+
+
+def reference_clips(directory):
+    """The clips in [directory] that stand for fixed voices of a voice that
+    clones, by name: each a WAV, with its transcript in a `.txt` beside it
+    where there is one. A clip without a transcript is still a voice, read
+    from its timbre alone."""
+    directory = pathlib.Path(directory)
+    if not directory.is_dir():
+        return {}
+    clips = {}
+    for clip in sorted(directory.glob("*.wav")):
+        transcript = clip.with_suffix(".txt")
+        text = transcript.read_text(encoding="utf-8").strip() if transcript.is_file() else ""
+        clips[clip.stem] = (str(clip), text)
+    return clips
+
+
+# How long a line has to be before it stands as the clip a speaker is
+# cloned from for the lines after: the model asks for about three seconds
+# of whoever it is to read as.
+CLONE_SECONDS = 3.0
+
+
+def load_voice(path, threads, device, language=None, references=None):
     """The voice the package asks for.
 
     Which wrapper reads a speech package is the package's own answer rather
-    than a flag from the application: a Kokoro one carries its voices in
-    `voices.bin` beside the model, a Vosk one a `config.json` and a
-    `dictionary`. Both are named by their first file, `model.onnx`, so the
-    name says nothing.
+    than a flag from the application: a Qwen3-TTS one names itself in its
+    `config.json`, a Kokoro one carries its voices in `voices.bin` beside
+    the model, a Vosk one a `config.json` and a `dictionary`. Each is named
+    by its first file -- `model.onnx`, or the config -- so the name says
+    nothing. [language] is what the dubbing is in and [references] the clips
+    that stand for fixed voices, which only the voice that clones reads.
     """
     directory = pathlib.Path(path)
-    directory = directory.parent if directory.suffix == ".onnx" else directory
+    directory = directory.parent if directory.suffix in (".onnx", ".json") else directory
+    if is_qwen_package(directory):
+        from qwen_voice import QwenVoice
+
+        return QwenVoice(
+            directory, threads=threads, device=device, language=language, references=references
+        )
     if (directory / "voices.bin").is_file():
         from kokoro_voice import KokoroVoice
 

@@ -35,38 +35,88 @@ void main() {
     expect(speechModelFor('ru'), isNotNull);
   });
 
-  test('dubs into English with a voice alone, the translator being no use', () {
+  test('dubs into English with a voice alone where Marian is the translator', () {
     // Whisper hands English over whatever the game speaks, so the one
-    // language that needs no translator is the one it recognizes into.
+    // language that needs no Marian is the one it recognizes into. The
+    // language model serves it all the same: it reads the game's own
+    // language, and English is one it translates into.
     expect(speechModelFor(untranslatedDubbingLanguage), isNotNull);
-    expect(translationModelFor(untranslatedDubbingLanguage), isNull);
+    final marian = modelCatalog.where(
+      (model) =>
+          model.kind == ModelKind.translation &&
+          !model.languageModel &&
+          model.serves(untranslatedDubbingLanguage),
+    );
+    expect(marian, isEmpty);
+    expect(translationModelFor(untranslatedDubbingLanguage)?.languageModel, isTrue);
     expect(dubbingLanguages, contains(untranslatedDubbingLanguage));
   });
 
   test('reads each language with one voice, pinned file by file with its NOTICE', () {
     final speech = modelCatalog.where((model) => model.kind == ModelKind.speech).toList();
-    expect(speech.map((model) => model.id), ['vosk-ru-0.9', englishVoiceModelId]);
+    expect(speech.map((model) => model.id), ['qwen3-tts-1.7b', 'vosk-ru-0.9', englishVoiceModelId]);
     final releases = {'vosk-ru-0.9': voskVoiceRelease, englishVoiceModelId: kokoroVoiceRelease};
 
     for (final voice in speech) {
-      // The pipeline names a speech package by its first file, and the worker
-      // reads the package from the directory it sits in.
-      expect(voice.primaryFileName, 'model.onnx', reason: voice.id);
       // Which wrapper reads it is the package's own answer, and its name is
       // what the models screen shows beside the version.
       expect(voice.engine, isNotEmpty, reason: voice.id);
       for (final artifact in voice.artifacts) {
         expect(artifact.byteSize, isNotNull, reason: artifact.fileName);
         expect(artifact.hash, hasLength(64), reason: artifact.fileName);
+      }
+      if (voice.clonesVoice) {
+        // The voice that clones is fetched from its authors' repository as
+        // they laid it out, its config first: the worker reads the wrapper
+        // off it, where `model.onnx` says nothing.
+        expect(voice.primaryFileName, 'config.json', reason: voice.id);
+        for (final artifact in voice.artifacts) {
+          expect(
+            artifact.url.toString(),
+            startsWith(qwenVoiceRepository),
+            reason: artifact.fileName,
+          );
+        }
+        continue;
+      }
+      // The pipeline names a speech package by its first file, and the worker
+      // reads the package from the directory it sits in.
+      expect(voice.primaryFileName, 'model.onnx', reason: voice.id);
+      for (final artifact in voice.artifacts) {
         expect(
           artifact.url.toString(),
           startsWith(releases[voice.id]!),
           reason: artifact.fileName,
         );
       }
-      // Apache 2.0 travels with the weights.
+      // Apache 2.0 travels with the weights we laid out ourselves.
       expect(voice.artifacts.map((artifact) => artifact.fileName), contains('NOTICE'));
     }
+  });
+
+  test('offers the voice that clones for both languages, a default voice for each', () {
+    final voice = speechModelFor('ru')!;
+    expect(voice.id, 'qwen3-tts-1.7b');
+    expect(voice.clonesVoice, isTrue);
+    expect(voice.servedLanguages, ['ru', 'en']);
+    expect(identical(speechModelFor('en'), voice), isTrue);
+    // A Russian line read in an English voice would carry its accent, so
+    // each language names a voice of its own among the package's.
+    expect(voice.speakerFor('ru'), 'ru_female_1');
+    expect(voice.speakerFor('en'), 'af_heart');
+    for (final language in voice.servedLanguages) {
+      expect(voice.voices.map((option) => option.id), contains(voice.speakerFor(language)));
+    }
+    expect(voice.canFollowSpeaker, isTrue, reason: 'a man and a woman among the fixed voices');
+  });
+
+  test('offers the language model first, for every language it dubs into', () {
+    final translator = translationModelFor('ru')!;
+    expect(translator.id, 'translategemma-4b-q4');
+    expect(translator.languageModel, isTrue);
+    expect(translator.primaryFileName, endsWith('.gguf'));
+    expect(translator.servedLanguages, containsAll(dubbingLanguages));
+    expect(translator.translationPrefix, isNull, reason: 'it is told the language by name');
   });
 
   test('names a default voice among the ones the package lists', () {
@@ -76,17 +126,23 @@ void main() {
     }
   });
 
-  test('keeps the identifier the Russian translator was downloaded under', () {
+  test('keeps the identifiers the processor packages were downloaded under', () {
     // Identifiers name folders on disk, so changing one asks everyone to
-    // download again.
-    expect(translationModelFor('ru')?.id, 'opus-mt-tc-big-en-zle');
-    expect(speechModelFor('ru')?.id, 'vosk-ru-0.9');
+    // download again. The language model and the voice that clones stand in
+    // front of them in the catalogue, so these are what a machine with only
+    // the older packages on disk keeps running on.
+    final ids = modelCatalog.map((model) => model.id);
+    expect(ids, containsAll(['opus-mt-tc-big-en-zle', 'vosk-ru-0.9', englishVoiceModelId]));
+    final marian = modelCatalog.firstWhere((model) => model.id == 'opus-mt-tc-big-en-zle');
+    expect(marian.serves('ru'), isTrue);
+    expect(marian.languageModel, isFalse);
   });
 
   test('names the target language for a translator that serves several', () {
     // opus-mt-tc-big-en-zle covers Russian, Ukrainian and Belarusian, and
     // picks between them from a token in front of the text.
-    expect(translationModelFor('ru')?.translationPrefix, '>>rus<<');
+    final marian = modelCatalog.firstWhere((model) => model.id == 'opus-mt-tc-big-en-zle');
+    expect(marian.translationPrefix, '>>rus<<');
   });
 
   test('offers a readable name for every dubbing language', () {

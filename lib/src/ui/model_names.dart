@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 import '../../l10n/app_localizations.dart';
-import '../data/services/model_catalog.dart';
 import '../domain/model_package.dart';
 import 'compute_names.dart';
 import 'language_names.dart';
@@ -11,6 +10,13 @@ import 'language_names.dart';
 /// and URLs; what to call a package belongs to the translations.
 String modelTitle(AppLocalizations l10n, ModelPackage model) => switch (model.kind) {
   ModelKind.recognition => l10n.modelWhisperTitle(model.version ?? ''),
+  // A language model translates from whatever the game speaks, so it is
+  // named by what it is rather than by the one language Marian reads.
+  ModelKind.translation when model.languageModel => l10n.modelLanguageModelTitle(
+    model.engine ?? '',
+    model.version ?? '',
+    spokenLanguageName(l10n, model.language!),
+  ),
   ModelKind.translation => l10n.modelTranslationTitle(
     spokenLanguageName(l10n, model.language!),
   ),
@@ -45,10 +51,19 @@ String modelDescription(AppLocalizations l10n, ModelPackage model) => switch (mo
     model.translatesSpeech
         ? l10n.modelWhisperNote
         : '${l10n.modelWhisperNote} ${l10n.modelWhisperTranscribeOnly}',
+  ModelKind.translation when model.languageModel => l10n.modelLanguageModelNote(
+    formatPackageSize(l10n, model.downloadBytes),
+  ),
   ModelKind.translation => l10n.modelTranslationNote(formatPackageSize(l10n, model.downloadBytes)),
-  // The Russian package ships several voices worth naming; the others do not.
+  // The voice that clones serves both languages and is described by what it
+  // does; the Russian package ships several voices worth naming; the others
+  // do not.
+  ModelKind.speech when model.clonesVoice => l10n.modelClonedVoiceNote(
+    l10n.modelClonedVoiceLanguages,
+    formatPackageSize(l10n, model.downloadBytes),
+  ),
   ModelKind.speech =>
-    model.id == speechModelFor('ru')?.id
+    model.id == 'vosk-ru-0.9'
         ? l10n.modelVoiceNoteRu
         : l10n.modelVoiceNote(voiceSpeechName(l10n, model.language!)),
   ModelKind.voiceConversion => l10n.modelConverterNote(

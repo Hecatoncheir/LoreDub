@@ -221,6 +221,12 @@ class Heard:
     def gender(self):
         return gender_of_pitch(self.pitch)
 
+    @property
+    def seconds(self):
+        """How long the recording is; nothing where there is none."""
+        samples, rate = self.clip
+        return len(samples) / rate if samples is not None and rate else 0.0
+
 
 # A segment shorter than this is one person talking: looking for a second
 # voice in it would cost more than it could buy.

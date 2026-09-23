@@ -4,6 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/domain/app_settings.dart';
 import 'package:lore_dub/src/domain/compute_device.dart';
+import 'package:lore_dub/src/domain/runtime_package.dart';
 
 void main() {
   const nvidia = GraphicsAdapter(
@@ -255,6 +256,58 @@ void main() {
       expect(settings.backendOverride(ComputeStage.recognition), ComputeBackend.cuda);
       expect(settings.backendOverride(ComputeStage.translation), ComputeBackend.cpu);
       expect(settings.backendOverride(ComputeStage.speech), isNull);
+    });
+  });
+
+  group('the language model', () {
+    test('is offered the builds llama.cpp ships, the way whisper is', () {
+      expect(stageBackends(ComputeStage.languageModel), [
+        ComputeBackend.cuda,
+        ComputeBackend.vulkan,
+        ComputeBackend.cpu,
+      ]);
+      expect(
+        requiredRuntimeId(ComputeStage.languageModel, ComputeBackend.cuda),
+        llamaCudaRuntimeId,
+      );
+      expect(
+        requiredRuntimeId(ComputeStage.languageModel, ComputeBackend.vulkan),
+        llamaVulkanRuntimeId,
+      );
+      expect(requiredRuntimeId(ComputeStage.languageModel, ComputeBackend.cpu), isNull);
+    });
+
+    test('runs on the card only with the build for it on disk', () {
+      expect(
+        resolve(
+          ComputeStage.languageModel,
+          ComputeDevice.auto,
+          nvidiaMachine(runtimes: {llamaCudaRuntimeId}),
+        ),
+        ComputeBackend.cuda,
+      );
+      expect(
+        resolve(
+          ComputeStage.languageModel,
+          ComputeDevice.auto,
+          nvidiaMachine(runtimes: {llamaVulkanRuntimeId}),
+        ),
+        ComputeBackend.vulkan,
+        reason: 'the bundled Vulkan build stands in for the CUDA one not downloaded',
+      );
+      expect(
+        resolve(ComputeStage.languageModel, ComputeDevice.auto, nvidiaMachine()),
+        ComputeBackend.cpu,
+      );
+      // torch's CUDA runtime serves Marian, not llama.cpp.
+      expect(
+        resolve(
+          ComputeStage.languageModel,
+          ComputeDevice.gpu,
+          nvidiaMachine(runtimes: {torchCudaRuntimeId}),
+        ),
+        ComputeBackend.cpu,
+      );
     });
   });
 }

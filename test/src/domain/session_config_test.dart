@@ -69,4 +69,28 @@ void main() {
     expect(const LineRules(targetLanguage: 'ru').translatesText, isTrue);
     expect(const LineRules(targetLanguage: 'en').translatesHeard, isFalse);
   });
+
+  test('a language model is handed every line, English into English included', () {
+    // Whisper hands it what it heard rather than English, and the model
+    // itself leaves a line already in the dubbing language as it is.
+    expect(const LineRules(targetLanguage: 'en', languageModel: true).translatesHeard, isTrue);
+    expect(const LineRules(targetLanguage: 'ru', languageModel: true).translatesHeard, isTrue);
+  });
+
+  test('a plan carries the dubbing language and the template its model wants', () {
+    const settings = AppSettings(targetLanguage: 'en');
+    final plan = WorkerPlan.under(
+      settings,
+      runtimeDirectory: 'rt',
+      languageModel: true,
+      chatTemplate: 'gemma',
+    );
+
+    expect(plan.targetLanguage, 'en');
+    expect(plan.languageModel, isTrue);
+    expect(plan.chatTemplate, 'gemma');
+    expect(plan.copyWith(speaker: 'x').chatTemplate, 'gemma');
+    expect(worker.languageModel, isFalse);
+    expect(worker.chatTemplate, isEmpty);
+  });
 }

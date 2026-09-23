@@ -38,13 +38,93 @@ void main() {
       expect(pairs.map((pair) => pair.language), ['ru', 'en']);
       for (final pair in pairs) {
         expect(pair.speech?.model.kind, ModelKind.speech, reason: pair.language);
-        // English is half a pair on purpose: whisper hands it over already.
-        if (pair.language == untranslatedDubbingLanguage) {
-          expect(pair.translation, isNull);
-          continue;
-        }
         expect(pair.translation?.model.kind, ModelKind.translation, reason: pair.language);
+        // English has no Marian on purpose -- whisper hands it over already --
+        // and only the language model, which reads the game's own language.
+        if (pair.language == untranslatedDubbingLanguage) {
+          expect(pair.translation?.model.languageModel, isTrue);
+        }
       }
+    });
+
+    test('prefers the package on disk, and the first listed where none is', () {
+      final languageModel = translationModelFor('ru')!;
+      final marian = modelCatalog.firstWhere((model) => model.id == 'opus-mt-tc-big-en-zle');
+      final cloning = speechModelFor('ru')!;
+      final vosk = modelCatalog.firstWhere((model) => model.id == 'vosk-ru-0.9');
+      ModelInstallState state(ModelPackage model, {bool installed = false}) =>
+          ModelInstallState(model: model, installed: installed);
+
+      final both = ModelSelection(
+        models: [
+          state(languageModel, installed: true),
+          state(marian, installed: true),
+          state(cloning),
+          state(vosk, installed: true),
+        ],
+        settings: const AppSettings(),
+      );
+      expect(both.usesLanguageModel, isTrue);
+      expect(both.whisperTranslates, isFalse, reason: 'the model reads the game\'s language');
+      expect(both.forTargetLanguage(ModelKind.speech)?.model.id, vosk.id);
+      expect(both.voiceClonesItself, isFalse);
+
+      final older = ModelSelection(
+        models: [
+          state(languageModel),
+          state(marian, installed: true),
+          state(vosk, installed: true),
+        ],
+        settings: const AppSettings(),
+      );
+      expect(older.usesLanguageModel, isFalse);
+      expect(older.whisperTranslates, isTrue);
+      expect(older.forTargetLanguage(ModelKind.translation)?.model.id, marian.id);
+
+      final nothing = ModelSelection(
+        models: [state(languageModel), state(marian), state(cloning), state(vosk)],
+        settings: const AppSettings(),
+      );
+      expect(nothing.forTargetLanguage(ModelKind.translation)?.model.id, languageModel.id);
+      expect(nothing.forTargetLanguage(ModelKind.speech)?.model.id, cloning.id);
+    });
+
+    test('loads the language model for English too, since the line arrives in the game\'s', () {
+      final languageModel = translationModelFor('ru')!;
+      final marian = modelCatalog.firstWhere((model) => model.id == 'opus-mt-tc-big-en-zle');
+      const english = AppSettings(targetLanguage: 'en');
+
+      expect(
+        ModelSelection(
+          models: [ModelInstallState(model: languageModel, installed: true)],
+          settings: english,
+        ).translates,
+        isTrue,
+      );
+      expect(
+        ModelSelection(
+          models: [ModelInstallState(model: marian, installed: true)],
+          settings: english,
+        ).translates,
+        isFalse,
+      );
+    });
+
+    test('reads each language in the voice the cloning package names for it', () {
+      final cloning = ModelInstallState(model: speechModelFor('ru')!, installed: true);
+
+      expect(
+        ModelSelection(
+          models: [cloning],
+          settings: const AppSettings(targetLanguage: 'en'),
+        ).voice,
+        'af_heart',
+      );
+      expect(ModelSelection(models: [cloning], settings: const AppSettings()).voice, 'ru_female_1');
+      expect(
+        ModelSelection(models: [cloning], settings: const AppSettings()).voiceClonesItself,
+        isTrue,
+      );
     });
 
     test('counts as installed only with both halves on disk', () {

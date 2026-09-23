@@ -100,6 +100,27 @@ class LatinTest(unittest.TestCase):
         self.assertEqual(answer, "Иди на склад и найди ключ")
 
 
+class GlossaryHintsTest(unittest.TestCase):
+    def test_names_the_entries_a_line_touches_as_the_player_spelled_them(self):
+        glossary = Glossary()
+        glossary.replace(
+            {
+                "entries": [
+                    {"kind": "name", "source": "Megaton", "reading": "Мегатон"},
+                    {"kind": "word", "source": "vault", "reading": "убежище"},
+                    {"kind": "phrase", "source": "Fire in the hole!", "reading": "Ложись!"},
+                ]
+            }
+        )
+        self.assertEqual(
+            glossary.mentioned("The Vault under Megaton."),
+            [("Megaton", "Мегатон"), ("vault", "убежище")],
+        )
+        # A phrase is answered whole before the model is asked; it is no hint.
+        self.assertEqual(glossary.mentioned("Fire in the hole!"), [])
+        self.assertEqual(glossary.mentioned("Nothing here."), [])
+
+
 class TranslationMemoryTest(unittest.TestCase):
     def test_answers_a_sentence_it_translated_before_however_it_was_spaced(self):
         memory = TranslationMemory()

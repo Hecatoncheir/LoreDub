@@ -171,4 +171,36 @@ void main() {
       ),
     );
   });
+
+  test('finds llama.cpp beside whisper, its CUDA build among the downloads', () async {
+    final runtime = await createRuntime();
+    final downloaded = await createRuntime();
+    await createExecutable(runtime, ['llama-vulkan', 'llama-server.exe']);
+    await createExecutable(downloaded, ['llama-cuda', 'llama-server.exe']);
+
+    expect(
+      await resolveLlamaDirectory(runtimeDirectory: runtime.path, backend: ComputeBackend.vulkan),
+      path.join(runtime.path, 'llama-vulkan'),
+    );
+    expect(
+      await resolveLlamaDirectory(
+        runtimeDirectory: runtime.path,
+        downloadedRuntimeDirectory: downloaded.path,
+        backend: ComputeBackend.cuda,
+      ),
+      path.join(downloaded.path, 'llama-cuda'),
+    );
+    await expectLater(
+      resolveLlamaDirectory(runtimeDirectory: runtime.path),
+      throwsA(
+        isA<LoreDubFailure>()
+            .having((error) => error.code, 'code', FailureCode.llamaMissing)
+            .having(
+              (error) => error.detail,
+              'detail',
+              path.join(runtime.path, 'llama', 'llama-server.exe'),
+            ),
+      ),
+    );
+  });
 }

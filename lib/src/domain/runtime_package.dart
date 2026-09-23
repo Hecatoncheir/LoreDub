@@ -133,8 +133,13 @@ class RuntimeInstallState with PackageDownload<RuntimeInstallState> {
 
 /// Where the GPU runtimes come from.
 ///
-/// Only the two heavy ones are here. The Vulkan build of whisper.cpp is small
-/// enough to ship with the installer, so it has no entry: nothing has to be
-/// fetched before an AMD card can be used.
+/// Only the heavy ones are here. The Vulkan builds of whisper.cpp and
+/// llama.cpp are small enough to ship with the installer, so they have no
+/// entry: nothing has to be fetched before an AMD card can be used.
 const whisperCudaRuntimeId = 'whisper-cuda';
 const torchCudaRuntimeId = 'torch-cuda';
+const llamaCudaRuntimeId = 'llama-cuda';
+
+/// The bundled Vulkan build of llama.cpp, named among the installed runtimes
+/// the way whisper's is, so the stage can be offered the backend.
+const llamaVulkanRuntimeId = 'llama-vulkan';

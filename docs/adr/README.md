@@ -24,3 +24,4 @@ a Why, and a line in `CLAUDE.md` where the rule is kept.
 | 0010 | [A card built from files averages them as the encoder gave them](0010-a-card-averages-its-files.md) |
 | 0011 | [A segment is cut between speakers at a cosine distance of 0.25](0011-speaker-cut-threshold.md) |
 | 0012 | [Vosk is offered on the card, and Automatic chooses it](0012-vosk-on-the-card.md) |
+| 0013 | [A language model translates and a cloning voice reads, where a card can carry them](0013-language-model-and-cloning-voice.md) |

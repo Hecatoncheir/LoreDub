@@ -105,4 +105,66 @@ void main() {
     expect(of(base, load: WorkerLoad.speechOnly), contains('--speech-only'));
     expect(of(base), isNot(anyOf(contains('--embed-only'), contains('--speech-only'))));
   });
+
+  test('names the dubbing language, and the game\'s only where the player named it', () {
+    expect(valueOf(of(base), '--language'), 'ru');
+    expect(of(base), isNot(contains('--source-language')), reason: 'detected, it travels per line');
+
+    final named = of(
+      const WorkerPlan(
+        threads: 2,
+        pythonExecutable: 'python.exe',
+        runtimeDirectory: 'runtime',
+        sourceLanguage: 'de',
+        targetLanguage: 'en',
+      ),
+    );
+    expect(valueOf(named, '--source-language'), 'de');
+    expect(valueOf(named, '--language'), 'en');
+  });
+
+  test('starts llama.cpp for a language model on its own backend, with its template', () {
+    const plan = WorkerPlan(
+      threads: 2,
+      pythonExecutable: 'python.exe',
+      runtimeDirectory: 'runtime',
+      models: ModelPaths(translation: 'translategemma'),
+      backends: StageBackends(
+        translation: ComputeBackend.cuda,
+        languageModel: ComputeBackend.vulkan,
+      ),
+      languageModel: true,
+      chatTemplate: 'gemma',
+    );
+    final arguments = workerArguments(
+      plan,
+      script: 'worker.py',
+      work: 'work',
+      llama: path.join('runtime', 'llama-vulkan'),
+    );
+
+    expect(valueOf(arguments, '--translation-model'), 'translategemma');
+    expect(valueOf(arguments, '--llama-server'), path.join('runtime', 'llama-vulkan'));
+    expect(valueOf(arguments, '--translation-backend'), 'vulkan');
+    expect(valueOf(arguments, '--chat-template'), 'gemma');
+    // The model runs in llama.cpp's own build: nothing asks torch for the card.
+    expect(arguments, isNot(contains('--extra-packages')));
+    // Without the server found there is nothing to start it with.
+    expect(of(plan), isNot(contains('--llama-server')));
+  });
+
+  test('Marian on the card still wants the CUDA torch', () {
+    final arguments = of(
+      const WorkerPlan(
+        threads: 2,
+        pythonExecutable: 'python.exe',
+        runtimeDirectory: 'runtime',
+        models: ModelPaths(translation: 'opus-mt'),
+        backends: StageBackends(translation: ComputeBackend.cuda),
+      ),
+    );
+
+    expect(valueOf(arguments, '--extra-packages'), path.join('runtime', 'torch-cuda'));
+    expect(arguments, isNot(contains('--llama-server')));
+  });
 }

@@ -561,6 +561,7 @@ class _CastRepository extends Fake implements SessionRepository {
     required String text,
     required String voice,
     List<double> timbre = const [],
+    String? clip,
   }) async => spoken.add(text);
 
   @override

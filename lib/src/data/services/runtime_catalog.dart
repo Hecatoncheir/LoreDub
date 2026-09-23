@@ -4,9 +4,16 @@
 import '../../domain/model_package.dart';
 import '../../domain/runtime_package.dart';
 
-export '../../domain/runtime_package.dart' show torchCudaRuntimeId, whisperCudaRuntimeId;
+export '../../domain/runtime_package.dart'
+    show llamaCudaRuntimeId, llamaVulkanRuntimeId, torchCudaRuntimeId, whisperCudaRuntimeId;
 
 const whisperCudaVersion = 'v1.8.2';
+
+/// The llama.cpp release the bundled CPU and Vulkan builds come from, which
+/// the CUDA one has to match: `scripts/prepare_windows_runtime.ps1` fetches
+/// the same tag.
+const llamaVersion = 'b11118';
+const _llamaReleases = 'https://github.com/ggml-org/llama.cpp/releases/download/$llamaVersion';
 
 /// Read only: a list handed out to every screen must not be changed by one
 /// of them under the others.
@@ -59,6 +66,30 @@ final runtimeCatalog = List<RuntimePackage>.unmodifiable(<RuntimePackage>[
       '--index-url',
       'https://download.pytorch.org/whl/cu126',
       'torch==2.7.1+cu126',
+    ],
+  ),
+  // llama.cpp's CUDA build, for the translator that is a language model.
+  // The release keeps the CUDA runtime in an archive of its own, so the two
+  // are fetched together and unpacked into one directory; both keep their
+  // files at the top, so there is nothing to lift.
+  RuntimePackage(
+    id: llamaCudaRuntimeId,
+    kind: RuntimeInstallKind.archive,
+    approximateBytes: 253782317 + 391443627,
+    probeFileName: 'llama-server.exe',
+    artifacts: [
+      ModelArtifact(
+        fileName: 'llama-$llamaVersion-bin-win-cuda-12.4-x64.zip',
+        url: Uri.parse('$_llamaReleases/llama-$llamaVersion-bin-win-cuda-12.4-x64.zip'),
+        byteSize: 253782317,
+        hash: '09d262cb22c26d276a8c2cd38e0ddb405404c4c60e355c2ed96cda8e77538c59',
+      ),
+      ModelArtifact(
+        fileName: 'cudart-llama-bin-win-cuda-12.4-x64.zip',
+        url: Uri.parse('$_llamaReleases/cudart-llama-bin-win-cuda-12.4-x64.zip'),
+        byteSize: 391443627,
+        hash: '8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6',
+      ),
     ],
   ),
 ]);

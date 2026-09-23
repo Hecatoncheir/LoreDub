@@ -36,30 +36,40 @@ class ModelSelection {
 
   List<ModelInstallState> get voiceConverters => ofKind(ModelKind.voiceConversion);
 
-  /// Every dubbing language with its translator and voice, in catalogue order.
+  /// Every dubbing language with its translator and voice, in catalogue
+  /// order: the languages a voice serves, since a language model translates
+  /// into many more than can be spoken.
   List<LanguagePair> get languagePairs {
     final languages = <String>[];
     for (final state in models) {
-      final language = state.model.language;
-      final paired =
-          state.model.kind == ModelKind.translation || state.model.kind == ModelKind.speech;
-      if (language != null && paired && !languages.contains(language)) languages.add(language);
-    }
-    ModelInstallState? find(ModelKind kind, String language) {
-      for (final state in models) {
-        if (state.model.kind == kind && state.model.language == language) return state;
+      if (state.model.kind != ModelKind.speech) continue;
+      for (final language in state.model.servedLanguages) {
+        if (!languages.contains(language)) languages.add(language);
       }
-      return null;
     }
-
     return [
       for (final language in languages)
         LanguagePair(
           language: language,
-          translation: find(ModelKind.translation, language),
-          speech: find(ModelKind.speech, language),
+          translation: _preferred(ModelKind.translation, language),
+          speech: _preferred(ModelKind.speech, language),
         ),
     ];
+  }
+
+  /// The package of [kind] that serves [language]: the first installed one
+  /// in catalogue order, or the first listed where none is. The catalogue
+  /// lists the better package first, so a language with both a language
+  /// model and Marian on disk is translated by the model, and one with only
+  /// Marian is not asked to download the model before it can start.
+  ModelInstallState? _preferred(ModelKind kind, String language) {
+    ModelInstallState? first;
+    for (final state in models) {
+      if (state.model.kind != kind || !state.model.serves(language)) continue;
+      if (state.installed) return state;
+      first ??= state;
+    }
+    return first;
   }
 
   /// The converter the original voice needs, if the catalogue has one.
@@ -95,15 +105,19 @@ class ModelSelection {
   /// Whether this game's characters are kept between sessions.
   bool get keepsVoiceBank => settings.voiceBank && needsVoiceConverter;
 
-  /// The package for the language being dubbed into, if the catalogue has one.
-  ModelInstallState? forTargetLanguage(ModelKind kind) {
-    for (final state in models) {
-      if (state.model.kind == kind && state.model.language == settings.targetLanguage) {
-        return state;
-      }
-    }
-    return null;
-  }
+  /// The package for the language being dubbed into, if the catalogue has
+  /// one: the installed one where a language has several.
+  ModelInstallState? forTargetLanguage(ModelKind kind) => _preferred(kind, settings.targetLanguage);
+
+  /// Whether the translator in use is a language model rather than Marian:
+  /// it is handed what whisper heard in the game's own language, told the
+  /// scene and the speaker, and reads any language the game speaks.
+  bool get usesLanguageModel =>
+      forTargetLanguage(ModelKind.translation)?.model.languageModel ?? false;
+
+  /// Whether the voice in use reads in the timbre of a clip itself, so a
+  /// card's own recording is what its lines are read from.
+  bool get voiceClonesItself => speechPackage?.clonesVoice ?? false;
 
   /// The recognition model in use: the one the user picked, or the first the
   /// catalogue lists when the choice is unset or names a model that is gone.
@@ -119,11 +133,18 @@ class ModelSelection {
   /// When it cannot, the original has to already be in English.
   bool get recognitionTranslatesSpeech => recognition?.model.translatesSpeech ?? true;
 
+  /// Whether whisper is asked for English rather than for what it heard.
+  /// A language model translates from the game's own language, so whisper
+  /// transcribes for it; Marian reads English alone, so whisper translates
+  /// for it wherever it can.
+  bool get whisperTranslates => recognitionTranslatesSpeech && !usesLanguageModel;
+
   /// Whether the chosen model and the named original language disagree: a
   /// transcribe-only model handed, say, German would feed German text to an
-  /// English-to-Russian translator.
+  /// English-to-Russian translator. A language model reads German as well.
   bool get recognitionNeedsEnglish =>
       !recognitionTranslatesSpeech &&
+      !usesLanguageModel &&
       !settings.detectSourceLanguage &&
       settings.sourceLanguage != 'en';
 
@@ -131,8 +152,10 @@ class ModelSelection {
   ///
   /// Dubbing into English does not: whisper is asked for English whatever the
   /// game speaks, so the line arrives in it and the translator is left out of
-  /// the session entirely rather than run over its own language.
-  bool get translates => settings.translates;
+  /// the session entirely rather than run over its own language. A language
+  /// model is loaded whatever the dubbing language, since the line arrives
+  /// in the game's own: it leaves one already in the dubbing language alone.
+  bool get translates => usesLanguageModel || settings.translates;
 
   ModelPackage? get speechPackage => forTargetLanguage(ModelKind.speech)?.model;
 
@@ -163,13 +186,14 @@ class ModelSelection {
   /// the converter less to move.
   bool get followsSpeaker => (settings.automaticVoice || clonesVoice) && canFollowSpeaker;
 
-  /// The voice a fixed choice would use, falling back to the catalogue's.
+  /// The voice a fixed choice would use, falling back to the catalogue's
+  /// for the dubbing language.
   String get voice {
     final package = speechPackage;
     if (package == null) return settings.voice;
     final named = settings.voice;
     if (named.isNotEmpty && package.voices.any((option) => option.id == named)) return named;
-    return package.speaker ?? '';
+    return package.speakerFor(settings.targetLanguage) ?? '';
   }
 
   /// Only the pair for the chosen language has to be present, not the whole
@@ -220,7 +244,7 @@ class ModelSelection {
     var translation = false;
     var speech = false;
     for (final state in models) {
-      if (state.model.language != language || !state.installed) continue;
+      if (!state.model.serves(language) || !state.installed) continue;
       translation |= state.model.kind == ModelKind.translation;
       speech |= state.model.kind == ModelKind.speech;
     }

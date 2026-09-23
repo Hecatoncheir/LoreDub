@@ -505,6 +505,8 @@ class _Worker extends Fake implements LocalInferenceService {
     String? originalWavePath,
     bool translate = true,
     double? speed,
+    String? spoken,
+    bool transcript = false,
   }) async {
     texts.add(english);
     if (originalWavePath != null) heard.add(originalWavePath);

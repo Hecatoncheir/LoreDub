@@ -143,6 +143,83 @@ ModelPackage _voice({
   ],
 );
 
+/// Where the voice that clones is published: its authors' own repository on
+/// Hugging Face, file by file, each with the size and the SHA-256 the
+/// repository's API reports for it. Nothing is converted, so nothing is
+/// re-hosted.
+const qwenVoiceRepository = 'https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base/resolve/main';
+
+/// A speech package read by `qwen_voice.py` in the worker: one voice for
+/// several languages, reading in the timbre of a clip. Its `config.json`
+/// goes first, the way `model.onnx` does for the others: the pipeline names
+/// a speech package by its first file, and the worker takes the directory
+/// it sits in and reads which wrapper off the config. A file may sit in a
+/// folder of its own, as the speech tokenizer's do.
+ModelPackage _clonedVoice({
+  required String id,
+  required String repository,
+  required String engine,
+  required String version,
+
+  /// The languages it reads, the first being the one it is filed under.
+  required List<String> languages,
+
+  /// The voice each language is read in where nothing chooses another.
+  required Map<String, String> speakers,
+  required List<VoiceOption> voices,
+
+  /// File name to its size in bytes and its SHA-256.
+  required Map<String, (int, String)> files,
+}) => ModelPackage(
+  id: id,
+  kind: ModelKind.speech,
+  language: languages.first,
+  languages: languages.sublist(1),
+  speaker: speakers[languages.first],
+  speakers: speakers,
+  version: version,
+  engine: engine,
+  voices: voices,
+  clonesVoice: true,
+  artifacts: [
+    for (final entry in files.entries)
+      ModelArtifact(
+        fileName: entry.key,
+        url: Uri.parse('$repository/${entry.key}'),
+        byteSize: entry.value.$1,
+        hash: entry.value.$2,
+      ),
+  ],
+);
+
+/// A translator that is a language model, in the one file llama.cpp reads.
+/// Published by whoever quantized it on Hugging Face, with the size and
+/// SHA-256 the repository's API reports.
+ModelPackage _languageModel({
+  required String id,
+  required String engine,
+  required String version,
+
+  /// The languages it translates into, the first being the one it is filed
+  /// under. What it translates from is whatever the game speaks.
+  required List<String> languages,
+  required Uri url,
+  required String fileName,
+  required int byteSize,
+  required String hash,
+  String? chatTemplate,
+}) => ModelPackage(
+  id: id,
+  kind: ModelKind.translation,
+  language: languages.first,
+  languages: languages.sublist(1),
+  engine: engine,
+  version: version,
+  languageModel: true,
+  chatTemplate: chatTemplate,
+  artifacts: [ModelArtifact(fileName: fileName, url: url, byteSize: byteSize, hash: hash)],
+);
+
 /// Read only: a list handed out to every screen must not be changed by one
 /// of them under the others.
 final modelCatalog = List<ModelPackage>.unmodifiable(<ModelPackage>[
@@ -168,6 +245,17 @@ final modelCatalog = List<ModelPackage>.unmodifiable(<ModelPackage>[
     fileName: 'ggml-medium-q5_0.bin',
     byteSize: 539212467,
   ),
+  // The full large-v3, which translates as well as it transcribes: the
+  // most accurate build whisper.cpp offers, at twice medium's size, for a
+  // card that can carry it.
+  _whisper(
+    id: 'whisper-large-v3-q5',
+    version: 'large-v3 q5_0',
+    quality: RecognitionQuality.excellent,
+    fileName: 'ggml-large-v3-q5_0.bin',
+    byteSize: 1081140203,
+    hash: 'd75795ecff3f83b5faa89d1900604ad8c780abd5739fae406de19f23ecd98ad1',
+  ),
   _whisper(
     id: 'whisper-large-v3-turbo-q5',
     version: 'large-v3-turbo q5_0',
@@ -179,10 +267,35 @@ final modelCatalog = List<ModelPackage>.unmodifiable(<ModelPackage>[
     translatesSpeech: false,
   ),
 
+  // TranslateGemma, Google's Gemma 3 tuned for translation, in llama.cpp's
+  // 4-bit GGUF: on WMT24++ into Russian its 12B sister scores above Google
+  // Translate, and this one fits a card of 8 GB beside the voice. Listed
+  // before Marian so that a machine with both on disk is translated by it:
+  // it reads the game in its own language, with the scene, the glossary and
+  // the speaker's gender in front of every line, which Marian cannot be
+  // told. Gemma Terms of Use, which travel with the model.
+  _languageModel(
+    id: 'translategemma-4b-q4',
+    engine: 'TranslateGemma',
+    version: '4B Q4_K_M',
+    languages: const ['ru', 'en', 'uk', 'de', 'fr', 'es', 'it', 'pt', 'pl', 'ja', 'ko', 'zh'],
+    url: Uri.parse(
+      'https://huggingface.co/bullerwins/translategemma-4b-it-GGUF/resolve/main/'
+      'translategemma-4b-it-Q4_K_M.gguf',
+    ),
+    fileName: 'translategemma-4b-it-Q4_K_M.gguf',
+    byteSize: 2489909312,
+    hash: '7f7357c14abd9da4eb200b38b05da502cd6e10d7e1d403fbc9f78c19f3209b72',
+    // Its own template takes a message of its own shape and refuses a
+    // plain one; llama.cpp's built-in Gemma template wraps the same turns.
+    chatTemplate: 'gemma',
+  ),
+
   // The Tatoeba-Challenge model rather than the 2020 opus-mt-en-ru it
   // replaced: on the same newstest sets it scores 4 to 7 BLEU higher, which
   // is the difference between a line that parses and one that does not. It
-  // serves the East Slavic languages together, hence the target token.
+  // serves the East Slavic languages together, hence the target token. The
+  // processor's translator, where the language model above needs a card.
   _converted(
     id: 'opus-mt-tc-big-en-zle',
     language: 'ru',
@@ -202,6 +315,70 @@ final modelCatalog = List<ModelPackage>.unmodifiable(<ModelPackage>[
         '41deeedfc0e3ce366d6bde180dee025a8ca1bcd62b1451889301e8ea4bcbb609',
       ),
       'vocab.json': (2510527, '41dbdff4a0b5a6ab125715c3342c5ce6516e93ffd49608813240403f036c5efb'),
+    },
+  ),
+
+  // Qwen3-TTS, the voice that clones, under Apache 2.0: ten languages,
+  // Russian and English among them, read in the timbre of three seconds of
+  // whoever it is handed -- the phrase the game just spoke, or the card the
+  // player recorded -- so the original voice needs no converter laid over
+  // the result. Listed before Vosk and Kokoro so that a machine with it on
+  // disk reads in it; it wants a card, where the two below run on the
+  // processor. The fixed voices are clips synthesized with those two,
+  // shipped beside the worker, and named after the voices they were read
+  // in; their genders are the measured ones of the voices behind them.
+  _clonedVoice(
+    id: 'qwen3-tts-1.7b',
+    repository: qwenVoiceRepository,
+    engine: 'Qwen3-TTS',
+    version: '1.7B Base',
+    languages: const ['ru', 'en'],
+    speakers: const {'ru': 'ru_female_1', 'en': 'af_heart'},
+    voices: [
+      _female('ru_female_1'),
+      _male('ru_male_0'),
+      _male('ru_male_1'),
+      _female('af_heart'),
+      _female('af_bella'),
+      _male('am_michael'),
+      _male('am_adam'),
+    ],
+    files: const {
+      'config.json': (4494, 'b4f01752d15a488abde3e1ab44723ae4f4b9e68a4037257b098b3737893cc1f9'),
+      'generation_config.json': (
+        245,
+        'f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa',
+      ),
+      'merges.txt': (1671839, '599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3'),
+      'vocab.json': (2776833, 'ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910'),
+      'tokenizer_config.json': (
+        7344,
+        'dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670',
+      ),
+      'preprocessor_config.json': (
+        127,
+        'efdde1022ea9d76928bf7a9cd53139138f5ba2e466e837f08f6105ab1af1c119',
+      ),
+      'speech_tokenizer/config.json': (
+        2336,
+        'ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167',
+      ),
+      'speech_tokenizer/configuration.json': (
+        76,
+        '6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd',
+      ),
+      'speech_tokenizer/preprocessor_config.json': (
+        234,
+        'fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb',
+      ),
+      'speech_tokenizer/model.safetensors': (
+        682293092,
+        '836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258',
+      ),
+      'model.safetensors': (
+        3857413744,
+        '38fc7fc51c5e776e840414b6fd443962e9411b9654888fd7913e4da643cb857c',
+      ),
     },
   ),
 
@@ -341,20 +518,23 @@ final modelCatalog = List<ModelPackage>.unmodifiable(<ModelPackage>[
 List<String> get dubbingLanguages {
   final languages = <String>[];
   for (final model in modelCatalog) {
-    final language = model.language;
-    if (model.kind != ModelKind.speech || language == null) continue;
-    if (languages.contains(language)) continue;
-    if (translationModelFor(language) == null && language != untranslatedDubbingLanguage) {
-      continue;
+    if (model.kind != ModelKind.speech) continue;
+    for (final language in model.servedLanguages) {
+      if (languages.contains(language)) continue;
+      if (translationModelFor(language) == null && language != untranslatedDubbingLanguage) {
+        continue;
+      }
+      languages.add(language);
     }
-    languages.add(language);
   }
   return languages;
 }
 
+/// The first package of [kind] that serves [language], which is the one a
+/// machine with none of them on disk is offered.
 ModelPackage? _modelFor(ModelKind kind, String language) {
   for (final model in modelCatalog) {
-    if (model.kind == kind && model.language == language) return model;
+    if (model.kind == kind && model.serves(language)) return model;
   }
   return null;
 }

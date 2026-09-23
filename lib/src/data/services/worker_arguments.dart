@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 
 import '../../domain/compute_device.dart';
 import '../../domain/session_config.dart';
+import '../../domain/spoken_language.dart';
 import 'runtime_catalog.dart';
 
 /// What the worker's models are loaded for, beyond what [WorkerPlan] names.
@@ -34,6 +35,10 @@ List<String> workerArguments(
   required String script,
   required String work,
   WorkerLoad load = WorkerLoad.full,
+
+  /// Where llama.cpp's server stands, for a plan whose translator is a
+  /// language model.
+  String? llama,
 }) => [
   '-u',
   script,
@@ -50,6 +55,7 @@ List<String> workerArguments(
   '--device',
   _device(plan.backends.translation),
   if (plan.translationPrefix.isNotEmpty) ...['--translation-prefix', plan.translationPrefix],
+  ..._languageArguments(plan, llama),
   ..._followArguments(plan),
   ..._extraPackages(plan),
   // Outside the converter's own arguments: what the player wrote down is
@@ -59,6 +65,23 @@ List<String> workerArguments(
 ];
 
 String _device(ComputeBackend backend) => backend == ComputeBackend.cuda ? 'cuda' : 'cpu';
+
+/// The languages the session runs between, and the server a translator
+/// that is a language model is started through. The game's language is
+/// named only where the player named it: detected, it travels with each
+/// line instead.
+List<String> _languageArguments(WorkerPlan plan, String? llama) => [
+  '--language',
+  plan.targetLanguage,
+  if (plan.sourceLanguage != autoSpokenLanguage) ...['--source-language', plan.sourceLanguage],
+  if (plan.languageModel && llama != null) ...[
+    '--llama-server',
+    llama,
+    '--translation-backend',
+    plan.backends.languageModel.name,
+    if (plan.chatTemplate.isNotEmpty) ...['--chat-template', plan.chatTemplate],
+  ],
+];
 
 List<String> _loadArguments(WorkerLoad load) => switch (load) {
   WorkerLoad.full => const [],
@@ -101,10 +124,16 @@ List<String> _extraPackages(WorkerPlan plan) => [
 ];
 
 /// The translator, the voice and the converter each ask for the CUDA build
-/// on their own, and whichever does brings it in for all three.
+/// on their own, and whichever does brings it in for all three. A language
+/// model runs in llama.cpp's own build and asks nothing of torch.
 bool _wantsCudaTorch(WorkerPlan plan) {
   final backends = plan.backends;
-  if (backends.translation == ComputeBackend.cuda) return true;
+  final translation = plan.models.translation ?? '';
+  if (translation.isNotEmpty &&
+      !plan.languageModel &&
+      backends.translation == ComputeBackend.cuda) {
+    return true;
+  }
   final speech = plan.models.speech ?? '';
   if (speech.isNotEmpty && backends.speech == ComputeBackend.cuda) return true;
   return plan.models.converter != null && backends.voiceConversion == ComputeBackend.cuda;

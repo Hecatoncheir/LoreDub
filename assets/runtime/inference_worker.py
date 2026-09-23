@@ -5,7 +5,9 @@
 
 import argparse
 import json
+import os
 import pathlib
+import shutil
 import sys
 
 import numpy as np
@@ -33,6 +35,11 @@ from dubbing_text import (
     readable,
     sentences,
 )
+from llm_translation import (
+    LlamaServer,
+    LlmTranslation,
+    language_model_in,
+)
 from protocol import (
     claim_protocol,
     reply,
@@ -43,16 +50,22 @@ from voices import (
     BANK_LIMIT,
     BANK_MATCH,
     BANK_MIN_SECONDS,
+    CLONE_SECONDS,
     CharacterCast,
     VoiceBank,
     build_voice,
     load_voice,
+    reference_clips,
     voice_for_character,
 )
 
 # torch and transformers are imported inside main(): together they account for
 # most of the startup, and importing them here would leave the application
 # without a sign of life for the first ten seconds.
+
+# Where the worker runs from, which is where the application put the clips
+# a voice that clones reads its fixed voices from.
+WORKER_DIRECTORY = pathlib.Path(__file__).resolve().parent
 
 
 
@@ -109,6 +122,20 @@ def parse_arguments(argv=None):
     # nobody stands in for it. Who stands in for whom is still in the cards;
     # none of it is applied to these while they are cut.
     parser.add_argument("--as-heard", default="")
+    # Where llama.cpp's server stands, for a translator that is a language
+    # model -- a `.gguf` in --translation-model -- rather than Marian. Which
+    # build it is, CPU, Vulkan or CUDA, is the application's choice, and
+    # --translation-backend is what it reports back as the device.
+    parser.add_argument("--llama-server", default="")
+    parser.add_argument("--translation-backend", default="cpu", choices=["cpu", "vulkan", "cuda"])
+    # One of llama.cpp's built-in chat templates, where the model's own
+    # cannot be rendered from a plain message; empty leaves the model's own.
+    parser.add_argument("--chat-template", default="")
+    # The language the game speaks, where whisper was not asked to turn it
+    # into English, and the language the dubbing is in. The language model
+    # is told both; a line arrives with its own where whisper heard one.
+    parser.add_argument("--source-language", default="en")
+    parser.add_argument("--language", default="ru")
     return parser.parse_args(argv)
 
 
@@ -118,9 +145,11 @@ class Models:
     def __init__(self, args):
         # CUDA torch is installed next to the models instead of over the
         # bundled CPU build, so it has to win the import before torch is first
-        # touched.
-        if args.extra_packages and pathlib.Path(args.extra_packages).is_dir():
-            sys.path.insert(0, args.extra_packages)
+        # touched. Several directories may be named, separated the way PATH
+        # is, the first of them winning; the application names one.
+        for extra in reversed(args.extra_packages.split(os.pathsep)):
+            if extra and pathlib.Path(extra).is_dir():
+                sys.path.insert(0, extra)
 
         report_progress(0.10, "torch")
         import torch
@@ -137,6 +166,10 @@ class Models:
         self.translation_device = device.type
         self.tokenizer = None
         self.translator = None
+        # A translator that is a language model: llama.cpp's server, and
+        # the client that asks it. Marian leaves both empty.
+        self.llama = None
+        self.llm = None
         self.tts = None
         self.speech_device = None
         self.voices = []
@@ -159,7 +192,15 @@ class Models:
             # processor's build of onnxruntime, which is all a machine without
             # the CUDA runtime has -- the voice falls back to the processor,
             # and the ready line says where it really is.
-            self.tts = load_voice(args.tts_model, threads=args.threads, device=args.speech_device)
+            self.tts = load_voice(
+                args.tts_model,
+                threads=args.threads,
+                device=args.speech_device,
+                language=args.language,
+                # The clips shipped beside the worker, which a voice that
+                # clones reads its fixed voices from.
+                references=reference_clips(WORKER_DIRECTORY / "references"),
+            )
             self.speech_device = torch.device(self.tts.device)
             # An unknown name falls back to the package's first voice rather
             # than turning the whole session into a runtime error.
@@ -184,6 +225,9 @@ class Models:
                 self.bank = VoiceBank(args.voice_bank)
 
     def _load_translator(self, args):
+        weights = language_model_in(args.translation_model)
+        if weights is not None:
+            return self._load_language_model(args, weights)
         report_progress(0.35, "transformers")
         import ctranslate2
         from transformers import MarianTokenizer
@@ -211,6 +255,21 @@ class Models:
         except (RuntimeError, ValueError):
             self.translation_device = "cpu"
             self.translator = translator_on("cpu")
+
+    def _load_language_model(self, args, weights):
+        """llama.cpp's server over [weights], started beside the worker and
+        ended with it. Where it runs is the build the application named,
+        and the device reported is the backend it named it for."""
+        report_progress(0.35, "translator")
+        self.llama = LlamaServer(
+            args.llama_server,
+            weights,
+            threads=args.threads,
+            log=pathlib.Path(args.work_directory) / "llama-server.log",
+            chat_template=args.chat_template,
+        )
+        self.llm = self.llama.start()
+        self.translation_device = args.translation_backend
 
     def ready_line(self):
         """The handshake. The device is reported back rather than assumed: a
@@ -295,9 +354,11 @@ class Translation:
                     self._memory.put(pieces[index], said[index])
         return " ".join(piece for piece in said if piece)
 
-    def line(self, text):
+    def line(self, text, spoken_by=None, spoken=None):
         """[text] as it is to be said: translated, what was left in Latin
-        written out, and the words the player renamed said their way."""
+        written out, and the words the player renamed said their way.
+        Marian can be told neither who is speaking nor what language, so
+        [spoken_by] and [spoken] are the language model's alone."""
         translated = self.translate(text)
         # A capitalised name is occasionally carried over untranslated, and a
         # voice that reads no Latin cannot say it.
@@ -336,6 +397,12 @@ class Casting:
         # music or a short grunt keeps it, the same way the automatic choice
         # keeps its voice.
         self._current_timbre = None
+        # For a voice that clones: the clip each speaker of the game is read
+        # from, kept in the work directory since the capture's own files do
+        # not stay, and the one the last line was read from.
+        self._clips = {}
+        self._current_reference = None
+        self._work = pathlib.Path(args.work_directory)
         # The characters this game's lines have been matched to -- kept in its
         # bank, or in one that lasts only this session.
         self.speakers = self._bank if self._bank is not None else VoiceBank(None)
@@ -478,6 +545,35 @@ class Casting:
             self._current_timbre = timbre.to(device=fingerprint.device, dtype=fingerprint.dtype)
         return self._current_timbre
 
+    def reference_for(self, heard, kind, index, transcript=""):
+        """The clip a line of this speaker is read from, for a voice that
+        clones, with what is said in it: one of the player's cards from its
+        own recording -- or, with none, from the fixed voice the card is
+        read in, which is None here; a speaker of the game from the longest
+        clear line of theirs heard so far, the way the bank keeps their
+        fingerprint; and a line belonging to nobody from itself, or from the
+        last clip where it brought none. [transcript] is what [heard] says,
+        where whisper wrote it down as heard rather than in English.
+        """
+        if kind == "character" and index is not None:
+            clip = self.cast.clip_of(index)
+            return (clip, "") if clip is not None else None
+        if heard.source is None:
+            return self._current_reference
+        kept = self._clips.get((kind, index)) if index is not None else None
+        seconds = heard.seconds
+        if index is not None and (kept is None or (kept[1] < CLONE_SECONDS < seconds)):
+            kept = (self._keep_clip(heard.source, kind, index), seconds, transcript)
+            self._clips[(kind, index)] = kept
+        self._current_reference = (kept[0], kept[2]) if kept is not None else (heard.source, transcript)
+        return self._current_reference
+
+    def _keep_clip(self, source, kind, index):
+        """A copy of [source] that outlives the capture's own file."""
+        kept = self._work / f"reference-{kind}-{index}.wav"
+        shutil.copyfile(source, kept)
+        return str(kept)
+
 
 def needs_converter(handler):
     """A request only the voice converter can answer."""
@@ -498,7 +594,13 @@ class Session:
         self.args = args
         self.models = Models(args)
         self.glossary = Glossary(args.glossary)
-        self.translation = Translation(self.models, args.translation_prefix, self.glossary)
+        # A language model is told the scene, the glossary and the speaker
+        # with every line; Marian takes a sentence and nothing else.
+        self.translation = (
+            LlmTranslation(self.models.llm, args.source_language, args.language, self.glossary)
+            if self.models.llm is not None
+            else Translation(self.models, args.translation_prefix, self.glossary)
+        )
         self.casting = Casting(args, self.models)
         self.speed = clamped_speed(args.speed)
         self.work = pathlib.Path(args.work_directory)
@@ -591,17 +693,31 @@ class Session:
         if casting.voices and chosen not in casting.voices:
             chosen = casting.speaker
         # The card's own timbre over that voice, which is what the dubbing
-        # will do with it.
+        # will do with it: its recording, for a voice that clones, and its
+        # fingerprint through the converter for the others.
         timbre = None
+        clip = str(sample.get("clip") or "")
+        reference = (clip, "") if clip else None
         vector = sample.get("vector")
-        if self.models.converter is not None and vector:
+        if not self._clones and self.models.converter is not None and vector:
             torch = self.models.torch
             timbre = torch.from_numpy(np.asarray(vector, dtype=np.float32)).reshape(1, -1, 1)
             timbre = timbre.to(device=self.models.converter.device, dtype=torch.float32)
         output = self.speak(
-            str(sample.get("text", "")).strip(), chosen, timbre, request, f"preview-{request_id}.wav"
+            str(sample.get("text", "")).strip(),
+            chosen,
+            timbre,
+            request,
+            f"preview-{request_id}.wav",
+            reference=reference,
         )
         return {"id": request_id, "wave": str(output), "voice": chosen}
+
+    @property
+    def _clones(self):
+        """Whether the voice reads in the timbre it is handed itself, leaving
+        the converter to tell the characters apart and nothing more."""
+        return bool(getattr(self.models.tts, "clones", False))
 
     def diarize(self, request_id, listening, _):
         """Where does the voice change? Asked before recognition, so each
@@ -617,11 +733,17 @@ class Session:
         """A line of the game, translated where it has to be and voiced in the
         voice and timbre of whoever said it."""
         text = request["text"].strip()
+        heard = Heard(request.get("wave"))
         # Text read off the screen in the dubbing language itself has nothing
         # to be translated and is voiced as it is, and so is everything in a
-        # session started without a translator at all.
+        # session started without a translator at all. The language model is
+        # told who is speaking -- the gender heard in the line, which the
+        # grammar of the dubbing language may need -- and what language,
+        # where whisper said; Marian is told neither and is not made to
+        # measure the line for it.
         if request.get("translate", True) and self.translation.available:
-            translated = self.translation.line(text)
+            spoken_by = heard.gender if self.models.llm is not None and heard.source else None
+            translated = self.translation.line(text, spoken_by=spoken_by, spoken=request.get("spoken"))
         else:
             translated = text
         # Whatever is about to be said, translated here or read off the screen
@@ -634,20 +756,29 @@ class Session:
         if not translated.strip():
             return {"id": request_id, "translated": "", "silenced": True}
         # Who is speaking is settled first: the character decides both the
-        # voice they are read in and the timbre laid over it.
+        # voice they are read in and the timbre laid over it -- or, for a
+        # voice that clones, the clip it is read from.
         casting = self.casting
-        heard = Heard(request.get("wave"))
         heard_kind, heard_index, fingerprint = casting.identify(heard)
         kind, index = casting.read_as(heard_kind, heard_index)
         chosen = casting.voice_for(heard, kind, index)
-        timbre = casting.timbre_for(fingerprint, kind, index) if self.args.revoice else None
-        output = self.speak(translated, chosen, timbre, request, f"speech-{request_id}.wav")
+        reference = timbre = None
+        if self.args.revoice and self._clones:
+            # Whisper's transcript of the clip conditions the reading on it,
+            # where the text is that transcript rather than its translation.
+            transcript = text if request.get("transcript") else ""
+            reference = casting.reference_for(heard, kind, index, transcript)
+        elif self.args.revoice:
+            timbre = casting.timbre_for(fingerprint, kind, index)
+        output = self.speak(
+            translated, chosen, timbre, request, f"speech-{request_id}.wav", reference=reference
+        )
         answer = {
             "id": request_id,
             "translated": translated,
             "wave": str(output),
             "voice": chosen,
-            "cloned": timbre is not None,
+            "cloned": timbre is not None or reference is not None,
         }
         # Reported as it was heard, not as it was read: the scene list offers
         # a replacement against the voice of the game.
@@ -664,16 +795,31 @@ class Session:
             answer["bankSize"] = len(self.models.bank)
         return answer
 
-    def speak(self, text, voice, timbre, request, name):
+    def speak(self, text, voice, timbre, request, name, reference=None):
         """[text] read in [voice], over [timbre] where there is one, at the
-        pace [request] asks for, written to [name] in the work directory."""
-        audio = self.models.tts.apply_tts(
-            text=text,
-            speaker=voice,
-            sample_rate=self.args.sample_rate,
-            put_accent=True,
-            put_yo=True,
-        )
+        pace [request] asks for, written to [name] in the work directory.
+        A voice that clones reads from [reference] -- a clip and what is
+        said in it -- instead, or from the clip that stands for [voice]
+        where a line brings none, and the converter is not asked to move
+        what the voice read as already."""
+        if self._clones:
+            clip, transcript = reference if reference is not None else (None, "")
+            audio = self.models.tts.apply_tts(
+                text=text,
+                speaker=voice,
+                sample_rate=self.args.sample_rate,
+                reference=clip,
+                reference_text=transcript,
+            )
+            timbre = None
+        else:
+            audio = self.models.tts.apply_tts(
+                text=text,
+                speaker=voice,
+                sample_rate=self.args.sample_rate,
+                put_accent=True,
+                put_yo=True,
+            )
         samples = audio.clamp(-1, 1).to(self.models.torch.float32).cpu().numpy()
         rate = self.args.sample_rate
         if timbre is not None:
@@ -709,6 +855,18 @@ def main():
     claim_protocol()
     session = Session(parse_arguments())
     reply(session.models.ready_line())
+    try:
+        serve(session)
+    finally:
+        # The language model's server is tied to this process on Windows and
+        # dies with it; ended here as well, a worker that leaves quietly
+        # leaves nothing behind on any other system.
+        if session.models.llama is not None:
+            session.models.llama.stop()
+
+
+def serve(session):
+    """Answers every request on stdin until it closes."""
     for raw_line in sys.stdin:
         # A malformed line must not take the worker down with it: the pipeline
         # would then look alive while every later phrase is lost.

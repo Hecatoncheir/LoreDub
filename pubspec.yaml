@@ -94,6 +94,9 @@ flutter:
     # The worker and every module it imports: the directory, so a module
     # added to it travels without a line here.
     - assets/runtime/
+    # The clips a voice that clones reads its fixed voices from, with their
+    # transcripts beside them.
+    - assets/runtime/references/
 
   fonts:
     # Static instances cut from the upstream variable fonts, so the weights

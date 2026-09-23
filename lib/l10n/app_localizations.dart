@@ -1626,7 +1626,7 @@ abstract class AppLocalizations {
   /// No description provided for @sectionLanguagesNote.
   ///
   /// In ru, this message translates to:
-  /// **'Переводчик и голос скачиваются и удаляются вместе. Английскому переводчик не нужен: whisper и так отдаёт английский, что бы ни говорила игра. Остальные языки ушли вместе с голосами, лицензия которых запрещала коммерческое использование.'**
+  /// **'Переводчик и голос скачиваются и удаляются вместе. Языковая модель переводит с любого языка игры и нужна английскому тоже; с Marian английскому переводчик не нужен — whisper и так отдаёт английский. Остальные языки ушли вместе с голосами, лицензия которых запрещала коммерческое использование.'**
   String get sectionLanguagesNote;
 
   /// No description provided for @modelPartTranslation.
@@ -3848,6 +3848,54 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Без голосов персонажей'**
   String get pipelineSchemeNoVoices;
+
+  /// No description provided for @failureLlamaMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не найден llama-server.exe: {detail}. Установите LoreDub через setup или подготовьте runtime командой scripts/prepare_windows_runtime.ps1.'**
+  String failureLlamaMissing(String detail);
+
+  /// No description provided for @computeStageLanguageModel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Языковая модель'**
+  String get computeStageLanguageModel;
+
+  /// No description provided for @runtimeLlamaCuda.
+  ///
+  /// In ru, this message translates to:
+  /// **'CUDA · языковая модель'**
+  String get runtimeLlamaCuda;
+
+  /// No description provided for @runtimeServesLlama.
+  ///
+  /// In ru, this message translates to:
+  /// **'перевод языковой моделью'**
+  String get runtimeServesLlama;
+
+  /// No description provided for @modelLanguageModelTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'{engine} {version} → {language}'**
+  String modelLanguageModelTitle(String engine, String version, String language);
+
+  /// No description provided for @modelLanguageModelNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Локальная языковая модель через llama.cpp, {size}. Переводит с любого языка игры, знает предыдущие реплики сцены, словарь и кто говорит — мужчина или женщина. Условия Gemma: ai.google.dev/gemma/terms.'**
+  String modelLanguageModelNote(String size);
+
+  /// No description provided for @modelClonedVoiceNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'{languages}; читает в тембре трёх секунд записи — реплики игры или карточки персонажа, конвертер не нужен. Apache 2.0, {size}.'**
+  String modelClonedVoiceNote(String languages, String size);
+
+  /// No description provided for @modelClonedVoiceLanguages.
+  ///
+  /// In ru, this message translates to:
+  /// **'Русская и английская речь'**
+  String get modelClonedVoiceLanguages;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

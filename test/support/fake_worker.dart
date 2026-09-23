@@ -21,6 +21,7 @@ const WorkerFiles workerFiles = (
   script: 'inference_worker.py',
   work: 'work',
   whisper: null,
+  llama: null,
 );
 
 /// A machine with both binaries found and the worker's script written out.
@@ -28,6 +29,7 @@ Future<WorkerFiles> everythingInPlace({
   required String pythonExecutable,
   required bool requiresWhisper,
   required ComputeBackend recognitionBackend,
+  ComputeBackend? languageModelBackend,
   String? downloadedRuntimeDirectory,
 }) async => workerFiles;
 

@@ -466,6 +466,8 @@ class _Inference extends Fake implements LocalInferenceService {
     String? originalWavePath,
     bool translate = true,
     double? speed,
+    String? spoken,
+    bool transcript = false,
   }) async {
     texts.add((text: english, originalWavePath: originalWavePath, translate: translate));
     if (fails case final error?) throw error;

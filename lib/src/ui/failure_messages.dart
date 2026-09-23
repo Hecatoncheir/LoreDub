@@ -20,6 +20,7 @@ String describeFailure(AppLocalizations l10n, Object error) {
     FailureCode.whisperMissing => l10n.failureWhisperMissing(detail),
     FailureCode.whisperModelMissing => l10n.failureWhisperModelMissing(detail),
     FailureCode.whisperFailed => l10n.failureWhisperFailed(detail),
+    FailureCode.llamaMissing => l10n.failureLlamaMissing(detail),
     FailureCode.pythonMissing => l10n.failurePythonMissing(detail),
     FailureCode.pythonStoreAlias => l10n.failurePythonStoreAlias,
     FailureCode.pythonSearchEmpty => l10n.failurePythonSearchEmpty,

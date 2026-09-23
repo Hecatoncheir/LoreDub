@@ -60,6 +60,11 @@ class ModelPackage {
     this.translatesSpeech = true,
     this.translationPrefix,
     this.quality,
+    this.languages = const [],
+    this.speakers = const {},
+    this.languageModel = false,
+    this.chatTemplate,
+    this.clonesVoice = false,
   });
 
   final String id;
@@ -69,9 +74,36 @@ class ModelPackage {
   /// The language this package produces; null for recognition.
   final String? language;
 
+  /// The languages it produces beside [language], for a package that serves
+  /// several at once: one Qwen3-TTS reads Russian and English both, and one
+  /// language model translates into either.
+  final List<String> languages;
+
   /// The voice to synthesize with. The worker falls back to whatever the
   /// package actually ships if this name is not among its speakers.
   final String? speaker;
+
+  /// The voice to synthesize each of [languages] with, where the package
+  /// serves several and one voice would read the other language with an
+  /// accent; [speaker] stands for a language named here.
+  final Map<String, String> speakers;
+
+  /// A translator that is a language model run by llama.cpp rather than
+  /// Marian under CTranslate2: it translates from whatever language the
+  /// game speaks, and is told the scene, the glossary and who is speaking
+  /// with every line.
+  final bool languageModel;
+
+  /// One of llama.cpp's built-in chat templates, for a language model whose
+  /// own cannot be rendered from a plain message: TranslateGemma's expects
+  /// a message of its own shape, and the built-in `gemma` template wraps
+  /// the same turns around ours. Null leaves the model's own in use.
+  final String? chatTemplate;
+
+  /// A voice that reads in the timbre of a clip it is handed itself, so the
+  /// original voice needs no converter laid over the result, and one of
+  /// the player's cards reads its lines from its own recording.
+  final bool clonesVoice;
 
   /// Upstream release the voice comes from, shown in its name.
   final String? version;
@@ -101,6 +133,16 @@ class ModelPackage {
 
   /// The file the pipeline hands to the runtime, for packages that ship one.
   String get primaryFileName => artifacts.first.fileName;
+
+  /// Whether the package produces [code]: its language, or one of the
+  /// others it serves.
+  bool serves(String code) => language == code || languages.contains(code);
+
+  /// Every language the package produces, [language] first.
+  List<String> get servedLanguages => [?language, ...languages];
+
+  /// The voice to read [code] in: the one named for it, or [speaker].
+  String? speakerFor(String code) => speakers[code] ?? speaker;
 
   List<String> voicesOf(VoiceGender gender) => [
     for (final voice in voices)

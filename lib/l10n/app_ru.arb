@@ -546,7 +546,7 @@
   "sectionRecognition": "РАСПОЗНАВАНИЕ РЕЧИ",
   "sectionRecognitionNote": "Whisper переводит речь любого языка в английский текст. Нужна одна модель — чем больше, тем точнее и медленнее.",
   "sectionLanguages": "ЯЗЫКИ ОЗВУЧКИ",
-  "sectionLanguagesNote": "Переводчик и голос скачиваются и удаляются вместе. Английскому переводчик не нужен: whisper и так отдаёт английский, что бы ни говорила игра. Остальные языки ушли вместе с голосами, лицензия которых запрещала коммерческое использование.",
+  "sectionLanguagesNote": "Переводчик и голос скачиваются и удаляются вместе. Языковая модель переводит с любого языка игры и нужна английскому тоже; с Marian английскому переводчик не нужен — whisper и так отдаёт английский. Остальные языки ушли вместе с голосами, лицензия которых запрещала коммерческое использование.",
   "modelPartTranslation": "перевод",
   "modelPartVoice": "голос",
   "modelPartConverter": "конвертер голоса",
@@ -1431,5 +1431,50 @@
   "pipelineCutVoices": "Не определять голоса персонажей",
   "pipelineCutScreenTranslation": "Читать текст с экрана без перевода",
   "pipelineSchemeVoices": "С голосами персонажей",
-  "pipelineSchemeNoVoices": "Без голосов персонажей"
+  "pipelineSchemeNoVoices": "Без голосов персонажей",
+  "failureLlamaMissing": "Не найден llama-server.exe: {detail}. Установите LoreDub через setup или подготовьте runtime командой scripts/prepare_windows_runtime.ps1.",
+  "@failureLlamaMissing": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "computeStageLanguageModel": "Языковая модель",
+  "runtimeLlamaCuda": "CUDA · языковая модель",
+  "runtimeServesLlama": "перевод языковой моделью",
+  "modelLanguageModelTitle": "{engine} {version} → {language}",
+  "@modelLanguageModelTitle": {
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      },
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "modelLanguageModelNote": "Локальная языковая модель через llama.cpp, {size}. Переводит с любого языка игры, знает предыдущие реплики сцены, словарь и кто говорит — мужчина или женщина. Условия Gemma: ai.google.dev/gemma/terms.",
+  "@modelLanguageModelNote": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelClonedVoiceNote": "{languages}; читает в тембре трёх секунд записи — реплики игры или карточки персонажа, конвертер не нужен. Apache 2.0, {size}.",
+  "@modelClonedVoiceNote": {
+    "placeholders": {
+      "languages": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelClonedVoiceLanguages": "Русская и английская речь"
 }

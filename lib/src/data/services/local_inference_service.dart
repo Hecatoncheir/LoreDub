@@ -73,13 +73,22 @@ String? parseDetectedLanguage(String output, {double minimumProbability = 0.5}) 
   return match.group(1);
 }
 
-/// What a start asks of the machine before the interpreter runs: both
-/// binaries found, and the worker's script written out where it can be run.
-typedef WorkerFiles = ({String python, String script, String work, String? whisper});
+/// What a start asks of the machine before the interpreter runs: the
+/// binaries found -- whisper's where the session recognizes, llama.cpp's
+/// where its translator is a language model -- and the worker's script
+/// written out where it can be run.
+typedef WorkerFiles = ({
+  String python,
+  String script,
+  String work,
+  String? whisper,
+  String? llama,
+});
 typedef WorkerPreparation = Future<WorkerFiles> Function({
   required String pythonExecutable,
   required bool requiresWhisper,
   required ComputeBackend recognitionBackend,
+  ComputeBackend? languageModelBackend,
   String? downloadedRuntimeDirectory,
 });
 
@@ -88,6 +97,11 @@ typedef WorkerPreparation = Future<WorkerFiles> Function({
 Iterable<String> workerScripts(Iterable<String> assets) => assets.where(
   (asset) => asset.startsWith('assets/runtime/') && asset.endsWith('.py'),
 );
+
+/// The clips a voice that clones reads its fixed voices from, with their
+/// transcripts beside them: everything under `assets/runtime/references/`.
+Iterable<String> workerReferences(Iterable<String> assets) =>
+    assets.where((asset) => asset.startsWith('assets/runtime/references/'));
 
 class LocalInferenceService {
   LocalInferenceService({
@@ -151,6 +165,7 @@ class LocalInferenceService {
 
   static ComputeBackend? _backendOf(String? device) => switch (device) {
     'cuda' => ComputeBackend.cuda,
+    'vulkan' => ComputeBackend.vulkan,
     'cpu' => ComputeBackend.cpu,
     _ => null,
   };
@@ -220,6 +235,12 @@ class LocalInferenceService {
       pythonExecutable: plan.pythonExecutable,
       requiresWhisper: requiresWhisper,
       recognitionBackend: plan.backends.recognition,
+      // The worker starts llama.cpp's server itself, so the build is looked
+      // for here, where a missing one is reported before the minute of
+      // loading rather than at the end of it.
+      languageModelBackend: plan.languageModel && plan.models.translation != null
+          ? plan.backends.languageModel
+          : null,
       downloadedRuntimeDirectory: plan.runtimeDirectory,
     );
     _throwIfSuperseded(generation);
@@ -227,7 +248,7 @@ class LocalInferenceService {
     onStartupProgress?.call(0.05, 'python');
     final process = await _startWorker(
       files.python,
-      workerArguments(plan, script: files.script, work: files.work, load: load),
+      workerArguments(plan, script: files.script, work: files.work, load: load, llama: files.llama),
     );
     if (generation != _generation) {
       // Stopped while the interpreter was coming up. The stop found no
@@ -274,6 +295,7 @@ class LocalInferenceService {
     required String pythonExecutable,
     required bool requiresWhisper,
     required ComputeBackend recognitionBackend,
+    ComputeBackend? languageModelBackend,
     String? downloadedRuntimeDirectory,
   }) async {
     if (!Platform.isWindows) throw const LoreDubFailure(FailureCode.windowsOnly);
@@ -283,17 +305,30 @@ class LocalInferenceService {
             downloadedRuntimeDirectory: downloadedRuntimeDirectory,
           )
         : null;
+    final llama = languageModelBackend == null
+        ? null
+        : await resolveLlamaDirectory(
+            backend: languageModelBackend,
+            downloadedRuntimeDirectory: downloadedRuntimeDirectory,
+          );
     final python = await resolvePythonExecutable(pythonExecutable);
     final work = await createWorkDirectory();
     // The worker and the modules it imports from its own directory, all of
-    // them: both voices travel whichever language the session dubs into,
-    // which one is loaded being decided there, off the package on disk.
+    // them: every voice travels whichever language the session dubs into,
+    // which one is loaded being decided there, off the package on disk. The
+    // clips a voice that clones reads its fixed voices from go beside them.
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
-    for (final asset in workerScripts(manifest.listAssets())) {
+    final assets = manifest.listAssets();
+    for (final asset in workerScripts(assets)) {
       await _extractScript(asset, work);
     }
+    final references = Directory(path.join(work.path, 'references'));
+    await references.create(recursive: true);
+    for (final asset in workerReferences(assets)) {
+      await _extractScript(asset, references);
+    }
     final script = path.join(work.path, 'inference_worker.py');
-    return (python: python, script: script, work: work.path, whisper: whisper);
+    return (python: python, script: script, work: work.path, whisper: whisper, llama: llama);
   }
 
   /// The real [ProcessLauncher].
@@ -385,8 +420,19 @@ class LocalInferenceService {
     if (english.isEmpty) return null;
 
     // The captured audio is still on disk here: the worker reads its pitch to
-    // decide whose voice to answer in.
-    return processText(english, originalWavePath: wavePath, speed: speed, translate: translate);
+    // decide whose voice to answer in. What language it heard travels with
+    // the text, for a translator that reads any.
+    return processText(
+      english,
+      originalWavePath: wavePath,
+      speed: speed,
+      translate: translate,
+      spoken: translateSpeech ? null : _spokenLanguage,
+      // Asked for what it heard rather than for English, whisper wrote the
+      // clip down: a voice that clones can read from the clip and its
+      // words together.
+      transcript: !translateSpeech,
+    );
   }
 
   /// The voice in [wavePath], as a character's card keeps it: the
@@ -426,9 +472,18 @@ class LocalInferenceService {
     required String text,
     required String voice,
     List<double> timbre = const [],
+
+    /// The card's own recording, which a voice that clones reads the
+    /// sample from.
+    String? clip,
   }) async {
     final response = await _ask({
-      'preview': {'text': text, 'voice': voice, if (timbre.isNotEmpty) 'vector': timbre},
+      'preview': {
+        'text': text,
+        'voice': voice,
+        if (timbre.isNotEmpty) 'vector': timbre,
+        'clip': ?clip,
+      },
     }, timeout: const Duration(minutes: 2));
     return response['wave']! as String;
   }
@@ -520,6 +575,13 @@ class LocalInferenceService {
     /// Read at this pace instead of the session's, when lines are waiting
     /// for the voice. The worker retimes the waveform it synthesized.
     double? speed,
+
+    /// The language the text is in, where it is known and is not English:
+    /// a translator that is a language model reads it from there.
+    String? spoken,
+
+    /// Whether the text is what [originalWavePath] says, word for word.
+    bool transcript = false,
   }) async {
     final normalized = english.trim();
     if (normalized.isEmpty) throw ArgumentError.value(english, 'english', 'is empty');
@@ -528,6 +590,8 @@ class LocalInferenceService {
       'text': normalized,
       'wave': ?originalWavePath,
       'speed': ?speed,
+      'spoken': ?spoken,
+      if (transcript) 'transcript': true,
       if (!translate) 'translate': false,
     }, timeout: const Duration(minutes: 2));
     final silenced = response['silenced'] == true;

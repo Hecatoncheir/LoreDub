@@ -649,6 +649,8 @@ class _HeldInference extends Fake implements LocalInferenceService {
     String? originalWavePath,
     bool translate = true,
     double? speed,
+    String? spoken,
+    bool transcript = false,
   }) {
     final answer = Completer<InferenceResult>();
     asked.add(answer);

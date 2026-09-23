@@ -211,6 +211,8 @@ class PhraseProcessor {
         // the speaker and lay their timbre over the reading.
         originalWavePath: heardWave,
         translate: lines.translatesText,
+        // What language the text is in, for a translator that reads any.
+        spoken: lines.textLanguage,
         speed: _pace(lines),
       );
       await _publish(
