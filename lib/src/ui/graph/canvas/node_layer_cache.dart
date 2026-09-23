@@ -62,7 +62,7 @@ class BadgeCache {
   List<LinkCutBadge> badgesFor(PipelineGraph graph, void Function(PipelineLink link) onCut) {
     final next = <PipelineLink, LinkCutBadge>{};
     for (final link in graph.links) {
-      final cut = LinkCut.of(link);
+      final cut = LinkCut.of(link, scheme: graph.scheme);
       final middle = _middleOf(graph, link);
       if (cut == null || middle == null) continue;
       next[link] = switch (_kept[link]) {

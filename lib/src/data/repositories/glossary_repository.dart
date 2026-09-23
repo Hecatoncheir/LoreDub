@@ -4,7 +4,7 @@
 import 'dart:async';
 
 import '../../domain/glossary.dart';
-import '../../domain/pipeline_state.dart';
+import '../../domain/pipeline_graph.dart';
 import '../services/glossary_catalog.dart';
 import '../services/glossary_service.dart';
 import '../services/native_engine_service.dart';
@@ -14,10 +14,12 @@ import 'settings_repository.dart';
 /// game's, so every session that translates is handed the same file.
 ///
 /// Two screens work on it. The glossary screen writes the entries and the
-/// packs; the canvas draws the packs, switches them on and off -- on their
-/// nodes, and as they are put in the line of text or taken out -- and says
-/// which part of each it lets apply. Both read the glossary here and write it
-/// here, so a pack switched on in one is switched on in the other.
+/// packs; the canvases draw the packs, switch them on and off -- on their
+/// nodes, and as they are put in the line of text or taken out -- and say
+/// which part of each they let apply. All of them read the glossary here and
+/// write it here, so a pack switched on in one is switched on in the others.
+/// What a canvas lets a pack apply is its own: Эфир's is told to the dubbing,
+/// and the Screen page's to the screen session.
 class GlossaryRepository {
   GlossaryRepository(this._settings, this._engine, [GlossaryService? service])
     : _service = service ?? GlossaryService();
@@ -32,8 +34,8 @@ class GlossaryRepository {
   final _changes = StreamController<Glossary>.broadcast(sync: true);
   Glossary _glossary = Glossary.empty;
 
-  /// What the canvas lets each pack it draws apply, as it last said.
-  GlossaryReach _reach = const {};
+  /// What each canvas lets the packs it draws apply, as it last said.
+  final Map<PipelineScheme, GlossaryReach> _reaches = {};
 
   /// The glossary as it stands.
   Glossary get glossary => _glossary;
@@ -89,24 +91,27 @@ class GlossaryRepository {
     await _tellSession();
   }
 
-  /// What the canvas lets each pack it draws apply, told to a session
-  /// already running when it changes what that session reads.
+  /// What [scheme]'s canvas lets each pack it draws apply, told to a session
+  /// already running from that canvas when it changes what that session
+  /// reads.
   ///
   /// Nothing is written: the scheme keeps the drawings with its own
   /// arrangement, which a session reads as it starts.
-  Future<void> narrow(GlossaryReach reach) async {
-    if (sameGlossaryReach(reach, _reach)) return;
-    _reach = reach;
+  Future<void> narrow(GlossaryReach reach, {PipelineScheme scheme = PipelineScheme.live}) async {
+    if (sameGlossaryReach(reach, _reaches[scheme] ?? const {})) return;
+    _reaches[scheme] = reach;
+    if (!scheme.feeds(_engine.session)) return;
     await _tellSession();
   }
 
   /// What the worker is to apply, which is the packs switched on -- each
-  /// narrowed to what the canvas lets it apply where the canvas draws the
-  /// session. The screen's reading is not on the canvas and reads its packs
-  /// whole, as it is started with them.
-  Future<void> _tellSession() => _engine.writeGlossary(
-    _glossary.inUseWithin(_engine.session == PipelineSession.screen ? const {} : _reach),
-  );
+  /// narrowed to what the canvas the running session started from lets it
+  /// apply.
+  Future<void> _tellSession() {
+    final session = _engine.session;
+    final scheme = session == null ? PipelineScheme.live : PipelineScheme.of(session);
+    return _engine.writeGlossary(_glossary.inUseWithin(_reaches[scheme] ?? const {}));
+  }
 
   /// Writes the glossary where the player asked.
   Future<void> exportTo(String destination, Glossary glossary) =>

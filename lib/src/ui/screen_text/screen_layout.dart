@@ -28,4 +28,10 @@ abstract final class ScreenLayout {
   /// Narrower than this the voice goes under the language rather than
   /// beside it: the language row takes 512, and a voice's name wants 240.
   static const voiceBesideLanguageWidth = 780.0;
+
+  /// Narrower than this the title's half that is not up stands as its mark
+  /// alone. Measured with the interface's own faces rather than derived:
+  /// both words at their widest came to 348 in English and 342 in Russian,
+  /// against 244 for Эфир's shorter pair.
+  static const titleSwitchWidth = 360.0;
 }

@@ -12,6 +12,7 @@ import '../glossary/bloc/glossary_bloc.dart';
 import '../common/bloc/session_bloc.dart';
 import '../graph/bloc/pipeline_facts_bloc.dart';
 import '../graph/bloc/pipeline_graph_bloc.dart';
+import '../graph/bloc/screen_scheme_bloc.dart';
 import '../settings/bloc/settings_bloc.dart';
 import 'bloc/failure_cubit.dart';
 import 'bloc/navigation_cubit.dart';
@@ -138,6 +139,20 @@ class DashboardProviders extends StatelessWidget {
       BlocProvider(
         lazy: false,
         create: (context) => PipelineGraphBloc(
+          context.read(),
+          context.read(),
+          context.read(),
+          context.read(),
+          context.read(),
+          context.read(),
+          context.read<FailureCubit>(),
+        )..add(const PipelineGraphOpened()),
+      ),
+      // The Screen page's canvas, read before anyone opens it as Эфир's is:
+      // what it lets the glossary apply is what a screen session is told.
+      BlocProvider(
+        lazy: false,
+        create: (context) => ScreenSchemeBloc(
           context.read(),
           context.read(),
           context.read(),

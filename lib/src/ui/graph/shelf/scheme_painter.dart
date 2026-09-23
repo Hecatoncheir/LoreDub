@@ -44,7 +44,13 @@ class SchemePainter extends CustomPainter {
   final List<GlossaryPack> packs;
 
   late final PipelineGraph graph = buildPipelineGraph(
-    settings: AppSettings(captureRouted: scheme.captureRouted),
+    // Whether the game's sound is drawn in, which is a setting of its own
+    // on each of the two canvases.
+    settings: switch (scheme.scheme) {
+      PipelineScheme.live => AppSettings(captureRouted: scheme.captureRouted),
+      PipelineScheme.screen => AppSettings(screenVoices: scheme.captureRouted),
+    },
+    scheme: scheme.scheme,
     characters: cast,
     packs: switch (scheme.activePacks) {
       final active? => [

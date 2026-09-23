@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/compute_device.dart';
+import '../../../domain/pipeline_graph.dart';
 import '../../../domain/spoken_language.dart';
 import '../../settings/bloc/settings_bloc.dart';
 import '../../language_names.dart';
@@ -21,12 +22,19 @@ import 'stage_device_picker.dart';
 /// What comes in is settled by what feeds this node: whisper is run with -tr
 /// and hands English over whatever the game speaks, so the language the game
 /// is listened to in -- a setting of Live's, and one that says nothing about
-/// this stage -- is not what is shown here.
+/// this stage -- is not what is shown here. On the Screen page's scheme it is
+/// the text on the screen, which is English whenever it is translated.
 class TranslationNodeFields extends StatelessWidget {
-  const TranslationNodeFields({super.key, required this.facts, required this.availability});
+  const TranslationNodeFields({
+    super.key,
+    required this.facts,
+    required this.availability,
+    this.scheme = PipelineScheme.live,
+  });
 
   final PipelineFacts facts;
   final ComputeAvailability availability;
+  final PipelineScheme scheme;
 
   void _choose(BuildContext context, String? language) {
     if (language == null) return;
@@ -54,7 +62,11 @@ class TranslationNodeFields extends StatelessWidget {
             onChanged: (_) {},
           ),
         ),
-        InspectorNote(text: l10n.translationFromWhisper),
+        InspectorNote(
+          text: scheme == PipelineScheme.screen
+              ? l10n.translationFromScreen
+              : l10n.translationFromWhisper,
+        ),
         const SizedBox(height: 14),
         InspectorField(
           label: l10n.translationToLabel,

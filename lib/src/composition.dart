@@ -30,6 +30,7 @@ import 'data/services/settings_service.dart';
 import 'data/services/update_installer.dart';
 import 'data/services/update_service.dart';
 import 'data/services/voice_bank_service.dart';
+import 'domain/pipeline_graph.dart';
 import 'domain/session_coordinator.dart';
 
 /// Everything the application is made of below its screens, built once and
@@ -51,11 +52,14 @@ class AppComposition {
 
   final NativeBridge _native;
 
-  // The files the player's work is kept in, one service each.
+  // The files the player's work is kept in, one service each -- a canvas's
+  // arrangement and its shelf for each of the two canvases.
   final _characters = CharacterService();
   final _glossary = GlossaryService();
   final _layout = PipelineGraphService();
   final _shelf = PipelineLibraryService();
+  final _screenLayout = PipelineGraphService(scheme: PipelineScheme.screen);
+  final _screenShelf = PipelineLibraryService(scheme: PipelineScheme.screen);
 
   /// The one engine, which the sessions run on and several repositories
   /// tell what changed while one runs.
@@ -69,12 +73,23 @@ class AppComposition {
   final settings = SettingsRepository(SettingsService());
 
   /// The sessions that engine runs, and the files a start writes into them.
-  late final sessions = SessionRepository(engine, _characters, _glossary, _layout);
+  late final sessions = SessionRepository(
+    engine,
+    _characters,
+    _glossary,
+    _layout,
+    _screenLayout,
+  );
 
   /// What this machine has: the processes, the monitors, the adapters.
   late final system = SystemRepository(engine, PythonDiscovery());
   final voiceBank = VoiceBankRepository(VoiceBankService());
-  late final schemes = SchemeRepository(layout: _layout, shelf: _shelf);
+  late final schemes = SchemeRepository(
+    layout: _layout,
+    shelf: _shelf,
+    screenLayout: _screenLayout,
+    screenShelf: _screenShelf,
+  );
 
   /// What the player wrote down, which the glossary screen and the canvas
   /// both work on.

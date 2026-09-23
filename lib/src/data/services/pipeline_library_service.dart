@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import '../../domain/failure.dart';
+import '../../domain/pipeline_graph.dart';
 import '../../domain/saved_pipeline.dart';
 import 'json_file_store.dart';
 
@@ -9,18 +10,24 @@ import 'json_file_store.dart';
 /// canvas is left in.
 ///
 /// `pipeline_graph.json` is where the canvas stands right now; this is the
-/// shelf of schemes to put it back to.
+/// shelf of schemes to put it back to. The Screen page's canvas keeps a
+/// shelf of its own, `screen_pipelines.json`, beside `screen_graph.json`.
 class PipelineLibraryService {
-  PipelineLibraryService({DirectoryProvider? root})
-    : _store = JsonFileStore(
-        fileName: 'pipelines.json',
-        decode: PipelineLibrary.fromJson,
+  PipelineLibraryService({DirectoryProvider? root, PipelineScheme scheme = PipelineScheme.live})
+    : _scheme = scheme,
+      _store = JsonFileStore(
+        fileName: switch (scheme) {
+          PipelineScheme.live => 'pipelines.json',
+          PipelineScheme.screen => 'screen_pipelines.json',
+        },
+        decode: (json) => PipelineLibrary.fromJson(json, scheme: scheme),
         encode: (library) => library.toJson(),
         empty: PipelineLibrary.empty,
         saveFailure: FailureCode.pipelinesSaveFailed,
         root: root,
       );
 
+  final PipelineScheme _scheme;
   final JsonFileStore<PipelineLibrary> _store;
 
   Future<String> file() => _store.file();
@@ -37,12 +44,13 @@ class PipelineLibraryService {
     FailureCode.pipelinesExportFailed,
   );
 
-  /// What the files the player chose hold. A file with no scheme in it — the
-  /// wrong file, or a damaged one — is reported rather than passed over.
+  /// What the files the player chose hold for this shelf. A file with no
+  /// scheme in it — the wrong file, a damaged one, or one of the other
+  /// canvas's — is reported rather than passed over.
   Future<List<SavedPipeline>> readFiles(List<String> sources) async => [
     for (final read in await importJsonFiles(
       sources,
-      decode: PipelineLibrary.pipelinesFromJson,
+      decode: (json) => PipelineLibrary.pipelinesOf(json, _scheme),
       holdsNothing: (pipelines) => pipelines.isEmpty,
       failure: FailureCode.pipelinesImportFailed,
     ))

@@ -92,6 +92,7 @@ StagedDashboard stage(
   StagedDashboard cubits, {
   DashboardSection section = DashboardSection.live,
   LiveView liveView = LiveView.dubbing,
+  ScreenView screenView = ScreenView.reading,
   UpdateState updates = const UpdateState(),
   AppSettings? settings,
   List<ModelInstallState>? models,
@@ -104,7 +105,7 @@ StagedDashboard stage(
   double? startupProgress,
   String startupStage = '',
 }) {
-  cubits.stageSection(section, liveView);
+  cubits.stageSection(section, liveView, screenView);
   cubits.stageUpdates(updates);
   if (settings != null) cubits.settingsRepository.seed(settings);
   // What is on disk, which every screen reads; a row with a download

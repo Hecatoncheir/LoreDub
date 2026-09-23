@@ -4,6 +4,7 @@
 import 'section_mark.dart';
 
 import '../live/live_title_switch.dart';
+import '../screen_text/screen_title_switch.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -34,33 +35,31 @@ class DashboardHeader extends StatelessWidget {
                   // The marking over the title reads in the player's own
                   // language: it is a strap rather than a brand, and half
                   // the screens already named their areas in Russian.
-                  shell.section.mark(AppLocalizations.of(context), liveView: shell.liveView),
+                  shell.section.mark(
+                    AppLocalizations.of(context),
+                    liveView: shell.liveView,
+                    screenView: shell.screenView,
+                  ),
                   style: context.textStyles.monoMarking,
                 ),
                 const SizedBox(height: 5),
-                if (shell.section == DashboardSection.live)
-                  // The title is the switch between the two halves of this
-                  // screen: what is up is the heading, what is not stands
-                  // beside it.
-                  const Padding(
+                switch (shell.section) {
+                  // On the two screens that have two halves the title is the
+                  // switch between them: what is up is the heading, what is
+                  // not stands beside it.
+                  DashboardSection.live => const Padding(
                     padding: EdgeInsets.only(left: 6),
                     child: LiveTitleSwitch(),
-                  )
-                else
-                  Text(
-                    switch (shell.section) {
-                      // The scheme is the other half of Эфир, and says so.
-                      DashboardSection.live when shell.liveView == LiveView.scheme =>
-                        AppLocalizations.of(context).titlePipeline,
-                      DashboardSection.live => AppLocalizations.of(context).titleLive,
-                      DashboardSection.snapshot => AppLocalizations.of(context).titleSnapshot,
-                      DashboardSection.models => AppLocalizations.of(context).titleModels,
-                      DashboardSection.characters => AppLocalizations.of(context).titleCharacters,
-                      DashboardSection.glossary => AppLocalizations.of(context).titleGlossary,
-                      DashboardSection.settings => AppLocalizations.of(context).titleSettings,
-                    },
+                  ),
+                  DashboardSection.snapshot => const Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: ScreenTitleSwitch(),
+                  ),
+                  final section => Text(
+                    section.title(AppLocalizations.of(context)),
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
+                },
               ],
             ),
           ),

@@ -352,6 +352,11 @@ class AppSettings {
   String get textLanguage =>
       screenLanguage == targetLanguage ? targetLanguage : fallbackSpokenLanguage;
 
+  /// Whether the Screen page translates what it reads: English text, into a
+  /// dubbing language that is not English. Text in the dubbing language is
+  /// voiced as it is, and its scheme draws the translator stepped over.
+  bool get screenTranslates => textLanguage != targetLanguage;
+
   /// What whisper.cpp should be told to expect.
   /// Whether the dubbing translates at all. Whisper hands English over
   /// whatever the game speaks, so a session dubbing into English has nothing

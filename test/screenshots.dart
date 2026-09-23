@@ -370,6 +370,8 @@ void main() {
     String language, {
     required DashboardSection section,
     LiveView liveView = LiveView.dubbing,
+    ScreenView screenView = ScreenView.reading,
+    PipelineLayout screenLayout = PipelineLayout.screenStandard,
     AppSettings settings = const AppSettings(),
     PipelineStatus status = PipelineStatus.idle,
     PipelineSession session = PipelineSession.live,
@@ -386,7 +388,7 @@ void main() {
       glossary: glossaryShowing(GlossaryState(glossary: glossary, loaded: true)),
       capture: captureShowing(const VoiceCaptureState(clips: {'guard', 'smith', 'herbalist'})),
     );
-    cubits.stageSection(section, liveView);
+    cubits.stageSection(section, liveView, screenView);
     cubits.stageUpdates(const UpdateState(currentVersion: '0.15.0'));
     cubits.settingsRepository.seed(
       settings.copyWith(
@@ -442,6 +444,8 @@ void main() {
         ),
       ],
     );
+    // The Screen page's scheme, which keeps an arrangement of its own.
+    cubits.stageScreenScheme(layout: screenLayout);
     // The node the panel is open on, where a shot wants one.
     if (chosen != null) cubits.graph.add(PipelineNodeSelected(chosen));
     return cubits;
@@ -561,6 +565,41 @@ void main() {
           ],
         ),
         'snapshot',
+        language,
+      );
+    });
+
+    testWidgets('the screen\'s scheme, in $language', (tester) async {
+      // The text off the screen through a pack of shouts and the translator
+      // into the voice, the game's sound through the detection into it, and
+      // two cards of the cast the voice hands the lines to.
+      await shoot(
+        tester,
+        stage(
+          language,
+          section: DashboardSection.snapshot,
+          screenView: ScreenView.scheme,
+          settings: subtitles.copyWith(screenVoices: true),
+          screenLayout: PipelineLayout(
+            // The smith's part is read by the guard, so the smith stands
+            // first and the line between them runs the way the signal does.
+            cast: [CastPlacement.of('smith'), CastPlacement.of('guard')],
+            glossaries: const [
+              GlossaryPlacement(
+                nodeId: 'glossary:1',
+                packId: 'shouts',
+                feed: GlossaryFeed.recognition,
+              ),
+            ],
+            positions: {
+              ...PipelineLayout.screenPositions,
+              PipelineNodeIds.character('smith'): PipelineLayout.castPlace(0),
+              PipelineNodeIds.character('guard'): PipelineLayout.castPlace(1),
+              'glossary:1': const GraphPoint(170, 20),
+            },
+          ),
+        ),
+        'screen-pipeline',
         language,
       );
     });

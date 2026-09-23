@@ -27,18 +27,48 @@ class GlossaryNodeFields extends StatelessWidget {
   final PipelineNode node;
   final PipelineFacts facts;
 
-  /// What the node does where it stands, in a sentence.
+  /// What the node does where it stands, in a sentence -- on the Screen
+  /// page's scheme, about the text read off the screen rather than what
+  /// whisper heard.
   String _placeNote(AppLocalizations l10n) {
-    final translates = facts.settings.translates;
+    final onScreen = node.scheme == PipelineScheme.screen;
+    final translates = onScreen ? facts.settings.screenTranslates : facts.settings.translates;
     return switch ((node.feed, node.active)) {
-      (null, _) => l10n.pipelineGlossaryOutNote,
+      (null, _) => onScreen ? l10n.pipelineScreenGlossaryOutNote : l10n.pipelineGlossaryOutNote,
       (_, false) => l10n.pipelineGlossaryInactiveNote,
-      (GlossaryFeed.recognition, _) =>
-        translates ? l10n.pipelineGlossaryPhrasesNote : l10n.pipelineGlossaryWordsNote,
-      (GlossaryFeed.translation, _) =>
-        translates ? l10n.pipelineGlossaryNamesWordsNote : l10n.pipelineGlossaryAsideNote,
+      (GlossaryFeed.recognition, _) => _beforeNote(
+        l10n,
+        onScreen: onScreen,
+        translates: translates,
+      ),
+      (GlossaryFeed.translation, _) => _afterNote(l10n, onScreen: onScreen, translates: translates),
     };
   }
+
+  /// A pack standing before the translator: its phrases, or -- with nothing
+  /// to translate -- its words.
+  static String _beforeNote(
+    AppLocalizations l10n, {
+    required bool onScreen,
+    required bool translates,
+  }) => switch ((onScreen, translates)) {
+    (false, true) => l10n.pipelineGlossaryPhrasesNote,
+    (false, false) => l10n.pipelineGlossaryWordsNote,
+    (true, true) => l10n.pipelineScreenGlossaryPhrasesNote,
+    (true, false) => l10n.pipelineScreenGlossaryWordsNote,
+  };
+
+  /// A pack standing after the translator: its names and words, or --
+  /// with the translator standing aside -- nothing.
+  static String _afterNote(
+    AppLocalizations l10n, {
+    required bool onScreen,
+    required bool translates,
+  }) => switch ((onScreen, translates)) {
+    (_, true) => l10n.pipelineGlossaryNamesWordsNote,
+    (false, false) => l10n.pipelineGlossaryAsideNote,
+    (true, false) => l10n.pipelineScreenGlossaryAsideNote,
+  };
 
   @override
   Widget build(BuildContext context) {

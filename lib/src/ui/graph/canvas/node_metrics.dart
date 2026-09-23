@@ -40,6 +40,9 @@ abstract final class NodeMetrics {
   /// Where a socket sits, measured from the top-left of its own node.
   static Offset anchorOf(PipelineSocket socket) => switch (socket) {
     PipelineSocket.gameAudio => Offset(width, rowCentre(0)),
+    PipelineSocket.screenText => Offset(width, rowCentre(0)),
+    PipelineSocket.detectionIn => Offset(0, rowCentre(0)),
+    PipelineSocket.detectedSpeaker => Offset(width, rowCentre(0)),
     PipelineSocket.speechIn => Offset(0, rowCentre(0)),
     PipelineSocket.speechText => Offset(width, rowCentre(0)),
     PipelineSocket.translationIn => Offset(0, rowCentre(0)),
@@ -47,6 +50,7 @@ abstract final class NodeMetrics {
     PipelineSocket.voiceIn => Offset(0, rowCentre(0)),
     PipelineSocket.voiceAudio => Offset(width, rowCentre(0)),
     PipelineSocket.voiceCast => Offset(width, rowCentre(1)),
+    PipelineSocket.voiceSpeaker => Offset(0, rowCentre(1)),
     PipelineSocket.mixIn => Offset(0, rowCentre(0)),
     PipelineSocket.mixOut => Offset(width, rowCentre(0)),
     PipelineSocket.mixCast => Offset(0, rowCentre(1)),

@@ -25,6 +25,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveViewScheme => 'Scheme';
 
   @override
+  String get screenViewReading => 'Screen translation';
+
+  @override
+  String get screenViewScheme => 'Scheme';
+
+  @override
   String get navLive => 'Live';
 
   @override
@@ -624,6 +630,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get translationFromWhisper =>
       'Whisper hands over English whatever the game speaks, so the translation always starts from it.';
+
+  @override
+  String get translationFromScreen =>
+      'The screen hands English text to the translator: Windows OCR reads it as it is, and the translation starts from it.';
 
   @override
   String languageWithoutModels(String language) {
@@ -2180,4 +2190,69 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pipelineVoiceWholeGlossary =>
       'No glossary pack is switched on, so the lines are checked against everything written down on the Glossary screen.';
+
+  @override
+  String get pipelineNodeScreen => 'Screen';
+
+  @override
+  String get pipelineNodeDetection => 'Character detection';
+
+  @override
+  String pipelineScreenOcr(String language) {
+    return 'Windows OCR · $language';
+  }
+
+  @override
+  String get pipelineNoConverter => 'Needs the voice converter';
+
+  @override
+  String get pipelineCharacterNeedsDetection => 'needs character detection';
+
+  @override
+  String get pipelineScreenNodeNote =>
+      'The text comes off the screen: out of the subtitle frame while it is read, and out of any area picked with the key. The line out of its Text says which language it is in: through Translation it is English, and past it the dubbing language, read as it is.';
+
+  @override
+  String get pipelineScreenSourceNote =>
+      'Character detection listens to this game only to tell who is speaking: nothing of the speech is recognized.';
+
+  @override
+  String get pipelineScreenVoiceNote =>
+      'Lines off the screen are read in this voice. With Character detection, the timbre of whoever was speaking as the line appeared is laid over it.';
+
+  @override
+  String get pipelineScreenMixNote =>
+      'The screen is read one line at a time, so no two voices ever meet here.';
+
+  @override
+  String get pipelineScreenGlossaryPhrasesNote =>
+      'Before Translation: a whole line is matched against the English text off the screen, and the pack\'s phrases are said in your translation instead of the model\'s. The pack\'s names and words are matched against the finished translation — for them, put a node of this pack after Translation.';
+
+  @override
+  String get pipelineScreenGlossaryWordsNote =>
+      'There is nothing to translate: the text on the screen is in the dubbing language already and is read as it is. The node puts the pack\'s words right in it; phrases and names only work when there is a translation.';
+
+  @override
+  String get pipelineScreenGlossaryAsideNote =>
+      'After Translation, which stands aside for now — the text on the screen is read as it is. Until it is back in the line, the node matches nothing.';
+
+  @override
+  String get pipelineScreenGlossaryOutNote =>
+      'The node is not in the line of text and matches nothing. Draw a line into its Text from Screen, Translation or another glossary — or from its Text into Translation, Lines or another glossary. Put in the line, the glossary is switched on.';
+
+  @override
+  String get pipelineRefusalConverterMissing =>
+      'Download the voice converter on the Models screen first.';
+
+  @override
+  String get pipelineCutVoices => 'Stop following the characters\' voices';
+
+  @override
+  String get pipelineCutScreenTranslation => 'Read the screen\'s text without translating it';
+
+  @override
+  String get pipelineSchemeVoices => 'With character voices';
+
+  @override
+  String get pipelineSchemeNoVoices => 'No character voices';
 }

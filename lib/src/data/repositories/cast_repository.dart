@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import '../../domain/character.dart';
+import '../../domain/pipeline_graph.dart';
 import '../services/character_service.dart';
 import '../services/native_engine_service.dart';
 
@@ -87,13 +88,18 @@ class CastRepository {
     await _engine.voiceCharacterAs(id, target);
   }
 
-  /// The cards that are out of the mix, as the canvas now draws them: each
-  /// of them lends its voice to nobody and is read as it is heard.
+  /// The cards that are out of the mix, as [scheme]'s canvas now draws
+  /// them: each of them lends its voice to nobody and is read as it is heard.
   ///
   /// Nothing of the cards changes — who stands in for whom waits in them —
   /// so there is nothing to write; only a session already running has to be
-  /// told, or it would go on reading the cast until the next start.
-  Future<void> readAsHeard(Set<String> value) => _engine.readAsHeard(value);
+  /// told, or it would go on reading the cast until the next start. Each
+  /// canvas cuts for the sessions that start from it, so a session started
+  /// from the other one is left as it is.
+  Future<void> readAsHeard(Set<String> value, {PipelineScheme scheme = PipelineScheme.live}) async {
+    if (!scheme.feeds(_engine.session)) return;
+    await _engine.readAsHeard(value);
+  }
 
   /// Where the cast is kept, which every session is handed.
   Future<String> file() => _service.file();

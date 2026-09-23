@@ -27,7 +27,7 @@ void main() {
   setUp(() {
     engine = _SlowEngine();
     glossary = _SlowGlossary();
-    repository = SessionRepository(engine, _Characters(), glossary, _Graph());
+    repository = SessionRepository(engine, _Characters(), glossary, _Graph(), _ScreenGraph());
   });
 
   /// The start with the least to it: the converter alone, and no game. It
@@ -172,9 +172,7 @@ void main() {
     expect(live.capture.processId, game.pid);
   });
 
-  test('narrows the glossary of the sound it dubs, and reads the screen with it whole', () async {
-    // The canvas draws the dubbing of the game's sound: what it says of a
-    // pack is said of that, and the screen's reading is not on it.
+  test('narrows the glossary of the sound it dubs by the canvas that draws it', () async {
     final started = dub(settings: const AppSettings(targetLanguage: 'en'));
     glossary.written.complete('glossary.session.json');
     for (var turn = 0; engine.starts.isEmpty && turn < 1000; turn++) {
@@ -185,15 +183,41 @@ void main() {
     expect(glossary.reaches.single, {
       'p1': {GlossaryKind.word},
     }, reason: 'with nothing translated, what whisper heard is where a word is met');
+  });
 
+  test("reads the screen by the Screen page's scheme, and cuts what it cut", () async {
+    // Each canvas draws the session that starts from it: the screen's
+    // reading is narrowed by what its own scheme draws, not by Эфир's.
     final screen = readScreen();
-    for (var turn = 0; engine.starts.length < 2 && turn < 1000; turn++) {
+    glossary.written.complete('glossary.session.json');
+    for (var turn = 0; engine.starts.isEmpty && turn < 1000; turn++) {
       await Future<void>.delayed(Duration.zero);
     }
     engine.starts.last.complete();
     await screen;
-    expect(glossary.reaches.last, isEmpty);
+
+    expect(glossary.reaches.single, {
+      'screen-pack': {GlossaryKind.name, GlossaryKind.word},
+    }, reason: 'a pack after the translator puts the translation right');
+    expect(engine.screen!.worker.asHeard, {'smith'}, reason: 'the cut drawn on the screen');
   });
+
+  test(
+    'lets a pack after the translator apply nothing where the screen is read as it is',
+    () async {
+      final screen = readScreen(settings: const AppSettings(screenLanguage: 'ru'));
+      glossary.written.complete('glossary.session.json');
+      for (var turn = 0; engine.starts.isEmpty && turn < 1000; turn++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      engine.starts.last.complete();
+      await screen;
+
+      expect(glossary.reaches.single, {
+        'screen-pack': <GlossaryKind>{},
+      }, reason: 'after a translator standing aside, the pack applies nothing');
+    },
+  );
 
   test('clears away what a failed start left behind', () async {
     final starting = expectLater(start(), failsWith(FailureCode.workerStartTimeout));
@@ -481,6 +505,21 @@ class _Graph extends Fake implements PipelineGraphService {
     silent: {'guard'},
     glossaries: [
       GlossaryPlacement(nodeId: 'glossary:1', packId: 'p1', feed: GlossaryFeed.recognition),
+    ],
+  );
+}
+
+/// The Screen page's arrangement: another pack, another cut.
+class _ScreenGraph extends Fake implements PipelineGraphService {
+  @override
+  Future<PipelineLayout> load() async => const PipelineLayout(
+    silent: {'smith'},
+    glossaries: [
+      GlossaryPlacement(
+        nodeId: 'glossary:1',
+        packId: 'screen-pack',
+        feed: GlossaryFeed.translation,
+      ),
     ],
   );
 }

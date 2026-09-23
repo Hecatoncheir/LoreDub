@@ -6,6 +6,7 @@ import 'package:lore_dub/src/data/repositories/glossary_repository.dart';
 import 'package:lore_dub/src/data/repositories/settings_repository.dart';
 import 'package:lore_dub/src/data/services/settings_service.dart';
 import 'package:lore_dub/src/domain/glossary.dart';
+import 'package:lore_dub/src/domain/pipeline_graph.dart';
 import 'package:lore_dub/src/domain/pipeline_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -93,15 +94,40 @@ void main() {
     expect(engine.glossaries, hasLength(1), reason: 'the same reach is not told twice');
   });
 
-  test('reads a pack whole in the screen session, which the canvas does not draw', () async {
+  test('reads the screen session by the Screen page\'s canvas, not by Эфир\'s', () async {
     glossary.seed(written);
     engine.running = PipelineSession.screen;
     await glossary.narrow({
       'fallout': {GlossaryKind.phrase},
     });
+    expect(engine.glossaries, isEmpty, reason: 'Эфир\'s canvas does not draw that session');
+
+    await glossary.narrow({
+      'fallout': {GlossaryKind.word},
+    }, scheme: PipelineScheme.screen);
+    expect(engine.glossaries.single.entries, [vault]);
+
+    await glossary.save(written.activating('fallout', active: true));
+    expect(engine.glossaries.last.entries, [vault], reason: 'an entry written keeps the reach');
+  });
+
+  test('reads a pack whole in a screen session its canvas says nothing of', () async {
+    glossary.seed(written);
+    engine.running = PipelineSession.screen;
 
     await glossary.save(written.activating('fallout', active: true));
 
     expect(engine.glossaries.last.entries, [fire, vault]);
+  });
+
+  test('tells no session while the engine rests', () async {
+    glossary.seed(written);
+    engine.running = null;
+
+    await glossary.narrow({
+      'fallout': {GlossaryKind.phrase},
+    });
+
+    expect(engine.glossaries, isEmpty);
   });
 }

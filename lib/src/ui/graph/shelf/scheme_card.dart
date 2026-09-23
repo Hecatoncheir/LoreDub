@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../domain/character.dart';
 import '../../../domain/glossary.dart';
+import '../../../domain/pipeline_graph.dart';
 import '../../../domain/saved_pipeline.dart';
 import '../../theme.dart';
 import 'scheme_menu.dart';
@@ -118,10 +119,16 @@ class SchemeCard extends StatelessWidget {
     );
   }
 
-  /// What the scheme is, in one line: whether the way in is drawn and how
-  /// many cards it puts on the canvas.
+  /// What the scheme is, in one line: whether the game's sound is drawn in
+  /// -- the way into Эфир's pipeline, the voices behind the Screen page's --
+  /// and how many cards it puts on the canvas.
   String _note(AppLocalizations l10n) {
-    final route = scheme.captureRouted ? l10n.pipelineSchemeAudio : l10n.pipelineSchemeUnrouted;
+    final route = switch ((scheme.scheme, scheme.captureRouted)) {
+      (PipelineScheme.live, true) => l10n.pipelineSchemeAudio,
+      (PipelineScheme.live, false) => l10n.pipelineSchemeUnrouted,
+      (PipelineScheme.screen, true) => l10n.pipelineSchemeVoices,
+      (PipelineScheme.screen, false) => l10n.pipelineSchemeNoVoices,
+    };
     if (scheme.layout.cast.isEmpty) return route;
     return '$route · ${l10n.pipelineSchemeCast(scheme.layout.cast.length)}';
   }

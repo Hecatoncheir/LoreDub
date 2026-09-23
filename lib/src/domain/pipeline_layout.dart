@@ -98,6 +98,21 @@ class PipelineLayout {
   /// What a canvas that was never arranged looks like.
   static const standard = PipelineLayout(positions: standardPositions);
 
+  /// What the Screen page's canvas looks like before it is arranged.
+  static const screenStandard = PipelineLayout(positions: screenPositions);
+
+  /// What [scheme]'s canvas looks like before it is arranged.
+  static PipelineLayout standardOf(PipelineScheme scheme) => switch (scheme) {
+    PipelineScheme.live => standard,
+    PipelineScheme.screen => screenStandard,
+  };
+
+  /// Where [scheme] puts its stages when nobody has moved them.
+  static Map<String, GraphPoint> positionsOf(PipelineScheme scheme) => switch (scheme) {
+    PipelineScheme.live => standardPositions,
+    PipelineScheme.screen => screenPositions,
+  };
+
   /// The six stages in one line, in the order the work is done in: the
   /// pipeline is a line, and a scheme nobody has arranged yet should say so
   /// before it says anything else. Whisper stood raised above the rest while
@@ -110,6 +125,21 @@ class PipelineLayout {
     PipelineNodeIds.voice: GraphPoint(895, 220),
     PipelineNodeIds.mix: GraphPoint(1180, 220),
     PipelineNodeIds.output: GraphPoint(1465, 220),
+  };
+
+  /// The Screen page's stages in two lines from the left edge: the text,
+  /// from the screen to the output, and under it the game's sound, which
+  /// only tells the voice who is speaking. The second line rises into the
+  /// voice's second row, where who is speaking goes in, and passes under no
+  /// other stage on its way.
+  static const screenPositions = {
+    PipelineNodeIds.screen: GraphPoint(40, 220),
+    PipelineNodeIds.translation: GraphPoint(325, 220),
+    PipelineNodeIds.voice: GraphPoint(610, 220),
+    PipelineNodeIds.mix: GraphPoint(895, 220),
+    PipelineNodeIds.output: GraphPoint(1180, 220),
+    PipelineNodeIds.source: GraphPoint(40, 440),
+    PipelineNodeIds.detection: GraphPoint(325, 440),
   };
 
   /// Where the first character node is put, and how the rest follow: in a
@@ -135,8 +165,17 @@ class PipelineLayout {
   /// words goes over it.
   static const glossaryOrigin = GraphPoint(600, 20);
 
-  /// Where the [index]th drawing of a pack goes when nobody has moved it.
-  static GraphPoint glossaryPlace(int index) => glossaryOrigin.translate(index * castStep, 0);
+  /// The same over the Screen page's line, whose translator stands a stage
+  /// further to the left.
+  static const screenGlossaryOrigin = GraphPoint(315, 20);
+
+  /// Where the [index]th drawing of a pack goes on [scheme] when nobody has
+  /// moved it.
+  static GraphPoint glossaryPlace(int index, {PipelineScheme scheme = PipelineScheme.live}) =>
+      switch (scheme) {
+        PipelineScheme.live => glossaryOrigin,
+        PipelineScheme.screen => screenGlossaryOrigin,
+      }.translate(index * castStep, 0);
 
   final Map<String, GraphPoint> positions;
 
@@ -272,7 +311,8 @@ class PipelineLayout {
     int end(GlossaryFeed feed) => afterLast(feed) == 0 ? rest.length : afterLast(feed);
     final lastSide = translates ? GlossaryFeed.translation : GlossaryFeed.recognition;
     return switch ((move.anchor, move.after)) {
-      (PipelineNodeIds.recognition, true) => (
+      // Right after where the line starts: whisper, or the screen.
+      (PipelineNodeIds.recognition || PipelineNodeIds.screen, true) => (
         GlossaryFeed.recognition,
         first(GlossaryFeed.recognition),
       ),
@@ -387,10 +427,11 @@ class PipelineLayout {
     'glossaries': [for (final placement in glossaries) placement.toJson()],
   };
 
-  /// The layout in [json], or the standard arrangement when the file is
-  /// missing, damaged, or written by a version that put other things in it.
-  static PipelineLayout fromJson(Object? json) {
-    if (json is! Map<String, Object?>) return standard;
+  /// The layout in [json], or [scheme]'s standard arrangement when the file
+  /// is missing, damaged, or written by a version that put other things in
+  /// it.
+  static PipelineLayout fromJson(Object? json, {PipelineScheme scheme = PipelineScheme.live}) {
+    if (json is! Map<String, Object?>) return standardOf(scheme);
     final nodes = json['nodes'];
     final positions = <String, GraphPoint>{};
     if (nodes is Map<String, Object?>) {
@@ -401,7 +442,7 @@ class PipelineLayout {
     // Version 1 listed the cards by id under `characters`, each drawn once.
     final cast = json['cast'] ?? json['characters'];
     return PipelineLayout(
-      positions: positions.isEmpty ? standardPositions : positions,
+      positions: positions.isEmpty ? positionsOf(scheme) : positions,
       cast: [
         for (final value in cast as List<Object?>? ?? const []) ?CastPlacement.fromJson(value),
       ],

@@ -91,6 +91,59 @@ void main() {
     expect(LinkCut.of(mixOut), isNull);
   });
 
+  test('gives the Screen page\'s lines badges of their own', () {
+    const intoTranslator = PipelinePort(
+      PipelineNodeIds.translation,
+      PipelineSocket.translationIn,
+    );
+    const screenText = PipelinePort(PipelineNodeIds.screen, PipelineSocket.screenText);
+
+    expect(
+      LinkCut.of(
+        const PipelineLink(
+          PipelinePort(PipelineNodeIds.source, PipelineSocket.gameAudio),
+          PipelinePort(PipelineNodeIds.detection, PipelineSocket.detectionIn),
+        ),
+        scheme: PipelineScheme.screen,
+      ),
+      LinkCut.voices,
+      reason: 'the game\'s sound goes to the detection there, not into the pipeline',
+    );
+    expect(
+      LinkCut.of(
+        const PipelineLink(
+          PipelinePort(PipelineNodeIds.detection, PipelineSocket.detectedSpeaker),
+          PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceSpeaker),
+        ),
+        scheme: PipelineScheme.screen,
+      ),
+      LinkCut.voices,
+    );
+    expect(
+      LinkCut.of(const PipelineLink(screenText, intoTranslator), scheme: PipelineScheme.screen),
+      LinkCut.screenTranslation,
+    );
+    expect(
+      LinkCut.of(
+        const PipelineLink(
+          PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechText),
+          intoTranslator,
+        ),
+      ),
+      LinkCut.translation,
+    );
+    expect(
+      LinkCut.of(
+        const PipelineLink(
+          screenText,
+          PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceIn),
+        ),
+        scheme: PipelineScheme.screen,
+      ),
+      LinkCut.translationBack,
+    );
+  });
+
   test('sets a badge on the middle of its curve', () {
     const from = Offset(0, 0);
     const to = Offset(400, 100);

@@ -26,6 +26,12 @@ String modelTitle(AppLocalizations l10n, ModelPackage model) => switch (model.ki
 /// "medium" rather than "Whisper medium q5_0".
 String whisperShortName(ModelPackage model) => (model.version ?? model.id).split(' ').first;
 
+/// The converter by its name and version alone, as a node's line beside a
+/// switch holds it: "OpenVoice V2" rather than the title the models screen
+/// gives it.
+String converterShortName(AppLocalizations l10n, ModelPackage model) =>
+    '${l10n.computeStageVoiceConversion} ${model.version ?? ''}'.trimRight();
+
 String? recognitionQualityName(AppLocalizations l10n, RecognitionQuality? quality) =>
     switch (quality) {
       RecognitionQuality.fair => l10n.whisperQualityFair,

@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../common/title_word.dart';
 import '../shell/bloc/navigation_cubit.dart';
 import '../theme.dart';
-import 'live_title_word.dart';
 
 /// The title of Эфир, which is also the switch between its two halves: the
 /// dubbing, and the scheme it runs by. The one that is up is the title and
@@ -26,7 +26,7 @@ class LiveTitleSwitch extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          LiveTitleWord(
+          TitleWord(
             key: const ValueKey('liveTitleDubbing'),
             label: l10n.liveViewDubbing,
             icon: Icons.graphic_eq_rounded,
@@ -41,7 +41,7 @@ class LiveTitleSwitch extends StatelessWidget {
               color: context.colors.outline,
             ),
           ),
-          LiveTitleWord(
+          TitleWord(
             key: const ValueKey('liveTitleScheme'),
             label: l10n.liveViewScheme,
             icon: Icons.account_tree_rounded,

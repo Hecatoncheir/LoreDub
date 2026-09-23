@@ -20,8 +20,7 @@ class GraphHitTester {
   final double zoom;
 
   /// The sockets [node] carries, in the order they are declared.
-  static Iterable<PipelineSocket> socketsOf(PipelineNode node) =>
-      PipelineSocket.values.where((socket) => socket.owner == node.kind);
+  static Iterable<PipelineSocket> socketsOf(PipelineNode node) => node.sockets;
 
   /// Whether a link from [from] would be accepted by [port] — what the ring
   /// around a socket shows while the pointer is carrying one.

@@ -123,6 +123,18 @@ abstract class AppLocalizations {
   /// **'Схема'**
   String get liveViewScheme;
 
+  /// No description provided for @screenViewReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перевод с экрана'**
+  String get screenViewReading;
+
+  /// No description provided for @screenViewScheme.
+  ///
+  /// In ru, this message translates to:
+  /// **'Схема'**
+  String get screenViewScheme;
+
   /// No description provided for @navLive.
   ///
   /// In ru, this message translates to:
@@ -1112,6 +1124,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Whisper отдаёт английский текст, с какого бы языка ни говорила игра, — поэтому перевод всегда начинается с него.'**
   String get translationFromWhisper;
+
+  /// No description provided for @translationFromScreen.
+  ///
+  /// In ru, this message translates to:
+  /// **'С экрана в перевод идёт английский текст: Windows OCR читает его как есть, и перевод начинается с него.'**
+  String get translationFromScreen;
 
   /// No description provided for @languageWithoutModels.
   ///
@@ -3728,6 +3746,114 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Ни один пакет словаря не включён, поэтому реплики сверяются со всем, что записано на экране «Словарь».'**
   String get pipelineVoiceWholeGlossary;
+
+  /// No description provided for @pipelineNodeScreen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Экран'**
+  String get pipelineNodeScreen;
+
+  /// No description provided for @pipelineNodeDetection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Определение персонажа'**
+  String get pipelineNodeDetection;
+
+  /// No description provided for @pipelineScreenOcr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Windows OCR · {language}'**
+  String pipelineScreenOcr(String language);
+
+  /// No description provided for @pipelineNoConverter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужен конвертер голоса'**
+  String get pipelineNoConverter;
+
+  /// No description provided for @pipelineCharacterNeedsDetection.
+  ///
+  /// In ru, this message translates to:
+  /// **'нужно определение персонажа'**
+  String get pipelineCharacterNeedsDetection;
+
+  /// No description provided for @pipelineScreenNodeNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текст берётся с экрана: из рамки субтитров, пока она читается, и из области, выделенной клавишей. На каком он языке, говорит линия из «Текста»: через «Перевод» идёт английский, а мимо него — текст на языке озвучки, который читается как есть.'**
+  String get pipelineScreenNodeNote;
+
+  /// No description provided for @pipelineScreenSourceNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Звук этой игры слушает «Определение персонажа» — только чтобы узнать, кто говорит: речь при этом не распознаётся.'**
+  String get pipelineScreenSourceNote;
+
+  /// No description provided for @pipelineScreenVoiceNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Реплики с экрана читаются этим голосом. С «Определением персонажа» поверх него ложится тембр того, кто говорил, когда реплика появилась.'**
+  String get pipelineScreenVoiceNote;
+
+  /// No description provided for @pipelineScreenMixNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текст с экрана читается по одной реплике, поэтому голоса здесь не накладываются друг на друга.'**
+  String get pipelineScreenMixNote;
+
+  /// No description provided for @pipelineScreenGlossaryPhrasesNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стоит до «Перевода»: реплика целиком сверяется с английским текстом с экрана, и фразы пакета звучат вашим переводом вместо ответа модели. Имена и слова пакета сверяются с готовым переводом — для них поставьте ноду этого пакета после «Перевода».'**
+  String get pipelineScreenGlossaryPhrasesNote;
+
+  /// No description provided for @pipelineScreenGlossaryWordsNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переводить нечего: текст с экрана уже на языке озвучки и читается как есть. Нода поправляет в нём слова пакета; фразы и имена работают только при переводе.'**
+  String get pipelineScreenGlossaryWordsNote;
+
+  /// No description provided for @pipelineScreenGlossaryAsideNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стоит после «Перевода», а перевод сейчас в стороне — текст с экрана читается как есть. Пока перевод не вернётся в линию, нода ничего не сверяет.'**
+  String get pipelineScreenGlossaryAsideNote;
+
+  /// No description provided for @pipelineScreenGlossaryOutNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нода не стоит в линии текста и ничего не сверяет. Протяните в её «Текст» линию от «Экрана», «Перевода» или другого словаря — или из её «Текста» в «Перевод», «Реплики» или другой словарь. Поставленный в линию, словарь включается.'**
+  String get pipelineScreenGlossaryOutNote;
+
+  /// No description provided for @pipelineRefusalConverterMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сначала скачайте конвертер голоса на экране «Модели».'**
+  String get pipelineRefusalConverterMissing;
+
+  /// No description provided for @pipelineCutVoices.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не определять голоса персонажей'**
+  String get pipelineCutVoices;
+
+  /// No description provided for @pipelineCutScreenTranslation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Читать текст с экрана без перевода'**
+  String get pipelineCutScreenTranslation;
+
+  /// No description provided for @pipelineSchemeVoices.
+  ///
+  /// In ru, this message translates to:
+  /// **'С голосами персонажей'**
+  String get pipelineSchemeVoices;
+
+  /// No description provided for @pipelineSchemeNoVoices.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без голосов персонажей'**
+  String get pipelineSchemeNoVoices;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

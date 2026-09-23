@@ -4,6 +4,6 @@
   "TextStyle(": 46,
   "avoid-nested-conditional-expressions": 0,
   "avoid-returning-widgets": 0,
-  "functions-over-60-lines": 19,
+  "functions-over-60-lines": 18,
   "prefer-single-widget-per-file": 0
 }

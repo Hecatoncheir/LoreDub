@@ -16,7 +16,7 @@ import 'update_announcer.dart';
 import 'bottom_navigation.dart';
 import 'dashboard_header.dart';
 import '../live/live_panel.dart';
-import '../screen_text/snapshot_panel.dart';
+import '../screen_text/screen_panel.dart';
 import '../characters/characters_panel.dart';
 import '../models/models_panel.dart';
 import '../settings/settings_panel.dart';
@@ -54,7 +54,7 @@ class DashboardScaffold extends StatelessWidget {
                         DashboardSection.live => LivePanel(
                           key: const ValueKey('live'),
                         ),
-                        DashboardSection.snapshot => SnapshotPanel(
+                        DashboardSection.snapshot => ScreenPanel(
                           key: const ValueKey('snapshot'),
                         ),
                         DashboardSection.models => ModelsPanel(

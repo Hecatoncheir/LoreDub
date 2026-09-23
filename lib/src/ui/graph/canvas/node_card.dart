@@ -56,8 +56,8 @@ class NodeCard extends StatelessWidget {
   /// may be.
   final VoidCallback? onRemove;
 
-  /// Switches the pack a glossary node draws on or off, which only such a
-  /// node has.
+  /// Switches the pack a glossary node draws on or off, or the character
+  /// detection's listening, which only such nodes have.
   final ValueChanged<bool>? onSwitch;
 
   /// The card's face: the orange edge of a chosen card or of the one the
@@ -135,7 +135,7 @@ class NodeCard extends StatelessWidget {
                       title: labels.title,
                       onRemove: onRemove,
                     ),
-                    NodePortRows(kind: node.kind, paint: paint),
+                    NodePortRows(kind: node.kind, scheme: node.scheme, paint: paint),
                     Expanded(
                       child: NodeCardSummary(
                         paint: paint,
@@ -145,6 +145,9 @@ class NodeCard extends StatelessWidget {
                           final onChanged? => NodeActiveSwitch(
                             active: node.active,
                             onChanged: onChanged,
+                            label: node.kind == PipelineNodeKind.detection
+                                ? l10n.screenVoices
+                                : l10n.pipelineGlossaryActive,
                           ),
                           null => null,
                         },
