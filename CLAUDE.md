@@ -1017,8 +1017,8 @@ model translates from there -- into English too, so `translates` is true
 whatever the dubbing language and the worker leaves a line already in it
 alone. Marian's own stage and `-tr` stay for Marian. The model is loaded
 last, once the voice and the converter hold what they will of the card,
-and offered the card only for what is then free past `CARD_RESERVE` (2 GB:
-whisper's share of it, and the half gigabyte the voice takes on under the lines that it
+and offered the card only for what is then free past `CARD_RESERVE` (3.5 GB:
+whisper's share of it, and the two gigabytes the voice takes on under the lines that it
 does not hold yet when asked): `layers_for_card` (`llm_translation.py`) offers it
 as many of its layers as fit otherwise, since every layer on the card takes
 its share off the line (measured: 1.5 s a line with none there, 0.75 s with

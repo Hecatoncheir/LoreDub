@@ -233,19 +233,19 @@ class LayersForCardTest(unittest.TestCase):
     MODEL = int(2.5 * GIGABYTE)
 
     def test_offers_the_card_while_the_model_fits_past_the_reserve(self):
-        # 5 GB free, 2 kept for whisper and the voice's growth: 3 left for
-        # 2.5 with its room.
-        self.assertEqual(layers_for_card(5 * GIGABYTE, self.MODEL), ALL_LAYERS)
+        # 7 GB free, 3.5 kept for whisper and the voice's growth: 3.5 left
+        # for 2.5 with its room.
+        self.assertEqual(layers_for_card(7 * GIGABYTE, self.MODEL), ALL_LAYERS)
 
     def test_offers_as_many_layers_as_fit_where_the_whole_model_does_not(self):
-        # 4.5 GB free less the reserve is 2.5, under the 2.875 the model
-        # takes with its room: 34 layers scaled by that share, and the rest
-        # on the processor rather than the whole model paged.
-        self.assertEqual(layers_for_card(int(4.5 * GIGABYTE), self.MODEL), int(34 * 2.5 / 2.875))
-        self.assertEqual(layers_for_card(int(2.5 * GIGABYTE), self.MODEL), int(34 * 0.5 / 2.875))
+        # 6 GB free less the reserve is 2.5, under the 2.875 the model takes
+        # with its room: 34 layers scaled by that share, and the rest on the
+        # processor rather than the whole model paged.
+        self.assertEqual(layers_for_card(6 * GIGABYTE, self.MODEL), int(34 * 2.5 / 2.875))
+        self.assertEqual(layers_for_card(4 * GIGABYTE, self.MODEL), int(34 * 0.5 / 2.875))
 
     def test_keeps_the_model_on_the_processor_where_nothing_fits(self):
-        self.assertEqual(layers_for_card(2 * GIGABYTE, self.MODEL), 0)
+        self.assertEqual(layers_for_card(3 * GIGABYTE, self.MODEL), 0)
         self.assertEqual(layers_for_card(0, self.MODEL), 0)
 
     def test_the_reserve_the_room_and_the_layers_are_the_caller_s(self):
