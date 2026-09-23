@@ -88,7 +88,7 @@ overlay 2.8 GB). Nothing was refused: WDDM paged the model through system
 memory, the first line took 207 s in the speech tokenizer's encode (0.07 s
 on a free card), llama answered in 0.5 s instead of 0.13, and a benchmark
 started beside it hung the display driver. So the language model is loaded
-last and offered the card only for what is then free past 3.5 GB kept for
+last and offered the card only for what is then free past 2 GB kept for
 whisper and the voice's own growth under the lines (`layers_for_card`); otherwise llama.cpp keeps it on the processor,
 where a line takes a few seconds.
 
