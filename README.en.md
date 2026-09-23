@@ -648,11 +648,12 @@ them. Measurements and details are under
 ```text
 Game process (WASAPI process loopback, 16 kHz mono)
   -> energy VAD and phrase endpointing
-  -> whisper.cpp --translate
+  -> whisper.cpp --translate (or as heard, when a language model translates)
   -> Helsinki-NLP Marian English -> Russian (skipped when dubbing into
-     English)
-  -> Vosk-TTS or Kokoro
-  -> (Original voice mode) OpenVoice V2: the line's timbre over that voice
+     English), or TranslateGemma through llama.cpp from whatever the game speaks
+  -> Vosk-TTS or Kokoro, or Qwen3-TTS in the line's own timbre
+  -> (Original voice mode) OpenVoice V2: the line's timbre over that voice --
+     not needed when Qwen3-TTS reads
   -> default Windows output
 ```
 
@@ -886,6 +887,33 @@ are gone with them. The Russian translator and the Vosk voice are served from a
 separate public repository,
 [LoreDub-models](https://github.com/Hecatoncheir/LoreDub-models), which holds
 no code, only releases of model files.
+
+## The language model and the cloning voice
+
+For a machine with a graphics card the catalogue carries two models better than
+the ones above, and a machine with them on disk dubs through them; Marian, Vosk
+and Kokoro stay for the processor. Both are under licences that allow sale.
+
+**TranslateGemma 4B** (Q4_K_M, llama.cpp; the
+[Gemma Terms](https://ai.google.dev/gemma/terms)) translates from whatever
+language the game speaks, not from English alone: whisper hands it speech as
+heard. With every line it is given the scene's earlier lines, the glossary
+entries the line touches and the speaker's gender from the pitch of the line --
+"я пошла" rather than "я пошёл". llama.cpp's server starts with the worker
+and ends with it; the CPU and Vulkan builds ship with the application, the
+CUDA one is the "CUDA · language model" package. A line translates in 0.1 s on
+an RTX 3080 Ti.
+
+**Qwen3-TTS 1.7B** (Apache 2.0) reads Russian and English in the timbre of
+three seconds of a recording: the game's line in Original voice mode, a
+character card's recording -- on the card's preview as well. The OpenVoice
+converter is no longer laid over the result and only tells the characters
+apart. The package's fixed voices are seven clips synthesized with Vosk and
+Kokoro. On the card the generation runs through CUDA graphs: a line reads in
+0.4 of its length, where the model's own loop took 2.8. The package takes
+4.5 GB of disk and about 5 GB of the card.
+
+What was measured, and how: `docs/adr/0013-language-model-and-cloning-voice.md`.
 
 ## Recognition model
 
