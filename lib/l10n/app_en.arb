@@ -1289,19 +1289,6 @@
       "socket": {"type": "String"}
     }
   },
-  "pipelineNodeOpen": "Open this node's settings",
-  "pipelineSocketLinked": "connected",
-  "pipelineSocketFree": "free",
-  "pipelineLinkFrom": "Draw a link from here",
-  "pipelineLinkTo": "Join the link here",
-  "pipelineLinkDrop": "Let the link go",
-  "pipelineSocketLabel": "{node}: {socket}",
-  "@pipelineSocketLabel": {
-    "placeholders": {
-      "node": {"type": "String"},
-      "socket": {"type": "String"}
-    }
-  },
   "pipelineSocketGameAudio": "Audio",
   "pipelineSocketSpeech": "Speech",
   "pipelineSocketText": "Text",

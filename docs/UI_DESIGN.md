@@ -151,8 +151,8 @@ radius.
   yet keep this (26–34 px); their sizes are `LoreDubTargets` in
   `lib/src/ui/theme.dart`, so they grow together when they do.
 - Status is communicated with text and an indicator, never color alone.
-- The sidebar names two groups — the dubbing (Live, Snippet) and what is
-  prepared before it (Characters, Graph, Models, Settings) — so six entries
+- The sidebar names two groups — the dubbing (Live, Screen) and what is
+  prepared before it (Characters, Glossary, Models, Settings) — so six entries
   do not read as six equal ways in. The compact navigation indexes into
   `DashboardSection.values` and carries no headings.
 - At widths below 900 px the sidebar becomes bottom navigation. The game-source
