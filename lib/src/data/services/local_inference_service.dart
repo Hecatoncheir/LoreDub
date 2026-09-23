@@ -18,6 +18,7 @@ import '../../domain/glossary.dart';
 import 'worker_arguments.dart';
 import '../../domain/session_config.dart';
 import 'whisper_runner.dart';
+import 'whisper_server.dart';
 import 'process_launcher.dart';
 import 'worker_process.dart';
 
@@ -111,7 +112,9 @@ class LocalInferenceService {
     this.startupLimit = const Duration(minutes: 5),
   }) : _prepare = prepare ?? _prepareOnThisMachine,
        _startWorker = startWorker ?? _startInterpreter,
-       _whisper = whisper ?? WhisperRunner();
+       // Resident by default: `whisper-cli` loaded the model for every phrase,
+       // three and a half seconds of a line's latency on the card.
+       _whisper = whisper ?? ResidentWhisper();
 
   final WorkerPreparation _prepare;
   final ProcessLauncher _startWorker;
@@ -331,6 +334,16 @@ class LocalInferenceService {
     return (python: python, script: script, work: work.path, whisper: whisper, llama: llama);
   }
 
+  /// What `whisper-cli` wrote for the phrase, read once and taken away, or
+  /// null where it wrote nothing.
+  static Future<String?> _writtenBy(String prefix) async {
+    final outputFile = File('$prefix.txt');
+    if (!await outputFile.exists()) return null;
+    final written = await outputFile.readAsString();
+    await outputFile.delete();
+    return written;
+  }
+
   /// The real [ProcessLauncher]. (`PYTORCH_CUDA_ALLOC_CONF=expandable_segments`
   /// is not set here: torch on Windows does not take it, and says so on
   /// every start.)
@@ -411,14 +424,17 @@ class LocalInferenceService {
       throw LoreDubFailure(FailureCode.whisperFailed, detail: recognition.stderr);
     }
     if (detecting) {
-      _spokenLanguage = parseDetectedLanguage('${recognition.stderr}${recognition.stdout}');
+      _spokenLanguage =
+          recognition.language ??
+          parseDetectedLanguage('${recognition.stderr}${recognition.stdout}');
     }
-    final outputFile = File('$prefix.txt');
-    if (!await outputFile.exists()) return null;
+    // The resident server answers with the text itself; `whisper-cli` wrote
+    // it to the file named by `-of`.
+    final heard = recognition.text ?? await _writtenBy(prefix);
+    if (heard == null) return null;
     // `-sns` keeps most captions out; what still comes back as "(soft music)"
     // or "[BLANK_AUDIO]" has nothing to translate once it is taken out.
-    final english = withoutSoundCaptions(await outputFile.readAsString());
-    await outputFile.delete();
+    final english = withoutSoundCaptions(heard);
     if (english.isEmpty) return null;
 
     // The captured audio is still on disk here: the worker reads its pitch to

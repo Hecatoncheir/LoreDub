@@ -29,3 +29,15 @@ here do nothing: `-fa` measured 1536 ms against 1328 over five runs, and the
 resident `whisper-server` that ships in the same archive answered in
 1301-1358 ms against the one-shot `whisper-cli`'s 1319-1348, spending the
 model load it saves on its own upload.
+
+## Measured later: the resident server
+
+On 2026-09-23, on the RTX 3080 Ti with `large-v3-turbo` q5_0, `whisper-cli`
+took about 3.5 s per phrase -- most of it loading the model again -- where
+`whisper-server.exe` from the same build, kept running through the session,
+answered a 5.8 s clip in 447 ms cold and 207-212 ms after. The server takes
+`language`, `translate`, `suppress_non_speech` and `audio_ctx` per request
+and returns the language it detected as a name in `verbose_json`. So the
+server is taken up (`ResidentWhisper`, `whisper_server.dart`), behind the
+same call the one-shot runner answered; `-fa` is on by default in the server
+and was not measured apart.

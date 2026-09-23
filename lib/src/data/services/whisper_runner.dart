@@ -7,8 +7,16 @@ import 'dart:io';
 import '../../domain/failure.dart';
 import 'process_launcher.dart';
 
-/// What one run of whisper printed, and how it ended.
-typedef WhisperRun = ({int exitCode, String stdout, String stderr});
+/// What one run of whisper printed, and how it ended -- and, from a runner
+/// that answers with the text itself rather than writing it to a file
+/// (`ResidentWhisper`), what it heard and in which language.
+typedef WhisperRun = ({
+  int exitCode,
+  String stdout,
+  String stderr,
+  String? text,
+  String? language,
+});
 
 /// whisper.cpp, run once per phrase as a program of its own.
 ///
@@ -47,7 +55,13 @@ class WhisperRunner {
           );
         },
       );
-      return (exitCode: exitCode, stdout: await printed, stderr: await complained);
+      return (
+        exitCode: exitCode,
+        stdout: await printed,
+        stderr: await complained,
+        text: null,
+        language: null,
+      );
     } finally {
       if (identical(_running, process)) _running = null;
     }

@@ -230,9 +230,20 @@ than one of them.
    bundled `runtime/whisper/` (CPU) or `runtime/whisper-vulkan/`, or the
    downloaded `<app support>/runtime/whisper-cuda/`. OCR mode skips it.
    `AppSettings.roughRecognition` shortens the encoder's window with `-ac
-   1000`, off by default; the number is not lowered, and `-fa` and the
-   resident `whisper-server` are not taken up, without measuring again
-   (`docs/adr/0001-whisper-encoder-window.md`).
+   1000`, off by default; the number is not lowered without measuring again
+   (`docs/adr/0001-whisper-encoder-window.md`). The build is run as its own
+   server for the session rather than once per phrase: `ResidentWhisper`
+   (`data/services/whisper_server.dart`) answers the same call as
+   `WhisperRunner`, reading the model, the file, the language and the flags
+   off the command line the service builds for `whisper-cli`, starts
+   `whisper-server.exe` beside it on the first phrase, asks it over HTTP
+   with `language`, `translate`, `suppress_non_speech` and `audio_ctx` per
+   request, and hands the text back in the run (`WhisperRun.text`, with the
+   language the server named turned from a name into a code) rather than
+   through the `-of` file; a stop ends the server, and a change of model or
+   build restarts it. Measured on the card: a six-second line in 0.2 s
+   against 3.5 s for `whisper-cli`, which loaded the model every time
+   (ADR 0001's addendum).
 4. **Python inference worker** — `assets/runtime/inference_worker.py`, bundled
    as a Flutter asset, extracted to the app-support `work/` directory and run
    by `LocalInferenceService` as a persistent subprocess speaking

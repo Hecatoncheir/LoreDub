@@ -422,6 +422,8 @@ void main() {
     late List<List<String>> whisperAsked;
     late String? whisperWrites;
     late int whisperExit;
+    late String? whisperText;
+    late String? whisperLanguage;
 
     setUp(() async {
       work = await Directory.systemTemp.createTemp('lore-dub-ask');
@@ -430,6 +432,8 @@ void main() {
       whisperAsked = [];
       whisperWrites = 'Hello there.';
       whisperExit = 0;
+      whisperText = null;
+      whisperLanguage = null;
       service = LocalInferenceService(
         prepare:
             ({
@@ -454,6 +458,8 @@ void main() {
             exitCode: whisperExit,
             stdout: '',
             stderr: 'auto-detected language: en (p = 0.97)',
+            text: whisperText,
+            language: whisperLanguage,
           );
         }),
       );
@@ -608,6 +614,28 @@ void main() {
       );
       expect(whisperAsked.last, containsAllInOrder(['-l', 'en', '-np']));
       expect(whisperAsked.last, isNot(contains('-tr')));
+    });
+
+    test('takes the text and the language from a runner that answers with them', () async {
+      // The resident server answers in the run itself; nothing is written
+      // to a file and nothing is parsed off stderr.
+      final model = File(path.join(work.path, 'ggml.bin'))..writeAsStringSync('model');
+      whisperWrites = null;
+      whisperText = 'Hello there.';
+      whisperLanguage = 'en';
+
+      final line = await answered(
+        () => service.processSegment(
+          wavePath: path.join(work.path, 'segment.wav'),
+          whisperModel: model.path,
+          threads: 4,
+        ),
+        {'translated': 'Привет.', 'wave': 'line.wav'},
+      );
+
+      expect(line!.english, 'Hello there.');
+      expect(service.spokenLanguage, 'en');
+      expect(File(path.join(work.path, 'segment.txt')).existsSync(), isFalse);
     });
 
     test('a segment that held only a sound caption is nothing', () async {
