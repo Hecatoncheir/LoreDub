@@ -983,8 +983,11 @@ too, and asks it over HTTP one line at a time (`LlmTranslation`): the whole
 line, unless the player wrote one of its sentences down, with the last
 `SCENE_LINES` of the scene, the glossary entries the line touches
 (`Glossary.mentioned`) and the speaker's gender, read off the clip's pitch,
-in front of it -- which is how "я пошла" comes out of a woman's mouth. The
-wording of that instruction is measured (ADR 0013): keep it. The memory of
+in front of it -- which is how "я пошла" comes out of a woman's mouth, when
+it does: the 4B model takes the hint on some lines and declines it on most
+(ADR 0013, measured twice), so a woman's line may still come out in the
+masculine. The wording of that instruction is measured: keep it, and
+measure a stronger lever before adding one. The memory of
 translations is keyed by the gender as well. `--chat-template gemma`
 (`ModelPackage.chatTemplate`) names one of llama.cpp's built-in templates,
 because the model's own refuses a plain message. The server runs on the

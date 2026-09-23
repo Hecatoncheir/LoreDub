@@ -91,3 +91,17 @@ started beside it hung the display driver. So the language model is loaded
 last and offered the card only for what is then free past 3.5 GB kept for
 whisper and the voice's own growth under the lines (`layers_for_card`); otherwise llama.cpp keeps it on the processor,
 where a line takes a few seconds.
+
+## Measured later: the speaker's gender in the answer
+
+A dialogue of a guard and a merchant, eight lines read by Kokoro's male and
+female voices, dubbed through the whole pipeline on 2026-09-23: both were
+told apart (two voices of the bank, the right gender on each), the guard's
+lines came out in the masculine -- and the merchant's in the masculine too.
+Asked directly, with the worker's own prompt, TranslateGemma 4B Q4_K_M put
+"I walked all day and I'm tired" in the feminine once in two askings and
+half-way ("ходил ... устала"), and "I came by that road" and "I was hoping
+to sleep" in the masculine whatever it was told, with or without the scene.
+The hint reaches the model; the model mostly declines it. A stronger lever
+-- the speaker written into the line, a feminine example in the prompt, or
+a second pass over the first-person forms -- is not measured yet.
