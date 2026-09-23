@@ -207,7 +207,11 @@ void main() {
     await pumpScreen(tester);
 
     expect(find.byTooltip('Читать текст с экрана без перевода'), findsWidgets);
-    expect(find.byTooltip('Перевод не убрать: голос есть только у русского'), findsNothing);
+    expect(
+      find.byTooltip('Убрать перевод из линии: озвучка пойдёт на английском'),
+      findsNothing,
+      reason: 'Эфир\'s cut dubs into English; the screen\'s reads the text as it is',
+    );
   });
 
   testWidgets('offers the voices\' own cut once they are drawn in', (tester) async {
