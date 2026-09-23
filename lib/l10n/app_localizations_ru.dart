@@ -1847,9 +1847,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get stageCapture => 'Запуск захвата';
 
   @override
-  String get navPipeline => 'Схема';
-
-  @override
   String get titlePipeline => 'Схема конвейера';
 
   @override
@@ -1963,7 +1960,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineCutHeard => 'Не слышать этого персонажа в игре';
 
   @override
-  String get pipelineCutTranslation => 'Перевод не убрать: голос есть только у русского';
+  String get pipelineCutTranslation => 'Убрать перевод из линии: озвучка пойдёт на английском';
 
   @override
   String get pipelineCutTranslationBack => 'Вернуть перевод в линию';

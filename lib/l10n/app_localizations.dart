@@ -3129,12 +3129,6 @@ abstract class AppLocalizations {
   /// **'Запуск захвата'**
   String get stageCapture;
 
-  /// No description provided for @navPipeline.
-  ///
-  /// In ru, this message translates to:
-  /// **'Схема'**
-  String get navPipeline;
-
   /// No description provided for @titlePipeline.
   ///
   /// In ru, this message translates to:
@@ -3330,7 +3324,7 @@ abstract class AppLocalizations {
   /// No description provided for @pipelineCutTranslation.
   ///
   /// In ru, this message translates to:
-  /// **'Перевод не убрать: голос есть только у русского'**
+  /// **'Убрать перевод из линии: озвучка пойдёт на английском'**
   String get pipelineCutTranslation;
 
   /// No description provided for @pipelineCutTranslationBack.

@@ -44,8 +44,8 @@ class BottomNavigation extends StatelessWidget {
           label: AppLocalizations.of(context).navCharacters,
         ),
         NavigationDestination(
-          icon: const Icon(Icons.account_tree_rounded),
-          label: AppLocalizations.of(context).navPipeline,
+          icon: const Icon(Icons.menu_book_rounded),
+          label: AppLocalizations.of(context).navGlossary,
         ),
         NavigationDestination(
           icon: const Icon(Icons.memory_rounded),

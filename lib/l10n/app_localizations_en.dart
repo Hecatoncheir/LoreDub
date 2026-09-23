@@ -1837,9 +1837,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stageCapture => 'Starting capture';
 
   @override
-  String get navPipeline => 'Graph';
-
-  @override
   String get titlePipeline => 'Pipeline graph';
 
   @override
@@ -1952,7 +1949,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pipelineCutHeard => 'Stop counting this one among the voices of the game';
 
   @override
-  String get pipelineCutTranslation => 'Translation stays: only Russian has a voice';
+  String get pipelineCutTranslation =>
+      'Take the translator out of the line: the dubbing is then in English';
 
   @override
   String get pipelineCutTranslationBack => 'Put the translator back in the line';
