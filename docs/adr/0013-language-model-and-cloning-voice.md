@@ -123,3 +123,13 @@ tuning that made TranslateGemma a better translator on the benchmarks took
 its ear for an instruction beside the line. Its Russian over the dialogue
 is as natural, with one slip of agreement ("а его владелец" for the cart).
 So it stands first in the catalogue and TranslateGemma second.
+
+## Measured later: layers on the card
+
+Gemma 3 4B it through llama-server on the RTX 3080 Ti, the same ten lines,
+by how many of its 34 layers were offered the card: none, 1.52 s a line;
+17, 0.75 s; all, 0.19 s. So `layers_for_card` offers as many layers as fit
+in what is free past the reserve rather than none, and the voice gives
+what a line allocated back to the card after each line
+(`torch.cuda.empty_cache`): measured at load, the voice is 5.7 GB live and
+6.3 GB reserved, and the card sees 6.7 GB with the context.

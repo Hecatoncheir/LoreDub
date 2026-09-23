@@ -229,4 +229,10 @@ class QwenVoice:
                 max_new_tokens=min(_MAX_NEW_TOKENS, _FRAMES_MARGIN + _FRAMES_PER_CHARACTER * len(text)),
             )
         samples = np.asarray(waves[0], dtype=np.float32).ravel()
+        if self.device == "cuda":
+            # What a line allocated goes back to the card rather than into
+            # torch's cache, on a card the language model and whisper share
+            # with the voice: measured, the voice is 5.7 GB live and 6.3 GB
+            # reserved at load, and grew half a gigabyte more under lines.
+            torch.cuda.empty_cache()
         return torch.from_numpy(resample(_trimmed(samples, rate), rate, sample_rate))

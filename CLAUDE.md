@@ -1017,10 +1017,13 @@ model translates from there -- into English too, so `translates` is true
 whatever the dubbing language and the worker leaves a line already in it
 alone. Marian's own stage and `-tr` stay for Marian. The model is loaded
 last, once the voice and the converter hold what they will of the card,
-and offered the card only for what is then free past `CARD_RESERVE` (3.5 GB:
-whisper's share of it, and what the voice takes on under the lines that it
-does not hold yet when asked): `layers_for_card` (`llm_translation.py`) keeps every
-layer on the processor otherwise, and the ready line reports `cpu`.
+and offered the card only for what is then free past `CARD_RESERVE` (2 GB:
+whisper's share of it, and the half gigabyte the voice takes on under the lines that it
+does not hold yet when asked): `layers_for_card` (`llm_translation.py`) offers it
+as many of its layers as fit otherwise, since every layer on the card takes
+its share off the line (measured: 1.5 s a line with none there, 0.75 s with
+half, 0.2 s with all), and none where nothing fits, when the ready line
+reports `cpu`.
 Measured on the 12 GB card: with the desktop holding six gigabytes of it,
 the model was not refused but paged through system memory, a line took
 207 s instead of a tenth of a second, and the display driver hung the

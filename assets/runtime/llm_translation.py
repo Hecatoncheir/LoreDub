@@ -193,28 +193,46 @@ ALL_LAYERS = 99
 
 # What the card is asked to keep free past the model, measured at the moment
 # the decision is made, with the voice and the converter just loaded: about
-# 1.5 GB for whisper's build over a segment, and 2 GB the voice itself takes
-# on under the lines -- its activations and the allocator's cache -- that it
-# does not hold yet when asked. On the 12 GB card, 1.5 GB alone let the
-# model on beside a voice at 5 GB, and the three met at 11.7 GB under the
-# first lines: one line voiced in 70 s, seventeen segments waiting.
-CARD_RESERVE = int(3.5 * GIGABYTE)
+# 1.5 GB for whisper's build over a segment, and half a gigabyte the voice
+# takes on under the lines that it does not hold yet when asked -- two,
+# before it gave what a line allocated back to the card. On the 12 GB card,
+# 1.5 GB alone let the model on beside a voice at 5 GB, and the three met at
+# 11.7 GB under the first lines: one line voiced in 70 s, seventeen segments
+# waiting.
+CARD_RESERVE = int(2.0 * GIGABYTE)
 
 # What the model takes over its weights: its context and compute buffers.
 MODEL_ROOM = 1.15
 
 
-def layers_for_card(free_bytes, model_bytes, reserve_bytes=CARD_RESERVE, room=MODEL_ROOM):
+# How many layers the models on offer have: Gemma 3 4B and TranslateGemma
+# 4B, 34 each. A model with more is offered fewer of its layers than would
+# fit, which is the safe side; one with fewer is offered them all while the
+# room above covers what was not counted.
+MODEL_LAYERS = 34
+
+
+def layers_for_card(
+    free_bytes, model_bytes, reserve_bytes=CARD_RESERVE, room=MODEL_ROOM, layers=MODEL_LAYERS
+):
     """How many layers the server is offered the card for: every one while
-    the weights, with their room, fit what is free past [reserve_bytes], and
-    none otherwise. A model that does not fit is not refused by the driver
-    but paged through system memory, where a line took minutes rather than a
-    tenth of a second and the display driver went down with it; on the
-    processor the same line takes a few seconds. A card torch cannot see
-    ([free_bytes] None) is left to the build's own fallback."""
+    the weights, with their room, fit what is free past [reserve_bytes]; as
+    many as fit otherwise, since every layer on the card takes its share off
+    the line -- measured, 1.5 s a line with none of them there, 0.75 s with
+    half and 0.2 s with all; none where nothing fits. A model that does not
+    fit is not refused by the driver but paged through system memory, where
+    a line took minutes and the display driver went down with it. A card
+    torch cannot see ([free_bytes] None) is left to the build's own
+    fallback."""
     if free_bytes is None:
         return ALL_LAYERS
-    return ALL_LAYERS if free_bytes - reserve_bytes >= model_bytes * room else 0
+    needed = model_bytes * room
+    available = free_bytes - reserve_bytes
+    if available >= needed:
+        return ALL_LAYERS
+    if available <= 0:
+        return 0
+    return int(layers * available / needed)
 
 
 class LlamaServer:
