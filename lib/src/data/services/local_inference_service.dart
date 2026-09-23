@@ -331,19 +331,11 @@ class LocalInferenceService {
     return (python: python, script: script, work: work.path, whisper: whisper, llama: llama);
   }
 
-  /// The real [ProcessLauncher]. torch's allocator is told to grow its
-  /// segments rather than keep one block per size: the voice on the card
-  /// otherwise held a gigabyte more than it used, on a card the language
-  /// model and whisper share with it.
+  /// The real [ProcessLauncher]. (`PYTORCH_CUDA_ALLOC_CONF=expandable_segments`
+  /// is not set here: torch on Windows does not take it, and says so on
+  /// every start.)
   static Future<Process> _startInterpreter(String executable, List<String> arguments) =>
-      Process.start(
-        executable,
-        arguments,
-        environment: const {
-          'PYTHONIOENCODING': 'utf-8',
-          'PYTORCH_CUDA_ALLOC_CONF': 'expandable_segments:True',
-        },
-      );
+      Process.start(executable, arguments, environment: const {'PYTHONIOENCODING': 'utf-8'});
 
   /// Copies one of the bundled runtime scripts into the work directory,
   /// where the interpreter can reach it, and answers with what it wrote.

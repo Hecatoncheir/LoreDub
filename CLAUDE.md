@@ -1006,8 +1006,8 @@ layer on the processor otherwise, and the ready line reports `cpu`.
 Measured on the 12 GB card: with the desktop holding six gigabytes of it,
 the model was not refused but paged through system memory, a line took
 207 s instead of a tenth of a second, and the display driver hung the
-machine. The worker is started with
-`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` for the same card.
+machine. (`PYTORCH_CUDA_ALLOC_CONF=expandable_segments` would not help:
+torch on Windows does not take it, and warns on every start.)
 
 The voice is `qwen3-tts-1.7b` (Qwen3-TTS 1.7B Base, Apache 2.0,
 `ModelPackage.clonesVoice`), fetched file by file from its authors'
