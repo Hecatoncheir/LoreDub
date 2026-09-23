@@ -191,9 +191,14 @@ GIGABYTE = 1 << 30
 # Every layer llama.cpp can be asked to put on the card.
 ALL_LAYERS = 99
 
-# What the card is asked to keep free past the model: whisper's build takes
-# about this much for a segment, and the desktop draws with the rest.
-CARD_RESERVE = int(1.5 * GIGABYTE)
+# What the card is asked to keep free past the model, measured at the moment
+# the decision is made, with the voice and the converter just loaded: about
+# 1.5 GB for whisper's build over a segment, and 2 GB the voice itself takes
+# on under the lines -- its activations and the allocator's cache -- that it
+# does not hold yet when asked. On the 12 GB card, 1.5 GB alone let the
+# model on beside a voice at 5 GB, and the three met at 11.7 GB under the
+# first lines: one line voiced in 70 s, seventeen segments waiting.
+CARD_RESERVE = int(3.5 * GIGABYTE)
 
 # What the model takes over its weights: its context and compute buffers.
 MODEL_ROOM = 1.15

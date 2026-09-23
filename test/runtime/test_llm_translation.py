@@ -233,12 +233,15 @@ class LayersForCardTest(unittest.TestCase):
     MODEL = int(2.5 * GIGABYTE)
 
     def test_offers_the_card_while_the_model_fits_past_the_reserve(self):
-        # 6 GB free, 1.5 kept for whisper: 4.5 left for 2.5 with its room.
-        self.assertEqual(layers_for_card(6 * GIGABYTE, self.MODEL), ALL_LAYERS)
+        # 7 GB free, 3.5 kept for whisper and the voice's growth: 3.5 left
+        # for 2.5 with its room.
+        self.assertEqual(layers_for_card(7 * GIGABYTE, self.MODEL), ALL_LAYERS)
 
     def test_keeps_the_model_on_the_processor_where_it_would_be_paged(self):
-        # 4 GB free less the reserve is 2.5, under the 2.9 the model takes.
-        self.assertEqual(layers_for_card(4 * GIGABYTE, self.MODEL), 0)
+        # 6 GB free less the reserve is 2.5, under the 2.9 the model takes:
+        # what the 12 GB card had after the voice, where the model was let
+        # on and paged.
+        self.assertEqual(layers_for_card(6 * GIGABYTE, self.MODEL), 0)
         self.assertEqual(layers_for_card(0, self.MODEL), 0)
 
     def test_the_reserve_and_the_room_are_the_caller_s(self):
