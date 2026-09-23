@@ -12,6 +12,7 @@ void main() {
 
     expect(recognition.length, greaterThan(1), reason: 'the model is a choice');
     expect(recognition.first.id, whisperModelId, reason: 'the smallest is the default');
+    expect(whisperModel.id, whisperModelId, reason: 'the catalogue names its default by that id');
     for (final model in recognition) {
       expect(model.language, isNull, reason: model.id);
       expect(model.version, isNotNull, reason: '${model.id} needs a name to show');

@@ -38,9 +38,18 @@ void main() {
         'vosk_voice.py',
         'kokoro_voice.py',
         'english_g2p.py',
+        'llm_translation.py',
+        'qwen_voice.py',
+        'qwen_fast.py',
       ]),
     );
     expect(workerScripts(['assets/runtime/notes.txt', 'assets/icons/a.py']), isEmpty);
+
+    // The clips the cloning voice reads its fixed voices from travel beside
+    // the scripts, each with its transcript.
+    final references = workerReferences(manifest.listAssets()).map(path.basename).toSet();
+    expect(references, containsAll(['ru_female_1.wav', 'ru_female_1.txt', 'af_heart.wav']));
+    expect(workerReferences(['assets/runtime/voices.py']), isEmpty);
   });
 
   test('clears audio a stopped or crashed run left behind', () async {
@@ -254,6 +263,44 @@ void main() {
       await starting;
 
       expect(spawned, 0);
+    });
+
+    test('asks the machine for llama.cpp only where a language model translates', () async {
+      // The worker starts the server itself, so a missing build is found
+      // here, before the minute of loading, rather than reported after it.
+      final asked = <ComputeBackend?>[];
+      final worker = FakeWorker();
+      final service = LocalInferenceService(
+        prepare:
+            ({
+              required pythonExecutable,
+              required requiresWhisper,
+              required recognitionBackend,
+              languageModelBackend,
+              downloadedRuntimeDirectory,
+            }) async {
+              asked.add(languageModelBackend);
+              return workerFiles;
+            },
+        startWorker: (executable, arguments) async => worker,
+      );
+
+      final starting = service.start(
+        const WorkerPlan(
+          threads: 2,
+          pythonExecutable: 'python.exe',
+          runtimeDirectory: 'runtime',
+          models: ModelPaths(translation: 'translategemma'),
+          backends: StageBackends(languageModel: ComputeBackend.vulkan),
+          languageModel: true,
+        ),
+      );
+      await settle();
+      worker.say({'type': 'ready', 'device': 'vulkan', 'speechDevice': 'cpu'});
+      await starting;
+
+      expect(asked, [ComputeBackend.vulkan]);
+      await service.stop();
     });
 
     test('a later start takes over from one still waiting for its worker', () async {
@@ -480,6 +527,13 @@ void main() {
 
       await answered(() => service.previewVoice(text: 'Привет', voice: 'xenia'), {'wave': 's'});
       expect((worker.requests.last['preview']! as Map)['vector'], isNull);
+
+      // A card's own recording goes along for a voice that clones.
+      await answered(
+        () => service.previewVoice(text: 'Привет', voice: 'xenia', clip: 'guard.wav'),
+        {'wave': 's'},
+      );
+      expect((worker.requests.last['preview']! as Map)['clip'], 'guard.wav');
     });
 
     test('hears where the speaker changes, and who is speaking', () async {

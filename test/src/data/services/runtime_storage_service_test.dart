@@ -1,6 +1,7 @@
 // Copyright (c) 2026 LoreDub contributors.
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lore_dub/src/data/services/runtime_storage_service.dart';
+import 'package:lore_dub/src/domain/download_control.dart';
 import 'package:lore_dub/src/domain/failure.dart';
 import 'package:lore_dub/src/domain/model_package.dart';
 import 'package:lore_dub/src/domain/runtime_package.dart';
@@ -469,6 +471,69 @@ void main() {
 
     await store.remove(package);
 
+    expect(await store.isInstalled(package), isFalse);
+  });
+
+  test('counts the bundled Vulkan builds among the runtimes, by their executables', () async {
+    // whisper's and llama.cpp's Vulkan builds ship with the installer and
+    // are never downloaded: they are installed wherever their executables
+    // are, and a build left out of an installer is simply not offered.
+    final bundled = await Directory.systemTemp.createTemp('lore-dub-bundled');
+    addTearDown(() => deleteOnceReleased(bundled));
+    final store = storeWith(MockClient((_) async => http.Response('', 404)));
+
+    expect(await store.installedRuntimeIds(runtimeDirectory: bundled.path), isEmpty);
+
+    for (final segments in [
+      ['whisper-vulkan', 'whisper-cli.exe'],
+      ['llama-vulkan', 'llama-server.exe'],
+    ]) {
+      final executable = File(path.joinAll([bundled.path, ...segments]));
+      await executable.parent.create(recursive: true);
+      await executable.writeAsString('binary');
+    }
+
+    expect(await store.installedRuntimeIds(runtimeDirectory: bundled.path), {
+      'whisper-vulkan',
+      llamaVulkanRuntimeId,
+    });
+  });
+
+  test('kills pip when the download is stopped, and keeps no half-made runtime', () async {
+    const package = RuntimePackage(
+      id: 'torch-cuda',
+      kind: RuntimeInstallKind.pip,
+      approximateBytes: 1,
+      probeFileName: 'torch',
+      pipArguments: ['torch==2.7.1+cu126'],
+    );
+    final control = DownloadControl();
+    final ending = Completer<ProcessResult>();
+    var killed = false;
+    final store = storeWith(
+      MockClient((_) async => http.Response('', 404)),
+      startProcess: (executable, arguments) {
+        // pip runs on until the stop, asked for once it is under way, kills it.
+        control.cancel();
+        return (
+          result: ending.future,
+          kill: () {
+            killed = true;
+            ending.complete(ProcessResult(0, -1, '', ''));
+          },
+        );
+      },
+    );
+
+    final outcome = await store.install(
+      package,
+      onProgress: (_) {},
+      pythonExecutable: Platform.resolvedExecutable,
+      control: control,
+    );
+
+    expect(killed, isTrue);
+    expect(outcome, DownloadOutcome.cancelled);
     expect(await store.isInstalled(package), isFalse);
   });
 }

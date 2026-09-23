@@ -123,6 +123,24 @@ void main() {
     expect(valueOf(named, '--language'), 'en');
   });
 
+  test('names the voices of each gender only while the voice follows the speaker', () {
+    final following = of(
+      const WorkerPlan(
+        threads: 2,
+        pythonExecutable: 'python.exe',
+        runtimeDirectory: 'runtime',
+        followSpeaker: true,
+        maleVoices: ['aidar', 'eugene'],
+        femaleVoices: ['xenia'],
+      ),
+    );
+
+    expect(following, contains('--follow-speaker'));
+    expect(valueOf(following, '--male-voices'), 'aidar,eugene');
+    expect(valueOf(following, '--female-voices'), 'xenia');
+    expect(of(base), isNot(contains('--follow-speaker')), reason: 'one voice reads every line');
+  });
+
   test('starts llama.cpp for a language model on its own backend, with its template', () {
     const plan = WorkerPlan(
       threads: 2,
