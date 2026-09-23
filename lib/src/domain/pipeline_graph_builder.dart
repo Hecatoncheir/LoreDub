@@ -11,8 +11,36 @@ import 'pipeline_glossary.dart';
 import 'pipeline_graph_model.dart';
 import 'pipeline_layout.dart';
 
+/// What a scheme's routes are, read off the settings: whether the way in is
+/// drawn, whether the translator stands in the line of text, and -- on the
+/// Screen page's -- whether the voices behind the screen are told apart.
+typedef _Routes = ({bool routed, bool translates, bool hears});
+
+/// [scheme]'s routes under [settings].
+///
+/// On Эфир, dubbing into English has nothing to translate -- whisper has
+/// handed English over already -- so the stage stands out of the line with
+/// the text going past it. On the Screen page, text read in the dubbing
+/// language itself has nothing to translate either. Either way the canvas
+/// reads it off the languages rather than off a setting of its own: there is
+/// one answer to where the dubbing is going, and it is chosen on the models
+/// screen, on the Screen page or here. The screen is always read, so its
+/// scheme is always routed; the game's sound is what may be left out.
+_Routes _routesOf(AppSettings settings, PipelineScheme scheme) => switch (scheme) {
+  PipelineScheme.live => (
+    routed: settings.captureRouted,
+    translates: settings.translates,
+    hears: false,
+  ),
+  PipelineScheme.screen => (
+    routed: true,
+    translates: settings.screenTranslates,
+    hears: settings.screenVoices,
+  ),
+};
+
 /// The graph [settings], [characters] and the glossary's [packs] describe,
-/// arranged as [layout].
+/// arranged as [layout], on [scheme].
 ///
 /// Worked out in the order each part needs the one before: where the cards
 /// stand, where each card's part goes from there, which cards carry a line
@@ -22,16 +50,12 @@ PipelineGraph buildPipelineGraph({
   required List<Character> characters,
   List<GlossaryPack> packs = const [],
   PipelineLayout layout = PipelineLayout.standard,
+  PipelineScheme scheme = PipelineScheme.live,
 }) {
   final byId = {for (final character in characters) character.id: character};
   final placed = _placedCast(layout.cast, byId);
-  final routed = settings.captureRouted;
-  // Dubbing into English has nothing to translate -- whisper has handed
-  // English over already -- so the stage stands out of the line with the
-  // text going past it. The canvas reads that off the language rather than
-  // off a setting of its own: there is one answer to where the dubbing is
-  // going, and it is chosen on the models screen or here.
-  final translates = settings.translates;
+  final routes = _routesOf(settings, scheme);
+  final (:routed, :translates, hears: _) = routes;
   final castAt = {
     for (final (index, placement) in placed.indexed)
       placement.nodeId: layout.positions[placement.nodeId] ?? PipelineLayout.castPlace(index),
@@ -55,7 +79,7 @@ PipelineGraph buildPipelineGraph({
   ];
   return PipelineGraph(
     nodes: [
-      ..._stageNodes(layout, routed: routed, translates: translates),
+      ..._stageNodes(layout, scheme, routes),
       for (final placement in placed)
         PipelineNode(
           id: placement.nodeId,
@@ -64,17 +88,19 @@ PipelineGraph buildPipelineGraph({
           position: castAt[placement.nodeId]!,
           unrouted: layout.silent.contains(placement.characterId),
           sendsToMix: _sendsToMix(placement, carrying, sends),
+          scheme: scheme,
         ),
-      ..._glossaryNodes(glossaries, layout, shelf, routed: routed, translates: translates),
+      ..._glossaryNodes(glossaries, layout, shelf, scheme, routes),
     ],
     links: [
-      ..._soundLinks(routed: routed),
-      ..._lineLinks(glossaries, routed: routed, translates: translates),
+      ..._soundLinks(scheme, routes),
+      ..._lineLinks(glossaries, head: _headOf(scheme), routed: routed, translates: translates),
       ..._castLinks(voiced, carrying, sends),
     ],
     routed: routed,
     translates: translates,
     chained: _chained(placed, byId),
+    scheme: scheme,
   );
 }
 
@@ -89,10 +115,10 @@ PipelineGraph buildPipelineGraph({
 List<PipelineNode> _glossaryNodes(
   List<GlossaryPlacement> placed,
   PipelineLayout layout,
-  Map<String, bool> active, {
-  required bool routed,
-  required bool translates,
-}) => [
+  Map<String, bool> active,
+  PipelineScheme scheme,
+  _Routes routes,
+) => [
   for (final (index, placement) in placed.indexed)
     PipelineNode(
       id: placement.nodeId,
@@ -100,10 +126,22 @@ List<PipelineNode> _glossaryNodes(
       packId: placement.packId,
       feed: placement.feed,
       active: active[placement.packId] ?? false,
-      position: layout.positions[placement.nodeId] ?? PipelineLayout.glossaryPlace(index),
-      unrouted: !routed || (placement.feed?.kinds(translates: translates).isEmpty ?? true),
+      position:
+          layout.positions[placement.nodeId] ?? PipelineLayout.glossaryPlace(index, scheme: scheme),
+      unrouted:
+          !routes.routed || (placement.feed?.kinds(translates: routes.translates).isEmpty ?? true),
+      scheme: scheme,
     ),
 ];
+
+/// Where the line of text leaves the stage it starts at.
+PipelinePort _headOf(PipelineScheme scheme) => switch (scheme) {
+  PipelineScheme.live => const PipelinePort(
+    PipelineNodeIds.recognition,
+    PipelineSocket.speechText,
+  ),
+  PipelineScheme.screen => const PipelinePort(PipelineNodeIds.screen, PipelineSocket.screenText),
+};
 
 /// One stop on the line of text: the socket the text arrives by, and the
 /// one it leaves by. Whisper has no text arriving, the voice none leaving.
@@ -114,22 +152,23 @@ _Stop _packStop(String nodeId) => (
   out: PipelinePort(nodeId, PipelineSocket.glossaryOut),
 );
 
-/// The line of text, whisper to the voice: the packs standing before the
-/// translator, the translator where it translates, the packs after it --
-/// each handing the text on to the next.
+/// The line of text, whisper -- or the screen, at [head] -- to the voice:
+/// the packs standing before the translator, the translator where it
+/// translates, the packs after it -- each handing the text on to the next.
 ///
 /// Nothing reaches whisper while the way in is taken apart, and the line out
 /// of it goes with that; what runs past it is the pipeline itself and stays
 /// drawn, faded with the stages. A translator stepped over stands aside with
-/// the packs drawn after it, joined to nothing, and whisper's text runs
-/// through the packs before it straight into the voice.
+/// the packs drawn after it, joined to nothing, and the text runs through
+/// the packs before it straight into the voice.
 List<PipelineLink> _lineLinks(
   List<GlossaryPlacement> placed, {
+  required PipelinePort head,
   required bool routed,
   required bool translates,
 }) {
   final List<_Stop> line = [
-    (into: null, out: const PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechText)),
+    (into: null, out: head),
     for (final placement in placed)
       if (placement.feed == GlossaryFeed.recognition) _packStop(placement.nodeId),
     if (translates) ...[
@@ -189,36 +228,65 @@ Set<String> _chained(List<CastPlacement> placed, Map<String, Character> byId) =>
     if (byId[byId[placement.characterId]?.voicedBy]?.voicedBy != null) placement.characterId,
 };
 
-/// The six stages of the pipeline, where [layout] put them.
-List<PipelineNode> _stageNodes(
-  PipelineLayout layout, {
-  required bool routed,
-  required bool translates,
-}) => [
-  for (final id in PipelineNodeIds.stages)
+/// [scheme]'s stages, where [layout] put them.
+List<PipelineNode> _stageNodes(PipelineLayout layout, PipelineScheme scheme, _Routes routes) => [
+  for (final id in scheme.stages)
     PipelineNode(
       id: id,
-      kind: switch (id) {
-        PipelineNodeIds.source => PipelineNodeKind.source,
-        PipelineNodeIds.recognition => PipelineNodeKind.recognition,
-        PipelineNodeIds.translation => PipelineNodeKind.translation,
-        PipelineNodeIds.voice => PipelineNodeKind.voice,
-        PipelineNodeIds.mix => PipelineNodeKind.mix,
-        _ => PipelineNodeKind.output,
-      },
-      position: layout.positions[id] ?? PipelineLayout.standardPositions[id] ?? GraphPoint.zero,
-      unrouted: !routed || (id == PipelineNodeIds.translation && !translates),
+      kind: _kindOf(id),
+      position: layout.positions[id] ?? PipelineLayout.positionsOf(scheme)[id] ?? GraphPoint.zero,
+      unrouted: _unrouted(id, scheme, routes),
+      // The detection is switched on and off as its route is drawn and cut,
+      // the two being one fact: whether the voices behind the screen are
+      // told apart.
+      active: id != PipelineNodeIds.detection || routes.hears,
+      scheme: scheme,
     ),
 ];
 
-/// The lines of sound: the game's into whisper, the voice's into the mix,
-/// the mix's out. Nothing feeds the stages while the way in is taken apart.
-List<PipelineLink> _soundLinks({required bool routed}) => [
-  if (routed)
+PipelineNodeKind _kindOf(String stage) => switch (stage) {
+  PipelineNodeIds.source => PipelineNodeKind.source,
+  PipelineNodeIds.recognition => PipelineNodeKind.recognition,
+  PipelineNodeIds.translation => PipelineNodeKind.translation,
+  PipelineNodeIds.voice => PipelineNodeKind.voice,
+  PipelineNodeIds.mix => PipelineNodeKind.mix,
+  PipelineNodeIds.screen => PipelineNodeKind.screen,
+  PipelineNodeIds.detection => PipelineNodeKind.detection,
+  _ => PipelineNodeKind.output,
+};
+
+/// Whether nothing reaches [stage]: every stage while the way in is taken
+/// apart, the translator while it is stepped over, and on the Screen page
+/// the game's sound and its detection while the voices are not listened
+/// for. On Эфир the game's sound feeds everything, and goes only with it.
+bool _unrouted(String stage, PipelineScheme scheme, _Routes routes) => switch (stage) {
+  _ when !routes.routed => true,
+  PipelineNodeIds.translation => !routes.translates,
+  PipelineNodeIds.source ||
+  PipelineNodeIds.detection => scheme == PipelineScheme.screen && !routes.hears,
+  _ => false,
+};
+
+/// The lines of sound. On Эфир: the game's into whisper -- while the way in
+/// is drawn -- the voice's into the mix, the mix's out. On the Screen page
+/// the game's sound goes into the detection instead, and who it says is
+/// speaking into the voice, both only while the voices are listened for.
+List<PipelineLink> _soundLinks(PipelineScheme scheme, _Routes routes) => [
+  if (scheme == PipelineScheme.live && routes.routed)
     const PipelineLink(
       PipelinePort(PipelineNodeIds.source, PipelineSocket.gameAudio),
       PipelinePort(PipelineNodeIds.recognition, PipelineSocket.speechIn),
     ),
+  if (scheme == PipelineScheme.screen && routes.hears) ...const [
+    PipelineLink(
+      PipelinePort(PipelineNodeIds.source, PipelineSocket.gameAudio),
+      PipelinePort(PipelineNodeIds.detection, PipelineSocket.detectionIn),
+    ),
+    PipelineLink(
+      PipelinePort(PipelineNodeIds.detection, PipelineSocket.detectedSpeaker),
+      PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceSpeaker),
+    ),
+  ],
   const PipelineLink(
     PipelinePort(PipelineNodeIds.voice, PipelineSocket.voiceAudio),
     PipelinePort(PipelineNodeIds.mix, PipelineSocket.mixIn),

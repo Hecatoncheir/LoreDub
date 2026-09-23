@@ -16,11 +16,17 @@ enum DashboardSection { live, snapshot, characters, glossary, models, settings }
 /// that answers while the dubbing runs.
 enum LiveView { dubbing, scheme }
 
-/// Which screen is open, and which half of Эфир.
+/// What the Экран screen shows: its reading of the screen, or the scheme
+/// that reading runs by -- the same two halves Эфир has, for the same
+/// reason.
+enum ScreenView { reading, scheme }
+
+/// Which screen is open, and which half of Эфир and of Экран.
 class NavigationState extends Equatable {
   const NavigationState({
     this.section = DashboardSection.live,
     this.liveView = LiveView.dubbing,
+    this.screenView = ScreenView.reading,
   });
 
   final DashboardSection section;
@@ -28,25 +34,38 @@ class NavigationState extends Equatable {
   /// Which half of Эфир is up. Meaningless on any other screen.
   final LiveView liveView;
 
+  /// Which half of Экран is up. Meaningless on any other screen.
+  final ScreenView screenView;
+
   @override
-  List<Object?> get props => [section, liveView];
+  List<Object?> get props => [section, liveView, screenView];
 }
 
 /// Where the player stands in the dashboard.
 ///
-/// A Cubit rather than a Bloc: both calls are setters, and a class of event
+/// A Cubit rather than a Bloc: every call is a setter, and a class of event
 /// for each would say nothing a call does not.
 // A setter and nothing more: a Cubit on purpose (CLAUDE.md).
 // ignore: prefer_bloc
 class NavigationCubit extends Cubit<NavigationState> {
   NavigationCubit() : super(const NavigationState());
 
-  void selectSection(DashboardSection value) =>
-      emit(NavigationState(section: value, liveView: state.liveView));
+  /// Opens [value], each screen with two halves showing the one it was
+  /// left on.
+  void selectSection(DashboardSection value) => emit(
+    NavigationState(section: value, liveView: state.liveView, screenView: state.screenView),
+  );
 
   /// Shows one half of Эфир: the dubbing, or the scheme it runs by. It
   /// comes back to Эфир first, so the checklist can send the player to the
   /// scheme from wherever they are standing.
-  void showOnLive(LiveView view) =>
-      emit(NavigationState(section: DashboardSection.live, liveView: view));
+  void showOnLive(LiveView view) => emit(
+    NavigationState(section: DashboardSection.live, liveView: view, screenView: state.screenView),
+  );
+
+  /// Shows one half of Экран: the reading of the screen, or the scheme it
+  /// runs by, coming back to Экран first as [showOnLive] comes to Эфир.
+  void showOnScreen(ScreenView view) => emit(
+    NavigationState(section: DashboardSection.snapshot, liveView: state.liveView, screenView: view),
+  );
 }

@@ -9,6 +9,7 @@ import '../../domain/built_voice.dart';
 import '../../domain/failure.dart';
 import '../../domain/game_process.dart';
 import '../../domain/glossary.dart';
+import '../../domain/pipeline_graph.dart';
 import '../../domain/session_config.dart';
 import '../services/character_service.dart';
 import '../services/glossary_service.dart';
@@ -25,21 +26,28 @@ import '../services/pipeline_graph_service.dart';
 /// the glossary the session translates with, the cast it recognizes, and
 /// the cards the canvas cut out of the mix. It reads them off the services
 /// directly, which are only where the files are, rather than off the
-/// repositories that own what is in them.
+/// repositories that own what is in them -- Эфир's canvas for the sessions
+/// that start from it, and the Screen page's for the screen session.
 class SessionRepository {
   SessionRepository(
     this._nativeEngine, [
     CharacterService? characters,
     GlossaryService? glossary,
     PipelineGraphService? layout,
+    PipelineGraphService? screenLayout,
   ]) : _characters = characters ?? CharacterService(),
        _glossary = glossary ?? GlossaryService(),
-       _layout = layout ?? PipelineGraphService();
+       _layouts = {
+         PipelineScheme.live: layout ?? PipelineGraphService(),
+         PipelineScheme.screen: screenLayout ?? PipelineGraphService(scheme: PipelineScheme.screen),
+       };
 
   final NativeEngineService _nativeEngine;
   final CharacterService _characters;
   final GlossaryService _glossary;
-  final PipelineGraphService _layout;
+
+  /// Each canvas's arrangement, which a session starting from it reads.
+  final Map<PipelineScheme, PipelineGraphService> _layouts;
 
   /// Plays a file to its end, outside the dubbing's own queue: a clip the
   /// player asked to hear does not wait behind a scene.
@@ -111,12 +119,14 @@ class SessionRepository {
       worker: worker.copyWith(
         // The packs the canvas draws, each narrowed to the part of it the
         // text it reads there can meet.
-        glossary: await _glossary.sessionFile(reach: await _glossaryReach(settings)),
+        glossary: await _glossary.sessionFile(
+          reach: await _glossaryReach(PipelineScheme.live, translates: settings.translates),
+        ),
         // The player's own characters, who speak in every game.
         characters: await _characters.file(),
         // The cards cut out of the mix on the graph: each of them keeps who
         // stands in for whom, and none of it is applied.
-        asHeard: await _cutFromMix(),
+        asHeard: await _cutFromMix(PipelineScheme.live),
       ),
       capture: CapturePlan(
         mode: CaptureMode.audio,
@@ -168,10 +178,18 @@ class SessionRepository {
   }) => _started((session) async {
     final config = ScreenSessionConfig(
       worker: worker.copyWith(
-        // Every pack switched on, whole: the canvas draws the dubbing of
-        // the game's sound, and what it says of a pack is said of that.
-        glossary: await _glossary.sessionFile(),
+        // The packs the Screen page's scheme draws, each narrowed to what
+        // the text on the screen can meet where it stands: the scheme is
+        // this session's, as Эфир's is the dubbing's.
+        glossary: await _glossary.sessionFile(
+          reach: await _glossaryReach(
+            PipelineScheme.screen,
+            translates: settings.screenTranslates,
+          ),
+        ),
         characters: await _characters.file(),
+        // The cards that scheme cut out of the mix.
+        asHeard: await _cutFromMix(PipelineScheme.screen),
       ),
       capture: CapturePlan(
         mode: _captureModeOf(reading, hearsVoices: hearsVoices),
@@ -330,7 +348,7 @@ class SessionRepository {
     final config = SceneSessionConfig(
       worker: worker.copyWith(
         characters: await _characters.file(),
-        asHeard: await _cutFromMix(),
+        asHeard: await _cutFromMix(PipelineScheme.live),
       ),
       capture: CapturePlan(
         mode: CaptureMode.audio,
@@ -343,15 +361,15 @@ class SessionRepository {
     _throwIfSuperseded(session);
   });
 
-  /// The cards the canvas has cut out of the mix.
+  /// The cards [scheme]'s canvas has cut out of the mix.
   ///
   /// Read off the arrangement rather than out of the settings, the cut being
   /// a card's own since a scheme is wired a card at a time. The canvas
   /// writes the file as it is drawn on, so what a session starts with is
   /// what the player last drew.
-  Future<Set<String>> _cutFromMix() async {
+  Future<Set<String>> _cutFromMix(PipelineScheme scheme) async {
     try {
-      return (await _layout.load()).silent;
+      return (await _layouts[scheme]!.load()).silent;
     } on Object {
       // A scheme that cannot be read is no reason not to start: the cast
       // then plays the way it does with nothing cut.
@@ -359,11 +377,16 @@ class SessionRepository {
     }
   }
 
-  /// What the canvas lets each pack it draws apply, off the arrangement as
-  /// the cut is: which text a pack is drawn on is the scheme's to say.
-  Future<GlossaryReach> _glossaryReach(AppSettings settings) async {
+  /// What [scheme]'s canvas lets each pack it draws apply, off the
+  /// arrangement as the cut is: which text a pack is drawn on is the
+  /// scheme's to say. [translates] is whether its translator stands in the
+  /// line.
+  Future<GlossaryReach> _glossaryReach(
+    PipelineScheme scheme, {
+    required bool translates,
+  }) async {
     try {
-      return (await _layout.load()).glossaryReach(translates: settings.translates);
+      return (await _layouts[scheme]!.load()).glossaryReach(translates: translates);
     } on Object {
       // Nor is a scheme that cannot be read a reason to leave the glossary
       // out: every pack switched on then applies whole.

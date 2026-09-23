@@ -76,4 +76,7 @@ IconData nodeIcon(PipelineNodeKind kind) => switch (kind) {
   PipelineNodeKind.character => Icons.person_rounded,
   // The icon the glossary's own screen carries in the navigation.
   PipelineNodeKind.glossary => Icons.menu_book_rounded,
+  // And the one the Screen page carries.
+  PipelineNodeKind.screen => Icons.highlight_alt_rounded,
+  PipelineNodeKind.detection => Icons.person_search_rounded,
 };

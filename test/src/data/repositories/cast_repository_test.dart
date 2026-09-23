@@ -4,6 +4,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lore_dub/src/data/repositories/cast_repository.dart';
 import 'package:lore_dub/src/domain/character.dart';
+import 'package:lore_dub/src/domain/pipeline_graph.dart';
+import 'package:lore_dub/src/domain/pipeline_state.dart';
 
 import '../../../support/memory_cast.dart';
 
@@ -64,5 +66,38 @@ void main() {
 
     expect(files.stored.characters, isEmpty, reason: 'nothing written');
     expect(engine.told, isEmpty);
+  });
+
+  group('the cards a canvas cuts out of the mix', () {
+    test('are told to a session started from that canvas', () async {
+      engine.running = PipelineSession.live;
+      await cast.readAsHeard({'a1'});
+
+      engine.running = PipelineSession.screen;
+      await cast.readAsHeard({'b2'}, scheme: PipelineScheme.screen);
+
+      expect(engine.heard, [
+        {'a1'},
+        {'b2'},
+      ]);
+    });
+
+    test('are kept from a session started from the other one', () async {
+      engine.running = PipelineSession.screen;
+      await cast.readAsHeard({'a1'});
+
+      engine.running = PipelineSession.live;
+      await cast.readAsHeard({'b2'}, scheme: PipelineScheme.screen);
+
+      expect(engine.heard, isEmpty, reason: 'each canvas cuts for its own sessions');
+    });
+
+    test('are told to no session while the engine rests', () async {
+      engine.running = null;
+
+      await cast.readAsHeard({'a1'});
+
+      expect(engine.heard, isEmpty);
+    });
   });
 }

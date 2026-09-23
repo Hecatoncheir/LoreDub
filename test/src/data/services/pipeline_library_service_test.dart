@@ -93,4 +93,75 @@ void main() {
   test('an empty shelf is what a machine with no file has', () async {
     expect((await service().load()).pipelines, isEmpty);
   });
+
+  group("the Screen page's shelf", () {
+    PipelineLibraryService screenService() =>
+        PipelineLibraryService(root: () async => root, scheme: PipelineScheme.screen);
+
+    const screenScheme = SavedPipeline(
+      id: 'screen',
+      name: 'Субтитры',
+      scheme: PipelineScheme.screen,
+      captureRouted: false,
+      layout: PipelineLayout.screenStandard,
+    );
+
+    test("is a file of its own beside Эфир's", () async {
+      await service().save(
+        const PipelineLibrary(
+          pipelines: [SavedPipeline(id: 'live', name: 'Эфир')],
+        ),
+      );
+      await screenService().save(const PipelineLibrary(pipelines: [screenScheme]));
+
+      expect(await File(path.join(root.path, 'screen_pipelines.json')).exists(), isTrue);
+      expect((await service().load()).pipelines.single.id, 'live');
+      final read = (await screenService().load()).pipelines.single;
+      expect(read.scheme, PipelineScheme.screen);
+      expect(read.captureRouted, isFalse);
+      expect(read.layout.positions, PipelineLayout.screenPositions);
+    });
+
+    test("reads its own schemes out of a file and leaves the other canvas's", () async {
+      final source = File(path.join(root.path, 'mixed.json'));
+      await source.writeAsString(
+        jsonEncode(
+          const PipelineLibrary(
+            pipelines: [
+              screenScheme,
+              SavedPipeline(id: 'live', name: 'Эфир'),
+            ],
+          ).toJson(),
+        ),
+      );
+
+      expect(
+        [
+          for (final scheme in await screenService().readFiles([source.path])) scheme.id,
+        ],
+        [
+          'screen',
+        ],
+      );
+      expect(
+        [
+          for (final scheme in await service().readFiles([source.path])) scheme.id,
+        ],
+        ['live'],
+      );
+    });
+
+    test("says which file held only the other canvas's schemes", () async {
+      final source = File(path.join(root.path, 'live-only.json'));
+      await source.writeAsString(
+        jsonEncode(
+          const PipelineLibrary(
+            pipelines: [SavedPipeline(id: 'live', name: 'Эфир')],
+          ).toJson(),
+        ),
+      );
+
+      await expectLater(screenService().readFiles([source.path]), throwsA(isA<Object>()));
+    });
+  });
 }

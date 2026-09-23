@@ -27,9 +27,13 @@ import '../../../data/repositories/scheme_repository.dart';
 part 'pipeline_graph_event.dart';
 part 'pipeline_graph_state.dart';
 
-/// What one step back restores: where the nodes were, whether the way in
-/// was drawn, whose voice read whom, and which packs of the glossary were
-/// switched on.
+/// Where a move of the translator leaves a canvas: what it reads and what
+/// it says it in, or none -- with [refusal] saying why.
+typedef _TranslatorMove = ({ScreenLanguages? languages, ConnectionRefusal refusal});
+
+/// What one step back restores: where the nodes were, whether the game's
+/// sound was drawn in, whose voice read whom, and which packs of the
+/// glossary were switched on.
 ///
 /// The canvas owns none of those but the first — they are the settings, the
 /// cast and the glossary — so undo puts them back through the same calls an
@@ -44,8 +48,9 @@ class _GraphMemento {
 
   final PipelineLayout layout;
 
-  /// Whether the way into the pipeline was drawn, so a step back over a cut
-  /// route puts the link there again.
+  /// Whether the game's sound was drawn in -- the way into Эфир's pipeline,
+  /// the voices behind the Screen page's -- so a step back over a cut route
+  /// puts the link there again.
   final bool routed;
 
   final Map<String, String?> readers;
@@ -54,6 +59,15 @@ class _GraphMemento {
   final Set<String> activePacks;
 }
 
+/// One of the two canvases: Эфир's, drawing the dubbing of the game's
+/// sound, or -- with [scheme] set to it -- the Screen page's, drawing the
+/// reading of its screen.
+///
+/// The two are the same machine over different stages. Each keeps its own
+/// arrangement and its own shelf, and tells what it cuts and what it lets
+/// the glossary apply only to a session started from it; the settings, the
+/// cast and the glossary they draw are the same ones, so a card or a pack
+/// changed on one is changed on the other.
 class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   PipelineGraphBloc(
     this._schemes,
@@ -64,8 +78,10 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     this._sessions,
     this._errors, {
     DateTime Function()? clock,
+    PipelineScheme scheme = PipelineScheme.live,
   }) : _ids = IdSource(clock: clock),
-       super(const PipelineGraphState()) {
+       _scheme = scheme,
+       super(PipelineGraphState(layout: PipelineLayout.standardOf(scheme))) {
     on<PipelineGraphOpened>(_onOpened);
     on<PipelineGraphRefreshed>((event, emit) => emit(_redrawn(state)));
     on<PipelineNodeGrabbed>(_onGrabbed);
@@ -99,6 +115,9 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     on<PipelineGlossaryPlaced>(_onGlossaryPlaced);
     on<PipelineGlossaryPackChosen>(_onGlossaryPackChosen);
     on<PipelineGlossarySwitched>(_onGlossarySwitched);
+    // The switch on the detection is its route drawn or cut: one setting,
+    // with the same refusals.
+    on<PipelineVoicesSwitched>((event, emit) => _apply(VoicesConnection(event.heard), emit));
     on<PipelineViewPanned>(
       (event, emit) => emit(_withView(state.layout.view.panned(event.dx, event.dy))),
     );
@@ -131,6 +150,9 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   final CastRepository _characters;
   final GlossaryRepository _glossary;
   final InstallRepository _installed;
+
+  /// Which of the two canvases this is.
+  final PipelineScheme _scheme;
 
   /// Where the engine stands, which the route may not be changed under.
   final SessionCoordinator _sessions;
@@ -166,7 +188,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   Future<void> _readAsHeard(Set<String> ids) async {
     try {
-      await _characters.readAsHeard(ids);
+      await _characters.readAsHeard(ids, scheme: _scheme);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -182,7 +204,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   Future<void> _narrow(GlossaryReach reach) async {
     try {
-      await _glossary.narrow(reach);
+      await _glossary.narrow(reach, scheme: _scheme);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -191,7 +213,27 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   /// The packs switched on now.
   Set<String> get _activePacks => {for (final pack in _glossary.glossary.activePacks) pack.id};
 
-  bool get _translates => _settings.settings.translates;
+  /// Whether this canvas's translator stands in the line: Эфир's while the
+  /// dubbing is not into English, the Screen page's while its text is
+  /// English to be translated.
+  bool get _translates => switch (_scheme) {
+    PipelineScheme.live => _settings.settings.translates,
+    PipelineScheme.screen => _settings.settings.screenTranslates,
+  };
+
+  /// Whether the game's sound is drawn in: the way into Эфир's pipeline,
+  /// or into the Screen page's character detection. It is what a scheme on
+  /// the shelf keeps of the route, and what a step back puts back of it.
+  bool get _routed => switch (_scheme) {
+    PipelineScheme.live => _settings.settings.captureRouted,
+    PipelineScheme.screen => _settings.settings.screenVoices,
+  };
+
+  /// The settings with the game's sound drawn in, or not, on this canvas.
+  AppSettings _withRoute(bool routed) => switch (_scheme) {
+    PipelineScheme.live => _settings.settings.copyWith(captureRouted: routed),
+    PipelineScheme.screen => _settings.settings.copyWith(screenVoices: routed),
+  };
 
   /// Keeps [glossary] when it is not what is kept already, and answers with
   /// the write, or null when there is none to wait for.
@@ -264,15 +306,15 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     // waiting has already landed — and the arrangement read here must not
     // undo it.
     final before = state.layout;
-    var layout = PipelineLayout.standard;
+    var layout = PipelineLayout.standardOf(_scheme);
     var schemes = const <SavedPipeline>[];
     try {
-      layout = await _schemes.loadLayout();
+      layout = await _schemes.loadLayout(scheme: _scheme);
     } catch (exception) {
       log('pipeline layout not read: $exception', name: 'PipelineGraphBloc');
     }
     try {
-      schemes = (await _schemes.loadSchemes()).pipelines;
+      schemes = (await _schemes.loadSchemes(scheme: _scheme)).pipelines;
     } catch (exception) {
       log('saved schemes not read: $exception', name: 'PipelineGraphBloc');
     }
@@ -297,7 +339,8 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     return SavedPipeline(
       id: id,
       name: name,
-      captureRouted: _settings.settings.captureRouted,
+      scheme: _scheme,
+      captureRouted: _routed,
       layout: state.layout,
       readers: {
         for (final character in _cast)
@@ -328,7 +371,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   ) async {
     final scheme = state.schemes.where((value) => value.id == event.id).firstOrNull;
     if (scheme == null) return;
-    if (_routeLocked && scheme.captureRouted != _settings.settings.captureRouted) {
+    if (_routeLocked && scheme.captureRouted != _routed) {
       emit(state.copyWith(refusal: ConnectionRefusal.locked));
       return;
     }
@@ -353,7 +396,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       ),
     );
     _persist();
-    await _settings.save(_settings.settings.copyWith(captureRouted: scheme.captureRouted));
+    await _settings.save(_withRoute(scheme.captureRouted));
     // Which cards the scheme cuts out of the mix travels with its
     // arrangement, so a session already running is told the moment it is put
     // up rather than at the next start.
@@ -424,14 +467,16 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   }
 
   /// Schemes read from files. One that carries an id already on the shelf
-  /// lands on the scheme it came from, the way an imported card does.
+  /// lands on the scheme it came from, the way an imported card does. Only
+  /// this canvas's are read: a file holding the other one's is refused by
+  /// name, as a file holding none is.
   Future<void> _onSchemeImported(
     PipelineSchemeImported event,
     Emitter<PipelineGraphState> emit,
   ) async {
     List<SavedPipeline> incoming;
     try {
-      incoming = await _schemes.importSchemes(event.sources);
+      incoming = await _schemes.importSchemes(event.sources, scheme: _scheme);
     } catch (exception) {
       _errors.report(exception);
       return;
@@ -448,7 +493,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   Future<void> _keep(List<SavedPipeline> schemes, Emitter<PipelineGraphState> emit) async {
     emit(state.copyWith(schemes: schemes));
     try {
-      await _schemes.saveSchemes(PipelineLibrary(pipelines: schemes));
+      await _schemes.saveSchemes(PipelineLibrary(pipelines: schemes), scheme: _scheme);
     } catch (exception) {
       _errors.report(exception);
     }
@@ -548,6 +593,10 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     return next;
   }
 
+  /// What the settings and the downloads together say.
+  ModelSelection get _selection =>
+      ModelSelection(models: _installed.parts.models, settings: _settings.settings);
+
   /// The language the translator is put back on: the first one downloaded
   /// that has a translator at all, in the order the models screen lists them.
   ///
@@ -556,13 +605,64 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   /// The models screen shows at once which it was, and one step back undoes
   /// it, so the guess costs nothing when it is wrong.
   String? get _languageToTranslateInto {
-    final selection = ModelSelection(models: _installed.parts.models, settings: _settings.settings);
-    for (final pair in selection.languagePairs) {
+    for (final pair in _selection.languagePairs) {
       if (pair.language == untranslatedDubbingLanguage) continue;
       if (pair.installed) return pair.language;
     }
     return null;
   }
+
+  /// The language the Screen page's translator is put back on: the dubbing
+  /// language itself where its translator is on disk -- the player reading
+  /// Russian text who draws the translator back means English into the same
+  /// Russian -- and otherwise the one Эфир's canvas would take.
+  String? get _screenLanguageToTranslateInto {
+    final dubbing = _settings.settings.targetLanguage;
+    final kept = dubbing != untranslatedDubbingLanguage && _selection.isLanguageReady(dubbing);
+    return kept ? dubbing : _languageToTranslateInto;
+  }
+
+  /// Эфир's translator moved: out of the line is dubbing into English,
+  /// which whisper hands over already, and back into it a language that has
+  /// a translator. A catalogue carrying no English voice would have no line
+  /// without the translator at all, and the cut is refused rather than left
+  /// to end in a session with nothing to read it.
+  _TranslatorMove _liveTranslatorMoved(bool routed) {
+    if (!routed && !dubbingLanguages.contains(untranslatedDubbingLanguage)) {
+      return (languages: null, refusal: ConnectionRefusal.unsupported);
+    }
+    final language = routed ? _languageToTranslateInto : untranslatedDubbingLanguage;
+    return (
+      languages: language == null ? null : (text: fallbackSpokenLanguage, dubbing: language),
+      refusal: ConnectionRefusal.translatorMissing,
+    );
+  }
+
+  /// The Screen page's translator moved: out of the line, what the screen
+  /// shows is read as the dubbing language itself -- there is always its
+  /// voice to read it -- and back into it, it is English to be translated.
+  _TranslatorMove _screenTranslatorMoved(bool routed) {
+    final dubbing = _settings.settings.targetLanguage;
+    if (!routed) {
+      return (languages: (text: dubbing, dubbing: dubbing), refusal: ConnectionRefusal.unsupported);
+    }
+    final language = _screenLanguageToTranslateInto;
+    return (
+      languages: language == null ? null : (text: fallbackSpokenLanguage, dubbing: language),
+      refusal: ConnectionRefusal.translatorMissing,
+    );
+  }
+
+  /// [settings] reading and saying [languages] on this canvas: the dubbing
+  /// language on Эфир, where what is read is always whisper's English, and
+  /// both on the Screen page, where the text's language is chosen as well.
+  AppSettings _speaking(AppSettings settings, ScreenLanguages languages) => switch (_scheme) {
+    PipelineScheme.live => settings.withTargetLanguage(languages.dubbing),
+    PipelineScheme.screen => settings.withScreenLanguages(
+      text: languages.text,
+      dubbing: languages.dubbing,
+    ),
+  };
 
   /// Carries out what the canvas proposed, or says why it could not.
   ///
@@ -588,6 +688,8 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
         await _settings.save(_settings.settings.copyWith(captureRouted: routed));
       case TranslationConnection(:final routed, :final edits):
         await _moveTranslator(routed, edits, emit);
+      case VoicesConnection(:final heard):
+        await _hearVoices(heard, emit);
       // A card into the mix, or out of it. Not locked with the route: a
       // session keeps its cast loaded either way, and the worker is told.
       //
@@ -624,13 +726,12 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   /// The translator out of the line, or back into it, and the packs of the
   /// glossary the same line moved.
   ///
-  /// There is no setting of its own behind this: dubbing into English is
-  /// what has nothing to translate, so taking the stage out chooses English
-  /// and putting it back chooses a language that has a translator. Locked
-  /// with the route, the models being loaded for the session that runs. A
-  /// catalogue carrying no English voice would have no line without the
-  /// translator at all, and the cut is refused rather than left to end in a
-  /// session with nothing to read it.
+  /// There is no setting of its own behind this: it is what is read and
+  /// what it is said in. On Эфир dubbing into English is what has nothing to
+  /// translate, so taking the stage out chooses English and putting it back
+  /// chooses a language that has a translator; on the Screen page it is the
+  /// language of the text on the screen. Locked with the route, the models
+  /// being loaded for the session that runs.
   Future<void> _moveTranslator(
     bool routed,
     List<LineEdit> edits,
@@ -640,13 +741,13 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       emit(state.copyWith(refusal: ConnectionRefusal.locked));
       return;
     }
-    if (!routed && !dubbingLanguages.contains(untranslatedDubbingLanguage)) {
-      emit(state.copyWith(refusal: ConnectionRefusal.unsupported));
-      return;
-    }
-    final language = routed ? _languageToTranslateInto : untranslatedDubbingLanguage;
-    if (language == null) {
-      emit(state.copyWith(refusal: ConnectionRefusal.translatorMissing));
+    final moved = switch (_scheme) {
+      PipelineScheme.live => _liveTranslatorMoved(routed),
+      PipelineScheme.screen => _screenTranslatorMoved(routed),
+    };
+    final languages = moved.languages;
+    if (languages == null) {
+      emit(state.copyWith(refusal: moved.refusal));
       return;
     }
     _remember();
@@ -654,7 +755,28 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     if (edits.isNotEmpty) await _settle(state.layout.withLine(edits, translates: routed), emit);
     // Both the translator and the voice: text in one language read by a
     // voice for another would be gibberish.
-    await _settings.save(_settings.settings.withTargetLanguage(language));
+    await _settings.save(_speaking(_settings.settings, languages));
+  }
+
+  /// Whether the voices behind the screen are told apart: the detection's
+  /// route drawn or cut, or its switch thrown -- one setting three ways.
+  ///
+  /// It is the converter that hears who is speaking, so without it on disk
+  /// nothing is drawn in; and it is loaded for the session that runs, so the
+  /// route stays as it is until that session stops, as Эфир's does.
+  Future<void> _hearVoices(bool heard, Emitter<PipelineGraphState> emit) async {
+    if (_routeLocked) {
+      emit(state.copyWith(refusal: ConnectionRefusal.locked));
+      return;
+    }
+    if (heard && !_selection.measuresVoices) {
+      emit(state.copyWith(refusal: ConnectionRefusal.converterMissing));
+      return;
+    }
+    if (_settings.settings.screenVoices == heard) return;
+    _remember();
+    emit(state.copyWith(clearRefusal: true));
+    await _settings.save(_settings.settings.copyWith(screenVoices: heard));
   }
 
   Future<void> _onCharacterPlaced(
@@ -749,8 +871,8 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
     if (!_sameCards(wasSilent, memento.layout.silent)) {
       await _readAsHeard(memento.layout.silent);
     }
-    if (!_routeLocked && _settings.settings.captureRouted != memento.routed) {
-      await _settings.save(_settings.settings.copyWith(captureRouted: memento.routed));
+    if (!_routeLocked && _routed != memento.routed) {
+      await _settings.save(_withRoute(memento.routed));
     }
     for (final entry in memento.readers.entries) {
       final now = _cast.firstWhere(
@@ -797,7 +919,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   _GraphMemento _snapshot() => _GraphMemento(
     layout: state.layout,
-    routed: _settings.settings.captureRouted,
+    routed: _routed,
     readers: {for (final character in _cast) character.id: character.voicedBy},
     activePacks: _activePacks,
   );
@@ -818,6 +940,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
       characters: _cast,
       packs: _glossary.glossary.packs,
       layout: value.layout,
+      scheme: _scheme,
     );
     _followReach(value.layout);
     // A card taken off the canvas leaves the choice with it, so a drag does
@@ -843,7 +966,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
   /// translate, what whisper heard is where a word is met -- and a redraw
   /// is what follows either.
   void _followReach(PipelineLayout layout) {
-    final reach = layout.glossaryReach(translates: _settings.settings.translates);
+    final reach = layout.glossaryReach(translates: _translates);
     final told = _toldReach;
     if (told != null && sameGlossaryReach(told, reach)) return;
     _toldReach = reach;
@@ -863,7 +986,7 @@ class PipelineGraphBloc extends Bloc<PipelineGraphEvent, PipelineGraphState> {
 
   Future<void> _write() async {
     try {
-      await _schemes.saveLayout(state.layout);
+      await _schemes.saveLayout(state.layout, scheme: _scheme);
     } catch (exception) {
       _errors.report(exception);
     }

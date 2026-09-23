@@ -44,6 +44,12 @@ class NodeLayer extends StatelessWidget {
   static bool _drawnByHand(PipelineNodeKind kind) =>
       kind == PipelineNodeKind.character || kind == PipelineNodeKind.glossary;
 
+  /// Whether a node of [kind] carries a switch on its card: a pack of the
+  /// glossary, on or off where it stands, and the Screen page's character
+  /// detection, listening to the game or not.
+  static bool _switched(PipelineNodeKind kind) =>
+      kind == PipelineNodeKind.glossary || kind == PipelineNodeKind.detection;
+
   @override
   Widget build(BuildContext context) {
     final node = inputs.node;
@@ -80,26 +86,25 @@ class NodeLayer extends StatelessWidget {
                   onDrag: (at) => actions.onDrag(node.id, at),
                   onDrop: actions.onDrop,
                   onRemove: _drawnByHand(node.kind) ? () => actions.onRemove(node.id) : null,
-                  onSwitch: node.kind == PipelineNodeKind.glossary
+                  onSwitch: _switched(node.kind)
                       ? (active) => actions.onSwitch(node.id, active)
                       : null,
                 ),
               ),
             ),
           ),
-          for (final socket in PipelineSocket.values)
-            if (socket.owner == node.kind)
-              NodeSocket(
-                port: PipelinePort(node.id, socket),
-                at: NodeMetrics.portAt(node, socket) - origin,
-                reach: reach,
-                filled: inputs.filled & (1 << socket.index) != 0,
-                offered: inputs.offered & (1 << socket.index) != 0,
-                caught: inputs.over == PipelinePort(node.id, socket),
-                actions: actions,
-                nodeTitle: title,
-                pulling: inputs.pulling,
-              ),
+          for (final socket in node.sockets)
+            NodeSocket(
+              port: PipelinePort(node.id, socket),
+              at: NodeMetrics.portAt(node, socket) - origin,
+              reach: reach,
+              filled: inputs.filled & (1 << socket.index) != 0,
+              offered: inputs.offered & (1 << socket.index) != 0,
+              caught: inputs.over == PipelinePort(node.id, socket),
+              actions: actions,
+              nodeTitle: title,
+              pulling: inputs.pulling,
+            ),
         ],
       ),
     );

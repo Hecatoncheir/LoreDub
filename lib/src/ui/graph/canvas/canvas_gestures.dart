@@ -96,9 +96,13 @@ class CanvasGestures extends ChangeNotifier {
 
   void remove(String nodeId) => add(PipelineNodeRemoved(nodeId));
 
-  /// The switch on a glossary node thrown.
-  void switchPack(String nodeId, bool active) =>
-      add(PipelineGlossarySwitched(nodeId, active: active));
+  /// The switch on a node thrown: a pack of the glossary on or off, or the
+  /// Screen page's character detection listening to the game or not.
+  void switchNode(String nodeId, bool active) => add(
+    nodeId == PipelineNodeIds.detection
+        ? PipelineVoicesSwitched(heard: active)
+        : PipelineGlossarySwitched(nodeId, active: active),
+  );
 
   void cut(PipelineLink link) => add(PipelineLinkCut(link));
 

@@ -5,19 +5,25 @@ import '../../domain/failure.dart';
 import '../../domain/pipeline_graph.dart';
 import 'json_file_store.dart';
 
-/// Where the pipeline canvas was left: the place of every node, the cards
-/// put on it, and the corner of the scheme the player was looking at.
+/// Where a pipeline canvas was left: the place of every node, the cards put
+/// on it, and the corner of the scheme the player was looking at.
 ///
 /// Only the arrangement is kept. What the pipeline does is in the settings
 /// and the cast, so a layout file that is lost or damaged costs the player
-/// a drag of the mouse rather than their configuration.
+/// a drag of the mouse rather than their configuration. Each of the two
+/// canvases keeps a file of its own: Эфир's is `pipeline_graph.json`, the
+/// name it had while it was the only one, and the Screen page's
+/// `screen_graph.json`.
 class PipelineGraphService {
-  PipelineGraphService({DirectoryProvider? root})
+  PipelineGraphService({DirectoryProvider? root, PipelineScheme scheme = PipelineScheme.live})
     : _store = JsonFileStore(
-        fileName: 'pipeline_graph.json',
-        decode: PipelineLayout.fromJson,
+        fileName: switch (scheme) {
+          PipelineScheme.live => 'pipeline_graph.json',
+          PipelineScheme.screen => 'screen_graph.json',
+        },
+        decode: (json) => PipelineLayout.fromJson(json, scheme: scheme),
         encode: (layout) => layout.toJson(),
-        empty: PipelineLayout.standard,
+        empty: PipelineLayout.standardOf(scheme),
         saveFailure: FailureCode.pipelineLayoutSaveFailed,
         root: root,
       );

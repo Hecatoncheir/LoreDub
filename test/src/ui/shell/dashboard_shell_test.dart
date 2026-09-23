@@ -106,6 +106,23 @@ void main() {
     expect(find.text('Настройки'), findsOneWidget);
   });
 
+  testWidgets('opens the glossary from the compact navigation entry that names it', (tester) async {
+    // The bar opens the section at an entry's place and names it by hand,
+    // so the two can part: the glossary took the fourth place from the
+    // scheme, and the entry there went on naming the scheme while it opened
+    // the glossary.
+    await pumpLoreDub(tester, const Size(760, 720));
+    final bar = find.byType(NavigationBar);
+    final glossary = find.descendant(of: bar, matching: find.text('Словарь'));
+    expect(glossary, findsOneWidget);
+
+    await tester.tap(glossary);
+    await tester.pump();
+
+    expect(tester.element(bar).read<NavigationCubit>().state.section, DashboardSection.glossary);
+    expect(find.descendant(of: bar, matching: find.text('Схема')), findsNothing);
+  });
+
   testWidgets('marks the live section with the audio capture drawing', (tester) async {
     // Material Icons has no audio_capture, so it is an SVG rather than a font
     // glyph; a missing asset would otherwise only show as a blank square.

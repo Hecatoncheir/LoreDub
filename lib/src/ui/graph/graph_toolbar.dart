@@ -10,11 +10,12 @@ import '../common/ease.dart';
 import '../common/file_dialogs.dart';
 import '../common/keyed_text.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../domain/pipeline_graph.dart';
 import '../theme.dart';
-import '../common/bloc/session_bloc.dart';
 import 'bloc/pipeline_graph_bloc.dart';
 import 'add_character_button.dart';
 import 'add_glossary_button.dart';
+import 'graph_session_buttons.dart';
 import 'shelf/pipeline_shelf.dart';
 import 'canvas/connection_messages.dart';
 import 'canvas/pipeline_facts.dart';
@@ -69,26 +70,11 @@ class GraphToolbar extends StatelessWidget {
                 // The session is rested from here as well as from Live: the
                 // cast is rewired on this screen, and walking to another one
                 // to stop the dubbing first is a walk for nothing.
-                if (facts.running) ...[
-                  IconButton(
-                    key: const ValueKey('graphPause'),
-                    tooltip: facts.paused ? l10n.resumeDubbing : l10n.pauseHint,
-                    icon: Icon(
-                      facts.paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                      size: 20,
-                      color: facts.paused ? context.colors.accent : null,
-                    ),
-                    onPressed: facts.paused
-                        ? () => context.read<SessionBloc>().add(const SessionResumed())
-                        : () => context.read<SessionBloc>().add(const SessionPaused()),
+                if (facts.running)
+                  GraphSessionButtons(
+                    facts: facts,
+                    rests: state.graph.scheme == PipelineScheme.live,
                   ),
-                  IconButton(
-                    key: const ValueKey('graphStop'),
-                    tooltip: l10n.stopDubbing,
-                    icon: const Icon(Icons.stop_rounded, size: 20),
-                    onPressed: () => context.read<SessionBloc>().add(const SessionStopped()),
-                  ),
-                ],
                 IconButton(
                   tooltip: l10n.pipelineSaveScheme,
                   icon: const Icon(Icons.bookmark_add_outlined, size: 20),

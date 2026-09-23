@@ -38,6 +38,10 @@ enum ConnectionRefusal {
   /// A line between two packs of the glossary, neither of which stands in
   /// the line of text: there is nowhere to put either of them.
   outOfLine,
+
+  /// The voices behind the screen were to be told apart with no converter
+  /// on disk, and it is the converter that hears who is speaking.
+  converterMissing,
 }
 
 /// What making a link would change. The canvas asks before it draws, and
@@ -55,11 +59,27 @@ final class RouteConnection extends GraphConnection {
   final bool routed;
 }
 
+/// Whether the game's sound is listened to while the screen is read, so a
+/// line is read in the voice of whoever was speaking as it appeared.
+///
+/// The way through the Screen page's character detection -- the game's
+/// sound into it, who it says is speaking into the voice -- is drawn and cut
+/// by either of its two lines, and by the switch on the node, all three being
+/// the one setting. Nothing of that sound is recognized.
+final class VoicesConnection extends GraphConnection {
+  const VoicesConnection(this.heard);
+
+  final bool heard;
+}
+
 /// Whether the translator stands in the line.
 ///
-/// Taken out, what whisper heard goes straight to the voice, and what whisper
-/// hands over is English -- so cutting this link is choosing to dub into
-/// English, and drawing it back is choosing a language to translate into.
+/// Taken out on Эфир, what whisper heard goes straight to the voice, and
+/// what whisper hands over is English -- so cutting this link is choosing to
+/// dub into English, and drawing it back is choosing a language to translate
+/// into. On the Screen page, what the screen shows is read as it is: cutting
+/// the link says the text is in the dubbing language, and drawing it back
+/// that it is English to be translated.
 final class TranslationConnection extends GraphConnection {
   const TranslationConnection(this.routed, {this.edits = const []});
 
@@ -149,13 +169,17 @@ GraphConnection proposeConnection(
     return const RefusedConnection(ConnectionRefusal.signal);
   }
   if (graph.links.contains(PipelineLink(from, to))) return const UnchangedConnection();
-  // The text runs along one line, whisper to the voice, and every line of
-  // it is worked out there.
+  // The text runs along one line, whisper -- or the screen -- to the voice,
+  // and every line of it is worked out there.
   if (from.socket.signal == PipelineSignal.text) {
     return _textConnection(graph, from.nodeId, to.nodeId);
   }
   return switch ((from.socket, to.socket)) {
     (PipelineSocket.gameAudio, PipelineSocket.speechIn) => const RouteConnection(true),
+    // Either half of the way through the detection puts the whole of it
+    // back, as either half of the translator's line does.
+    (PipelineSocket.gameAudio, PipelineSocket.detectionIn) ||
+    (PipelineSocket.detectedSpeaker, PipelineSocket.voiceSpeaker) => const VoicesConnection(true),
     // A card back into the mix: this one speaks again, and the rest stand
     // where they were left.
     (PipelineSocket.characterVoice, PipelineSocket.mixCast) => switch (PipelineNodeIds.characterOf(
@@ -217,28 +241,32 @@ GraphConnection _packBefore(PipelineGraph graph, String pack, String to) {
 /// steps over it, it does that, as it always has; where the translator
 /// already stands as the line would have it, the line can only mean the
 /// packs it passes over, and they leave the line.
+///
+/// The line starts at whisper on Эфир and at the screen on the Screen page;
+/// a scheme draws only one of the two, so either is where it starts.
 GraphConnection _stageConnection(PipelineGraph graph, String from, String to) =>
     switch ((from, to)) {
       // The translator back into the line, drawn at either end of it.
-      (PipelineNodeIds.recognition, PipelineNodeIds.translation) ||
+      (PipelineNodeIds.recognition || PipelineNodeIds.screen, PipelineNodeIds.translation) ||
       (
         PipelineNodeIds.translation,
         PipelineNodeIds.voice,
       ) => graph.translates ? _passingOver(graph, from) : const TranslationConnection(true),
-      // Recognition straight into the voice: the stage is stepped over, which
-      // is what dubbing into English does.
-      (PipelineNodeIds.recognition, PipelineNodeIds.voice) =>
+      // Where the line starts, straight into the voice: the stage is stepped
+      // over, which is what dubbing into English does -- or, on the Screen
+      // page, reading text that is in the dubbing language already.
+      (PipelineNodeIds.recognition || PipelineNodeIds.screen, PipelineNodeIds.voice) =>
         graph.translates ? const TranslationConnection(false) : _passingOver(graph, from),
       _ => const RefusedConnection(ConnectionRefusal.unsupported),
     };
 
 /// The packs a line out of [from] passes over taken out of the line: those
-/// before the translator for a line out of whisper, those after it for one
-/// out of the translator.
+/// after the translator for a line out of it, and those before it for one
+/// out of where the line starts.
 GraphConnection _passingOver(PipelineGraph graph, String from) {
-  final side = from == PipelineNodeIds.recognition
-      ? GlossaryFeed.recognition
-      : GlossaryFeed.translation;
+  final side = from == PipelineNodeIds.translation
+      ? GlossaryFeed.translation
+      : GlossaryFeed.recognition;
   final passed = {
     for (final node in graph.ofKind(PipelineNodeKind.glossary))
       if (node.feed == side) node.id,
@@ -280,19 +308,29 @@ GraphConnection proposeDisconnect(PipelineLink link) =>
       (PipelineSocket.glossaryOut, _) => GlossaryLineConnection([
         LineRemove({link.from.nodeId}),
       ]),
+      // Either half of the way through the Screen page's detection: the
+      // game's sound is no longer listened to, and each line is read in the
+      // one voice. Asked before the way into Эфир's pipeline, which leaves
+      // the same socket.
+      (PipelineSocket.gameAudio, PipelineSocket.detectionIn) ||
+      (PipelineSocket.detectedSpeaker, _) => const VoicesConnection(false),
       // The way into the pipeline comes apart: the stages stay where they
       // are with nothing reaching them, and the route is put back by drawing
       // it.
       (PipelineSocket.gameAudio, _) => const RouteConnection(false),
       // Either half of the translator's line takes the whole stage out: the
       // text goes past it, and the dubbing is the English whisper already
-      // hands over.
+      // hands over -- or, on the Screen page, the text read as it is.
       (_, PipelineSocket.translationIn) ||
       (PipelineSocket.translatedText, _) => const TranslationConnection(false),
       // The line that steps over the translator is the only text the voice
       // gets. Cutting it cannot leave the voice with nothing to read, so it
       // means the other thing it can mean: the stage goes back into the line.
-      (PipelineSocket.speechText, PipelineSocket.voiceIn) => const TranslationConnection(true),
+      (
+        PipelineSocket.speechText || PipelineSocket.screenText,
+        PipelineSocket.voiceIn,
+      ) =>
+        const TranslationConnection(true),
       // One card comes out of the mix: it stays where it was put with nobody
       // standing in for it, and the line drawn back wakes it again. The rest
       // of the cast is not touched -- a scheme is cut a card at a time.

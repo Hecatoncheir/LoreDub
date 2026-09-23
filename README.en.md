@@ -187,6 +187,32 @@ selection frame is drawn over other windows, so the game
 has to run windowed or borderless: a game in exclusive fullscreen would
 minimize.
 
+Like **Live**, the Screen page has two halves, and its title is the switch
+between them: **Screen translation** and **Scheme**.
+
+<p align="center">
+  <img src="docs/screenshots/screen-pipeline-en.png" width="900" alt="The Screen page's scheme: the text off the screen runs through a glossary and the translator into the lines, the game's sound through character detection">
+</p>
+
+The Screen page's scheme is the same canvas as Live's (described under
+[Graph](#graph)) with nodes of its own. The line of text starts at the
+**Screen** node: through **Translation** it is English text, and a line from
+**Screen** straight into **Lines** says the text is in the dubbing language
+already and is read as it is — the same choice as **Text and dubbing
+language**. A **Glossary** can stand between **Screen** and **Lines**, before
+the translator or after it. **Original stream** leads not into Whisper here
+but into **Character detection**: the game is listened to only to tell who is
+speaking, and **Character** out of that node goes into **Lines** — a line is
+read in the voice of whoever was speaking as it appeared. From **Lines**, as
+on Live's scheme, **Characters** run to the cards, which are joined into the
+**Mix**. The switch on the node and in its panel is the same **Follow the
+characters' voices** as on the subtitle frame's card: drawing or cutting
+either of the node's two lines is the same as throwing it. It does not come
+on without the voice converter from the Models screen. Where the nodes stand,
+the cards cut out of the mix, the glossaries on the scheme and the shelf of
+saved schemes are the Screen page's own, apart from Live's: the screen
+session reads them as it starts, and is told what changed while it runs.
+
 ### Characters
 
 <p align="center">
@@ -508,7 +534,7 @@ that is on and not drawn applies whole, and with none on at all, Live is not
 checked against the glossary. Switching the last glossary on the scheme off
 switches the glossary off rather than opening it whole. All of this works
 mid-session too: a running worker is told what changed. The **Screen**
-session is not drawn on the scheme and reads the packs that are on whole.
+session reads the glossary by a scheme of its own — see [Screen](#screen).
 
 A scheme can be put on a shelf and taken back down. **Save the scheme**
 keeps the one on the canvas under a name, and it joins the row of cards under

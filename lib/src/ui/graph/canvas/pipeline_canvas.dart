@@ -134,7 +134,7 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
     onDrag: _gestures.carry,
     onDrop: _gestures.drop,
     onRemove: _gestures.remove,
-    onSwitch: _gestures.switchPack,
+    onSwitch: _gestures.switchNode,
     onLinkStart: (port, global) => _gestures.pullLink(port, _toCanvas(global)),
     onLinkToggle: _gestures.toggleLink,
     onLinkDrag: (global) => _gestures.carryLink(_toCanvas(global)),
@@ -420,9 +420,9 @@ class _PipelineCanvasState extends State<PipelineCanvas> with TickerProviderStat
     final masks = <String, int>{};
     for (final node in _state.graph.nodes) {
       var mask = 0;
-      for (final socket in PipelineSocket.values) {
+      for (final socket in node.sockets) {
         final port = PipelinePort(node.id, socket);
-        if (socket.owner != node.kind || port == from || !hits.accepts(from, port)) continue;
+        if (port == from || !hits.accepts(from, port)) continue;
         mask |= 1 << socket.index;
       }
       masks[node.id] = mask;

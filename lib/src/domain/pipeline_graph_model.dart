@@ -6,6 +6,47 @@
 library;
 
 import 'pipeline_glossary.dart';
+import 'pipeline_state.dart';
+
+/// Which of the two schemes a graph draws: the dubbing of the game's sound,
+/// the other half of Эфир, or the reading of its screen, the other half of
+/// Экран.
+///
+/// The two share what their sessions share -- the translator, the voice,
+/// the mix, the output, the cast and the glossary -- and differ in where the
+/// line of text starts: whisper, hearing the game, or the screen, read by
+/// Windows OCR. Each has its own arrangement and its own shelf of schemes,
+/// and each speaks for the sessions that start from it.
+enum PipelineScheme {
+  /// Эфир's: the game's sound, recognized by whisper.
+  live,
+
+  /// Экран's: the text on the screen, with the game's sound listened to
+  /// only to tell who is speaking.
+  screen;
+
+  /// The stages this scheme draws, in the order they are laid out.
+  List<String> get stages => switch (this) {
+    live => PipelineNodeIds.stages,
+    screen => PipelineNodeIds.screenStages,
+  };
+
+  /// The stage the line of text starts at.
+  String get lineHead => switch (this) {
+    live => PipelineNodeIds.recognition,
+    screen => PipelineNodeIds.screen,
+  };
+
+  /// The scheme [session] was started from: the Screen page's session reads
+  /// the screen's, and every other the one Эфир draws -- the dubbing, and
+  /// the sessions that place or record its voices.
+  static PipelineScheme of(PipelineSession session) =>
+      session == PipelineSession.screen ? screen : live;
+
+  /// Whether [session] -- none while the engine rests -- started from this
+  /// scheme, and so is told what changes on it while it runs.
+  bool feeds(PipelineSession? session) => session != null && of(session) == this;
+}
 
 /// How far the scheme may spread from the corner it starts in.
 ///
@@ -55,12 +96,26 @@ class GraphPoint {
 }
 
 /// What travels along a link. Two sockets only join when they carry the
-/// same thing.
-enum PipelineSignal { audio, text, voice }
+/// same thing: sound, text, a voice of the cast, or who is speaking as a
+/// line of the screen appears.
+enum PipelineSignal { audio, text, voice, speaker }
 
-/// The kinds of node the canvas holds: the six stages of the pipeline, a
-/// card from the player's cast, and a pack of their glossary.
-enum PipelineNodeKind { source, recognition, translation, voice, mix, output, character, glossary }
+/// The kinds of node the canvas holds: the stages of the pipeline, a card
+/// from the player's cast, and a pack of their glossary. The screen and the
+/// character detection are the Screen page's own stages; whisper is only
+/// Эфир's.
+enum PipelineNodeKind {
+  source,
+  recognition,
+  translation,
+  voice,
+  mix,
+  output,
+  character,
+  glossary,
+  screen,
+  detection,
+}
 
 /// Where a link may be attached.
 ///
@@ -70,6 +125,17 @@ enum PipelineNodeKind { source, recognition, translation, voice, mix, output, ch
 enum PipelineSocket {
   /// The game's sound, as the capture hears it.
   gameAudio(PipelineNodeKind.source, PipelineSignal.audio, false),
+
+  /// The text on the screen, as Windows OCR reads it out of the subtitle
+  /// frame or out of an area picked with the key.
+  screenText(PipelineNodeKind.screen, PipelineSignal.text, false),
+
+  /// The game's sound again, of which nothing is recognized here: the
+  /// voices in it are only told apart.
+  detectionIn(PipelineNodeKind.detection, PipelineSignal.audio, true),
+
+  /// Who was speaking as a line of the screen appeared.
+  detectedSpeaker(PipelineNodeKind.detection, PipelineSignal.speaker, false),
 
   speechIn(PipelineNodeKind.recognition, PipelineSignal.audio, true),
   speechText(PipelineNodeKind.recognition, PipelineSignal.text, false),
@@ -81,6 +147,16 @@ enum PipelineSocket {
   /// The cast the dubbing reads: a dashed line to every card the game
   /// itself may speak.
   voiceCast(PipelineNodeKind.voice, PipelineSignal.voice, false),
+
+  /// Who was speaking as the line appeared, so it is read in their voice.
+  /// Only the Screen page's voice has it: on Эфир whisper and the voices
+  /// behind it are heard in the same sound, and nothing is drawn between.
+  voiceSpeaker(
+    PipelineNodeKind.voice,
+    PipelineSignal.speaker,
+    true,
+    only: PipelineScheme.screen,
+  ),
 
   mixIn(PipelineNodeKind.mix, PipelineSignal.audio, true),
 
@@ -116,13 +192,19 @@ enum PipelineSocket {
   /// pack, the translator or the voice.
   glossaryOut(PipelineNodeKind.glossary, PipelineSignal.text, false);
 
-  const PipelineSocket(this.owner, this.signal, this.isInput);
+  const PipelineSocket(this.owner, this.signal, this.isInput, {this.only});
 
   final PipelineNodeKind owner;
   final PipelineSignal signal;
   final bool isInput;
 
+  /// The one scheme a node carries this socket on, or null for both.
+  final PipelineScheme? only;
+
   bool get isOutput => !isInput;
+
+  /// Whether a node of [owner] carries this socket on [scheme].
+  bool drawnOn(PipelineScheme scheme) => only == null || only == scheme;
 }
 
 /// The fixed node ids. A stage is one of a kind, so it is named rather than
@@ -134,6 +216,11 @@ abstract final class PipelineNodeIds {
   static const voice = 'voice';
   static const mix = 'mix';
   static const output = 'output';
+
+  /// The Screen page's own stages: where its text is read, and where the
+  /// voice behind a line is told apart.
+  static const screen = 'screen';
+  static const detection = 'detection';
 
   static const characterPrefix = 'character:';
 
@@ -164,6 +251,10 @@ abstract final class PipelineNodeIds {
 
   /// The stages, in the order they are laid out.
   static const stages = [source, recognition, translation, voice, mix, output];
+
+  /// The Screen page's stages: the game's sound and who it says is
+  /// speaking, then the line of text from the screen to the output.
+  static const screenStages = [source, detection, screen, translation, voice, mix, output];
 
   static const glossaryPrefix = 'glossary:';
 
@@ -227,11 +318,22 @@ class PipelineNode {
     this.active = true,
     this.unrouted = false,
     this.sendsToMix = false,
+    this.scheme = PipelineScheme.live,
   });
 
   final String id;
   final PipelineNodeKind kind;
   final GraphPoint position;
+
+  /// The scheme the node is drawn on. A stage the two schemes share carries
+  /// what its own session does -- the Screen page's voice takes who is
+  /// speaking, and its mix reads a line at a time -- so the card and its
+  /// panel say that rather than what Эфир's would.
+  final PipelineScheme scheme;
+
+  /// The sockets this node carries, in the order they are declared.
+  Iterable<PipelineSocket> get sockets =>
+      PipelineSocket.values.where((socket) => socket.owner == kind && socket.drawnOn(scheme));
 
   /// The card this node draws, for [PipelineNodeKind.character].
   final String? characterId;
@@ -245,7 +347,9 @@ class PipelineNode {
   final GlossaryFeed? feed;
 
   /// Whether that pack is switched on. Switched off, the node stays where it
-  /// stands in the line and the text passes through it as it came.
+  /// stands in the line and the text passes through it as it came. For the
+  /// character detection, whether the voices behind the screen are told
+  /// apart at all.
   final bool active;
 
   /// Whether nothing reaches this node at all, the way into the pipeline
@@ -272,11 +376,22 @@ class PipelineNode {
       other.feed == feed &&
       other.active == active &&
       other.unrouted == unrouted &&
-      other.sendsToMix == sendsToMix;
+      other.sendsToMix == sendsToMix &&
+      other.scheme == scheme;
 
   @override
-  int get hashCode =>
-      Object.hash(id, kind, position, characterId, packId, feed, active, unrouted, sendsToMix);
+  int get hashCode => Object.hash(
+    id,
+    kind,
+    position,
+    characterId,
+    packId,
+    feed,
+    active,
+    unrouted,
+    sendsToMix,
+    scheme,
+  );
 }
 
 /// The whole scheme: the nodes and the links between them.
@@ -287,19 +402,24 @@ class PipelineGraph {
     this.routed = true,
     this.translates = true,
     this.chained = const {},
+    this.scheme = PipelineScheme.live,
   });
 
   final List<PipelineNode> nodes;
   final List<PipelineLink> links;
 
   /// Whether the way into the pipeline is drawn at all. Taken apart, every
-  /// stage is unrouted and the session cannot start.
+  /// stage is unrouted and the session cannot start. The screen is always
+  /// read, so the Screen page's scheme is always routed.
   final bool routed;
 
   /// Whether the translator stands in the line of text. Stepped over, it
   /// stands aside with the packs drawn after it, and the text runs from
-  /// whisper to the voice.
+  /// whisper -- or from the screen -- to the voice.
   final bool translates;
+
+  /// Which of the two schemes this is.
+  final PipelineScheme scheme;
 
   /// Cards read by a card that is itself read by a third. The substitution
   /// is followed one hop only, so these keep their reader's own voice and

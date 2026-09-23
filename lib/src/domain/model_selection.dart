@@ -186,7 +186,7 @@ class ModelSelection {
   /// Whether the Screen page translates what it reads: English text, into
   /// a dubbing language that is not English. Text in the dubbing language is
   /// voiced as it is, and no translator is loaded for it.
-  bool get screenTranslates => settings.textLanguage != settings.targetLanguage;
+  bool get screenTranslates => settings.screenTranslates;
 
   /// What the screen session needs: the voice of the dubbing language, and
   /// the translator where it translates. It reads the screen, so whisper

@@ -19,6 +19,7 @@ import 'package:lore_dub/src/ui/glossary/bloc/glossary_bloc.dart';
 import 'package:lore_dub/src/ui/common/bloc/session_bloc.dart';
 import 'package:lore_dub/src/ui/graph/bloc/pipeline_facts_bloc.dart';
 import 'package:lore_dub/src/ui/graph/bloc/pipeline_graph_bloc.dart';
+import 'package:lore_dub/src/ui/graph/bloc/screen_scheme_bloc.dart';
 import 'package:lore_dub/src/ui/settings/bloc/settings_bloc.dart';
 import 'package:lore_dub/src/ui/shell/bloc/failure_cubit.dart';
 import 'package:lore_dub/src/ui/shell/bloc/navigation_cubit.dart';
@@ -169,6 +170,15 @@ class StagedDashboard {
       sessions,
       failures,
     );
+    screenGraph = ScreenSchemeBloc(
+      this.schemes,
+      settingsRepository,
+      this.cast,
+      this.glossaryRepository,
+      installed,
+      sessions,
+      failures,
+    );
     facts = PipelineFactsBloc(
       settingsRepository,
       installed,
@@ -210,6 +220,9 @@ class StagedDashboard {
   late final VoiceCaptureBloc voices;
   late final GlossaryBloc glossary;
   late final PipelineGraphBloc graph;
+
+  /// The Screen page's canvas.
+  late final ScreenSchemeBloc screenGraph;
   late final PipelineFactsBloc facts;
 
   /// Stages what is on disk and what the machine can run it on, where every
@@ -251,6 +264,19 @@ class StagedDashboard {
     graph.add(const PipelineGraphOpened());
   }
 
+  /// Stages the Screen page's canvas the way [stageScheme] stages Эфир's.
+  void stageScreenScheme({
+    PipelineLayout layout = PipelineLayout.screenStandard,
+    List<SavedPipeline> shelf = const [],
+  }) {
+    if (schemes case final MemorySchemes memory) {
+      memory
+        ..screenLayout = layout
+        ..screenShelf = PipelineLibrary(pipelines: shelf);
+    }
+    screenGraph.add(const PipelineGraphOpened());
+  }
+
   /// Stages what is written down in the glossary, where every screen reads
   /// it: the repository, which the glossary screen and the canvas follow.
   void stageGlossary(Glossary value) => glossaryRepository.seed(value);
@@ -262,9 +288,15 @@ class StagedDashboard {
       // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
       updates.emit(value);
 
-  /// Stages the section open, and the half of Эфир where it is Эфир.
-  void stageSection(DashboardSection section, [LiveView liveView = LiveView.dubbing]) {
+  /// Stages the section open, and the half of Эфир where it is Эфир -- and
+  /// of Экран where it is Экран.
+  void stageSection(
+    DashboardSection section, [
+    LiveView liveView = LiveView.dubbing,
+    ScreenView screenView = ScreenView.reading,
+  ]) {
     navigation.showOnLive(liveView);
+    navigation.showOnScreen(screenView);
     navigation.selectSection(section);
   }
 
@@ -307,6 +339,7 @@ class StagedDashboard {
         BlocProvider.value(value: voices),
         BlocProvider.value(value: glossary),
         BlocProvider.value(value: graph),
+        BlocProvider.value(value: screenGraph),
         BlocProvider.value(value: facts),
       ],
       child: child,
@@ -315,6 +348,7 @@ class StagedDashboard {
 
   Future<void> dispose() async {
     await facts.close();
+    await screenGraph.close();
     await graph.close();
     await glossary.close();
     await voices.close();

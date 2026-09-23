@@ -29,7 +29,8 @@ class NodeLayerActions {
   final VoidCallback onDrop;
   final void Function(String nodeId) onRemove;
 
-  /// The switch on a glossary node: the pack it draws on or off.
+  /// The switch on a node: the pack a glossary node draws on or off, or
+  /// the character detection listening to the game or not.
   final void Function(String nodeId, bool active) onSwitch;
   final void Function(PipelinePort port, Offset global) onLinkStart;
 

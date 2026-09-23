@@ -91,6 +91,17 @@ void main() {
       expect((told.first as PipelineNodeRemoved).nodeId, 'character:guard');
       expect((told.last as PipelineLinkCut).link, link);
     });
+
+    test('switched on its card says which switch it is', () {
+      gestures
+        ..switchNode(PipelineNodeIds.glossary(1), false)
+        ..switchNode(PipelineNodeIds.detection, true);
+
+      expect(told, [
+        PipelineGlossarySwitched(PipelineNodeIds.glossary(1), active: false),
+        const PipelineVoicesSwitched(heard: true),
+      ]);
+    });
   });
 
   group('a pulled line', () {

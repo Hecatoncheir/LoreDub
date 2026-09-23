@@ -187,6 +187,18 @@ final class PipelineGlossarySwitched extends PipelineGraphEvent {
   List<Object?> get props => [nodeId, active];
 }
 
+/// The switch on the Screen page's character detection, on the card or in
+/// its panel: whether the voices behind the screen are told apart. It is
+/// the same fact as the detection's route, and answers the same way.
+final class PipelineVoicesSwitched extends PipelineGraphEvent {
+  const PipelineVoicesSwitched({required this.heard});
+
+  final bool heard;
+
+  @override
+  List<Object?> get props => [heard];
+}
+
 final class PipelineViewPanned extends PipelineGraphEvent {
   const PipelineViewPanned(this.dx, this.dy);
 

@@ -25,6 +25,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get liveViewScheme => 'Схема';
 
   @override
+  String get screenViewReading => 'Перевод с экрана';
+
+  @override
+  String get screenViewScheme => 'Схема';
+
+  @override
   String get navLive => 'Эфир';
 
   @override
@@ -630,6 +636,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get translationFromWhisper =>
       'Whisper отдаёт английский текст, с какого бы языка ни говорила игра, — поэтому перевод всегда начинается с него.';
+
+  @override
+  String get translationFromScreen =>
+      'С экрана в перевод идёт английский текст: Windows OCR читает его как есть, и перевод начинается с него.';
 
   @override
   String languageWithoutModels(String language) {
@@ -1837,9 +1847,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get stageCapture => 'Запуск захвата';
 
   @override
-  String get navPipeline => 'Схема';
-
-  @override
   String get titlePipeline => 'Схема конвейера';
 
   @override
@@ -1953,7 +1960,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pipelineCutHeard => 'Не слышать этого персонажа в игре';
 
   @override
-  String get pipelineCutTranslation => 'Перевод не убрать: голос есть только у русского';
+  String get pipelineCutTranslation => 'Убрать перевод из линии: озвучка пойдёт на английском';
 
   @override
   String get pipelineCutTranslationBack => 'Вернуть перевод в линию';
@@ -2191,4 +2198,69 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get pipelineVoiceWholeGlossary =>
       'Ни один пакет словаря не включён, поэтому реплики сверяются со всем, что записано на экране «Словарь».';
+
+  @override
+  String get pipelineNodeScreen => 'Экран';
+
+  @override
+  String get pipelineNodeDetection => 'Определение персонажа';
+
+  @override
+  String pipelineScreenOcr(String language) {
+    return 'Windows OCR · $language';
+  }
+
+  @override
+  String get pipelineNoConverter => 'Нужен конвертер голоса';
+
+  @override
+  String get pipelineCharacterNeedsDetection => 'нужно определение персонажа';
+
+  @override
+  String get pipelineScreenNodeNote =>
+      'Текст берётся с экрана: из рамки субтитров, пока она читается, и из области, выделенной клавишей. На каком он языке, говорит линия из «Текста»: через «Перевод» идёт английский, а мимо него — текст на языке озвучки, который читается как есть.';
+
+  @override
+  String get pipelineScreenSourceNote =>
+      'Звук этой игры слушает «Определение персонажа» — только чтобы узнать, кто говорит: речь при этом не распознаётся.';
+
+  @override
+  String get pipelineScreenVoiceNote =>
+      'Реплики с экрана читаются этим голосом. С «Определением персонажа» поверх него ложится тембр того, кто говорил, когда реплика появилась.';
+
+  @override
+  String get pipelineScreenMixNote =>
+      'Текст с экрана читается по одной реплике, поэтому голоса здесь не накладываются друг на друга.';
+
+  @override
+  String get pipelineScreenGlossaryPhrasesNote =>
+      'Стоит до «Перевода»: реплика целиком сверяется с английским текстом с экрана, и фразы пакета звучат вашим переводом вместо ответа модели. Имена и слова пакета сверяются с готовым переводом — для них поставьте ноду этого пакета после «Перевода».';
+
+  @override
+  String get pipelineScreenGlossaryWordsNote =>
+      'Переводить нечего: текст с экрана уже на языке озвучки и читается как есть. Нода поправляет в нём слова пакета; фразы и имена работают только при переводе.';
+
+  @override
+  String get pipelineScreenGlossaryAsideNote =>
+      'Стоит после «Перевода», а перевод сейчас в стороне — текст с экрана читается как есть. Пока перевод не вернётся в линию, нода ничего не сверяет.';
+
+  @override
+  String get pipelineScreenGlossaryOutNote =>
+      'Нода не стоит в линии текста и ничего не сверяет. Протяните в её «Текст» линию от «Экрана», «Перевода» или другого словаря — или из её «Текста» в «Перевод», «Реплики» или другой словарь. Поставленный в линию, словарь включается.';
+
+  @override
+  String get pipelineRefusalConverterMissing =>
+      'Сначала скачайте конвертер голоса на экране «Модели».';
+
+  @override
+  String get pipelineCutVoices => 'Не определять голоса персонажей';
+
+  @override
+  String get pipelineCutScreenTranslation => 'Читать текст с экрана без перевода';
+
+  @override
+  String get pipelineSchemeVoices => 'С голосами персонажей';
+
+  @override
+  String get pipelineSchemeNoVoices => 'Без голосов персонажей';
 }

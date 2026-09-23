@@ -33,7 +33,7 @@ than one of them.
    two screens or more read -- `SessionBloc`, `TranscriptBloc`,
    `SourcesBloc` -- in `common/bloc/`: three cubits for what is a setter and nothing more -- `FailureCubit`
    (the banner, and the `FailureSink` every bloc reports to),
-   `NavigationCubit` (the section and the half of Эфир) and `StartupCubit`
+   `NavigationCubit` (the section, and the half of Эфир and of Экран) and `StartupCubit`
    (whether the first load is back) -- and the Blocs for the rest, the
    update check (`UpdateBloc`: check, download, restart) among them.
    `UpdateAnnouncer` (`ui/shell/`) is where the two meet without either
@@ -63,9 +63,10 @@ than one of them.
    the second as a table written by hand. What that session said is
    `TranscriptBloc`'s (the lines, the voices of the scene, the snippets),
    and the game the player names, with the monitors, is `SourcesBloc`'s --
-   both taken out of it. `PipelineGraphBloc` is the node canvas,
+   both taken out of it. `PipelineGraphBloc` is a node canvas -- Эфир's,
+   and as `ScreenSchemeBloc` the Screen page's --
    event-driven because a gesture there is a sequence (grab, move, drop)
-   rather than a call, and `PipelineFactsBloc` what the scheme's nodes
+   rather than a call, and `PipelineFactsBloc` what the schemes' nodes
    write on themselves.
    No Bloc reads another Bloc. What more than one screen needs lives in a
    repository that owns it and publishes it: `SettingsRepository`
@@ -657,10 +658,48 @@ it was for a frame. None of it is locked while a session runs: `PipelineGraphBlo
 every redraw, the language deciding it as much as the drawing -- and the
 repository hands a running worker `inUseWithin(reach)`. Live dubbing reads
 the reach off the arrangement on disk as it starts, as it reads the cut
-(`SessionRepository._glossaryReach`); the screen session is not on the canvas
-and reads its packs whole, at its start and while it runs
-(`NativeEngineService.session`). A reader hears a glossary node by its pack
+(`SessionRepository._glossaryReach`); the screen session reads the Screen
+page's scheme the same way (below). A reader hears a glossary node by its pack
 (`NodeLabels.name`), its title being the same on every one.
+
+The Screen page has a scheme of its own, a half of Экран as the scheme is of
+Эфир (`NavigationState.screenView`, `ScreenTitleSwitch` -- "Перевод с экрана"
+/ "Схема"; the half that is not up stands as its mark alone below
+`ScreenLayout.titleSwitchWidth`, the first word being a long one). It is the
+same machine: `PipelineScheme` names which of the two a graph draws,
+`buildPipelineGraph(scheme:)` builds either, and `ScreenSchemeBloc` is
+`PipelineGraphBloc` with `scheme: PipelineScheme.screen` -- a type of its own
+only so both can be provided, `ScreenSchemePanel` handing it down as the
+`PipelineGraphBloc` the canvas, its toolbar and its panel read. Its stages
+(`PipelineNodeIds.screenStages`) are the screen (`PipelineNodeKind.screen`,
+its `screenText` where the line of text starts, `PipelineScheme.lineHead`),
+the source, the character detection (`PipelineNodeKind.detection`), and the
+translator, the voice, the mix and the output Эфир has; whisper is not on it.
+The line of text is Эфир's with the screen at its head: the translator stands
+in it while `AppSettings.screenTranslates` (English text into another
+language), so cutting it is `withScreenLanguages(text: dubbing, dubbing:
+dubbing)` -- the text read as it is, the voice kept -- and drawing it back is
+English into the dubbing language where its translator is on disk, else into
+the first language Эфир's canvas would take. The game's sound runs into the
+detection (`detectionIn`), and who it says is speaking (`detectedSpeaker`,
+`PipelineSignal.speaker`) into the voice's `voiceSpeaker`, a socket only the
+Screen page's voice carries (`PipelineSocket.only`, `PipelineNode.sockets`;
+every node carries its `scheme` so its card and panel say what that session
+does). Both lines are `AppSettings.screenVoices` and nothing else
+(`VoicesConnection`), and so is the switch on the node and in its panel
+(`PipelineVoicesSwitched`): drawn, cut or thrown, it is refused without the
+converter (`ConnectionRefusal.converterMissing`) and locked while a session
+runs, and it is the route a saved scheme keeps as `captureRouted` and a step
+back puts back. What Эфир's canvas keeps apart per scheme stays apart: the
+Screen page's arrangement is `screen_graph.json` and its shelf
+`screen_pipelines.json` (`SchemeRepository` takes the scheme, a
+`SavedPipeline` names its own and a file of the other canvas's is refused on
+import), the cut and the glossary's reach are told only to a session started
+from that canvas (`CastRepository.readAsHeard(scheme:)`,
+`GlossaryRepository.narrow(scheme:)`, `PipelineScheme.feeds`), and
+`SessionRepository.startScreenText` reads both off `screen_graph.json`. A
+pack's switch is the glossary's own, so each canvas switches a pack as its own
+line moves (`packsFollowingLine` over that canvas's layouts).
 
 Several nodes can be chosen at once: `PipelineGraphState.chosen` is the set,
 `selected` stays the one node the inspector shows and is null over any other
@@ -757,7 +796,8 @@ through `ld_set_hotkeys`; or both, which is what the page's top card starts.
 One engine and one worker serve all three and only the capture differs, so
 the button of one reading ends the session of another and starts its own --
 seconds, not the minute a worker takes. `AppSettings.screenVoices` adds the game's own sound to the subtitle
-reading: `captureMode: 'ocrAndAudio'` starts `OcrCapture` and
+reading -- the switch on the subtitle frame's card, and the character
+detection's route on the page's scheme: `captureMode: 'ocrAndAudio'` starts `OcrCapture` and
 `ProcessLoopbackCapture` together, the worker carries the converter and
 `--revoice`, and `NativeEngineService` keeps the newest captured segment as
 `_voiceHeard` rather than queueing it -- nothing of that sound is
@@ -1325,7 +1365,8 @@ optional HTTP/SOCKS5 proxy applies to downloads only.
   `stageSession` and `stageLists` emit on the real bloc, which is what
   `blocTest`'s `seed` does, and the rest is staged through the
   repositories the blocs follow (`stageInstalled`, `settingsRepository`,
-  `sourcesRepository`, `cast`, `stageGlossary`, and `stageScheme`, which fills
+  `sourcesRepository`, `cast`, `stageGlossary`, and `stageScheme` -- or
+  `stageScreenScheme` for the Screen page's -- which fills
   `MemorySchemes` and opens the canvas the way the application does;
   `stageSection` through `NavigationCubit`'s own calls; `stageUpdates`
   emitting as `stageSession` does). `StagedDashboard` puts `StartupCubit`

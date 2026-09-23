@@ -117,9 +117,11 @@ class NodeFaces extends ThemeExtension<NodeFaces> {
   final NodePaint heard;
   final NodePaint cast;
 
-  /// The face [node] is drawn in.
+  /// The face [node] is drawn in. The screen is an end of the Screen page's
+  /// pipeline as the game's sound is of Эфир's: where what is dubbed comes
+  /// in.
   NodePaint forNode(PipelineNode node) => switch (node.kind) {
-    PipelineNodeKind.source || PipelineNodeKind.output => ends,
+    PipelineNodeKind.source || PipelineNodeKind.screen || PipelineNodeKind.output => ends,
     PipelineNodeKind.character => node.sendsToMix ? heard : cast,
     _ => plain,
   };

@@ -9,8 +9,9 @@ import 'snippet_column.dart';
 import 'subtitle_column.dart';
 import 'screen_layout.dart';
 
-/// The Screen page: a session that loads only the translator and the voice,
-/// and reads the game's own writing rather than listening to it.
+/// The reading half of the Screen page: a session that loads only the
+/// translator and the voice, and reads the game's own writing rather than
+/// listening to it. The other half is the scheme it runs by.
 ///
 /// The screen is read two ways, and each of them is a session of its own:
 /// the frame reads itself as the game writes in it, and the key picks

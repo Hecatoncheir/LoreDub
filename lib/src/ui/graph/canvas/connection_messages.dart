@@ -15,4 +15,5 @@ String describeConnectionRefusal(AppLocalizations l10n, ConnectionRefusal reason
       ConnectionRefusal.locked => l10n.pipelineRefusalLocked,
       ConnectionRefusal.translatorMissing => l10n.pipelineRefusalTranslatorMissing,
       ConnectionRefusal.outOfLine => l10n.pipelineRefusalOutOfLine,
+      ConnectionRefusal.converterMissing => l10n.pipelineRefusalConverterMissing,
     };

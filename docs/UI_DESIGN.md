@@ -91,7 +91,10 @@ radius.
    lists, what the frame gained and what the player picked out by hand. One
    session answers both, so the frame belongs here rather than in the
    settings: it is part of the work this page does, and nothing else reads
-   it.
+   it. Like Live, the page has a scheme for its other half, switched to by
+   its title: the same canvas, with the screen where the line of text
+   starts and the game's sound led only into the character detection,
+   which tells the voice who was speaking.
 3. **Signal path** is the same pipeline drawn as nodes on a dotted field: the
    six stages as cards in the model tiles' vocabulary, the route between
    them in orange, and the cards of the cast joined to it by dashed graphite:
@@ -101,7 +104,8 @@ radius.
    attached and rings orange while a link that would land on it is being
    pulled; with the way in cut, every stage keeps its card, dimmed and
    marked. There is one route on this canvas — the game's sound through
-   whisper — because there is one the engine runs from here. The
+   whisper — because there is one the engine runs from here; the screen's
+   reading is drawn on the Screen page's own scheme. The
    canvas carries no settings of its own — a node's own panel floats over it
    and writes into the same places the other screens do — and the panel is
    floated rather than docked so opening it never moves the scheme out from
@@ -147,8 +151,8 @@ radius.
   yet keep this (26–34 px); their sizes are `LoreDubTargets` in
   `lib/src/ui/theme.dart`, so they grow together when they do.
 - Status is communicated with text and an indicator, never color alone.
-- The sidebar names two groups — the dubbing (Live, Snippet) and what is
-  prepared before it (Characters, Graph, Models, Settings) — so six entries
+- The sidebar names two groups — the dubbing (Live, Screen) and what is
+  prepared before it (Characters, Glossary, Models, Settings) — so six entries
   do not read as six equal ways in. The compact navigation indexes into
   `DashboardSection.values` and carries no headings.
 - At widths below 900 px the sidebar becomes bottom navigation. The game-source
