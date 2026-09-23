@@ -269,6 +269,27 @@ final modelCatalog = List<ModelPackage>.unmodifiable(<ModelPackage>[
     translatesSpeech: false,
   ),
 
+  // Gemma 3 4B, Google's instruction model the translator below was tuned
+  // from, in the same 4-bit GGUF. Measured over a dialogue of a guard and a
+  // merchant with the speaker's gender in front of every line: it puts a
+  // woman's lines in the feminine on five of six, where TranslateGemma,
+  // Qwen3-4B and Qwen3-8B put none, at the same fifth of a second a line on
+  // the card (ADR 0013). Listed first for that; the translation itself is
+  // as good to the ear. Gemma Terms of Use.
+  _languageModel(
+    id: 'gemma-3-4b-it-q4',
+    engine: 'Gemma 3',
+    version: '4B it Q4_K_M',
+    languages: const ['ru', 'en'],
+    url: Uri.parse(
+      'https://huggingface.co/ggml-org/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it-Q4_K_M.gguf',
+    ),
+    fileName: 'gemma-3-4b-it-Q4_K_M.gguf',
+    byteSize: 2489757856,
+    hash: '882e8d2db44dc554fb0ea5077cb7e4bc49e7342a1f0da57901c0802ea21a0863',
+    chatTemplate: 'gemma',
+  ),
+
   // TranslateGemma, Google's Gemma 3 tuned for translation, in llama.cpp's
   // 4-bit GGUF: on WMT24++ into Russian its 12B sister scores above Google
   // Translate, and this one fits a card of 8 GB beside the voice. Listed

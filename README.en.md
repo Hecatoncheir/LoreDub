@@ -898,6 +898,11 @@ better models" button on its tile on the Models screen: they are the
 language's models from the moment they are asked for, and the older ones are
 deleted with the language.
 
+**Gemma 3 4B it** (Q4_K_M, llama.cpp; the same Gemma Terms) stands first among
+the translators: over a guard-and-merchant dialogue it keeps a woman's lines in
+the feminine on five of six, TranslateGemma on none, at the same speed.
+TranslateGemma stays second.
+
 **TranslateGemma 4B** (Q4_K_M, llama.cpp; the
 [Gemma Terms](https://ai.google.dev/gemma/terms)) translates from whatever
 language the game speaks, not from English alone: whisper hands it speech as

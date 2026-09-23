@@ -126,7 +126,7 @@ void main() {
 
   test('offers the language model first, for every language it dubs into', () {
     final translator = translationModelFor('ru')!;
-    expect(translator.id, 'translategemma-4b-q4');
+    expect(translator.id, 'gemma-3-4b-it-q4');
     expect(translator.languageModel, isTrue);
     expect(translator.primaryFileName, endsWith('.gguf'));
     expect(translator.servedLanguages, containsAll(dubbingLanguages));

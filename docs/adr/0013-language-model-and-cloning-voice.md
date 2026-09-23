@@ -105,3 +105,21 @@ to sleep" in the masculine whatever it was told, with or without the scene.
 The hint reaches the model; the model mostly declines it. A stronger lever
 -- the speaker written into the line, a feminine example in the prompt, or
 a second pass over the first-person forms -- is not measured yet.
+
+## Measured later: four translators over the dialogue
+
+The same ten lines, the worker's own prompt with the speaker's gender in
+front, through llama-server on the card (RTX 3080 Ti, Q4_K_M, 2026-09-23):
+
+| Model | Feminine lines (of 6) | Mean per line |
+|---|---|---|
+| Gemma 3 4B it | 5 (one half-way) | 0.19 s |
+| TranslateGemma 4B | 0 | 0.21 s |
+| Qwen3-4B-Instruct-2507 | 0 | 0.20 s |
+| Qwen3-8B (no thinking) | 3 | 0.29 s |
+
+Gemma 3 4B it is the instruction model TranslateGemma was tuned from; the
+tuning that made TranslateGemma a better translator on the benchmarks took
+its ear for an instruction beside the line. Its Russian over the dialogue
+is as natural, with one slip of agreement ("а его владелец" for the cart).
+So it stands first in the catalogue and TranslateGemma second.

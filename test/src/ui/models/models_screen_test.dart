@@ -164,7 +164,7 @@ void main() {
           for (final event in asked)
             if (event is ModelInstallAsked) event.install.model.id,
         ],
-        ['translategemma-4b-q4', 'qwen3-tts-1.7b'],
+        ['gemma-3-4b-it-q4', 'qwen3-tts-1.7b'],
       );
     });
 
@@ -199,7 +199,13 @@ void main() {
           for (final event in removed)
             if (event is ModelRemoved) event.install.model.id,
         ],
-        ['translategemma-4b-q4', 'qwen3-tts-1.7b', 'opus-mt-tc-big-en-zle', 'vosk-ru-0.9'],
+        [
+          'gemma-3-4b-it-q4',
+          'qwen3-tts-1.7b',
+          'translategemma-4b-q4',
+          'opus-mt-tc-big-en-zle',
+          'vosk-ru-0.9',
+        ],
       );
     });
 

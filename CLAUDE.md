@@ -984,8 +984,12 @@ package may serve several languages (`ModelPackage.languages`, read through
 the model translates into many more than can be spoken. Why both, measured:
 `docs/adr/0013-language-model-and-cloning-voice.md`.
 
-The translator is `translategemma-4b-q4` (Google's TranslateGemma 4B in
-llama.cpp's Q4_K_M GGUF, `ModelPackage.languageModel`, Gemma Terms). The
+The translator is `gemma-3-4b-it-q4` (Google's Gemma 3 4B instruct in
+llama.cpp's Q4_K_M GGUF, `ModelPackage.languageModel`, Gemma Terms), with
+`translategemma-4b-q4`, the translation-tuned sibling it was measured
+against, listed after it: over a dialogue the instruct model keeps a woman's
+lines in the feminine on five of six where TranslateGemma keeps none, at the
+same fifth of a second a line (ADR 0013). The
 worker finds a `.gguf` in `--translation-model` (`language_model_in`) and
 starts `llama-server` from `--llama-server` beside itself
 (`llm_translation.py`, `LlamaServer`), tied to its own process with a job
@@ -994,11 +998,10 @@ too, and asks it over HTTP one line at a time (`LlmTranslation`): the whole
 line, unless the player wrote one of its sentences down, with the last
 `SCENE_LINES` of the scene, the glossary entries the line touches
 (`Glossary.mentioned`) and the speaker's gender, read off the clip's pitch,
-in front of it -- which is how "я пошла" comes out of a woman's mouth, when
-it does: the 4B model takes the hint on some lines and declines it on most
-(ADR 0013, measured twice), so a woman's line may still come out in the
-masculine. The wording of that instruction is measured: keep it, and
-measure a stronger lever before adding one. The memory of
+in front of it -- which is how "я пошла" comes out of a woman's mouth:
+Gemma 3 4B it takes that hint on five lines of six, TranslateGemma on none
+(ADR 0013, measured over a dialogue), which is why the instruct model stands
+first. The wording of that instruction is measured: keep it. The memory of
 translations is keyed by the gender as well. `--chat-template gemma`
 (`ModelPackage.chatTemplate`) names one of llama.cpp's built-in templates,
 because the model's own refuses a plain message. The server runs on the
