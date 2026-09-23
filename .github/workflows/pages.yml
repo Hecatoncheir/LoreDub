@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - name: Assemble static site
         run: |
           mkdir -p _site/assets/branding _site/assets/fonts _site/assets/screenshots
@@ -41,9 +41,9 @@ jobs:
           cp docs/screenshots/live-ru.png docs/screenshots/pipeline-ru.png _site/assets/screenshots/
           cp docs/screenshots/characters-ru.png _site/assets/screenshots/
           touch _site/.nojekyll
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
