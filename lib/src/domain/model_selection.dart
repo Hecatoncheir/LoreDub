@@ -194,12 +194,16 @@ class ModelSelection {
 
   ModelPackage? get speechPackage => forTargetLanguage(ModelKind.speech)?.model;
 
-  /// Every voice that package offers, the catalogue default first.
-  List<VoiceOption> get availableVoices => speechPackage?.voices ?? const [];
+  /// Every voice that package offers for the dubbing language, the
+  /// catalogue default first: a package reading several languages keeps
+  /// the others' voices out, a Russian line in an English voice carrying
+  /// its accent.
+  List<VoiceOption> get availableVoices =>
+      speechPackage?.voicesFor(settings.targetLanguage) ?? const [];
 
   /// Whether the voice can follow the original speaker: it needs a man's and
-  /// a woman's voice to choose between.
-  bool get canFollowSpeaker => speechPackage?.canFollowSpeaker ?? false;
+  /// a woman's voice to choose between, among the dubbing language's.
+  bool get canFollowSpeaker => speechPackage?.canFollowSpeakerIn(settings.targetLanguage) ?? false;
 
   /// The voice mode that will run. A mode this setup cannot honour -- the
   /// automatic choice with a package of one voice -- is shown as the one
@@ -227,7 +231,7 @@ class ModelSelection {
     final package = speechPackage;
     if (package == null) return settings.voice;
     final named = settings.voice;
-    if (named.isNotEmpty && package.voices.any((option) => option.id == named)) return named;
+    if (named.isNotEmpty && availableVoices.any((option) => option.id == named)) return named;
     return package.speakerFor(settings.targetLanguage) ?? '';
   }
 

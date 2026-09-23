@@ -43,7 +43,7 @@ void main() {
     );
     await pumpDashboard(tester, cubits, const Size(1280, 900));
 
-    expect(find.text('Windows OCR → English → Marian → Русский → Vosk'), findsOneWidget);
+    expect(find.text('Windows OCR → English → переводчик → Русский → голос'), findsOneWidget);
     expect(find.textContaining('Whisper →'), findsNothing);
   });
 

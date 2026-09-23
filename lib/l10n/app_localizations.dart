@@ -1578,31 +1578,31 @@ abstract class AppLocalizations {
   /// No description provided for @pipelineSummaryDirect.
   ///
   /// In ru, this message translates to:
-  /// **'Whisper → English → Vosk'**
+  /// **'Whisper → English → голос'**
   String get pipelineSummaryDirect;
 
   /// No description provided for @pipelineSummaryOcrDirect.
   ///
   /// In ru, this message translates to:
-  /// **'Windows OCR → English → Vosk'**
+  /// **'Windows OCR → English → голос'**
   String get pipelineSummaryOcrDirect;
 
   /// No description provided for @pipelineSummaryOcrAsIs.
   ///
   /// In ru, this message translates to:
-  /// **'Windows OCR → {language} → Vosk'**
+  /// **'Windows OCR → {language} → голос'**
   String pipelineSummaryOcrAsIs(String language);
 
   /// No description provided for @pipelineSummary.
   ///
   /// In ru, this message translates to:
-  /// **'Whisper → English → Marian → {language} → Vosk'**
+  /// **'Whisper → переводчик → {language} → голос'**
   String pipelineSummary(String language);
 
   /// No description provided for @pipelineSummaryOcr.
   ///
   /// In ru, this message translates to:
-  /// **'Windows OCR → English → Marian → {language} → Vosk'**
+  /// **'Windows OCR → English → переводчик → {language} → голос'**
   String pipelineSummaryOcr(String language);
 
   /// No description provided for @sectionRecognition.
@@ -2586,43 +2586,43 @@ abstract class AppLocalizations {
   /// No description provided for @failureWorkerExited.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Vosk worker завершился с кодом {code}: {detail}'**
+  /// **'Воркер моделей завершился с кодом {code}: {detail}'**
   String failureWorkerExited(int code, String detail);
 
   /// No description provided for @failureWorkerExitedSilently.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Vosk worker завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.'**
+  /// **'Воркер моделей завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.'**
   String failureWorkerExitedSilently(int code);
 
   /// No description provided for @failureWorkerTimeout.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Vosk не ответил за 2 минуты. Последний вывод: {detail}'**
+  /// **'Воркер моделей не ответил за 2 минуты. Последний вывод: {detail}'**
   String failureWorkerTimeout(String detail);
 
   /// No description provided for @failureWorkerTimeoutSilent.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Vosk не ответил за 2 минуты. Вывода процесса нет.'**
+  /// **'Воркер моделей не ответил за 2 минуты. Вывода процесса нет.'**
   String get failureWorkerTimeoutSilent;
 
   /// No description provided for @failureWorkerStartTimeout.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Vosk не запустился за 5 минут. Последний вывод: {detail}'**
+  /// **'Воркер моделей не запустился за 5 минут. Последний вывод: {detail}'**
   String failureWorkerStartTimeout(String detail);
 
   /// No description provided for @failureWorkerStartTimeoutSilent.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Vosk не запустился за 5 минут. Вывода процесса нет.'**
+  /// **'Воркер моделей не запустился за 5 минут. Вывода процесса нет.'**
   String get failureWorkerStartTimeoutSilent;
 
   /// No description provided for @failureWorkerNotRunning.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Vosk worker не запущен'**
+  /// **'Воркер моделей не запущен'**
   String get failureWorkerNotRunning;
 
   /// No description provided for @failureAudioNotDecoded.
@@ -2634,7 +2634,7 @@ abstract class AppLocalizations {
   /// No description provided for @failureWorkerFailed.
   ///
   /// In ru, this message translates to:
-  /// **'Marian/Vosk: {detail}'**
+  /// **'Воркер моделей: {detail}'**
   String failureWorkerFailed(String detail);
 
   /// No description provided for @failurePipelineStopped.

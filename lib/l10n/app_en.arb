@@ -517,9 +517,9 @@
   "transcriptSpeakAgain": "Read it again",
   "transcriptClear": "Clear",
   "transcriptClearTooltip": "Remove every line from the list",
-  "pipelineSummaryDirect": "Whisper → English → Vosk",
-  "pipelineSummaryOcrDirect": "Windows OCR → English → Vosk",
-  "pipelineSummaryOcrAsIs": "Windows OCR → {language} → Vosk",
+  "pipelineSummaryDirect": "Whisper → English → voice",
+  "pipelineSummaryOcrDirect": "Windows OCR → English → voice",
+  "pipelineSummaryOcrAsIs": "Windows OCR → {language} → voice",
   "@pipelineSummaryOcrAsIs": {
     "placeholders": {
       "language": {
@@ -527,7 +527,7 @@
       }
     }
   },
-  "pipelineSummary": "Whisper → English → Marian → {language} → Vosk",
+  "pipelineSummary": "Whisper → translator → {language} → voice",
   "@pipelineSummary": {
     "placeholders": {
       "language": {
@@ -535,7 +535,7 @@
       }
     }
   },
-  "pipelineSummaryOcr": "Windows OCR → English → Marian → {language} → Vosk",
+  "pipelineSummaryOcr": "Windows OCR → English → translator → {language} → voice",
   "@pipelineSummaryOcr": {
     "placeholders": {
       "language": {
@@ -941,7 +941,7 @@
       }
     }
   },
-  "failureWorkerExited": "The Marian/Vosk worker exited with code {code}: {detail}",
+  "failureWorkerExited": "The model worker exited with code {code}: {detail}",
   "@failureWorkerExited": {
     "placeholders": {
       "code": {
@@ -952,7 +952,7 @@
       }
     }
   },
-  "failureWorkerExitedSilently": "The Marian/Vosk worker exited with code {code} without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.",
+  "failureWorkerExitedSilently": "The model worker exited with code {code} without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.",
   "@failureWorkerExitedSilently": {
     "placeholders": {
       "code": {
@@ -960,7 +960,7 @@
       }
     }
   },
-  "failureWorkerTimeout": "Marian/Vosk did not answer within 2 minutes. Last output: {detail}",
+  "failureWorkerTimeout": "The model worker did not answer within 2 minutes. Last output: {detail}",
   "@failureWorkerTimeout": {
     "placeholders": {
       "detail": {
@@ -968,8 +968,8 @@
       }
     }
   },
-  "failureWorkerTimeoutSilent": "Marian/Vosk did not answer within 2 minutes, and printed nothing.",
-  "failureWorkerStartTimeout": "Marian/Vosk did not start within 5 minutes. Last output: {detail}",
+  "failureWorkerTimeoutSilent": "The model worker did not answer within 2 minutes, and printed nothing.",
+  "failureWorkerStartTimeout": "The model worker did not start within 5 minutes. Last output: {detail}",
   "@failureWorkerStartTimeout": {
     "placeholders": {
       "detail": {
@@ -977,10 +977,10 @@
       }
     }
   },
-  "failureWorkerStartTimeoutSilent": "Marian/Vosk did not start within 5 minutes, and printed nothing.",
-  "failureWorkerNotRunning": "The Marian/Vosk worker is not running",
+  "failureWorkerStartTimeoutSilent": "The model worker did not start within 5 minutes, and printed nothing.",
+  "failureWorkerNotRunning": "The model worker is not running",
   "failureAudioNotDecoded": "Windows could not read any of those files as sound",
-  "failureWorkerFailed": "Marian/Vosk: {detail}",
+  "failureWorkerFailed": "The model worker: {detail}",
   "@failureWorkerFailed": {
     "placeholders": {
       "detail": {

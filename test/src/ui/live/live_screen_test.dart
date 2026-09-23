@@ -196,7 +196,7 @@ void main() {
     await pumpDashboard(tester, cubits, const Size(1280, 720));
 
     expect(find.text('Захватывается только звук выбранного процесса'), findsOneWidget);
-    expect(find.text('Whisper → English → Marian → Русский → Vosk'), findsOneWidget);
+    expect(find.text('Whisper → переводчик → Русский → голос'), findsOneWidget);
   });
 
   testWidgets('names the original language instead of detecting it', (tester) async {

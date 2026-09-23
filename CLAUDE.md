@@ -935,7 +935,11 @@ starts that setup detached with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 `RelaunchRequested` check in `installer/lore_dub.iss` opens the new exe after
 a silent install only when `/RELAUNCH` is present. Do not put a console
 program (such as a PowerShell script) in between: started detached from the
-app it dies before running a line. A setup already downloaded and verified
+app it dies before running a line. Its `[InstallDelete]` takes `{app}\runtime`
+and `{app}\data` away before the new files are written: Inno Setup writes over
+an older install without removing what the new one no longer ships, and a
+transformers installed over an older one found two `tokenizers` dist-infos
+beside it and refused to start on the older. A setup already downloaded and verified
 is picked up by the startup check, so the line opens on Restart. It
 only offers this when `unins000.exe` sits beside the executable, i.e. the
 per-user setup put this copy there; otherwise the line opens the release page.
@@ -1012,7 +1016,11 @@ voice that clones (`Session._clones`); the converter still hears who is
 speaking. The fixed voices are seven clips synthesized with Vosk and
 Kokoro, shipped in `assets/runtime/references/` with their transcripts and
 copied beside the worker, so `speakers` is their names and a preview
-without a clip reads from one of them. On the card the generation runs
+without a clip reads from one of them. Each carries the language it reads
+(`VoiceOption.language`), and `voicesFor`, `voicesOf(language:)` and
+`ModelSelection.availableVoices` keep the other language's voices out of
+the picker and of the automatic choice: a Russian line in an English voice
+carries its accent. On the card the generation runs
 through CUDA graphs over static caches (`qwen_fast.py`, `FastTalker`):
 through transformers' own loop a line took three times its length, the
 launching of the kernels being what Windows charges for; through the

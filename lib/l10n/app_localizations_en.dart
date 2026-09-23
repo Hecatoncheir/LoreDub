@@ -910,24 +910,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptClearTooltip => 'Remove every line from the list';
 
   @override
-  String get pipelineSummaryDirect => 'Whisper → English → Vosk';
+  String get pipelineSummaryDirect => 'Whisper → English → voice';
 
   @override
-  String get pipelineSummaryOcrDirect => 'Windows OCR → English → Vosk';
+  String get pipelineSummaryOcrDirect => 'Windows OCR → English → voice';
 
   @override
   String pipelineSummaryOcrAsIs(String language) {
-    return 'Windows OCR → $language → Vosk';
+    return 'Windows OCR → $language → voice';
   }
 
   @override
   String pipelineSummary(String language) {
-    return 'Whisper → English → Marian → $language → Vosk';
+    return 'Whisper → translator → $language → voice';
   }
 
   @override
   String pipelineSummaryOcr(String language) {
-    return 'Windows OCR → English → Marian → $language → Vosk';
+    return 'Windows OCR → English → translator → $language → voice';
   }
 
   @override
@@ -1509,41 +1509,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String failureWorkerExited(int code, String detail) {
-    return 'The Marian/Vosk worker exited with code $code: $detail';
+    return 'The model worker exited with code $code: $detail';
   }
 
   @override
   String failureWorkerExitedSilently(int code) {
-    return 'The Marian/Vosk worker exited with code $code without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.';
+    return 'The model worker exited with code $code without a word. Check the python.exe you picked: it needs torch, transformers and ctranslate2.';
   }
 
   @override
   String failureWorkerTimeout(String detail) {
-    return 'Marian/Vosk did not answer within 2 minutes. Last output: $detail';
+    return 'The model worker did not answer within 2 minutes. Last output: $detail';
   }
 
   @override
   String get failureWorkerTimeoutSilent =>
-      'Marian/Vosk did not answer within 2 minutes, and printed nothing.';
+      'The model worker did not answer within 2 minutes, and printed nothing.';
 
   @override
   String failureWorkerStartTimeout(String detail) {
-    return 'Marian/Vosk did not start within 5 minutes. Last output: $detail';
+    return 'The model worker did not start within 5 minutes. Last output: $detail';
   }
 
   @override
   String get failureWorkerStartTimeoutSilent =>
-      'Marian/Vosk did not start within 5 minutes, and printed nothing.';
+      'The model worker did not start within 5 minutes, and printed nothing.';
 
   @override
-  String get failureWorkerNotRunning => 'The Marian/Vosk worker is not running';
+  String get failureWorkerNotRunning => 'The model worker is not running';
 
   @override
   String get failureAudioNotDecoded => 'Windows could not read any of those files as sound';
 
   @override
   String failureWorkerFailed(String detail) {
-    return 'Marian/Vosk: $detail';
+    return 'The model worker: $detail';
   }
 
   @override

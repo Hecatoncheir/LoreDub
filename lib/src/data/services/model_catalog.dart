@@ -95,8 +95,10 @@ ModelPackage _converted({
   ],
 );
 
-VoiceOption _male(String id) => VoiceOption(id, gender: VoiceGender.male);
-VoiceOption _female(String id) => VoiceOption(id, gender: VoiceGender.female);
+VoiceOption _male(String id, {String? language}) =>
+    VoiceOption(id, gender: VoiceGender.male, language: language);
+VoiceOption _female(String id, {String? language}) =>
+    VoiceOption(id, gender: VoiceGender.female, language: language);
 
 /// Where the Vosk voices are published: a release beside the translators'. The authors hand the model out as one archive with nothing to
 /// check it by; laid out as files here, every one carries its size and its
@@ -335,13 +337,13 @@ final modelCatalog = List<ModelPackage>.unmodifiable(<ModelPackage>[
     languages: const ['ru', 'en'],
     speakers: const {'ru': 'ru_female_1', 'en': 'af_heart'},
     voices: [
-      _female('ru_female_1'),
-      _male('ru_male_0'),
-      _male('ru_male_1'),
-      _female('af_heart'),
-      _female('af_bella'),
-      _male('am_michael'),
-      _male('am_adam'),
+      _female('ru_female_1', language: 'ru'),
+      _male('ru_male_0', language: 'ru'),
+      _male('ru_male_1', language: 'ru'),
+      _female('af_heart', language: 'en'),
+      _female('af_bella', language: 'en'),
+      _male('am_michael', language: 'en'),
+      _male('am_adam', language: 'en'),
     ],
     files: const {
       'config.json': (4494, 'b4f01752d15a488abde3e1ab44723ae4f4b9e68a4037257b098b3737893cc1f9'),

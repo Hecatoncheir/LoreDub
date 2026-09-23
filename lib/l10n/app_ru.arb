@@ -517,9 +517,9 @@
   "transcriptSpeakAgain": "Прочитать ещё раз",
   "transcriptClear": "Очистить",
   "transcriptClearTooltip": "Убрать все реплики из списка",
-  "pipelineSummaryDirect": "Whisper → English → Vosk",
-  "pipelineSummaryOcrDirect": "Windows OCR → English → Vosk",
-  "pipelineSummaryOcrAsIs": "Windows OCR → {language} → Vosk",
+  "pipelineSummaryDirect": "Whisper → English → голос",
+  "pipelineSummaryOcrDirect": "Windows OCR → English → голос",
+  "pipelineSummaryOcrAsIs": "Windows OCR → {language} → голос",
   "@pipelineSummaryOcrAsIs": {
     "placeholders": {
       "language": {
@@ -527,7 +527,7 @@
       }
     }
   },
-  "pipelineSummary": "Whisper → English → Marian → {language} → Vosk",
+  "pipelineSummary": "Whisper → переводчик → {language} → голос",
   "@pipelineSummary": {
     "placeholders": {
       "language": {
@@ -535,7 +535,7 @@
       }
     }
   },
-  "pipelineSummaryOcr": "Windows OCR → English → Marian → {language} → Vosk",
+  "pipelineSummaryOcr": "Windows OCR → English → переводчик → {language} → голос",
   "@pipelineSummaryOcr": {
     "placeholders": {
       "language": {
@@ -941,7 +941,7 @@
       }
     }
   },
-  "failureWorkerExited": "Marian/Vosk worker завершился с кодом {code}: {detail}",
+  "failureWorkerExited": "Воркер моделей завершился с кодом {code}: {detail}",
   "@failureWorkerExited": {
     "placeholders": {
       "code": {
@@ -952,7 +952,7 @@
       }
     }
   },
-  "failureWorkerExitedSilently": "Marian/Vosk worker завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.",
+  "failureWorkerExitedSilently": "Воркер моделей завершился с кодом {code} без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.",
   "@failureWorkerExitedSilently": {
     "placeholders": {
       "code": {
@@ -960,7 +960,7 @@
       }
     }
   },
-  "failureWorkerTimeout": "Marian/Vosk не ответил за 2 минуты. Последний вывод: {detail}",
+  "failureWorkerTimeout": "Воркер моделей не ответил за 2 минуты. Последний вывод: {detail}",
   "@failureWorkerTimeout": {
     "placeholders": {
       "detail": {
@@ -968,8 +968,8 @@
       }
     }
   },
-  "failureWorkerTimeoutSilent": "Marian/Vosk не ответил за 2 минуты. Вывода процесса нет.",
-  "failureWorkerStartTimeout": "Marian/Vosk не запустился за 5 минут. Последний вывод: {detail}",
+  "failureWorkerTimeoutSilent": "Воркер моделей не ответил за 2 минуты. Вывода процесса нет.",
+  "failureWorkerStartTimeout": "Воркер моделей не запустился за 5 минут. Последний вывод: {detail}",
   "@failureWorkerStartTimeout": {
     "placeholders": {
       "detail": {
@@ -977,10 +977,10 @@
       }
     }
   },
-  "failureWorkerStartTimeoutSilent": "Marian/Vosk не запустился за 5 минут. Вывода процесса нет.",
-  "failureWorkerNotRunning": "Marian/Vosk worker не запущен",
+  "failureWorkerStartTimeoutSilent": "Воркер моделей не запустился за 5 минут. Вывода процесса нет.",
+  "failureWorkerNotRunning": "Воркер моделей не запущен",
   "failureAudioNotDecoded": "Windows не смог прочитать ни один из этих файлов как звук",
-  "failureWorkerFailed": "Marian/Vosk: {detail}",
+  "failureWorkerFailed": "Воркер моделей: {detail}",
   "@failureWorkerFailed": {
     "placeholders": {
       "detail": {

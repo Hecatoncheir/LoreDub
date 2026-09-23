@@ -34,8 +34,8 @@ void main() {
   test('follows the interface language', () {
     const failure = LoreDubFailure(FailureCode.workerNotRunning);
 
-    expect(describeFailure(ru, failure), 'Marian/Vosk worker не запущен');
-    expect(describeFailure(en, failure), 'The Marian/Vosk worker is not running');
+    expect(describeFailure(ru, failure), 'Воркер моделей не запущен');
+    expect(describeFailure(en, failure), 'The model worker is not running');
   });
 
   test('names the action a taken combination was meant for', () {

@@ -41,10 +41,17 @@ enum RecognitionQuality { fair, good, excellent }
 
 /// One voice inside a speech package.
 class VoiceOption {
-  const VoiceOption(this.id, {this.gender = VoiceGender.unknown});
+  const VoiceOption(this.id, {this.gender = VoiceGender.unknown, this.language});
 
   final String id;
   final VoiceGender gender;
+
+  /// The language this voice reads, in a package that reads several: a
+  /// Russian line in an English voice would carry its accent. Null in a
+  /// package of one language, whose every voice reads it.
+  final String? language;
+
+  bool reads(String code) => language == null || language == code;
 }
 
 class ModelPackage {
@@ -144,8 +151,17 @@ class ModelPackage {
   /// The voice to read [code] in: the one named for it, or [speaker].
   String? speakerFor(String code) => speakers[code] ?? speaker;
 
-  List<String> voicesOf(VoiceGender gender) => [
+  /// The voices that read [code]: every voice of a package of one language,
+  /// and the ones named for it in a package of several.
+  List<VoiceOption> voicesFor(String code) => [
     for (final voice in voices)
+      if (voice.reads(code)) voice,
+  ];
+
+  /// The voices of [gender] -- among the ones that read [language], where
+  /// one is named.
+  List<String> voicesOf(VoiceGender gender, {String? language}) => [
+    for (final voice in language == null ? voices : voicesFor(language))
       if (voice.gender == gender) voice.id,
   ];
 
@@ -154,6 +170,11 @@ class ModelPackage {
   /// silently reading every character in the same voice.
   bool get canFollowSpeaker =>
       voicesOf(VoiceGender.male).isNotEmpty && voicesOf(VoiceGender.female).isNotEmpty;
+
+  /// The same, among the voices that read [code].
+  bool canFollowSpeakerIn(String code) =>
+      voicesOf(VoiceGender.male, language: code).isNotEmpty &&
+      voicesOf(VoiceGender.female, language: code).isNotEmpty;
 }
 
 class ModelInstallState with PackageDownload<ModelInstallState> {

@@ -181,6 +181,25 @@ void main() {
         ModelSelection(models: [cloning], settings: const AppSettings()).voiceClonesItself,
         isTrue,
       );
+
+      // The voices offered, and the ones the automatic choice picks among,
+      // are the dubbing language's alone: a Russian line in an English voice
+      // would carry its accent.
+      final russian = ModelSelection(models: [cloning], settings: const AppSettings());
+      expect(russian.availableVoices.map((option) => option.id), [
+        'ru_female_1',
+        'ru_male_0',
+        'ru_male_1',
+      ]);
+      expect(russian.canFollowSpeaker, isTrue);
+      expect(
+        ModelSelection(
+          models: [cloning],
+          settings: const AppSettings(voice: 'af_heart'),
+        ).voice,
+        'ru_female_1',
+        reason: 'a voice of the other language is not honoured',
+      );
     });
 
     test('counts as installed only with both halves on disk', () {

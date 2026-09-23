@@ -917,24 +917,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get transcriptClearTooltip => 'Убрать все реплики из списка';
 
   @override
-  String get pipelineSummaryDirect => 'Whisper → English → Vosk';
+  String get pipelineSummaryDirect => 'Whisper → English → голос';
 
   @override
-  String get pipelineSummaryOcrDirect => 'Windows OCR → English → Vosk';
+  String get pipelineSummaryOcrDirect => 'Windows OCR → English → голос';
 
   @override
   String pipelineSummaryOcrAsIs(String language) {
-    return 'Windows OCR → $language → Vosk';
+    return 'Windows OCR → $language → голос';
   }
 
   @override
   String pipelineSummary(String language) {
-    return 'Whisper → English → Marian → $language → Vosk';
+    return 'Whisper → переводчик → $language → голос';
   }
 
   @override
   String pipelineSummaryOcr(String language) {
-    return 'Windows OCR → English → Marian → $language → Vosk';
+    return 'Windows OCR → English → переводчик → $language → голос';
   }
 
   @override
@@ -1518,41 +1518,41 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String failureWorkerExited(int code, String detail) {
-    return 'Marian/Vosk worker завершился с кодом $code: $detail';
+    return 'Воркер моделей завершился с кодом $code: $detail';
   }
 
   @override
   String failureWorkerExitedSilently(int code) {
-    return 'Marian/Vosk worker завершился с кодом $code без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.';
+    return 'Воркер моделей завершился с кодом $code без вывода. Проверьте выбранный python.exe: в нём должны быть torch, transformers и ctranslate2.';
   }
 
   @override
   String failureWorkerTimeout(String detail) {
-    return 'Marian/Vosk не ответил за 2 минуты. Последний вывод: $detail';
+    return 'Воркер моделей не ответил за 2 минуты. Последний вывод: $detail';
   }
 
   @override
   String get failureWorkerTimeoutSilent =>
-      'Marian/Vosk не ответил за 2 минуты. Вывода процесса нет.';
+      'Воркер моделей не ответил за 2 минуты. Вывода процесса нет.';
 
   @override
   String failureWorkerStartTimeout(String detail) {
-    return 'Marian/Vosk не запустился за 5 минут. Последний вывод: $detail';
+    return 'Воркер моделей не запустился за 5 минут. Последний вывод: $detail';
   }
 
   @override
   String get failureWorkerStartTimeoutSilent =>
-      'Marian/Vosk не запустился за 5 минут. Вывода процесса нет.';
+      'Воркер моделей не запустился за 5 минут. Вывода процесса нет.';
 
   @override
-  String get failureWorkerNotRunning => 'Marian/Vosk worker не запущен';
+  String get failureWorkerNotRunning => 'Воркер моделей не запущен';
 
   @override
   String get failureAudioNotDecoded => 'Windows не смог прочитать ни один из этих файлов как звук';
 
   @override
   String failureWorkerFailed(String detail) {
-    return 'Marian/Vosk: $detail';
+    return 'Воркер моделей: $detail';
   }
 
   @override

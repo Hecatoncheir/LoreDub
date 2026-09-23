@@ -50,6 +50,29 @@ void main() {
     }
   });
 
+  test('keeps the voices of a package of several languages apart by language', () {
+    const bilingual = ModelPackage(
+      id: 'two-xx',
+      artifacts: [],
+      kind: ModelKind.speech,
+      languages: ['ru', 'en'],
+      voices: [
+        VoiceOption('anna', gender: VoiceGender.female, language: 'ru'),
+        VoiceOption('ivan', gender: VoiceGender.male, language: 'ru'),
+        VoiceOption('heart', gender: VoiceGender.female, language: 'en'),
+      ],
+    );
+
+    expect(bilingual.voicesFor('ru').map((voice) => voice.id), ['anna', 'ivan']);
+    expect(bilingual.voicesOf(VoiceGender.female, language: 'en'), ['heart']);
+    expect(bilingual.voicesOf(VoiceGender.female), ['anna', 'heart'], reason: 'unnarrowed');
+    expect(bilingual.canFollowSpeakerIn('ru'), isTrue);
+    expect(bilingual.canFollowSpeakerIn('en'), isFalse, reason: 'one woman, no man');
+    // A voice of a package of one language reads it whatever it is called.
+    final russian = modelCatalog.firstWhere((model) => model.id == 'vosk-ru-0.9');
+    expect(russian.voicesFor('ru').length, russian.voices.length);
+  });
+
   test('says nothing about a package with no voices listed', () {
     const bare = ModelPackage(id: 'bare-xx', artifacts: [], kind: ModelKind.speech);
 

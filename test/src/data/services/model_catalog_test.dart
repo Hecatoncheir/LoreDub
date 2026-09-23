@@ -109,6 +109,19 @@ void main() {
       expect(voice.voices.map((option) => option.id), contains(voice.speakerFor(language)));
     }
     expect(voice.canFollowSpeaker, isTrue, reason: 'a man and a woman among the fixed voices');
+    // ...and the automatic choice picks among that language's voices alone:
+    // a Russian line in an English voice would carry its accent.
+    expect(voice.voicesFor('ru').map((option) => option.id), [
+      'ru_female_1',
+      'ru_male_0',
+      'ru_male_1',
+    ]);
+    expect(
+      voice.voicesFor('en').map((option) => option.id),
+      ['af_heart', 'af_bella', 'am_michael', 'am_adam'],
+    );
+    expect(voice.voicesOf(VoiceGender.female, language: 'ru'), ['ru_female_1']);
+    expect(voice.canFollowSpeakerIn('en'), isTrue);
   });
 
   test('offers the language model first, for every language it dubs into', () {

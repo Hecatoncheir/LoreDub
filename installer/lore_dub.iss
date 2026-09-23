@@ -26,6 +26,17 @@ LicenseFile=..\LICENSE
 CloseApplications=yes
 RestartApplications=no
 
+[InstallDelete]
+; The runtime and the Flutter bundle are packed whole, and Inno Setup writes
+; over an older install without taking away what the new one no longer
+; ships: a package the previous build's Python carried at another version
+; stayed beside the new one, importlib.metadata answered with the older of
+; the two, and transformers refused to start. So both directories go before
+; the new files are written. The models and the settings live under the
+; profile and are not touched.
+Type: filesandordirs; Name: "{app}\runtime"
+Type: filesandordirs; Name: "{app}\data"
+
 [Files]
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

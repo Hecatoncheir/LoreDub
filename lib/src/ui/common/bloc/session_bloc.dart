@@ -193,8 +193,10 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
           followSpeaker: selection.followsSpeaker,
           // The converter may be loaded only to hear who is speaking.
           revoice: selection.clonesVoice,
-          maleVoices: speech.voicesOf(VoiceGender.male),
-          femaleVoices: speech.voicesOf(VoiceGender.female),
+          // The dubbing language's voices alone: a package reading several
+          // languages would otherwise lend a Russian line an English voice.
+          maleVoices: speech.voicesOf(VoiceGender.male, language: settings.targetLanguage),
+          femaleVoices: speech.voicesOf(VoiceGender.female, language: settings.targetLanguage),
           // Kept per game, so one game's cast does not answer for another's.
           voiceBank: selection.keepsVoiceBank
               ? await _voiceBank.fileFor(_process?.name ?? '')
