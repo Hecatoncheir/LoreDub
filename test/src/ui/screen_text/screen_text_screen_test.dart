@@ -82,22 +82,20 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    // The processor's voices are what the staged catalogue has on disk.
+    final vosk = modelCatalog.firstWhere((model) => model.id == 'vosk-ru-0.9');
+    final kokoro = modelCatalog.firstWhere((model) => model.id == 'kokoro-en-1.0');
+
     await pick('en-en', 'Русский');
     expect(languages(), ('ru', 'ru'), reason: 'the models screen picks Russian with it');
     expect(find.textContaining('голос (Русский)'), findsOneWidget);
     // Both readings are read in a voice picked out of the Russian ones.
-    expect(
-      find.byKey(ValueKey('voice-ru-${speechModelFor('ru')!.speaker}')),
-      findsOneWidget,
-    );
+    expect(find.byKey(ValueKey('voice-ru-${vosk.speaker}')), findsOneWidget);
 
     // Back to English, the voices and the models screen go back with it.
     await pick('ru-ru', 'Английский');
     expect(languages(), ('en', 'en'));
-    expect(
-      find.byKey(ValueKey('voice-en-${speechModelFor('en')!.speaker}')),
-      findsOneWidget,
-    );
+    expect(find.byKey(ValueKey('voice-en-${kokoro.speaker}')), findsOneWidget);
 
     await pick('en-en', 'Английский → Русский');
     expect(languages(), ('en', 'ru'), reason: 'English subtitles heard in Russian');

@@ -553,6 +553,15 @@
   "languageHintSelect": "Click to dub into this language",
   "languageHintSelected": "Dubbing goes into this language",
   "languageHintLocked": "The language can be changed once dubbing is stopped",
+  "languageUpgrade": "Download the better models ({size})",
+  "@languageUpgrade": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "languageUpgradeLocked": "The better models can be downloaded once dubbing is stopped",
   "languageRemoveTitle": "Delete the language?",
   "languageRemoveMessage": "The {language} translator and voice ({size}) will be deleted from disk. They can be downloaded again at any time.",
   "@languageRemoveMessage": {

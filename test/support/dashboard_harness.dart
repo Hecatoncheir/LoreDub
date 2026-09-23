@@ -137,13 +137,21 @@ StagedDashboard stage(
   return cubits;
 }
 
-/// Every package in the catalogue, installed unless a language is named.
+/// Every package in the catalogue, installed unless a language is named --
+/// the processor's packages, that is: the language model and the cloning
+/// voice stay off disk, as on a machine without a card, unless a test
+/// stages them itself, so that a screen staged this way reads in Vosk and
+/// translates through Marian as the tests describe it.
 List<ModelInstallState> catalogue({bool installed = true, String? missingLanguage}) => [
   for (final model in modelCatalog)
     ModelInstallState(
       model: model,
       // Whisper carries no language, so it is never the missing one.
-      installed: installed && (missingLanguage == null || model.language != missingLanguage),
+      installed:
+          installed &&
+          !model.languageModel &&
+          !model.clonesVoice &&
+          (missingLanguage == null || model.language != missingLanguage),
     ),
 ];
 

@@ -553,6 +553,15 @@
   "languageHintSelect": "Нажмите, чтобы озвучивать на этом языке",
   "languageHintSelected": "Озвучка идёт на этом языке",
   "languageHintLocked": "Язык можно сменить, когда озвучка остановлена",
+  "languageUpgrade": "Скачать лучшие модели ({size})",
+  "@languageUpgrade": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "languageUpgradeLocked": "Лучшие модели можно скачать, когда озвучка остановлена",
   "languageRemoveTitle": "Удалить язык?",
   "languageRemoveMessage": "Переводчик и голос языка «{language}» ({size}) будут удалены с диска. Скачать их заново можно в любой момент.",
   "@languageRemoveMessage": {

@@ -1665,6 +1665,18 @@ abstract class AppLocalizations {
   /// **'Язык можно сменить, когда озвучка остановлена'**
   String get languageHintLocked;
 
+  /// No description provided for @languageUpgrade.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачать лучшие модели ({size})'**
+  String languageUpgrade(String size);
+
+  /// No description provided for @languageUpgradeLocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лучшие модели можно скачать, когда озвучка остановлена'**
+  String get languageUpgradeLocked;
+
   /// No description provided for @languageRemoveTitle.
   ///
   /// In ru, this message translates to:

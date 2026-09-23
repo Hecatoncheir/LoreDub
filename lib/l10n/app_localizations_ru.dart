@@ -970,6 +970,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get languageHintLocked => 'Язык можно сменить, когда озвучка остановлена';
 
   @override
+  String languageUpgrade(String size) {
+    return 'Скачать лучшие модели ($size)';
+  }
+
+  @override
+  String get languageUpgradeLocked => 'Лучшие модели можно скачать, когда озвучка остановлена';
+
+  @override
   String get languageRemoveTitle => 'Удалить язык?';
 
   @override

@@ -47,30 +47,65 @@ class ModelSelection {
         if (!languages.contains(language)) languages.add(language);
       }
     }
-    return [
-      for (final language in languages)
-        LanguagePair(
-          language: language,
-          translation: _preferred(ModelKind.translation, language),
-          speech: _preferred(ModelKind.speech, language),
-        ),
-    ];
+    return [for (final language in languages) _pairOf(language)];
   }
 
-  /// The package of [kind] that serves [language]: the first installed one
-  /// in catalogue order, or the first listed where none is. The catalogue
-  /// lists the better package first, so a language with both a language
-  /// model and Marian on disk is translated by the model, and one with only
-  /// Marian is not asked to download the model before it can start.
+  /// The pair of [language]: the packages it dubs with, the better ones the
+  /// catalogue lists above them, and the older ones they stand in for.
+  LanguagePair _pairOf(String language) {
+    final translation = _preferred(ModelKind.translation, language);
+    final speech = _preferred(ModelKind.speech, language);
+    final inUse = [?translation, ?speech];
+    return LanguagePair(
+      language: language,
+      translation: translation,
+      speech: speech,
+      better: [
+        for (final kind in const [ModelKind.translation, ModelKind.speech])
+          if (_listedFirst(kind, language) case final first?)
+            if (!first.installed && !inUse.contains(first)) first,
+      ],
+      replaced: [
+        for (final state in models)
+          if (state.installed && !inUse.contains(state))
+            if (_dubs(state, ModelKind.translation, language) ||
+                _dubs(state, ModelKind.speech, language))
+              state,
+      ],
+    );
+  }
+
+  /// The package of [kind] that serves [language]: the first on its way in
+  /// catalogue order, else the first on disk, else the first listed. The
+  /// catalogue lists the better package first, so a language with both a
+  /// language model and Marian on disk is translated by the model, one with
+  /// only Marian is not asked to download the model before it can start,
+  /// and the better package asked for over an older one is the language's
+  /// from the moment it is asked for: shown arriving on its tile, waited
+  /// for by a start as any download of its language is, and in use once
+  /// it has arrived.
   ModelInstallState? _preferred(ModelKind kind, String language) {
+    ModelInstallState? installed;
     ModelInstallState? first;
     for (final state in models) {
-      if (state.model.kind != kind || !state.model.serves(language)) continue;
-      if (state.installed) return state;
+      if (!_dubs(state, kind, language)) continue;
+      if (state.progress != null) return state;
+      if (state.installed) installed ??= state;
       first ??= state;
     }
-    return first;
+    return installed ?? first;
   }
+
+  /// The package of [kind] the catalogue lists first for [language].
+  ModelInstallState? _listedFirst(ModelKind kind, String language) {
+    for (final state in models) {
+      if (_dubs(state, kind, language)) return state;
+    }
+    return null;
+  }
+
+  bool _dubs(ModelInstallState state, ModelKind kind, String language) =>
+      state.model.kind == kind && state.model.serves(language);
 
   /// The converter the original voice needs, if the catalogue has one.
   ModelInstallState? get voiceConverter => voiceConverters.firstOrNull;

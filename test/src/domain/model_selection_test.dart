@@ -9,12 +9,21 @@ import 'package:lore_dub/src/domain/model_selection.dart';
 import 'package:lore_dub/src/domain/spoken_language.dart';
 
 void main() {
-  /// Every package on disk, except the voice converter unless asked for.
+  /// The processor's packages, which the tests below describe the screens by.
+  final marian = modelCatalog.firstWhere((model) => model.id == 'opus-mt-tc-big-en-zle');
+  final vosk = modelCatalog.firstWhere((model) => model.id == 'vosk-ru-0.9');
+
+  /// Every package on disk, except the voice converter unless asked for --
+  /// and except the language model and the cloning voice, which a machine
+  /// without a card does not have and the tests of them stage themselves.
   List<ModelInstallState> installed({bool converter = true}) => [
     for (final model in modelCatalog)
       ModelInstallState(
         model: model,
-        installed: converter || model.kind != ModelKind.voiceConversion,
+        installed:
+            (converter || model.kind != ModelKind.voiceConversion) &&
+            !model.languageModel &&
+            !model.clonesVoice,
       ),
   ];
 
@@ -87,6 +96,53 @@ void main() {
       );
       expect(nothing.forTargetLanguage(ModelKind.translation)?.model.id, languageModel.id);
       expect(nothing.forTargetLanguage(ModelKind.speech)?.model.id, cloning.id);
+    });
+
+    test('raises a language the older packages dub to the better ones, once asked', () {
+      final languageModel = translationModelFor('ru')!;
+      final cloning = speechModelFor('ru')!;
+      ModelInstallState state(ModelPackage model, {bool installed = false, double? progress}) =>
+          ModelInstallState(model: model, installed: installed, progress: progress);
+      List<String> ids(List<ModelInstallState> states) => [
+        for (final state in states) state.model.id,
+      ];
+
+      // An upgrade from the free build: Marian and Vosk on disk, the better
+      // packages not.
+      final older = russianWith([
+        state(languageModel),
+        state(marian, installed: true),
+        state(cloning),
+        state(vosk, installed: true),
+      ]);
+      expect(older.installed, isTrue);
+      expect(ids(older.parts), [marian.id, vosk.id]);
+      expect(ids(older.better), [languageModel.id, cloning.id]);
+      expect(older.replaced, isEmpty);
+
+      // Asked for, the better packages are the language's while they arrive.
+      final arriving = russianWith([
+        state(languageModel, progress: 0.5),
+        state(marian, installed: true),
+        state(cloning, progress: 0),
+        state(vosk, installed: true),
+      ]);
+      expect(ids(arriving.parts), [languageModel.id, cloning.id]);
+      expect(arriving.installed, isFalse);
+      expect(arriving.better, isEmpty);
+      expect(ids(arriving.replaced), [marian.id, vosk.id]);
+
+      // Arrived, they stay so, and the older ones go with the language.
+      final raised = russianWith([
+        state(languageModel, installed: true),
+        state(marian, installed: true),
+        state(cloning, installed: true),
+        state(vosk, installed: true),
+      ]);
+      expect(ids(raised.parts), [languageModel.id, cloning.id]);
+      expect(raised.better, isEmpty);
+      expect(ids(raised.onDisk), [languageModel.id, cloning.id, marian.id, vosk.id]);
+      expect(raised.onDiskBytes, greaterThan(raised.downloadBytes));
     });
 
     test('loads the language model for English too, since the line arrives in the game\'s', () {
@@ -231,10 +287,10 @@ void main() {
             : '${languages.text}->${languages.dubbing}',
     ];
 
-    /// Every package on disk but [missing].
+    /// The processor's packages on disk but [missing].
     List<ModelInstallState> without(ModelPackage? missing) => [
       for (final state in installed())
-        ModelInstallState(model: state.model, installed: state.model != missing),
+        ModelInstallState(model: state.model, installed: state.installed && state.model != missing),
     ];
 
     test('offers every voice on disk as it is, then English translated into one', () {
@@ -245,7 +301,7 @@ void main() {
       expect(
         offered(
           ModelSelection(
-            models: without(translationModelFor('ru')),
+            models: without(marian),
             settings: const AppSettings(targetLanguage: 'en'),
           ),
         ),
@@ -254,7 +310,7 @@ void main() {
       expect(
         offered(
           ModelSelection(
-            models: without(speechModelFor('ru')),
+            models: without(vosk),
             settings: const AppSettings(targetLanguage: 'en'),
           ),
         ),
@@ -262,7 +318,7 @@ void main() {
       );
       expect(
         offered(
-          ModelSelection(models: without(speechModelFor('ru')), settings: const AppSettings()),
+          ModelSelection(models: without(vosk), settings: const AppSettings()),
         ),
         ['en', 'en->ru'],
         reason: 'the choice stands on the list once its voice is gone',
@@ -288,14 +344,14 @@ void main() {
 
       expect(
         ModelSelection(
-          models: without(translationModelFor('ru')),
+          models: without(marian),
           settings: russian,
         ).screenModelsInstalled,
         isTrue,
       );
       expect(
         ModelSelection(
-          models: without(translationModelFor('ru')),
+          models: without(marian),
           settings: const AppSettings(targetLanguage: 'ru'),
         ).screenModelsInstalled,
         isFalse,
@@ -303,7 +359,7 @@ void main() {
       );
       expect(
         ModelSelection(
-          models: without(speechModelFor('ru')),
+          models: without(vosk),
           settings: russian,
         ).screenModelsInstalled,
         isFalse,

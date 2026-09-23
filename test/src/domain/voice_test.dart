@@ -9,7 +9,7 @@ void main() {
   ModelPackage speechFor(String language) => speechModelFor(language)!;
 
   test('splits a package into the voices of each gender', () {
-    final russian = speechFor('ru');
+    final russian = modelCatalog.firstWhere((model) => model.id == 'vosk-ru-0.9');
 
     expect(russian.voicesOf(VoiceGender.male), ['male_0', 'male_1']);
     expect(russian.voicesOf(VoiceGender.female), ['female_1']);

@@ -953,9 +953,16 @@ the session would start with no translator and no voice.
 Two packages stand in front of the processor's ones in the catalogue, for a
 machine with a card: a translator that is a language model and a voice that
 clones. `ModelSelection._preferred` picks, for a kind and a language, the
-first package on disk in catalogue order, and the first listed where none
-is -- so a machine with only Marian and Vosk keeps dubbing with them, one
-with the newer packages uses them, and there is no setting to switch. A
+first package on its way in catalogue order, else the first on disk, else
+the first listed -- so a machine with only Marian and Vosk keeps dubbing
+with them, one with the newer packages uses them, and there is no setting
+to switch. The tile of a language shows that pair, and carries beside it
+`LanguagePair.better`, the packages listed above the ones in use that the
+disk has not got: the tile's upgrade button fetches them, they are the
+language's from the moment they are asked for (shown arriving, and a start
+waits for them as for any download of its language), and the older ones
+left under them (`LanguagePair.replaced`) go with the language when it is
+deleted rather than staying on disk unseen. A
 package may serve several languages (`ModelPackage.languages`, read through
 `serves` and `servedLanguages`, with a default voice per language in
 `speakers`); `languagePairs` counts over the voices' languages only, since

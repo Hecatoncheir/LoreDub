@@ -141,6 +141,68 @@ void main() {
       verifyNever(() => cubits.downloads.add(any<DownloadsEvent>()));
     });
 
+    testWidgets('offers the better models over the older pair, and fetches both at once', (
+      tester,
+    ) async {
+      // An upgrade from the free build: the processor's packages on disk,
+      // the better ones not.
+      final cubits = await pumpTiles(tester);
+      final upgrade = on(
+        'ru',
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message!.startsWith('Скачать лучшие модели ('),
+        ),
+      );
+      expect(upgrade, findsOneWidget);
+      expect(on('ru', find.byTooltip('Удалить')), findsOneWidget, reason: 'the older pair stays');
+
+      await tester.tap(upgrade);
+      await tester.pumpAndSettle();
+      final asked = verify(() => cubits.downloads.add(captureAny<DownloadsEvent>())).captured;
+      expect(
+        [
+          for (final event in asked)
+            if (event is ModelInstallAsked) event.install.model.id,
+        ],
+        ['translategemma-4b-q4', 'qwen3-tts-1.7b'],
+      );
+    });
+
+    testWidgets('deletes the older pair with the language once the better one is in use', (
+      tester,
+    ) async {
+      final cubits = await pumpTiles(
+        tester,
+        models: [
+          for (final model in modelCatalog) ModelInstallState(model: model, installed: true),
+        ],
+      );
+      expect(
+        on(
+          'ru',
+          find.byWidgetPredicate(
+            (widget) => widget is Tooltip && widget.message!.startsWith('Скачать лучшие'),
+          ),
+        ),
+        findsNothing,
+        reason: 'the better pair is the one in use',
+      );
+
+      await tester.tap(on('ru', find.byTooltip('Удалить')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Удалить').last);
+      await tester.pumpAndSettle();
+
+      final removed = verify(() => cubits.downloads.add(captureAny<DownloadsEvent>())).captured;
+      expect(
+        [
+          for (final event in removed)
+            if (event is ModelRemoved) event.install.model.id,
+        ],
+        ['translategemma-4b-q4', 'qwen3-tts-1.7b', 'opus-mt-tc-big-en-zle', 'vosk-ru-0.9'],
+      );
+    });
+
     testWidgets('keeps the language in use while dubbing runs', (tester) async {
       await pumpTiles(tester, status: PipelineStatus.listening);
 

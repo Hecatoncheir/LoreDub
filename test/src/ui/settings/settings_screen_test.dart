@@ -542,7 +542,7 @@ void main() {
 
     testWidgets('says why a one-gender language cannot follow either', (tester) async {
       // A Russian package with men's voices alone, as Silero's Spanish was.
-      final vosk = speechModelFor('ru')!;
+      final vosk = modelCatalog.firstWhere((model) => model.id == 'vosk-ru-0.9');
       final menOnly = ModelPackage(
         id: vosk.id,
         artifacts: vosk.artifacts,

@@ -892,7 +892,11 @@ no code, only releases of model files.
 
 For a machine with a graphics card the catalogue carries two models better than
 the ones above, and a machine with them on disk dubs through them; Marian, Vosk
-and Kokoro stay for the processor. Both are under licences that allow sale.
+and Kokoro stay for the processor. Both are under licences that allow sale. A
+language already downloaded with the older models carries a "Download the
+better models" button on its tile on the Models screen: they are the
+language's models from the moment they are asked for, and the older ones are
+deleted with the language.
 
 **TranslateGemma 4B** (Q4_K_M, llama.cpp; the
 [Gemma Terms](https://ai.google.dev/gemma/terms)) translates from whatever

@@ -963,6 +963,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageHintLocked => 'The language can be changed once dubbing is stopped';
 
   @override
+  String languageUpgrade(String size) {
+    return 'Download the better models ($size)';
+  }
+
+  @override
+  String get languageUpgradeLocked => 'The better models can be downloaded once dubbing is stopped';
+
+  @override
   String get languageRemoveTitle => 'Delete the language?';
 
   @override

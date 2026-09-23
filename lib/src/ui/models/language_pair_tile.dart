@@ -55,17 +55,34 @@ class LanguagePairTile extends StatelessWidget {
     return onSelect == null ? l10n.languageHintLocked : l10n.languageHintSelect;
   }
 
-  /// Both halves go together, and only once the player has said so.
+  /// The better packages the catalogue lists above the ones this language
+  /// dubs with, offered while nothing of the pair is on its way. A running
+  /// session keeps them out as it keeps the delete out: arrived, they would
+  /// be the language's models under it.
+  ModelAction? _upgrade(AppLocalizations l10n) {
+    if (pair.better.isEmpty || pair.progress != null) return null;
+    final locked = running && selected;
+    return ModelAction(
+      icon: Icons.upgrade_rounded,
+      tooltip: locked
+          ? l10n.languageUpgradeLocked
+          : l10n.languageUpgrade(formatPackageSize(l10n, pair.betterBytes)),
+      onPressed: locked ? null : () => pair.better.forEach(onInstall),
+    );
+  }
+
+  /// Both halves go together -- and the older ones left under them, so a
+  /// raised language does not leave its first packages on the disk unseen
+  /// -- and only once the player has said so.
   Future<void> _remove(BuildContext context, AppLocalizations l10n, String name) async {
+    final removed = pair.onDisk;
     final confirmed = await confirmModelRemoval(
       context,
       title: l10n.languageRemoveTitle,
-      message: l10n.languageRemoveMessage(name, formatPackageSize(l10n, pair.downloadBytes)),
+      message: l10n.languageRemoveMessage(name, formatPackageSize(l10n, pair.onDiskBytes)),
     );
     if (!confirmed) return;
-    for (final part in pair.parts) {
-      if (part.installed) onRemove(part);
-    }
+    removed.forEach(onRemove);
   }
 
   @override
@@ -99,16 +116,19 @@ class LanguagePairTile extends StatelessWidget {
         _hint(l10n),
       ].join('\n'),
       onTap: selected ? null : onSelect,
-      actions: modelActions(
-        l10n: l10n,
-        parts: pair.parts,
-        isStopping: isStopping,
-        locked: running && selected,
-        onInstall: onInstall,
-        onPause: onPause,
-        onCancel: onCancel,
-        onRemove: () => _remove(context, l10n, name),
-      ),
+      actions: [
+        ?_upgrade(l10n),
+        ...modelActions(
+          l10n: l10n,
+          parts: pair.parts,
+          isStopping: isStopping,
+          locked: running && selected,
+          onInstall: onInstall,
+          onPause: onPause,
+          onCancel: onCancel,
+          onRemove: () => _remove(context, l10n, name),
+        ),
+      ],
     );
   }
 }
