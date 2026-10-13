@@ -6,6 +6,12 @@ on:
       # A version and nothing else: the models repository's tags such as
       # voices-vosk-v1 start with a v too, and started a release of the app.
       - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag (v1.2.3)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -13,10 +19,14 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: subosito/flutter-action@v2
         with:
           # The same engine windows.yml pins, so the release is built by the
@@ -36,29 +46,23 @@ jobs:
         run: choco install innosetup --yes --no-progress
       - name: Validate version against pubspec.yaml and CHANGELOG.md
         shell: pwsh
-        run: dart run tool/prepare_release.dart --tag $env:GITHUB_REF_NAME --output dist/release-notes.md
+        run: dart run tool/prepare_release.dart --tag $env:RELEASE_TAG --output dist/release-notes.md
       - name: Build Windows setup
         shell: pwsh
-        run: ./scripts/build_setup.ps1 -ReleaseTag $env:GITHUB_REF_NAME
+        run: ./scripts/build_setup.ps1 -ReleaseTag $env:RELEASE_TAG
       - name: Prepare release notes with the setup's SHA-256
         shell: pwsh
         run: |
           $setup = @(Get-ChildItem "dist/*.exe")
           if ($setup.Count -ne 1) { throw "Expected exactly one setup executable, found $($setup.Count)." }
-          dart run tool/prepare_release.dart --tag $env:GITHUB_REF_NAME --output dist/release-notes.md --installer $setup[0].FullName
+          dart run tool/prepare_release.dart --tag $env:RELEASE_TAG --output dist/release-notes.md --installer $setup[0].FullName
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Upload setup artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: LoreDub-${{ github.ref_name }}-windows-x64-setup
-          path: dist/*.exe
-          if-no-files-found: error
       - name: Publish GitHub release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = $env:GITHUB_REF_NAME
+          $tag = $env:RELEASE_TAG
           $version = $tag.TrimStart("v")
           $assets = @(Get-ChildItem "dist/*.exe")
           if ($assets.Count -ne 1) {
@@ -67,6 +71,7 @@ jobs:
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release edit $tag --repo $env:GITHUB_REPOSITORY --title "LoreDub $version" --notes-file dist/release-notes.md
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             gh release upload $tag $assets[0].FullName --repo $env:GITHUB_REPOSITORY --clobber
           } else {
             gh release create $tag $assets[0].FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "LoreDub $version" --notes-file dist/release-notes.md
